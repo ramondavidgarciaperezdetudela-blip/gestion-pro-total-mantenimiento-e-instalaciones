@@ -189,6 +189,11 @@ export default function Documents() {
               </div>
             </DialogContent>
           </Dialog>
+          <SupplierProductSearch
+            open={supplierSearchOpen}
+            onClose={() => setSupplierSearchOpen(false)}
+            onAddItem={addItemFromSupplier}
+          />
         </div>
       </div>
 
