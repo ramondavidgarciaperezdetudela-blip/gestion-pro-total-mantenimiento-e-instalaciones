@@ -55,15 +55,15 @@ import Documents from './pages/Documents';
 import SAT from './pages/SAT';
 import Maintenance from './pages/Maintenance';
 import Projects from './pages/Projects';
-import CompanyConfig from './pages/CompanyConfig';
 import ThermalCalc from './pages/ThermalCalc';
-import Regulations from './pages/Regulations';
-import Manuals from './pages/Manuals';
-import AIAssistant from './pages/AIAssistant';
-import Suppliers from './pages/Suppliers';
 import SolarCalc from './pages/SolarCalc';
 import ElectricalCalc from './pages/ElectricalCalc';
+import Regulations from './pages/Regulations';
+import Manuals from './pages/Manuals';
+import Suppliers from './pages/Suppliers';
 import Reports from './pages/Reports';
+import AIAssistant from './pages/AIAssistant';
+import CompanyConfig from './pages/CompanyConfig';
 import ColdRoomCalc from './pages/ColdRoomCalc';
 import __Layout from './Layout.jsx';
 
@@ -77,15 +77,15 @@ export const PAGES = {
     "SAT": SAT,
     "Maintenance": Maintenance,
     "Projects": Projects,
-    "CompanyConfig": CompanyConfig,
     "ThermalCalc": ThermalCalc,
-    "Regulations": Regulations,
-    "Manuals": Manuals,
-    "AIAssistant": AIAssistant,
-    "Suppliers": Suppliers,
     "SolarCalc": SolarCalc,
     "ElectricalCalc": ElectricalCalc,
+    "Regulations": Regulations,
+    "Manuals": Manuals,
+    "Suppliers": Suppliers,
     "Reports": Reports,
+    "AIAssistant": AIAssistant,
+    "CompanyConfig": CompanyConfig,
     "ColdRoomCalc": ColdRoomCalc,
 }
 

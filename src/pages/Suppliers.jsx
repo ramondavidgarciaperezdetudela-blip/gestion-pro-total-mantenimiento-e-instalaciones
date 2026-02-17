@@ -1,34 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, ExternalLink } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink } from 'lucide-react';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
 const DEFAULT_SUPPLIERS = [
-  { name: 'Salvador Escoda', website: 'https://www.salvadorescoda.com', category: 'refrigeracion', phone: '93 265 81 00', email: 'info@salvadorescoda.com', notes: 'Distribuidor oficial climatización y refrigeración', is_active: true },
-  { name: 'Hidroelectric SYG', website: 'https://www.syg.es', category: 'clima', phone: '', email: '', notes: 'Distribuidor material climatización', is_active: true },
+  {
+    name: 'Salvador Escoda', website: 'https://www.salvadorescoda.com',
+    login_url: 'https://www.salvadorescoda.com/tienda', category: 'refrigeracion',
+    phone: '93 265 81 00', email: 'info@salvadorescoda.com',
+    notes: 'Distribuidor oficial climatización y refrigeración', is_active: true
+  },
+  {
+    name: 'Hidroelectric SYG', website: 'https://www.syg.es',
+    login_url: 'https://www.syg.es', category: 'clima',
+    phone: '', email: '', notes: 'Distribuidor material climatización y electricidad', is_active: true
+  },
 ];
+
+const EMPTY_FORM = {
+  name: '', website: '', login_url: '', category: 'general',
+  phone: '', email: '', contact_person: '', notes: '', is_active: true,
+  api_key: '', api_url: '', client_code: '', password_hint: ''
+};
 
 export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', website: '', login_url: '', category: 'general', phone: '', email: '', contact_person: '', notes: '', is_active: true });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   useEffect(() => {
     base44.entities.Supplier.list().then(data => {
       if (data.length === 0) {
-        // Crear proveedores por defecto
-        Promise.all(DEFAULT_SUPPLIERS.map(s => base44.entities.Supplier.create(s))).then(() => {
-          base44.entities.Supplier.list().then(setSuppliers);
-        });
+        Promise.all(DEFAULT_SUPPLIERS.map(s => base44.entities.Supplier.create(s)))
+          .then(() => base44.entities.Supplier.list().then(setSuppliers));
       } else {
         setSuppliers(data);
       }
@@ -43,13 +58,20 @@ export default function Suppliers() {
     }
     setDialogOpen(false);
     setEditing(null);
-    setForm({ name: '', website: '', login_url: '', category: 'general', phone: '', email: '', contact_person: '', notes: '', is_active: true });
+    setForm(EMPTY_FORM);
     base44.entities.Supplier.list().then(setSuppliers);
   };
 
   const handleEdit = (s) => {
     setEditing(s);
-    setForm({ name: s.name||'', website: s.website||'', login_url: s.login_url||'', category: s.category||'general', phone: s.phone||'', email: s.email||'', contact_person: s.contact_person||'', notes: s.notes||'', is_active: s.is_active !== false });
+    setForm({
+      name: s.name || '', website: s.website || '', login_url: s.login_url || '',
+      category: s.category || 'general', phone: s.phone || '', email: s.email || '',
+      contact_person: s.contact_person || '', notes: s.notes || '',
+      is_active: s.is_active !== false,
+      api_key: s.api_key || '', api_url: s.api_url || '',
+      client_code: s.client_code || '', password_hint: s.password_hint || ''
+    });
     setDialogOpen(true);
   };
 
@@ -58,68 +80,144 @@ export default function Suppliers() {
     setSuppliers(suppliers.filter(s => s.id !== id));
   };
 
+  const activeSuppliers = suppliers.filter(s => s.is_active !== false);
+  const inactiveSuppliers = suppliers.filter(s => s.is_active === false);
+
+  const SupplierCard = ({ s }) => (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <Building2 className="w-4 h-4 text-slate-500 flex-shrink-0" />
+              <h3 className="font-semibold">{s.name}</h3>
+              <Badge variant="outline" className="text-[10px]">{s.category}</Badge>
+              {s.api_key && <Badge className="bg-green-100 text-green-700 text-[10px]"><Key className="w-2.5 h-2.5 mr-1" />API</Badge>}
+              {s.client_code && <Badge className="bg-blue-100 text-blue-700 text-[10px]">Cuenta configurada</Badge>}
+            </div>
+            {s.notes && <p className="text-xs text-gray-500 mb-2">{s.notes}</p>}
+            <div className="flex flex-wrap gap-3 text-xs">
+              {s.phone && <a href={`tel:${s.phone}`} className="flex items-center gap-1 text-blue-600"><Phone className="w-3 h-3" />{s.phone}</a>}
+              {s.email && <a href={`mailto:${s.email}`} className="flex items-center gap-1 text-blue-600"><Mail className="w-3 h-3" />{s.email}</a>}
+              {s.contact_person && <span className="text-gray-400">{s.contact_person}</span>}
+            </div>
+          </div>
+          <div className="flex items-center gap-1 ml-3 flex-shrink-0">
+            {s.login_url && (
+              <a href={s.login_url} target="_blank" rel="noopener noreferrer"
+                className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Ir a tienda online">
+                <ShoppingCart className="w-4 h-4" />
+              </a>
+            )}
+            {s.website && (
+              <a href={s.website} target="_blank" rel="noopener noreferrer"
+                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Sitio web">
+                <Globe className="w-4 h-4" />
+              </a>
+            )}
+            <button onClick={() => handleEdit(s)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"><Edit className="w-4 h-4" /></button>
+            <button onClick={() => handleDelete(s.id)} className="p-2 text-red-400 hover:text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Proveedores</h1>
-        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditing(null); }}>
+        <h1 className="text-2xl font-bold">Proveedores / Distribuidores</h1>
+        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditing(null); setShowApiKey(false); } }}>
           <DialogTrigger asChild>
             <Button className="bg-slate-700 hover:bg-slate-800"><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Nuevo'} proveedor</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <Input placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-              <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
-              <Input placeholder="Sitio web" value={form.website} onChange={e => setForm({...form, website: e.target.value})} />
-              <Input placeholder="URL acceso tienda online / login" value={form.login_url} onChange={e => setForm({...form, login_url: e.target.value})} />
-              <div className="grid grid-cols-2 gap-2">
-                <Input placeholder="Teléfono" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
-                <Input placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
-              </div>
-              <Input placeholder="Persona de contacto" value={form.contact_person} onChange={e => setForm({...form, contact_person: e.target.value})} />
-              <Textarea placeholder="Notas" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} />
-              <Button onClick={handleSave} className="w-full bg-slate-700">{editing ? 'Actualizar' : 'Guardar'}</Button>
-            </div>
+            <Tabs defaultValue="datos">
+              <TabsList className="w-full">
+                <TabsTrigger value="datos" className="flex-1">Datos</TabsTrigger>
+                <TabsTrigger value="acceso" className="flex-1">Acceso / API</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="datos" className="space-y-3 pt-2">
+                <Input placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+                <Input placeholder="Sitio web" value={form.website} onChange={e => setForm({...form, website: e.target.value})} />
+                <Input placeholder="URL tienda / pedidos online" value={form.login_url} onChange={e => setForm({...form, login_url: e.target.value})} />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="Teléfono" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
+                  <Input placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+                </div>
+                <Input placeholder="Persona de contacto" value={form.contact_person} onChange={e => setForm({...form, contact_person: e.target.value})} />
+                <Textarea placeholder="Notas" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} />
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} />
+                  Proveedor activo
+                </label>
+              </TabsContent>
+
+              <TabsContent value="acceso" className="space-y-3 pt-2">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
+                  <p className="font-medium mb-1">⚠️ Seguridad</p>
+                  <p>Los datos de acceso se guardan en tu cuenta. No compartas esta información.</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Código de cliente</label>
+                  <Input className="mt-1" placeholder="Tu nº de cliente en este distribuidor" value={form.client_code} onChange={e => setForm({...form, client_code: e.target.value})} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">API Key (si el distribuidor la proporciona)</label>
+                  <div className="relative mt-1">
+                    <Input
+                      type={showApiKey ? 'text' : 'password'}
+                      placeholder="API Key del distribuidor"
+                      value={form.api_key}
+                      onChange={e => setForm({...form, api_key: e.target.value})}
+                    />
+                    <button
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                    >
+                      {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">URL API (si disponible)</label>
+                  <Input className="mt-1" placeholder="https://api.distribuidor.com/v1" value={form.api_url} onChange={e => setForm({...form, api_url: e.target.value})} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Nota de contraseña (recordatorio)</label>
+                  <Input className="mt-1" placeholder="Ej: misma que email" value={form.password_hint} onChange={e => setForm({...form, password_hint: e.target.value})} />
+                </div>
+                <div className="border rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-medium">Acceso directo</p>
+                  {form.login_url ? (
+                    <a href={form.login_url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-blue-600 text-sm hover:underline">
+                      <ExternalLink className="w-4 h-4" /> Ir a la tienda online
+                    </a>
+                  ) : <p className="text-xs text-gray-400">Introduce la URL de la tienda para acceso directo</p>}
+                </div>
+              </TabsContent>
+            </Tabs>
+            <Button onClick={handleSave} className="w-full bg-slate-700 mt-3">{editing ? 'Actualizar' : 'Guardar'}</Button>
           </DialogContent>
         </Dialog>
       </div>
 
       <div className="space-y-3">
-        {suppliers.map(s => (
-          <Card key={s.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Building2 className="w-4 h-4 text-slate-500" />
-                    <h3 className="font-semibold">{s.name}</h3>
-                    <Badge variant="outline" className="text-[10px]">{s.category}</Badge>
-                    {!s.is_active && <Badge className="bg-gray-100 text-gray-500 text-[10px]">Inactivo</Badge>}
-                  </div>
-                  {s.notes && <p className="text-xs text-gray-500 mb-2">{s.notes}</p>}
-                  <div className="flex flex-wrap gap-3 text-xs">
-                    {s.phone && <a href={`tel:${s.phone}`} className="flex items-center gap-1 text-blue-600"><Phone className="w-3 h-3" />{s.phone}</a>}
-                    {s.email && <a href={`mailto:${s.email}`} className="flex items-center gap-1 text-blue-600"><Mail className="w-3 h-3" />{s.email}</a>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 ml-4">
-                  {(s.login_url || s.website) && (
-                    <a href={s.login_url || s.website} target="_blank" rel="noopener noreferrer"
-                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg text-xs flex items-center gap-1">
-                      <Globe className="w-4 h-4" />
-                    </a>
-                  )}
-                  <button onClick={() => handleEdit(s)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"><Edit className="w-4 h-4" /></button>
-                  <button onClick={() => handleDelete(s.id)} className="p-2 text-red-400 hover:text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {activeSuppliers.map(s => <SupplierCard key={s.id} s={s} />)}
+        {inactiveSuppliers.length > 0 && (
+          <div>
+            <p className="text-xs text-gray-400 mb-2">Inactivos</p>
+            {inactiveSuppliers.map(s => <SupplierCard key={s.id} s={s} />)}
+          </div>
+        )}
+        {suppliers.length === 0 && <p className="text-center text-gray-400 py-6">No hay proveedores configurados</p>}
       </div>
     </div>
   );
