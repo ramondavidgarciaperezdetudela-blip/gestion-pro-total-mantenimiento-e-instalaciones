@@ -18,6 +18,7 @@ const navItems = [
   { name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList },
   { name: 'Proyectos', page: 'Projects', icon: FolderOpen },
   { name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer },
+  { name: 'Cámara Frigorífica', page: 'ColdRoomCalc', icon: Thermometer },
   { name: 'Cálculo Solar', page: 'SolarCalc', icon: Sun },
   { name: 'Cálculo Eléctrico', page: 'ElectricalCalc', icon: Zap },
   { name: 'Normativas', page: 'Regulations', icon: Shield },

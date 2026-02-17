@@ -64,6 +64,7 @@ import Suppliers from './pages/Suppliers';
 import SolarCalc from './pages/SolarCalc';
 import ElectricalCalc from './pages/ElectricalCalc';
 import Reports from './pages/Reports';
+import ColdRoomCalc from './pages/ColdRoomCalc';
 import __Layout from './Layout.jsx';
 
 
@@ -85,6 +86,7 @@ export const PAGES = {
     "SolarCalc": SolarCalc,
     "ElectricalCalc": ElectricalCalc,
     "Reports": Reports,
+    "ColdRoomCalc": ColdRoomCalc,
 }
 
 export const pagesConfig = {
