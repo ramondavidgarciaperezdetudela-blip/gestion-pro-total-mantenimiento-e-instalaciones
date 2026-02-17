@@ -163,7 +163,12 @@ export default function Documents() {
                       <button className="col-span-1 text-red-400" onClick={() => removeItem(i)}>×</button>
                     </div>
                   ))}
-                  <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Línea</Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Línea</Button>
+                    <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => setSupplierSearchOpen(true)}>
+                      <ShoppingCart className="w-3 h-3 mr-1" />Buscar en distribuidor
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="bg-gray-50 p-3 rounded-lg space-y-1 text-sm">
