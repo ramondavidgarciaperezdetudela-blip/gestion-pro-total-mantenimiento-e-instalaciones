@@ -69,6 +69,12 @@ export default function Documents() {
   };
 
   const addItem = () => setForm({ ...form, items: [...form.items, { description: '', quantity: 1, unit_price: 0, discount: 0, total: 0 }] });
+
+  const addItemFromSupplier = (item) => {
+    const newItems = [...form.items, item];
+    const calc = recalculate(newItems, form.iva_rate);
+    setForm({ ...form, ...calc });
+  };
   const removeItem = (i) => {
     const newItems = form.items.filter((_, idx) => idx !== i);
     const calc = recalculate(newItems, form.iva_rate);
