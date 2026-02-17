@@ -1,126 +1,136 @@
 import React, { useState, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Zap, Calculator, Loader2 } from 'lucide-react';
+import { Zap, Calculator } from 'lucide-react';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 
+const WIRE_COLORS = { L1: 'Marrón', L2: 'Negro', L3: 'Gris', N: 'Azul', PE: 'Amarillo-Verde' };
+
+function calcSection(I, L, V, dv_max_pct, system) {
+  const rho = 0.0178; // resistividad cobre
+  const dv_max_V = V * (dv_max_pct / 100);
+  const k = system === 'monofasico' ? 2 : Math.sqrt(3);
+  const S = (rho * k * I * L) / dv_max_V;
+  // Sección normalizada
+  const sections = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120];
+  return sections.find(s => s >= S) || 120;
+}
+
 export default function ElectricalCalc() {
+  const [form, setForm] = useState({
+    power_kw: 5, voltage: 230, system: 'monofasico', cos_phi: 0.9,
+    length_m: 20, dv_max: 3, protection_type: 'magnetotermico',
+  });
   const [result, setResult] = useState(null);
-  const [calculating, setCalculating] = useState(false);
   const printRef = useRef(null);
 
-  const [form, setForm] = useState({
-    voltage: 230, phases: '1', power_kw: 5, power_factor: 0.9, cable_length: 20,
-    installation_type: 'empotrado', cable_material: 'cobre', ambient_temp: 30
-  });
+  const calculate = () => {
+    const P = parseFloat(form.power_kw) * 1000;
+    const V = parseFloat(form.voltage);
+    const pf = parseFloat(form.cos_phi);
+    const L = parseFloat(form.length_m);
+    const dv = parseFloat(form.dv_max);
 
-  const calculate = async () => {
-    setCalculating(true);
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Calcula la instalación eléctrica según REBT: tensión ${form.voltage}V, ${form.phases} fase(s), potencia ${form.power_kw}kW, factor potencia ${form.power_factor}, longitud cable ${form.cable_length}m, instalación ${form.installation_type}, conductor ${form.cable_material}, temperatura ambiente ${form.ambient_temp}°C. Calcula sección cable necesaria, caída de tensión, protecciones (magnetotérmico e interruptor diferencial), y materiales necesarios.`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          seccion_cable_mm2: { type: "number" },
-          intensidad_nominal_a: { type: "number" },
-          caida_tension_percent: { type: "number" },
-          magnetotermico: { type: "string" },
-          diferencial: { type: "string" },
-          materiales: { type: "array", items: { type: "object", properties: { material: { type: "string" }, cantidad: { type: "number" }, especificacion: { type: "string" } } } },
-          observaciones: { type: "string" }
-        }
-      }
-    });
-    setResult(res);
-    setCalculating(false);
+    let I, S;
+    if (form.system === 'monofasico') {
+      I = P / (V * pf);
+    } else if (form.system === 'bifasico') {
+      I = P / (2 * V * pf);
+    } else {
+      I = P / (Math.sqrt(3) * V * pf);
+    }
+    S = calcSection(I, L, V, dv, form.system);
+
+    // Magnetotérmico
+    const mcbRatings = [6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100];
+    const mcb = mcbRatings.find(r => r >= I * 1.25) || 100;
+
+    // Diferencial
+    const rcd = I > 40 ? 63 : I > 25 ? 40 : I > 16 ? 25 : 16;
+
+    const materials = [
+      { material: `Cable Cu ${S}mm² ${form.system === 'trifasico' ? '(x3 fases + N + PE)' : '(fase + neutro + tierra)'}`, specification: `Sección calculada ${S}mm²`, quantity: L, unit: 'm' },
+      { material: `Interruptor magnetotérmico ${mcb}A`, specification: `In calculada ${I.toFixed(1)}A`, quantity: 1, unit: 'ud.' },
+      { material: `Diferencial ${rcd}A/30mA`, specification: 'Clase AC', quantity: 1, unit: 'ud.' },
+      { material: 'Tubo corrugado PVC o bandeja', specification: `Longitud instalación ${L}m`, quantity: L, unit: 'm' },
+    ];
+
+    setResult({ I: I.toFixed(2), S, mcb, rcd, materials, caida_tension: ((1.78e-8 * (form.system === 'monofasico' ? 2 : Math.sqrt(3)) * I * L) / S).toFixed(2) });
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-2xl">
       <h1 className="text-2xl font-bold flex items-center gap-2"><Zap className="w-6 h-6 text-yellow-500" />Cálculo Eléctrico</h1>
 
       <Card>
         <CardContent className="p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div><label className="text-xs text-gray-500">Tensión (V)</label><Input type="number" value={form.voltage} onChange={e => setForm({...form, voltage: parseFloat(e.target.value)})} /></div>
-            <Select value={form.phases} onValueChange={v => setForm({...form, phases: v})}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">Monofásica</SelectItem>
-                <SelectItem value="3">Trifásica</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="text-xs text-gray-500">Potencia (kW)</label><Input type="number" value={form.power_kw} onChange={e => setForm({...form, power_kw: e.target.value})} /></div>
+            <div>
+              <label className="text-xs text-gray-500">Sistema</label>
+              <Select value={form.system} onValueChange={v => setForm({...form, system: v, voltage: v === 'monofasico' ? 230 : 400})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monofasico">Monofásico 230V</SelectItem>
+                  <SelectItem value="trifasico">Trifásico 400V</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><label className="text-xs text-gray-500">Cos φ (factor potencia)</label><Input type="number" step="0.01" min="0.7" max="1" value={form.cos_phi} onChange={e => setForm({...form, cos_phi: e.target.value})} /></div>
+            <div><label className="text-xs text-gray-500">Longitud (m)</label><Input type="number" value={form.length_m} onChange={e => setForm({...form, length_m: e.target.value})} /></div>
+            <div><label className="text-xs text-gray-500">Caída tensión máx. (%)</label><Input type="number" step="0.5" value={form.dv_max} onChange={e => setForm({...form, dv_max: e.target.value})} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div><label className="text-xs text-gray-500">Potencia (kW)</label><Input type="number" value={form.power_kw} onChange={e => setForm({...form, power_kw: parseFloat(e.target.value)})} /></div>
-            <div><label className="text-xs text-gray-500">Factor potencia</label><Input type="number" step="0.01" value={form.power_factor} onChange={e => setForm({...form, power_factor: parseFloat(e.target.value)})} /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div><label className="text-xs text-gray-500">Longitud cable (m)</label><Input type="number" value={form.cable_length} onChange={e => setForm({...form, cable_length: parseFloat(e.target.value)})} /></div>
-            <div><label className="text-xs text-gray-500">T. Ambiente (°C)</label><Input type="number" value={form.ambient_temp} onChange={e => setForm({...form, ambient_temp: parseFloat(e.target.value)})} /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Select value={form.installation_type} onValueChange={v => setForm({...form, installation_type: v})}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="empotrado">Empotrado</SelectItem>
-                <SelectItem value="superficie">Superficie</SelectItem>
-                <SelectItem value="bandeja">Bandeja</SelectItem>
-                <SelectItem value="enterrado">Enterrado</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={form.cable_material} onValueChange={v => setForm({...form, cable_material: v})}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cobre">Cobre</SelectItem>
-                <SelectItem value="aluminio">Aluminio</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button onClick={calculate} disabled={calculating} className="w-full bg-yellow-600">
-            {calculating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Calculator className="w-4 h-4 mr-2" />}
-            Calcular
+          <Button onClick={calculate} className="w-full bg-yellow-500 hover:bg-yellow-600 text-black">
+            <Calculator className="w-4 h-4 mr-2" /> Calcular
           </Button>
         </CardContent>
       </Card>
 
       {result && (
-        <Card ref={printRef}>
-          <CardHeader><CardTitle>Resultado Cálculo Eléctrico</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <CompanyHeader className="mb-3 pb-3 border-b" />
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-yellow-50 p-3 rounded-lg">
-                <p className="text-xs text-gray-500">Sección cable</p>
-                <p className="text-xl font-bold text-yellow-700">{result.seccion_cable_mm2} mm²</p>
+        <div ref={printRef}>
+          <CompanyHeader className="mb-3" />
+          <Card className="border-yellow-200">
+            <CardHeader className="bg-yellow-50">
+              <CardTitle className="text-yellow-700 text-lg">Resultado cálculo eléctrico</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-yellow-50 p-3 rounded-lg text-center">
+                  <p className="text-xl font-bold text-yellow-600">{result.I} A</p>
+                  <p className="text-xs text-yellow-500">Intensidad</p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-lg text-center">
+                  <p className="text-xl font-bold text-blue-600">{result.S} mm²</p>
+                  <p className="text-xs text-blue-500">Sección cable</p>
+                </div>
+                <div className="bg-orange-50 p-3 rounded-lg text-center">
+                  <p className="text-xl font-bold text-orange-600">{result.mcb} A</p>
+                  <p className="text-xs text-orange-500">Magnetotérmico</p>
+                </div>
+                <div className="bg-green-50 p-3 rounded-lg text-center">
+                  <p className="text-xl font-bold text-green-600">{result.rcd} A</p>
+                  <p className="text-xs text-green-500">Diferencial</p>
+                </div>
               </div>
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-xs text-gray-500">Intensidad nominal</p>
-                <p className="text-xl font-bold text-blue-700">{result.intensidad_nominal_a} A</p>
+              <div className="bg-gray-50 p-3 rounded-lg text-sm">
+                <p>Caída de tensión: <strong>{result.caida_tension} V</strong></p>
+                <p className="text-xs text-gray-500 mt-1">Colores: L1={WIRE_COLORS.L1}, L2={WIRE_COLORS.L2}, L3={WIRE_COLORS.L3}, N={WIRE_COLORS.N}, PE={WIRE_COLORS.PE}</p>
               </div>
-            </div>
-            <div className="bg-gray-50 p-3 rounded-lg text-sm">
-              <p>Caída de tensión: {result.caida_tension_percent}%</p>
-              <p>Magnetotérmico: {result.magnetotermico}</p>
-              <p>Diferencial: {result.diferencial}</p>
-            </div>
-            {result.materiales?.length > 0 && (
-              <div>
-                <p className="font-medium text-sm mb-2">Materiales</p>
-                <table className="w-full text-xs">
-                  <thead><tr className="border-b"><th className="text-left p-1">Material</th><th className="p-1">Cant.</th><th className="p-1">Especificación</th></tr></thead>
-                  <tbody>{result.materiales.map((m, i) => <tr key={i} className="border-b"><td className="p-1">{m.material}</td><td className="p-1 text-center">{m.cantidad}</td><td className="p-1">{m.especificacion}</td></tr>)}</tbody>
-                </table>
-              </div>
-            )}
-            {result.observaciones && <p className="text-xs text-gray-600">{result.observaciones}</p>}
-            <PrintButton contentRef={printRef} title="Cálculo Eléctrico" />
-          </CardContent>
-        </Card>
+              <table className="w-full text-xs border-collapse">
+                <thead><tr className="bg-gray-100"><th className="border p-1 text-left">Material</th><th className="border p-1 text-left">Especificación</th><th className="border p-1 text-right">Cant.</th><th className="border p-1">Ud.</th></tr></thead>
+                <tbody>
+                  {result.materials.map((m, i) => (
+                    <tr key={i} className="border-b"><td className="border p-1">{m.material}</td><td className="border p-1">{m.specification}</td><td className="border p-1 text-right">{m.quantity}</td><td className="border p-1">{m.unit}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+              <PrintButton contentRef={printRef} title="Cálculo Eléctrico" />
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

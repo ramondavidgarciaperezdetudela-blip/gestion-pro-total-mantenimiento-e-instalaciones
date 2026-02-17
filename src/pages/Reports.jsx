@@ -1,122 +1,162 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, TrendingUp, FileText, Users, Wrench } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, FileText, Wrench, ClipboardList } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
+import PrintButton from '../components/PrintButton';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export default function Reports() {
-  const [invoices, setInvoices] = useState([]);
-  const [satOrders, setSatOrders] = useState([]);
-  const [contacts, setContacts] = useState([]);
-  const [period, setPeriod] = useState('year');
+  const [data, setData] = useState({ invoices: [], contacts: [], sat: [], maintenance: [] });
+  const [period, setPeriod] = useState('mes');
+  const [loading, setLoading] = useState(true);
   const printRef = useRef(null);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
-      base44.entities.Invoice.list('-date', 1000),
-      base44.entities.SATOrder.list('-date', 1000),
+      base44.entities.Invoice.list('-date', 500),
       base44.entities.Contact.list(),
-    ]).then(([inv, sat, cont]) => {
-      setInvoices(inv);
-      setSatOrders(sat);
-      setContacts(cont);
+      base44.entities.SATOrder.list('-date', 200),
+      base44.entities.MaintenanceSheet.list('-date', 200),
+    ]).then(([invoices, contacts, sat, maintenance]) => {
+      setData({ invoices, contacts, sat, maintenance });
+      setLoading(false);
     });
   }, []);
 
-  const totalFacturado = invoices.filter(i => i.doc_type === 'factura').reduce((sum, i) => sum + (i.total || 0), 0);
-  const totalPresupuestado = invoices.filter(i => i.doc_type === 'presupuesto').reduce((sum, i) => sum + (i.total || 0), 0);
-  const totalPendiente = invoices.filter(i => i.status === 'enviado' || i.status === 'vencido').reduce((sum, i) => sum + (i.total || 0), 0);
+  // Totales
+  const totalFacturado = data.invoices.filter(i => i.doc_type === 'factura').reduce((s, i) => s + (i.total || 0), 0);
+  const totalPagado = data.invoices.filter(i => i.status === 'pagado').reduce((s, i) => s + (i.total || 0), 0);
+  const pendienteCobro = data.invoices.filter(i => i.status === 'enviado').reduce((s, i) => s + (i.total || 0), 0);
+  const satCompletadas = data.sat.filter(s => s.status === 'completada').length;
+  const satPendientes = data.sat.filter(s => s.status === 'pendiente').length;
 
-  const satByType = satOrders.reduce((acc, o) => { acc[o.type || 'otro'] = (acc[o.type || 'otro'] || 0) + 1; return acc; }, {});
-  const satPieData = Object.entries(satByType).map(([name, value]) => ({ name, value }));
+  // Gráfico facturación por tipo
+  const byDocType = [
+    { name: 'Facturas', value: data.invoices.filter(i => i.doc_type === 'factura').length },
+    { name: 'Presupuestos', value: data.invoices.filter(i => i.doc_type === 'presupuesto').length },
+    { name: 'Recibos', value: data.invoices.filter(i => i.doc_type === 'recibo').length },
+  ];
 
-  const invoicesByStatus = invoices.reduce((acc, i) => { acc[i.status || 'borrador'] = (acc[i.status || 'borrador'] || 0) + 1; return acc; }, {});
-  const statusData = Object.entries(invoicesByStatus).map(([name, value]) => ({ name, value }));
+  // Contactos por tipo
+  const contactsByType = ['cliente','proveedor','colaborador','otro'].map(t => ({
+    name: t, value: data.contacts.filter(c => c.type === t).length
+  })).filter(i => i.value > 0);
+
+  // SAT por tipo
+  const satByType = ['reparacion','mantenimiento','instalacion','revision'].map(t => ({
+    name: t, value: data.sat.filter(s => s.type === t).length
+  })).filter(i => i.value > 0);
+
+  const statCards = [
+    { title: 'Total Facturado', value: `${totalFacturado.toFixed(2)} €`, icon: TrendingUp, color: 'text-violet-600', bg: 'bg-violet-50' },
+    { title: 'Total Cobrado', value: `${totalPagado.toFixed(2)} €`, icon: FileText, color: 'text-green-600', bg: 'bg-green-50' },
+    { title: 'Pendiente Cobro', value: `${pendienteCobro.toFixed(2)} €`, icon: FileText, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { title: 'Clientes', value: data.contacts.filter(c => c.type === 'cliente').length, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { title: 'SAT Completadas', value: satCompletadas, icon: Wrench, color: 'text-teal-600', bg: 'bg-teal-50' },
+    { title: 'SAT Pendientes', value: satPendientes, icon: Wrench, color: 'text-red-600', bg: 'bg-red-50' },
+  ];
 
   return (
-    <div className="space-y-4" ref={printRef}>
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2"><BarChart3 className="w-6 h-6 text-fuchsia-500" />Informes</h1>
-        <PrintButton contentRef={printRef} title="Informe General" />
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <BarChart3 className="w-6 h-6 text-fuchsia-600" />Informes
+        </h1>
+        <PrintButton contentRef={printRef} title="Informes" />
       </div>
 
-      <CompanyHeader className="pb-3 border-b" />
+      {loading ? (
+        <p className="text-center text-gray-400 py-8">Cargando datos...</p>
+      ) : (
+        <div ref={printRef} className="space-y-6">
+          <CompanyHeader />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
-          <CardContent className="p-4 text-center">
-            <p className="text-xl font-bold text-blue-700">{totalFacturado.toFixed(2)} €</p>
-            <p className="text-xs text-blue-600">Total facturado</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-green-50 to-green-100">
-          <CardContent className="p-4 text-center">
-            <p className="text-xl font-bold text-green-700">{totalPresupuestado.toFixed(2)} €</p>
-            <p className="text-xs text-green-600">Presupuestado</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100">
-          <CardContent className="p-4 text-center">
-            <p className="text-xl font-bold text-orange-700">{totalPendiente.toFixed(2)} €</p>
-            <p className="text-xs text-orange-600">Pendiente cobro</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-violet-50 to-violet-100">
-          <CardContent className="p-4 text-center">
-            <p className="text-xl font-bold text-violet-700">{satOrders.length}</p>
-            <p className="text-xs text-violet-600">Órdenes SAT</p>
-          </CardContent>
-        </Card>
-      </div>
+          {/* KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {statCards.map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <Card key={i}>
+                  <CardContent className="p-4">
+                    <div className={`inline-flex p-2 rounded-lg ${s.bg} mb-2`}>
+                      <Icon className={`w-5 h-5 ${s.color}`} />
+                    </div>
+                    <p className="text-xs text-gray-500">{s.title}</p>
+                    <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Estado documentos</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={statusData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Tipos SAT</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={satPieData} cx="50%" cy="50%" outerRadius={70} fill="#8884d8" dataKey="value" label={({name, value}) => `${name}: ${value}`}>
-                  {satPieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+          {/* Gráficos */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Documentos por tipo</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={byDocType}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{fontSize:11}} />
+                    <YAxis tick={{fontSize:11}} />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#8b5cf6" radius={[4,4,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
 
-      <Card>
-        <CardHeader><CardTitle className="text-sm">Resumen</CardTitle></CardHeader>
-        <CardContent className="text-sm space-y-1">
-          <p>Total clientes: {contacts.filter(c => c.type === 'cliente').length}</p>
-          <p>Total proveedores: {contacts.filter(c => c.type === 'proveedor').length}</p>
-          <p>Facturas emitidas: {invoices.filter(i => i.doc_type === 'factura').length}</p>
-          <p>Presupuestos: {invoices.filter(i => i.doc_type === 'presupuesto').length}</p>
-          <p>Recibos: {invoices.filter(i => i.doc_type === 'recibo').length}</p>
-          <p>SAT completadas: {satOrders.filter(o => o.status === 'completada').length}</p>
-          <p>SAT pendientes: {satOrders.filter(o => o.status === 'pendiente').length}</p>
-        </CardContent>
-      </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Contactos por tipo</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie data={contactsByType} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({name, value}) => `${name}: ${value}`}>
+                      {contactsByType.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Órdenes SAT por tipo</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={satByType}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{fontSize:11}} />
+                    <YAxis tick={{fontSize:11}} />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#f59e0b" radius={[4,4,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Últimas facturas</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {data.invoices.filter(i => i.doc_type === 'factura').slice(0, 5).map(inv => (
+                    <div key={inv.id} className="flex justify-between text-sm">
+                      <span className="text-gray-600 truncate">{inv.contact_name}</span>
+                      <span className="font-medium ml-2">{inv.total?.toFixed(2)} €</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

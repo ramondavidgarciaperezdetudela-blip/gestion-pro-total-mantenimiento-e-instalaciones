@@ -1,90 +1,159 @@
 import React, { useState } from 'react';
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { BookOpen, ExternalLink, Search } from 'lucide-react';
+import { BookOpen, ExternalLink, Search, Download } from 'lucide-react';
 
-const manualCategories = [
-  { category: 'Aire Acondicionado', brands: [
-    { brand: 'Daikin', url: 'https://www.daikin.es/es_es/soporte/documentacion.html', description: 'Manuales de instalación y usuario' },
-    { brand: 'Mitsubishi Electric', url: 'https://www.mitsubishielectric.es/aire-acondicionado/soporte/documentacion', description: 'Documentación técnica completa' },
-    { brand: 'Fujitsu', url: 'https://www.fujitsu-general.com/es/support/downloads/', description: 'Manuales y documentación técnica' },
-    { brand: 'Samsung', url: 'https://www.samsung.com/es/support/', description: 'Soporte y manuales' },
-    { brand: 'LG', url: 'https://www.lg.com/es/soporte/', description: 'Centro de soporte técnico' },
-    { brand: 'Panasonic', url: 'https://www.aircon.panasonic.eu/ES_es/support/', description: 'Soporte profesional' },
-    { brand: 'Toshiba', url: 'https://www.toshibaclima.com/soporte/', description: 'Documentación técnica' },
-    { brand: 'Hisense', url: 'https://www.hisense-hitachi.com/es/soporte', description: 'Manuales y guías' },
-  ]},
-  { category: 'Refrigeración Industrial', brands: [
-    { brand: 'Salvador Escoda', url: 'https://www.salvadorescoda.com/', description: 'Catálogos y manuales técnicos' },
-    { brand: 'Intarcon', url: 'https://www.intarcon.com/documentacion/', description: 'Documentación equipos frigoríficos' },
-    { brand: 'Zanotti', url: 'https://www.zanotti.com/es/documentacion/', description: 'Manuales equipos refrigeración' },
-    { brand: 'Danfoss', url: 'https://www.danfoss.com/es-es/service-and-support/', description: 'Documentación y herramientas técnicas' },
-    { brand: 'Bitzer', url: 'https://www.bitzer.de/es/es/', description: 'Compresores - documentación' },
-    { brand: 'Copeland (Emerson)', url: 'https://climate.emerson.com/es-es', description: 'Manuales compresores' },
-  ]},
-  { category: 'Electricidad / REBT', brands: [
-    { brand: 'REBT Completo', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2002-18099', description: 'Reglamento Electrotécnico Baja Tensión (ITC-BT 01 a 51)' },
-    { brand: 'Schneider Electric', url: 'https://www.se.com/es/es/download/', description: 'Manuales protecciones y cuadros' },
-    { brand: 'ABB', url: 'https://new.abb.com/low-voltage/es/soporte', description: 'Documentación aparamenta' },
-    { brand: 'Legrand', url: 'https://www.legrand.es/documentacion', description: 'Catálogos y manuales' },
-    { brand: 'Siemens', url: 'https://www.siemens.com/es/es/soporte.html', description: 'Documentación técnica' },
-  ]},
-  { category: 'Energía Solar', brands: [
-    { brand: 'Huawei Solar', url: 'https://solar.huawei.com/es/download', description: 'Inversores - manuales' },
-    { brand: 'SMA', url: 'https://www.sma.de/es/servicio/descargas', description: 'Manuales inversores SMA' },
-    { brand: 'Fronius', url: 'https://www.fronius.com/es-es/spain/energia-solar/descargas', description: 'Documentación inversores' },
-    { brand: 'Canadian Solar', url: 'https://www.canadiansolar.com/support/', description: 'Fichas técnicas paneles' },
-    { brand: 'JA Solar', url: 'https://www.jasolar.com/html/en/downloads/', description: 'Documentación paneles' },
-    { brand: 'Pylontech', url: 'https://www.pylontech.com.cn/en/support/downloads', description: 'Manuales baterías' },
-    { brand: 'BYD', url: 'https://www.bydbatterybox.com/downloads', description: 'Documentación baterías' },
-  ]},
-  { category: 'Eficiencia Energética', brands: [
-    { brand: 'Guía IDAE', url: 'https://www.idae.es/publicaciones', description: 'Publicaciones eficiencia energética' },
-    { brand: 'Certificación Energética', url: 'https://energia.gob.es/desarrollo/EficienciaEnergetica/CertificacionEnergetica/', description: 'Procedimiento certificación' },
-  ]},
-  { category: 'Telecomunicaciones / ICT', brands: [
-    { brand: 'Normativa ICT', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2011-5834', description: 'Infraestructuras comunes telecomunicaciones' },
-    { brand: 'Televés', url: 'https://www.televes.com/es/soporte', description: 'Equipos telecomunicaciones' },
-  ]},
+const MANUALS = [
+  // Aire acondicionado / Clima
+  {
+    category: 'Daikin', color: 'bg-blue-100 text-blue-700',
+    items: [
+      { name: 'Daikin - Manual instalación splits', model: 'Series FTXC/FTXF', url: 'https://www.daikin.es/content/dam/document-library/installer-reference-guide/split/FTXC-FTXF_installer_guide_ES.pdf', type: 'Instalación' },
+      { name: 'Daikin - Manual usuario splits', model: 'Series FTXC/FTXF', url: 'https://www.daikin.es/content/dam/document-library/owner-s-manual/split/FTXC-FTXF_user_guide_ES.pdf', type: 'Usuario' },
+      { name: 'Daikin Altherma - Manual instalación', model: 'Bomba calor', url: 'https://www.daikin.es/content/dam/document-library/installer-reference-guide/heat-pumps/', type: 'Instalación' },
+    ]
+  },
+  {
+    category: 'Mitsubishi Electric', color: 'bg-red-100 text-red-700',
+    items: [
+      { name: 'Mitsubishi - Manual instalación MSZ-HR', model: 'MSZ-HR Series', url: 'https://www.mitsubishielectric.es/instaladores/documentacion/', type: 'Instalación' },
+      { name: 'Mitsubishi - Manual usuario MSZ-HR', model: 'MSZ-HR Series', url: 'https://www.mitsubishielectric.es/hogar/documentacion/', type: 'Usuario' },
+    ]
+  },
+  {
+    category: 'Fujitsu', color: 'bg-cyan-100 text-cyan-700',
+    items: [
+      { name: 'Fujitsu - Documentación técnica splits', model: 'ASY-G Series', url: 'https://www.fujitsu-general.com/es/support/manual/', type: 'Instalación' },
+      { name: 'Fujitsu - Manual usuario', model: 'ASY-G Series', url: 'https://www.fujitsu-general.com/es/support/manual/', type: 'Usuario' },
+    ]
+  },
+  {
+    category: 'Samsung', color: 'bg-indigo-100 text-indigo-700',
+    items: [
+      { name: 'Samsung - Manuales aire acondicionado', model: 'Wind-Free Series', url: 'https://www.samsung.com/es/support/model/AR09TXHQBWKNEU/', type: 'Usuario' },
+    ]
+  },
+  // Refrigeración Industrial
+  {
+    category: 'Intarcon (Refrigeración)', color: 'bg-orange-100 text-orange-700',
+    items: [
+      { name: 'Intarcon - Catálogo unidades condensadoras', model: 'Línea ECO', url: 'https://www.intarcon.com/documentacion/', type: 'Catálogo' },
+      { name: 'Intarcon - Manual instalación', model: 'Evaporadores', url: 'https://www.intarcon.com/documentacion/', type: 'Instalación' },
+    ]
+  },
+  {
+    category: 'Zanotti', color: 'bg-purple-100 text-purple-700',
+    items: [
+      { name: 'Zanotti - Documentación técnica', model: 'Grupos de frío', url: 'https://www.zanotti.com/es/downloads/', type: 'Instalación' },
+    ]
+  },
+  {
+    category: 'Danfoss', color: 'bg-green-100 text-green-700',
+    items: [
+      { name: 'Danfoss - Válvulas de expansión termostáticas', model: 'TUA/TUB Series', url: 'https://store.danfoss.com/es-ES/Refrigeración-y-Climatización/', type: 'Instalación' },
+      { name: 'Danfoss - Compresores herméticos', model: 'SC/BD Series', url: 'https://store.danfoss.com/es-ES/Refrigeración-y-Climatización/', type: 'Instalación' },
+      { name: 'Danfoss - Regla de refrigerantes (app)', model: 'Coolselector2', url: 'https://www.danfoss.com/es-es/service-and-support/apps-and-tools/coolselector2/', type: 'Herramienta' },
+    ]
+  },
+  // Solar / Fotovoltaica
+  {
+    category: 'Solar / Fotovoltaica', color: 'bg-amber-100 text-amber-700',
+    items: [
+      { name: 'SMA - Manual instalación inversores', model: 'Sunny Boy Series', url: 'https://www.sma.de/es/productos/downloads.html', type: 'Instalación' },
+      { name: 'Fronius - Manual instalación inversor', model: 'Primo/Symo', url: 'https://www.fronius.com/es-es/spain/solar-energy/products', type: 'Instalación' },
+      { name: 'Victron Energy - Manuales', model: 'Inversores/Cargadores', url: 'https://www.victronenergy.com/support-and-tools/manuals', type: 'Instalación' },
+      { name: 'Eficiencia energética placas solares - IDAE', model: 'Guía técnica', url: 'https://www.idae.es/tecnologias/energias-renovables/uso-electrico/solar-fotovoltaica', type: 'Guía' },
+    ]
+  },
+  // Electricidad
+  {
+    category: 'Electricidad / REBT', color: 'bg-yellow-100 text-yellow-700',
+    items: [
+      { name: 'REBT Completo - RD 842/2002', model: 'Todas las ITC-BT', url: 'https://www.boe.es/eli/es/rd/2002/08/02/842/con', type: 'Normativa' },
+      { name: 'Schneider - Guía instalaciones eléctricas', model: 'Guía práctica', url: 'https://www.se.com/es/es/download/document/SCHNEIDER_GUIA_INST_ELECTRICAS/', type: 'Guía' },
+      { name: 'ABB - Manuales cuadros eléctricos', model: 'Gamma Building', url: 'https://library.e.abb.com/public/', type: 'Instalación' },
+    ]
+  },
+  // Telecomunicaciones
+  {
+    category: 'Telecomunicaciones vivienda', color: 'bg-slate-100 text-slate-700',
+    items: [
+      { name: 'ICT - Infraestructura Común Telecomunicaciones', model: 'RD 346/2011', url: 'https://www.boe.es/eli/es/rd/2011/03/11/346', type: 'Normativa' },
+      { name: 'Guía instalación ICT - MINETUR', model: 'Antenas / fibra', url: 'https://avancedigital.mineco.gob.es/telecomunicaciones/ict/Paginas/ict.aspx', type: 'Guía' },
+    ]
+  },
 ];
 
 export default function Manuals() {
   const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('all');
 
-  const filtered = manualCategories.map(cat => ({
+  const categories = ['all', ...MANUALS.map(m => m.category)];
+
+  const filtered = MANUALS.filter(cat =>
+    activeCategory === 'all' || cat.category === activeCategory
+  ).map(cat => ({
     ...cat,
-    brands: cat.brands.filter(b => `${b.brand} ${b.description}`.toLowerCase().includes(search.toLowerCase()))
-  })).filter(cat => cat.brands.length > 0);
+    items: cat.items.filter(item =>
+      item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.model.toLowerCase().includes(search.toLowerCase())
+    )
+  })).filter(cat => cat.items.length > 0);
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold flex items-center gap-2"><BookOpen className="w-6 h-6 text-teal-500" />Manuales Técnicos</h1>
-      <p className="text-sm text-gray-500">Acceso directo a manuales de instalación y usuario de las principales marcas.</p>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <BookOpen className="w-6 h-6 text-teal-600" />Manuales Técnicos
+        </h1>
+        <Badge variant="outline" className="text-xs">Acceso directo PDF online</Badge>
+      </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <Input placeholder="Buscar marca o manual..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+        <Input placeholder="Buscar manual, marca, modelo..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {filtered.map(cat => (
-        <Card key={cat.category}>
-          <CardContent className="p-4">
-            <h2 className="font-bold text-sm text-teal-700 mb-3 uppercase tracking-wide">{cat.category}</h2>
-            <div className="space-y-2">
-              {cat.brands.map(brand => (
-                <a key={brand.brand} href={brand.url} target="_blank" rel="noopener noreferrer"
-                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-teal-50 transition-colors group">
-                  <div>
-                    <p className="font-medium text-sm group-hover:text-teal-700">{brand.brand}</p>
-                    <p className="text-xs text-gray-500">{brand.description}</p>
+      <div className="flex gap-2 flex-wrap">
+        {categories.map(cat => (
+          <button key={cat} onClick={() => setActiveCategory(cat)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${activeCategory === cat ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-200 hover:border-teal-300'}`}>
+            {cat === 'all' ? 'Todos' : cat}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-4">
+        {filtered.map((cat, ci) => (
+          <Card key={ci}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm"><Badge className={cat.color}>{cat.category}</Badge></CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {cat.items.map((item, ii) => (
+                  <div key={ii} className="p-4 hover:bg-gray-50 flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{item.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-gray-500">{item.model}</p>
+                        <Badge variant="outline" className="text-[10px]">{item.type}</Badge>
+                      </div>
+                    </div>
+                    <a href={item.url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-teal-700 transition-colors ml-4 flex-shrink-0">
+                      <Download className="w-3 h-3" /> Abrir PDF
+                    </a>
                   </div>
-                  <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-teal-500 flex-shrink-0" />
-                </a>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <p className="text-xs text-gray-400 text-center pb-4">Los manuales son accedidos directamente desde los servidores de cada fabricante. Se actualizan automáticamente.</p>
     </div>
   );
 }

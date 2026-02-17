@@ -1,82 +1,154 @@
 import React, { useState } from 'react';
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Shield, ExternalLink, Search } from 'lucide-react';
+import { Shield, ExternalLink, Search, BookOpen } from 'lucide-react';
 
-const regulations = [
-  { category: 'F-Gas y Gases Fluorados', items: [
-    { name: 'Reglamento (UE) 2024/573 F-Gas', url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX%3A32024R0573', description: 'Reglamento sobre gases fluorados de efecto invernadero' },
-    { name: 'RD 115/2017 Gases Fluorados', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2017-2066', description: 'Real Decreto regulación gases fluorados' },
-    { name: 'Comprobación fugas gases refrigerantes', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2017-2066', description: 'Normativa de comprobación periódica de fugas' },
-  ]},
-  { category: 'RITE - Instalaciones Térmicas', items: [
-    { name: 'RITE - RD 1027/2007', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2007-15820', description: 'Reglamento de Instalaciones Térmicas en los Edificios' },
-    { name: 'Modificación RITE 2021', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2021-10944', description: 'Última actualización del RITE' },
-  ]},
-  { category: 'REBT - Electricidad', items: [
-    { name: 'REBT - RD 842/2002', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2002-18099', description: 'Reglamento Electrotécnico de Baja Tensión completo' },
-    { name: 'ITC-BT Instrucciones Técnicas', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2002-18099', description: 'Instrucciones técnicas complementarias' },
-  ]},
-  { category: 'Seguridad y Contraincendios', items: [
-    { name: 'CTE DB SI Seguridad Incendios', url: 'https://www.codigotecnico.org/DocumentosCTE/SeguridadEnCasoDeIncendio.html', description: 'Código Técnico de Edificación - Seguridad Incendios' },
-    { name: 'RIPCI - RD 513/2017', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2017-6606', description: 'Reglamento de instalaciones de protección contra incendios' },
-  ]},
-  { category: 'Eficiencia Energética', items: [
-    { name: 'CTE DB HE Ahorro Energía', url: 'https://www.codigotecnico.org/DocumentosCTE/AhorroDeEnergia.html', description: 'Documento básico de ahorro de energía' },
-    { name: 'RD 390/2021 Certificación Energética', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2021-8945', description: 'Certificación de eficiencia energética de edificios' },
-    { name: 'RD 244/2019 Autoconsumo', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2019-5089', description: 'Regulación autoconsumo energía eléctrica' },
-  ]},
-  { category: 'Refrigeración Industrial', items: [
-    { name: 'Reglamento Seguridad Instalaciones Frigoríficas', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2011-1641', description: 'RD 138/2011 Seguridad instalaciones frigoríficas' },
-    { name: 'Regla de refrigerantes Danfoss', url: 'https://www.danfoss.com/es-es/', description: 'Herramienta cálculo refrigerantes Danfoss' },
-  ]},
-  { category: 'Telecomunicaciones', items: [
-    { name: 'ICT - RD 346/2011', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2011-5834', description: 'Infraestructuras comunes telecomunicaciones' },
-  ]},
-  { category: 'Placas Solares', items: [
-    { name: 'CTE DB HE5 Generación mínima', url: 'https://www.codigotecnico.org/DocumentosCTE/AhorroDeEnergia.html', description: 'Contribución fotovoltaica mínima' },
-    { name: 'Pliego Condiciones Técnicas IDAE', url: 'https://www.idae.es/', description: 'Pliego condiciones técnicas instalaciones solares' },
-  ]},
+const REGULATIONS = [
+  {
+    category: 'F-Gas / Refrigeración',
+    color: 'bg-blue-100 text-blue-700',
+    items: [
+      { name: 'Reglamento F-Gas UE 517/2014', description: 'Gases fluorados de efecto invernadero', url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32014R0517', boe: 'https://www.boe.es/buscar/doc.php?id=DOUE-L-2014-81006' },
+      { name: 'RD 115/2017 - F-Gas España', description: 'Reglamento nacional gases fluorados', url: 'https://www.boe.es/eli/es/rd/2017/02/17/115', boe: 'https://www.boe.es/eli/es/rd/2017/02/17/115' },
+      { name: 'Comprobación de fugas - IDAE', description: 'Guía comprobación fugas gases fluorados', url: 'https://www.idae.es/uploads/documentos/documentos_Gu%C3%ADa_fugas_gases_fluorados_2edicion_tcm30-178434.pdf', boe: null },
+      { name: 'Reglamento Frigorías - RD 138/2011', description: 'Seguridad instalaciones frigoríficas', url: 'https://www.boe.es/eli/es/rd/2011/02/04/138', boe: 'https://www.boe.es/eli/es/rd/2011/02/04/138' },
+    ]
+  },
+  {
+    category: 'RITE - Instalaciones Térmicas',
+    color: 'bg-orange-100 text-orange-700',
+    items: [
+      { name: 'RITE - RD 1027/2007', description: 'Reglamento de Instalaciones Térmicas en Edificios', url: 'https://www.boe.es/eli/es/rd/2007/07/20/1027/con', boe: 'https://www.boe.es/eli/es/rd/2007/07/20/1027/con' },
+      { name: 'Modificación RITE - RD 1826/2009', description: 'Actualización del RITE', url: 'https://www.boe.es/eli/es/rd/2009/12/04/1826', boe: 'https://www.boe.es/eli/es/rd/2009/12/04/1826' },
+      { name: 'RITE Instrucciones Técnicas (IT)', description: 'Instrucciones técnicas del RITE', url: 'https://energia.gob.es/desarrollo/EficienciaEnergetica/RITE/Paginas/InstalacionesTermicas.aspx', boe: null },
+    ]
+  },
+  {
+    category: 'Electricidad - REBT',
+    color: 'bg-yellow-100 text-yellow-700',
+    items: [
+      { name: 'REBT - RD 842/2002', description: 'Reglamento Electrotécnico Baja Tensión completo', url: 'https://www.boe.es/eli/es/rd/2002/08/02/842/con', boe: 'https://www.boe.es/eli/es/rd/2002/08/02/842/con' },
+      { name: 'ITC-BT (Instrucciones Técnicas)', description: 'Todas las ITC-BT del REBT', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2002-18099', boe: null },
+      { name: 'Normas UNE Electricidad', description: 'Catálogo normas UNE eléctricas', url: 'https://www.une.org/encuentra-tu-norma/busca-tu-norma/?c=S&A=electricidad', boe: null },
+    ]
+  },
+  {
+    category: 'Eficiencia Energética',
+    color: 'bg-green-100 text-green-700',
+    items: [
+      { name: 'CTE DB-HE Ahorro Energía', description: 'Código Técnico Edificación - Ahorro de energía', url: 'https://www.codigotecnico.org/pdf/Documentos/HE/DBHE.pdf', boe: 'https://www.boe.es/eli/es/rd/2019/12/05/732' },
+      { name: 'RD 235/2013 Certificación Energética', description: 'Certificación energética de edificios', url: 'https://www.boe.es/eli/es/rd/2013/04/05/235', boe: 'https://www.boe.es/eli/es/rd/2013/04/05/235' },
+      { name: 'RD 244/2019 Autoconsumo Solar', description: 'Autoconsumo de energía eléctrica', url: 'https://www.boe.es/eli/es/rd/2019/04/05/244', boe: 'https://www.boe.es/eli/es/rd/2019/04/05/244' },
+      { name: 'Directiva 2018/844 Eficiencia Energética', description: 'Eficiencia energética en edificios UE', url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32018L0844', boe: null },
+    ]
+  },
+  {
+    category: 'Seguridad',
+    color: 'bg-red-100 text-red-700',
+    items: [
+      { name: 'CTE DB-SI Seguridad Incendios', description: 'Código Técnico - Seguridad en caso de incendio', url: 'https://www.codigotecnico.org/pdf/Documentos/SI/DBSI.pdf', boe: 'https://www.boe.es/eli/es/rd/2006/03/17/314/con' },
+      { name: 'RIPCI - RD 513/2017', description: 'Reglamento Instalaciones Protección Contra Incendios', url: 'https://www.boe.es/eli/es/rd/2017/05/22/513', boe: 'https://www.boe.es/eli/es/rd/2017/05/22/513' },
+      { name: 'Mantenimiento PCI - Normas', description: 'Mantenimiento instalaciones contraincendios', url: 'https://www.boe.es/eli/es/rd/2017/05/22/513', boe: null },
+      { name: 'RD 513/2017 Protección Incendios', description: 'Reglamento PCI completo', url: 'https://www.boe.es/eli/es/rd/2017/05/22/513', boe: 'https://www.boe.es/eli/es/rd/2017/05/22/513' },
+    ]
+  },
+  {
+    category: 'Solar Fotovoltaica',
+    color: 'bg-amber-100 text-amber-700',
+    items: [
+      { name: 'RD 244/2019 Autoconsumo', description: 'Autoconsumo fotovoltaico', url: 'https://www.boe.es/eli/es/rd/2019/04/05/244', boe: 'https://www.boe.es/eli/es/rd/2019/04/05/244' },
+      { name: 'REBT - Instalaciones Fotovoltaicas ITC-BT-40', description: 'Instalaciones generadoras de baja tensión', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2002-18099', boe: null },
+      { name: 'IEC 62446 - Documentación sistemas FV', description: 'Norma documentación instalaciones solares', url: 'https://www.une.org/encuentra-tu-norma/busca-tu-norma/?c=N&v=62446', boe: null },
+    ]
+  },
+  {
+    category: 'Regla de Refrigerantes Danfoss',
+    color: 'bg-purple-100 text-purple-700',
+    items: [
+      { name: 'Regla de refrigerantes Danfoss', description: 'Tabla presiones y temperaturas gases refrigerantes', url: 'https://www.danfoss.com/es-es/service-and-support/downloads/dcs/refrigerants/', boe: null },
+      { name: 'Danfoss Coolselector®', description: 'Herramienta selección componentes refrigeración', url: 'https://www.danfoss.com/es-es/service-and-support/apps-and-tools/coolselector2/', boe: null },
+      { name: 'Presiones saturación R-32', description: 'Tabla presiones gas R-32', url: 'https://www.danfoss.com/es-es/products/dcs/refrigerants/', boe: null },
+      { name: 'Presiones saturación R-410A', description: 'Tabla presiones gas R-410A', url: 'https://www.danfoss.com/es-es/products/dcs/refrigerants/', boe: null },
+    ]
+  },
 ];
 
 export default function Regulations() {
   const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('all');
 
-  const filtered = regulations.map(cat => ({
+  const categories = ['all', ...REGULATIONS.map(r => r.category)];
+
+  const filtered = REGULATIONS.filter(cat =>
+    activeCategory === 'all' || cat.category === activeCategory
+  ).map(cat => ({
     ...cat,
-    items: cat.items.filter(i => `${i.name} ${i.description}`.toLowerCase().includes(search.toLowerCase()))
+    items: cat.items.filter(item =>
+      item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.description.toLowerCase().includes(search.toLowerCase())
+    )
   })).filter(cat => cat.items.length > 0);
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold flex items-center gap-2"><Shield className="w-6 h-6 text-indigo-500" />Normativas</h1>
-      <p className="text-sm text-gray-500">Accede a la normativa vigente actualizada. Los enlaces dirigen al BOE y fuentes oficiales.</p>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Shield className="w-6 h-6 text-indigo-600" />Normativas
+        </h1>
+        <Badge variant="outline" className="text-xs">Acceso directo a BOE/EUR-Lex</Badge>
+      </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <Input placeholder="Buscar normativa..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {filtered.map(cat => (
-        <Card key={cat.category}>
-          <CardContent className="p-4">
-            <h2 className="font-bold text-sm text-indigo-700 mb-3 uppercase tracking-wide">{cat.category}</h2>
-            <div className="space-y-2">
-              {cat.items.map(item => (
-                <a key={item.name} href={item.url} target="_blank" rel="noopener noreferrer"
-                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-indigo-50 transition-colors group">
-                  <div>
-                    <p className="font-medium text-sm group-hover:text-indigo-700">{item.name}</p>
-                    <p className="text-xs text-gray-500">{item.description}</p>
+      <div className="flex gap-2 flex-wrap">
+        {categories.map(cat => (
+          <button key={cat} onClick={() => setActiveCategory(cat)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${activeCategory === cat ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}>
+            {cat === 'all' ? 'Todas' : cat}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-4">
+        {filtered.map((cat, ci) => (
+          <Card key={ci}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Badge className={cat.color}>{cat.category}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {cat.items.map((item, ii) => (
+                  <div key={ii} className="p-4 hover:bg-gray-50 flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{item.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+                    </div>
+                    <div className="flex gap-2 ml-4 flex-shrink-0">
+                      <a href={item.url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors">
+                        <ExternalLink className="w-3 h-3" /> Acceder
+                      </a>
+                      {item.boe && (
+                        <a href={item.boe} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700 transition-colors">
+                          BOE
+                        </a>
+                      )}
+                    </div>
                   </div>
-                  <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-indigo-500 flex-shrink-0" />
-                </a>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

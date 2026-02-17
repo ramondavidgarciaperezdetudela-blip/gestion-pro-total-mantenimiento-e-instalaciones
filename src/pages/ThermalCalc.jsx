@@ -4,123 +4,130 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Thermometer, Calculator, Save, Loader2 } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { Thermometer, Save, Printer, Calculator } from 'lucide-react';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 
-const REFRIGERANTS = ['R-410A', 'R-32', 'R-134a', 'R-404A', 'R-407C', 'R-290', 'R-449A', 'R-452A', 'R-448A'];
-const ORIENTATIONS = ['norte', 'sur', 'este', 'oeste'];
+const REFRIGERANTS = ['R-32', 'R-410A', 'R-290', 'R-407C', 'R-134a', 'R-449A', 'R-452A', 'R-448A'];
 
-// Presiones de trabajo según refrigerante y temperatura
+// Datos de presiones según gas refrigerante y temperatura de evaporación
 const REFRIGERANT_PRESSURES = {
-  'R-410A': { condensation: 30, evaporation: 8, charge_per_meter: 30 },
-  'R-32': { condensation: 28, evaporation: 7, charge_per_meter: 20 },
-  'R-134a': { condensation: 15, evaporation: 2.5, charge_per_meter: 15 },
-  'R-404A': { condensation: 22, evaporation: 5, charge_per_meter: 35 },
-  'R-407C': { condensation: 20, evaporation: 4.5, charge_per_meter: 25 },
-  'R-290': { condensation: 16, evaporation: 4, charge_per_meter: 10 },
-  'R-449A': { condensation: 21, evaporation: 4.8, charge_per_meter: 28 },
-  'R-452A': { condensation: 24, evaporation: 5.5, charge_per_meter: 30 },
-  'R-448A': { condensation: 22, evaporation: 5, charge_per_meter: 28 },
+  'R-32':   { evap_0: 8.0,  evap_minus10: 5.8,  cond_40: 24.8, cond_50: 31.0 },
+  'R-410A': { evap_0: 7.97, evap_minus10: 5.54, cond_40: 24.3, cond_50: 30.5 },
+  'R-407C': { evap_0: 5.07, evap_minus10: 3.45, cond_40: 18.2, cond_50: 22.8 },
+  'R-134a': { evap_0: 2.93, evap_minus10: 2.01, cond_40: 10.2, cond_50: 13.2 },
+  'R-290':  { evap_0: 4.74, evap_minus10: 3.26, cond_40: 15.3, cond_50: 19.1 },
+  'R-449A': { evap_0: 6.8,  evap_minus10: 4.7,  cond_40: 21.8, cond_50: 27.5 },
+  'R-452A': { evap_0: 7.5,  evap_minus10: 5.2,  cond_40: 23.1, cond_50: 29.0 },
+  'R-448A': { evap_0: 6.5,  evap_minus10: 4.5,  cond_40: 20.9, cond_50: 26.3 },
 };
 
+// Catálogo de ejemplo Intarcon/Fujitsu para Clima
+const CLIMATE_CATALOG = [
+  { brand: 'Fujitsu', model: 'ASY-G12LFCA', power_kw: 3.5, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 20, max_height_m: 12 },
+  { brand: 'Fujitsu', model: 'ASY-G18LFCA', power_kw: 5.0, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 25, max_height_m: 15 },
+  { brand: 'Daikin', model: 'FTXC35C', power_kw: 3.5, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 20, max_height_m: 10 },
+  { brand: 'Daikin', model: 'FTXC50C', power_kw: 5.0, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 25, max_height_m: 12 },
+  { brand: 'Mitsubishi', model: 'MSZ-HR25VF', power_kw: 2.5, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 15, max_height_m: 8 },
+  { brand: 'Mitsubishi', model: 'MSZ-HR35VF', power_kw: 3.5, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 20, max_height_m: 10 },
+  { brand: 'Mitsubishi', model: 'MSZ-HR50VF', power_kw: 5.0, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 25, max_height_m: 12 },
+  { brand: 'Intarcon', model: 'UNIDAD-7K', power_kw: 7.0, type: 'Cassette', gas: 'R-32', max_pipe_m: 30, max_height_m: 15 },
+  { brand: 'Intarcon', model: 'UNIDAD-10K', power_kw: 10.0, type: 'Cassette', gas: 'R-32', max_pipe_m: 30, max_height_m: 15 },
+];
+
+// Extra refrigerante por metro extra (g/m)
+const EXTRA_REFRIGERANT_G_PER_M = { 'R-32': 15, 'R-410A': 20, 'R-290': 10, 'R-407C': 18, 'R-134a': 12, 'R-449A': 17, 'R-452A': 18, 'R-448A': 16 };
+
+function calcThermalLoad(f) {
+  const vol = f.length * f.width * f.height;
+  const orientFactor = { norte: 0.8, sur: 1.2, este: 1.0, oeste: 1.1 }[f.orientation] || 1.0;
+  const insulFactor = { bueno: 30, medio: 50, malo: 70 }[f.insulation_type] || 50;
+  const wallLoad = 2 * (f.length * f.height + f.width * f.height) * insulFactor * Math.abs((f.exterior_temp || 35) - (f.target_temp || 22));
+  const roofLoad = f.length * f.width * (insulFactor * 1.5) * Math.abs((f.exterior_temp || 35) - (f.target_temp || 22));
+  const windowLoad = (f.window_area || 0) * 600 * orientFactor;
+  const peopleLoad = (f.num_people || 2) * 100;
+  const equipLoad = f.equipment_heat || 0;
+  const totalW = (wallLoad + roofLoad + windowLoad + peopleLoad + equipLoad) * 1.15;
+  return Math.round(totalW);
+}
+
 export default function ThermalCalc() {
-  const [calcType, setCalcType] = useState('clima');
   const [contacts, setContacts] = useState([]);
+  const [form, setForm] = useState({
+    contact_id: '', contact_name: '', calc_type: 'clima',
+    length: 5, width: 4, height: 2.7, orientation: 'sur',
+    num_windows: 1, window_area: 2, num_people: 2, equipment_heat: 200,
+    insulation_type: 'medio', target_temp: 22, exterior_temp: 35,
+    refrigerant_type: 'R-32', pipe_distance: 5, pipe_height_diff: 3,
+  });
   const [result, setResult] = useState(null);
-  const [calculating, setCalculating] = useState(false);
+  const [selectedEquip, setSelectedEquip] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const printRef = useRef(null);
 
-  const [form, setForm] = useState({
-    contact_id: '', contact_name: '', room_length: 5, room_width: 4, room_height: 2.5,
-    orientation: 'sur', num_windows: 2, window_area: 2, num_people: 2, equipment_heat: 500,
-    insulation_type: 'medio', target_temp: 22, exterior_temp: 35,
-    cold_room_temp: -18, cold_room_product: 'carne', cold_room_product_kg: 500,
-    pipe_distance: 5, pipe_height_diff: 3, refrigerant_type: 'R-32'
-  });
+  useEffect(() => {
+    base44.entities.Contact.list().then(setContacts);
+  }, []);
 
-  useEffect(() => { base44.entities.Contact.list().then(setContacts); }, []);
+  const calculate = () => {
+    const loadW = calcThermalLoad(form);
+    const loadFrigorias = Math.round(loadW * 0.86);
+    const loadKW = (loadW / 1000).toFixed(2);
 
-  const calculate = async () => {
-    setCalculating(true);
-    const prompt = calcType === 'clima'
-      ? `Calcula la carga térmica para climatización de una habitación de ${form.room_length}x${form.room_width}x${form.room_height}m, orientación ${form.orientation}, ${form.num_windows} ventanas de ${form.window_area}m², ${form.num_people} personas, calor equipos ${form.equipment_heat}W, aislamiento ${form.insulation_type}, temperatura objetivo ${form.target_temp}°C, exterior ${form.exterior_temp}°C. Distancia tubería ${form.pipe_distance}m, diferencia altura ${form.pipe_height_diff}m, gas ${form.refrigerant_type}. Sugiere un equipo de Salvador Escoda, Daikin, Mitsubishi o Fujitsu apropiado con modelo concreto. Incluye lista de materiales para la instalación con las distancias indicadas.`
-      : `Calcula la carga térmica para cámara frigorífica de ${form.room_length}x${form.room_width}x${form.room_height}m, producto ${form.cold_room_product} (${form.cold_room_product_kg}kg), temperatura cámara ${form.cold_room_temp}°C, exterior ${form.exterior_temp}°C. Distancia entre evaporador y grupo de frío ${form.pipe_distance}m, diferencia altura ${form.pipe_height_diff}m, gas ${form.refrigerant_type}. Sugiere equipo de Salvador Escoda, Intarcon, Zanotti o Danfoss con modelo concreto, incluyendo evaporador y grupo condensador. Incluye cantidad de refrigerante a cargar, materiales para montaje de cámara según medidas y distancias.`;
+    // Selección de equipo
+    const suitable = CLIMATE_CATALOG.filter(e => e.power_kw * 1000 >= loadW * 0.9);
+    const equip = suitable.length > 0 ? suitable[0] : CLIMATE_CATALOG[CLIMATE_CATALOG.length - 1];
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          carga_termica_w: { type: "number" },
-          carga_termica_frigorias: { type: "number" },
-          equipo_sugerido: { type: "string" },
-          marca: { type: "string" },
-          modelo: { type: "string" },
-          potencia_equipo_w: { type: "number" },
-          refrigerante_carga_kg: { type: "number" },
-          refrigerante_extra_g: { type: "number" },
-          presion_alta_bar: { type: "number" },
-          presion_baja_bar: { type: "number" },
-          temp_condensacion: { type: "number" },
-          temp_evaporacion: { type: "number" },
-          materiales: { type: "array", items: { type: "object", properties: { material: { type: "string" }, cantidad: { type: "number" }, especificacion: { type: "string" } } } },
-          observaciones: { type: "string" }
-        }
-      }
-    });
-    setResult(res);
-    setCalculating(false);
+    // Cálculo extra refrigerante por distancia
+    const maxDist = equip.max_pipe_m;
+    const actualDist = parseFloat(form.pipe_distance) || 5;
+    const extraGrams = actualDist > maxDist ? Math.round((actualDist - maxDist) * (EXTRA_REFRIGERANT_G_PER_M[form.refrigerant_type] || 18)) : 0;
+
+    // Presiones
+    const pr = REFRIGERANT_PRESSURES[form.refrigerant_type] || REFRIGERANT_PRESSURES['R-32'];
+
+    // Materiales
+    const materials = [
+      { material: `Tubería líquido 1/4" Cu`, quantity: actualDist, specification: 'metros' },
+      { material: `Tubería gas 3/8" Cu`, quantity: actualDist, specification: 'metros' },
+      { material: 'Cableado eléctrico 4x1,5mm²', quantity: actualDist + 2, specification: 'metros' },
+      { material: 'Aislamiento tubería AF/19', quantity: actualDist, specification: 'metros' },
+      { material: 'Soporte unidad exterior', quantity: 1, specification: 'unidad' },
+      { material: 'Soporte unidad interior', quantity: 1, specification: 'unidad' },
+      { material: `${form.refrigerant_type} gas refrigerante`, quantity: (equip.power_kw * 0.3 + extraGrams / 1000).toFixed(2), specification: 'kg' },
+    ];
+
+    setSelectedEquip(equip);
+    setResult({ loadW, loadFrigorias, loadKW, equip, extraGrams, pr, materials, maxDist, actualDist });
   };
 
-  const saveCalc = async () => {
-    if (!result) return;
+  const saveToClient = async () => {
+    if (!form.contact_id || !result) return;
     setSaving(true);
-    await base44.entities.ThermalCalculation.create({
-      contact_id: form.contact_id, contact_name: form.contact_name, calc_type: calcType,
+    await base44.entities.ClientDocument.create({
+      contact_id: form.contact_id,
+      contact_name: form.contact_name,
+      title: `Cálculo térmico clima - ${format(new Date(), 'dd/MM/yyyy')}`,
+      doc_type: 'calculo_termico',
       date: format(new Date(), 'yyyy-MM-dd'),
-      room_length: form.room_length, room_width: form.room_width, room_height: form.room_height,
-      orientation: form.orientation, num_windows: form.num_windows, window_area: form.window_area,
-      num_people: form.num_people, equipment_heat: form.equipment_heat,
-      insulation_type: form.insulation_type, target_temp: form.target_temp, exterior_temp: form.exterior_temp,
-      cold_room_temp: form.cold_room_temp, cold_room_product: form.cold_room_product,
-      cold_room_product_kg: form.cold_room_product_kg,
-      pipe_distance: form.pipe_distance, pipe_height_diff: form.pipe_height_diff,
-      refrigerant_type: form.refrigerant_type,
-      calculated_load: result.carga_termica_w, calculated_load_frigorias: result.carga_termica_frigorias,
-      suggested_equipment: result.equipo_sugerido, suggested_brand: result.marca, suggested_model: result.modelo,
-      refrigerant_charge_kg: result.refrigerante_carga_kg, extra_refrigerant_g: result.refrigerante_extra_g,
-      materials_list: result.materiales?.map(m => ({ material: m.material, quantity: m.cantidad, specification: m.especificacion })),
-      working_pressures: { high_pressure: result.presion_alta_bar, low_pressure: result.presion_baja_bar, condensation_temp: result.temp_condensacion, evaporation_temp: result.temp_evaporacion },
-      notes: result.observaciones
+      description: `Carga: ${result.loadW}W (${result.loadFrigorias} frig/h). Equipo: ${result.equip.brand} ${result.equip.model}`,
     });
-    if (form.contact_id) {
-      await base44.entities.ClientDocument.create({
-        contact_id: form.contact_id, contact_name: form.contact_name,
-        title: `Cálculo Térmico ${calcType} - ${format(new Date(), 'dd/MM/yyyy')}`,
-        doc_type: 'calculo_termico', date: format(new Date(), 'yyyy-MM-dd')
-      });
-    }
     setSaving(false);
-    alert('Cálculo guardado correctamente');
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold flex items-center gap-2"><Thermometer className="w-6 h-6 text-red-500" />Cálculo Térmico</h1>
+    <div className="space-y-4 max-w-3xl">
+      <h1 className="text-2xl font-bold flex items-center gap-2"><Thermometer className="w-6 h-6 text-red-500" />Cálculo Térmico - Clima</h1>
 
-      <Tabs value={calcType} onValueChange={setCalcType}>
-        <TabsList>
-          <TabsTrigger value="clima">Climatización</TabsTrigger>
-          <TabsTrigger value="camara_frigorifica">Cámara Frigorífica</TabsTrigger>
-        </TabsList>
-
-        <Card className="mt-3">
-          <CardContent className="p-4 space-y-3">
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-2">
             <Select value={form.contact_id} onValueChange={v => {
               const c = contacts.find(co => co.id === v);
               setForm({...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : ''});
@@ -128,118 +135,137 @@ export default function ThermalCalc() {
               <SelectTrigger><SelectValue placeholder="Vincular a cliente (opcional)" /></SelectTrigger>
               <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
             </Select>
+            <Select value={form.refrigerant_type} onValueChange={v => setForm({...form, refrigerant_type: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{REFRIGERANTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
 
+          <div className="bg-blue-50 p-3 rounded-lg space-y-2">
+            <p className="text-sm font-medium text-blue-700">Dimensiones del local</p>
             <div className="grid grid-cols-3 gap-2">
-              <div><label className="text-xs text-gray-500">Largo (m)</label><Input type="number" value={form.room_length} onChange={e => setForm({...form, room_length: parseFloat(e.target.value)})} /></div>
-              <div><label className="text-xs text-gray-500">Ancho (m)</label><Input type="number" value={form.room_width} onChange={e => setForm({...form, room_width: parseFloat(e.target.value)})} /></div>
-              <div><label className="text-xs text-gray-500">Alto (m)</label><Input type="number" value={form.room_height} onChange={e => setForm({...form, room_height: parseFloat(e.target.value)})} /></div>
+              <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="number" value={form.length} onChange={e => setForm({...form, length: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="number" value={form.width} onChange={e => setForm({...form, width: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="number" value={form.height} onChange={e => setForm({...form, height: parseFloat(e.target.value)||0})} /></div>
             </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-xs text-gray-500">T. Exterior °C</label><Input type="number" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)})} /></div>
-              {calcType === 'clima' ? (
-                <div><label className="text-xs text-gray-500">T. Objetivo °C</label><Input type="number" value={form.target_temp} onChange={e => setForm({...form, target_temp: parseFloat(e.target.value)})} /></div>
-              ) : (
-                <div><label className="text-xs text-gray-500">T. Cámara °C</label><Input type="number" value={form.cold_room_temp} onChange={e => setForm({...form, cold_room_temp: parseFloat(e.target.value)})} /></div>
-              )}
-            </div>
-
-            {calcType === 'clima' && (
-              <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-[10px] text-gray-500">Orientación</label>
                 <Select value={form.orientation} onValueChange={v => setForm({...form, orientation: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{ORIENTATIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="norte">Norte</SelectItem><SelectItem value="sur">Sur</SelectItem><SelectItem value="este">Este</SelectItem><SelectItem value="oeste">Oeste</SelectItem></SelectContent>
                 </Select>
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500">Aislamiento</label>
                 <Select value={form.insulation_type} onValueChange={v => setForm({...form, insulation_type: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bueno">Aislamiento bueno</SelectItem>
-                    <SelectItem value="medio">Aislamiento medio</SelectItem>
-                    <SelectItem value="malo">Aislamiento malo</SelectItem>
-                  </SelectContent>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="bueno">Bueno</SelectItem><SelectItem value="medio">Medio</SelectItem><SelectItem value="malo">Malo</SelectItem></SelectContent>
                 </Select>
               </div>
-            )}
-
-            {calcType === 'camara_frigorifica' && (
-              <div className="grid grid-cols-2 gap-2">
-                <Input placeholder="Producto almacenado" value={form.cold_room_product} onChange={e => setForm({...form, cold_room_product: e.target.value})} />
-                <div><label className="text-xs text-gray-500">Kg producto</label><Input type="number" value={form.cold_room_product_kg} onChange={e => setForm({...form, cold_room_product_kg: parseFloat(e.target.value)})} /></div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-3 gap-2">
-              <div><label className="text-xs text-gray-500">Dist. tubería (m)</label><Input type="number" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: parseFloat(e.target.value)})} /></div>
-              <div><label className="text-xs text-gray-500">Dif. altura (m)</label><Input type="number" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: parseFloat(e.target.value)})} /></div>
-              <Select value={form.refrigerant_type} onValueChange={v => setForm({...form, refrigerant_type: v})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{REFRIGERANTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-              </Select>
+              <div><label className="text-[10px] text-gray-500">Superficie ventanas (m²)</label><Input type="number" value={form.window_area} onChange={e => setForm({...form, window_area: parseFloat(e.target.value)||0})} /></div>
             </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div><label className="text-[10px] text-gray-500">Nº personas</label><Input type="number" value={form.num_people} onChange={e => setForm({...form, num_people: parseInt(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Calor equipos (W)</label><Input type="number" value={form.equipment_heat} onChange={e => setForm({...form, equipment_heat: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="number" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)||0})} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-[10px] text-gray-500">T. objetivo interior (°C)</label><Input type="number" value={form.target_temp} onChange={e => setForm({...form, target_temp: parseFloat(e.target.value)||0})} /></div>
+            </div>
+          </div>
 
-            <Button onClick={calculate} disabled={calculating} className="w-full bg-red-600 hover:bg-red-700">
-              {calculating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Calculator className="w-4 h-4 mr-2" />}
-              Calcular
-            </Button>
-          </CardContent>
-        </Card>
-      </Tabs>
+          <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+            <p className="text-sm font-medium">Distancias de instalación</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-[10px] text-gray-500">Longitud tubería (m)</label><Input type="number" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><Input type="number" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: parseFloat(e.target.value)||0})} /></div>
+            </div>
+          </div>
+
+          <Button onClick={calculate} className="w-full bg-red-600 hover:bg-red-700">
+            <Calculator className="w-4 h-4 mr-2" /> Calcular
+          </Button>
+        </CardContent>
+      </Card>
 
       {result && (
-        <Card ref={printRef}>
-          <CardHeader><CardTitle>Resultado del Cálculo</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <CompanyHeader className="mb-3 pb-3 border-b" />
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="bg-red-50 p-3 rounded-lg">
-                <p className="text-xs text-gray-500">Carga térmica</p>
-                <p className="text-xl font-bold text-red-700">{result.carga_termica_w?.toLocaleString()} W</p>
-                <p className="text-sm text-red-600">{result.carga_termica_frigorias?.toLocaleString()} frigorías</p>
+        <div ref={printRef}>
+          <CompanyHeader className="mb-4 hidden-screen" />
+          <Card className="border-green-200">
+            <CardHeader className="bg-green-50">
+              <CardTitle className="text-green-700 text-lg">Resultado del cálculo</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-red-50 p-3 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-red-600">{result.loadW} W</p>
+                  <p className="text-xs text-red-500">Carga térmica</p>
+                </div>
+                <div className="bg-orange-50 p-3 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-orange-600">{result.loadFrigorias}</p>
+                  <p className="text-xs text-orange-500">Frig/hora</p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-blue-600">{result.loadKW} kW</p>
+                  <p className="text-xs text-blue-500">Potencia</p>
+                </div>
               </div>
+
+              {/* Equipo sugerido */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="font-semibold text-sm mb-2">Equipo sugerido (catálogo)</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <p><span className="text-gray-500">Marca:</span> {result.equip.brand}</p>
+                  <p><span className="text-gray-500">Modelo:</span> {result.equip.model}</p>
+                  <p><span className="text-gray-500">Potencia:</span> {result.equip.power_kw} kW</p>
+                  <p><span className="text-gray-500">Gas:</span> {result.equip.gas}</p>
+                  <p><span className="text-gray-500">Dist. máx. tubería:</span> {result.equip.max_pipe_m} m</p>
+                  <p><span className="text-gray-500">Alt. máx.:</span> {result.equip.max_height_m} m</p>
+                </div>
+                {result.extraGrams > 0 && (
+                  <div className="mt-2 p-2 bg-yellow-100 rounded text-yellow-800 text-sm">
+                    ⚠️ Distancia ({result.actualDist}m) supera máximo ({result.maxDist}m). Añadir <strong>{result.extraGrams}g</strong> de {form.refrigerant_type} extra.
+                  </div>
+                )}
+              </div>
+
+              {/* Presiones */}
               <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-xs text-gray-500">Equipo sugerido</p>
-                <p className="font-bold text-blue-700">{result.marca} {result.modelo}</p>
-                <p className="text-xs">{result.equipo_sugerido}</p>
+                <p className="font-semibold text-sm mb-2">Presiones {form.refrigerant_type}</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <p>P. evap. 0°C: <strong>{result.pr.evap_0} bar</strong></p>
+                  <p>P. evap. -10°C: <strong>{result.pr.evap_minus10} bar</strong></p>
+                  <p>P. cond. 40°C: <strong>{result.pr.cond_40} bar</strong></p>
+                  <p>P. cond. 50°C: <strong>{result.pr.cond_50} bar</strong></p>
+                </div>
               </div>
-            </div>
 
-            <div className="bg-gray-50 p-3 rounded-lg text-sm">
-              <p className="font-medium mb-2">Presiones de trabajo ({form.refrigerant_type})</p>
-              <div className="grid grid-cols-2 gap-2">
-                <p>P. Alta: {result.presion_alta_bar} bar</p>
-                <p>P. Baja: {result.presion_baja_bar} bar</p>
-                <p>T. Condensación: {result.temp_condensacion}°C</p>
-                <p>T. Evaporación: {result.temp_evaporacion}°C</p>
-              </div>
-              <p className="mt-2">Carga refrigerante: {result.refrigerante_carga_kg} kg</p>
-              {result.refrigerante_extra_g > 0 && <p className="text-orange-600">Refrigerante extra por distancia: +{result.refrigerante_extra_g} g</p>}
-            </div>
-
-            {result.materiales?.length > 0 && (
+              {/* Materiales */}
               <div>
-                <p className="font-medium text-sm mb-2">Materiales necesarios</p>
-                <table className="w-full text-xs">
-                  <thead><tr className="border-b"><th className="text-left p-1">Material</th><th className="p-1">Cant.</th><th className="p-1">Especificación</th></tr></thead>
+                <p className="font-semibold text-sm mb-2">Material necesario para la instalación</p>
+                <table className="w-full text-xs border-collapse">
+                  <thead><tr className="bg-gray-100"><th className="border p-1 text-left">Material</th><th className="border p-1 text-right">Cantidad</th><th className="border p-1 text-left">Unidad</th></tr></thead>
                   <tbody>
-                    {result.materiales.map((m, i) => (
-                      <tr key={i} className="border-b"><td className="p-1">{m.material}</td><td className="p-1 text-center">{m.cantidad}</td><td className="p-1">{m.especificacion}</td></tr>
+                    {result.materials.map((m, i) => (
+                      <tr key={i} className="border-b"><td className="border p-1">{m.material}</td><td className="border p-1 text-right">{m.quantity}</td><td className="border p-1">{m.specification}</td></tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            )}
 
-            {result.observaciones && <p className="text-xs text-gray-600 mt-2">{result.observaciones}</p>}
-
-            <div className="flex gap-2">
-              <PrintButton contentRef={printRef} title="Cálculo Térmico" />
-              <Button onClick={saveCalc} disabled={saving} className="bg-green-600">
-                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                Guardar en cliente
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex gap-2">
+                <PrintButton contentRef={printRef} title="Cálculo Térmico Clima" />
+                {form.contact_id && (
+                  <Button onClick={saveToClient} variant="outline" disabled={saving}>
+                    <Save className="w-4 h-4 mr-2" />
+                    {saved ? '¡Guardado en ficha!' : saving ? 'Guardando...' : 'Guardar en cliente'}
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
