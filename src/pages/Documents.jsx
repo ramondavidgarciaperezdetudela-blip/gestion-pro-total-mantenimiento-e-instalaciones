@@ -38,6 +38,7 @@ export default function Documents() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [previewDoc, setPreviewDoc] = useState(null);
+  const [supplierSearchOpen, setSupplierSearchOpen] = useState(false);
   const [form, setForm] = useState({
     doc_type: 'factura', doc_number: '', contact_id: preContactId || '', contact_name: '', contact_nif: '', contact_address: '',
     date: format(new Date(), 'yyyy-MM-dd'), due_date: '', status: 'borrador', work_type: 'otro',
