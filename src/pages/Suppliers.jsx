@@ -17,12 +17,41 @@ const DEFAULT_SUPPLIERS = [
     name: 'Salvador Escoda', website: 'https://www.salvadorescoda.com',
     login_url: 'https://www.salvadorescoda.com/tienda', category: 'refrigeracion',
     phone: '93 265 81 00', email: 'info@salvadorescoda.com',
-    notes: 'Distribuidor oficial climatización y refrigeración', is_active: true
+    notes: 'Distribuidor oficial climatización y refrigeración. Sede Barcelona.', is_active: true
   },
   {
-    name: 'Hidroelectric SYG', website: 'https://www.syg.es',
-    login_url: 'https://www.syg.es', category: 'clima',
-    phone: '', email: '', notes: 'Distribuidor material climatización y electricidad', is_active: true
+    name: 'Hidro Tarraco', website: 'https://www.hidrotarraco.com',
+    login_url: 'https://www.hidrotarraco.com', category: 'fontaneria',
+    phone: '977 55 00 00', email: 'info@hidrotarraco.com', contact_person: 'Comercial',
+    notes: 'Distribuidor fontanería, climatización y energías renovables. Zona Tarragona.', is_active: true
+  },
+  {
+    name: 'Elektra Cataluña', website: 'https://www.elektra.es',
+    login_url: 'https://www.elektra.es', category: 'electrico',
+    phone: '93 000 00 00', email: 'info@elektra.es',
+    notes: 'Material eléctrico, automatización y electricidad industrial. Zona Cataluña.', is_active: true
+  },
+  {
+    name: 'ABC Tarraconès', website: '', login_url: '', category: 'general',
+    phone: '977 00 00 00', email: '', contact_person: 'Comercial',
+    notes: 'Distribuidor material de construcción e instalaciones. Tarragona.', is_active: true
+  },
+  {
+    name: 'Obramat', website: 'https://www.obramat.es',
+    login_url: 'https://www.obramat.es', category: 'general',
+    phone: '900 10 11 12', email: '',
+    notes: 'Material de construcción y ferretería industrial. Amplia red de tiendas.', is_active: true
+  },
+  {
+    name: 'Comfred Suministros', website: '', login_url: '', category: 'refrigeracion',
+    phone: '977 00 11 22', email: 'info@comfred.es', contact_person: 'Dpt. Ventas',
+    notes: 'Especialistas en componentes para refrigeración y climatización.', is_active: true
+  },
+  {
+    name: 'Saltoki', website: 'https://www.saltoki.es',
+    login_url: 'https://www.saltoki.es/catalogo', category: 'fontaneria',
+    phone: '948 00 00 00', email: 'atencion@saltoki.es',
+    notes: 'Material de fontanería, calefacción y climatización. Catálogo online amplio.', is_active: true
   },
 ];
 
