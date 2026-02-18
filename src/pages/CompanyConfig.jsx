@@ -89,8 +89,9 @@ export default function CompanyConfig() {
       </div>
 
       <Tabs defaultValue="empresa">
-        <TabsList className="w-full">
+        <TabsList className="w-full flex-wrap">
           <TabsTrigger value="empresa" className="flex-1">Datos empresa</TabsTrigger>
+          <TabsTrigger value="correo" className="flex-1">Correo</TabsTrigger>
           <TabsTrigger value="impresora" className="flex-1">Impresora</TabsTrigger>
           <TabsTrigger value="documentos" className="flex-1">Documentos</TabsTrigger>
         </TabsList>
