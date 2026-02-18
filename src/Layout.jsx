@@ -5,8 +5,8 @@ import { base44 } from '@/api/base44Client';
 import {
   Home, Users, FileText, Calendar, Wrench, ClipboardList,
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
-  Menu, X, ChevronRight, Building2, FolderOpen, Calculator,
-  Zap, BarChart3, LogOut
+  Menu, X, Building2, FolderOpen,
+  Zap, BarChart3, LogOut, StickyNote, Package
 } from 'lucide-react';
 
 const navItems = [
@@ -16,6 +16,8 @@ const navItems = [
   { name: 'Documentos', page: 'Documents', icon: FileText },
   { name: 'SAT', page: 'SAT', icon: Wrench },
   { name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList },
+  { name: 'Notas', page: 'Notes', icon: StickyNote },
+  { name: 'Inventario', page: 'Inventory', icon: Package },
   { name: 'Proyectos', page: 'Projects', icon: FolderOpen },
   { name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer },
   { name: 'Cámara Frigorífica', page: 'ColdRoomCalc', icon: Thermometer },
