@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink } from 'lucide-react';
+import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Bot } from 'lucide-react';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
@@ -132,6 +132,12 @@ export default function Suppliers() {
             </div>
           </div>
           <div className="flex items-center gap-1 ml-3 flex-shrink-0">
+            {s.website && s.website.includes('obramat') && (
+              <a href="https://www.obramat.es/catalogo" target="_blank" rel="noopener noreferrer"
+                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg" title="Ver catálogo">
+                <Bot className="w-4 h-4" />
+              </a>
+            )}
             {s.login_url && (
               <a href={s.login_url} target="_blank" rel="noopener noreferrer"
                 className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Ir a tienda online">
