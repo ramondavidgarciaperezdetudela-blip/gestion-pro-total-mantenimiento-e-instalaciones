@@ -20,7 +20,7 @@ export default function Contacts() {
   const [filterType, setFilterType] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ type: 'cliente', category: 'residencial', name: '', surname: '', company_name: '', nif: '', email: '', phone: '', phone2: '', address: '', city: '', province: '', postal_code: '', country: 'España', notes: '' });
+  const [form, setForm] = useState({ type: 'cliente', category: 'residencial', name: '', surname: '', company_name: '', nif: '', email: '', phone: '', phone2: '', address: '', city: '', province: '', postal_code: '', country: 'España', notes: '', payment_profile: 'pagador_normal', pending_amount: 0, internal_observations: '' });
 
   useEffect(() => { loadContacts(); }, []);
 
@@ -41,11 +41,11 @@ export default function Contacts() {
     loadContacts();
   };
 
-  const resetForm = () => setForm({ type: 'cliente', category: 'residencial', name: '', surname: '', company_name: '', nif: '', email: '', phone: '', phone2: '', address: '', city: '', province: '', postal_code: '', country: 'España', notes: '' });
+  const resetForm = () => setForm({ type: 'cliente', category: 'residencial', name: '', surname: '', company_name: '', nif: '', email: '', phone: '', phone2: '', address: '', city: '', province: '', postal_code: '', country: 'España', notes: '', payment_profile: 'pagador_normal', pending_amount: 0, internal_observations: '' });
 
   const handleEdit = (c) => {
     setEditing(c);
-    setForm({ type: c.type || 'cliente', category: c.category || 'residencial', name: c.name || '', surname: c.surname || '', company_name: c.company_name || '', nif: c.nif || '', email: c.email || '', phone: c.phone || '', phone2: c.phone2 || '', address: c.address || '', city: c.city || '', province: c.province || '', postal_code: c.postal_code || '', country: c.country || 'España', notes: c.notes || '' });
+    setForm({ type: c.type || 'cliente', category: c.category || 'residencial', name: c.name || '', surname: c.surname || '', company_name: c.company_name || '', nif: c.nif || '', email: c.email || '', phone: c.phone || '', phone2: c.phone2 || '', address: c.address || '', city: c.city || '', province: c.province || '', postal_code: c.postal_code || '', country: c.country || 'España', notes: c.notes || '', payment_profile: c.payment_profile || 'pagador_normal', pending_amount: c.pending_amount || 0, internal_observations: c.internal_observations || '' });
     setDialogOpen(true);
   };
 
