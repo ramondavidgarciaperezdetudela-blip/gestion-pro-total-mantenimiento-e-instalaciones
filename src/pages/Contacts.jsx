@@ -9,7 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Phone, Mail, MapPin, Building2, User, Navigation, Trash2, Edit } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Building2, User, Navigation, Trash2, Edit } from 'lucide-react';
+
+const PAYMENT_PROFILES = {
+  buen_pagador: { label: 'Buen pagador', color: 'bg-green-100 text-green-700', icon: '✅' },
+  pagador_normal: { label: 'Pagador normal', color: 'bg-blue-100 text-blue-700', icon: '💳' },
+  regateador: { label: 'Regateador', color: 'bg-yellow-100 text-yellow-700', icon: '⚠️' },
+  mal_pagador: { label: 'Mal pagador', color: 'bg-orange-100 text-orange-700', icon: '🔶' },
+  moroso: { label: 'Moroso', color: 'bg-red-100 text-red-700', icon: '🔴' },
+};
 
 const TYPES = ['cliente', 'proveedor', 'colaborador', 'otro'];
 const CATEGORIES = ['residencial', 'comercial', 'industrial', 'administracion_publica', 'comunidad_propietarios', 'otro'];
