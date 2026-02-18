@@ -112,6 +112,20 @@ export default function Contacts() {
                 <Input placeholder="C.P." value={form.postal_code} onChange={e => setForm({...form, postal_code: e.target.value})} />
               </div>
               <Textarea placeholder="Notas" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-gray-500">Perfil de pago</label>
+                  <Select value={form.payment_profile} onValueChange={v => setForm({...form, payment_profile: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{Object.entries(PAYMENT_PROFILES).map(([k,v]) => <SelectItem key={k} value={k}>{v.icon} {v.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">Importe pendiente (€)</label>
+                  <Input type="number" value={form.pending_amount || 0} onChange={e => setForm({...form, pending_amount: parseFloat(e.target.value)})} />
+                </div>
+              </div>
+              <Textarea placeholder="Observaciones internas (no aparece en documentos)" value={form.internal_observations} onChange={e => setForm({...form, internal_observations: e.target.value})} rows={2} />
               <Button onClick={handleSave} className="w-full bg-blue-600">{editing ? 'Actualizar' : 'Guardar'}</Button>
             </div>
           </DialogContent>
