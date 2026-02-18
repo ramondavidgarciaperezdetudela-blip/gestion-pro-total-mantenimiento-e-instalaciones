@@ -143,7 +143,21 @@ export default function Layout({ children, currentPageName }) {
       </aside>
 
       {/* Main */}
-      <div className="flex-1 lg:ml-64 min-h-screen">
+      <div className="flex-1 lg:ml-64 min-h-screen relative">
+        {/* Background watermark logo */}
+        {company?.logo_url && (
+          <div
+            className="fixed pointer-events-none z-0"
+            style={{
+              top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              opacity: 0.04,
+              width: '60vw', maxWidth: 500,
+            }}
+          >
+            <img src={company.logo_url} alt="" style={{ width: '100%', filter: 'grayscale(1)' }} />
+          </div>
+        )}
         {/* Top bar mobile */}
         <header className="lg:hidden bg-white border-b sticky top-0 z-30 px-4 py-3 flex items-center justify-between shadow-sm">
           <button onClick={() => setSidebarOpen(true)}>
@@ -154,7 +168,7 @@ export default function Layout({ children, currentPageName }) {
           </h2>
           <div className="w-6" />
         </header>
-        <main className="p-4 md:p-6 max-w-7xl mx-auto">
+        <main className="p-4 md:p-6 max-w-7xl mx-auto relative z-10">
           {children}
         </main>
       </div>
