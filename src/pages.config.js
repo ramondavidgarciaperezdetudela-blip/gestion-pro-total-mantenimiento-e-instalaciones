@@ -65,6 +65,8 @@ import SAT from './pages/SAT';
 import SolarCalc from './pages/SolarCalc';
 import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
+import Notes from './pages/Notes';
+import Inventory from './pages/Inventory';
 import __Layout from './Layout.jsx';
 
 
@@ -87,6 +89,8 @@ export const PAGES = {
     "SolarCalc": SolarCalc,
     "Suppliers": Suppliers,
     "ThermalCalc": ThermalCalc,
+    "Notes": Notes,
+    "Inventory": Inventory,
 }
 
 export const pagesConfig = {
