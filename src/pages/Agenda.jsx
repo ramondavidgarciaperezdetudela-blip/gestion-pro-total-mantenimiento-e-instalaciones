@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight, Calendar, Clock, Printer, Trash2, Edit } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Trash2, Edit, MessageCircle } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PrintButton from '../components/PrintButton';
@@ -129,9 +129,23 @@ export default function Agenda() {
                     <div key={apt.id} className="p-1.5 bg-blue-50 rounded text-xs cursor-pointer hover:bg-blue-100" onClick={() => handleEdit(apt)}>
                       <div className="flex items-center justify-between">
                         <span className="font-medium truncate">{apt.time_start || ''}</span>
-                        <button onClick={(e) => { e.stopPropagation(); handleDelete(apt.id); }} className="text-red-400 hover:text-red-600">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                        <div className="flex gap-0.5" onClick={e => e.stopPropagation()}>
+                          {apt.contact_name && (
+                            <button
+                              title="Recordatorio WhatsApp"
+                              onClick={() => {
+                                const msg = encodeURIComponent(`Hola ${apt.contact_name}, le recordamos su cita el día ${apt.date} a las ${apt.time_start || ''}h para "${apt.title}". Si necesita cambiarla, contáctenos. ¡Gracias!`);
+                                window.open(`https://wa.me/?text=${msg}`, '_blank');
+                              }}
+                              className="text-green-500 hover:text-green-700"
+                            >
+                              <MessageCircle className="w-3 h-3" />
+                            </button>
+                          )}
+                          <button onClick={() => handleDelete(apt.id)} className="text-red-400 hover:text-red-600">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                       <p className="truncate font-medium">{apt.title}</p>
                       {apt.contact_name && <p className="text-gray-500 truncate">{apt.contact_name}</p>}
