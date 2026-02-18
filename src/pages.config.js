@@ -47,46 +47,46 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import Home from './pages/Home';
-import Agenda from './pages/Agenda';
-import Contacts from './pages/Contacts';
-import ContactDetail from './pages/ContactDetail';
-import Documents from './pages/Documents';
-import SAT from './pages/SAT';
-import Maintenance from './pages/Maintenance';
-import Projects from './pages/Projects';
-import ThermalCalc from './pages/ThermalCalc';
-import SolarCalc from './pages/SolarCalc';
-import ElectricalCalc from './pages/ElectricalCalc';
-import Regulations from './pages/Regulations';
-import Manuals from './pages/Manuals';
-import Suppliers from './pages/Suppliers';
-import Reports from './pages/Reports';
 import AIAssistant from './pages/AIAssistant';
-import CompanyConfig from './pages/CompanyConfig';
+import Agenda from './pages/Agenda';
 import ColdRoomCalc from './pages/ColdRoomCalc';
+import CompanyConfig from './pages/CompanyConfig';
+import ContactDetail from './pages/ContactDetail';
+import Contacts from './pages/Contacts';
+import Documents from './pages/Documents';
+import ElectricalCalc from './pages/ElectricalCalc';
+import Home from './pages/Home';
+import Maintenance from './pages/Maintenance';
+import Manuals from './pages/Manuals';
+import Projects from './pages/Projects';
+import Regulations from './pages/Regulations';
+import Reports from './pages/Reports';
+import SAT from './pages/SAT';
+import SolarCalc from './pages/SolarCalc';
+import Suppliers from './pages/Suppliers';
+import ThermalCalc from './pages/ThermalCalc';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Home": Home,
-    "Agenda": Agenda,
-    "Contacts": Contacts,
-    "ContactDetail": ContactDetail,
-    "Documents": Documents,
-    "SAT": SAT,
-    "Maintenance": Maintenance,
-    "Projects": Projects,
-    "ThermalCalc": ThermalCalc,
-    "SolarCalc": SolarCalc,
-    "ElectricalCalc": ElectricalCalc,
-    "Regulations": Regulations,
-    "Manuals": Manuals,
-    "Suppliers": Suppliers,
-    "Reports": Reports,
     "AIAssistant": AIAssistant,
-    "CompanyConfig": CompanyConfig,
+    "Agenda": Agenda,
     "ColdRoomCalc": ColdRoomCalc,
+    "CompanyConfig": CompanyConfig,
+    "ContactDetail": ContactDetail,
+    "Contacts": Contacts,
+    "Documents": Documents,
+    "ElectricalCalc": ElectricalCalc,
+    "Home": Home,
+    "Maintenance": Maintenance,
+    "Manuals": Manuals,
+    "Projects": Projects,
+    "Regulations": Regulations,
+    "Reports": Reports,
+    "SAT": SAT,
+    "SolarCalc": SolarCalc,
+    "Suppliers": Suppliers,
+    "ThermalCalc": ThermalCalc,
 }
 
 export const pagesConfig = {

@@ -8,13 +8,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ClipboardList, Trash2, Edit } from 'lucide-react';
+import { Plus, ClipboardList, Trash2, Edit, PenLine } from 'lucide-react';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
+import SignaturePad from '../components/SignaturePad';
 
-const TYPES = ['clima', 'refrigeracion', 'electrico'];
+const TYPES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
+
+const FGAS_GWP = {
+  'R-410A': 2088, 'R-32': 675, 'R-134a': 1430, 'R-404A': 3922,
+  'R-407C': 1774, 'R-290': 3, 'R-449A': 1397, 'R-452A': 2140, 'R-448A': 1387
+};
+
+const EMPTY_FORM = {
+  sheet_number: '', contact_id: '', contact_name: '', date: format(new Date(), 'yyyy-MM-dd'),
+  type: 'clima', equipment_brand: '', equipment_model: '', serial_number: '', location: '',
+  technician_name: '',
+  readings_climate: { pressure_high: 0, pressure_low: 0, temp_impulsion: 0, temp_retorno: 0, temp_exterior: 0, refrigerant_type: 'R-410A', refrigerant_charge: 0, voltage: 0, amperage_compressor: 0, amperage_fan: 0, superheat: 0, subcooling: 0, fgas_equivalent_co2: 0, fgas_gwp: 2088 },
+  readings_electric: { voltage_l1: 0, voltage_l2: 0, voltage_l3: 0, amperage_l1: 0, amperage_l2: 0, amperage_l3: 0, power_factor: 0, ground_resistance: 0, insulation_resistance: 0, differential_test: false, thermal_test: false },
+  readings_solar: { panel_voltage: 0, panel_current: 0, inverter_output_w: 0, battery_level_pct: 0, production_kwh: 0, panel_cleaning: false, connections_ok: false },
+  readings_plumbing: { water_pressure_bar: 0, temp_acs: 0, flow_lmin: 0, leaks_detected: false, filter_state: '' },
+  general_tasks: '',
+  observations: '', recommendations: '',
+  photos_before: [], photos_after: [], photos_evaporator_plate: [], photos_condenser_plate: [],
+  signature_technician: '', signature_client: '', status: 'completada'
+};
 
 export default function Maintenance() {
   const [sheets, setSheets] = useState([]);
@@ -22,13 +42,9 @@ export default function Maintenance() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [form, setForm] = useState({
-    sheet_number: '', contact_id: '', contact_name: '', date: format(new Date(), 'yyyy-MM-dd'),
-    type: 'clima', equipment_brand: '', equipment_model: '', serial_number: '', location: '',
-    readings_climate: { pressure_high: 0, pressure_low: 0, temp_impulsion: 0, temp_retorno: 0, temp_exterior: 0, refrigerant_type: '', refrigerant_charge: 0, voltage: 0, amperage_compressor: 0, amperage_fan: 0, superheat: 0, subcooling: 0 },
-    readings_electric: { voltage_l1: 0, voltage_l2: 0, voltage_l3: 0, amperage_l1: 0, amperage_l2: 0, amperage_l3: 0, power_factor: 0, ground_resistance: 0, insulation_resistance: 0, differential_test: false, thermal_test: false },
-    observations: '', recommendations: '', photos_before: [], photos_after: [], photos_evaporator_plate: [], photos_condenser_plate: [], status: 'completada'
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [sigTechOpen, setSigTechOpen] = useState(false);
+  const [sigClientOpen, setSigClientOpen] = useState(false);
   const printRef = useRef(null);
 
   useEffect(() => {
@@ -39,13 +55,26 @@ export default function Maintenance() {
   }, []);
 
   const handleSave = async () => {
+    const data = { ...form };
     if (editing) {
-      await base44.entities.MaintenanceSheet.update(editing.id, form);
+      await base44.entities.MaintenanceSheet.update(editing.id, data);
     } else {
-      await base44.entities.MaintenanceSheet.create(form);
+      const saved = await base44.entities.MaintenanceSheet.create(data);
+      // Archive to client doc
+      if (form.contact_id) {
+        await base44.entities.ClientDocument.create({
+          contact_id: form.contact_id,
+          contact_name: form.contact_name,
+          title: `Ficha Mantenimiento #${form.sheet_number} - ${form.type}`,
+          doc_type: 'ficha_mantenimiento',
+          date: form.date,
+          description: `${form.type} | ${form.equipment_brand} ${form.equipment_model}`
+        });
+      }
     }
     setDialogOpen(false);
     setEditing(null);
+    setForm(EMPTY_FORM);
     const s = await base44.entities.MaintenanceSheet.list('-date', 500);
     setSheets(s);
   };
@@ -56,24 +85,45 @@ export default function Maintenance() {
       sheet_number: sheet.sheet_number || '', contact_id: sheet.contact_id || '', contact_name: sheet.contact_name || '',
       date: sheet.date || '', type: sheet.type || 'clima', equipment_brand: sheet.equipment_brand || '',
       equipment_model: sheet.equipment_model || '', serial_number: sheet.serial_number || '', location: sheet.location || '',
-      readings_climate: sheet.readings_climate || form.readings_climate,
-      readings_electric: sheet.readings_electric || form.readings_electric,
+      technician_name: sheet.technician_name || '',
+      readings_climate: sheet.readings_climate || EMPTY_FORM.readings_climate,
+      readings_electric: sheet.readings_electric || EMPTY_FORM.readings_electric,
+      readings_solar: sheet.readings_solar || EMPTY_FORM.readings_solar,
+      readings_plumbing: sheet.readings_plumbing || EMPTY_FORM.readings_plumbing,
+      general_tasks: sheet.general_tasks || '',
       observations: sheet.observations || '', recommendations: sheet.recommendations || '',
       photos_before: sheet.photos_before || [], photos_after: sheet.photos_after || [],
       photos_evaporator_plate: sheet.photos_evaporator_plate || [],
-      photos_condenser_plate: sheet.photos_condenser_plate || [], status: sheet.status || 'completada'
+      photos_condenser_plate: sheet.photos_condenser_plate || [],
+      signature_technician: sheet.signature_technician || '',
+      signature_client: sheet.signature_client || '',
+      status: sheet.status || 'completada'
     });
     setDialogOpen(true);
   };
 
-  const updateClimate = (field, value) => setForm({...form, readings_climate: {...form.readings_climate, [field]: value}});
-  const updateElectric = (field, value) => setForm({...form, readings_electric: {...form.readings_electric, [field]: value}});
+  const updateClimate = (field, val) => {
+    const updated = { ...form.readings_climate, [field]: val };
+    if (field === 'refrigerant_type') {
+      updated.fgas_gwp = FGAS_GWP[val] || 0;
+      updated.fgas_equivalent_co2 = ((updated.refrigerant_charge || 0) * (FGAS_GWP[val] || 0)) / 1000;
+    }
+    if (field === 'refrigerant_charge') {
+      updated.fgas_equivalent_co2 = (val * (updated.fgas_gwp || 0)) / 1000;
+    }
+    setForm({ ...form, readings_climate: updated });
+  };
+  const updateElectric = (field, val) => setForm({ ...form, readings_electric: { ...form.readings_electric, [field]: val } });
+  const updateSolar = (field, val) => setForm({ ...form, readings_solar: { ...form.readings_solar, [field]: val } });
+  const updatePlumbing = (field, val) => setForm({ ...form, readings_plumbing: { ...form.readings_plumbing, [field]: val } });
+
+  const typeColor = { clima: 'bg-blue-100 text-blue-700', refrigeracion: 'bg-cyan-100 text-cyan-700', electrico: 'bg-yellow-100 text-yellow-700', solar: 'bg-amber-100 text-amber-700', fontaneria: 'bg-teal-100 text-teal-700', general: 'bg-gray-100 text-gray-700' };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Fichas de Mantenimiento</h1>
-        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditing(null); }}>
+        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditing(null); setForm(EMPTY_FORM); } }}>
           <DialogTrigger asChild>
             <Button className="bg-cyan-600"><Plus className="w-4 h-4 mr-2" />Nueva ficha</Button>
           </DialogTrigger>
@@ -81,75 +131,169 @@ export default function Maintenance() {
             <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Nueva'} ficha de mantenimiento</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
-                <Input placeholder="Nº ficha" value={form.sheet_number} onChange={e => setForm({...form, sheet_number: e.target.value})} />
-                <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
-                <Select value={form.type} onValueChange={v => setForm({...form, type: v})}>
+                <Input placeholder="Nº ficha" value={form.sheet_number} onChange={e => setForm({ ...form, sheet_number: e.target.value })} />
+                <Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+                <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <Select value={form.contact_id} onValueChange={v => {
                 const c = contacts.find(co => co.id === v);
-                setForm({...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : ''});
+                setForm({ ...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : '' });
               }}>
                 <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
                 <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
               </Select>
               <div className="grid grid-cols-3 gap-2">
-                <Input placeholder="Marca" value={form.equipment_brand} onChange={e => setForm({...form, equipment_brand: e.target.value})} />
-                <Input placeholder="Modelo" value={form.equipment_model} onChange={e => setForm({...form, equipment_model: e.target.value})} />
-                <Input placeholder="Nº serie" value={form.serial_number} onChange={e => setForm({...form, serial_number: e.target.value})} />
+                <Input placeholder="Marca" value={form.equipment_brand} onChange={e => setForm({ ...form, equipment_brand: e.target.value })} />
+                <Input placeholder="Modelo" value={form.equipment_model} onChange={e => setForm({ ...form, equipment_model: e.target.value })} />
+                <Input placeholder="Nº serie" value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} />
               </div>
-              <Input placeholder="Ubicación" value={form.location} onChange={e => setForm({...form, location: e.target.value})} />
+              <div className="grid grid-cols-2 gap-2">
+                <Input placeholder="Ubicación" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} />
+                <Input placeholder="Nombre técnico" value={form.technician_name} onChange={e => setForm({ ...form, technician_name: e.target.value })} />
+              </div>
 
+              {/* Climate readings */}
               {(form.type === 'clima' || form.type === 'refrigeracion') && (
                 <div className="bg-blue-50 p-3 rounded-lg space-y-2">
                   <p className="font-medium text-sm text-blue-700">Lecturas Clima / Refrigeración</p>
                   <div className="grid grid-cols-3 gap-2">
-                    <div><label className="text-[10px] text-gray-500">P. Alta (bar)</label><Input type="number" value={form.readings_climate.pressure_high} onChange={e => updateClimate('pressure_high', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">P. Baja (bar)</label><Input type="number" value={form.readings_climate.pressure_low} onChange={e => updateClimate('pressure_low', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">Tipo gas</label><Input value={form.readings_climate.refrigerant_type} onChange={e => updateClimate('refrigerant_type', e.target.value)} /></div>
-                    <div><label className="text-[10px] text-gray-500">T. Impulsión °C</label><Input type="number" value={form.readings_climate.temp_impulsion} onChange={e => updateClimate('temp_impulsion', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">T. Retorno °C</label><Input type="number" value={form.readings_climate.temp_retorno} onChange={e => updateClimate('temp_retorno', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">T. Exterior °C</label><Input type="number" value={form.readings_climate.temp_exterior} onChange={e => updateClimate('temp_exterior', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">Voltaje (V)</label><Input type="number" value={form.readings_climate.voltage} onChange={e => updateClimate('voltage', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">A. Compresor</label><Input type="number" value={form.readings_climate.amperage_compressor} onChange={e => updateClimate('amperage_compressor', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">A. Ventilador</label><Input type="number" value={form.readings_climate.amperage_fan} onChange={e => updateClimate('amperage_fan', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">Recalent. °C</label><Input type="number" value={form.readings_climate.superheat} onChange={e => updateClimate('superheat', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">Subenfr. °C</label><Input type="number" value={form.readings_climate.subcooling} onChange={e => updateClimate('subcooling', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">Carga gas (kg)</label><Input type="number" value={form.readings_climate.refrigerant_charge} onChange={e => updateClimate('refrigerant_charge', parseFloat(e.target.value))} /></div>
+                    {[['pressure_high','P. Alta (bar)'],['pressure_low','P. Baja (bar)'],['voltage','Voltaje (V)'],['temp_impulsion','T. Impulsión °C'],['temp_retorno','T. Retorno °C'],['temp_exterior','T. Exterior °C'],['amperage_compressor','A. Compresor'],['amperage_fan','A. Ventilador'],['superheat','Recalent. °C'],['subcooling','Subenfr. °C'],['refrigerant_charge','Carga gas (kg)']].map(([f,l]) => (
+                      <div key={f}><label className="text-[10px] text-gray-500">{l}</label><Input type="number" value={form.readings_climate[f] || 0} onChange={e => updateClimate(f, parseFloat(e.target.value))} /></div>
+                    ))}
+                    <div>
+                      <label className="text-[10px] text-gray-500">Tipo gas</label>
+                      <Select value={form.readings_climate.refrigerant_type} onValueChange={v => updateClimate('refrigerant_type', v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>{Object.keys(FGAS_GWP).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {/* F-Gas section */}
+                  <div className="bg-orange-50 border border-orange-200 rounded p-2 mt-2">
+                    <p className="text-xs font-semibold text-orange-700 mb-1">🌿 Registro F-Gas (Reglamento UE 517/2014)</p>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div><span className="text-gray-500">Gas:</span> <strong>{form.readings_climate.refrigerant_type}</strong></div>
+                      <div><span className="text-gray-500">GWP:</span> <strong>{form.readings_climate.fgas_gwp || FGAS_GWP[form.readings_climate.refrigerant_type] || '-'}</strong></div>
+                      <div><span className="text-gray-500">CO₂ equiv.:</span> <strong>{(form.readings_climate.fgas_equivalent_co2 || 0).toFixed(3)} t</strong></div>
+                    </div>
+                    <p className="text-[10px] text-orange-600 mt-1">
+                      {(form.readings_climate.fgas_equivalent_co2 || 0) >= 5
+                        ? '⚠️ Supera 5 t CO₂eq. — Requiere certificado F-Gas y registro obligatorio'
+                        : (form.readings_climate.fgas_equivalent_co2 || 0) >= 1
+                        ? '⚠️ Supera 1 t CO₂eq. — Verificación anual requerida'
+                        : '✅ Por debajo de umbrales de inspección obligatoria'}
+                    </p>
                   </div>
                 </div>
               )}
 
+              {/* Electric readings */}
               {form.type === 'electrico' && (
                 <div className="bg-yellow-50 p-3 rounded-lg space-y-2">
                   <p className="font-medium text-sm text-yellow-700">Lecturas Eléctricas</p>
                   <div className="grid grid-cols-3 gap-2">
-                    <div><label className="text-[10px] text-gray-500">V L1</label><Input type="number" value={form.readings_electric.voltage_l1} onChange={e => updateElectric('voltage_l1', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">V L2</label><Input type="number" value={form.readings_electric.voltage_l2} onChange={e => updateElectric('voltage_l2', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">V L3</label><Input type="number" value={form.readings_electric.voltage_l3} onChange={e => updateElectric('voltage_l3', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">A L1</label><Input type="number" value={form.readings_electric.amperage_l1} onChange={e => updateElectric('amperage_l1', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">A L2</label><Input type="number" value={form.readings_electric.amperage_l2} onChange={e => updateElectric('amperage_l2', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">A L3</label><Input type="number" value={form.readings_electric.amperage_l3} onChange={e => updateElectric('amperage_l3', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">Factor potencia</label><Input type="number" value={form.readings_electric.power_factor} onChange={e => updateElectric('power_factor', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">R. Tierra (Ω)</label><Input type="number" value={form.readings_electric.ground_resistance} onChange={e => updateElectric('ground_resistance', parseFloat(e.target.value))} /></div>
-                    <div><label className="text-[10px] text-gray-500">R. Aislam. (MΩ)</label><Input type="number" value={form.readings_electric.insulation_resistance} onChange={e => updateElectric('insulation_resistance', parseFloat(e.target.value))} /></div>
+                    {[['voltage_l1','V L1'],['voltage_l2','V L2'],['voltage_l3','V L3'],['amperage_l1','A L1'],['amperage_l2','A L2'],['amperage_l3','A L3'],['power_factor','Factor potencia'],['ground_resistance','R. Tierra (Ω)'],['insulation_resistance','R. Aislam. (MΩ)']].map(([f,l]) => (
+                      <div key={f}><label className="text-[10px] text-gray-500">{l}</label><Input type="number" value={form.readings_electric[f] || 0} onChange={e => updateElectric(f, parseFloat(e.target.value))} /></div>
+                    ))}
+                  </div>
+                  <div className="flex gap-4 text-sm mt-1">
+                    <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={form.readings_electric.differential_test} onChange={e => updateElectric('differential_test', e.target.checked)} />Test diferencial ✓</label>
+                    <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={form.readings_electric.thermal_test} onChange={e => updateElectric('thermal_test', e.target.checked)} />Test térmico ✓</label>
                   </div>
                 </div>
               )}
 
-              <Textarea placeholder="Observaciones" value={form.observations} onChange={e => setForm({...form, observations: e.target.value})} />
-              <Textarea placeholder="Recomendaciones" value={form.recommendations} onChange={e => setForm({...form, recommendations: e.target.value})} />
-              <PhotoGallery photos={form.photos_before} onChange={p => setForm({...form, photos_before: p})} label="Fotos antes" maxPhotos={30} />
-              <PhotoGallery photos={form.photos_after} onChange={p => setForm({...form, photos_after: p})} label="Fotos después" maxPhotos={30} />
-              <PhotoGallery photos={form.photos_evaporator_plate} onChange={p => setForm({...form, photos_evaporator_plate: p})} label="Placa evaporadora" maxPhotos={5} />
-              <PhotoGallery photos={form.photos_condenser_plate} onChange={p => setForm({...form, photos_condenser_plate: p})} label="Placa condensadora" maxPhotos={5} />
-              <Button onClick={handleSave} className="w-full bg-cyan-600">{editing ? 'Actualizar' : 'Guardar'}</Button>
+              {/* Solar readings */}
+              {form.type === 'solar' && (
+                <div className="bg-amber-50 p-3 rounded-lg space-y-2">
+                  <p className="font-medium text-sm text-amber-700">Lecturas Sistema Solar</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[['panel_voltage','V Panel'],['panel_current','A Panel'],['inverter_output_w','W Inversor'],['battery_level_pct','% Batería'],['production_kwh','kWh producidos']].map(([f,l]) => (
+                      <div key={f}><label className="text-[10px] text-gray-500">{l}</label><Input type="number" value={form.readings_solar[f] || 0} onChange={e => updateSolar(f, parseFloat(e.target.value))} /></div>
+                    ))}
+                    <div><label className="text-[10px] text-gray-500">Estado filtros</label><Input value={form.readings_solar.filter_state || ''} onChange={e => updateSolar('filter_state', e.target.value)} /></div>
+                  </div>
+                  <div className="flex gap-4 text-sm mt-1">
+                    <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={form.readings_solar.panel_cleaning} onChange={e => updateSolar('panel_cleaning', e.target.checked)} />Limpieza paneles ✓</label>
+                    <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={form.readings_solar.connections_ok} onChange={e => updateSolar('connections_ok', e.target.checked)} />Conexiones OK ✓</label>
+                  </div>
+                </div>
+              )}
+
+              {/* Plumbing readings */}
+              {form.type === 'fontaneria' && (
+                <div className="bg-teal-50 p-3 rounded-lg space-y-2">
+                  <p className="font-medium text-sm text-teal-700">Lecturas Fontanería</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[['water_pressure_bar','Presión (bar)'],['temp_acs','T. ACS (°C)'],['flow_lmin','Caudal (l/min)']].map(([f,l]) => (
+                      <div key={f}><label className="text-[10px] text-gray-500">{l}</label><Input type="number" value={form.readings_plumbing[f] || 0} onChange={e => updatePlumbing(f, parseFloat(e.target.value))} /></div>
+                    ))}
+                    <div><label className="text-[10px] text-gray-500">Estado filtros</label><Input value={form.readings_plumbing.filter_state || ''} onChange={e => updatePlumbing('filter_state', e.target.value)} /></div>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={form.readings_plumbing.leaks_detected} onChange={e => updatePlumbing('leaks_detected', e.target.checked)} />Fugas detectadas</label>
+                </div>
+              )}
+
+              {/* General tasks */}
+              {form.type === 'general' && (
+                <Textarea placeholder="Tareas realizadas en mantenimiento general..." value={form.general_tasks} onChange={e => setForm({ ...form, general_tasks: e.target.value })} rows={4} />
+              )}
+
+              <Textarea placeholder="Observaciones" value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} />
+              <Textarea placeholder="Recomendaciones" value={form.recommendations} onChange={e => setForm({ ...form, recommendations: e.target.value })} />
+
+              <PhotoGallery photos={form.photos_before} onChange={p => setForm({ ...form, photos_before: p })} label="Fotos antes (máx. 30)" maxPhotos={30} />
+              <PhotoGallery photos={form.photos_after} onChange={p => setForm({ ...form, photos_after: p })} label="Fotos después (máx. 30)" maxPhotos={30} />
+              {(form.type === 'clima' || form.type === 'refrigeracion') && <>
+                <PhotoGallery photos={form.photos_evaporator_plate} onChange={p => setForm({ ...form, photos_evaporator_plate: p })} label="Placa evaporadora" maxPhotos={5} />
+                <PhotoGallery photos={form.photos_condenser_plate} onChange={p => setForm({ ...form, photos_condenser_plate: p })} label="Placa condensadora" maxPhotos={5} />
+              </>}
+
+              {/* Signatures */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <p className="font-medium text-sm">Firmas</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Técnico: {form.technician_name}</p>
+                    {form.signature_technician ? (
+                      <div>
+                        <img src={form.signature_technician} alt="Firma técnico" className="border rounded h-16 w-full object-contain bg-white" />
+                        <Button size="sm" variant="outline" className="mt-1 w-full text-xs" onClick={() => setForm({ ...form, signature_technician: '' })}>Borrar firma</Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" className="w-full" onClick={() => setSigTechOpen(true)}>
+                        <PenLine className="w-3 h-3 mr-1" />Firmar técnico
+                      </Button>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Cliente: {form.contact_name}</p>
+                    {form.signature_client ? (
+                      <div>
+                        <img src={form.signature_client} alt="Firma cliente" className="border rounded h-16 w-full object-contain bg-white" />
+                        <Button size="sm" variant="outline" className="mt-1 w-full text-xs" onClick={() => setForm({ ...form, signature_client: '' })}>Borrar firma</Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" className="w-full" onClick={() => setSigClientOpen(true)}>
+                        <PenLine className="w-3 h-3 mr-1" />Firmar cliente
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <Button onClick={handleSave} className="w-full bg-cyan-600">{editing ? 'Actualizar' : 'Guardar ficha'}</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Signature modals */}
+      <SignaturePad open={sigTechOpen} onClose={() => setSigTechOpen(false)} title="Firma del técnico" onSave={sig => setForm({ ...form, signature_technician: sig })} />
+      <SignaturePad open={sigClientOpen} onClose={() => setSigClientOpen(false)} title="Firma del cliente" onSave={sig => setForm({ ...form, signature_client: sig })} />
 
       {/* Preview */}
       <Dialog open={!!preview} onOpenChange={() => setPreview(null)}>
@@ -158,28 +302,33 @@ export default function Maintenance() {
             <div ref={printRef}>
               <CompanyHeader className="mb-3" />
               <h2 className="font-bold text-lg">Ficha Mantenimiento #{preview.sheet_number}</h2>
-              <div className="grid grid-cols-2 gap-2 text-sm mt-2">
+              <Badge className={`${typeColor[preview.type] || ''} mb-2`}>{preview.type}</Badge>
+              <div className="grid grid-cols-2 gap-2 text-sm">
                 <p><span className="text-gray-500">Cliente:</span> {preview.contact_name}</p>
                 <p><span className="text-gray-500">Fecha:</span> {preview.date}</p>
                 <p><span className="text-gray-500">Equipo:</span> {preview.equipment_brand} {preview.equipment_model}</p>
                 <p><span className="text-gray-500">Nº serie:</span> {preview.serial_number}</p>
+                <p><span className="text-gray-500">Ubicación:</span> {preview.location}</p>
+                <p><span className="text-gray-500">Técnico:</span> {preview.technician_name}</p>
               </div>
-              {preview.readings_climate && preview.type !== 'electrico' && (
-                <div className="mt-3 text-xs">
-                  <p className="font-medium mb-1">Lecturas Clima:</p>
-                  <div className="grid grid-cols-3 gap-1">
-                    <p>P. Alta: {preview.readings_climate.pressure_high} bar</p>
-                    <p>P. Baja: {preview.readings_climate.pressure_low} bar</p>
-                    <p>Gas: {preview.readings_climate.refrigerant_type}</p>
-                    <p>T. Impul.: {preview.readings_climate.temp_impulsion}°C</p>
-                    <p>T. Ret.: {preview.readings_climate.temp_retorno}°C</p>
-                    <p>Recalent.: {preview.readings_climate.superheat}°C</p>
-                    <p>Subenfr.: {preview.readings_climate.subcooling}°C</p>
-                  </div>
+              {preview.observations && <p className="text-sm mt-3"><strong>Obs.:</strong> {preview.observations}</p>}
+              {preview.recommendations && <p className="text-sm mt-1 text-blue-700"><strong>Recom.:</strong> {preview.recommendations}</p>}
+              {(preview.signature_technician || preview.signature_client) && (
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  {preview.signature_technician && (
+                    <div className="border rounded p-2 text-center">
+                      <img src={preview.signature_technician} alt="Firma técnico" className="h-16 mx-auto" />
+                      <p className="text-xs text-gray-500 mt-1">Técnico: {preview.technician_name}</p>
+                    </div>
+                  )}
+                  {preview.signature_client && (
+                    <div className="border rounded p-2 text-center">
+                      <img src={preview.signature_client} alt="Firma cliente" className="h-16 mx-auto" />
+                      <p className="text-xs text-gray-500 mt-1">Cliente: {preview.contact_name}</p>
+                    </div>
+                  )}
                 </div>
               )}
-              {preview.observations && <p className="text-sm mt-3">{preview.observations}</p>}
-              {preview.recommendations && <p className="text-sm mt-1 text-blue-600">{preview.recommendations}</p>}
             </div>
           )}
           <PrintButton contentRef={printRef} title={`Mantenimiento ${preview?.sheet_number}`} />
@@ -197,13 +346,16 @@ export default function Maintenance() {
                   <p className="text-xs text-gray-500">{s.date} | {s.type} | {s.equipment_brand} {s.equipment_model}</p>
                 </div>
               </div>
-              <div className="flex gap-1">
+              <div className="flex items-center gap-2">
+                {s.signature_technician && <span title="Firmado técnico">✍️</span>}
+                {s.signature_client && <span title="Firmado cliente">👤</span>}
                 <button onClick={(e) => { e.stopPropagation(); handleEdit(s); }} className="p-1 text-gray-400"><Edit className="w-4 h-4" /></button>
                 <button onClick={(e) => { e.stopPropagation(); base44.entities.MaintenanceSheet.delete(s.id).then(() => setSheets(sheets.filter(x => x.id !== s.id))); }} className="p-1 text-red-400"><Trash2 className="w-4 h-4" /></button>
               </div>
             </CardContent>
           </Card>
         ))}
+        {sheets.length === 0 && <p className="text-center text-gray-400 py-8">No hay fichas de mantenimiento</p>}
       </div>
     </div>
   );
