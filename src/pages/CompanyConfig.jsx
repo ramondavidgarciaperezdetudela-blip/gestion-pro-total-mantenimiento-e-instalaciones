@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Save, Upload, Printer } from 'lucide-react';
+import { Building2, Save, Upload, Printer, Mail, MessageCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function CompanyConfig() {
   const [form, setForm] = useState({
@@ -22,6 +22,8 @@ export default function CompanyConfig() {
   const [saved, setSaved] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const fileRef = useRef(null);
+  const [showPass, setShowPass] = useState(false);
+  const [emailDetecting, setEmailDetecting] = useState(false);
 
   useEffect(() => {
     base44.entities.CompanySettings.list().then(data => {
