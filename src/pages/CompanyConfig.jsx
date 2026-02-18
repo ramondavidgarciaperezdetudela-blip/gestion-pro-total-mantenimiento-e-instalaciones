@@ -167,6 +167,103 @@ export default function CompanyConfig() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="correo">
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Mail className="w-5 h-5" />Configuración de correo electrónico</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                <p className="font-medium mb-1">📧 Autoconfiguración</p>
+                <p className="text-xs">Introduce tu dirección de correo y detectaremos automáticamente la configuración SMTP de tu proveedor (Gmail, Outlook, Hotmail, Yahoo, etc.)</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Correo electrónico de envío</label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    placeholder="tu@empresa.com"
+                    value={form.email_config?.smtp_user || ''}
+                    onChange={e => setForm({...form, email_config: {...form.email_config, smtp_user: e.target.value}})}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={emailDetecting}
+                    onClick={async () => {
+                      const email = form.email_config?.smtp_user || '';
+                      if (!email) return;
+                      setEmailDetecting(true);
+                      const domain = email.split('@')[1]?.toLowerCase() || '';
+                      const configs = {
+                        'gmail.com': { smtp_host: 'smtp.gmail.com', smtp_port: 587, use_ssl: true },
+                        'googlemail.com': { smtp_host: 'smtp.gmail.com', smtp_port: 587, use_ssl: true },
+                        'outlook.com': { smtp_host: 'smtp.office365.com', smtp_port: 587, use_ssl: true },
+                        'hotmail.com': { smtp_host: 'smtp.office365.com', smtp_port: 587, use_ssl: true },
+                        'live.com': { smtp_host: 'smtp.office365.com', smtp_port: 587, use_ssl: true },
+                        'yahoo.com': { smtp_host: 'smtp.mail.yahoo.com', smtp_port: 587, use_ssl: true },
+                        'yahoo.es': { smtp_host: 'smtp.mail.yahoo.com', smtp_port: 587, use_ssl: true },
+                        'icloud.com': { smtp_host: 'smtp.mail.me.com', smtp_port: 587, use_ssl: true },
+                      };
+                      const detected = configs[domain];
+                      if (detected) {
+                        setForm(prev => ({...prev, email_config: {...prev.email_config, ...detected}}));
+                      }
+                      setEmailDetecting(false);
+                    }}
+                  >
+                    {emailDetecting ? '...' : 'Autodetectar'}
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Nombre del remitente</label>
+                <Input className="mt-1" placeholder="Mi Empresa S.L." value={form.email_config?.from_name || ''} onChange={e => setForm({...form, email_config: {...form.email_config, from_name: e.target.value}})} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium">Servidor SMTP</label>
+                  <Input className="mt-1" placeholder="smtp.gmail.com" value={form.email_config?.smtp_host || ''} onChange={e => setForm({...form, email_config: {...form.email_config, smtp_host: e.target.value}})} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Puerto</label>
+                  <Input className="mt-1" type="number" placeholder="587" value={form.email_config?.smtp_port || 587} onChange={e => setForm({...form, email_config: {...form.email_config, smtp_port: parseInt(e.target.value)}})} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Contraseña de aplicación</label>
+                <div className="relative mt-1">
+                  <Input
+                    type={showPass ? 'text' : 'password'}
+                    placeholder="Contraseña o clave de aplicación"
+                    value={form.email_config?.smtp_pass || ''}
+                    onChange={e => setForm({...form, email_config: {...form.email_config, smtp_pass: e.target.value}})}
+                  />
+                  <button className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" onClick={() => setShowPass(!showPass)}>
+                    {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Para Gmail usa una "Contraseña de aplicación" desde la configuración de seguridad de Google.</p>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={form.email_config?.use_ssl !== false} onChange={e => setForm({...form, email_config: {...form.email_config, use_ssl: e.target.checked}})} />
+                Usar SSL/TLS
+              </label>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
+                <p className="font-medium">ℹ️ Nota</p>
+                <p>El envío directo de emails necesita backend activado. Mientras tanto, el botón de correo abrirá tu cliente de email habitual (mailto:) con los datos precargados.</p>
+              </div>
+
+              <Button onClick={handleSave} className={`w-full ${saved ? 'bg-green-600' : 'bg-blue-600'}`}>
+                <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar configuración'}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="impresora">
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Printer className="w-5 h-5" />Configuración de impresora</CardTitle></CardHeader>
