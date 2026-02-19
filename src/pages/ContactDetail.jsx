@@ -291,6 +291,9 @@ export default function ContactDetail() {
         {/* SAT */}
         <TabsContent value="sat">
           <div className="space-y-2 mt-2">
+            <Link to={createPageUrl(`SAT?contact_id=${contactId}`)}>
+              <Button size="sm" className="bg-orange-600"><Plus className="w-4 h-4 mr-1" />Nueva orden SAT</Button>
+            </Link>
             {satOrders.map(o => (
               <Card key={o.id}>
                 <CardContent className="p-3">
