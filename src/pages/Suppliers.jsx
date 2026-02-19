@@ -58,8 +58,11 @@ const DEFAULT_SUPPLIERS = [
 const EMPTY_FORM = {
   name: '', website: '', login_url: '', category: 'general',
   phone: '', email: '', contact_person: '', notes: '', is_active: true,
-  api_key: '', api_url: '', client_code: '', password_hint: ''
+  api_key: '', api_url: '', client_code: '', password_hint: '',
+  commercials: []
 };
+
+const EMPTY_COMMERCIAL = { name: '', phone: '', whatsapp: '', email: '', notes: '' };
 
 export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
@@ -99,10 +102,15 @@ export default function Suppliers() {
       contact_person: s.contact_person || '', notes: s.notes || '',
       is_active: s.is_active !== false,
       api_key: s.api_key || '', api_url: s.api_url || '',
-      client_code: s.client_code || '', password_hint: s.password_hint || ''
+      client_code: s.client_code || '', password_hint: s.password_hint || '',
+      commercials: s.commercials || []
     });
     setDialogOpen(true);
   };
+
+  const addCommercial = () => setForm(prev => ({...prev, commercials: [...(prev.commercials || []), {...EMPTY_COMMERCIAL}]}));
+  const updateCommercial = (i, field, val) => setForm(prev => ({...prev, commercials: prev.commercials.map((c, idx) => idx === i ? {...c, [field]: val} : c)}));
+  const removeCommercial = (i) => setForm(prev => ({...prev, commercials: prev.commercials.filter((_, idx) => idx !== i)}));
 
   const handleDelete = async (id) => {
     await base44.entities.Supplier.delete(id);
@@ -171,6 +179,7 @@ export default function Suppliers() {
             <Tabs defaultValue="datos">
               <TabsList className="w-full">
                 <TabsTrigger value="datos" className="flex-1">Datos</TabsTrigger>
+                <TabsTrigger value="comerciales" className="flex-1">Comerciales</TabsTrigger>
                 <TabsTrigger value="acceso" className="flex-1">Acceso / API</TabsTrigger>
               </TabsList>
 
@@ -192,6 +201,26 @@ export default function Suppliers() {
                   <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} />
                   Proveedor activo
                 </label>
+              </TabsContent>
+
+              <TabsContent value="comerciales" className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Comerciales de {form.name || 'este proveedor'}</p>
+                  <Button size="sm" variant="outline" onClick={addCommercial}><Plus className="w-3 h-3 mr-1" />Añadir</Button>
+                </div>
+                {(form.commercials || []).length === 0 && <p className="text-center text-gray-400 py-4 text-sm">No hay comerciales. Pulsa Añadir.</p>}
+                {(form.commercials || []).map((c, i) => (
+                  <div key={i} className="border rounded-lg p-3 space-y-2 relative">
+                    <button onClick={() => removeCommercial(i)} className="absolute top-2 right-2 text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <Input placeholder="Nombre del comercial *" value={c.name} onChange={e => updateCommercial(i, 'name', e.target.value)} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input placeholder="Teléfono" value={c.phone} onChange={e => updateCommercial(i, 'phone', e.target.value)} />
+                      <Input placeholder="WhatsApp" value={c.whatsapp} onChange={e => updateCommercial(i, 'whatsapp', e.target.value)} />
+                    </div>
+                    <Input placeholder="Email" value={c.email} onChange={e => updateCommercial(i, 'email', e.target.value)} />
+                    <Input placeholder="Notas" value={c.notes} onChange={e => updateCommercial(i, 'notes', e.target.value)} />
+                  </div>
+                ))}
               </TabsContent>
 
               <TabsContent value="acceso" className="space-y-3 pt-2">
