@@ -121,14 +121,31 @@ export default function Agenda() {
         </div>
       </div>
 
-      {/* Week nav */}
-      <div className="flex items-center justify-between bg-white rounded-xl p-3 shadow-sm">
-        <Button variant="ghost" size="sm" onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}><ChevronLeft className="w-4 h-4" /></Button>
-        <span className="font-medium text-sm">
-          {format(weekStart, "d MMM", { locale: es })} - {format(weekEnd, "d MMM yyyy", { locale: es })}
-        </span>
-        <Button variant="ghost" size="sm" onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}><ChevronRight className="w-4 h-4" /></Button>
+      {/* View toggle */}
+      <div className="flex gap-2">
+        <Button size="sm" variant={viewMode === 'week' ? 'default' : 'outline'} onClick={() => setViewMode('week')}>Semana</Button>
+        <Button size="sm" variant={viewMode === 'month' ? 'default' : 'outline'} onClick={() => setViewMode('month')}>Mes completo</Button>
       </div>
+
+      {/* Week nav */}
+      {viewMode === 'week' && (
+        <div className="flex items-center justify-between bg-white rounded-xl p-3 shadow-sm">
+          <Button variant="ghost" size="sm" onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}><ChevronLeft className="w-4 h-4" /></Button>
+          <span className="font-medium text-sm">
+            {format(weekStart, "d MMM", { locale: es })} - {format(weekEnd, "d MMM yyyy", { locale: es })}
+          </span>
+          <Button variant="ghost" size="sm" onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}><ChevronRight className="w-4 h-4" /></Button>
+        </div>
+      )}
+
+      {/* Month nav */}
+      {viewMode === 'month' && (
+        <div className="flex items-center justify-between bg-white rounded-xl p-3 shadow-sm">
+          <Button variant="ghost" size="sm" onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1))}><ChevronLeft className="w-4 h-4" /></Button>
+          <span className="font-medium text-sm capitalize">{format(currentMonth, 'MMMM yyyy', { locale: es })}</span>
+          <Button variant="ghost" size="sm" onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1))}><ChevronRight className="w-4 h-4" /></Button>
+        </div>
+      )}
 
       {/* Calendar */}
       <div ref={printRef} className="grid grid-cols-1 md:grid-cols-7 gap-2">
@@ -175,7 +192,43 @@ export default function Agenda() {
             </Card>
           );
         })}
-      </div>
+      </div>}
+
+      {/* Month view */}
+      {viewMode === 'month' && (() => {
+        const firstDay = startOfMonth(currentMonth);
+        const daysInMonth = getDaysInMonth(currentMonth);
+        const startDow = (getDay(firstDay) + 6) % 7; // lunes = 0
+        const cells = [];
+        for (let i = 0; i < startDow; i++) cells.push(null);
+        for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d));
+        const weekDays = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+        return (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="grid grid-cols-7 border-b">
+              {weekDays.map(d => <div key={d} className="text-center text-xs font-semibold text-gray-500 py-2">{d}</div>)}
+            </div>
+            <div className="grid grid-cols-7">
+              {cells.map((day, i) => {
+                if (!day) return <div key={i} className="min-h-[80px] border-r border-b bg-gray-50" />;
+                const dayAppts = appointments.filter(a => a.date && isSameDay(new Date(a.date + 'T00:00:00'), day));
+                const isToday = isSameDay(day, new Date());
+                return (
+                  <div key={i} className={`min-h-[80px] border-r border-b p-1 ${isToday ? 'bg-blue-50' : ''}`}>
+                    <p className={`text-xs font-bold mb-1 w-5 h-5 flex items-center justify-center rounded-full ${isToday ? 'bg-blue-600 text-white' : 'text-gray-700'}`}>{day.getDate()}</p>
+                    {dayAppts.slice(0, 2).map(apt => (
+                      <div key={apt.id} className="text-[10px] bg-blue-100 text-blue-700 rounded px-1 mb-0.5 truncate cursor-pointer hover:bg-blue-200" onClick={() => handleEdit(apt)}>
+                        {apt.time_start && <span className="font-bold mr-0.5">{apt.time_start}</span>}{apt.title}
+                      </div>
+                    ))}
+                    {dayAppts.length > 2 && <p className="text-[10px] text-gray-400">+{dayAppts.length - 2} más</p>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
