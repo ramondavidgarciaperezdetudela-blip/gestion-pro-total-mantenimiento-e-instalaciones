@@ -389,6 +389,9 @@ export default function ContactDetail() {
         {/* CITAS */}
         <TabsContent value="citas">
           <div className="space-y-3 mt-2">
+            <Link to={createPageUrl(`Agenda?contact_id=${contactId}`)}>
+              <Button size="sm" className="bg-blue-600"><Plus className="w-4 h-4 mr-1" />Nueva cita</Button>
+            </Link>
             {['pendiente', 'completada', 'cancelada'].map(status => (
               <div key={status}>
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-1 flex items-center gap-1">
