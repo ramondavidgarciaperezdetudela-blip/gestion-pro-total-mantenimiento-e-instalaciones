@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Phone, Mail, Navigation, Plus, Calendar, Wrench, FileText, ClipboardList, Calculator, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Phone, Mail, Navigation, Plus, Calendar, Wrench, FileText, ClipboardList, Calculator, AlertCircle, CheckCircle, Clock, XCircle, Upload, Image } from 'lucide-react';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
@@ -40,6 +40,11 @@ export default function ContactDetail() {
   const [noteForm, setNoteForm] = useState({ title: '', content: '' });
   const [editingContact, setEditingContact] = useState(false);
   const [contactForm, setContactForm] = useState({});
+  const [uploadDialog, setUploadDialog] = useState(false);
+  const [uploadDocType, setUploadDocType] = useState('otro');
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileUploadRef = useRef(null);
   const printRef = useRef(null);
 
   useEffect(() => {
@@ -72,6 +77,26 @@ export default function ContactDetail() {
     setNoteForm({ title: '', content: '' });
     const nts = await base44.entities.ClientNote.filter({ contact_id: contactId });
     setNotes(nts);
+  };
+
+  const handleDocUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    await base44.entities.ClientDocument.create({
+      contact_id: contactId,
+      contact_name: contact?.name,
+      title: uploadTitle || file.name,
+      doc_type: uploadDocType,
+      file_url,
+      date: format(new Date(), 'yyyy-MM-dd'),
+    });
+    setUploading(false);
+    setUploadDialog(false);
+    setUploadTitle('');
+    const docs = await base44.entities.ClientDocument.filter({ contact_id: contactId });
+    setDocuments(docs);
   };
 
   const saveContact = async () => {
