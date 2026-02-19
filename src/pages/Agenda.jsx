@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, ChevronLeft, ChevronRight, Trash2, Edit, MessageCircle } from 'lucide-react';
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks } from 'date-fns';
+import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, getDaysInMonth, startOfMonth, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PrintButton from '../components/PrintButton';
 
@@ -19,24 +19,40 @@ const priorityColors = { baja: 'bg-gray-100 text-gray-700', media: 'bg-blue-100 
 
 export default function Agenda() {
   const [appointments, setAppointments] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [contactSearch, setContactSearch] = useState('');
+  const [showContactSearch, setShowContactSearch] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [viewMode, setViewMode] = useState('week'); // 'week' | 'month'
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAppt, setEditingAppt] = useState(null);
-  const [form, setForm] = useState({ title: '', description: '', contact_name: '', date: format(new Date(), 'yyyy-MM-dd'), time_start: '09:00', time_end: '10:00', address: '', type: 'otro', status: 'pendiente', priority: 'media', notes: '' });
+  const [form, setForm] = useState({ title: '', description: '', contact_name: '', contact_id: '', date: format(new Date(), 'yyyy-MM-dd'), time_start: '09:00', time_end: '10:00', address: '', type: 'otro', status: 'pendiente', priority: 'media', notes: '' });
   const printRef = useRef(null);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
-  useEffect(() => { loadAppointments(); }, [currentWeek]);
+  useEffect(() => { loadAppointments(); base44.entities.Contact.list('name', 500).then(setContacts); }, []);
 
   const loadAppointments = async () => {
     const data = await base44.entities.Appointment.list('-date', 200);
     setAppointments(data);
   };
 
+  const filteredContacts = contacts.filter(c =>
+    `${c.name} ${c.surname || ''} ${c.company_name || ''}`.toLowerCase().includes(contactSearch.toLowerCase())
+  );
+
   const handleSave = async () => {
+    // Check for conflicts
+    const sameDay = appointments.filter(a => a.date === form.date && (!editingAppt || a.id !== editingAppt.id));
+    const timeConflict = sameDay.find(a => a.time_start === form.time_start);
+    if (timeConflict) {
+      const ok = window.confirm(`Ya hay una cita a las ${form.time_start}h (${timeConflict.title} - ${timeConflict.contact_name}). ¿Deseas guardarla igualmente?\nConsejo: cambia la hora para evitar solapamiento.`);
+      if (!ok) return;
+    }
     if (editingAppt) {
       await base44.entities.Appointment.update(editingAppt.id, form);
     } else {
@@ -44,13 +60,15 @@ export default function Agenda() {
     }
     setDialogOpen(false);
     setEditingAppt(null);
-    setForm({ title: '', description: '', contact_name: '', date: format(new Date(), 'yyyy-MM-dd'), time_start: '09:00', time_end: '10:00', address: '', type: 'otro', status: 'pendiente', priority: 'media', notes: '' });
+    setForm({ title: '', description: '', contact_name: '', contact_id: '', date: format(new Date(), 'yyyy-MM-dd'), time_start: '09:00', time_end: '10:00', address: '', type: 'otro', status: 'pendiente', priority: 'media', notes: '' });
+    setContactSearch('');
     loadAppointments();
   };
 
   const handleEdit = (appt) => {
     setEditingAppt(appt);
-    setForm({ title: appt.title || '', description: appt.description || '', contact_name: appt.contact_name || '', date: appt.date || '', time_start: appt.time_start || '09:00', time_end: appt.time_end || '10:00', address: appt.address || '', type: appt.type || 'otro', status: appt.status || 'pendiente', priority: appt.priority || 'media', notes: appt.notes || '' });
+    setForm({ title: appt.title || '', description: appt.description || '', contact_name: appt.contact_name || '', contact_id: appt.contact_id || '', date: appt.date || '', time_start: appt.time_start || '09:00', time_end: appt.time_end || '10:00', address: appt.address || '', type: appt.type || 'otro', status: appt.status || 'pendiente', priority: appt.priority || 'media', notes: appt.notes || '' });
+    setContactSearch(appt.contact_name || '');
     setDialogOpen(true);
   };
 
