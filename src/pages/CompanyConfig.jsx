@@ -94,6 +94,7 @@ export default function CompanyConfig() {
           <TabsTrigger value="correo" className="flex-1">Correo</TabsTrigger>
           <TabsTrigger value="impresora" className="flex-1">Impresora</TabsTrigger>
           <TabsTrigger value="documentos" className="flex-1">Documentos</TabsTrigger>
+          <TabsTrigger value="escaner" className="flex-1">Escáner</TabsTrigger>
         </TabsList>
 
         <TabsContent value="empresa">
@@ -325,6 +326,71 @@ export default function CompanyConfig() {
               </div>
               <Button onClick={handleSave} className={`w-full ${saved ? 'bg-green-600' : 'bg-blue-600'}`}>
                 <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar'}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="escaner">
+          <Card>
+            <CardHeader><CardTitle>Configuración del escáner</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                <p className="font-medium mb-1">📄 Escaneo de documentos</p>
+                <p className="text-xs">Configura los parámetros para escanear documentos. Los documentos escaneados se pueden subir directamente desde la ficha del cliente.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium">Resolución (DPI)</label>
+                  <Select defaultValue="300">
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="150">150 DPI (rápido)</SelectItem>
+                      <SelectItem value="200">200 DPI</SelectItem>
+                      <SelectItem value="300">300 DPI (recomendado)</SelectItem>
+                      <SelectItem value="600">600 DPI (alta calidad)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Formato de salida</label>
+                  <Select defaultValue="pdf">
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pdf">PDF</SelectItem>
+                      <SelectItem value="jpg">JPG</SelectItem>
+                      <SelectItem value="png">PNG</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Color</label>
+                  <Select defaultValue="color">
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="color">Color</SelectItem>
+                      <SelectItem value="gris">Escala de grises</SelectItem>
+                      <SelectItem value="bw">Blanco y negro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Tamaño de página</label>
+                  <Select defaultValue="A4">
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="A4">A4</SelectItem>
+                      <SelectItem value="A5">A5</SelectItem>
+                      <SelectItem value="Carta">Carta</SelectItem>
+                      <SelectItem value="Legal">Legal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
+                <p>ℹ️ Para escanear documentos ve a la ficha del cliente y usa el botón "Subir documento escaneado".</p>
+              </div>
+              <Button onClick={handleSave} className={`w-full ${saved ? 'bg-green-600' : 'bg-blue-600'}`}>
+                <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar configuración escáner'}
               </Button>
             </CardContent>
           </Card>
