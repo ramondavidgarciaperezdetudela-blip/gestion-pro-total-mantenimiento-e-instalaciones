@@ -91,7 +91,29 @@ export default function Agenda() {
               <DialogHeader><DialogTitle>{editingAppt ? 'Editar cita' : 'Nueva cita'}</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <Input placeholder="Título *" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
-                <Input placeholder="Cliente" value={form.contact_name} onChange={e => setForm({...form, contact_name: e.target.value})} />
+                {/* Búsqueda de cliente */}
+                <div className="relative">
+                  <Input placeholder="Buscar cliente..." value={contactSearch}
+                    onChange={e => { setContactSearch(e.target.value); setShowContactSearch(true); if (!e.target.value) setForm({...form, contact_name: '', contact_id: '', address: ''}); }}
+                    onFocus={() => setShowContactSearch(true)} />
+                  {form.contact_name && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-green-600">✓ {form.contact_name}</span>}
+                  {showContactSearch && contactSearch && (
+                    <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      {filteredContacts.slice(0, 8).map(c => (
+                        <button key={c.id} className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b last:border-0"
+                          onClick={() => {
+                            setForm({...form, contact_name: `${c.name} ${c.surname || ''}`, contact_id: c.id, address: c.address ? `${c.address}, ${c.city || ''}` : form.address});
+                            setContactSearch(`${c.name} ${c.surname || ''}`);
+                            setShowContactSearch(false);
+                          }}>
+                          <p className="font-medium">{c.name} {c.surname}</p>
+                          {c.phone && <p className="text-xs text-gray-400">{c.phone} {c.address && `| ${c.address}`}</p>}
+                        </button>
+                      ))}
+                      {filteredContacts.length === 0 && <p className="p-2 text-sm text-gray-400">Sin resultados</p>}
+                    </div>
+                  )}
+                </div>
                 <div className="grid grid-cols-3 gap-2">
                   <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
                   <Input type="time" value={form.time_start} onChange={e => setForm({...form, time_start: e.target.value})} />
