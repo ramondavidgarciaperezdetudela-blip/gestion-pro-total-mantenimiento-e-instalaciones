@@ -138,6 +138,25 @@ export default function Suppliers() {
               {s.email && <a href={`mailto:${s.email}`} className="flex items-center gap-1 text-blue-600"><Mail className="w-3 h-3" />{s.email}</a>}
               {s.contact_person && <span className="text-gray-400">{s.contact_person}</span>}
             </div>
+            {s.commercials?.length > 0 && (
+              <div className="mt-2 pt-2 border-t">
+                <p className="text-[10px] font-semibold text-gray-500 flex items-center gap-1 mb-1"><Users className="w-3 h-3" />Comerciales:</p>
+                <div className="flex flex-wrap gap-2">
+                  {s.commercials.map((c, i) => (
+                    <div key={i} className="flex items-center gap-1 text-xs bg-gray-50 rounded px-2 py-1">
+                      <span className="font-medium">{c.name}</span>
+                      {c.phone && <a href={`tel:${c.phone}`} className="text-blue-500"><Phone className="w-3 h-3" /></a>}
+                      {c.whatsapp && (
+                        <a href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500">
+                          <MessageCircle className="w-3 h-3" />
+                        </a>
+                      )}
+                      {c.email && <a href={`mailto:${c.email}`} className="text-blue-500"><Mail className="w-3 h-3" /></a>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1 ml-3 flex-shrink-0">
             {s.website && s.website.includes('obramat') && (
