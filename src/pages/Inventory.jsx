@@ -196,8 +196,19 @@ export default function Inventory() {
                 {filteredStock.map(s => (
                   <tr key={s.id} className={`hover:bg-gray-50 ${s.min_stock > 0 && s.quantity <= s.min_stock ? 'bg-orange-50' : ''}`}>
                     <td className="p-3">
-                      <p className="font-medium">{s.name}</p>
-                      {s.reference && <p className="text-xs text-gray-400">Ref: {s.reference}</p>}
+                      <div className="flex items-center gap-2">
+                        {s.photo_url ? (
+                          <img src={s.photo_url} alt="" className="w-10 h-10 object-cover rounded border flex-shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 bg-gray-100 rounded border flex items-center justify-center flex-shrink-0">
+                            <Package className="w-4 h-4 text-gray-300" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium">{s.name}</p>
+                          {s.reference && <p className="text-xs text-gray-400">Ref: {s.reference}</p>}
+                        </div>
+                      </div>
                     </td>
                     <td className="p-3"><Badge variant="outline" className="text-[10px]">{s.category?.replace(/_/g, ' ')}</Badge></td>
                     <td className="p-3 text-center">
@@ -279,7 +290,24 @@ export default function Inventory() {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingStock ? 'Editar material' : 'Nuevo material en stock'}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <Input placeholder="Nombre *" value={stockForm.name} onChange={e => setStockForm({...stockForm, name: e.target.value})} />
+            <div className="flex gap-3 items-start">
+              <div>
+                {stockForm.photo_url ? (
+                  <img src={stockForm.photo_url} alt="" className="w-20 h-20 object-cover rounded-lg border" />
+                ) : (
+                  <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed">
+                    <Package className="w-6 h-6 text-gray-300" />
+                  </div>
+                )}
+                <Button type="button" size="sm" variant="outline" className="mt-1 w-20 text-xs" onClick={() => fileStockRef.current?.click()} disabled={uploadingStock}>
+                  {uploadingStock ? '...' : <><Upload className="w-3 h-3 mr-1" />Foto</>}
+                </Button>
+                <input ref={fileStockRef} type="file" accept="image/*" className="hidden" onChange={handleStockPhotoUpload} />
+              </div>
+              <div className="flex-1">
+                <Input placeholder="Nombre *" value={stockForm.name} onChange={e => setStockForm({...stockForm, name: e.target.value})} />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <Input placeholder="Referencia" value={stockForm.reference} onChange={e => setStockForm({...stockForm, reference: e.target.value})} />
               <Select value={stockForm.category} onValueChange={v => setStockForm({...stockForm, category: v})}>
