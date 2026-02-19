@@ -16,7 +16,7 @@ const STOCK_CATEGORIES = ['tuberias_accesorios', 'cables_electricidad', 'refrige
 const statusColors = { operativo: 'bg-green-100 text-green-700', en_revision: 'bg-yellow-100 text-yellow-700', averiado: 'bg-red-100 text-red-700', baja: 'bg-gray-100 text-gray-500' };
 
 const EMPTY_EQ = { name: '', brand: '', model: '', serial_number: '', category: 'herramienta', status: 'operativo', purchase_date: '', purchase_price: '', next_revision_date: '', location: '', assigned_to: '', notes: '', photo_url: '' };
-const EMPTY_STOCK = { name: '', reference: '', category: 'otro', supplier_name: '', quantity: 0, unit: 'uds', min_stock: 0, unit_price: '', location: '', notes: '' };
+const EMPTY_STOCK = { name: '', reference: '', category: 'otro', supplier_name: '', quantity: 0, unit: 'uds', min_stock: 0, unit_price: '', location: '', notes: '', photo_url: '' };
 
 export default function Inventory() {
   const [equipment, setEquipment] = useState([]);
@@ -30,7 +30,9 @@ export default function Inventory() {
   const [eqForm, setEqForm] = useState(EMPTY_EQ);
   const [stockForm, setStockForm] = useState(EMPTY_STOCK);
   const [uploading, setUploading] = useState(false);
+  const [uploadingStock, setUploadingStock] = useState(false);
   const fileRef = useRef(null);
+  const fileStockRef = useRef(null);
 
   useEffect(() => {
     base44.entities.Equipment.list('name', 200).then(setEquipment);
@@ -74,6 +76,15 @@ export default function Inventory() {
     e.brand?.toLowerCase().includes(eqSearch.toLowerCase()) ||
     e.model?.toLowerCase().includes(eqSearch.toLowerCase())
   );
+
+  const handleStockPhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingStock(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setStockForm(prev => ({ ...prev, photo_url: file_url }));
+    setUploadingStock(false);
+  };
 
   const filteredStock = stock.filter(s =>
     s.name?.toLowerCase().includes(stockSearch.toLowerCase()) ||
