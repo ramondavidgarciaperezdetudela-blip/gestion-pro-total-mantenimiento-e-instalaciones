@@ -219,6 +219,29 @@ export default function ContactDetail() {
 
       <PrintButton contentRef={printRef} title={`Ficha ${contact.name}`} />
 
+      {/* Upload document dialog */}
+      <Dialog open={uploadDialog} onOpenChange={setUploadDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Subir documento</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Input placeholder="Título del documento" value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} />
+            <Select value={uploadDocType} onValueChange={setUploadDocType}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {['factura','presupuesto','recibo','ficha_mantenimiento','orden_sat','calculo_termico','calculo_solar','informe','nota','otro'].map(t => (
+                  <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" className="w-full" onClick={() => fileUploadRef.current?.click()} disabled={uploading}>
+              <Upload className="w-4 h-4 mr-2" />{uploading ? 'Subiendo...' : 'Seleccionar archivo / foto'}
+            </Button>
+            <input ref={fileUploadRef} type="file" accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={handleDocUpload} />
+            <p className="text-xs text-gray-400">Admite imágenes (fotos del escáner), PDF y Word</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Tabs defaultValue="facturas">
         <TabsList className="w-full flex flex-wrap h-auto gap-1">
           <TabsTrigger value="facturas" className="flex-1 text-xs min-w-[80px]">Facturas ({docsByType.factura.length})</TabsTrigger>
