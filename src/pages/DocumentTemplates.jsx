@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,11 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Edit, Trash2, Palette, Save, Star } from 'lucide-react';
-import CompanyHeader from '../components/CompanyHeader';
-import PrintButton from '../components/PrintButton';
+import { Plus, Edit, Trash2, Palette, Save, Star, Eye } from 'lucide-react';
 
-const DOC_TYPES = ['factura','presupuesto','recibo','sat','mantenimiento','informe'];
+const DOC_TYPES = ['factura', 'presupuesto', 'recibo', 'sat', 'mantenimiento', 'informe'];
 const FONT_SIZES = { small: '11px', medium: '13px', large: '15px' };
 
 const DEFAULT_TEMPLATES = [
@@ -25,6 +23,7 @@ const EMPTY_TPL = { name: '', doc_type: 'factura', primary_color: '#1e3a5f', sec
 
 export default function DocumentTemplates() {
   const [templates, setTemplates] = useState([]);
+  const [company, setCompany] = useState(null);
   const [editDialog, setEditDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_TPL);
@@ -32,12 +31,14 @@ export default function DocumentTemplates() {
   const printRef = useRef(null);
 
   useEffect(() => {
-    base44.entities.DocumentTemplate.list('name', 50).then(data => {
+    Promise.all([
+      base44.entities.DocumentTemplate.list('name', 50),
+      base44.entities.CompanySettings.list().then(r => r[0] || null),
+    ]).then(([data, comp]) => {
+      setCompany(comp);
       if (data.length === 0) {
-        // Crear plantillas por defecto
-        Promise.all(DEFAULT_TEMPLATES.map(t => base44.entities.DocumentTemplate.create(t))).then(() => {
-          base44.entities.DocumentTemplate.list('name', 50).then(setTemplates);
-        });
+        Promise.all(DEFAULT_TEMPLATES.map(t => base44.entities.DocumentTemplate.create(t)))
+          .then(() => base44.entities.DocumentTemplate.list('name', 50).then(setTemplates));
       } else {
         setTemplates(data);
       }
@@ -59,7 +60,6 @@ export default function DocumentTemplates() {
   };
 
   const handleSetDefault = async (tpl) => {
-    // Quitar default de otros del mismo tipo
     const sameType = templates.filter(t => t.doc_type === tpl.doc_type && t.id !== tpl.id);
     await Promise.all(sameType.map(t => base44.entities.DocumentTemplate.update(t.id, { is_default: false })));
     await base44.entities.DocumentTemplate.update(tpl.id, { is_default: true });
@@ -72,120 +72,182 @@ export default function DocumentTemplates() {
   }, {});
 
   const PreviewDoc = ({ tpl }) => (
-    <div ref={printRef} style={{ fontFamily: 'Arial, sans-serif', fontSize: FONT_SIZES[tpl.font_size] || '13px' }} className="p-4 bg-white">
-      <div style={{ borderBottom: `3px solid ${tpl.primary_color}`, paddingBottom: '12px', marginBottom: '16px' }}>
-        {tpl.header_text && <p style={{ color: tpl.secondary_color, fontWeight: 'bold' }}>{tpl.header_text}</p>}
-        <CompanyHeader />
+    <div ref={printRef} style={{ fontFamily: 'Arial, sans-serif', fontSize: FONT_SIZES[tpl.font_size] || '13px', maxWidth: '720px', margin: '0 auto' }} className="p-4 bg-white text-gray-900">
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: `3px solid ${tpl.primary_color}`, paddingBottom: '12px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {tpl.show_logo && company?.logo_url && (
+            <img src={company.logo_url} alt="logo" style={{ height: '50px', objectFit: 'contain' }} />
+          )}
+          {tpl.show_logo && !company?.logo_url && (
+            <div style={{ width: '50px', height: '50px', background: tpl.primary_color, borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '1.2em' }}>
+              {company?.company_name?.[0] || 'E'}
+            </div>
+          )}
+          <div>
+            <p style={{ fontWeight: 'bold', fontSize: '1.1em', color: tpl.primary_color }}>{company?.company_name || 'Tu Empresa, S.L.'}</p>
+            {company?.nif && <p style={{ fontSize: '0.8em', color: '#666' }}>NIF: {company.nif}</p>}
+            {company?.address && <p style={{ fontSize: '0.8em', color: '#666' }}>{company.address}, {company.city}</p>}
+            {company?.phone && <p style={{ fontSize: '0.8em', color: '#666' }}>Tel: {company.phone}</p>}
+          </div>
+        </div>
+        {tpl.header_text && <p style={{ color: tpl.secondary_color, fontWeight: 'bold', textAlign: 'right', maxWidth: '200px' }}>{tpl.header_text}</p>}
       </div>
-      <div style={{ backgroundColor: tpl.primary_color, color: 'white', padding: '8px 12px', borderRadius: '6px', marginBottom: '12px' }}>
-        <p style={{ fontWeight: 'bold', fontSize: '1.2em', textTransform: 'uppercase' }}>{tpl.doc_type}</p>
-        <p style={{ fontSize: '0.85em', opacity: 0.8 }}>Nº: 2024-001 | Fecha: {new Date().toLocaleDateString('es-ES')}</p>
+
+      {/* Doc title bar */}
+      <div style={{ backgroundColor: tpl.primary_color, color: 'white', padding: '8px 16px', borderRadius: '6px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p style={{ fontWeight: 'bold', fontSize: '1.3em', textTransform: 'uppercase', letterSpacing: '1px' }}>{tpl.doc_type}</p>
+        <div style={{ textAlign: 'right', fontSize: '0.85em', opacity: 0.9 }}>
+          <p>Nº: 2024-001</p>
+          <p>Fecha: {new Date().toLocaleDateString('es-ES')}</p>
+        </div>
       </div>
-      <div style={{ marginBottom: '12px' }}>
-        <p style={{ color: tpl.secondary_color, fontWeight: 'bold', fontSize: '0.85em' }}>CLIENTE</p>
-        <p>Nombre del Cliente, S.L.</p>
-        <p style={{ color: '#666' }}>Calle Ejemplo, 123 — 43000 Tarragona</p>
+
+      {/* Client block */}
+      <div style={{ marginBottom: '16px', padding: '10px 12px', background: '#f8f8f8', borderLeft: `4px solid ${tpl.secondary_color}`, borderRadius: '0 4px 4px 0' }}>
+        <p style={{ color: tpl.secondary_color, fontWeight: 'bold', fontSize: '0.8em', textTransform: 'uppercase', marginBottom: '4px' }}>Cliente</p>
+        <p style={{ fontWeight: 'bold' }}>Nombre del Cliente, S.L.</p>
+        <p style={{ color: '#666', fontSize: '0.9em' }}>NIF: B12345678</p>
+        <p style={{ color: '#666', fontSize: '0.9em' }}>Calle Ejemplo, 123 — 43000 Tarragona</p>
       </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '12px' }}>
+
+      {/* Table */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '16px', fontSize: '0.9em' }}>
         <thead>
           <tr style={{ backgroundColor: tpl.primary_color, color: 'white' }}>
-            <th style={{ padding: '6px 8px', textAlign: 'left' }}>Descripción</th>
-            <th style={{ padding: '6px 8px', textAlign: 'center' }}>Cant.</th>
-            <th style={{ padding: '6px 8px', textAlign: 'right' }}>P. Unit.</th>
-            <th style={{ padding: '6px 8px', textAlign: 'right' }}>Total</th>
+            <th style={{ padding: '7px 10px', textAlign: 'left' }}>Descripción</th>
+            <th style={{ padding: '7px 8px', textAlign: 'center', width: '60px' }}>Cant.</th>
+            <th style={{ padding: '7px 8px', textAlign: 'right', width: '80px' }}>P. Unit.</th>
+            <th style={{ padding: '7px 8px', textAlign: 'right', width: '80px' }}>Total</th>
           </tr>
         </thead>
         <tbody>
-          {[['Instalación Split 3000 frig.', '1', '450,00', '450,00'],['Material tubería 1/4-3/8', '3m', '12,00', '36,00']].map(([d, c, u, t], i) => (
+          {[['Instalación Split 3000 frig.', '1', '450,00', '450,00'], ['Material tubería 1/4-3/8 (3m)', '3', '12,00', '36,00'], ['Mano de obra instalación', '4h', '35,00', '140,00']].map(([d, c, u, t], i) => (
             <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#f9f9f9' : 'white', borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: '6px 8px' }}>{d}</td>
-              <td style={{ padding: '6px 8px', textAlign: 'center' }}>{c}</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right' }}>{u} €</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>{t} €</td>
+              <td style={{ padding: '7px 10px' }}>{d}</td>
+              <td style={{ padding: '7px 8px', textAlign: 'center' }}>{c}</td>
+              <td style={{ padding: '7px 8px', textAlign: 'right' }}>{u} €</td>
+              <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 'bold' }}>{t} €</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div style={{ textAlign: 'right', borderTop: `2px solid ${tpl.primary_color}`, paddingTop: '8px' }}>
-        <p>Subtotal: <strong>486,00 €</strong></p>
-        <p>IVA ({tpl.iva_rate}%): <strong>{(486 * tpl.iva_rate / 100).toFixed(2)} €</strong></p>
-        <p style={{ fontSize: '1.2em', color: tpl.primary_color, fontWeight: 'bold' }}>TOTAL: {(486 * (1 + tpl.iva_rate / 100)).toFixed(2)} €</p>
+
+      {/* Totals */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+        <div style={{ width: '220px', borderTop: `2px solid ${tpl.primary_color}`, paddingTop: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.9em' }}>
+            <span>Subtotal:</span><strong>626,00 €</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.9em' }}>
+            <span>IVA ({tpl.iva_rate}%):</span><strong>{(626 * tpl.iva_rate / 100).toFixed(2)} €</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2em', color: tpl.primary_color, fontWeight: 'bold', borderTop: '1px solid #ccc', paddingTop: '6px' }}>
+            <span>TOTAL:</span><span>{(626 * (1 + tpl.iva_rate / 100)).toFixed(2)} €</span>
+          </div>
+        </div>
       </div>
-      {tpl.show_iban && (
-        <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#f0f0f0', borderRadius: '4px', fontSize: '0.85em' }}>
-          <p style={{ color: tpl.secondary_color, fontWeight: 'bold' }}>Datos bancarios</p>
-          <p>IBAN: ES00 0000 0000 0000 0000 0000</p>
+
+      {/* IBAN */}
+      {tpl.show_iban && company?.iban && (
+        <div style={{ padding: '8px 12px', backgroundColor: '#f0f4ff', borderRadius: '4px', fontSize: '0.85em', marginBottom: '12px' }}>
+          <p style={{ color: tpl.secondary_color, fontWeight: 'bold', marginBottom: '2px' }}>Datos bancarios</p>
+          <p>IBAN: {company.iban}</p>
         </div>
       )}
+      {tpl.show_iban && !company?.iban && (
+        <div style={{ padding: '8px 12px', backgroundColor: '#f0f4ff', borderRadius: '4px', fontSize: '0.85em', marginBottom: '12px' }}>
+          <p style={{ color: tpl.secondary_color, fontWeight: 'bold' }}>Datos bancarios · IBAN: ES00 0000 0000 00 0000000000</p>
+        </div>
+      )}
+
+      {/* Signatures */}
       {tpl.show_signature_box && (
-        <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <div style={{ border: '1px solid #ccc', padding: '8px', borderRadius: '4px', minHeight: '60px' }}>
-            <p style={{ fontSize: '0.75em', color: '#666' }}>Firma técnico</p>
-          </div>
-          <div style={{ border: '1px solid #ccc', padding: '8px', borderRadius: '4px', minHeight: '60px' }}>
-            <p style={{ fontSize: '0.75em', color: '#666' }}>Firma cliente</p>
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+          {['Firma y sello técnico', 'Conforme cliente'].map(label => (
+            <div key={label} style={{ border: '1px solid #ccc', padding: '8px 12px', borderRadius: '4px', minHeight: '70px' }}>
+              <p style={{ fontSize: '0.75em', color: '#888' }}>{label}</p>
+            </div>
+          ))}
         </div>
       )}
-      {tpl.notes_template && <p style={{ marginTop: '12px', fontSize: '0.85em', color: '#666', borderTop: '1px solid #eee', paddingTop: '8px' }}>{tpl.notes_template}</p>}
-      {tpl.footer_text && <p style={{ marginTop: '8px', textAlign: 'center', fontSize: '0.8em', color: '#999' }}>{tpl.footer_text}</p>}
+
+      {/* Notes */}
+      {tpl.notes_template && (
+        <p style={{ fontSize: '0.8em', color: '#666', borderTop: '1px solid #eee', paddingTop: '8px', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>{tpl.notes_template}</p>
+      )}
+
+      {/* Footer */}
+      {tpl.footer_text && (
+        <p style={{ textAlign: 'center', fontSize: '0.8em', color: '#aaa', borderTop: '1px dashed #ddd', paddingTop: '8px' }}>{tpl.footer_text}</p>
+      )}
     </div>
   );
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2"><Palette className="w-6 h-6 text-purple-600" />Plantillas de documentos</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Palette className="w-6 h-6 text-purple-600" />Plantillas de documentos
+        </h1>
         <Button onClick={() => { setEditing(null); setForm(EMPTY_TPL); setEditDialog(true); }} className="bg-purple-600">
           <Plus className="w-4 h-4 mr-1" />Nueva plantilla
         </Button>
       </div>
 
+      {!company?.logo_url && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
+          ⚠️ Para que el logo aparezca en documentos, súbelo en <strong>Configuración → Empresa</strong>.
+        </div>
+      )}
+
       <Tabs defaultValue="factura">
-        <TabsList className="w-full flex-wrap">
+        <TabsList className="w-full flex-wrap h-auto">
           {DOC_TYPES.map(t => (
             <TabsTrigger key={t} value={t} className="flex-1 capitalize text-xs">{t} ({grouped[t]?.length || 0})</TabsTrigger>
           ))}
         </TabsList>
+
         {DOC_TYPES.map(type => (
-          <TabsContent key={type} value={type} className="space-y-3 pt-2">
+          <TabsContent key={type} value={type} className="space-y-3 pt-3">
             {grouped[type]?.length === 0 && (
-              <p className="text-center text-gray-400 py-6">No hay plantillas para {type}</p>
+              <p className="text-center text-gray-400 py-8">No hay plantillas para {type}</p>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {grouped[type]?.map(tpl => (
-                <Card key={tpl.id} className="relative overflow-hidden">
+                <Card key={tpl.id} className="relative overflow-hidden hover:shadow-md transition-shadow">
                   <div className="h-2" style={{ backgroundColor: tpl.primary_color }} />
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold">{tpl.name}</p>
-                        <div className="flex gap-1 mt-1">
-                          <span className="w-5 h-5 rounded-full border" style={{ backgroundColor: tpl.primary_color }} title="Color principal" />
-                          <span className="w-5 h-5 rounded-full border" style={{ backgroundColor: tpl.secondary_color }} title="Color secundario" />
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm">{tpl.name}</p>
+                        <div className="flex gap-1.5 mt-1.5">
+                          <span className="w-5 h-5 rounded-full border-2 border-white shadow" style={{ backgroundColor: tpl.primary_color }} title="Color principal" />
+                          <span className="w-5 h-5 rounded-full border-2 border-white shadow" style={{ backgroundColor: tpl.secondary_color }} title="Color secundario" />
                         </div>
-                        <div className="flex flex-wrap gap-1 mt-1.5">
+                        <div className="flex flex-wrap gap-1 mt-2">
                           {tpl.show_logo && <Badge variant="outline" className="text-[10px]">Logo</Badge>}
                           {tpl.show_iban && <Badge variant="outline" className="text-[10px]">IBAN</Badge>}
                           {tpl.show_signature_box && <Badge variant="outline" className="text-[10px]">Firmas</Badge>}
                           <Badge variant="outline" className="text-[10px]">IVA {tpl.iva_rate}%</Badge>
+                          <Badge variant="outline" className="text-[10px]">{tpl.font_size}</Badge>
                         </div>
-                        {tpl.is_default && <Badge className="bg-amber-100 text-amber-700 text-[10px] mt-1">⭐ Predeterminada</Badge>}
+                        {tpl.is_default && <Badge className="bg-amber-100 text-amber-700 text-[10px] mt-1.5">⭐ Predeterminada</Badge>}
                       </div>
-                      <div className="flex gap-1">
-                        <button onClick={() => setPreviewTpl(tpl)} className="p-1 text-gray-400 hover:text-purple-600" title="Vista previa">
-                          <Palette className="w-4 h-4" />
+                      <div className="flex flex-col gap-1">
+                        <button onClick={() => setPreviewTpl(tpl)} className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-purple-50" title="Vista previa">
+                          <Eye className="w-4 h-4" />
                         </button>
-                        <button onClick={() => { setEditing(tpl); setForm({...EMPTY_TPL,...tpl}); setEditDialog(true); }} className="p-1 text-gray-400 hover:text-blue-600">
+                        <button onClick={() => { setEditing(tpl); setForm({ ...EMPTY_TPL, ...tpl }); setEditDialog(true); }} className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button onClick={async () => { await base44.entities.DocumentTemplate.delete(tpl.id); loadAll(); }} className="p-1 text-red-300 hover:text-red-500">
+                        <button onClick={async () => { if (confirm('¿Eliminar plantilla?')) { await base44.entities.DocumentTemplate.delete(tpl.id); loadAll(); } }} className="p-1.5 text-red-300 hover:text-red-500 rounded hover:bg-red-50">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
                     {!tpl.is_default && (
-                      <Button size="sm" variant="outline" className="w-full mt-2 text-xs" onClick={() => handleSetDefault(tpl)}>
+                      <Button size="sm" variant="outline" className="w-full mt-3 text-xs" onClick={() => handleSetDefault(tpl)}>
                         <Star className="w-3 h-3 mr-1" />Usar como predeterminada
                       </Button>
                     )}
@@ -202,67 +264,75 @@ export default function DocumentTemplates() {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? 'Editar plantilla' : 'Nueva plantilla'}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <Input placeholder="Nombre de la plantilla *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+            <Input placeholder="Nombre de la plantilla *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-gray-500">Tipo de documento</label>
-                <Select value={form.doc_type} onValueChange={v => setForm({...form, doc_type: v})}>
+                <Select value={form.doc_type} onValueChange={v => setForm({ ...form, doc_type: v })}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>{DOC_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  <SelectContent>{DOC_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="text-xs text-gray-500">IVA (%)</label>
-                <Input type="number" value={form.iva_rate} onChange={e => setForm({...form, iva_rate: parseFloat(e.target.value)})} className="mt-1" />
+                <label className="text-xs text-gray-500">IVA por defecto (%)</label>
+                <Select value={String(form.iva_rate)} onValueChange={v => setForm({ ...form, iva_rate: parseFloat(v) })} className="mt-1">
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">0% (Exento)</SelectItem>
+                    <SelectItem value="4">4% (Superreducido)</SelectItem>
+                    <SelectItem value="10">10% (Reducido)</SelectItem>
+                    <SelectItem value="21">21% (General)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-gray-500">Color principal</label>
                 <div className="flex items-center gap-2 mt-1">
-                  <input type="color" value={form.primary_color} onChange={e => setForm({...form, primary_color: e.target.value})} className="w-10 h-8 rounded cursor-pointer" />
-                  <Input value={form.primary_color} onChange={e => setForm({...form, primary_color: e.target.value})} className="text-xs" />
+                  <input type="color" value={form.primary_color} onChange={e => setForm({ ...form, primary_color: e.target.value })} className="w-10 h-8 rounded cursor-pointer border" />
+                  <Input value={form.primary_color} onChange={e => setForm({ ...form, primary_color: e.target.value })} className="text-xs" />
                 </div>
               </div>
               <div>
                 <label className="text-xs text-gray-500">Color secundario</label>
                 <div className="flex items-center gap-2 mt-1">
-                  <input type="color" value={form.secondary_color} onChange={e => setForm({...form, secondary_color: e.target.value})} className="w-10 h-8 rounded cursor-pointer" />
-                  <Input value={form.secondary_color} onChange={e => setForm({...form, secondary_color: e.target.value})} className="text-xs" />
+                  <input type="color" value={form.secondary_color} onChange={e => setForm({ ...form, secondary_color: e.target.value })} className="w-10 h-8 rounded cursor-pointer border" />
+                  <Input value={form.secondary_color} onChange={e => setForm({ ...form, secondary_color: e.target.value })} className="text-xs" />
                 </div>
               </div>
             </div>
             <div>
               <label className="text-xs text-gray-500">Tamaño de fuente</label>
-              <Select value={form.font_size} onValueChange={v => setForm({...form, font_size: v})}>
+              <Select value={form.font_size} onValueChange={v => setForm({ ...form, font_size: v })}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="small">Pequeño</SelectItem>
-                  <SelectItem value="medium">Mediano</SelectItem>
-                  <SelectItem value="large">Grande</SelectItem>
+                  <SelectItem value="small">Pequeño (11px)</SelectItem>
+                  <SelectItem value="medium">Mediano (13px)</SelectItem>
+                  <SelectItem value="large">Grande (15px)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-600">Opciones</label>
-              {[['show_logo','Mostrar logo'],['show_iban','Mostrar IBAN/datos bancarios'],['show_signature_box','Recuadros de firma'],['is_default','Plantilla predeterminada']].map(([key, label]) => (
+            <div className="space-y-2 border rounded-lg p-3 bg-gray-50">
+              <label className="text-xs font-semibold text-gray-600">Elementos del documento</label>
+              {[['show_logo', 'Mostrar logo de empresa'], ['show_iban', 'Mostrar IBAN/datos bancarios'], ['show_signature_box', 'Recuadros de firma (técnico/cliente)'], ['is_default', 'Usar como plantilla predeterminada']].map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={!!form[key]} onChange={e => setForm({...form, [key]: e.target.checked})} />
+                  <input type="checkbox" checked={!!form[key]} onChange={e => setForm({ ...form, [key]: e.target.checked })} className="rounded" />
                   {label}
                 </label>
               ))}
             </div>
             <div>
               <label className="text-xs text-gray-500">Texto de cabecera (opcional)</label>
-              <Input className="mt-1" value={form.header_text} onChange={e => setForm({...form, header_text: e.target.value})} />
+              <Input className="mt-1" placeholder="Ej: Servicio Técnico Oficial..." value={form.header_text} onChange={e => setForm({ ...form, header_text: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs text-gray-500">Texto de pie de página</label>
-              <Input className="mt-1" value={form.footer_text} onChange={e => setForm({...form, footer_text: e.target.value})} />
+              <label className="text-xs text-gray-500">Pie de página</label>
+              <Input className="mt-1" placeholder="Ej: Gracias por su confianza." value={form.footer_text} onChange={e => setForm({ ...form, footer_text: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs text-gray-500">Texto por defecto en observaciones</label>
-              <Textarea className="mt-1" rows={3} value={form.notes_template} onChange={e => setForm({...form, notes_template: e.target.value})} />
+              <label className="text-xs text-gray-500">Observaciones por defecto</label>
+              <Textarea className="mt-1" rows={3} placeholder="Texto que aparecerá automáticamente en observaciones" value={form.notes_template} onChange={e => setForm({ ...form, notes_template: e.target.value })} />
             </div>
             <Button onClick={handleSave} className="w-full bg-purple-600">
               <Save className="w-4 h-4 mr-2" />{editing ? 'Actualizar plantilla' : 'Crear plantilla'}
@@ -273,10 +343,17 @@ export default function DocumentTemplates() {
 
       {/* Preview dialog */}
       <Dialog open={!!previewTpl} onOpenChange={() => setPreviewTpl(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Vista previa: {previewTpl?.name}</DialogTitle></DialogHeader>
-          {previewTpl && <PreviewDoc tpl={previewTpl} />}
-          <PrintButton contentRef={printRef} title={`Plantilla ${previewTpl?.name}`} />
+          <div className="border rounded-lg overflow-hidden">
+            {previewTpl && <PreviewDoc tpl={previewTpl} />}
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={() => {
+              const w = window.open('', '_blank');
+              if (w) { w.document.write(`<html><body style="margin:0">${printRef.current?.innerHTML || ''}</body></html>`); w.print(); }
+            }}>Imprimir vista previa</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
