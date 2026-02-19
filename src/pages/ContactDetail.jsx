@@ -148,8 +148,14 @@ export default function ContactDetail() {
       <Card>
         <CardContent className="p-5">
           <div className="flex items-start gap-4 mb-4">
-            <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl flex-shrink-0">
-              {contact.name?.[0] || 'C'}
+            <div className="relative w-14 h-14 flex-shrink-0">
+              {contact.company_logo_url || contact.photo_url ? (
+                <img src={contact.company_logo_url || contact.photo_url} alt="" className="w-14 h-14 rounded-full object-cover border" />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl">
+                  {contact.name?.[0] || 'C'}
+                </div>
+              )}
             </div>
             <div className="flex-1">
               <h1 className="text-xl font-bold">{contact.name} {contact.surname}</h1>
@@ -161,7 +167,12 @@ export default function ContactDetail() {
                 {contact.pending_amount > 0 && <Badge className="bg-red-100 text-red-700">⚠️ Debe {contact.pending_amount?.toFixed(2)} €</Badge>}
               </div>
             </div>
-            <Button size="sm" variant="outline" onClick={() => setEditingContact(!editingContact)}>Editar</Button>
+            <div className="flex gap-1">
+              <Button size="sm" variant="outline" onClick={() => setUploadDialog(true)} title="Subir documento escaneado">
+                <Upload className="w-3.5 h-3.5" />
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingContact(!editingContact)}>Editar</Button>
+            </div>
           </div>
 
           {editingContact ? (
