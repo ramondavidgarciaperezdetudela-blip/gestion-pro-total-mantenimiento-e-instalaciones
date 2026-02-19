@@ -362,6 +362,9 @@ export default function ContactDetail() {
         {/* ARCHIVOS */}
         <TabsContent value="files">
           <div className="space-y-2 mt-2">
+            <Button size="sm" variant="outline" onClick={() => setUploadDialog(true)}>
+              <Upload className="w-4 h-4 mr-1" />Subir documento
+            </Button>
             {documents.filter(d => !['calculo_termico', 'calculo_solar'].includes(d.doc_type)).map(d => (
               <Card key={d.id}>
                 <CardContent className="p-3 flex justify-between items-center">
