@@ -6,7 +6,7 @@ import {
   Home, Users, FileText, Calendar, Wrench, ClipboardList,
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
   Menu, X, Building2, FolderOpen,
-  Zap, BarChart3, LogOut, StickyNote, Package
+  Zap, BarChart3, LogOut, StickyNote, Package, Palette
 } from 'lucide-react';
 
 const navItems = [
@@ -27,7 +27,9 @@ const navItems = [
   { name: 'Manuales', page: 'Manuals', icon: BookOpen },
   { name: 'Proveedores', page: 'Suppliers', icon: Building2 },
   { name: 'Informes', page: 'Reports', icon: BarChart3 },
+  { name: 'Presupuesto IA', page: 'AIBudget', icon: Bot },
   { name: 'Asistente IA', page: 'AIAssistant', icon: Bot },
+  { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette },
   { name: 'Configuración', page: 'CompanyConfig', icon: Settings },
 ];
 
