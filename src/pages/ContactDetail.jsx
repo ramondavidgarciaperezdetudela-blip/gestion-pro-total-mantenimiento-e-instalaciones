@@ -310,6 +310,9 @@ export default function ContactDetail() {
         {/* MANTENIMIENTO */}
         <TabsContent value="maint">
           <div className="space-y-2 mt-2">
+            <Link to={createPageUrl(`Maintenance?contact_id=${contactId}`)}>
+              <Button size="sm" className="bg-cyan-600"><Plus className="w-4 h-4 mr-1" />Nueva ficha mantenimiento</Button>
+            </Link>
             {maintenance.map(m => (
               <Card key={m.id}>
                 <CardContent className="p-3">
