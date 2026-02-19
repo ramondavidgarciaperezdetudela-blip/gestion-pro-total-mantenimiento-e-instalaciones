@@ -56,8 +56,10 @@ import Contacts from './pages/Contacts';
 import Documents from './pages/Documents';
 import ElectricalCalc from './pages/ElectricalCalc';
 import Home from './pages/Home';
+import Inventory from './pages/Inventory';
 import Maintenance from './pages/Maintenance';
 import Manuals from './pages/Manuals';
+import Notes from './pages/Notes';
 import Projects from './pages/Projects';
 import Regulations from './pages/Regulations';
 import Reports from './pages/Reports';
@@ -65,8 +67,8 @@ import SAT from './pages/SAT';
 import SolarCalc from './pages/SolarCalc';
 import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
-import Notes from './pages/Notes';
-import Inventory from './pages/Inventory';
+import AIBudget from './pages/AIBudget';
+import DocumentTemplates from './pages/DocumentTemplates';
 import __Layout from './Layout.jsx';
 
 
@@ -80,8 +82,10 @@ export const PAGES = {
     "Documents": Documents,
     "ElectricalCalc": ElectricalCalc,
     "Home": Home,
+    "Inventory": Inventory,
     "Maintenance": Maintenance,
     "Manuals": Manuals,
+    "Notes": Notes,
     "Projects": Projects,
     "Regulations": Regulations,
     "Reports": Reports,
@@ -89,8 +93,8 @@ export const PAGES = {
     "SolarCalc": SolarCalc,
     "Suppliers": Suppliers,
     "ThermalCalc": ThermalCalc,
-    "Notes": Notes,
-    "Inventory": Inventory,
+    "AIBudget": AIBudget,
+    "DocumentTemplates": DocumentTemplates,
 }
 
 export const pagesConfig = {
