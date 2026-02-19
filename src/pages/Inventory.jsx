@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Trash2, Edit, Package, Wrench, AlertTriangle, Upload } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, Package, Wrench, AlertTriangle, Upload, Printer } from 'lucide-react';
+import PrintButton from '../components/PrintButton';
 
 const EQ_CATEGORIES = ['herramienta', 'maquinaria', 'vehiculo', 'instrumento_medicion', 'equipo_proteccion', 'otro'];
 const EQ_STATUSES = ['operativo', 'en_revision', 'averiado', 'baja'];
@@ -21,6 +22,7 @@ const EMPTY_STOCK = { name: '', reference: '', category: 'otro', supplier_name: 
 export default function Inventory() {
   const [equipment, setEquipment] = useState([]);
   const [stock, setStock] = useState([]);
+  const printRef = useRef(null);
   const [eqSearch, setEqSearch] = useState('');
   const [stockSearch, setStockSearch] = useState('');
   const [eqDialog, setEqDialog] = useState(false);
@@ -96,9 +98,12 @@ export default function Inventory() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold flex items-center gap-2">
-        <Package className="w-6 h-6 text-slate-600" />Inventario
-      </h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Package className="w-6 h-6 text-slate-600" />Inventario
+        </h1>
+        <PrintButton contentRef={printRef} title="Inventario" />
+      </div>
 
       {lowStock.length > 0 && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-start gap-2">
@@ -110,7 +115,7 @@ export default function Inventory() {
         </div>
       )}
 
-      <Tabs defaultValue="maquinaria">
+      <div ref={printRef}><Tabs defaultValue="maquinaria">
         <TabsList className="w-full">
           <TabsTrigger value="maquinaria" className="flex-1">
             <Wrench className="w-4 h-4 mr-1" />Maquinaria y equipos ({equipment.length})
@@ -234,7 +239,7 @@ export default function Inventory() {
         </TabsContent>
       </Tabs>
 
-      {/* Equipment Dialog */}
+      </div>{/* Equipment Dialog */}
       <Dialog open={eqDialog} onOpenChange={o => { setEqDialog(o); if (!o) { setEditingEq(null); setEqForm(EMPTY_EQ); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingEq ? 'Editar equipo' : 'Nuevo equipo/maquinaria'}</DialogTitle></DialogHeader>
