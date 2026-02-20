@@ -20,6 +20,7 @@ const STATUSES = ['pendiente', 'en_curso', 'completada', 'cancelada'];
 export default function SAT() {
   const [orders, setOrders] = useState([]);
   const [contacts, setContacts] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -36,8 +37,13 @@ export default function SAT() {
   useEffect(() => {
     Promise.all([
       base44.entities.SATOrder.list('-date', 500),
-      base44.entities.Contact.list()
-    ]).then(([o, c]) => { setOrders(o); setContacts(c); });
+      base44.entities.Contact.list(),
+      base44.entities.CompanySettings.list(),
+    ]).then(([o, c, settings]) => {
+      setOrders(o);
+      setContacts(c);
+      if (settings[0]?.technicians) setTechnicians(settings[0].technicians);
+    });
   }, []);
 
   const handleSave = async () => {
@@ -119,7 +125,20 @@ export default function SAT() {
               <Textarea placeholder="Descripción del problema" value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
               <Textarea placeholder="Diagnóstico" value={form.diagnosis} onChange={e => setForm({...form, diagnosis: e.target.value})} />
               <Textarea placeholder="Solución aplicada" value={form.solution} onChange={e => setForm({...form, solution: e.target.value})} />
-              <Input placeholder="Técnico" value={form.technician} onChange={e => setForm({...form, technician: e.target.value})} />
+              {technicians.length > 0 ? (
+                <Select value={form.technician} onValueChange={v => setForm({...form, technician: v})}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar técnico" /></SelectTrigger>
+                  <SelectContent>
+                    {technicians.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    <SelectItem value="__manual__">Escribir manualmente...</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input placeholder="Técnico" value={form.technician} onChange={e => setForm({...form, technician: e.target.value})} />
+              )}
+              {form.technician === '__manual__' && (
+                <Input placeholder="Nombre del técnico" onChange={e => setForm({...form, technician: e.target.value})} />
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <Input type="number" placeholder="Horas trabajo" value={form.labor_hours} onChange={e => setForm({...form, labor_hours: parseFloat(e.target.value) || 0})} />
                 <Input type="number" placeholder="€/hora" value={form.labor_rate} onChange={e => setForm({...form, labor_rate: parseFloat(e.target.value) || 0})} />
