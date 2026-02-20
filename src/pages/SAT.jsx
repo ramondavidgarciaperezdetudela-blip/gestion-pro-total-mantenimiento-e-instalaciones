@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Wrench, Trash2, Search, Edit, Eye } from 'lucide-react';
+import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
@@ -195,21 +195,50 @@ export default function SAT() {
         </DialogContent>
       </Dialog>
 
+      {filtered.length === 0 && (
+        <div className="text-center py-12 text-gray-400">
+          <Wrench className="w-10 h-10 mx-auto mb-2 opacity-30" />
+          <p>No hay órdenes SAT</p>
+          <p className="text-xs mt-1">Crea una nueva orden con el botón de arriba</p>
+        </div>
+      )}
       <div className="space-y-2">
         {filtered.map(order => (
-          <Card key={order.id} className="hover:shadow-sm cursor-pointer" onClick={() => setPreviewOrder(order)}>
-            <CardContent className="p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Wrench className="w-5 h-5 text-orange-500" />
-                <div>
-                  <p className="font-medium text-sm">#{order.order_number} - {order.contact_name}</p>
-                  <p className="text-xs text-gray-500">{order.date} | {order.type} | {order.equipment_type?.replace(/_/g, ' ')}</p>
+          <Card key={order.id} className="hover:shadow-md transition-shadow">
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <Wrench className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm truncate">#{order.order_number || 'S/N'} — {order.contact_name}</p>
+                    <p className="text-xs text-gray-500">{order.date} | {order.type?.replace(/_/g,' ')} | {order.equipment_type?.replace(/_/g, ' ')}</p>
+                    {order.description && <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">{order.description}</p>}
+                    {order.technician && <p className="text-xs text-blue-600 mt-0.5">👷 {order.technician}</p>}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                  <Badge className={statusColors[order.status]}>{order.status}</Badge>
+                  {order.total > 0 && <span className="text-xs font-semibold text-gray-700">{order.total?.toFixed(2)} €</span>}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge className={statusColors[order.status]}>{order.status}</Badge>
-                <button onClick={(e) => { e.stopPropagation(); handleEdit(order); }} className="p-1 text-gray-400 hover:text-gray-600"><Edit className="w-4 h-4" /></button>
-                <button onClick={(e) => { e.stopPropagation(); handleDelete(order.id); }} className="p-1 text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+              <div className="flex gap-1 mt-2 border-t pt-2">
+                <button onClick={() => setPreviewOrder(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-orange-50 text-orange-700 hover:bg-orange-100">
+                  <Eye className="w-3 h-3" /> Ver
+                </button>
+                <button onClick={() => handleEdit(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                  <Edit className="w-3 h-3" /> Editar
+                </button>
+                <button
+                  onClick={() => {
+                    const msg = encodeURIComponent(`Orden SAT #${order.order_number}\nCliente: ${order.contact_name}\nFecha: ${order.date}\nTipo: ${order.type}\nDescripción: ${order.description || '-'}\nEstado: ${order.status}`);
+                    window.open(`https://wa.me/?text=${msg}`, '_blank');
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+                  <Phone className="w-3 h-3" /> WA
+                </button>
+                <button onClick={() => handleDelete(order.id)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
+                  <Trash2 className="w-3 h-3" /> Eliminar
+                </button>
               </div>
             </CardContent>
           </Card>
