@@ -46,6 +46,7 @@ export default function CompanyConfig() {
           iban: d.iban || '',
           printer_config: d.printer_config || { margin_top: 15, margin_bottom: 15, margin_left: 15, margin_right: 15, paper_size: 'A4' },
           email_config: d.email_config || { smtp_host: '', smtp_port: 587, smtp_user: '', smtp_pass: '', from_name: '', use_ssl: true },
+          technicians: d.technicians || [],
           payment_terms: d.payment_terms || form.payment_terms,
           observations_climate: d.observations_climate || form.observations_climate,
           observations_electric: d.observations_electric || form.observations_electric,
