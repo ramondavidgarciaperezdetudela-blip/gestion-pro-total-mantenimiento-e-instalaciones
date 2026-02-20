@@ -6,7 +6,7 @@ import {
   Home, Users, FileText, Calendar, Wrench, ClipboardList,
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
   Menu, X, Building2, FolderOpen,
-  Zap, BarChart3, LogOut, StickyNote, Package, Palette
+  Zap, BarChart3, LogOut, StickyNote, Package, Palette, Battery
 } from 'lucide-react';
 
 const navItems = [
@@ -22,6 +22,7 @@ const navItems = [
   { name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer },
   { name: 'Cámara Frigorífica', page: 'ColdRoomCalc', icon: Thermometer },
   { name: 'Cálculo Solar', page: 'SolarCalc', icon: Sun },
+  { name: 'Cálculo Baterías', page: 'BatteryCalc', icon: Battery },
   { name: 'Cálculo Eléctrico', page: 'ElectricalCalc', icon: Zap },
   { name: 'Normativas', page: 'Regulations', icon: Shield },
   { name: 'Manuales', page: 'Manuals', icon: BookOpen },
@@ -31,6 +32,15 @@ const navItems = [
   { name: 'Asistente IA', page: 'AIAssistant', icon: Bot },
   { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette },
   { name: 'Configuración', page: 'CompanyConfig', icon: Settings },
+];
+
+// Bottom tabs for mobile
+const mobileTabItems = [
+  { name: 'Inicio', page: 'Home', icon: Home },
+  { name: 'Agenda', page: 'Agenda', icon: Calendar },
+  { name: 'Contactos', page: 'Contacts', icon: Users },
+  { name: 'Documentos', page: 'Documents', icon: FileText },
+  { name: 'SAT', page: 'SAT', icon: Wrench },
 ];
 
 export default function Layout({ children, currentPageName }) {
