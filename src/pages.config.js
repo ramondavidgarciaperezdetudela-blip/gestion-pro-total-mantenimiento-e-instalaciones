@@ -48,11 +48,13 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import AIAssistant from './pages/AIAssistant';
+import AIBudget from './pages/AIBudget';
 import Agenda from './pages/Agenda';
 import ColdRoomCalc from './pages/ColdRoomCalc';
 import CompanyConfig from './pages/CompanyConfig';
 import ContactDetail from './pages/ContactDetail';
 import Contacts from './pages/Contacts';
+import DocumentTemplates from './pages/DocumentTemplates';
 import Documents from './pages/Documents';
 import ElectricalCalc from './pages/ElectricalCalc';
 import Home from './pages/Home';
@@ -67,18 +69,18 @@ import SAT from './pages/SAT';
 import SolarCalc from './pages/SolarCalc';
 import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
-import AIBudget from './pages/AIBudget';
-import DocumentTemplates from './pages/DocumentTemplates';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AIAssistant": AIAssistant,
+    "AIBudget": AIBudget,
     "Agenda": Agenda,
     "ColdRoomCalc": ColdRoomCalc,
     "CompanyConfig": CompanyConfig,
     "ContactDetail": ContactDetail,
     "Contacts": Contacts,
+    "DocumentTemplates": DocumentTemplates,
     "Documents": Documents,
     "ElectricalCalc": ElectricalCalc,
     "Home": Home,
@@ -93,8 +95,6 @@ export const PAGES = {
     "SolarCalc": SolarCalc,
     "Suppliers": Suppliers,
     "ThermalCalc": ThermalCalc,
-    "AIBudget": AIBudget,
-    "DocumentTemplates": DocumentTemplates,
 }
 
 export const pagesConfig = {
