@@ -171,6 +171,25 @@ export default function CompanyConfig() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="tecnicos">
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><UserCog className="w-5 h-5" />Gestión de Técnicos</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                <p className="font-medium mb-1">👷 Técnicos del equipo</p>
+                <p className="text-xs">Añade los nombres de tus técnicos para seleccionarlos fácilmente en órdenes SAT, fichas de mantenimiento, facturas, etc.</p>
+              </div>
+              <TechnicianManager
+                technicians={form.technicians || []}
+                onChange={list => setForm({...form, technicians: list})}
+              />
+              <Button onClick={handleSave} className={`w-full ${saved ? 'bg-green-600' : 'bg-blue-600'}`}>
+                <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar técnicos'}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="correo">
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Mail className="w-5 h-5" />Configuración de correo electrónico</CardTitle></CardHeader>
