@@ -91,12 +91,13 @@ export default function CompanyConfig() {
       </div>
 
       <Tabs defaultValue="empresa">
-        <TabsList className="w-full flex-wrap">
-          <TabsTrigger value="empresa" className="flex-1">Datos empresa</TabsTrigger>
-          <TabsTrigger value="correo" className="flex-1">Correo</TabsTrigger>
-          <TabsTrigger value="impresora" className="flex-1">Impresora</TabsTrigger>
-          <TabsTrigger value="documentos" className="flex-1">Documentos</TabsTrigger>
-          <TabsTrigger value="escaner" className="flex-1">Escáner</TabsTrigger>
+        <TabsList className="w-full flex-wrap h-auto gap-1">
+          <TabsTrigger value="empresa" className="flex-1 text-xs">Datos empresa</TabsTrigger>
+          <TabsTrigger value="tecnicos" className="flex-1 text-xs">Técnicos</TabsTrigger>
+          <TabsTrigger value="correo" className="flex-1 text-xs">Correo</TabsTrigger>
+          <TabsTrigger value="impresora" className="flex-1 text-xs">Impresora</TabsTrigger>
+          <TabsTrigger value="documentos" className="flex-1 text-xs">Documentos</TabsTrigger>
+          <TabsTrigger value="escaner" className="flex-1 text-xs">Escáner</TabsTrigger>
         </TabsList>
 
         <TabsContent value="empresa">
