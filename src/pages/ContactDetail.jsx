@@ -508,13 +508,35 @@ export default function ContactDetail() {
             {notes.map(n => (
               <Card key={n.id}>
                 <CardContent className="p-3">
-                  <p className="font-medium text-sm">{n.title}</p>
-                  <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{n.content}</p>
-                  <p className="text-[10px] text-gray-400 mt-1">{n.date}</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-sm">{n.title}</p>
+                      <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{n.content}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">{n.date}</p>
+                    </div>
+                    <button onClick={() => deleteNote(n.id)} className="text-red-400 hover:text-red-600 ml-2">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
             {notes.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Sin notas</p>}
+          </div>
+        </TabsContent>
+
+        {/* PRESUPUESTO IA */}
+        <TabsContent value="aibudget">
+          <div className="space-y-3 mt-2">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm text-purple-800">
+              <p className="font-medium mb-1">🤖 Presupuesto Asistido por IA</p>
+              <p className="text-xs">Los presupuestos generados con IA se guardan aquí vinculados a este cliente.</p>
+            </div>
+            <Link to={createPageUrl(`AIBudget?contact_id=${contactId}`)}>
+              <Button className="bg-purple-600 hover:bg-purple-700">
+                <Bot className="w-4 h-4 mr-2" />Nuevo Presupuesto IA
+              </Button>
+            </Link>
           </div>
         </TabsContent>
       </Tabs>
