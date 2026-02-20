@@ -321,7 +321,7 @@ export default function ContactDetail() {
             <Link to={createPageUrl(`Documents?contact_id=${contactId}&type=factura`)}>
               <Button size="sm" className="bg-violet-600"><Plus className="w-4 h-4 mr-1" />Nueva factura</Button>
             </Link>
-            {docsByType.factura.map(inv => <DocCard key={inv.id} doc={inv} type="factura" />)}
+            {docsByType.factura.map(inv => <DocCard key={inv.id} doc={inv} type="factura" onDelete={deleteInvoice} />)}
             {docsByType.factura.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Sin facturas</p>}
           </div>
         </TabsContent>
