@@ -397,9 +397,10 @@ export default function ContactDetail() {
         <TabsContent value="calcs">
           <div className="space-y-2 mt-2">
             <div className="flex gap-2 flex-wrap">
-              <Link to={createPageUrl('ThermalCalc')}><Button size="sm" variant="outline">+ Cálculo Térmico</Button></Link>
+              <Link to={createPageUrl('ThermalCalc')}><Button size="sm" variant="outline">+ Térmico</Button></Link>
               <Link to={createPageUrl('ColdRoomCalc')}><Button size="sm" variant="outline">+ Cámara</Button></Link>
               <Link to={createPageUrl('SolarCalc')}><Button size="sm" variant="outline">+ Solar</Button></Link>
+              <Link to={createPageUrl('BatteryCalc')}><Button size="sm" variant="outline">+ Baterías</Button></Link>
               <Link to={createPageUrl('ElectricalCalc')}><Button size="sm" variant="outline">+ Eléctrico</Button></Link>
             </div>
             {calculations.map(c => (
