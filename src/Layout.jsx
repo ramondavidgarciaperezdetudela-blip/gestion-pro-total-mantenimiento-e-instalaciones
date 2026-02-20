@@ -58,13 +58,27 @@ export default function Layout({ children, currentPageName }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex" dir="ltr">
+    <div className="min-h-screen bg-slate-50 flex select-none overscroll-none" dir="ltr" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <style>{`
         :root {
           --primary: #1e3a5f;
           --primary-light: #2d5f8a;
           --accent: #0ea5e9;
           --accent-light: #38bdf8;
+        }
+        @media (prefers-color-scheme: dark) {
+          :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #f1f5f9;
+          }
+        }
+        html { overscroll-behavior: none; }
+        .no-print { display: block; }
+        @media print {
+          .no-print { display: none !important; }
+          table { border-collapse: collapse !important; }
+          table td, table th { border: 1px solid #ccc !important; padding: 4px !important; }
         }
       `}</style>
 
