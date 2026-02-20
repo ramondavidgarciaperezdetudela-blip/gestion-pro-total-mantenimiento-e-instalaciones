@@ -433,12 +433,26 @@ export default function ContactDetail() {
             </Button>
             {documents.filter(d => !['calculo_termico', 'calculo_solar'].includes(d.doc_type)).map(d => (
               <Card key={d.id}>
-                <CardContent className="p-3 flex justify-between items-center">
-                  <div>
-                    <p className="font-medium text-sm">{d.title}</p>
-                    <p className="text-xs text-gray-500">{d.doc_type?.replace(/_/g, ' ')} | {d.date}</p>
+                <CardContent className="p-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{d.title}</p>
+                      <p className="text-xs text-gray-500">{d.doc_type?.replace(/_/g, ' ')} | {d.date}</p>
+                    </div>
                   </div>
-                  {d.file_url && <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs">Ver</a>}
+                  <div className="flex gap-1 mt-2 flex-wrap">
+                    {d.file_url && (
+                      <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                        <Eye className="w-3 h-3" /> Ver
+                      </a>
+                    )}
+                    <button onClick={() => sendWhatsApp(`Documento: ${d.title} — ${d.doc_type?.replace(/_/g,' ')} del ${d.date}`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+                      <Phone className="w-3 h-3" /> WA
+                    </button>
+                    <button onClick={() => deleteDocument(d.id)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
+                      <Trash2 className="w-3 h-3" /> Eliminar
+                    </button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
