@@ -8,6 +8,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2 } from 'lucide-react';
 
+function TechnicianManager({ technicians, onChange }) {
+  const [newName, setNewName] = useState('');
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <Input
+          placeholder="Nombre del técnico"
+          value={newName}
+          onChange={e => setNewName(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && newName.trim()) { onChange([...technicians, newName.trim()]); setNewName(''); }}}
+        />
+        <Button variant="outline" onClick={() => { if (newName.trim()) { onChange([...technicians, newName.trim()]); setNewName(''); }}}>
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+      {technicians.length === 0 && <p className="text-sm text-gray-400 text-center py-4">No hay técnicos. Añade el primero.</p>}
+      <div className="space-y-1">
+        {technicians.map((t, i) => (
+          <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+            <span className="text-sm font-medium">👷 {t}</span>
+            <button onClick={() => onChange(technicians.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-red-600">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CompanyConfig() {
   const [form, setForm] = useState({
     company_name: '', nif: '', address: '', city: '', province: '', postal_code: '',
