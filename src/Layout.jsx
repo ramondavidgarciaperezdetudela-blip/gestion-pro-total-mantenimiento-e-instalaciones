@@ -196,9 +196,31 @@ export default function Layout({ children, currentPageName }) {
           </h2>
           <div className="w-6" />
         </header>
-        <main className="p-4 md:p-6 max-w-7xl mx-auto relative z-10">
+        <main className="p-4 md:p-6 max-w-7xl mx-auto relative z-10 pb-20 lg:pb-6">
           {children}
         </main>
+
+        {/* Mobile bottom tab bar */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="flex">
+            {mobileTabItems.map(item => {
+              const Icon = item.icon;
+              const isActive = currentPageName === item.page;
+              return (
+                <Link
+                  key={item.page}
+                  to={createPageUrl(item.page)}
+                  className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${
+                    isActive ? 'text-[var(--accent)]' : 'text-gray-400'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">{item.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
       </div>
     </div>
   );
