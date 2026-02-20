@@ -343,7 +343,7 @@ export default function ContactDetail() {
             <Link to={createPageUrl(`Documents?contact_id=${contactId}&type=recibo`)}>
               <Button size="sm" className="bg-teal-600"><Plus className="w-4 h-4 mr-1" />Nuevo recibo</Button>
             </Link>
-            {docsByType.recibo.map(inv => <DocCard key={inv.id} doc={inv} type="recibo" />)}
+            {docsByType.recibo.map(inv => <DocCard key={inv.id} doc={inv} type="recibo" onDelete={deleteInvoice} />)}
             {docsByType.recibo.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Sin recibos</p>}
           </div>
         </TabsContent>
