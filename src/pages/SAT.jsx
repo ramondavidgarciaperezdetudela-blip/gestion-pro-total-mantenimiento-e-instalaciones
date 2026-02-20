@@ -168,30 +168,77 @@ export default function SAT() {
 
       {/* Preview */}
       <Dialog open={!!previewOrder} onOpenChange={() => setPreviewOrder(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           {previewOrder && (
-            <div ref={printRef}>
-              <CompanyHeader className="mb-3" />
-              <h2 className="text-xl font-bold">Orden SAT #{previewOrder.order_number}</h2>
-              <div className="grid grid-cols-2 gap-2 text-sm mt-3">
-                <p><span className="text-gray-500">Cliente:</span> {previewOrder.contact_name}</p>
-                <p><span className="text-gray-500">Fecha:</span> {previewOrder.date}</p>
-                <p><span className="text-gray-500">Tipo:</span> {previewOrder.type}</p>
-                <p><span className="text-gray-500">Equipo:</span> {previewOrder.equipment_type?.replace(/_/g, ' ')}</p>
+            <>
+              <div ref={printRef} className="space-y-3">
+                <CompanyHeader />
+                <div className="border-b pb-2">
+                  <h2 className="text-xl font-bold text-orange-700">Orden SAT #{previewOrder.order_number || 'S/N'}</h2>
+                  <Badge className={statusColors[previewOrder.status]}>{previewOrder.status}</Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div><span className="text-gray-500 font-medium">Cliente:</span><p className="font-semibold">{previewOrder.contact_name}</p></div>
+                  <div><span className="text-gray-500 font-medium">Fecha:</span><p>{previewOrder.date}</p></div>
+                  <div><span className="text-gray-500 font-medium">Tipo:</span><p className="capitalize">{previewOrder.type?.replace(/_/g,' ')}</p></div>
+                  <div><span className="text-gray-500 font-medium">Equipo:</span><p className="capitalize">{previewOrder.equipment_type?.replace(/_/g, ' ')}</p></div>
+                  {previewOrder.technician && <div><span className="text-gray-500 font-medium">Técnico:</span><p>{previewOrder.technician}</p></div>}
+                </div>
+                {previewOrder.description && (
+                  <div className="bg-gray-50 rounded p-3">
+                    <p className="text-xs font-medium text-gray-500 uppercase mb-1">Descripción del problema</p>
+                    <p className="text-sm whitespace-pre-wrap">{previewOrder.description}</p>
+                  </div>
+                )}
+                {previewOrder.diagnosis && (
+                  <div className="bg-blue-50 rounded p-3">
+                    <p className="text-xs font-medium text-blue-500 uppercase mb-1">Diagnóstico</p>
+                    <p className="text-sm whitespace-pre-wrap">{previewOrder.diagnosis}</p>
+                  </div>
+                )}
+                {previewOrder.solution && (
+                  <div className="bg-green-50 rounded p-3">
+                    <p className="text-xs font-medium text-green-500 uppercase mb-1">Solución aplicada</p>
+                    <p className="text-sm whitespace-pre-wrap">{previewOrder.solution}</p>
+                  </div>
+                )}
+                {previewOrder.materials_used?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase mb-1">Materiales utilizados</p>
+                    <table className="w-full text-xs border-collapse">
+                      <thead><tr className="bg-gray-100"><th className="border p-1 text-left">Material</th><th className="border p-1 text-right">Cant.</th><th className="border p-1 text-right">€/ud</th><th className="border p-1 text-right">Total</th></tr></thead>
+                      <tbody>{previewOrder.materials_used.map((m, i) => (
+                        <tr key={i}><td className="border p-1">{m.material}</td><td className="border p-1 text-right">{m.quantity}</td><td className="border p-1 text-right">{m.unit_price}</td><td className="border p-1 text-right">{((m.quantity||0)*(m.unit_price||0)).toFixed(2)}</td></tr>
+                      ))}</tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2 text-sm border-t pt-2">
+                  <p><span className="text-gray-500">Horas trabajo:</span> {previewOrder.labor_hours} h × {previewOrder.labor_rate} €/h = <strong>{((previewOrder.labor_hours||0)*(previewOrder.labor_rate||0)).toFixed(2)} €</strong></p>
+                  <p className="text-right font-bold text-lg text-orange-700">TOTAL: {previewOrder.total?.toFixed(2)} €</p>
+                </div>
+                {previewOrder.photos_before?.length > 0 && (
+                  <div><p className="text-xs text-gray-500 font-medium mb-1">Fotos antes:</p><div className="flex flex-wrap gap-2">{previewOrder.photos_before.map((p, i) => <img key={i} src={p} alt="" className="w-28 h-28 object-cover rounded border" />)}</div></div>
+                )}
+                {previewOrder.photos_after?.length > 0 && (
+                  <div><p className="text-xs text-gray-500 font-medium mb-1">Fotos después:</p><div className="flex flex-wrap gap-2">{previewOrder.photos_after.map((p, i) => <img key={i} src={p} alt="" className="w-28 h-28 object-cover rounded border" />)}</div></div>
+                )}
+                {previewOrder.notes && <div className="bg-amber-50 rounded p-3 text-sm"><p className="text-xs font-medium text-amber-600 mb-1">Notas</p>{previewOrder.notes}</div>}
               </div>
-              {previewOrder.description && <div className="mt-3"><p className="text-xs text-gray-500">Descripción:</p><p className="text-sm">{previewOrder.description}</p></div>}
-              {previewOrder.diagnosis && <div className="mt-2"><p className="text-xs text-gray-500">Diagnóstico:</p><p className="text-sm">{previewOrder.diagnosis}</p></div>}
-              {previewOrder.solution && <div className="mt-2"><p className="text-xs text-gray-500">Solución:</p><p className="text-sm">{previewOrder.solution}</p></div>}
-              {previewOrder.photos_before?.length > 0 && (
-                <div className="mt-3"><p className="text-xs text-gray-500 mb-1">Fotos antes:</p><div className="flex flex-wrap gap-2">{previewOrder.photos_before.map((p, i) => <img key={i} src={p} className="w-24 h-24 object-cover rounded" />)}</div></div>
-              )}
-              {previewOrder.photos_after?.length > 0 && (
-                <div className="mt-3"><p className="text-xs text-gray-500 mb-1">Fotos después:</p><div className="flex flex-wrap gap-2">{previewOrder.photos_after.map((p, i) => <img key={i} src={p} className="w-24 h-24 object-cover rounded" />)}</div></div>
-              )}
-              <p className="font-bold mt-3 text-right">Total: {previewOrder.total?.toFixed(2)} €</p>
-            </div>
+              <div className="flex gap-2 mt-3 no-print">
+                <PrintButton contentRef={printRef} title={`SAT_${previewOrder.order_number}`} />
+                <Button variant="outline" size="sm" onClick={() => { handleEdit(previewOrder); setPreviewOrder(null); }}>
+                  <Edit className="w-4 h-4 mr-1" /> Editar
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  const msg = encodeURIComponent(`*Orden SAT #${previewOrder.order_number}*\nCliente: ${previewOrder.contact_name}\nFecha: ${previewOrder.date}\nTipo: ${previewOrder.type}\n\nDescripción: ${previewOrder.description || '-'}\n\nSolución: ${previewOrder.solution || '-'}\n\nTotal: ${previewOrder.total?.toFixed(2)} €`);
+                  window.open(`https://wa.me/?text=${msg}`, '_blank');
+                }} className="text-green-700">
+                  <Phone className="w-4 h-4 mr-1" /> WhatsApp
+                </Button>
+              </div>
+            </>
           )}
-          <PrintButton contentRef={printRef} title={`SAT ${previewOrder?.order_number}`} />
         </DialogContent>
       </Dialog>
 
