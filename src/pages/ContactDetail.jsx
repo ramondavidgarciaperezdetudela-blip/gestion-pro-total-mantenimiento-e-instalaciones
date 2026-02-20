@@ -313,6 +313,7 @@ export default function ContactDetail() {
           <TabsTrigger value="files" className="flex-1 text-xs min-w-[80px]">Archivos ({documents.length})</TabsTrigger>
           <TabsTrigger value="citas" className="flex-1 text-xs min-w-[80px]">Citas ({appointments.length})</TabsTrigger>
           <TabsTrigger value="notes" className="flex-1 text-xs min-w-[80px]">Notas ({notes.length})</TabsTrigger>
+          <TabsTrigger value="aibudget" className="flex-1 text-xs min-w-[80px]">Presup. IA</TabsTrigger>
         </TabsList>
 
         {/* FACTURAS */}
