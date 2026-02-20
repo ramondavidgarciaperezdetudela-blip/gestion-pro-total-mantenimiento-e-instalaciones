@@ -126,16 +126,76 @@ export default function ContactDetail() {
     cancelada: appointments.filter(a => a.status === 'cancelada'),
   };
 
-  const DocCard = ({ doc, type }) => (
+  const deleteInvoice = async (id) => {
+    await base44.entities.Invoice.delete(id);
+    const inv = await base44.entities.Invoice.filter({ contact_id: contactId });
+    setInvoices(inv);
+  };
+
+  const deleteDocument = async (id) => {
+    await base44.entities.ClientDocument.delete(id);
+    const docs = await base44.entities.ClientDocument.filter({ contact_id: contactId });
+    setDocuments(docs);
+  };
+
+  const deleteNote = async (id) => {
+    await base44.entities.ClientNote.delete(id);
+    const nts = await base44.entities.ClientNote.filter({ contact_id: contactId });
+    setNotes(nts);
+  };
+
+  const sendWhatsApp = (text) => {
+    const phone = contact.phone?.replace(/\D/g, '');
+    const msg = encodeURIComponent(text);
+    if (phone) {
+      window.open(`https://wa.me/34${phone}?text=${msg}`, '_blank');
+    } else {
+      window.open(`https://wa.me/?text=${msg}`, '_blank');
+    }
+  };
+
+  const sendEmail = (subject, body) => {
+    window.open(`mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+  };
+
+  const DocCard = ({ doc, type, onDelete }) => (
     <Card className="hover:shadow-sm">
-      <CardContent className="p-3 flex items-center justify-between">
-        <div>
-          <p className="font-medium text-sm">{doc.doc_number || doc.title || doc.order_number || `${type} sin nº`}</p>
-          <p className="text-xs text-gray-500">{doc.date} {doc.total != null ? `| ${doc.total?.toFixed(2)} €` : ''}</p>
+      <CardContent className="p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm truncate">{doc.doc_number || doc.title || doc.order_number || `${type} sin nº`}</p>
+            <p className="text-xs text-gray-500">{doc.date} {doc.total != null ? `| ${doc.total?.toFixed(2)} €` : ''}</p>
+            <Badge variant="outline" className="text-[10px] mt-1">{doc.status || doc.doc_type || type}</Badge>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px]">{doc.status || doc.doc_type || type}</Badge>
-          {doc.file_url && <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs">Ver</a>}
+        <div className="flex gap-1 mt-2 flex-wrap">
+          {doc.file_url && (
+            <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+              <Eye className="w-3 h-3" /> Ver
+            </a>
+          )}
+          <Link to={createPageUrl(`Documents?edit=${doc.id}`)}>
+            <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-50 text-gray-700 hover:bg-gray-100 cursor-pointer">
+              <Edit className="w-3 h-3" /> Editar
+            </span>
+          </Link>
+          <button
+            onClick={() => sendWhatsApp(`Le enviamos el ${type} ${doc.doc_number || ''} del ${doc.date}. Total: ${doc.total?.toFixed(2) || '-'} €`)}
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+            <Phone className="w-3 h-3" /> WA
+          </button>
+          {contact.email && (
+            <button
+              onClick={() => sendEmail(`${type} ${doc.doc_number || ''}`, `Estimado/a ${contact.name},\n\nAdjuntamos ${type} ${doc.doc_number || ''} de fecha ${doc.date}.\n\nTotal: ${doc.total?.toFixed(2) || '-'} €\n\nAtentamente`)}
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+              <Send className="w-3 h-3" /> Email
+            </button>
+          )}
+          {onDelete && (
+            <button onClick={() => onDelete(doc.id)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
+              <Trash2 className="w-3 h-3" /> Eliminar
+            </button>
+          )}
         </div>
       </CardContent>
     </Card>
