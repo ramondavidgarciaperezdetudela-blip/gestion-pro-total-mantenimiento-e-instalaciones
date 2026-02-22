@@ -112,12 +112,17 @@ export default function CompanyConfig() {
 
   return (
     <div className="space-y-4 max-w-3xl">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">Configuración de Empresa</h1>
-        <Button onClick={handleSave} className={`${saved ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
-          <Save className="w-4 h-4 mr-2" />
-          {saved ? '¡Guardado!' : 'Guardar datos'}
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => base44.auth.logout()} className="gap-1 border-red-300 text-red-600 hover:bg-red-50">
+            <LogOut className="w-4 h-4" /> Cerrar sesión
+          </Button>
+          <Button onClick={handleSave} className={`${saved ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
+            <Save className="w-4 h-4 mr-2" />
+            {saved ? '¡Guardado!' : 'Guardar datos'}
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="empresa">
