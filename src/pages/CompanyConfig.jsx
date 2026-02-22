@@ -229,6 +229,12 @@ export default function CompanyConfig() {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Mail className="w-5 h-5" />Configuración de correo electrónico</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              {form.email && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800 flex items-center gap-2">
+                  <Mail className="w-4 h-4 flex-shrink-0" />
+                  <span>Dirección de empresa guardada: <strong>{form.email}</strong></span>
+                </div>
+              )}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
                 <p className="font-medium mb-1">📧 Autoconfiguración</p>
                 <p className="text-xs">Introduce tu dirección de correo y detectaremos automáticamente la configuración SMTP de tu proveedor (Gmail, Outlook, Hotmail, Yahoo, etc.)</p>
@@ -238,7 +244,7 @@ export default function CompanyConfig() {
                 <label className="text-sm font-medium">Correo electrónico de envío</label>
                 <div className="flex gap-2 mt-1">
                   <Input
-                    placeholder="tu@empresa.com"
+                    placeholder={form.email || 'tu@empresa.com'}
                     value={form.email_config?.smtp_user || ''}
                     onChange={e => setForm({...form, email_config: {...form.email_config, smtp_user: e.target.value}})}
                   />
