@@ -185,13 +185,25 @@ export default function ContactDetail() {
     window.open(`mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
   };
 
+  const fmtDate = (d) => {
+    if (!d) return '';
+    try { return format(new Date(d), "EEEE, d 'de' MMMM yyyy", { locale: es }); } catch { return d; }
+  };
+
+  const printDoc = (doc) => {
+    const w = window.open('', '_blank');
+    w.document.write(`<html><head><title>${doc.doc_number || doc.title || 'Documento'}</title></head><body style="font-family:sans-serif;padding:20px"><h2>${doc.doc_number || doc.title || 'Documento'}</h2><p>Cliente: ${contact.name} ${contact.surname || ''}</p><p>Fecha: ${fmtDate(doc.date)}</p>${doc.total != null ? `<p>Total: ${doc.total?.toFixed(2)} €</p>` : ''}${doc.file_url ? `<p><a href="${doc.file_url}">Ver archivo adjunto</a></p>` : ''}</body></html>`);
+    w.document.close();
+    w.print();
+  };
+
   const DocCard = ({ doc, type, onDelete }) => (
     <Card className="hover:shadow-sm">
       <CardContent className="p-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm truncate">{doc.doc_number || doc.title || doc.order_number || `${type} sin nº`}</p>
-            <p className="text-xs text-gray-500">{doc.date} {doc.total != null ? `| ${doc.total?.toFixed(2)} €` : ''}</p>
+            <p className="text-xs text-gray-500">{fmtDate(doc.date)} {doc.total != null ? `| ${doc.total?.toFixed(2)} €` : ''}</p>
             <Badge variant="outline" className="text-[10px] mt-1">{doc.status || doc.doc_type || type}</Badge>
           </div>
         </div>
@@ -206,20 +218,23 @@ export default function ContactDetail() {
               <Edit className="w-3 h-3" /> Editar
             </span>
           </Link>
+          <button onClick={() => printDoc(doc)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-slate-50 text-slate-700 hover:bg-slate-100">
+            <Printer className="w-3 h-3" /> Imprimir
+          </button>
           <button
-            onClick={() => sendWhatsApp(`Le enviamos el ${type} ${doc.doc_number || ''} del ${doc.date}. Total: ${doc.total?.toFixed(2) || '-'} €`)}
+            onClick={() => sendWhatsApp(`Le enviamos el ${type} ${doc.doc_number || ''} del ${fmtDate(doc.date)}. Total: ${doc.total?.toFixed(2) || '-'} €`)}
             className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
-            <Phone className="w-3 h-3" /> WA
+            <MessageCircle className="w-3 h-3" /> WA
           </button>
           {contact.email && (
             <button
-              onClick={() => sendEmail(`${type} ${doc.doc_number || ''}`, `Estimado/a ${contact.name},\n\nAdjuntamos ${type} ${doc.doc_number || ''} de fecha ${doc.date}.\n\nTotal: ${doc.total?.toFixed(2) || '-'} €\n\nAtentamente`)}
+              onClick={() => sendEmail(`${type} ${doc.doc_number || ''}`, `Estimado/a ${contact.name},\n\nAdjuntamos ${type} ${doc.doc_number || ''} de fecha ${fmtDate(doc.date)}.\n\nTotal: ${doc.total?.toFixed(2) || '-'} €\n\nAtentamente`)}
               className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
               <Send className="w-3 h-3" /> Email
             </button>
           )}
           {onDelete && (
-            <button onClick={() => onDelete(doc.id)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
+            <button onClick={() => { if(confirm('¿Eliminar?')) onDelete(doc.id); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
               <Trash2 className="w-3 h-3" /> Eliminar
             </button>
           )}
