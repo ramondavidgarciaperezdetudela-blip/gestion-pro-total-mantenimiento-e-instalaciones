@@ -39,6 +39,7 @@ const EMPTY_FORM = {
 export default function Maintenance() {
   const [sheets, setSheets] = useState([]);
   const [contacts, setContacts] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
