@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut } from 'lucide-react';
-import { base44 as b44client } from '@/api/base44Client';
 
 function TechnicianManager({ technicians, onChange }) {
   const [newName, setNewName] = useState('');
