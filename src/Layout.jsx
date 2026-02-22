@@ -204,13 +204,20 @@ export default function Layout({ children, currentPageName }) {
         )}
         {/* Top bar mobile */}
         <header className="lg:hidden bg-white border-b sticky top-0 z-30 px-4 py-3 flex items-center justify-between shadow-sm">
-          <button onClick={() => setSidebarOpen(true)}>
-            <Menu className="w-6 h-6 text-gray-700" />
-          </button>
-          <h2 className="font-semibold text-sm text-gray-800">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setSidebarOpen(true)}>
+              <Menu className="w-6 h-6 text-gray-700" />
+            </button>
+            <button onClick={() => window.history.back()} className="p-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            </button>
+          </div>
+          <h2 className="font-semibold text-sm text-gray-800 truncate mx-2">
             {navItems.find(n => n.page === currentPageName)?.name || currentPageName}
           </h2>
-          <div className="w-6" />
+          <button onClick={() => setMobileBarVisible(v => !v)} className="text-gray-400 text-xs border rounded px-1.5 py-0.5">
+            {mobileBarVisible ? '⬇' : '⬆'}
+          </button>
         </header>
         <main className="p-4 md:p-6 max-w-7xl mx-auto relative z-10 pb-20 lg:pb-6">
           {children}
