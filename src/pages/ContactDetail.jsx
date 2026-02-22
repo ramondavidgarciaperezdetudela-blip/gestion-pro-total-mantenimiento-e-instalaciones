@@ -444,17 +444,43 @@ export default function ContactDetail() {
               <Button size="sm" className="bg-cyan-600"><Plus className="w-4 h-4 mr-1" />Nueva ficha mantenimiento</Button>
             </Link>
             {maintenance.map(m => (
-              <Card key={m.id}>
+              <Card key={m.id} className="hover:shadow-md">
                 <CardContent className="p-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-sm">Ficha #{m.sheet_number} - {m.type}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">Ficha #{m.sheet_number} — {m.type}</p>
                       <p className="text-xs text-gray-500">{m.date} | {m.equipment_brand} {m.equipment_model}</p>
+                      {m.technician_name && <p className="text-xs text-blue-600">👷 {m.technician_name}</p>}
                     </div>
-                    <div className="flex gap-1">
-                      {m.signature_technician && <span title="Firmado técnico" className="text-xs">✍️</span>}
-                      {m.signature_client && <span title="Firmado cliente" className="text-xs">👤</span>}
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex gap-1 text-xs">
+                        {m.signature_technician && <span title="Firmado técnico">✍️</span>}
+                        {m.signature_client && <span title="Firmado cliente">👤</span>}
+                      </div>
                     </div>
+                  </div>
+                  <div className="flex gap-1 mt-2 border-t pt-2 flex-wrap">
+                    <Link to={createPageUrl(`Maintenance?view=${m.id}`)}>
+                      <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-cyan-50 text-cyan-700 hover:bg-cyan-100 cursor-pointer">
+                        <Eye className="w-3 h-3" /> Ver
+                      </span>
+                    </Link>
+                    <Link to={createPageUrl(`Maintenance?edit=${m.id}`)}>
+                      <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer">
+                        <Edit className="w-3 h-3" /> Editar
+                      </span>
+                    </Link>
+                    <button onClick={() => sendWhatsApp(`Ficha Mantenimiento #${m.sheet_number}\nFecha: ${m.date}\nTipo: ${m.type}\nEquipo: ${m.equipment_brand} ${m.equipment_model}\nObservaciones: ${m.observations || '-'}`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+                      <Phone className="w-3 h-3" /> WA
+                    </button>
+                    {contact.email && (
+                      <button onClick={() => sendEmail(`Ficha Mantenimiento #${m.sheet_number}`, `Estimado/a ${contact.name},\n\nAdjuntamos ficha de mantenimiento #${m.sheet_number}.\nFecha: ${m.date} | Tipo: ${m.type} | Equipo: ${m.equipment_brand} ${m.equipment_model}\n${m.recommendations ? `Recomendaciones: ${m.recommendations}` : ''}\n\nAtentamente`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                        <Send className="w-3 h-3" /> Email
+                      </button>
+                    )}
+                    <button onClick={() => deleteMaintenance(m.id)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
+                      <Trash2 className="w-3 h-3" /> Eliminar
+                    </button>
                   </div>
                 </CardContent>
               </Card>
