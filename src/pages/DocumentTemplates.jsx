@@ -10,13 +10,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Edit, Trash2, Palette, Save, Star, Eye, Download } from 'lucide-react';
 
-const DOC_TYPES = ['factura', 'presupuesto', 'recibo', 'sat', 'mantenimiento', 'informe'];
+const DOC_TYPES = ['factura', 'presupuesto', 'recibo', 'sat', 'mantenimiento', 'informe', 'tarjeta_contacto'];
 const FONT_SIZES = { small: '11px', medium: '13px', large: '15px' };
 
 const DEFAULT_TEMPLATES = [
   { name: 'Factura estándar', doc_type: 'factura', primary_color: '#1e3a5f', secondary_color: '#0ea5e9', show_logo: true, show_iban: true, show_signature_box: false, font_size: 'medium', iva_rate: 21, is_default: true, header_text: '', footer_text: 'Gracias por su confianza.', notes_template: '' },
   { name: 'Presupuesto estándar', doc_type: 'presupuesto', primary_color: '#1e3a5f', secondary_color: '#0ea5e9', show_logo: true, show_iban: false, show_signature_box: true, font_size: 'medium', iva_rate: 21, is_default: true, header_text: '', footer_text: 'Presupuesto válido por 30 días.', notes_template: '' },
   { name: 'Recibo estándar', doc_type: 'recibo', primary_color: '#166534', secondary_color: '#4ade80', show_logo: true, show_iban: true, show_signature_box: true, font_size: 'medium', iva_rate: 21, is_default: true, header_text: '', footer_text: '', notes_template: '' },
+  { name: 'Tarjeta de contacto', doc_type: 'tarjeta_contacto', primary_color: '#1e3a5f', secondary_color: '#0ea5e9', show_logo: true, show_iban: false, show_signature_box: false, font_size: 'medium', iva_rate: 0, is_default: true, header_text: 'Técnico SAT', footer_text: 'Servicio de Asistencia Técnica', notes_template: '' },
 ];
 
 const FONT_FAMILIES = ['Arial', 'Times New Roman', 'Georgia', 'Verdana', 'Calibri', 'Trebuchet MS'];
@@ -73,7 +74,36 @@ export default function DocumentTemplates() {
     return acc;
   }, {});
 
-  const PreviewDoc = ({ tpl }) => (
+  const PreviewContactCard = ({ tpl }) => (
+    <div style={{ fontFamily: tpl.font_family || 'Arial', maxWidth: 400, margin: '0 auto' }}>
+      <div style={{ background: tpl.primary_color, color: '#fff', borderRadius: 10, padding: '20px 24px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', background: tpl.secondary_color, opacity: 0.2 }} />
+        <div style={{ position: 'absolute', bottom: -15, right: 20, width: 60, height: 60, borderRadius: '50%', background: tpl.secondary_color, opacity: 0.15 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+          {tpl.show_logo && company?.logo_url
+            ? <img src={company.logo_url} alt="logo" style={{ height: 36, background: '#fff', borderRadius: 6, padding: '2px 4px', objectFit: 'contain' }} />
+            : <div style={{ width: 36, height: 36, background: tpl.secondary_color, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 16, color: tpl.primary_color }}>{company?.company_name?.[0] || 'E'}</div>
+          }
+          <div>
+            <p style={{ fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.6px', color: tpl.secondary_color }}>{company?.company_name || 'Mi Empresa S.L.'}</p>
+          </div>
+        </div>
+        <p style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 3 }}>{tpl.header_text || 'Nombre del Técnico'}</p>
+        <p style={{ fontSize: 11, color: '#c7d8f0', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 14 }}>{tpl.footer_text || 'Cargo / Departamento'}</p>
+        <div style={{ fontSize: 10, color: '#aac8e8', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {company?.phone && <span>📞 {company.phone}</span>}
+          {company?.email && <span>✉️ {company.email}</span>}
+          {company?.website && <span>🌐 {company.website}</span>}
+          {company?.address && <span>📍 {company.address}, {company.city}</span>}
+        </div>
+      </div>
+      <p style={{ textAlign: 'center', fontSize: 10, color: '#999', marginTop: 6 }}>Personaliza el nombre y cargo en Cabecera / Pie de página</p>
+    </div>
+  );
+
+  const PreviewDoc = ({ tpl }) => {
+    if (tpl.doc_type === 'tarjeta_contacto') return <PreviewContactCard tpl={tpl} />;
+    return (
     <div ref={printRef} style={{ fontFamily: 'Arial, sans-serif', fontSize: FONT_SIZES[tpl.font_size] || '13px', maxWidth: '720px', margin: '0 auto' }} className="p-4 bg-white text-gray-900">
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: `3px solid ${tpl.primary_color}`, paddingBottom: '12px', marginBottom: '16px' }}>
@@ -185,6 +215,7 @@ export default function DocumentTemplates() {
       )}
     </div>
   );
+  };
 
   return (
     <div className="space-y-4">
