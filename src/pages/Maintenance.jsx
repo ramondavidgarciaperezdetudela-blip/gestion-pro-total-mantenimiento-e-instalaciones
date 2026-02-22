@@ -51,8 +51,13 @@ export default function Maintenance() {
   useEffect(() => {
     Promise.all([
       base44.entities.MaintenanceSheet.list('-date', 500),
-      base44.entities.Contact.list()
-    ]).then(([s, c]) => { setSheets(s); setContacts(c); });
+      base44.entities.Contact.list(),
+      base44.entities.CompanySettings.list(),
+    ]).then(([s, c, settings]) => {
+      setSheets(s);
+      setContacts(c);
+      if (settings[0]?.technicians) setTechnicians(settings[0].technicians);
+    });
   }, []);
 
   const handleSave = async () => {
