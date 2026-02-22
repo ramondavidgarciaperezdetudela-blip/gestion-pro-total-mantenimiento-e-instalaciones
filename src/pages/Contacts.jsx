@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Phone, Mail, Building2, User, Navigation, Trash2, Edit } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Building2, User, Navigation, Trash2, Edit, Upload, Camera } from 'lucide-react';
+import { base44 as b44 } from '@/api/base44Client';
 
 const PAYMENT_PROFILES = {
   buen_pagador: { label: 'Buen pagador', color: 'bg-green-100 text-green-700', icon: '✅' },
