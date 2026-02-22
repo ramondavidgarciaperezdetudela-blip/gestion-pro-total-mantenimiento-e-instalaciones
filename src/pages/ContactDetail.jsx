@@ -264,7 +264,7 @@ export default function ContactDetail() {
               <Button size="sm" variant="outline" onClick={() => setUploadDialog(true)} title="Subir documento escaneado">
                 <Upload className="w-3.5 h-3.5" />
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setEditingContact(!editingContact)}>Editar</Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingContact(!editingContact)}>{editingContact ? 'Cancelar' : 'Editar'}</Button>
             </div>
           </div>
 
