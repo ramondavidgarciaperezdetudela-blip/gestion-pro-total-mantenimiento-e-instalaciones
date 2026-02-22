@@ -50,6 +50,7 @@
 import AIAssistant from './pages/AIAssistant';
 import AIBudget from './pages/AIBudget';
 import Agenda from './pages/Agenda';
+import BatteryCalc from './pages/BatteryCalc';
 import ColdRoomCalc from './pages/ColdRoomCalc';
 import CompanyConfig from './pages/CompanyConfig';
 import ContactDetail from './pages/ContactDetail';
@@ -69,7 +70,6 @@ import SAT from './pages/SAT';
 import SolarCalc from './pages/SolarCalc';
 import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
-import BatteryCalc from './pages/BatteryCalc';
 import __Layout from './Layout.jsx';
 
 
@@ -77,6 +77,7 @@ export const PAGES = {
     "AIAssistant": AIAssistant,
     "AIBudget": AIBudget,
     "Agenda": Agenda,
+    "BatteryCalc": BatteryCalc,
     "ColdRoomCalc": ColdRoomCalc,
     "CompanyConfig": CompanyConfig,
     "ContactDetail": ContactDetail,
@@ -96,7 +97,6 @@ export const PAGES = {
     "SolarCalc": SolarCalc,
     "Suppliers": Suppliers,
     "ThermalCalc": ThermalCalc,
-    "BatteryCalc": BatteryCalc,
 }
 
 export const pagesConfig = {

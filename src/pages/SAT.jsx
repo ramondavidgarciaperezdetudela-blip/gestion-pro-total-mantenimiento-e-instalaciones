@@ -52,10 +52,23 @@ export default function SAT() {
     if (editing) {
       await base44.entities.SATOrder.update(editing.id, data);
     } else {
-      await base44.entities.SATOrder.create(data);
+      const saved = await base44.entities.SATOrder.create(data);
+      // Guardar en ficha del cliente
+      if (form.contact_id) {
+        await base44.entities.ClientDocument.create({
+          contact_id: form.contact_id,
+          contact_name: form.contact_name,
+          title: `Orden SAT #${form.order_number || saved.id} - ${form.type}`,
+          doc_type: 'orden_sat',
+          date: form.date,
+          description: `${form.type} | ${form.equipment_type?.replace(/_/g,' ')} | ${form.description || ''}`,
+          reference_id: saved.id,
+        });
+      }
     }
     setDialogOpen(false);
     setEditing(null);
+    alert(editing ? '✅ Orden actualizada correctamente' : '✅ Orden SAT guardada y vinculada al cliente');
     const o = await base44.entities.SATOrder.list('-date', 500);
     setOrders(o);
   };
