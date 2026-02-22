@@ -110,6 +110,31 @@ export default function ContactDetail() {
     window.open(`https://www.google.com/maps/search/?api=1&query=${addr}`, '_blank');
   };
 
+  const reloadAll = async () => {
+    const [inv, sat, maint, docs, nts, apts] = await Promise.all([
+      base44.entities.Invoice.filter({ contact_id: contactId }),
+      base44.entities.SATOrder.filter({ contact_id: contactId }),
+      base44.entities.MaintenanceSheet.filter({ contact_id: contactId }),
+      base44.entities.ClientDocument.filter({ contact_id: contactId }),
+      base44.entities.ClientNote.filter({ contact_id: contactId }),
+      base44.entities.Appointment.filter({ contact_id: contactId }),
+    ]);
+    setInvoices(inv); setSatOrders(sat); setMaintenance(maint);
+    setDocuments(docs); setNotes(nts); setAppointments(apts);
+  };
+
+  const deleteSat = async (id) => {
+    if (!confirm('¿Eliminar esta orden SAT?')) return;
+    await base44.entities.SATOrder.delete(id);
+    setSatOrders(satOrders.filter(o => o.id !== id));
+  };
+
+  const deleteMaintenance = async (id) => {
+    if (!confirm('¿Eliminar esta ficha?')) return;
+    await base44.entities.MaintenanceSheet.delete(id);
+    setMaintenance(maintenance.filter(m => m.id !== id));
+  };
+
   if (!contact) return <div className="text-center py-8 text-gray-400">Cargando...</div>;
 
   const pp = PAYMENT_PROFILES[contact.payment_profile] || PAYMENT_PROFILES.pagador_normal;
