@@ -544,25 +544,37 @@ export default function ContactDetail() {
             <Button size="sm" variant="outline" onClick={() => setUploadDialog(true)}>
               <Upload className="w-4 h-4 mr-1" />Subir documento
             </Button>
-            {documents.filter(d => !['calculo_termico', 'calculo_solar'].includes(d.doc_type)).map(d => (
-              <Card key={d.id}>
+            {documents.map(d => (
+              <Card key={d.id} className="hover:shadow-md">
                 <CardContent className="p-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-sm">{d.title}</p>
-                      <p className="text-xs text-gray-500">{d.doc_type?.replace(/_/g, ' ')} | {d.date}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{d.title}</p>
+                      <p className="text-xs text-gray-500">{d.doc_type?.replace(/_/g, ' ')} | {fmtDate(d.date)}</p>
+                      {d.description && <p className="text-xs text-gray-400 truncate">{d.description}</p>}
                     </div>
+                    <Badge variant="outline" className="text-[10px] flex-shrink-0">{d.doc_type?.replace(/_/g,' ')}</Badge>
                   </div>
-                  <div className="flex gap-1 mt-2 flex-wrap">
+                  <div className="flex gap-1 mt-2 border-t pt-2 flex-wrap">
                     {d.file_url && (
                       <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
                         <Eye className="w-3 h-3" /> Ver
                       </a>
                     )}
-                    <button onClick={() => sendWhatsApp(`Documento: ${d.title} — ${d.doc_type?.replace(/_/g,' ')} del ${d.date}`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
-                      <Phone className="w-3 h-3" /> WA
+                    {d.file_url && (
+                      <button onClick={() => { const w=window.open('','_blank'); w.document.write(`<html><head><title>${d.title}</title></head><body style="font-family:sans-serif;padding:20px"><h2>${d.title}</h2><p>Cliente: ${contact.name} ${contact.surname||''}</p><p>Fecha: ${fmtDate(d.date)}</p><p>Tipo: ${d.doc_type?.replace(/_/g,' ')}</p>${d.description?`<p>${d.description}</p>`:''}<br/><a href="${d.file_url}">Ver archivo adjunto</a></body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-slate-50 text-slate-700 hover:bg-slate-100">
+                        <Printer className="w-3 h-3" /> Imprimir
+                      </button>
+                    )}
+                    <button onClick={() => sendWhatsApp(`Documento: ${d.title} — ${d.doc_type?.replace(/_/g,' ')} del ${fmtDate(d.date)}${d.file_url ? '\n' + d.file_url : ''}`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+                      <MessageCircle className="w-3 h-3" /> WA
                     </button>
-                    <button onClick={() => deleteDocument(d.id)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
+                    {contact.email && (
+                      <button onClick={() => sendEmail(`Documento: ${d.title}`, `Estimado/a ${contact.name},\n\nLe enviamos el documento: ${d.title}\nTipo: ${d.doc_type?.replace(/_/g,' ')}\nFecha: ${fmtDate(d.date)}\n${d.description || ''}\n\nAtentamente`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                        <Send className="w-3 h-3" /> Email
+                      </button>
+                    )}
+                    <button onClick={() => { if(confirm('¿Eliminar?')) deleteDocument(d.id); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
                       <Trash2 className="w-3 h-3" /> Eliminar
                     </button>
                   </div>
