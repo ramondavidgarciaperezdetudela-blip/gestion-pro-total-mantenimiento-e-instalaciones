@@ -35,6 +35,7 @@ const navItems = [
   { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette },
   { name: 'Tarjetas Visita', page: 'BusinessCards', icon: CreditCard },
   { name: 'Recordatorios', page: 'Automations', icon: Bell },
+  { name: 'Portal Cliente', page: 'ClientPortal', icon: Users },
   { name: 'Exportar Datos', page: 'ExportData', icon: Download },
   { name: 'Configuración', page: 'CompanyConfig', icon: Settings },
 ];
@@ -62,6 +63,7 @@ const mobileTabItems = [
   { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette },
   { name: 'T.Visita', page: 'BusinessCards', icon: CreditCard },
   { name: 'Recordat.', page: 'Automations', icon: Bell },
+  { name: 'Portal', page: 'ClientPortal', icon: Users },
   { name: 'Exportar', page: 'ExportData', icon: Download },
   { name: 'Config.', page: 'CompanyConfig', icon: Settings },
 ];
