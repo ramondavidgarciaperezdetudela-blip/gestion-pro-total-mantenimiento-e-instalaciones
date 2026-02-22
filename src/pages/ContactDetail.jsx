@@ -413,7 +413,7 @@ export default function ContactDetail() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-sm">#{o.order_number || 'S/N'} — {o.type?.replace(/_/g,' ')}</p>
-                        <p className="text-xs text-gray-500">{o.date} | {o.equipment_type?.replace(/_/g,' ')}</p>
+                        <p className="text-xs text-gray-500">{fmtDate(o.date)} | {o.equipment_type?.replace(/_/g,' ')}</p>
                         {o.description && <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">{o.description}</p>}
                         {o.technician && <p className="text-xs text-blue-600">👷 {o.technician}</p>}
                       </div>
