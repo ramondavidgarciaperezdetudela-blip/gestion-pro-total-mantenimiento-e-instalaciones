@@ -61,6 +61,7 @@ const mobileTabItems = [
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [company, setCompany] = useState(null);
+  const [mobileBarVisible, setMobileBarVisible] = useState(true);
 
   useEffect(() => {
     base44.entities.CompanySettings.list().then(data => {
