@@ -34,13 +34,28 @@ const navItems = [
   { name: 'Configuración', page: 'CompanyConfig', icon: Settings },
 ];
 
-// Bottom tabs for mobile
+// Bottom tabs for mobile - shown as scrollable row
 const mobileTabItems = [
   { name: 'Inicio', page: 'Home', icon: Home },
   { name: 'Agenda', page: 'Agenda', icon: Calendar },
   { name: 'Contactos', page: 'Contacts', icon: Users },
-  { name: 'Documentos', page: 'Documents', icon: FileText },
+  { name: 'Docs', page: 'Documents', icon: FileText },
   { name: 'SAT', page: 'SAT', icon: Wrench },
+  { name: 'Manten.', page: 'Maintenance', icon: ClipboardList },
+  { name: 'Notas', page: 'Notes', icon: StickyNote },
+  { name: 'Inventario', page: 'Inventory', icon: Package },
+  { name: 'Proyectos', page: 'Projects', icon: FolderOpen },
+  { name: 'Proveedores', page: 'Suppliers', icon: Building2 },
+  { name: 'Térmico', page: 'ThermalCalc', icon: Thermometer },
+  { name: 'C. Frig.', page: 'ColdRoomCalc', icon: Thermometer },
+  { name: 'Solar', page: 'SolarCalc', icon: Sun },
+  { name: 'Baterías', page: 'BatteryCalc', icon: Battery },
+  { name: 'Eléctrico', page: 'ElectricalCalc', icon: Zap },
+  { name: 'Informes', page: 'Reports', icon: BarChart3 },
+  { name: 'Pres. IA', page: 'AIBudget', icon: Bot },
+  { name: 'Asist. IA', page: 'AIAssistant', icon: Bot },
+  { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette },
+  { name: 'Config.', page: 'CompanyConfig', icon: Settings },
 ];
 
 export default function Layout({ children, currentPageName }) {
