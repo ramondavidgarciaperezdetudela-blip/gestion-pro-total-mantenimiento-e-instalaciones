@@ -9,6 +9,7 @@ import {
   Zap, BarChart3, LogOut, StickyNote, Package, Palette, Battery,
   CreditCard, Download, Bell
 } from 'lucide-react';
+import NotificationsPanel from './components/NotificationsPanel';
 
 const navItems = [
   { name: 'Inicio', page: 'Home', icon: Home },
@@ -140,7 +141,11 @@ export default function Layout({ children, currentPageName }) {
             );
           })}
         </nav>
-        <div className="p-3 border-t border-white/10">
+        <div className="p-3 border-t border-white/10 space-y-2">
+          <div className="flex items-center justify-between px-2 py-1">
+            <span className="text-xs text-blue-200">Alertas</span>
+            <NotificationsPanel />
+          </div>
           <button onClick={handleLogout} className="flex items-center gap-2 text-blue-200 hover:text-white text-sm w-full px-2 py-2 rounded hover:bg-white/10 transition-all">
             <LogOut className="w-4 h-4" />
             Cerrar sesión
@@ -222,9 +227,12 @@ export default function Layout({ children, currentPageName }) {
           <h2 className="font-semibold text-sm text-gray-800 truncate mx-2">
             {navItems.find(n => n.page === currentPageName)?.name || currentPageName}
           </h2>
-          <button onClick={() => setMobileBarVisible(v => !v)} className="text-gray-400 text-xs border rounded px-1.5 py-0.5">
-            {mobileBarVisible ? '⬇' : '⬆'}
-          </button>
+          <div className="flex items-center gap-1">
+            <NotificationsPanel />
+            <button onClick={() => setMobileBarVisible(v => !v)} className="text-gray-400 text-xs border rounded px-1.5 py-0.5">
+              {mobileBarVisible ? '⬇' : '⬆'}
+            </button>
+          </div>
         </header>
         <main className="p-4 md:p-6 max-w-7xl mx-auto relative z-10 pb-24 lg:pb-6">
           {children}
