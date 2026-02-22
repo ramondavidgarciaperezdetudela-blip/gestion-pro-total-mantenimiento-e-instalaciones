@@ -7,24 +7,31 @@ import { Badge } from "@/components/ui/badge";
 import {
   Calendar, Users, FileText, Wrench, ClipboardList,
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
-  Building2, FolderOpen, Zap, BarChart3, Clock, AlertCircle
+  Building2, FolderOpen, Zap, BarChart3, Clock, AlertCircle,
+  StickyNote, Package, Battery, Palette
 } from 'lucide-react';
 import { format } from 'date-fns';
 
 const quickLinks = [
   { name: 'Agenda', page: 'Agenda', icon: Calendar, color: 'bg-blue-500' },
   { name: 'Contactos', page: 'Contacts', icon: Users, color: 'bg-emerald-500' },
-  { name: 'Facturas', page: 'Documents', icon: FileText, color: 'bg-violet-500' },
+  { name: 'Documentos', page: 'Documents', icon: FileText, color: 'bg-violet-500' },
   { name: 'SAT', page: 'SAT', icon: Wrench, color: 'bg-orange-500' },
   { name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList, color: 'bg-cyan-500' },
+  { name: 'Notas', page: 'Notes', icon: StickyNote, color: 'bg-lime-500' },
+  { name: 'Inventario', page: 'Inventory', icon: Package, color: 'bg-teal-500' },
   { name: 'Proyectos', page: 'Projects', icon: FolderOpen, color: 'bg-pink-500' },
+  { name: 'Proveedores', page: 'Suppliers', icon: Building2, color: 'bg-slate-500' },
+  { name: 'Presupuesto IA', page: 'AIBudget', icon: Bot, color: 'bg-purple-500' },
   { name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500' },
+  { name: 'Cámara Frigoríf.', page: 'ColdRoomCalc', icon: Thermometer, color: 'bg-sky-500' },
   { name: 'Cálculo Solar', page: 'SolarCalc', icon: Sun, color: 'bg-amber-500' },
+  { name: 'Calc. Baterías', page: 'BatteryCalc', icon: Battery, color: 'bg-yellow-600' },
   { name: 'Electricidad', page: 'ElectricalCalc', icon: Zap, color: 'bg-yellow-500' },
   { name: 'Normativas', page: 'Regulations', icon: Shield, color: 'bg-indigo-500' },
-  { name: 'Manuales', page: 'Manuals', icon: BookOpen, color: 'bg-teal-500' },
-  { name: 'Proveedores', page: 'Suppliers', icon: Building2, color: 'bg-slate-500' },
+  { name: 'Manuales', page: 'Manuals', icon: BookOpen, color: 'bg-teal-600' },
   { name: 'Informes', page: 'Reports', icon: BarChart3, color: 'bg-fuchsia-500' },
+  { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette, color: 'bg-rose-500' },
   { name: 'Asistente IA', page: 'AIAssistant', icon: Bot, color: 'bg-green-500' },
   { name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
 ];
