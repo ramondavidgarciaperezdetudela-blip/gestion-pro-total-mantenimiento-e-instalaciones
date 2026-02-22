@@ -73,6 +73,7 @@ import ThermalCalc from './pages/ThermalCalc';
 import BusinessCards from './pages/BusinessCards';
 import ExportData from './pages/ExportData';
 import Automations from './pages/Automations';
+import ClientPortal from './pages/ClientPortal';
 import __Layout from './Layout.jsx';
 
 
@@ -103,6 +104,7 @@ export const PAGES = {
     "BusinessCards": BusinessCards,
     "ExportData": ExportData,
     "Automations": Automations,
+    "ClientPortal": ClientPortal,
 }
 
 export const pagesConfig = {
