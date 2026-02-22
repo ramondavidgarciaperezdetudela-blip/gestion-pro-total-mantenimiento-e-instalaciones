@@ -105,8 +105,9 @@ Incluye descripción, cantidad sugerida, precio unitario orientativo (€), y pr
     setItems(prev => [...prev, { ...s, supplier: supplierOverride || s.supplier || '', discount: 0 }]);
   };
 
+  const [ivaRate, setIvaRate] = useState(21);
   const subtotal = items.reduce((s, i) => s + (i.quantity || 0) * (i.unit_price || 0) * (1 - (i.discount || 0) / 100), 0);
-  const ivaAmount = subtotal * IVA / 100;
+  const ivaAmount = subtotal * ivaRate / 100;
   const total = subtotal + ivaAmount;
 
   const saveBudget = async () => {
@@ -304,7 +305,7 @@ Incluye descripción, cantidad sugerida, precio unitario orientativo (€), y pr
               </table>
               <div className="p-4 border-t bg-gray-50 text-sm space-y-1 text-right">
                 <p>Subtotal: <strong>{subtotal.toFixed(2)} €</strong></p>
-                <p>IVA ({IVA}%): <strong>{ivaAmount.toFixed(2)} €</strong></p>
+                <p>IVA ({ivaRate}%): <strong>{ivaAmount.toFixed(2)} €</strong></p>
                 <p className="text-lg font-bold text-blue-700">TOTAL: {total.toFixed(2)} €</p>
               </div>
             </div>
@@ -312,7 +313,20 @@ Incluye descripción, cantidad sugerida, precio unitario orientativo (€), y pr
         </CardContent>
       </Card>
 
-      {/* Notas */}
+      {/* IVA y notas */}
+      <div className="flex items-center gap-3">
+        <label className="text-sm text-gray-600 whitespace-nowrap">IVA:</label>
+        <Select value={String(ivaRate)} onValueChange={v => setIvaRate(Number(v))}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="0">0% (Exento)</SelectItem>
+            <SelectItem value="4">4% (Superreducido)</SelectItem>
+            <SelectItem value="10">10% (Reducido)</SelectItem>
+            <SelectItem value="21">21% (General)</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="flex-1 text-right text-sm font-bold text-blue-700">TOTAL: {total.toFixed(2)} €</div>
+      </div>
       <Textarea placeholder="Observaciones y condiciones del presupuesto..." value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
 
       {/* Acciones */}
@@ -340,6 +354,7 @@ Incluye descripción, cantidad sugerida, precio unitario orientativo (€), y pr
             <CompanyHeader />
             <div className="border-b pb-3">
               <h2 className="text-xl font-bold">{previewBudget?.budgetTitle || 'PRESUPUESTO'}</h2>
+              <p className="text-sm text-gray-400">Nº: PRES-{Date.now().toString().slice(-6)} · Válido 30 días</p>
               {previewBudget?.selectedContact && (
                 <div className="text-sm mt-1">
                   <p><strong>Cliente:</strong> {previewBudget.selectedContact.name} {previewBudget.selectedContact.surname}</p>
@@ -368,7 +383,7 @@ Incluye descripción, cantidad sugerida, precio unitario orientativo (€), y pr
             </table>
             <div className="text-right space-y-1 text-sm border-t pt-2">
               <p>Subtotal: {previewBudget?.subtotal?.toFixed(2)} €</p>
-              <p>IVA (21%): {previewBudget?.ivaAmount?.toFixed(2)} €</p>
+              <p>IVA ({ivaRate}%): {previewBudget?.ivaAmount?.toFixed(2)} €</p>
               <p className="text-lg font-bold">TOTAL: {previewBudget?.total?.toFixed(2)} €</p>
             </div>
             {previewBudget?.notes && <p className="text-sm border-t pt-2 text-gray-600">{previewBudget.notes}</p>}
