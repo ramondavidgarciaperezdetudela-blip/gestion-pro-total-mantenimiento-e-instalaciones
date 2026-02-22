@@ -357,20 +357,42 @@ export default function Maintenance() {
 
       <div className="space-y-2">
         {sheets.map(s => (
-          <Card key={s.id} className="hover:shadow-sm cursor-pointer" onClick={() => setPreview(s)}>
-            <CardContent className="p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <ClipboardList className="w-5 h-5 text-cyan-500" />
-                <div>
-                  <p className="font-medium text-sm">#{s.sheet_number} - {s.contact_name}</p>
+          <Card key={s.id} className="hover:shadow-md transition-shadow">
+            <CardContent className="p-3">
+              <div className="flex items-start gap-3">
+                <ClipboardList className="w-5 h-5 text-cyan-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">#{s.sheet_number} — {s.contact_name}</p>
                   <p className="text-xs text-gray-500">{s.date} | {s.type} | {s.equipment_brand} {s.equipment_model}</p>
+                  {s.technician_name && <p className="text-xs text-blue-600 mt-0.5">👷 {s.technician_name}</p>}
+                </div>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <Badge className={typeColor[s.type] || 'bg-gray-100 text-gray-700'}>{s.type}</Badge>
+                  <div className="flex gap-1 text-[10px]">
+                    {s.signature_technician && <span title="Firmado técnico">✍️</span>}
+                    {s.signature_client && <span title="Firmado cliente">👤</span>}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {s.signature_technician && <span title="Firmado técnico">✍️</span>}
-                {s.signature_client && <span title="Firmado cliente">👤</span>}
-                <button onClick={(e) => { e.stopPropagation(); handleEdit(s); }} className="p-1 text-gray-400"><Edit className="w-4 h-4" /></button>
-                <button onClick={(e) => { e.stopPropagation(); base44.entities.MaintenanceSheet.delete(s.id).then(() => setSheets(sheets.filter(x => x.id !== s.id))); }} className="p-1 text-red-400"><Trash2 className="w-4 h-4" /></button>
+              <div className="flex gap-1 mt-2 border-t pt-2 flex-wrap">
+                <button onClick={() => setPreview(s)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-cyan-50 text-cyan-700 hover:bg-cyan-100">
+                  <Eye className="w-3 h-3" /> Ver
+                </button>
+                <button onClick={() => handleEdit(s)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                  <Edit className="w-3 h-3" /> Editar
+                </button>
+                <button
+                  onClick={() => {
+                    const phone = s.contact_phone?.replace(/\D/g,'') || '';
+                    const msg = encodeURIComponent(`Ficha Mantenimiento #${s.sheet_number}\nCliente: ${s.contact_name}\nFecha: ${s.date}\nTipo: ${s.type}\nEquipo: ${s.equipment_brand} ${s.equipment_model}\nObservaciones: ${s.observations || '-'}`);
+                    window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+                  <Phone className="w-3 h-3" /> WA
+                </button>
+                <button onClick={() => { base44.entities.MaintenanceSheet.delete(s.id).then(() => setSheets(sheets.filter(x => x.id !== s.id))); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
+                  <Trash2 className="w-3 h-3" /> Eliminar
+                </button>
               </div>
             </CardContent>
           </Card>
