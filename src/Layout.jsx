@@ -7,7 +7,7 @@ import {
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette, Battery,
-  CreditCard, Download
+  CreditCard, Download, Bell
 } from 'lucide-react';
 
 const navItems = [
@@ -33,6 +33,7 @@ const navItems = [
   { name: 'Asistente IA', page: 'AIAssistant', icon: Bot },
   { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette },
   { name: 'Tarjetas Visita', page: 'BusinessCards', icon: CreditCard },
+  { name: 'Recordatorios', page: 'Automations', icon: Bell },
   { name: 'Exportar Datos', page: 'ExportData', icon: Download },
   { name: 'Configuración', page: 'CompanyConfig', icon: Settings },
 ];
@@ -59,6 +60,7 @@ const mobileTabItems = [
   { name: 'Asist. IA', page: 'AIAssistant', icon: Bot },
   { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette },
   { name: 'T.Visita', page: 'BusinessCards', icon: CreditCard },
+  { name: 'Recordat.', page: 'Automations', icon: Bell },
   { name: 'Exportar', page: 'ExportData', icon: Download },
   { name: 'Config.', page: 'CompanyConfig', icon: Settings },
 ];
