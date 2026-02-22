@@ -52,7 +52,16 @@ export default function Contacts() {
     loadContacts();
   };
 
-  const resetForm = () => setForm({ type: 'cliente', category: 'residencial', name: '', surname: '', company_name: '', nif: '', email: '', phone: '', phone2: '', address: '', city: '', province: '', postal_code: '', country: 'España', notes: '', payment_profile: 'pagador_normal', pending_amount: 0, internal_observations: '' });
+  const resetForm = () => setForm({ type: 'cliente', category: 'residencial', name: '', surname: '', company_name: '', nif: '', email: '', phone: '', phone2: '', address: '', city: '', province: '', postal_code: '', country: 'España', notes: '', payment_profile: 'pagador_normal', pending_amount: 0, internal_observations: '', photo_url: '' });
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPhotoUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setForm(prev => ({ ...prev, photo_url: file_url }));
+    setPhotoUploading(false);
+  };
 
   const handleEdit = (c) => {
     setEditing(c);
