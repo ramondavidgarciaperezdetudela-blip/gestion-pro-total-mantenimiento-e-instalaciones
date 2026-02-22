@@ -389,15 +389,50 @@ export default function ContactDetail() {
             <Link to={createPageUrl(`SAT?contact_id=${contactId}`)}>
               <Button size="sm" className="bg-orange-600"><Plus className="w-4 h-4 mr-1" />Nueva orden SAT</Button>
             </Link>
-            {satOrders.map(o => (
-              <Card key={o.id}>
-                <CardContent className="p-3">
-                  <p className="font-medium text-sm">{o.order_number} - {o.type}</p>
-                  <p className="text-xs text-gray-500">{o.date} | {o.description}</p>
-                  <Badge className="mt-1">{o.status}</Badge>
-                </CardContent>
-              </Card>
-            ))}
+            {satOrders.map(o => {
+              const statusColors = { pendiente: 'bg-yellow-100 text-yellow-700', en_curso: 'bg-blue-100 text-blue-700', completada: 'bg-green-100 text-green-700', cancelada: 'bg-gray-100 text-gray-700' };
+              return (
+                <Card key={o.id} className="hover:shadow-md">
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm">#{o.order_number || 'S/N'} — {o.type?.replace(/_/g,' ')}</p>
+                        <p className="text-xs text-gray-500">{o.date} | {o.equipment_type?.replace(/_/g,' ')}</p>
+                        {o.description && <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">{o.description}</p>}
+                        {o.technician && <p className="text-xs text-blue-600">👷 {o.technician}</p>}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        <Badge className={statusColors[o.status] || ''}>{o.status}</Badge>
+                        {o.total > 0 && <span className="text-xs font-semibold">{o.total?.toFixed(2)} €</span>}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 mt-2 border-t pt-2 flex-wrap">
+                      <Link to={createPageUrl(`SAT?view=${o.id}`)}>
+                        <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-orange-50 text-orange-700 hover:bg-orange-100 cursor-pointer">
+                          <Eye className="w-3 h-3" /> Ver
+                        </span>
+                      </Link>
+                      <Link to={createPageUrl(`SAT?edit=${o.id}`)}>
+                        <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer">
+                          <Edit className="w-3 h-3" /> Editar
+                        </span>
+                      </Link>
+                      <button onClick={() => sendWhatsApp(`Orden SAT #${o.order_number || ''}\nFecha: ${o.date}\nTipo: ${o.type}\nDescripción: ${o.description || '-'}\nEstado: ${o.status}`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+                        <Phone className="w-3 h-3" /> WA
+                      </button>
+                      {contact.email && (
+                        <button onClick={() => sendEmail(`Orden SAT #${o.order_number || ''}`, `Estimado/a ${contact.name},\n\nAdjuntamos resumen de la Orden SAT #${o.order_number}.\nFecha: ${o.date} | Tipo: ${o.type}\n${o.solution ? `Solución: ${o.solution}` : ''}\n\nAtentamente`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                          <Send className="w-3 h-3" /> Email
+                        </button>
+                      )}
+                      <button onClick={() => deleteSat(o.id)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
+                        <Trash2 className="w-3 h-3" /> Eliminar
+                      </button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
             {satOrders.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Sin órdenes SAT</p>}
           </div>
         </TabsContent>
