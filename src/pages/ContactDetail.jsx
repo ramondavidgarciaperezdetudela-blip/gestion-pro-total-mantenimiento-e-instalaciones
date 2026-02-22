@@ -103,6 +103,7 @@ export default function ContactDetail() {
     await base44.entities.Contact.update(contactId, contactForm);
     setContact({ ...contact, ...contactForm });
     setEditingContact(false);
+    alert('✅ Datos del cliente actualizados correctamente');
   };
 
   const openGPS = () => {
