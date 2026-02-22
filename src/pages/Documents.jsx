@@ -146,8 +146,22 @@ export default function Documents() {
   const handleSave = async () => {
     if (editing) {
       await base44.entities.Invoice.update(editing.id, form);
+      alert('✅ Documento actualizado correctamente');
     } else {
-      await base44.entities.Invoice.create(form);
+      const saved = await base44.entities.Invoice.create(form);
+      // Vincular al cliente
+      if (form.contact_id) {
+        await base44.entities.ClientDocument.create({
+          contact_id: form.contact_id,
+          contact_name: form.contact_name,
+          title: `${form.doc_type === 'factura' ? 'Factura' : form.doc_type === 'presupuesto' ? 'Presupuesto' : 'Recibo'} ${form.doc_number || ''}`,
+          doc_type: form.doc_type,
+          date: form.date,
+          description: `Total: ${form.total?.toFixed(2)} € | Estado: ${form.status}`,
+          reference_id: saved.id,
+        });
+      }
+      alert('✅ Documento guardado y vinculado al cliente');
     }
     setDialogOpen(false);
     setEditing(null);
