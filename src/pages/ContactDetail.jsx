@@ -228,6 +228,14 @@ export default function ContactDetail() {
 
   return (
     <div className="space-y-4" ref={printRef}>
+      {/* Back button */}
+      <div className="flex items-center gap-2">
+        <Link to={createPageUrl('Contacts')}>
+          <Button size="sm" variant="outline" className="gap-1">
+            <ArrowLeft className="w-4 h-4" /> Volver
+          </Button>
+        </Link>
+      </div>
       <CompanyHeader />
 
       <Card>
