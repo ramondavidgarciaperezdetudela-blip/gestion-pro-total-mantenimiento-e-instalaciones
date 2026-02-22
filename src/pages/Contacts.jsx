@@ -96,6 +96,22 @@ export default function Contacts() {
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? 'Editar contacto' : 'Nuevo contacto'}</DialogTitle></DialogHeader>
             <div className="space-y-3">
+              {/* Photo upload */}
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300 flex-shrink-0">
+                  {form.photo_url ? (
+                    <img src={form.photo_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-7 h-7 text-gray-400" />
+                  )}
+                </div>
+                <div>
+                  <button type="button" onClick={() => photoInputRef.current?.click()} className="flex items-center gap-1 text-xs text-blue-600 border border-blue-300 rounded px-2 py-1 hover:bg-blue-50" disabled={photoUploading}>
+                    <Camera className="w-3 h-3" />{photoUploading ? 'Subiendo...' : 'Foto contacto'}
+                  </button>
+                  <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <Select value={form.type} onValueChange={v => setForm({...form, type: v})}>
                   <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
