@@ -29,7 +29,9 @@ export default function Contacts() {
   const [filterType, setFilterType] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ type: 'cliente', category: 'residencial', name: '', surname: '', company_name: '', nif: '', email: '', phone: '', phone2: '', address: '', city: '', province: '', postal_code: '', country: 'España', notes: '', payment_profile: 'pagador_normal', pending_amount: 0, internal_observations: '' });
+  const [form, setForm] = useState({ type: 'cliente', category: 'residencial', name: '', surname: '', company_name: '', nif: '', email: '', phone: '', phone2: '', address: '', city: '', province: '', postal_code: '', country: 'España', notes: '', payment_profile: 'pagador_normal', pending_amount: 0, internal_observations: '', photo_url: '' });
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = React.useRef(null);
 
   useEffect(() => { loadContacts(); }, []);
 
