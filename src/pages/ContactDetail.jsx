@@ -465,7 +465,7 @@ export default function ContactDetail() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm">Ficha #{m.sheet_number} — {m.type}</p>
-                      <p className="text-xs text-gray-500">{m.date} | {m.equipment_brand} {m.equipment_model}</p>
+                      <p className="text-xs text-gray-500">{fmtDate(m.date)} | {m.equipment_brand} {m.equipment_model}</p>
                       {m.technician_name && <p className="text-xs text-blue-600">👷 {m.technician_name}</p>}
                     </div>
                     <div className="flex flex-col items-end gap-1">
