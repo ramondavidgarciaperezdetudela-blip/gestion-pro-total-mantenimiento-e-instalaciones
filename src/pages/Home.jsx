@@ -8,7 +8,7 @@ import {
   Calendar, Users, FileText, Wrench, ClipboardList,
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
   Building2, FolderOpen, Zap, BarChart3, Clock, AlertCircle,
-  StickyNote, Package, Battery, Palette
+  StickyNote, Package, Battery, Palette, CreditCard, Bell, Download
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -33,7 +33,10 @@ const quickLinks = [
   { name: 'Manuales', page: 'Manuals', icon: BookOpen, color: 'bg-teal-600' },
   { name: 'Informes', page: 'Reports', icon: BarChart3, color: 'bg-fuchsia-500' },
   { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette, color: 'bg-rose-500' },
+  { name: 'Tarjetas', page: 'BusinessCards', icon: CreditCard, color: 'bg-sky-600' },
+  { name: 'Recordatorios', page: 'Automations', icon: Bell, color: 'bg-amber-500' },
   { name: 'Asistente IA', page: 'AIAssistant', icon: Bot, color: 'bg-green-500' },
+  { name: 'Exportar', page: 'ExportData', icon: Download, color: 'bg-lime-600' },
   { name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
 ];
 
