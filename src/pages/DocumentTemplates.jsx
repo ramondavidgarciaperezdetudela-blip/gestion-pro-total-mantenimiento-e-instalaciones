@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Edit, Trash2, Palette, Save, Star, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Palette, Save, Star, Eye, Download } from 'lucide-react';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo', 'sat', 'mantenimiento', 'informe'];
 const FONT_SIZES = { small: '11px', medium: '13px', large: '15px' };
@@ -19,7 +19,9 @@ const DEFAULT_TEMPLATES = [
   { name: 'Recibo estándar', doc_type: 'recibo', primary_color: '#166534', secondary_color: '#4ade80', show_logo: true, show_iban: true, show_signature_box: true, font_size: 'medium', iva_rate: 21, is_default: true, header_text: '', footer_text: '', notes_template: '' },
 ];
 
-const EMPTY_TPL = { name: '', doc_type: 'factura', primary_color: '#1e3a5f', secondary_color: '#0ea5e9', show_logo: true, show_iban: true, show_signature_box: false, font_size: 'medium', iva_rate: 21, is_default: false, header_text: '', footer_text: '', notes_template: '' };
+const FONT_FAMILIES = ['Arial', 'Times New Roman', 'Georgia', 'Verdana', 'Calibri', 'Trebuchet MS'];
+
+const EMPTY_TPL = { name: '', doc_type: 'factura', primary_color: '#1e3a5f', secondary_color: '#0ea5e9', show_logo: true, show_iban: true, show_signature_box: false, font_size: 'medium', font_family: 'Arial', iva_rate: 21, is_default: false, header_text: '', footer_text: '', notes_template: '', margin_top: 15, margin_bottom: 15, margin_left: 15, margin_right: 15, zoom: 100, table_style: 'striped', show_work_type_badge: true };
 
 export default function DocumentTemplates() {
   const [templates, setTemplates] = useState([]);
