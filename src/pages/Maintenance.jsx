@@ -159,7 +159,20 @@ export default function Maintenance() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Input placeholder="Ubicación" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} />
-                <Input placeholder="Nombre técnico" value={form.technician_name} onChange={e => setForm({ ...form, technician_name: e.target.value })} />
+                {technicians.length > 0 ? (
+                  <div>
+                    <Select value={form.technician_name} onValueChange={v => setForm({ ...form, technician_name: v === '__manual__' ? '' : v })}>
+                      <SelectTrigger><SelectValue placeholder="Técnico" /></SelectTrigger>
+                      <SelectContent>
+                        {technicians.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                        <SelectItem value="__manual__">Escribir manualmente...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {form.technician_name === '' && <Input className="mt-1" placeholder="Nombre técnico" onChange={e => setForm({ ...form, technician_name: e.target.value })} />}
+                  </div>
+                ) : (
+                  <Input placeholder="Nombre técnico" value={form.technician_name} onChange={e => setForm({ ...form, technician_name: e.target.value })} />
+                )}
               </div>
 
               {/* Climate readings */}
