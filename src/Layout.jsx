@@ -6,7 +6,8 @@ import {
   Home, Users, FileText, Calendar, Wrench, ClipboardList,
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
   Menu, X, Building2, FolderOpen,
-  Zap, BarChart3, LogOut, StickyNote, Package, Palette, Battery
+  Zap, BarChart3, LogOut, StickyNote, Package, Palette, Battery,
+  CreditCard, Download
 } from 'lucide-react';
 
 const navItems = [
