@@ -66,7 +66,6 @@ export default function Maintenance() {
       await base44.entities.MaintenanceSheet.update(editing.id, data);
     } else {
       const saved = await base44.entities.MaintenanceSheet.create(data);
-      // Archive to client doc
       if (form.contact_id) {
         await base44.entities.ClientDocument.create({
           contact_id: form.contact_id,
@@ -74,13 +73,15 @@ export default function Maintenance() {
           title: `Ficha Mantenimiento #${form.sheet_number} - ${form.type}`,
           doc_type: 'ficha_mantenimiento',
           date: form.date,
-          description: `${form.type} | ${form.equipment_brand} ${form.equipment_model}`
+          description: `${form.type} | ${form.equipment_brand} ${form.equipment_model}`,
+          reference_id: saved.id,
         });
       }
     }
     setDialogOpen(false);
     setEditing(null);
     setForm(EMPTY_FORM);
+    alert(editing ? '✅ Ficha actualizada correctamente' : '✅ Ficha guardada y vinculada al cliente');
     const s = await base44.entities.MaintenanceSheet.list('-date', 500);
     setSheets(s);
   };
