@@ -11,6 +11,7 @@ import {
   StickyNote, Package, Battery, Palette
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const quickLinks = [
   { name: 'Agenda', page: 'Agenda', icon: Calendar, color: 'bg-blue-500' },
