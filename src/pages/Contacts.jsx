@@ -65,7 +65,7 @@ export default function Contacts() {
 
   const handleEdit = (c) => {
     setEditing(c);
-    setForm({ type: c.type || 'cliente', category: c.category || 'residencial', name: c.name || '', surname: c.surname || '', company_name: c.company_name || '', nif: c.nif || '', email: c.email || '', phone: c.phone || '', phone2: c.phone2 || '', address: c.address || '', city: c.city || '', province: c.province || '', postal_code: c.postal_code || '', country: c.country || 'España', notes: c.notes || '', payment_profile: c.payment_profile || 'pagador_normal', pending_amount: c.pending_amount || 0, internal_observations: c.internal_observations || '' });
+    setForm({ type: c.type || 'cliente', category: c.category || 'residencial', name: c.name || '', surname: c.surname || '', company_name: c.company_name || '', nif: c.nif || '', email: c.email || '', phone: c.phone || '', phone2: c.phone2 || '', address: c.address || '', city: c.city || '', province: c.province || '', postal_code: c.postal_code || '', country: c.country || 'España', notes: c.notes || '', payment_profile: c.payment_profile || 'pagador_normal', pending_amount: c.pending_amount || 0, internal_observations: c.internal_observations || '', photo_url: c.photo_url || '' });
     setDialogOpen(true);
   };
 
