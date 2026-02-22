@@ -68,7 +68,7 @@ export default function Home() {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
             {company?.company_name || 'Bienvenido'}
           </h1>
-          <p className="text-gray-500 text-sm">{format(new Date(), "EEEE, d 'de' MMMM yyyy")}</p>
+          <p className="text-gray-500 text-sm capitalize">{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
         </div>
       </div>
 
