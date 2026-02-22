@@ -31,6 +31,8 @@ const navItems = [
   { name: 'Presupuesto IA', page: 'AIBudget', icon: Bot },
   { name: 'Asistente IA', page: 'AIAssistant', icon: Bot },
   { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette },
+  { name: 'Tarjetas Visita', page: 'BusinessCards', icon: CreditCard },
+  { name: 'Exportar Datos', page: 'ExportData', icon: Download },
   { name: 'Configuración', page: 'CompanyConfig', icon: Settings },
 ];
 
