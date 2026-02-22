@@ -304,17 +304,58 @@ export default function DocumentTemplates() {
                 </div>
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-gray-500">Tamaño de fuente</label>
+                <Select value={form.font_size} onValueChange={v => setForm({ ...form, font_size: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="small">Pequeño (11px)</SelectItem>
+                    <SelectItem value="medium">Mediano (13px)</SelectItem>
+                    <SelectItem value="large">Grande (15px)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Tipo de letra</label>
+                <Select value={form.font_family || 'Arial'} onValueChange={v => setForm({ ...form, font_family: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {FONT_FAMILIES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div>
-              <label className="text-xs text-gray-500">Tamaño de fuente</label>
-              <Select value={form.font_size} onValueChange={v => setForm({ ...form, font_size: v })}>
+              <label className="text-xs text-gray-500">Estilo de tabla</label>
+              <Select value={form.table_style || 'striped'} onValueChange={v => setForm({ ...form, table_style: v })}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="small">Pequeño (11px)</SelectItem>
-                  <SelectItem value="medium">Mediano (13px)</SelectItem>
-                  <SelectItem value="large">Grande (15px)</SelectItem>
+                  <SelectItem value="striped">Filas alternadas</SelectItem>
+                  <SelectItem value="bordered">Con bordes</SelectItem>
+                  <SelectItem value="minimal">Minimalista</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            <div>
+              <label className="text-xs text-gray-500">Zoom de impresión: {form.zoom || 100}%</label>
+              <input type="range" min={60} max={120} step={5} value={form.zoom || 100}
+                onChange={e => setForm({ ...form, zoom: parseInt(e.target.value) })}
+                className="w-full mt-1" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 border rounded-lg p-3 bg-gray-50">
+              <label className="text-xs font-semibold text-gray-600 col-span-2">Márgenes de impresión (mm)</label>
+              {[['margin_top', 'Superior'], ['margin_bottom', 'Inferior'], ['margin_left', 'Izquierdo'], ['margin_right', 'Derecho']].map(([k, l]) => (
+                <div key={k}>
+                  <label className="text-xs text-gray-500">{l}</label>
+                  <Input type="number" className="mt-1 h-8 text-sm" value={form[k] ?? 15} onChange={e => setForm({ ...form, [k]: parseInt(e.target.value) })} />
+                </div>
+              ))}
+            </div>
+
             <div className="space-y-2 border rounded-lg p-3 bg-gray-50">
               <label className="text-xs font-semibold text-gray-600">Elementos del documento</label>
               {[['show_logo', 'Mostrar logo de empresa'], ['show_iban', 'Mostrar IBAN/datos bancarios'], ['show_signature_box', 'Recuadros de firma (técnico/cliente)'], ['is_default', 'Usar como plantilla predeterminada']].map(([key, label]) => (
