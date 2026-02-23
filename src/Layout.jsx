@@ -47,6 +47,7 @@ const mobileTabItems = [
   { name: 'Agenda', page: 'Agenda', icon: Calendar },
   { name: 'Contactos', page: 'Contacts', icon: Users },
   { name: 'Docs', page: 'Documents', icon: FileText },
+  { name: 'Presupuest.', page: 'Documents?type=presupuesto', icon: FileText },
   { name: 'SAT', page: 'SAT', icon: Wrench },
   { name: 'Manten.', page: 'Maintenance', icon: ClipboardList },
   { name: 'Notas', page: 'Notes', icon: StickyNote },
