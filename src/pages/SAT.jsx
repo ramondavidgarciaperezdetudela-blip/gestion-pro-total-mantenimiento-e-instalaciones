@@ -43,6 +43,11 @@ const EMPTY_FORM = {
 };
 
 export default function SAT() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const preContactId = urlParams.get('contact_id');
+  const preViewId = urlParams.get('view');
+  const preEditId = urlParams.get('edit');
+
   const [orders, setOrders] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -53,7 +58,7 @@ export default function SAT() {
   const [editing, setEditing] = useState(null);
   const [previewOrder, setPreviewOrder] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState({ ...EMPTY_FORM, ...(preContactId ? { contact_id: preContactId } : {}) });
   const [activeTab, setActiveTab] = useState('lista');
   const printRef = useRef(null);
 
