@@ -300,16 +300,21 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
       <Card>
         <CardContent className="p-5">
           <div className="flex items-start gap-4 mb-4">
-            <div className="relative w-14 h-14 flex-shrink-0">
-              {contact.company_logo_url || contact.photo_url ? (
-                <img src={contact.company_logo_url || contact.photo_url} alt="" className="w-14 h-14 rounded-full object-cover border" />
+            {/* Foto cliente — clic para cambiar */}
+            <div className="relative w-20 h-20 flex-shrink-0 group cursor-pointer" onClick={() => photoRef.current?.click()}>
+              {contact.photo_url ? (
+                <img src={contact.photo_url} alt="" className="w-20 h-20 rounded-xl object-cover border-2 border-gray-200 shadow" />
               ) : (
-                <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl">
-                  {contact.name?.[0] || 'C'}
+                <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-3xl shadow">
+                  {contact.name?.[0]?.toUpperCase() || 'C'}
                 </div>
               )}
+              <div className="absolute inset-0 rounded-xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                {photoUploading ? <span className="text-white text-xs">⏳</span> : <Camera className="w-6 h-6 text-white" />}
+              </div>
+              <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <h1 className="text-xl font-bold">{contact.name} {contact.surname}</h1>
               {contact.company_name && <p className="text-gray-500">{contact.company_name}</p>}
               <div className="flex flex-wrap gap-1 mt-1">
@@ -319,8 +324,11 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
                 {contact.pending_amount > 0 && <Badge className="bg-red-100 text-red-700">⚠️ Debe {contact.pending_amount?.toFixed(2)} €</Badge>}
               </div>
             </div>
-            <div className="flex gap-1">
-              <Button size="sm" variant="outline" onClick={() => setUploadDialog(true)} title="Subir documento escaneado">
+            <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
+              <Button size="sm" variant="outline" onClick={generateAIReport} title="Informe IA">
+                <Bot className="w-3.5 h-3.5 mr-1" />IA
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setUploadDialog(true)} title="Subir documento">
                 <Upload className="w-3.5 h-3.5" />
               </Button>
               <Button size="sm" variant="outline" onClick={() => setEditingContact(!editingContact)}>{editingContact ? 'Cancelar' : 'Editar'}</Button>
