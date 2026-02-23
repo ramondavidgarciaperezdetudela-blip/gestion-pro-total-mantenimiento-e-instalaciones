@@ -300,18 +300,50 @@ export default function Reports() {
                   <div className="divide-y max-h-60 overflow-y-auto">
                     {data.sat.slice(0, 10).map(s => (
                       <div key={s.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="font-medium text-xs">{s.contact_name}</p>
-                          <p className="text-xs text-gray-400">{s.date} · {s.type}</p>
+                          <p className="text-xs text-gray-400">{s.date} · {s.type?.replace(/_/g,' ')} · {s.equipment_type?.replace(/_/g,' ')}</p>
+                          {s.technician && <p className="text-[10px] text-blue-600">👷 {s.technician}</p>}
+                          {s.total > 0 && <p className="text-[10px] font-semibold text-orange-700">{s.total?.toFixed(2)} €</p>}
                         </div>
-                        <Badge className={s.status === 'completada' ? 'bg-green-100 text-green-700' : s.status === 'pendiente' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'} variant="secondary">
-                          {s.status}
-                        </Badge>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge className={s.status === 'completada' ? 'bg-green-100 text-green-700' : s.status === 'pendiente' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'} variant="secondary">
+                            {s.status}
+                          </Badge>
+                          <Link to={createPageUrl(`SAT?view=${s.id}`)}>
+                            <span className="text-[10px] text-blue-600 hover:underline cursor-pointer flex items-center gap-0.5">
+                              <Link2 className="w-3 h-3" />Ver
+                            </span>
+                          </Link>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
+
+              {/* SAT por técnico */}
+              {(() => {
+                const techMap = {};
+                data.sat.forEach(s => { if (s.technician) { techMap[s.technician] = (techMap[s.technician] || 0) + 1; } });
+                const techData = Object.entries(techMap).sort((a,b) => b[1]-a[1]);
+                return techData.length > 0 ? (
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">SAT por técnico</CardTitle></CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={160}>
+                        <BarChart data={techData.map(([name, value]) => ({ name, value }))}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" tick={{ fontSize: 9 }} />
+                          <YAxis tick={{ fontSize: 10 }} />
+                          <Tooltip />
+                          <Bar dataKey="value" fill="#f59e0b" radius={[4,4,0,0]} name="Órdenes" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                ) : null;
+              })()}
             </TabsContent>
 
             <TabsContent value="stock" className="space-y-4 pt-3">
