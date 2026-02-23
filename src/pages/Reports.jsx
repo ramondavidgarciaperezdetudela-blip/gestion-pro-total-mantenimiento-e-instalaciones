@@ -7,8 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   BarChart3, TrendingUp, Users, FileText, Wrench, ClipboardList,
-  TrendingDown, DollarSign, Calendar, Package, AlertTriangle, CheckCircle
+  TrendingDown, DollarSign, Calendar, Package, AlertTriangle, CheckCircle, Link2
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '../utils';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend
