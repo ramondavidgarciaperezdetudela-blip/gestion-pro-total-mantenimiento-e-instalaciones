@@ -157,16 +157,29 @@ export default function Documents() {
 
   const handleSave = async () => {
     setSaving(true);
+    const docLabel = form.doc_type === 'factura' ? 'Factura' : form.doc_type === 'presupuesto' ? 'Presupuesto' : 'Recibo';
     if (editing) {
       await base44.entities.Invoice.update(editing.id, form);
+      // Actualizar ClientDocument vinculado
+      if (form.contact_id) {
+        const existingDocs = await base44.entities.ClientDocument.filter({ contact_id: form.contact_id, doc_type: form.doc_type });
+        const linked = existingDocs.find(d => d.title?.includes(editing.doc_number || editing.id.slice(-6)));
+        if (linked) {
+          await base44.entities.ClientDocument.update(linked.id, {
+            title: `${docLabel} ${form.doc_number || ''}`,
+            description: `Total: ${form.total?.toFixed(2)} € | Estado: ${form.status}`,
+            date: form.date,
+          });
+        }
+      }
     } else {
-      const saved = await base44.entities.Invoice.create(form);
+      await base44.entities.Invoice.create(form);
       if (form.contact_id) {
         await base44.entities.ClientDocument.create({
           contact_id: form.contact_id, contact_name: form.contact_name,
-          title: `${form.doc_type === 'factura' ? 'Factura' : form.doc_type === 'presupuesto' ? 'Presupuesto' : 'Recibo'} ${form.doc_number || ''}`,
+          title: `${docLabel} ${form.doc_number || ''}`,
           doc_type: form.doc_type, date: form.date,
-          description: `Total: ${form.total?.toFixed(2)} € | Estado: ${form.status}`,
+          description: `Total: ${form.total?.toFixed(2)} € | Estado: ${form.status} | Tipo trabajo: ${form.work_type || '-'}`,
         });
       }
     }
