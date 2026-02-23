@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, FileText, Trash2, Edit, Eye, ShoppingCart, Copy, Printer, ChevronDown, ChevronUp } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Search, FileText, Trash2, Edit, Eye, ShoppingCart, Copy, ChevronDown, ChevronUp, Save, Phone, Mail } from 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
@@ -42,6 +42,16 @@ const EMPTY_FORM = {
   subtotal: 0, iva_rate: 21, iva_amount: 0, total: 0, observations: '', payment_terms: PAYMENT_TERMS, normative_references: ''
 };
 
+function recalculate(items, iva_rate) {
+  const updatedItems = items.map(item => ({
+    ...item,
+    total: (item.quantity || 0) * (item.unit_price || 0) * (1 - (item.discount || 0) / 100)
+  }));
+  const subtotal = updatedItems.reduce((sum, i) => sum + i.total, 0);
+  const iva_amount = subtotal * (iva_rate / 100);
+  return { items: updatedItems, subtotal, iva_amount, total: subtotal + iva_amount };
+}
+
 export default function Documents() {
   const urlParams = new URLSearchParams(window.location.search);
   const preContactId = urlParams.get('contact_id');
@@ -58,24 +68,24 @@ export default function Documents() {
   const [previewDoc, setPreviewDoc] = useState(null);
   const [supplierSearchOpen, setSupplierSearchOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM, doc_type: preType || 'presupuesto', contact_id: preContactId || '' });
   const printRef = useRef(null);
 
   useEffect(() => {
     Promise.all([
       base44.entities.Invoice.list('-date', 500),
-      base44.entities.Contact.list(),
+      base44.entities.Contact.list('name', 500),
       base44.entities.DocumentTemplate.list('name', 50),
     ]).then(([d, c, t]) => {
       setDocs(d);
       setContacts(c);
       setTemplates(t);
-      // Auto-open form if came from contact detail
       if (preContactId && preType) {
         const contact = c.find(co => co.id === preContactId);
         if (contact) {
-          const defaultTpl = t.find(tp => tp.doc_type === preType && tp.is_default);
-          openNew(preType, contact, defaultTpl);
+          const tpl = t.find(tp => tp.doc_type === preType && tp.is_default);
+          openNew(preType, contact, tpl);
         }
       }
     });
@@ -83,88 +93,85 @@ export default function Documents() {
 
   const openNew = (docType = 'presupuesto', contact = null, tpl = null) => {
     const baseForm = { ...EMPTY_FORM, doc_type: docType };
-    if (tpl) {
-      baseForm.iva_rate = tpl.iva_rate || 21;
-      baseForm.observations = tpl.notes_template || '';
-      baseForm.payment_terms = PAYMENT_TERMS;
-    }
+    if (tpl) { baseForm.iva_rate = tpl.iva_rate || 21; baseForm.observations = tpl.notes_template || ''; }
     if (contact) {
       baseForm.contact_id = contact.id;
       baseForm.contact_name = `${contact.name} ${contact.surname || ''}`.trim();
       baseForm.contact_nif = contact.nif || '';
       baseForm.contact_address = `${contact.address || ''}, ${contact.city || ''} ${contact.postal_code || ''} ${contact.province || ''}`.trim();
     }
-    setEditing(null);
-    setForm(baseForm);
-    setDialogOpen(true);
+    setEditing(null); setForm(baseForm); setDialogOpen(true); setShowAdvanced(false);
   };
 
-  const recalculate = (items, iva_rate) => {
-    const updatedItems = items.map(item => ({
-      ...item,
-      total: (item.quantity || 0) * (item.unit_price || 0) * (1 - (item.discount || 0) / 100)
-    }));
-    const subtotal = updatedItems.reduce((sum, i) => sum + i.total, 0);
-    const iva_amount = subtotal * (iva_rate / 100);
-    return { items: updatedItems, subtotal, iva_amount, total: subtotal + iva_amount };
-  };
+  // Handlers estables (no recreados en cada render)
+  const handleItemChange = useCallback((index, field, value) => {
+    setForm(prev => {
+      const newItems = prev.items.map((item, i) => i === index ? { ...item, [field]: value } : item);
+      const calc = recalculate(newItems, prev.iva_rate);
+      return { ...prev, ...calc };
+    });
+  }, []);
 
-  const updateItem = (index, field, value) => {
-    const newItems = [...form.items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    const calc = recalculate(newItems, form.iva_rate);
-    setForm({ ...form, ...calc });
-  };
+  const addItem = useCallback(() => {
+    setForm(prev => ({ ...prev, items: [...prev.items, { description: '', quantity: 1, unit_price: 0, discount: 0, total: 0 }] }));
+  }, []);
 
-  const addItem = () => setForm({ ...form, items: [...form.items, { description: '', quantity: 1, unit_price: 0, discount: 0, total: 0 }] });
+  const removeItem = useCallback((i) => {
+    setForm(prev => {
+      const newItems = prev.items.filter((_, idx) => idx !== i);
+      return { ...prev, ...recalculate(newItems, prev.iva_rate) };
+    });
+  }, []);
 
-  const addItemFromSupplier = (item) => {
-    const newItems = [...form.items, item];
-    const calc = recalculate(newItems, form.iva_rate);
-    setForm({ ...form, ...calc });
-  };
+  const addItemFromSupplier = useCallback((item) => {
+    setForm(prev => {
+      const newItems = [...prev.items, item];
+      return { ...prev, ...recalculate(newItems, prev.iva_rate) };
+    });
+  }, []);
 
-  const removeItem = (i) => {
-    const newItems = form.items.filter((_, idx) => idx !== i);
-    const calc = recalculate(newItems, form.iva_rate);
-    setForm({ ...form, ...calc });
-  };
+  const handleContactSelect = useCallback((contactId) => {
+    setForm(prev => {
+      const c = contacts.find(co => co.id === contactId);
+      if (!c) return prev;
+      return {
+        ...prev,
+        contact_id: contactId,
+        contact_name: `${c.name} ${c.surname || ''}`.trim(),
+        contact_nif: c.nif || '',
+        contact_address: `${c.address || ''}, ${c.city || ''} ${c.postal_code || ''}`.trim()
+      };
+    });
+  }, [contacts]);
 
-  const handleContactSelect = (contactId) => {
-    const c = contacts.find(co => co.id === contactId);
-    if (c) setForm({ ...form, contact_id: contactId, contact_name: `${c.name} ${c.surname || ''}`.trim(), contact_nif: c.nif || '', contact_address: `${c.address || ''}, ${c.city || ''} ${c.postal_code || ''}`.trim() });
-  };
+  const handleIvaChange = useCallback((val) => {
+    setForm(prev => {
+      const iva_rate = parseFloat(val) || 0;
+      return { ...prev, iva_rate, ...recalculate(prev.items, iva_rate) };
+    });
+  }, []);
 
-  const handleWorkTypeChange = (wt) => setForm({ ...form, work_type: wt, normative_references: NORMATIVE_MAP[wt] || '' });
-
-  const handleIvaChange = (val) => {
-    const iva_rate = parseFloat(val) || 0;
-    const calc = recalculate(form.items, iva_rate);
-    setForm({ ...form, iva_rate, ...calc });
-  };
+  const handleWorkTypeChange = useCallback((wt) => {
+    setForm(prev => ({ ...prev, work_type: wt, normative_references: NORMATIVE_MAP[wt] || '' }));
+  }, []);
 
   const handleSave = async () => {
+    setSaving(true);
     if (editing) {
       await base44.entities.Invoice.update(editing.id, form);
-      alert('✅ Documento actualizado correctamente');
     } else {
       const saved = await base44.entities.Invoice.create(form);
-      // Vincular al cliente
       if (form.contact_id) {
         await base44.entities.ClientDocument.create({
-          contact_id: form.contact_id,
-          contact_name: form.contact_name,
+          contact_id: form.contact_id, contact_name: form.contact_name,
           title: `${form.doc_type === 'factura' ? 'Factura' : form.doc_type === 'presupuesto' ? 'Presupuesto' : 'Recibo'} ${form.doc_number || ''}`,
-          doc_type: form.doc_type,
-          date: form.date,
+          doc_type: form.doc_type, date: form.date,
           description: `Total: ${form.total?.toFixed(2)} € | Estado: ${form.status}`,
-          reference_id: saved.id,
         });
       }
-      alert('✅ Documento guardado y vinculado al cliente');
     }
-    setDialogOpen(false);
-    setEditing(null);
+    setSaving(false);
+    setDialogOpen(false); setEditing(null);
     const d = await base44.entities.Invoice.list('-date', 500);
     setDocs(d);
   };
@@ -177,21 +184,33 @@ export default function Documents() {
 
   const handleDuplicate = async (doc) => {
     const { id, created_date, updated_date, ...rest } = doc;
-    const newDoc = { ...rest, doc_number: `${rest.doc_number}-COPIA`, status: 'borrador', date: format(new Date(), 'yyyy-MM-dd') };
-    await base44.entities.Invoice.create(newDoc);
+    await base44.entities.Invoice.create({ ...rest, doc_number: `${rest.doc_number}-COPIA`, status: 'borrador', date: format(new Date(), 'yyyy-MM-dd') });
     const d = await base44.entities.Invoice.list('-date', 500);
     setDocs(d);
   };
 
   const handleEdit = (doc) => {
-    setEditing(doc);
-    setForm({ ...EMPTY_FORM, ...doc });
-    setDialogOpen(true);
+    setEditing(doc); setForm({ ...EMPTY_FORM, ...doc, items: doc.items || [{ description: '', quantity: 1, unit_price: 0, discount: 0, total: 0 }] }); setDialogOpen(true);
   };
 
   const handleStatusChange = async (doc, newStatus) => {
     await base44.entities.Invoice.update(doc.id, { status: newStatus });
     setDocs(docs.map(d => d.id === doc.id ? { ...d, status: newStatus } : d));
+  };
+
+  const sendWhatsApp = (doc) => {
+    const c = contacts.find(x => x.id === doc.contact_id);
+    const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
+    const msg = encodeURIComponent(`*${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}*\nCliente: ${doc.contact_name}\nFecha: ${doc.date}\nTotal: ${doc.total?.toFixed(2)} €\nEstado: ${doc.status}`);
+    window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+  };
+
+  const sendEmail = (doc) => {
+    const c = contacts.find(x => x.id === doc.contact_id);
+    if (!c?.email) return alert('El cliente no tiene email registrado');
+    const subject = encodeURIComponent(`${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}`);
+    const body = encodeURIComponent(`Estimado/a ${doc.contact_name},\n\nAdjunto ${doc.doc_type} Nº${doc.doc_number} de fecha ${doc.date}.\nTotal: ${doc.total?.toFixed(2)} €\n\nQuedamos a su disposición.`);
+    window.open(`mailto:${c.email}?subject=${subject}&body=${body}`, '_blank');
   };
 
   const filtered = docs.filter(d => {
@@ -201,155 +220,36 @@ export default function Documents() {
     return matchSearch && matchType && matchStatus;
   });
 
-  // Resumen financiero
-  const totals = { facturas: docs.filter(d => d.doc_type === 'factura').reduce((s, d) => s + (d.total || 0), 0), pendiente: docs.filter(d => d.doc_type === 'factura' && ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0) };
-
-  const DocForm = () => (
-    <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
-        <Select value={form.doc_type} onValueChange={v => setForm({ ...form, doc_type: v })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{DOC_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
-        </Select>
-        <Input placeholder="Nº documento" value={form.doc_number} onChange={e => setForm({ ...form, doc_number: e.target.value })} />
-        <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-
-      <Select value={form.contact_id} onValueChange={handleContactSelect}>
-        <SelectTrigger><SelectValue placeholder="Seleccionar cliente *" /></SelectTrigger>
-        <SelectContent>
-          {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname} {c.company_name ? `(${c.company_name})` : ''}</SelectItem>)}
-        </SelectContent>
-      </Select>
-
-      {form.contact_name && (
-        <div className="bg-gray-50 p-2 rounded text-xs text-gray-600">
-          <strong>{form.contact_name}</strong>{form.contact_nif ? ` · NIF: ${form.contact_nif}` : ''}<br />
-          {form.contact_address}
-        </div>
-      )}
-
-      <div className="grid grid-cols-3 gap-2">
-        <div><label className="text-xs text-gray-500">Fecha</label><Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></div>
-        <div><label className="text-xs text-gray-500">Vencimiento</label><Input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} /></div>
-        <div>
-          <label className="text-xs text-gray-500">IVA (%)</label>
-          <Select value={String(form.iva_rate)} onValueChange={handleIvaChange}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0">0% (Exento)</SelectItem>
-              <SelectItem value="4">4% (Super reducido)</SelectItem>
-              <SelectItem value="10">10% (Reducido)</SelectItem>
-              <SelectItem value="21">21% (General)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <Select value={form.work_type} onValueChange={handleWorkTypeChange}>
-        <SelectTrigger><SelectValue placeholder="Tipo de trabajo" /></SelectTrigger>
-        <SelectContent>{WORK_TYPES.map(w => <SelectItem key={w} value={w}>{w.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
-      </Select>
-
-      {/* Items */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Líneas del documento</label>
-        <div className="hidden md:grid grid-cols-12 gap-1 text-[10px] text-gray-400 px-1">
-          <span className="col-span-5">Descripción</span>
-          <span className="col-span-2">Cant.</span>
-          <span className="col-span-2">€/u</span>
-          <span className="col-span-1">Dto%</span>
-          <span className="col-span-1 text-right">Total</span>
-        </div>
-        {form.items.map((item, i) => (
-          <div key={i} className="grid grid-cols-12 gap-1 items-center">
-            <Input className="col-span-5 text-xs" placeholder="Descripción" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
-            <Input className="col-span-2 text-xs" type="number" placeholder="Cant." value={item.quantity} onChange={e => updateItem(i, 'quantity', parseFloat(e.target.value) || 0)} />
-            <Input className="col-span-2 text-xs" type="number" placeholder="Precio" value={item.unit_price} onChange={e => updateItem(i, 'unit_price', parseFloat(e.target.value) || 0)} />
-            <Input className="col-span-1 text-xs" type="number" placeholder="Dto" value={item.discount || 0} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)} />
-            <span className="col-span-1 text-xs text-right font-medium text-green-700">{item.total?.toFixed(2)}</span>
-            <button className="col-span-1 text-red-400 hover:text-red-600 text-lg leading-none" onClick={() => removeItem(i)}>×</button>
-          </div>
-        ))}
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Línea</Button>
-          <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => setSupplierSearchOpen(true)}>
-            <ShoppingCart className="w-3 h-3 mr-1" />Buscar en distribuidor
-          </Button>
-        </div>
-      </div>
-
-      <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg space-y-1 text-sm">
-        <div className="flex justify-between text-gray-600"><span>Subtotal:</span><span>{form.subtotal?.toFixed(2)} €</span></div>
-        <div className="flex justify-between text-gray-600"><span>IVA ({form.iva_rate}%):</span><span>{form.iva_amount?.toFixed(2)} €</span></div>
-        <div className="flex justify-between font-bold text-lg text-blue-800"><span>TOTAL:</span><span>{form.total?.toFixed(2)} €</span></div>
-      </div>
-
-      {/* Advanced section toggle */}
-      <button className="text-xs text-gray-500 flex items-center gap-1" onClick={() => setShowAdvanced(!showAdvanced)}>
-        {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-        Observaciones y condiciones de pago
-      </button>
-      {showAdvanced && (
-        <div className="space-y-2">
-          <Textarea placeholder="Observaciones" value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} rows={2} />
-          <Textarea placeholder="Condiciones de pago" value={form.payment_terms} onChange={e => setForm({ ...form, payment_terms: e.target.value })} rows={3} />
-          {form.normative_references && (
-            <div className="bg-blue-50 p-3 rounded-lg text-xs">
-              <p className="font-medium text-blue-700 mb-1">Normativa aplicable:</p>
-              <p className="text-blue-600">{form.normative_references}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      <Button onClick={handleSave} className="w-full bg-blue-600">{editing ? 'Actualizar documento' : 'Crear documento'}</Button>
-    </div>
-  );
+  const totals = {
+    facturas: docs.filter(d => d.doc_type === 'factura').reduce((s, d) => s + (d.total || 0), 0),
+    pendiente: docs.filter(d => d.doc_type === 'factura' && ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0)
+  };
 
   return (
     <div className="space-y-4">
-      {/* Header + stats */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">Documentos</h1>
         <div className="flex gap-2">
-          <Button className="bg-blue-600" onClick={() => openNew('presupuesto', null, templates.find(t => t.doc_type === 'presupuesto' && t.is_default))}>
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => openNew('presupuesto', null, templates.find(t => t.doc_type === 'presupuesto' && t.is_default))}>
             <Plus className="w-4 h-4 mr-1" />Presupuesto
           </Button>
-          <Button className="bg-violet-600" onClick={() => openNew('factura', null, templates.find(t => t.doc_type === 'factura' && t.is_default))}>
+          <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => openNew('factura', null, templates.find(t => t.doc_type === 'factura' && t.is_default))}>
             <Plus className="w-4 h-4 mr-1" />Factura
+          </Button>
+          <Button className="bg-green-600 hover:bg-green-700" onClick={() => openNew('recibo')}>
+            <Plus className="w-4 h-4 mr-1" />Recibo
           </Button>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <Card className="bg-violet-50 border-violet-100">
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-violet-500">Facturado</p>
-            <p className="font-bold text-violet-700">{totals.facturas.toFixed(0)} €</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-orange-50 border-orange-100">
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-orange-500">Pendiente cobro</p>
-            <p className="font-bold text-orange-700">{totals.pendiente.toFixed(0)} €</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-blue-50 border-blue-100">
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-blue-500">Total documentos</p>
-            <p className="font-bold text-blue-700">{docs.length}</p>
-          </CardContent>
-        </Card>
+        <Card className="bg-violet-50"><CardContent className="p-3 text-center"><p className="text-xs text-violet-500">Facturado</p><p className="font-bold text-violet-700">{totals.facturas.toFixed(0)} €</p></CardContent></Card>
+        <Card className="bg-orange-50"><CardContent className="p-3 text-center"><p className="text-xs text-orange-500">Pendiente cobro</p><p className="font-bold text-orange-700">{totals.pendiente.toFixed(0)} €</p></CardContent></Card>
+        <Card className="bg-blue-50"><CardContent className="p-3 text-center"><p className="text-xs text-blue-500">Total docs</p><p className="font-bold text-blue-700">{docs.length}</p></CardContent></Card>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[160px]">
+        <div className="relative flex-1 min-w-36">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input placeholder="Buscar..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
@@ -369,17 +269,170 @@ export default function Documents() {
         </Select>
       </div>
 
-      {/* Form dialog */}
+      {/* ===== DIALOG EDITAR/CREAR ===== */}
       <Dialog open={dialogOpen} onOpenChange={o => { setDialogOpen(o); if (!o) { setEditing(null); setShowAdvanced(false); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? 'Editar documento' : 'Nuevo documento'}</DialogTitle></DialogHeader>
-          <DocForm />
+          <DialogHeader>
+            <DialogTitle>{editing ? `Editar ${editing.doc_type} ${editing.doc_number}` : 'Nuevo documento'}</DialogTitle>
+          </DialogHeader>
+
+          {/* FORMULARIO INLINE — sin sub-componente para evitar pérdida de foco */}
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-2">
+              <Select value={form.doc_type} onValueChange={v => setForm(p => ({ ...p, doc_type: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{DOC_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
+              </Select>
+              <Input placeholder="Nº documento" value={form.doc_number}
+                onChange={e => { const v = e.target.value; setForm(p => ({ ...p, doc_number: v })); }} />
+              <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+
+            <Select value={form.contact_id || ''} onValueChange={handleContactSelect}>
+              <SelectTrigger><SelectValue placeholder="Seleccionar cliente *" /></SelectTrigger>
+              <SelectContent>
+                {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname} {c.company_name ? `(${c.company_name})` : ''}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            {form.contact_name && (
+              <div className="bg-gray-50 p-2 rounded text-xs text-gray-600">
+                <strong>{form.contact_name}</strong>{form.contact_nif ? ` · NIF: ${form.contact_nif}` : ''}<br />{form.contact_address}
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-xs text-gray-500">Fecha</label>
+                <Input type="date" value={form.date} onChange={e => { const v = e.target.value; setForm(p => ({ ...p, date: v })); }} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Vencimiento</label>
+                <Input type="date" value={form.due_date || ''} onChange={e => { const v = e.target.value; setForm(p => ({ ...p, due_date: v })); }} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">IVA (%)</label>
+                <Select value={String(form.iva_rate)} onValueChange={handleIvaChange}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">0% (Exento)</SelectItem>
+                    <SelectItem value="4">4% (Super reducido)</SelectItem>
+                    <SelectItem value="10">10% (Reducido)</SelectItem>
+                    <SelectItem value="21">21% (General)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Select value={form.work_type} onValueChange={handleWorkTypeChange}>
+              <SelectTrigger><SelectValue placeholder="Tipo de trabajo" /></SelectTrigger>
+              <SelectContent>{WORK_TYPES.map(w => <SelectItem key={w} value={w}>{w.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
+            </Select>
+
+            {/* LÍNEAS */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Líneas del documento</label>
+              <div className="hidden md:grid grid-cols-12 gap-1 text-[10px] text-gray-400 px-1">
+                <span className="col-span-5">Descripción</span>
+                <span className="col-span-2">Cant.</span>
+                <span className="col-span-2">€/ud</span>
+                <span className="col-span-1">Dto%</span>
+                <span className="col-span-1 text-right">Total</span>
+                <span className="col-span-1"></span>
+              </div>
+              {form.items.map((item, i) => (
+                <div key={i} className="grid grid-cols-12 gap-1 items-center">
+                  <Input
+                    className="col-span-5 text-xs h-8"
+                    placeholder="Descripción"
+                    value={item.description}
+                    onChange={e => handleItemChange(i, 'description', e.target.value)}
+                  />
+                  <Input
+                    className="col-span-2 text-xs h-8"
+                    type="number"
+                    placeholder="Cant."
+                    value={item.quantity}
+                    onChange={e => handleItemChange(i, 'quantity', parseFloat(e.target.value) || 0)}
+                  />
+                  <Input
+                    className="col-span-2 text-xs h-8"
+                    type="number"
+                    placeholder="Precio"
+                    value={item.unit_price}
+                    onChange={e => handleItemChange(i, 'unit_price', parseFloat(e.target.value) || 0)}
+                  />
+                  <Input
+                    className="col-span-1 text-xs h-8"
+                    type="number"
+                    placeholder="Dto"
+                    value={item.discount || 0}
+                    onChange={e => handleItemChange(i, 'discount', parseFloat(e.target.value) || 0)}
+                  />
+                  <span className="col-span-1 text-xs text-right font-medium text-green-700">{item.total?.toFixed(2)}</span>
+                  <button className="col-span-1 text-red-400 hover:text-red-600 text-lg leading-none text-center" onClick={() => removeItem(i)}>×</button>
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Línea</Button>
+                <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => setSupplierSearchOpen(true)}>
+                  <ShoppingCart className="w-3 h-3 mr-1" />Buscar en distribuidor
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg space-y-1 text-sm">
+              <div className="flex justify-between text-gray-600"><span>Subtotal:</span><span>{form.subtotal?.toFixed(2)} €</span></div>
+              <div className="flex justify-between text-gray-600"><span>IVA ({form.iva_rate}%):</span><span>{form.iva_amount?.toFixed(2)} €</span></div>
+              <div className="flex justify-between font-bold text-lg text-blue-800"><span>TOTAL:</span><span>{form.total?.toFixed(2)} €</span></div>
+            </div>
+
+            <button className="text-xs text-gray-500 flex items-center gap-1" onClick={() => setShowAdvanced(v => !v)}>
+              {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              Observaciones y condiciones de pago
+            </button>
+            {showAdvanced && (
+              <div className="space-y-2">
+                <Textarea
+                  placeholder="Observaciones"
+                  value={form.observations || ''}
+                  onChange={e => { const v = e.target.value; setForm(p => ({ ...p, observations: v })); }}
+                  rows={3}
+                />
+                <Textarea
+                  placeholder="Condiciones de pago"
+                  value={form.payment_terms || ''}
+                  onChange={e => { const v = e.target.value; setForm(p => ({ ...p, payment_terms: v })); }}
+                  rows={4}
+                />
+                {form.normative_references && (
+                  <div className="bg-blue-50 p-3 rounded-lg text-xs">
+                    <p className="font-medium text-blue-700 mb-1">Normativa aplicable:</p>
+                    <Textarea
+                      value={form.normative_references || ''}
+                      onChange={e => { const v = e.target.value; setForm(p => ({ ...p, normative_references: v })); }}
+                      rows={2}
+                      className="text-xs"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Button onClick={handleSave} disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 gap-2">
+              <Save className="w-4 h-4" />
+              {saving ? 'Guardando...' : editing ? 'Actualizar documento' : 'Guardar documento'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
       <SupplierProductSearch open={supplierSearchOpen} onClose={() => setSupplierSearchOpen(false)} onAddItem={addItemFromSupplier} />
 
-      {/* Preview dialog */}
+      {/* ===== PREVIEW ===== */}
       <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -437,18 +490,27 @@ export default function Documents() {
                   {previewDoc.normative_references && <p className="text-xs text-blue-600 border-t pt-2">Normativa: {previewDoc.normative_references}</p>}
                 </div>
               </div>
-              <div className="flex gap-2 justify-end mt-3 pt-3 border-t">
+              <div className="flex gap-2 mt-3 pt-3 border-t flex-wrap no-print">
+                <PrintButton contentRef={printRef} title={`${previewDoc?.doc_type}_${previewDoc?.doc_number}`} />
                 <Button variant="outline" size="sm" onClick={() => { setPreviewDoc(null); handleEdit(previewDoc); }}>
                   <Edit className="w-4 h-4 mr-1" />Editar
                 </Button>
-                <PrintButton contentRef={printRef} title={`${previewDoc?.doc_type} ${previewDoc?.doc_number}`} />
+                <Button variant="outline" size="sm" className="text-green-700" onClick={() => sendWhatsApp(previewDoc)}>
+                  <Phone className="w-4 h-4 mr-1" />WhatsApp
+                </Button>
+                <Button variant="outline" size="sm" className="text-blue-700" onClick={() => sendEmail(previewDoc)}>
+                  <Mail className="w-4 h-4 mr-1" />Email
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => { setPreviewDoc(null); handleDuplicate(previewDoc); }}>
+                  <Copy className="w-4 h-4 mr-1" />Duplicar
+                </Button>
               </div>
             </>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Document list */}
+      {/* ===== LISTA ===== */}
       <div className="space-y-2">
         {filtered.length === 0 && <p className="text-center text-gray-400 py-8">No hay documentos</p>}
         {filtered.map(doc => (
@@ -463,22 +525,18 @@ export default function Documents() {
                   <p className="text-xs text-gray-500 truncate">{doc.contact_name} · {doc.date}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
                 <span className="font-bold text-sm">{doc.total?.toFixed(2)} €</span>
-                <Select value={doc.status} onValueChange={v => { handleStatusChange(doc, v); }} onClick={e => e.stopPropagation()}>
-                  <SelectTrigger className={`h-6 text-[10px] w-24 border-0 ${STATUS_COLORS[doc.status] || ''}`} onClick={e => e.stopPropagation()}>
+                <Select value={doc.status} onValueChange={v => handleStatusChange(doc, v)}>
+                  <SelectTrigger className={`h-6 text-[10px] w-24 border-0 ${STATUS_COLORS[doc.status] || ''}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {STATUSES.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <button onClick={e => { e.stopPropagation(); handleDuplicate(doc); }} className="text-gray-400 hover:text-blue-600 p-1" title="Duplicar">
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={e => { e.stopPropagation(); handleDelete(doc.id); }} className="text-red-300 hover:text-red-500 p-1">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <button onClick={() => handleDuplicate(doc)} className="text-gray-400 hover:text-blue-600 p-1" title="Duplicar"><Copy className="w-3.5 h-3.5" /></button>
+                <button onClick={() => handleDelete(doc.id)} className="text-red-300 hover:text-red-500 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             </CardContent>
           </Card>

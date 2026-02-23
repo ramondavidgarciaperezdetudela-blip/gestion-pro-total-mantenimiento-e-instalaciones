@@ -50,7 +50,10 @@
 import AIAssistant from './pages/AIAssistant';
 import AIBudget from './pages/AIBudget';
 import Agenda from './pages/Agenda';
+import Automations from './pages/Automations';
 import BatteryCalc from './pages/BatteryCalc';
+import BusinessCards from './pages/BusinessCards';
+import ClientPortal from './pages/ClientPortal';
 import ColdRoomCalc from './pages/ColdRoomCalc';
 import CompanyConfig from './pages/CompanyConfig';
 import ContactDetail from './pages/ContactDetail';
@@ -58,6 +61,7 @@ import Contacts from './pages/Contacts';
 import DocumentTemplates from './pages/DocumentTemplates';
 import Documents from './pages/Documents';
 import ElectricalCalc from './pages/ElectricalCalc';
+import ExportData from './pages/ExportData';
 import Home from './pages/Home';
 import Inventory from './pages/Inventory';
 import Maintenance from './pages/Maintenance';
@@ -70,10 +74,6 @@ import SAT from './pages/SAT';
 import SolarCalc from './pages/SolarCalc';
 import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
-import BusinessCards from './pages/BusinessCards';
-import ExportData from './pages/ExportData';
-import Automations from './pages/Automations';
-import ClientPortal from './pages/ClientPortal';
 import __Layout from './Layout.jsx';
 
 
@@ -81,7 +81,10 @@ export const PAGES = {
     "AIAssistant": AIAssistant,
     "AIBudget": AIBudget,
     "Agenda": Agenda,
+    "Automations": Automations,
     "BatteryCalc": BatteryCalc,
+    "BusinessCards": BusinessCards,
+    "ClientPortal": ClientPortal,
     "ColdRoomCalc": ColdRoomCalc,
     "CompanyConfig": CompanyConfig,
     "ContactDetail": ContactDetail,
@@ -89,6 +92,7 @@ export const PAGES = {
     "DocumentTemplates": DocumentTemplates,
     "Documents": Documents,
     "ElectricalCalc": ElectricalCalc,
+    "ExportData": ExportData,
     "Home": Home,
     "Inventory": Inventory,
     "Maintenance": Maintenance,
@@ -101,10 +105,6 @@ export const PAGES = {
     "SolarCalc": SolarCalc,
     "Suppliers": Suppliers,
     "ThermalCalc": ThermalCalc,
-    "BusinessCards": BusinessCards,
-    "ExportData": ExportData,
-    "Automations": Automations,
-    "ClientPortal": ClientPortal,
 }
 
 export const pagesConfig = {
