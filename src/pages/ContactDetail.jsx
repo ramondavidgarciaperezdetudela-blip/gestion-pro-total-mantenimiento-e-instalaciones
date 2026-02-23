@@ -45,7 +45,12 @@ export default function ContactDetail() {
   const [uploadDocType, setUploadDocType] = useState('otro');
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [aiReportLoading, setAiReportLoading] = useState(false);
+  const [aiReport, setAiReport] = useState('');
+  const [aiReportDialog, setAiReportDialog] = useState(false);
   const fileUploadRef = useRef(null);
+  const photoRef = useRef(null);
   const printRef = useRef(null);
 
   useEffect(() => {
