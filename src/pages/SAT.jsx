@@ -80,16 +80,28 @@ export default function SAT() {
     const data = { ...form, total };
     if (editing) {
       await base44.entities.SATOrder.update(editing.id, data);
+      // Actualizar el documento vinculado si existe
+      if (form.contact_id) {
+        const docs = await base44.entities.ClientDocument.filter({ contact_id: form.contact_id, doc_type: 'orden_sat' });
+        const linked = docs.find(d => d.title?.includes(editing.order_number || editing.id.slice(-6)));
+        if (linked) {
+          await base44.entities.ClientDocument.update(linked.id, {
+            title: `Orden SAT #${form.order_number || editing.id.slice(-6)} - ${form.type}`,
+            description: `${form.type} | ${form.equipment_type?.replace(/_/g, ' ')} | ${form.description || ''} | Estado: ${form.status} | Total: ${total.toFixed(2)} €`,
+            date: form.date,
+          });
+        }
+      }
     } else {
       const saved = await base44.entities.SATOrder.create(data);
       if (form.contact_id) {
         await base44.entities.ClientDocument.create({
           contact_id: form.contact_id,
           contact_name: form.contact_name,
-          title: `Orden SAT #${form.order_number || saved.id} - ${form.type}`,
+          title: `Orden SAT #${form.order_number || saved.id.slice(-6)} - ${form.type}`,
           doc_type: 'orden_sat',
           date: form.date,
-          description: `${form.type} | ${form.equipment_type?.replace(/_/g, ' ')} | ${form.description || ''}`,
+          description: `${form.type} | ${form.equipment_type?.replace(/_/g, ' ')} | ${form.description || ''} | Estado: ${form.status} | Total: ${total.toFixed(2)} €`,
         });
       }
     }
