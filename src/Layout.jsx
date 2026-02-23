@@ -16,6 +16,7 @@ const navItems = [
   { name: 'Agenda', page: 'Agenda', icon: Calendar },
   { name: 'Contactos', page: 'Contacts', icon: Users },
   { name: 'Documentos', page: 'Documents', icon: FileText },
+  { name: 'Presupuestos', page: 'Documents?type=presupuesto', icon: FileText },
   { name: 'SAT', page: 'SAT', icon: Wrench },
   { name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList },
   { name: 'Notas', page: 'Notes', icon: StickyNote },
