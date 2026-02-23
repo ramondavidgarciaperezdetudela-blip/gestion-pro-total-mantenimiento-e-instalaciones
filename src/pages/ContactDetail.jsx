@@ -109,7 +109,44 @@ export default function ContactDetail() {
     await base44.entities.Contact.update(contactId, contactForm);
     setContact({ ...contact, ...contactForm });
     setEditingContact(false);
-    alert('✅ Datos del cliente actualizados correctamente');
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    setPhotoUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const updated = { ...contact, photo_url: file_url };
+    await base44.entities.Contact.update(contactId, { photo_url: file_url });
+    setContact(updated);
+    setContactForm(prev => ({ ...prev, photo_url: file_url }));
+    setPhotoUploading(false);
+  };
+
+  const generateAIReport = async () => {
+    setAiReportLoading(true); setAiReportDialog(true); setAiReport('');
+    const totalFacturado = invoices.filter(i => i.doc_type === 'factura').reduce((s, i) => s + (i.total || 0), 0);
+    const pendiente = invoices.filter(i => ['enviado','vencido'].includes(i.status)).reduce((s, i) => s + (i.total || 0), 0);
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `Genera un informe profesional en español sobre el cliente con los siguientes datos:
+Nombre: ${contact.name} ${contact.surname || ''} ${contact.company_name ? `(${contact.company_name})` : ''}
+Tipo: ${contact.type} | Categoría: ${contact.category}
+Perfil de pago: ${contact.payment_profile}
+Teléfono: ${contact.phone || '-'} | Email: ${contact.email || '-'}
+Dirección: ${contact.address || '-'}, ${contact.city || '-'}
+
+HISTORIAL:
+- Facturas: ${invoices.filter(i=>i.doc_type==='factura').length} (Total facturado: ${totalFacturado.toFixed(2)} €, Pendiente: ${pendiente.toFixed(2)} €)
+- Presupuestos: ${invoices.filter(i=>i.doc_type==='presupuesto').length}
+- Órdenes SAT: ${satOrders.length} (${satOrders.filter(s=>s.status==='pendiente').length} pendientes)
+- Fichas mantenimiento: ${maintenance.length}
+- Citas: ${appointments.length}
+- Notas: ${notes.length}
+${contact.internal_observations ? `Observaciones internas: ${contact.internal_observations}` : ''}
+
+Redacta un informe conciso con: resumen del cliente, valoración de la relación comercial, historial de trabajos, situación financiera y recomendaciones. Máximo 400 palabras.`,
+    });
+    setAiReport(result);
+    setAiReportLoading(false);
   };
 
   const openGPS = () => {
