@@ -105,11 +105,15 @@ export default function Contacts() {
                     <User className="w-7 h-7 text-gray-400" />
                   )}
                 </div>
-                <div>
+                <div className="flex flex-col gap-1">
                   <button type="button" onClick={() => photoInputRef.current?.click()} className="flex items-center gap-1 text-xs text-blue-600 border border-blue-300 rounded px-2 py-1 hover:bg-blue-50" disabled={photoUploading}>
-                    <Camera className="w-3 h-3" />{photoUploading ? 'Subiendo...' : 'Foto contacto'}
+                    <Camera className="w-3 h-3" />{photoUploading ? 'Subiendo...' : 'Desde archivo'}
+                  </button>
+                  <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex items-center gap-1 text-xs text-green-600 border border-green-300 rounded px-2 py-1 hover:bg-green-50" disabled={photoUploading}>
+                    <Camera className="w-3 h-3" />Usar cámara
                   </button>
                   <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                  <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
