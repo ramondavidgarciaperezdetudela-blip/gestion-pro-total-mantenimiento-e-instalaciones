@@ -402,6 +402,27 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
         </DialogContent>
       </Dialog>
 
+      {/* AI Report Dialog */}
+      <Dialog open={aiReportDialog} onOpenChange={setAiReportDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>📊 Informe IA — {contact.name} {contact.surname}</DialogTitle></DialogHeader>
+          {aiReportLoading ? (
+            <div className="text-center py-10">
+              <Bot className="w-10 h-10 mx-auto text-purple-400 animate-pulse mb-2" />
+              <p className="text-sm text-gray-500">Generando informe...</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 text-sm whitespace-pre-wrap leading-relaxed">{aiReport}</div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(aiReport)}>Copiar</Button>
+                <Button size="sm" variant="outline" onClick={generateAIReport}>Regenerar</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Tabs defaultValue="facturas">
         <TabsList className="w-full flex flex-wrap h-auto gap-1">
           <TabsTrigger value="facturas" className="flex-1 text-xs min-w-[80px]">Facturas ({docsByType.factura.length})</TabsTrigger>
