@@ -16,7 +16,8 @@ import { es } from 'date-fns/locale';
 const quickLinks = [
   { name: 'Agenda', page: 'Agenda', icon: Calendar, color: 'bg-blue-500' },
   { name: 'Contactos', page: 'Contacts', icon: Users, color: 'bg-emerald-500' },
-  { name: 'Documentos', page: 'Documents', icon: FileText, color: 'bg-violet-500' },
+  { name: 'Nueva Factura', page: 'Documents?type=factura', icon: FileText, color: 'bg-violet-500' },
+  { name: 'Presupuesto', page: 'Documents?type=presupuesto', icon: FileText, color: 'bg-blue-600' },
   { name: 'SAT', page: 'SAT', icon: Wrench, color: 'bg-orange-500' },
   { name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList, color: 'bg-cyan-500' },
   { name: 'Notas', page: 'Notes', icon: StickyNote, color: 'bg-lime-500' },
