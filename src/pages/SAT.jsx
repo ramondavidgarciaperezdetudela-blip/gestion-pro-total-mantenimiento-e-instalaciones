@@ -505,6 +505,20 @@ export default function SAT() {
                   <div><p className="text-xs text-gray-500 font-medium mb-1">Fotos después:</p><div className="flex flex-wrap gap-2">{previewOrder.photos_after.map((p, i) => <img key={i} src={p} alt="" className="w-24 h-24 object-cover rounded border" />)}</div></div>
                 )}
                 {previewOrder.notes && <div className="bg-amber-50 rounded p-3 text-sm"><p className="text-xs font-medium text-amber-600 mb-1">Notas</p>{previewOrder.notes}</div>}
+
+                {/* Firma / conformidad */}
+                <div className="grid grid-cols-2 gap-6 mt-6 pt-4 border-t">
+                  <div className="text-center">
+                    <div className="border-b border-gray-400 h-16 mb-1"></div>
+                    <p className="text-xs text-gray-500">Firma del Técnico</p>
+                    {previewOrder.technician && <p className="text-xs font-medium">{previewOrder.technician}</p>}
+                  </div>
+                  <div className="text-center">
+                    <div className="border-b border-gray-400 h-16 mb-1"></div>
+                    <p className="text-xs text-gray-500">Conformidad del Cliente</p>
+                    <p className="text-xs font-medium">{previewOrder.contact_name}</p>
+                  </div>
+                </div>
               </div>
               <div className="flex gap-2 mt-3 flex-wrap no-print">
                 <PrintButton contentRef={printRef} title={`SAT_${previewOrder.order_number || 'orden'}`} />
@@ -517,6 +531,20 @@ export default function SAT() {
                 <Button variant="outline" size="sm" className="text-purple-700" onClick={() => sendEmail(previewOrder)}>
                   <Mail className="w-4 h-4 mr-1" />Email
                 </Button>
+                {previewOrder.contact_id && (
+                  <Link to={createPageUrl(`Documents?contact_id=${previewOrder.contact_id}&from_sat=${previewOrder.id}&type=factura`)}>
+                    <Button variant="outline" size="sm" className="text-violet-700 border-violet-300">
+                      <FileText className="w-4 h-4 mr-1" />Generar Factura
+                    </Button>
+                  </Link>
+                )}
+                {previewOrder.contact_id && (
+                  <Link to={createPageUrl(`ContactDetail?id=${previewOrder.contact_id}`)}>
+                    <Button variant="outline" size="sm" className="text-blue-700 border-blue-300">
+                      <Link2 className="w-4 h-4 mr-1" />Ver Cliente
+                    </Button>
+                  </Link>
+                )}
               </div>
             </>
           )}
