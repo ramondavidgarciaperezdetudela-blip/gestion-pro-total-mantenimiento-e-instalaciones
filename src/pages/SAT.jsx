@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, Printer } from 'lucide-react';
+import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, Printer, FileText, Link2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '../utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
