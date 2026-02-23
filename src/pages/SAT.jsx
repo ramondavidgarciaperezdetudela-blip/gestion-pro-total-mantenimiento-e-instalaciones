@@ -73,6 +73,23 @@ export default function SAT() {
     setOrders(o);
     setContacts(c);
     if (settings[0]?.technicians) setTechnicians(settings[0].technicians);
+
+    // Abrir orden desde URL params
+    if (preViewId) {
+      const found = o.find(ord => ord.id === preViewId);
+      if (found) setPreviewOrder(found);
+    }
+    if (preEditId) {
+      const found = o.find(ord => ord.id === preEditId);
+      if (found) { setEditing(found); setForm({ ...EMPTY_FORM, ...found, materials_used: found.materials_used || [], photos_before: found.photos_before || [], photos_after: found.photos_after || [] }); setDialogOpen(true); }
+    }
+    if (preContactId && !preEditId && !preViewId) {
+      const ct = c.find(co => co.id === preContactId);
+      if (ct) {
+        setForm({ ...EMPTY_FORM, contact_id: preContactId, contact_name: `${ct.name} ${ct.surname || ''}`.trim() });
+        setDialogOpen(true);
+      }
+    }
   };
 
   const calcTotal = (f) =>
