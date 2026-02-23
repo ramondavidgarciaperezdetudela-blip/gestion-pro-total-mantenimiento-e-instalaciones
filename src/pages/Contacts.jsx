@@ -32,6 +32,7 @@ export default function Contacts() {
   const [form, setForm] = useState({ type: 'cliente', category: 'residencial', name: '', surname: '', company_name: '', nif: '', email: '', phone: '', phone2: '', address: '', city: '', province: '', postal_code: '', country: 'España', notes: '', payment_profile: 'pagador_normal', pending_amount: 0, internal_observations: '', photo_url: '' });
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = React.useRef(null);
+  const cameraInputRef = React.useRef(null);
 
   useEffect(() => { loadContacts(); }, []);
 
