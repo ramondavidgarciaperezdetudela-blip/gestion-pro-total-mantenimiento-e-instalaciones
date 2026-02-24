@@ -126,10 +126,12 @@ export default function PrintButton({ contentRef, title = "Documento", className
     const el = contentRef?.current;
     if (!el) return;
     const win = window.open('', '_blank');
-    win.document.write(buildPrintHTML(title, el.innerHTML));
+    const html = buildPrintHTML(title, el.innerHTML);
+    win.document.open();
+    win.document.write(html);
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); }, 600);
+    setTimeout(() => { win.print(); }, 800);
   };
 
   return (
