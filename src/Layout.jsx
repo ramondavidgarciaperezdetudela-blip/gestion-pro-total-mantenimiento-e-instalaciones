@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 import GlobalSearch from './components/GlobalSearch';
+import AIChat from './components/AIChat';
 
 const navItems = [
   { name: 'Inicio', page: 'Home', icon: Home },
