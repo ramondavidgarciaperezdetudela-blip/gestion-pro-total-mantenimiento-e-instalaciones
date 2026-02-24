@@ -434,6 +434,15 @@ export default function Suppliers() {
                  <Input placeholder="Sitio web" value={form.website} onChange={e => setForm({...form, website: e.target.value})} />
 
                    <Input placeholder="URL tienda / pedidos online" value={form.login_url} onChange={e => setForm({...form, login_url: e.target.value})} />
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={form.province} onValueChange={v => setForm({...form, province: v})}>
+                    <SelectTrigger><SelectValue placeholder="Provincia" /></SelectTrigger>
+                    <SelectContent className="max-h-60">{SPANISH_PROVINCES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Input placeholder="Ciudad / Población" value={form.city} onChange={e => setForm({...form, city: e.target.value})} />
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   <Input placeholder="Teléfono" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
                   <Input placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
