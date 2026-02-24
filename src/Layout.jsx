@@ -170,6 +170,11 @@ export default function Layout({ children, currentPageName }) {
           })}
         </nav>
         <div className="p-3 border-t border-white/10 space-y-2">
+          <button onClick={() => setSearchOpen(true)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-blue-200 hover:text-white text-sm transition-all">
+            <Search className="w-4 h-4" />
+            <span className="flex-1 text-left">Buscar...</span>
+            <kbd className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded">⌘K</kbd>
+          </button>
           <div className="flex items-center justify-between px-2 py-1">
             <span className="text-xs text-blue-200">Alertas</span>
             <NotificationsPanel />
