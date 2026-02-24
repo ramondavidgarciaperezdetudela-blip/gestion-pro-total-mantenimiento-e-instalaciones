@@ -25,8 +25,6 @@ const navItems = [
   { name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer },
   { name: 'Cámara Frigorífica', page: 'ColdRoomCalc', icon: Thermometer },
   { name: 'Solar + Baterías', page: 'SolarBatteryCalc', icon: Sun },
-  { name: 'Cálculo Solar', page: 'SolarCalc', icon: Sun },
-  { name: 'Cálculo Baterías', page: 'BatteryCalc', icon: Battery },
   { name: 'Cálculo Eléctrico', page: 'ElectricalCalc', icon: Zap },
   { name: 'Normativas', page: 'Regulations', icon: Shield },
   { name: 'Docs Legalización', page: 'LegalDocs', icon: FileText },
