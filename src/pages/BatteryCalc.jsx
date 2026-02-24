@@ -167,18 +167,19 @@ Responde en formato JSON con esta estructura:
     setAiLoading(false);
   };
 
-  const saveToClient = async () => {
-    if (!form.contact_id || !result) return;
-    await base44.entities.ClientDocument.create({
-      contact_id: form.contact_id,
-      contact_name: form.contact_name,
-      title: `Cálculo baterías ${result.energiaTotalKwh}kWh — ${format(new Date(), 'dd/MM/yyyy')}`,
-      doc_type: 'calculo_solar',
-      date: format(new Date(), 'yyyy-MM-dd'),
-      description: `${result.numBaterias}x batería ${result.capBateria}Ah ${result.voltajeSistema}V, inversor ${result.potenciaInversorKw}kW`,
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const save = async () => {
+    if (!result) return;
+    const desc = `${result.numBaterias}x ${result.capBateria}Ah ${result.voltajeSistema}V, inv. ${result.potenciaInversorKw}kW`;
+    if (savedId) {
+      await base44.entities.SolarCalculation.update(savedId, { battery_capacity_kwh: parseFloat(result.energiaTotalKwh), num_batteries: result.numBaterias, inverter_power_w: result.potenciaInversorKw * 1000, notes: desc });
+    } else {
+      const rec = await base44.entities.SolarCalculation.create({ contact_id: form.contact_id || '', contact_name: form.contact_name || 'Sin cliente', calc_mode: 'directo', battery_capacity_kwh: parseFloat(result.energiaTotalKwh), num_batteries: result.numBaterias, inverter_power_w: result.potenciaInversorKw * 1000, date: format(new Date(), 'yyyy-MM-dd'), notes: desc });
+      setSavedId(rec.id);
+      if (form.contact_id) await base44.entities.ClientDocument.create({ contact_id: form.contact_id, contact_name: form.contact_name, title: `Cálculo baterías ${result.energiaTotalKwh}kWh — ${format(new Date(), 'dd/MM/yyyy')}`, doc_type: 'calculo_solar', date: format(new Date(), 'yyyy-MM-dd'), description: desc });
+    }
+    setSavedMsg(savedId ? '¡Actualizado!' : '¡Guardado!');
+    setEditing(false);
+    setTimeout(() => setSavedMsg(''), 3000);
   };
 
   return (
