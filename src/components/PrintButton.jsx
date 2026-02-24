@@ -9,21 +9,46 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const PDF_STYLES = `
+function getPdfStyles(cfg = {}) {
+  const mt = cfg.margin_top || 15;
+  const mb = cfg.margin_bottom || 15;
+  const ml = cfg.margin_left || 15;
+  const mr = cfg.margin_right || 15;
+  const paper = cfg.paper_size || 'A4';
+  const font = cfg.font_family || 'Segoe UI';
+  const fontSize = cfg.font_size === 'small' ? '8px' : cfg.font_size === 'large' ? '11px' : '9.5px';
+  const fitPage = cfg.fit_to_page !== false;
+  const avoidBreaks = cfg.avoid_table_breaks !== false;
+
+  return `
   @page {
-    size: A4 portrait;
-    margin: 15mm 15mm 15mm 15mm;
+    size: ${paper} portrait;
+    margin: ${mt}mm ${mr}mm ${mb}mm ${ml}mm;
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
     padding: 0;
-    font-family: 'Segoe UI', Arial, sans-serif;
+    font-family: '${font}', Arial, sans-serif;
     color: #1a1a2e;
     background: #fff;
-    font-size: 9.5px;
+    font-size: ${fontSize};
     line-height: 1.45;
   }
+  ${fitPage ? `
+  @media print {
+    html, body { width: ${paper === 'A5' ? '148mm' : paper === 'Carta' ? '216mm' : '210mm'}; }
+  }` : ''}
+  ${avoidBreaks ? `
+  table { page-break-inside: auto; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  .section-card { page-break-inside: avoid; }
+  ` : ''}`
+}
+
+const PDF_STYLES_STATIC = `
   .page-wrapper {
     width: 100%;
   }
