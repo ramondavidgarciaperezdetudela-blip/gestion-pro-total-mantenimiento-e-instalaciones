@@ -14,6 +14,16 @@ import { fetchCompanyLogo } from '../components/LogoFetcher';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
+const SPANISH_PROVINCES = [
+  'Álava', 'Albacete', 'Alicante', 'Almería', 'Asturias', 'Ávila', 'Badajoz', 'Barcelona',
+  'Burgos', 'Cáceres', 'Cádiz', 'Cantabria', 'Castellón', 'Ciudad Real', 'Córdoba', 'Cuenca',
+  'Girona', 'Granada', 'Guadalajara', 'Guipúzcoa', 'Huelva', 'Huesca', 'Jaén', 'La Coruña',
+  'La Rioja', 'Las Palmas', 'León', 'Lérida', 'Lugo', 'Madrid', 'Málaga', 'Murcia', 'Navarra',
+  'Orense', 'Palencia', 'Palma de Mallorca', 'Palmas', 'Pontevedra', 'Salamanca', 'Segovia',
+  'Sevilla', 'Soria', 'Tarragona', 'Tenerife', 'Teruel', 'Toledo', 'Valencia', 'Valladolid',
+  'Vizcaya', 'Zamora', 'Zaragoza'
+];
+
 const DEFAULT_SUPPLIERS = [
   {
     name: 'Salvador Escoda', website: 'https://www.salvadorescoda.com',
