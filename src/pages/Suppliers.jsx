@@ -142,6 +142,7 @@ export default function Suppliers() {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setForm(prev => ({ ...prev, logo_url: file_url }));
+      toast.success('Foto guardada correctamente');
     } catch (error) {
       toast.error('Error al subir la foto');
     }
