@@ -187,6 +187,8 @@ export default function SAT() {
     .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
 
   return (
+    <>
+    <AIChat />
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold flex items-center gap-2">
