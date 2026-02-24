@@ -670,6 +670,8 @@ export default function SolarBatteryCalc() {
 
                   <div><p className="font-semibold text-sm mb-2">🔌 Material para cuadros eléctricos (DC y AC)</p><ElecPanelTableSolar items={solarResult.electricalPanelItems} /></div>
 
+                  <AIReportPanel tipo="solar" datos={{ numPanels: solarResult.numPanels, totalKwp: solarResult.totalKwp, dailyProduction: solarResult.dailyProduction, yearlyProduction: solarResult.yearlyProduction, inverterKw: solarResult.inverterKw, numBatteries: solarResult.numBatteries, batteryKwh: solarResult.batteryKwh, numStrings: solarResult.numStrings, panelPowerW: solarForm.panel_power_w, modo: solarMode, cliente: solarForm.contact_name }} />
+
                   <div className="flex gap-2 flex-wrap no-print items-center pt-2 border-t border-gray-100">
                     <PrintButton contentRef={solarPrintRef} title="Cálculo Solar Fotovoltaico" />
                     {!solarEditing && !solarSavedId && (
