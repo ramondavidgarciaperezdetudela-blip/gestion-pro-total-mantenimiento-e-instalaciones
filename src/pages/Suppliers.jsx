@@ -79,11 +79,13 @@ const EMPTY_COMMERCIAL = { name: '', phone: '', whatsapp: '', email: '', notes: 
 
 export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
-     const [dialogOpen, setDialogOpen] = useState(false);
-     const [editing, setEditing] = useState(null);
-     const [form, setForm] = useState(EMPTY_FORM);
-     const [showApiKey, setShowApiKey] = useState(false);
-     const [fetchingLogo, setFetchingLogo] = useState(false);
+      const [dialogOpen, setDialogOpen] = useState(false);
+      const [editing, setEditing] = useState(null);
+      const [form, setForm] = useState(EMPTY_FORM);
+      const [showApiKey, setShowApiKey] = useState(false);
+      const [fetchingLogo, setFetchingLogo] = useState(false);
+      const [showSuggestions, setShowSuggestions] = useState(false);
+      const [searchProvince, setSearchProvince] = useState('');
 
   useEffect(() => {
     base44.entities.Supplier.list().then(data => {
