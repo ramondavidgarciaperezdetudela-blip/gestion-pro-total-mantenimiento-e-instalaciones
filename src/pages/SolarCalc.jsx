@@ -188,15 +188,7 @@ export default function SolarCalc() {
 
               <div>
                 <p className="font-semibold text-sm mb-2">Esquema de conexionado</p>
-                <div className="bg-slate-800 text-green-400 p-4 rounded-lg text-xs font-mono">
-                  <p>┌─ PANELES SOLARES ({result.numPanels}x {form.panel_power_w}W) ─────────────────┐</p>
-                  <p>│  {result.numStrings} string(s) de {Math.ceil(result.numPanels/result.numStrings)} paneles en serie    │</p>
-                  <p>└─→ CUADRO DC (fusibles + protección) ─────────────┤</p>
-                  <p>         │                                           │</p>
-                  <p>         └─→ INVERSOR {result.inverterKw}kW ──→ CUADRO AC ──→ RED</p>
-                  <p>                  │</p>
-                  <p>                  └─→ BATERÍAS ({result.numBatteries}x LiFePO4 2,4kWh)</p>
-                </div>
+                <SolarWiringDiagram result={result} form={form} />
               </div>
 
               <div>
