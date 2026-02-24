@@ -62,8 +62,6 @@ const mobileTabItems = [
   { name: 'Térmico', page: 'ThermalCalc', icon: Thermometer },
   { name: 'C. Frig.', page: 'ColdRoomCalc', icon: Thermometer },
   { name: 'Solar+Bat.', page: 'SolarBatteryCalc', icon: Sun },
-  { name: 'Solar', page: 'SolarCalc', icon: Sun },
-  { name: 'Baterías', page: 'BatteryCalc', icon: Battery },
   { name: 'Eléctrico', page: 'ElectricalCalc', icon: Zap },
   { name: 'Docs Legal.', page: 'LegalDocs', icon: FileText },
   { name: 'Plan. IA', page: 'AIPlanning', icon: ClipboardList },
