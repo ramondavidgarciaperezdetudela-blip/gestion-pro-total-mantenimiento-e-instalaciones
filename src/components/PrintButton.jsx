@@ -11,22 +11,21 @@ import {
 const PDF_STYLES = `
   @page {
     size: A4 portrait;
-    margin: 12mm 12mm 14mm 12mm;
+    margin: 15mm 15mm 15mm 15mm;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body {
-    width: 210mm;
-    margin: 0 auto;
+  html { margin: 0; padding: 0; }
+  body {
     font-family: 'Segoe UI', Arial, sans-serif;
     color: #1a1a2e;
     background: #fff;
     font-size: 9.5px;
     line-height: 1.45;
+    margin: 0;
+    padding: 0;
   }
   .page-wrapper {
-    width: 186mm;
-    margin: 0 auto;
-    padding: 0;
+    width: 100%;
   }
 
   /* Header empresa */
