@@ -161,14 +161,21 @@ export default function Suppliers() {
   };
 
   const SupplierCard = ({ s }) => {
-    const daysUntilReorder = getDaysUntilReorder(s.last_order_date, s.reorder_frequency_days);
-    const needsReorder = daysUntilReorder <= 7 && s.enable_notifications;
-    
-    return (
-      <Card className={`hover:shadow-md transition-shadow ${needsReorder ? 'border-amber-300 bg-amber-50' : ''}`}>
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            {s.logo_url && <img src={s.logo_url} alt={s.name} className="h-10 w-10 object-contain rounded border bg-white p-1 mr-2 flex-shrink-0" />}
+     const daysUntilReorder = getDaysUntilReorder(s.last_order_date, s.reorder_frequency_days);
+     const needsReorder = daysUntilReorder <= 7 && s.enable_notifications;
+
+     return (
+       <Card className={`hover:shadow-md transition-shadow ${needsReorder ? 'border-amber-300 bg-amber-50' : ''}`}>
+         <CardContent className="p-4">
+           <div className="flex items-start gap-3">
+             {/* Logo como foto del proveedor */}
+             <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden border border-slate-200 flex-shrink-0">
+               {s.logo_url ? (
+                 <img src={s.logo_url} alt={s.name} className="w-full h-full object-cover" />
+               ) : (
+                 <Building2 className="w-6 h-6 text-slate-400" />
+               )}
+             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 {!s.logo_url && <Building2 className="w-4 h-4 text-slate-500 flex-shrink-0" />}
