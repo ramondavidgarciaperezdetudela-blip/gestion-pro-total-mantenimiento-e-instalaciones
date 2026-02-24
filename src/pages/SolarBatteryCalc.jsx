@@ -248,27 +248,29 @@ function MaterialTableSolar({ materials }) {
 // ─── TABLA CUADRO ELÉCTRICO SOLAR ────────────────────────────────────────────
 function ElecPanelTableSolar({ items }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-lg border border-blue-200">
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="bg-blue-100">
-            <th className="border border-blue-200 p-2 text-left">Elemento</th>
-            <th className="border border-blue-200 p-2 text-left">Especificación técnica</th>
-            <th className="border border-blue-200 p-2 text-center">Cant.</th>
-            <th className="border border-blue-200 p-2 text-left">Marcas</th>
-            <th className="border border-blue-200 p-2 text-left">Dónde comprar</th>
-            <th className="border border-blue-200 p-2 text-left">Ubicación</th>
+          <tr className="bg-blue-700 text-white">
+            <th className="p-2 text-left">⚡ Elemento</th>
+            <th className="p-2 text-left">Especificación técnica</th>
+            <th className="p-2 text-center w-12">Cant.</th>
+            <th className="p-2 text-left">Marcas</th>
+            <th className="p-2 text-left">Dónde comprar</th>
+            <th className="p-2 text-left">Ubicación</th>
           </tr>
         </thead>
         <tbody>
           {items.map((m, i) => (
-            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
-              <td className="border border-gray-200 p-2 font-medium">{m.element}</td>
-              <td className="border border-gray-200 p-2 text-gray-600">{m.spec}</td>
-              <td className="border border-gray-200 p-2 text-center font-bold">{m.qty}</td>
-              <td className="border border-gray-200 p-2 text-blue-700">{m.brands}</td>
-              <td className="border border-gray-200 p-2 text-green-700">{m.shop}</td>
-              <td className="border border-gray-200 p-2 text-gray-500">{m.notes}</td>
+            <tr key={i} className={i % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-blue-50 hover:bg-blue-100'}>
+              <td className="border-b border-gray-100 p-2 font-medium">
+                <span className="mr-1">{getMaterialIcon(m.element)}</span>{m.element}
+              </td>
+              <td className="border-b border-gray-100 p-2 text-gray-600">{m.spec}</td>
+              <td className="border-b border-gray-100 p-2 text-center font-bold text-blue-700 bg-blue-50">{m.qty}</td>
+              <td className="border-b border-gray-100 p-2 text-blue-700 font-medium">{m.brands}</td>
+              <td className="border-b border-gray-100 p-2 text-green-700">{m.shop}</td>
+              <td className="border-b border-gray-100 p-2 text-gray-500">{m.notes}</td>
             </tr>
           ))}
         </tbody>
