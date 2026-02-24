@@ -149,6 +149,32 @@ export default function Suppliers() {
     setFetchingLogo(false);
   };
 
+  const handleFetchSupplierData = async () => {
+    if (!searchQuery.trim()) {
+      toast.error('Introduce un nombre, NIF o descripción del proveedor');
+      return;
+    }
+    setFetchingData(true);
+    const data = await fetchSupplierDataFromAPI(searchQuery);
+    if (data) {
+      setForm(prev => ({
+        ...prev,
+        name: data.name || prev.name,
+        phone: data.phone || prev.phone,
+        email: data.email || prev.email,
+        website: data.website || prev.website,
+        address: data.address || prev.address,
+        category: mapCategoryFromSector(data.sector) || prev.category,
+        notes: (data.description ? `${data.description}\nNIF: ${data.nif || 'No disponible'}` : prev.notes) || prev.notes,
+      }));
+      toast.success(`Datos obtenidos de ${data.name}`);
+      setSearchQuery('');
+    } else {
+      toast.info('No se encontraron datos públicos para este proveedor');
+    }
+    setFetchingData(false);
+  };
+
   const handleUploadLogo = async (file) => {
     if (!file) return;
     try {
