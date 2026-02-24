@@ -133,6 +133,9 @@ export default function CompanyConfig() {
           <TabsTrigger value="impresora" className="flex-1 text-xs">Impresora</TabsTrigger>
           <TabsTrigger value="documentos" className="flex-1 text-xs">Documentos</TabsTrigger>
           <TabsTrigger value="escaner" className="flex-1 text-xs">Escáner</TabsTrigger>
+          <TabsTrigger value="usuarios" className="flex-1 text-xs">Usuarios</TabsTrigger>
+          <TabsTrigger value="red" className="flex-1 text-xs">Red / Acceso</TabsTrigger>
+          <TabsTrigger value="ia" className="flex-1 text-xs">IA Cálculos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="empresa">
