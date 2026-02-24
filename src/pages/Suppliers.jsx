@@ -117,10 +117,11 @@ export default function Suppliers() {
     setFetchingLogo(true);
     const logo = await fetchCompanyLogo(form.website, form.name);
     if (logo) {
-      setForm(prev => ({ ...prev, logo_url: logo }));
+      const newForm = { ...form, logo_url: logo };
+      setForm(newForm);
       // Guardar automáticamente el logo en BD
       if (editing) {
-        await base44.entities.Supplier.update(editing.id, { ...form, logo_url: logo });
+        await base44.entities.Supplier.update(editing.id, newForm);
         base44.entities.Supplier.list().then(setSuppliers);
       }
     }
