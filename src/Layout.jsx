@@ -7,7 +7,7 @@ import {
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette, Battery,
-  CreditCard, Download, Bell
+  CreditCard, Download, Bell, History
 } from 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 
@@ -35,6 +35,7 @@ const navItems = [
   { name: 'Asistente IA', page: 'AIAssistant', icon: Bot },
   { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette },
   { name: 'Tarjetas Visita', page: 'BusinessCards', icon: CreditCard },
+  { name: 'Historial Cambios', page: 'AuditLog', icon: History },
   { name: 'Recordatorios', page: 'Automations', icon: Bell },
   { name: 'Portal Cliente', page: 'ClientPortal', icon: Users },
   { name: 'Exportar Datos', page: 'ExportData', icon: Download },
