@@ -116,6 +116,7 @@ export default function Suppliers() {
       setForm(EMPTY_FORM);
       setSearchProvince('');
       toast.success(`Proveedor ${editing ? 'actualizado' : 'creado'} correctamente${form.logo_url ? ' con imagen' : ''}`);
+      toast.success(`Proveedor ${editing ? 'actualizado' : 'creado'} correctamente${form.logo_url ? ' con imagen' : ''}`);
     } catch (error) {
       toast.error('Error al guardar proveedor');
     }
