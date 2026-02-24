@@ -810,7 +810,6 @@ export default function SolarBatteryCalc() {
 
           {combResult && (
             <div ref={combPrintRef} className="space-y-5">
-              <CompanyHeader className="mb-2" />
               {/* Solar part */}
               <Card className="border-amber-200">
                 <CardHeader className="bg-amber-50 py-3"><CardTitle className="text-amber-700 text-base">☀️ Instalación Fotovoltaica — {combResult.solar.totalKwp.toFixed(2)} kWp</CardTitle></CardHeader>
