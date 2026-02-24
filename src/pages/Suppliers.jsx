@@ -120,51 +120,20 @@ export default function Suppliers() {
     setFetchingLogo(true);
     const logo = await fetchCompanyLogo(form.website, form.name);
     if (logo) {
-      const newForm = { ...form, logo_url: logo };
-      setForm(newForm);
-      // Guardar automáticamente en BD
-      if (editing) {
-        await base44.entities.Supplier.update(editing.id, newForm);
-        const updated = await base44.entities.Supplier.list();
-        setSuppliers(updated);
-      } else if (form.name && form.name.trim()) {
-        // Si es nuevo pero tiene nombre, crear el proveedor con el logo
-        const created = await base44.entities.Supplier.create(newForm);
-        setEditing(created);
-        setForm({...newForm, id: created.id});
-        const updated = await base44.entities.Supplier.list();
-        setSuppliers(updated);
-      }
+      setForm(prev => ({ ...prev, logo_url: logo }));
+      toast.success('Logo obtenido. Guarda el proveedor para confirmar.');
     }
     setFetchingLogo(false);
   };
 
   const handleUploadLogo = async (file) => {
     if (!file) return;
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    const newForm = { ...form, logo_url: file_url };
-    setForm(newForm);
-    // Guardar automáticamente en BD inmediatamente
-    if (editing) {
-      await base44.entities.Supplier.update(editing.id, newForm);
-    } else if (form.name && form.name.trim()) {
-      const created = await base44.entities.Supplier.create(newForm);
-      setEditing(created);
-      setForm({...newForm, id: created.id});
-    }
-    const updated = await base44.entities.Supplier.list();
-    setSuppliers(updated);
-  };
-
-  const saveLogo = async () => {
-    if (!editing) return;
     try {
-      await base44.entities.Supplier.update(editing.id, form);
-      const updated = await base44.entities.Supplier.list();
-      setSuppliers(updated);
-      toast.success(`Logo guardado en ${form.name}`);
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setForm(prev => ({ ...prev, logo_url: file_url }));
+      toast.success('Foto subida. Guarda el proveedor para confirmar.');
     } catch (error) {
-      toast.error('Error al guardar el logo');
+      toast.error('Error al subir la foto');
     }
   };
 
