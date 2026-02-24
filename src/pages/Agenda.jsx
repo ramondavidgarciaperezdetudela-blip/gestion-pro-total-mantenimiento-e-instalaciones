@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight, Trash2, Edit, MessageCircle } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Trash2, Edit, MessageCircle, ExternalLink, Download } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, getDaysInMonth, startOfMonth, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PrintButton from '../components/PrintButton';
@@ -75,6 +75,40 @@ export default function Agenda() {
   const handleDelete = async (id) => {
     await base44.entities.Appointment.delete(id);
     loadAppointments();
+  };
+
+  const exportToGoogleCalendar = (appt) => {
+    const dateStr = appt.date?.replace(/-/g, '');
+    const startTime = appt.time_start?.replace(':', '') || '0900';
+    const endTime = appt.time_end?.replace(':', '') || '1000';
+    const start = `${dateStr}T${startTime}00`;
+    const end = `${dateStr}T${endTime}00`;
+    const title = encodeURIComponent(appt.title || 'Cita');
+    const details = encodeURIComponent(`${appt.description || ''}\nCliente: ${appt.contact_name || ''}\nTipo: ${appt.type || ''}`);
+    const location = encodeURIComponent(appt.address || '');
+    window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`, '_blank');
+  };
+
+  const exportAllToICS = () => {
+    const icsLines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SAT Manager//ES'];
+    appointments.forEach(appt => {
+      const dateStr = appt.date?.replace(/-/g, '') || '';
+      const startTime = appt.time_start?.replace(':', '') || '0900';
+      const endTime = appt.time_end?.replace(':', '') || '1000';
+      icsLines.push('BEGIN:VEVENT');
+      icsLines.push(`SUMMARY:${appt.title || ''}`);
+      icsLines.push(`DTSTART:${dateStr}T${startTime}00`);
+      icsLines.push(`DTEND:${dateStr}T${endTime}00`);
+      icsLines.push(`DESCRIPTION:Cliente: ${appt.contact_name || ''} - ${appt.description || ''}`);
+      icsLines.push(`LOCATION:${appt.address || ''}`);
+      icsLines.push('END:VEVENT');
+    });
+    icsLines.push('END:VCALENDAR');
+    const blob = new Blob([icsLines.join('\r\n')], { type: 'text/calendar' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `agenda_${new Date().toISOString().slice(0, 10)}.ics`;
+    a.click();
   };
 
   return (
