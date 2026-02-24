@@ -300,7 +300,12 @@ export default function Suppliers() {
                    </div>
                    <div className="flex gap-2 mt-2">
                      {form.logo_url && (
-                       <button onClick={() => setForm(prev => ({ ...prev, logo_url: '' }))} className="text-xs text-red-600 flex-1">Quitar foto</button>
+                       <>
+                         <Button onClick={saveLogo} className="flex-1 text-xs h-8 bg-green-600 hover:bg-green-700">
+                           Guardar logo
+                         </Button>
+                         <button onClick={() => setForm(prev => ({ ...prev, logo_url: '' }))} className="text-xs text-red-600 flex-1 h-8 flex items-center justify-center">Quitar</button>
+                       </>
                      )}
                    </div>
                  </div>
