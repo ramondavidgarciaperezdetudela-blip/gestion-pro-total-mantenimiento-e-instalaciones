@@ -145,6 +145,12 @@ export default function SolarCalc() {
             </div>
           </div>
 
+          {/* Vincular cliente */}
+          {form.contact_id && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-xs text-green-700 flex items-center gap-2">
+              <UserCheck className="w-4 h-4" /> Vinculado a: <strong>{form.contact_name}</strong>
+            </div>
+          )}
           <Button onClick={calculate} className="w-full bg-amber-500 hover:bg-amber-600">
             <Calculator className="w-4 h-4 mr-2" /> Calcular instalación solar
           </Button>
