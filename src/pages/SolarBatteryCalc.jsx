@@ -741,6 +741,24 @@ export default function SolarBatteryCalc() {
           {batResult && (
             <div ref={batPrintRef} className="space-y-4">
               <CompanyHeader className="mb-2" />
+              {/* Tabla datos introducidos */}
+              <Card className="border-gray-200">
+                <CardHeader className="bg-gray-50 py-2"><CardTitle className="text-gray-700 text-sm">📋 Datos de la instalación</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                  <table className="w-full text-xs border-collapse">
+                    <tbody>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50 w-1/2">Consumo diario</td><td className="p-2">{batForm.consumo_diario} kWh/día</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Autonomía</td><td className="p-2">{batForm.autonomia_dias} días</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Potencia pico máxima</td><td className="p-2">{batForm.potencia_pico_w} W</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Voltaje sistema</td><td className="p-2">{batForm.voltaje_sistema} V</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Tipo instalación</td><td className="p-2">{batForm.tipo_red}</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Profundidad descarga</td><td className="p-2">{(batForm.profundidad_descarga * 100).toFixed(0)}%</td></tr>
+                      {batForm.num_paneles > 0 && <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Paneles solares de carga</td><td className="p-2">{batForm.num_paneles} × {batForm.panel_power_w} W</td></tr>}
+                      {batForm.contact_name && <tr><td className="p-2 font-medium text-gray-600 bg-gray-50">Cliente</td><td className="p-2">{batForm.contact_name}</td></tr>}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
               <Card className="border-green-200">
                 <CardHeader className="bg-green-50 py-3"><CardTitle className="text-green-700">Resultado — Sistema de Almacenamiento</CardTitle></CardHeader>
                 <CardContent className="p-4 space-y-5">
