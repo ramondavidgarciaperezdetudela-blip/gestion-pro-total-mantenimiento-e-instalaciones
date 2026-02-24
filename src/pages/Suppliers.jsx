@@ -292,12 +292,7 @@ export default function Suppliers() {
                      />
                    </label>
                    </div>
-                   {form.logo_url && (
-                   <Button onClick={handleSave} variant="default" className="w-full bg-green-600 hover:bg-green-700">
-                     <Download className="w-3.5 h-3.5 mr-2" />
-                     Guardar Logo
-                   </Button>
-                   )}
+
                    <Input placeholder="URL tienda / pedidos online" value={form.login_url} onChange={e => setForm({...form, login_url: e.target.value})} />
                 <div className="grid grid-cols-2 gap-2">
                   <Input placeholder="Teléfono" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
