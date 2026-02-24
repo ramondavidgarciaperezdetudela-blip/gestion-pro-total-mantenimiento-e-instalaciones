@@ -779,12 +779,25 @@ export default function SolarBatteryCalc() {
                     <KpiBox value={`${batResult.potenciaInversorKw} kW`} label="Inversor/Cargador" color="bg-purple-50 text-purple-700" />
                     <KpiBox value={`${batResult.potenciaGeneradorKva} kVA`} label="Generador apoyo" color="bg-orange-50 text-orange-700" />
                   </div>
-                  <div className="bg-gray-50 p-3 rounded text-sm space-y-1">
-                    <p>⚡ Energía necesaria: <strong>{batResult.energiaNecesariaKwh} kWh ({batResult.energiaNecesariaAh} Ah)</strong></p>
-                    <p>🔌 Cargador: <strong>{batResult.corrienteCargaA}A / {batResult.potenciaCargadorKw}kW</strong> | BMS mín.: <strong>{batResult.corrienteBmsA}A</strong> | Cable DC: <strong>{batResult.cableSeccionMm2}mm²</strong></p>
-                    {batResult.mpptKw > 0 && <p>☀️ MPPT: <strong>{batResult.mpptKw}kW / {batResult.mpptA}A</strong></p>}
-                    <p>🌐 Tipo instalación: <strong>{batResult.tipoRed}</strong></p>
-                  </div>
+                  <Card className="border-gray-200">
+                    <CardHeader className="bg-gray-50 py-2"><CardTitle className="text-gray-700 text-sm">📊 Resumen técnico del sistema</CardTitle></CardHeader>
+                    <CardContent className="p-0">
+                      <table className="w-full text-xs border-collapse">
+                        <tbody>
+                          <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50 w-1/2">Energía necesaria</td><td className="p-2 font-semibold">{batResult.energiaNecesariaKwh} kWh ({batResult.energiaNecesariaAh} Ah)</td></tr>
+                          <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Nº baterías</td><td className="p-2 font-semibold text-green-700">{batResult.numBaterias} × {batResult.capBateria}Ah {batResult.voltajeSistema}V</td></tr>
+                          <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Capacidad total almacenamiento</td><td className="p-2 font-semibold">{batResult.energiaTotalKwh} kWh</td></tr>
+                          <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Inversor/Cargador</td><td className="p-2 font-semibold text-purple-700">{batResult.potenciaInversorKw} kW — {batResult.potenciaInversorW} W</td></tr>
+                          <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Corriente carga baterías</td><td className="p-2">{batResult.corrienteCargaA} A / {batResult.potenciaCargadorKw} kW</td></tr>
+                          <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">BMS mínimo</td><td className="p-2">{batResult.corrienteBmsA} A</td></tr>
+                          <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Sección cable DC</td><td className="p-2">{batResult.cableSeccionMm2} mm²</td></tr>
+                          <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Generador de apoyo</td><td className="p-2">{batResult.potenciaGeneradorKva} kVA</td></tr>
+                          {batResult.mpptKw > 0 && <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Regulador MPPT</td><td className="p-2">{batResult.mpptKw} kW / {batResult.mpptA} A</td></tr>}
+                          <tr><td className="p-2 font-medium text-gray-600 bg-gray-50">Tipo instalación</td><td className="p-2 capitalize">{batResult.tipoRed}</td></tr>
+                        </tbody>
+                      </table>
+                    </CardContent>
+                  </Card>
 
                   <div><p className="font-semibold text-sm mb-2">📐 Esquema de conexionado</p><BatteryWiringDiagram result={batResult} form={batForm} /></div>
 
