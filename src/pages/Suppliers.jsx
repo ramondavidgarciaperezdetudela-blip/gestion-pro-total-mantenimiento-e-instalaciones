@@ -112,7 +112,7 @@ export default function Suppliers() {
       const updated = await base44.entities.Supplier.list();
       setSuppliers(updated);
       setDialogOpen(false);
-      setEditingNull);
+      setEditing(null);
       setForm(EMPTY_FORM);
       setSearchProvince('');
       toast.success(`Proveedor ${editing ? 'actualizado' : 'creado'} correctamente${form.logo_url ? ' con imagen' : ''}`);
