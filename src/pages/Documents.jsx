@@ -1,15 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, FileText, Trash2, Edit, Eye, ShoppingCart, Copy, ChevronDown, ChevronUp, Save, Phone, Mail } from 'lucide-react';
+import {
+  Plus, Search, FileText, Trash2, Edit, Eye, ShoppingCart, Copy,
+  ChevronDown, ChevronUp, Save, Phone, Mail, BarChart3, TrendingUp,
+  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer
+} from 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
-import { format } from 'date-fns';
+import { format, startOfMonth } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 
@@ -23,6 +27,14 @@ const STATUS_COLORS = {
   pagado: 'bg-green-100 text-green-700',
   vencido: 'bg-red-100 text-red-700',
   cancelado: 'bg-orange-100 text-orange-700',
+};
+
+const STATUS_ICONS = {
+  borrador: Clock,
+  enviado: FileText,
+  pagado: CheckCircle,
+  vencido: AlertCircle,
+  cancelado: AlertCircle,
 };
 
 const NORMATIVE_MAP = {
@@ -63,6 +75,7 @@ export default function Documents() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState(preType || 'all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterWorkType, setFilterWorkType] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [previewDoc, setPreviewDoc] = useState(null);
@@ -70,6 +83,7 @@ export default function Documents() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM, doc_type: preType || 'presupuesto', contact_id: preContactId || '' });
+  const [activeTab, setActiveTab] = useState('all'); // all | facturas | presupuestos
   const printRef = useRef(null);
 
   useEffect(() => {
@@ -103,12 +117,10 @@ export default function Documents() {
     setEditing(null); setForm(baseForm); setDialogOpen(true); setShowAdvanced(false);
   };
 
-  // Handlers estables (no recreados en cada render)
   const handleItemChange = useCallback((index, field, value) => {
     setForm(prev => {
       const newItems = prev.items.map((item, i) => i === index ? { ...item, [field]: value } : item);
-      const calc = recalculate(newItems, prev.iva_rate);
-      return { ...prev, ...calc };
+      return { ...prev, ...recalculate(newItems, prev.iva_rate) };
     });
   }, []);
 
@@ -135,8 +147,7 @@ export default function Documents() {
       const c = contacts.find(co => co.id === contactId);
       if (!c) return prev;
       return {
-        ...prev,
-        contact_id: contactId,
+        ...prev, contact_id: contactId,
         contact_name: `${c.name} ${c.surname || ''}`.trim(),
         contact_nif: c.nif || '',
         contact_address: `${c.address || ''}, ${c.city || ''} ${c.postal_code || ''}`.trim()
@@ -160,18 +171,6 @@ export default function Documents() {
     const docLabel = form.doc_type === 'factura' ? 'Factura' : form.doc_type === 'presupuesto' ? 'Presupuesto' : 'Recibo';
     if (editing) {
       await base44.entities.Invoice.update(editing.id, form);
-      // Actualizar ClientDocument vinculado
-      if (form.contact_id) {
-        const existingDocs = await base44.entities.ClientDocument.filter({ contact_id: form.contact_id, doc_type: form.doc_type });
-        const linked = existingDocs.find(d => d.title?.includes(editing.doc_number || editing.id.slice(-6)));
-        if (linked) {
-          await base44.entities.ClientDocument.update(linked.id, {
-            title: `${docLabel} ${form.doc_number || ''}`,
-            description: `Total: ${form.total?.toFixed(2)} € | Estado: ${form.status}`,
-            date: form.date,
-          });
-        }
-      }
     } else {
       await base44.entities.Invoice.create(form);
       if (form.contact_id) {
@@ -179,7 +178,7 @@ export default function Documents() {
           contact_id: form.contact_id, contact_name: form.contact_name,
           title: `${docLabel} ${form.doc_number || ''}`,
           doc_type: form.doc_type, date: form.date,
-          description: `Total: ${form.total?.toFixed(2)} € | Estado: ${form.status} | Tipo trabajo: ${form.work_type || '-'}`,
+          description: `Total: ${form.total?.toFixed(2)} € | Estado: ${form.status}`,
         });
       }
     }
@@ -203,7 +202,9 @@ export default function Documents() {
   };
 
   const handleEdit = (doc) => {
-    setEditing(doc); setForm({ ...EMPTY_FORM, ...doc, items: doc.items || [{ description: '', quantity: 1, unit_price: 0, discount: 0, total: 0 }] }); setDialogOpen(true);
+    setEditing(doc);
+    setForm({ ...EMPTY_FORM, ...doc, items: doc.items || [{ description: '', quantity: 1, unit_price: 0, discount: 0, total: 0 }] });
+    setDialogOpen(true);
   };
 
   const handleStatusChange = async (doc, newStatus) => {
@@ -220,76 +221,117 @@ export default function Documents() {
 
   const sendEmail = (doc) => {
     const c = contacts.find(x => x.id === doc.contact_id);
-    if (!c?.email) return alert('El cliente no tiene email registrado');
+    const email = c?.email || '';
     const subject = encodeURIComponent(`${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}`);
     const body = encodeURIComponent(`Estimado/a ${doc.contact_name},\n\nAdjunto ${doc.doc_type} Nº${doc.doc_number} de fecha ${doc.date}.\nTotal: ${doc.total?.toFixed(2)} €\n\nQuedamos a su disposición.`);
-    window.open(`mailto:${c.email}?subject=${subject}&body=${body}`, '_blank');
+    window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
   };
 
-  const filtered = docs.filter(d => {
-    const matchSearch = `${d.doc_number} ${d.contact_name}`.toLowerCase().includes(search.toLowerCase());
+  // Filtrado
+  let filtered = docs.filter(d => {
+    const matchSearch = `${d.doc_number} ${d.contact_name} ${d.work_type}`.toLowerCase().includes(search.toLowerCase());
     const matchType = filterType === 'all' || d.doc_type === filterType;
     const matchStatus = filterStatus === 'all' || d.status === filterStatus;
-    return matchSearch && matchType && matchStatus;
+    const matchWork = filterWorkType === 'all' || d.work_type === filterWorkType;
+    return matchSearch && matchType && matchStatus && matchWork;
   });
 
-  const totals = {
-    facturas: docs.filter(d => d.doc_type === 'factura').reduce((s, d) => s + (d.total || 0), 0),
-    pendiente: docs.filter(d => d.doc_type === 'factura' && ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0)
-  };
+  // KPIs
+  const facturas = docs.filter(d => d.doc_type === 'factura');
+  const presupuestos = docs.filter(d => d.doc_type === 'presupuesto');
+  const totalFacturado = facturas.reduce((s, d) => s + (d.total || 0), 0);
+  const pendienteCobro = facturas.filter(d => ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0);
+  const cobradoMes = facturas.filter(d => d.status === 'pagado' && d.date >= format(startOfMonth(new Date()), 'yyyy-MM-dd')).reduce((s, d) => s + (d.total || 0), 0);
+  const vencidas = facturas.filter(d => d.status === 'vencido').length;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold">Documentos</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <FileText className="w-6 h-6 text-violet-500" />Documentos
+        </h1>
         <div className="flex gap-2">
-          <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => openNew('presupuesto', null, templates.find(t => t.doc_type === 'presupuesto' && t.is_default))}>
+          <Button className="bg-blue-600 hover:bg-blue-700" size="sm" onClick={() => openNew('presupuesto', null, templates.find(t => t.doc_type === 'presupuesto' && t.is_default))}>
             <Plus className="w-4 h-4 mr-1" />Presupuesto
           </Button>
-          <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => openNew('factura', null, templates.find(t => t.doc_type === 'factura' && t.is_default))}>
+          <Button className="bg-violet-600 hover:bg-violet-700" size="sm" onClick={() => openNew('factura', null, templates.find(t => t.doc_type === 'factura' && t.is_default))}>
             <Plus className="w-4 h-4 mr-1" />Factura
           </Button>
-          <Button className="bg-green-600 hover:bg-green-700" onClick={() => openNew('recibo')}>
+          <Button className="bg-green-600 hover:bg-green-700" size="sm" onClick={() => openNew('recibo')}>
             <Plus className="w-4 h-4 mr-1" />Recibo
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="bg-violet-50"><CardContent className="p-3 text-center"><p className="text-xs text-violet-500">Facturado</p><p className="font-bold text-violet-700">{totals.facturas.toFixed(0)} €</p></CardContent></Card>
-        <Card className="bg-orange-50"><CardContent className="p-3 text-center"><p className="text-xs text-orange-500">Pendiente cobro</p><p className="font-bold text-orange-700">{totals.pendiente.toFixed(0)} €</p></CardContent></Card>
-        <Card className="bg-blue-50"><CardContent className="p-3 text-center"><p className="text-xs text-blue-500">Total docs</p><p className="font-bold text-blue-700">{docs.length}</p></CardContent></Card>
+      {/* KPIs financieros */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="border-l-4 border-violet-400">
+          <CardContent className="p-3">
+            <p className="text-xs text-gray-500 mb-0.5">Total facturado</p>
+            <p className="text-xl font-bold text-violet-700">{totalFacturado.toFixed(0)} €</p>
+            <p className="text-[10px] text-gray-400">{facturas.length} facturas</p>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-green-400">
+          <CardContent className="p-3">
+            <p className="text-xs text-gray-500 mb-0.5">Cobrado este mes</p>
+            <p className="text-xl font-bold text-green-700">{cobradoMes.toFixed(0)} €</p>
+            <p className="text-[10px] text-gray-400">Facturas pagadas</p>
+          </CardContent>
+        </Card>
+        <Card className={`border-l-4 ${pendienteCobro > 0 ? 'border-orange-400' : 'border-gray-300'}`}>
+          <CardContent className="p-3">
+            <p className="text-xs text-gray-500 mb-0.5">Pendiente cobro</p>
+            <p className={`text-xl font-bold ${pendienteCobro > 0 ? 'text-orange-700' : 'text-gray-400'}`}>{pendienteCobro.toFixed(0)} €</p>
+            {vencidas > 0 && <p className="text-[10px] text-red-500 font-medium">{vencidas} vencidas</p>}
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-blue-400">
+          <CardContent className="p-3">
+            <p className="text-xs text-gray-500 mb-0.5">Presupuestos</p>
+            <p className="text-xl font-bold text-blue-700">{presupuestos.length}</p>
+            <p className="text-[10px] text-gray-400">{presupuestos.filter(d => d.status === 'enviado').length} enviados</p>
+          </CardContent>
+        </Card>
       </div>
 
+      {/* Filtros */}
       <div className="flex gap-2 flex-wrap">
         <div className="relative flex-1 min-w-36">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input placeholder="Buscar..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+          <Input placeholder="Buscar nº, cliente, tipo trabajo..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Tipo doc." /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los tipos</SelectItem>
             {DOC_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-32"><SelectValue placeholder="Estado" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos estados</SelectItem>
-            {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            {STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterWorkType} onValueChange={setFilterWorkType}>
+          <SelectTrigger className="w-32"><SelectValue placeholder="Trabajo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos trabajos</SelectItem>
+            {WORK_TYPES.map(w => <SelectItem key={w} value={w}>{w.replace(/_/g, ' ')}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
 
-      {/* ===== DIALOG EDITAR/CREAR ===== */}
+      <p className="text-xs text-gray-400">{filtered.length} documento{filtered.length !== 1 ? 's' : ''} · Total: <strong>{filtered.reduce((s,d)=>s+(d.total||0),0).toFixed(2)} €</strong></p>
+
+      {/* ===== DIALOG CREAR/EDITAR ===== */}
       <Dialog open={dialogOpen} onOpenChange={o => { setDialogOpen(o); if (!o) { setEditing(null); setShowAdvanced(false); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? `Editar ${editing.doc_type} ${editing.doc_number}` : 'Nuevo documento'}</DialogTitle>
           </DialogHeader>
-
-          {/* FORMULARIO INLINE — sin sub-componente para evitar pérdida de foco */}
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-2">
               <Select value={form.doc_type} onValueChange={v => setForm(p => ({ ...p, doc_type: v }))}>
@@ -300,20 +342,31 @@ export default function Documents() {
                 onChange={e => { const v = e.target.value; setForm(p => ({ ...p, doc_number: v })); }} />
               <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
             <Select value={form.contact_id || ''} onValueChange={handleContactSelect}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar cliente *" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Seleccionar cliente (opcional)" /></SelectTrigger>
               <SelectContent>
                 {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname} {c.company_name ? `(${c.company_name})` : ''}</SelectItem>)}
               </SelectContent>
             </Select>
 
+            {/* Si no hay cliente seleccionado, permitir introducir datos manualmente */}
+            {!form.contact_id && (
+              <div className="grid grid-cols-2 gap-2">
+                <Input placeholder="Nombre cliente (libre)" value={form.contact_name}
+                  onChange={e => setForm(p => ({...p, contact_name: e.target.value}))} />
+                <Input placeholder="NIF / CIF" value={form.contact_nif}
+                  onChange={e => setForm(p => ({...p, contact_nif: e.target.value}))} />
+              </div>
+            )}
+
             {form.contact_name && (
-              <div className="bg-gray-50 p-2 rounded text-xs text-gray-600">
-                <strong>{form.contact_name}</strong>{form.contact_nif ? ` · NIF: ${form.contact_nif}` : ''}<br />{form.contact_address}
+              <div className="bg-blue-50 border border-blue-100 p-2 rounded text-xs text-gray-600">
+                <strong>{form.contact_name}</strong>{form.contact_nif ? ` · NIF: ${form.contact_nif}` : ''}
+                {form.contact_address && <><br />{form.contact_address}</>}
               </div>
             )}
 
@@ -345,7 +398,7 @@ export default function Documents() {
               <SelectContent>{WORK_TYPES.map(w => <SelectItem key={w} value={w}>{w.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
             </Select>
 
-            {/* LÍNEAS */}
+            {/* Líneas */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Líneas del documento</label>
               <div className="hidden md:grid grid-cols-12 gap-1 text-[10px] text-gray-400 px-1">
@@ -358,33 +411,10 @@ export default function Documents() {
               </div>
               {form.items.map((item, i) => (
                 <div key={i} className="grid grid-cols-12 gap-1 items-center">
-                  <Input
-                    className="col-span-5 text-xs h-8"
-                    placeholder="Descripción"
-                    value={item.description}
-                    onChange={e => handleItemChange(i, 'description', e.target.value)}
-                  />
-                  <Input
-                    className="col-span-2 text-xs h-8"
-                    type="number"
-                    placeholder="Cant."
-                    value={item.quantity}
-                    onChange={e => handleItemChange(i, 'quantity', parseFloat(e.target.value) || 0)}
-                  />
-                  <Input
-                    className="col-span-2 text-xs h-8"
-                    type="number"
-                    placeholder="Precio"
-                    value={item.unit_price}
-                    onChange={e => handleItemChange(i, 'unit_price', parseFloat(e.target.value) || 0)}
-                  />
-                  <Input
-                    className="col-span-1 text-xs h-8"
-                    type="number"
-                    placeholder="Dto"
-                    value={item.discount || 0}
-                    onChange={e => handleItemChange(i, 'discount', parseFloat(e.target.value) || 0)}
-                  />
+                  <Input className="col-span-5 text-xs h-8" placeholder="Descripción" value={item.description} onChange={e => handleItemChange(i, 'description', e.target.value)} />
+                  <Input className="col-span-2 text-xs h-8" type="number" placeholder="Cant." value={item.quantity} onChange={e => handleItemChange(i, 'quantity', parseFloat(e.target.value) || 0)} />
+                  <Input className="col-span-2 text-xs h-8" type="number" placeholder="Precio" value={item.unit_price} onChange={e => handleItemChange(i, 'unit_price', parseFloat(e.target.value) || 0)} />
+                  <Input className="col-span-1 text-xs h-8" type="number" placeholder="Dto" value={item.discount || 0} onChange={e => handleItemChange(i, 'discount', parseFloat(e.target.value) || 0)} />
                   <span className="col-span-1 text-xs text-right font-medium text-green-700">{item.total?.toFixed(2)}</span>
                   <button className="col-span-1 text-red-400 hover:text-red-600 text-lg leading-none text-center" onClick={() => removeItem(i)}>×</button>
                 </div>
@@ -409,27 +439,12 @@ export default function Documents() {
             </button>
             {showAdvanced && (
               <div className="space-y-2">
-                <Textarea
-                  placeholder="Observaciones"
-                  value={form.observations || ''}
-                  onChange={e => { const v = e.target.value; setForm(p => ({ ...p, observations: v })); }}
-                  rows={3}
-                />
-                <Textarea
-                  placeholder="Condiciones de pago"
-                  value={form.payment_terms || ''}
-                  onChange={e => { const v = e.target.value; setForm(p => ({ ...p, payment_terms: v })); }}
-                  rows={4}
-                />
+                <Textarea placeholder="Observaciones" value={form.observations || ''} onChange={e => { const v = e.target.value; setForm(p => ({ ...p, observations: v })); }} rows={3} />
+                <Textarea placeholder="Condiciones de pago" value={form.payment_terms || ''} onChange={e => { const v = e.target.value; setForm(p => ({ ...p, payment_terms: v })); }} rows={4} />
                 {form.normative_references && (
                   <div className="bg-blue-50 p-3 rounded-lg text-xs">
                     <p className="font-medium text-blue-700 mb-1">Normativa aplicable:</p>
-                    <Textarea
-                      value={form.normative_references || ''}
-                      onChange={e => { const v = e.target.value; setForm(p => ({ ...p, normative_references: v })); }}
-                      rows={2}
-                      className="text-xs"
-                    />
+                    <Textarea value={form.normative_references || ''} onChange={e => { const v = e.target.value; setForm(p => ({ ...p, normative_references: v })); }} rows={2} className="text-xs" />
                   </div>
                 )}
               </div>
@@ -467,9 +482,9 @@ export default function Documents() {
                     </div>
                   </div>
                   <div className="bg-gray-50 p-3 rounded text-sm border-l-4 border-blue-500">
-                    <p className="font-bold">{previewDoc.contact_name}</p>
+                    <p className="font-bold">{previewDoc.contact_name || 'Sin cliente'}</p>
                     {previewDoc.contact_nif && <p className="text-gray-500">NIF: {previewDoc.contact_nif}</p>}
-                    <p className="text-gray-500">{previewDoc.contact_address}</p>
+                    {previewDoc.contact_address && <p className="text-gray-500">{previewDoc.contact_address}</p>}
                   </div>
                   <table className="w-full text-sm border-collapse">
                     <thead>
@@ -525,35 +540,43 @@ export default function Documents() {
 
       {/* ===== LISTA ===== */}
       <div className="space-y-2">
-        {filtered.length === 0 && <p className="text-center text-gray-400 py-8">No hay documentos</p>}
-        {filtered.map(doc => (
-          <Card key={doc.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setPreviewDoc(doc)}>
-            <CardContent className="p-3 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className={`p-2 rounded-lg flex-shrink-0 ${doc.doc_type === 'factura' ? 'bg-violet-100' : doc.doc_type === 'presupuesto' ? 'bg-blue-100' : 'bg-green-100'}`}>
-                  <FileText className={`w-4 h-4 ${doc.doc_type === 'factura' ? 'text-violet-600' : doc.doc_type === 'presupuesto' ? 'text-blue-600' : 'text-green-600'}`} />
+        {filtered.length === 0 && (
+          <div className="text-center py-12 text-gray-400">
+            <FileText className="w-12 h-12 mx-auto mb-2 opacity-30" />
+            <p>No hay documentos</p>
+          </div>
+        )}
+        {filtered.map(doc => {
+          const StatusIcon = STATUS_ICONS[doc.status] || FileText;
+          return (
+            <Card key={doc.id} className="hover:shadow-md transition-shadow cursor-pointer group" onClick={() => setPreviewDoc(doc)}>
+              <CardContent className="p-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`p-2 rounded-lg flex-shrink-0 ${doc.doc_type === 'factura' ? 'bg-violet-100' : doc.doc_type === 'presupuesto' ? 'bg-blue-100' : 'bg-green-100'}`}>
+                    <FileText className={`w-4 h-4 ${doc.doc_type === 'factura' ? 'text-violet-600' : doc.doc_type === 'presupuesto' ? 'text-blue-600' : 'text-green-600'}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm capitalize truncate">{doc.doc_type} {doc.doc_number}</p>
+                    <p className="text-xs text-gray-500 truncate">{doc.contact_name || 'Sin cliente'} · {doc.date} {doc.work_type && doc.work_type !== 'otro' ? `· ${doc.work_type}` : ''}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="font-medium text-sm capitalize truncate">{doc.doc_type} {doc.doc_number}</p>
-                  <p className="text-xs text-gray-500 truncate">{doc.contact_name} · {doc.date}</p>
+                <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                  <span className="font-bold text-sm">{doc.total?.toFixed(2)} €</span>
+                  <Select value={doc.status} onValueChange={v => handleStatusChange(doc, v)}>
+                    <SelectTrigger className={`h-6 text-[10px] w-24 border-0 ${STATUS_COLORS[doc.status] || ''}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUSES.map(s => <SelectItem key={s} value={s} className="text-xs capitalize">{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <button onClick={() => handleDuplicate(doc)} className="text-gray-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Duplicar"><Copy className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => handleDelete(doc.id)} className="text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                <span className="font-bold text-sm">{doc.total?.toFixed(2)} €</span>
-                <Select value={doc.status} onValueChange={v => handleStatusChange(doc, v)}>
-                  <SelectTrigger className={`h-6 text-[10px] w-24 border-0 ${STATUS_COLORS[doc.status] || ''}`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUSES.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <button onClick={() => handleDuplicate(doc)} className="text-gray-400 hover:text-blue-600 p-1" title="Duplicar"><Copy className="w-3.5 h-3.5" /></button>
-                <button onClick={() => handleDelete(doc.id)} className="text-red-300 hover:text-red-500 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

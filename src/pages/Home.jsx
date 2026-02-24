@@ -2,21 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Calendar, Users, FileText, Wrench, ClipboardList,
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
   Building2, FolderOpen, Zap, BarChart3, Clock, AlertCircle,
-  StickyNote, Package, Battery, Palette, CreditCard, Bell, Download
+  StickyNote, Package, Battery, Palette, CreditCard, Bell, Download,
+  TrendingUp, TrendingDown, Euro, CheckCircle, XCircle, AlertTriangle,
+  ArrowRight, Phone, MapPin, ChevronRight
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isAfter, isBefore, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const quickLinks = [
   { name: 'Agenda', page: 'Agenda', icon: Calendar, color: 'bg-blue-500' },
   { name: 'Contactos', page: 'Contacts', icon: Users, color: 'bg-emerald-500' },
-  { name: 'Nueva Factura', page: 'Documents?type=factura', icon: FileText, color: 'bg-violet-500' },
+  { name: 'Factura', page: 'Documents?type=factura', icon: FileText, color: 'bg-violet-500' },
   { name: 'Presupuesto', page: 'Documents?type=presupuesto', icon: FileText, color: 'bg-blue-600' },
   { name: 'SAT', page: 'SAT', icon: Wrench, color: 'bg-orange-500' },
   { name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList, color: 'bg-cyan-500' },
@@ -26,43 +29,86 @@ const quickLinks = [
   { name: 'Proveedores', page: 'Suppliers', icon: Building2, color: 'bg-slate-500' },
   { name: 'Presupuesto IA', page: 'AIBudget', icon: Bot, color: 'bg-purple-500' },
   { name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500' },
-  { name: 'Cámara Frigoríf.', page: 'ColdRoomCalc', icon: Thermometer, color: 'bg-sky-500' },
-  { name: 'Cálculo Solar', page: 'SolarCalc', icon: Sun, color: 'bg-amber-500' },
-  { name: 'Calc. Baterías', page: 'BatteryCalc', icon: Battery, color: 'bg-yellow-600' },
+  { name: 'Solar+Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-amber-500' },
   { name: 'Electricidad', page: 'ElectricalCalc', icon: Zap, color: 'bg-yellow-500' },
   { name: 'Normativas', page: 'Regulations', icon: Shield, color: 'bg-indigo-500' },
   { name: 'Manuales', page: 'Manuals', icon: BookOpen, color: 'bg-teal-600' },
   { name: 'Informes', page: 'Reports', icon: BarChart3, color: 'bg-fuchsia-500' },
-  { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette, color: 'bg-rose-500' },
-  { name: 'Tarjetas', page: 'BusinessCards', icon: CreditCard, color: 'bg-sky-600' },
-  { name: 'Recordatorios', page: 'Automations', icon: Bell, color: 'bg-amber-500' },
   { name: 'Asistente IA', page: 'AIAssistant', icon: Bot, color: 'bg-green-500' },
-  { name: 'Búsqueda IA', page: 'AISearch', icon: Bot, color: 'bg-blue-700' },
-  { name: 'Recordat. IA', page: 'SmartReminders', icon: Bell, color: 'bg-red-500' },
-  { name: 'Informes IA', page: 'AIReports', icon: BarChart3, color: 'bg-purple-700' },
   { name: 'Exportar', page: 'ExportData', icon: Download, color: 'bg-lime-600' },
   { name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
 ];
 
+function StatCard({ label, value, sub, icon: Icon, color, linkPage }) {
+  const content = (
+    <Card className={`border-l-4 ${color} hover:shadow-md transition-shadow cursor-pointer`}>
+      <CardContent className="p-4 flex items-center gap-3">
+        <div className={`p-2.5 rounded-xl bg-white shadow-sm`}>
+          <Icon className="w-5 h-5 text-gray-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-xs text-gray-500 font-medium">{label}</p>
+          {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
+        </div>
+        {linkPage && <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />}
+      </CardContent>
+    </Card>
+  );
+  return linkPage ? <Link to={createPageUrl(linkPage)}>{content}</Link> : content;
+}
+
 export default function Home() {
   const [appointments, setAppointments] = useState([]);
-  const [stats, setStats] = useState({ contacts: 0, invoices: 0, sat: 0 });
   const [company, setCompany] = useState(null);
+  const [kpis, setKpis] = useState({
+    contacts: 0, totalInvoiced: 0, pendingAmount: 0,
+    satPending: 0, overdueInvoices: 0, paidThisMonth: 0,
+    unpaidContacts: 0, maintenanceDue: 0
+  });
+  const [recentDocs, setRecentDocs] = useState([]);
+  const [recentSat, setRecentSat] = useState([]);
+  const [alerts, setAlerts] = useState([]);
 
   useEffect(() => {
     const today = format(new Date(), 'yyyy-MM-dd');
+    const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+
     Promise.all([
       base44.entities.Appointment.filter({ date: today }),
       base44.entities.Contact.list(),
-      base44.entities.Invoice.list(),
-      base44.entities.SATOrder.filter({ status: 'pendiente' }),
+      base44.entities.Invoice.list('-date', 200),
+      base44.entities.SATOrder.list('-date', 50),
       base44.entities.CompanySettings.list(),
-    ]).then(([appts, contacts, invoices, sat, comp]) => {
+      base44.entities.MaintenanceSheet.list('-date', 10),
+    ]).then(([appts, contacts, invoices, sat, comp, maintenance]) => {
       setAppointments(appts);
-      setStats({ contacts: contacts.length, invoices: invoices.length, sat: sat.length });
       if (comp.length > 0) setCompany(comp[0]);
+
+      // KPIs financieros
+      const facturas = invoices.filter(d => d.doc_type === 'factura');
+      const totalInvoiced = facturas.reduce((s, d) => s + (d.total || 0), 0);
+      const pendingAmount = facturas.filter(d => ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0);
+      const paidThisMonth = facturas.filter(d => d.status === 'pagado' && d.date >= monthStart).reduce((s, d) => s + (d.total || 0), 0);
+      const overdueInvoices = facturas.filter(d => d.status === 'vencido').length;
+      const satPending = sat.filter(s => s.status === 'pendiente').length;
+      const unpaidContacts = contacts.filter(c => (c.pending_amount || 0) > 0).length;
+
+      setKpis({ contacts: contacts.length, totalInvoiced, pendingAmount, satPending, overdueInvoices, paidThisMonth, unpaidContacts });
+      setRecentDocs(invoices.slice(0, 5));
+      setRecentSat(sat.filter(s => s.status === 'pendiente').slice(0, 4));
+
+      // Alertas
+      const newAlerts = [];
+      if (overdueInvoices > 0) newAlerts.push({ type: 'danger', text: `${overdueInvoices} factura(s) vencidas sin cobrar`, page: 'Documents' });
+      if (pendingAmount > 500) newAlerts.push({ type: 'warning', text: `${pendingAmount.toFixed(0)}€ pendientes de cobro`, page: 'Documents' });
+      if (satPending > 3) newAlerts.push({ type: 'warning', text: `${satPending} órdenes SAT pendientes`, page: 'SAT' });
+      setAlerts(newAlerts);
     });
   }, []);
+
+  const STATUS_COLORS = { borrador: 'bg-gray-100 text-gray-600', enviado: 'bg-blue-100 text-blue-700', pagado: 'bg-green-100 text-green-700', vencido: 'bg-red-100 text-red-700', cancelado: 'bg-orange-100 text-orange-700' };
+  const SAT_STATUS = { pendiente: 'bg-amber-100 text-amber-700', en_curso: 'bg-blue-100 text-blue-700', completada: 'bg-green-100 text-green-700' };
 
   return (
     <div className="space-y-6">
@@ -73,65 +119,110 @@ export default function Home() {
         )}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-            {company?.company_name || 'Bienvenido'}
+            {company?.company_name || 'Panel de Control'}
           </h1>
           <p className="text-gray-500 text-sm capitalize">{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-blue-700">{stats.contacts}</p>
-            <p className="text-xs text-blue-600">Contactos</p>
+      {/* Alertas */}
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          {alerts.map((a, i) => (
+            <Link key={i} to={createPageUrl(a.page)}>
+              <div className={`flex items-center gap-3 p-3 rounded-xl border text-sm font-medium cursor-pointer hover:opacity-80 transition-opacity ${a.type === 'danger' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                <span className="flex-1">{a.text}</span>
+                <ArrowRight className="w-4 h-4" />
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Contactos" value={kpis.contacts} icon={Users} color="border-emerald-400" linkPage="Contacts" />
+        <StatCard label="Facturado total" value={`${(kpis.totalInvoiced/1000).toFixed(1)}k€`} icon={Euro} color="border-violet-400" linkPage="Documents" />
+        <StatCard label="Pendiente cobro" value={`${kpis.pendingAmount.toFixed(0)}€`} sub={kpis.overdueInvoices > 0 ? `${kpis.overdueInvoices} vencidas` : undefined} icon={AlertCircle} color="border-orange-400" linkPage="Documents" />
+        <StatCard label="SAT pendientes" value={kpis.satPending} icon={Wrench} color="border-red-400" linkPage="SAT" />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Citas hoy */}
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Clock className="w-4 h-4 text-blue-500" />Citas de hoy</CardTitle>
+            <Link to={createPageUrl('Agenda')} className="text-xs text-blue-500 hover:underline">Ver todas</Link>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {appointments.length === 0 ? (
+              <p className="text-xs text-gray-400 py-3 text-center">Sin citas hoy</p>
+            ) : appointments.map(apt => (
+              <div key={apt.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="text-xs font-bold text-blue-600 min-w-[40px]">{apt.time_start || '--'}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate">{apt.title}</p>
+                  <p className="text-[10px] text-gray-500 truncate">{apt.contact_name}</p>
+                </div>
+                <Badge variant="outline" className="text-[10px]">{apt.type}</Badge>
+              </div>
+            ))}
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-violet-50 to-violet-100 border-violet-200">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-violet-700">{stats.invoices}</p>
-            <p className="text-xs text-violet-600">Documentos</p>
+
+        {/* Últimos documentos */}
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-violet-500" />Últimos documentos</CardTitle>
+            <Link to={createPageUrl('Documents')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {recentDocs.length === 0 ? (
+              <p className="text-xs text-gray-400 py-3 text-center">Sin documentos</p>
+            ) : recentDocs.map(doc => (
+              <div key={doc.id} className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium truncate capitalize">{doc.doc_type} {doc.doc_number}</p>
+                  <p className="text-[10px] text-gray-500 truncate">{doc.contact_name}</p>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-xs font-bold">{doc.total?.toFixed(0)}€</span>
+                  <Badge className={`text-[10px] ${STATUS_COLORS[doc.status] || ''}`}>{doc.status}</Badge>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-orange-700">{stats.sat}</p>
-            <p className="text-xs text-orange-600">SAT Pendientes</p>
+
+        {/* SAT pendientes */}
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Wrench className="w-4 h-4 text-orange-500" />SAT pendientes</CardTitle>
+            <Link to={createPageUrl('SAT')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {recentSat.length === 0 ? (
+              <p className="text-xs text-gray-400 py-3 text-center">Sin órdenes pendientes</p>
+            ) : recentSat.map(sat => (
+              <div key={sat.id} className="p-2 bg-orange-50 rounded-lg">
+                <p className="text-xs font-medium truncate">{sat.contact_name}</p>
+                <div className="flex justify-between items-center mt-0.5">
+                  <p className="text-[10px] text-gray-500">{sat.type} · {sat.date}</p>
+                  <Badge className={`text-[10px] ${SAT_STATUS[sat.status] || ''}`}>{sat.status}</Badge>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>
 
-      {/* Today's appointments */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Clock className="w-5 h-5 text-blue-600" />
-            <h2 className="font-semibold text-gray-800">Citas de hoy</h2>
-          </div>
-          {appointments.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">No hay citas programadas para hoy</p>
-          ) : (
-            <div className="space-y-2">
-              {appointments.map(apt => (
-                <div key={apt.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="text-center min-w-[50px]">
-                    <p className="text-sm font-bold text-blue-600">{apt.time_start || '--:--'}</p>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{apt.title}</p>
-                    <p className="text-xs text-gray-500">{apt.contact_name}</p>
-                  </div>
-                  <Badge variant="outline" className="text-xs capitalize">{apt.type}</Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Quick access grid */}
+      {/* Acceso rápido */}
       <div>
-        <h2 className="font-semibold text-gray-800 mb-3">Acceso rápido</h2>
+        <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-amber-500" />
+          Acceso rápido
+        </h2>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
           {quickLinks.map(link => {
             const Icon = link.icon;

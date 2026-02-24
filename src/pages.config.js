@@ -49,6 +49,9 @@
  */
 import AIAssistant from './pages/AIAssistant';
 import AIBudget from './pages/AIBudget';
+import AIPlanning from './pages/AIPlanning';
+import AIReports from './pages/AIReports';
+import AISearch from './pages/AISearch';
 import Agenda from './pages/Agenda';
 import AuditLog from './pages/AuditLog';
 import Automations from './pages/Automations';
@@ -65,6 +68,7 @@ import ElectricalCalc from './pages/ElectricalCalc';
 import ExportData from './pages/ExportData';
 import Home from './pages/Home';
 import Inventory from './pages/Inventory';
+import LegalDocs from './pages/LegalDocs';
 import Maintenance from './pages/Maintenance';
 import Manuals from './pages/Manuals';
 import Notes from './pages/Notes';
@@ -72,21 +76,20 @@ import Projects from './pages/Projects';
 import Regulations from './pages/Regulations';
 import Reports from './pages/Reports';
 import SAT from './pages/SAT';
+import SmartReminders from './pages/SmartReminders';
+import SolarBatteryCalc from './pages/SolarBatteryCalc';
 import SolarCalc from './pages/SolarCalc';
 import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
-import AISearch from './pages/AISearch';
-import SmartReminders from './pages/SmartReminders';
-import AIReports from './pages/AIReports';
-import SolarBatteryCalc from './pages/SolarBatteryCalc';
-import LegalDocs from './pages/LegalDocs';
-import AIPlanning from './pages/AIPlanning';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AIAssistant": AIAssistant,
     "AIBudget": AIBudget,
+    "AIPlanning": AIPlanning,
+    "AIReports": AIReports,
+    "AISearch": AISearch,
     "Agenda": Agenda,
     "AuditLog": AuditLog,
     "Automations": Automations,
@@ -103,6 +106,7 @@ export const PAGES = {
     "ExportData": ExportData,
     "Home": Home,
     "Inventory": Inventory,
+    "LegalDocs": LegalDocs,
     "Maintenance": Maintenance,
     "Manuals": Manuals,
     "Notes": Notes,
@@ -110,15 +114,11 @@ export const PAGES = {
     "Regulations": Regulations,
     "Reports": Reports,
     "SAT": SAT,
+    "SmartReminders": SmartReminders,
+    "SolarBatteryCalc": SolarBatteryCalc,
     "SolarCalc": SolarCalc,
     "Suppliers": Suppliers,
     "ThermalCalc": ThermalCalc,
-    "AISearch": AISearch,
-    "SmartReminders": SmartReminders,
-    "AIReports": AIReports,
-    "SolarBatteryCalc": SolarBatteryCalc,
-    "LegalDocs": LegalDocs,
-    "AIPlanning": AIPlanning,
 }
 
 export const pagesConfig = {
