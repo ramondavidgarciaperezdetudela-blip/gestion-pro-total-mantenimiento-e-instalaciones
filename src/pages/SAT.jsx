@@ -504,6 +504,22 @@ export default function SAT() {
             <PhotoGallery photos={form.photos_after} onChange={p => setForm({ ...form, photos_after: p })} label="Fotos después de reparación" maxPhotos={30} />
             <Textarea placeholder="Notas internas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
 
+            {/* Auto-generar factura */}
+            {form.contact_id && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
+                <div>
+                  <label className="text-xs font-medium text-blue-900">Auto-generar factura</label>
+                  <p className="text-[10px] text-blue-700">Si marca, genera factura automáticamente al completar</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={autoGenerateInvoice}
+                  onChange={e => setAutoGenerateInvoice(e.target.checked)}
+                  className="w-4 h-4 rounded"
+                />
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button onClick={handleSave} disabled={saving} className="flex-1 bg-orange-600 hover:bg-orange-700 gap-2">
                 {saving ? <><RefreshCw className="w-4 h-4 animate-spin" />Guardando...</> : <><Save className="w-4 h-4" />{editing ? 'Actualizar orden' : 'Guardar orden'}</>}
