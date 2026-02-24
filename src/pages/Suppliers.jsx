@@ -74,7 +74,7 @@ const EMPTY_FORM = {
    phone: '', email: '', contact_person: '', notes: '', is_active: true,
    api_key: '', api_url: '', client_code: '', password_hint: '',
    commercials: [], logo_url: '', last_order_date: '', reorder_frequency_days: 30,
-   enable_notifications: true
+   enable_notifications: true, province: '', city: ''
  };
 
 const EMPTY_COMMERCIAL = { name: '', phone: '', whatsapp: '', email: '', notes: '' };
