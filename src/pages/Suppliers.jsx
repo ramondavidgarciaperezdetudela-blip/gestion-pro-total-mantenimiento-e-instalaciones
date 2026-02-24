@@ -121,7 +121,6 @@ export default function Suppliers() {
     const logo = await fetchCompanyLogo(form.website, form.name);
     if (logo) {
       setForm(prev => ({ ...prev, logo_url: logo }));
-      toast.success('Logo obtenido. Guarda el proveedor para confirmar.');
     }
     setFetchingLogo(false);
   };
@@ -131,9 +130,24 @@ export default function Suppliers() {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setForm(prev => ({ ...prev, logo_url: file_url }));
-      toast.success('Foto subida. Guarda el proveedor para confirmar.');
     } catch (error) {
       toast.error('Error al subir la foto');
+    }
+  };
+
+  const saveLogo = async () => {
+    if (!form.logo_url) return;
+    try {
+      if (editing) {
+        await base44.entities.Supplier.update(editing.id, { logo_url: form.logo_url });
+        const updated = await base44.entities.Supplier.list();
+        setSuppliers(updated);
+        toast.success(`Logo guardado en ${form.name}`);
+      } else {
+        toast.error('Primero guarda el proveedor');
+      }
+    } catch (error) {
+      toast.error('Error al guardar el logo');
     }
   };
 
