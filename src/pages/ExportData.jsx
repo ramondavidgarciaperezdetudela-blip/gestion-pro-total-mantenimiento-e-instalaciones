@@ -339,6 +339,61 @@ ${ALL_ENTITIES.map(e => `- ${e}: ${allData[e]?.length || 0} registros`).join('\n
         </CardContent>
       </Card>
 
+      {/* ─── RESTAURAR COPIA DE SEGURIDAD ─────────────────────────────── */}
+      <Card className="border-2 border-blue-200 bg-blue-50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <RefreshCw className="w-5 h-5 text-blue-600" /> Restaurar Copia de Seguridad
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-gray-600">
+            Sube un archivo <strong>JSON</strong> generado por el "Backup JSON completo" para restaurar tus datos.
+            Los registros se añadirán sin borrar los existentes.
+          </p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button variant="outline" className="border-blue-400 text-blue-700 gap-2" onClick={() => restoreRef.current?.click()}>
+              <Archive className="w-4 h-4" /> Seleccionar archivo JSON
+            </Button>
+            <input ref={restoreRef} type="file" accept=".json" className="hidden" onChange={handleRestoreFileChange} />
+            {restoreFile && <span className="text-xs text-gray-600">📄 {restoreFile}</span>}
+          </div>
+
+          {restoreStatus && (
+            <div className={`rounded-lg px-3 py-2 text-xs font-medium ${restoreStatus.startsWith('✅') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              {restoreStatus}
+            </div>
+          )}
+
+          {restoreData && !restoreStatus.startsWith('❌') && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-700">Selecciona qué restaurar:</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {ALL_ENTITIES.filter(e => restoreData[e]?.length > 0).map(ent => (
+                  <button key={ent}
+                    onClick={() => handleRestore(ent)}
+                    disabled={restoring}
+                    className="text-xs border border-blue-300 rounded-lg px-2 py-1.5 hover:bg-blue-100 text-blue-800 text-left">
+                    {ent} ({restoreData[ent].length})
+                  </button>
+                ))}
+              </div>
+              <Button onClick={() => handleRestore(null)} disabled={restoring} className="w-full bg-blue-700 hover:bg-blue-800 gap-2">
+                {restoring ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                {restoring ? 'Restaurando...' : 'Restaurar TODO el backup'}
+              </Button>
+            </div>
+          )}
+
+          <div className="bg-amber-50 border border-amber-200 rounded p-2 text-xs text-amber-700 space-y-0.5">
+            <p className="font-medium">⚠️ Importante</p>
+            <p>• El JSON debe ser un backup generado por esta aplicación.</p>
+            <p>• Los registros se <strong>añaden</strong> sin borrar los existentes (no hay duplicación de IDs).</p>
+            <p>• Para Access/Excel: abre el .xls exportado → Datos externos → Importar → Excel.</p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Individual exports */}
       <div>
         <h2 className="text-base font-semibold text-gray-700 mb-3">Exportación por sección</h2>
