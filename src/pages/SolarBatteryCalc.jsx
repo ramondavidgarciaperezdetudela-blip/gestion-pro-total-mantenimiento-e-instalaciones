@@ -823,13 +823,19 @@ export default function SolarBatteryCalc() {
                 </CardContent>
               </Card>
 
-              <div className="flex gap-2 flex-wrap no-print">
+              <div className="flex gap-2 flex-wrap no-print items-center">
                 <PrintButton contentRef={combPrintRef} title="Cálculo Solar + Baterías" />
-                {combForm.contact_id && (
-                  <Button onClick={async () => {
-                    await base44.entities.ClientDocument.create({ contact_id: combForm.contact_id, contact_name: combForm.contact_name, title: `Sistema solar+baterías ${combResult.solar.totalKwp.toFixed(1)}kWp ${combResult.bat.energiaTotalKwh}kWh - ${format(new Date(), 'dd/MM/yyyy')}`, doc_type: 'calculo_solar', date: format(new Date(), 'yyyy-MM-dd'), description: `${combResult.solar.numPanels} paneles, ${combResult.bat.numBaterias} baterías` });
-                  }} variant="outline" size="sm"><Save className="w-4 h-4 mr-2" />Guardar en cliente</Button>
+                {!combEditing && !combSavedId && (
+                  <Button onClick={saveComb} variant="outline" size="sm"><Save className="w-4 h-4 mr-2" />Guardar cálculo</Button>
                 )}
+                {combSavedId && !combEditing && (
+                  <Button onClick={() => setCombEditing(true)} variant="outline" size="sm" className="border-blue-400 text-blue-600">✏️ Editar y actualizar</Button>
+                )}
+                {combEditing && (
+                  <Button onClick={saveComb} size="sm" className="bg-blue-600 hover:bg-blue-700"><Save className="w-4 h-4 mr-2" />Guardar cambios</Button>
+                )}
+                {combSavedMsg && <span className="text-xs text-green-600 font-medium">{combSavedMsg}</span>}
+                {combSavedId && <span className="text-[10px] text-gray-400">Guardado en base de datos</span>}
               </div>
             </div>
           )}
