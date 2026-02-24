@@ -65,6 +65,7 @@ const mobileTabItems = [
   { name: 'Asist. IA', page: 'AIAssistant', icon: Bot },
   { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette },
   { name: 'T.Visita', page: 'BusinessCards', icon: CreditCard },
+  { name: 'Historial', page: 'AuditLog', icon: History },
   { name: 'Recordat.', page: 'Automations', icon: Bell },
   { name: 'Portal', page: 'ClientPortal', icon: Users },
   { name: 'Exportar', page: 'ExportData', icon: Download },
