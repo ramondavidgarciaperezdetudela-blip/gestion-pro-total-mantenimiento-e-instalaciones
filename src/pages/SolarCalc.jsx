@@ -226,13 +226,13 @@ export default function SolarCalc() {
                 </table>
               </div>
 
-              <div className="flex gap-2 no-print">
+              <div className="flex gap-2 flex-wrap no-print items-center">
                 <PrintButton contentRef={printRef} title="Cálculo Solar Fotovoltaico" />
-                {form.contact_id && (
-                  <Button onClick={saveToClient} variant="outline">
-                    <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar en cliente'}
-                  </Button>
-                )}
+                {!editing && !savedId && <Button onClick={save} variant="outline" size="sm"><Save className="w-4 h-4 mr-2" />Guardar cálculo</Button>}
+                {savedId && !editing && <Button onClick={() => setEditing(true)} variant="outline" size="sm" className="border-blue-400 text-blue-600">✏️ Editar y actualizar</Button>}
+                {editing && <Button onClick={save} size="sm" className="bg-blue-600 hover:bg-blue-700"><Save className="w-4 h-4 mr-2" />Guardar cambios</Button>}
+                {savedMsg && <span className="text-xs text-green-600 font-medium">{savedMsg}</span>}
+                {savedId && <span className="text-[10px] text-gray-400">Guardado en base de datos</span>}
               </div>
             </CardContent>
           </Card>
