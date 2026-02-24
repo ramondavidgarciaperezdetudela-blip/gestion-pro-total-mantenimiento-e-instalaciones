@@ -37,6 +37,9 @@ const quickLinks = [
   { name: 'Tarjetas', page: 'BusinessCards', icon: CreditCard, color: 'bg-sky-600' },
   { name: 'Recordatorios', page: 'Automations', icon: Bell, color: 'bg-amber-500' },
   { name: 'Asistente IA', page: 'AIAssistant', icon: Bot, color: 'bg-green-500' },
+  { name: 'Búsqueda IA', page: 'AISearch', icon: Bot, color: 'bg-blue-700' },
+  { name: 'Recordat. IA', page: 'SmartReminders', icon: Bell, color: 'bg-red-500' },
+  { name: 'Informes IA', page: 'AIReports', icon: BarChart3, color: 'bg-purple-700' },
   { name: 'Exportar', page: 'ExportData', icon: Download, color: 'bg-lime-600' },
   { name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
 ];
