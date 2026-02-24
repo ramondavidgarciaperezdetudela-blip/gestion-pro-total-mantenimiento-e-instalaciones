@@ -625,11 +625,12 @@ export default function SAT() {
                     </Button>
                   </Link>
                 )}
-              </div>
-            )}
-            </DialogContent>
-            </Dialog>
-            </div>
-            </>
-            );
-            }
+                </div>
+                </>
+                )}
+                </DialogContent>
+                </Dialog>
+                </div>
+                </>
+                );
+                }
