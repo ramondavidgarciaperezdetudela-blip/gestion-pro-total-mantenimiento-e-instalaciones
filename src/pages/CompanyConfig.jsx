@@ -80,7 +80,12 @@ export default function CompanyConfig() {
           website: d.website || '',
           logo_url: d.logo_url || '',
           iban: d.iban || '',
-          printer_config: d.printer_config || { margin_top: 15, margin_bottom: 15, margin_left: 15, margin_right: 15, paper_size: 'A4' },
+          printer_config: d.printer_config ? {
+            margin_top: 15, margin_bottom: 15, margin_left: 15, margin_right: 15, paper_size: 'A4',
+            font_family: 'Segoe UI', font_size: 'normal', header_text: '', footer_text: '',
+            logo_width_mm: 35, logo_height_mm: 20, fit_to_page: true, avoid_table_breaks: true,
+            ...d.printer_config
+          } : { margin_top: 15, margin_bottom: 15, margin_left: 15, margin_right: 15, paper_size: 'A4', font_family: 'Segoe UI', font_size: 'normal', header_text: '', footer_text: '', logo_width_mm: 35, logo_height_mm: 20, fit_to_page: true, avoid_table_breaks: true },
           email_config: d.email_config || { smtp_host: '', smtp_port: 587, smtp_user: '', smtp_pass: '', from_name: '', use_ssl: true },
           technicians: d.technicians || [],
           payment_terms: d.payment_terms || form.payment_terms,
