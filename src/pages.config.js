@@ -76,6 +76,7 @@ import SolarCalc from './pages/SolarCalc';
 import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
 import AISearch from './pages/AISearch';
+import SmartReminders from './pages/SmartReminders';
 import __Layout from './Layout.jsx';
 
 
@@ -109,6 +110,7 @@ export const PAGES = {
     "Suppliers": Suppliers,
     "ThermalCalc": ThermalCalc,
     "AISearch": AISearch,
+    "SmartReminders": SmartReminders,
 }
 
 export const pagesConfig = {
