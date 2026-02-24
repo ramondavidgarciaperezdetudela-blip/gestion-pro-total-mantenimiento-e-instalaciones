@@ -267,6 +267,11 @@ Responde en formato JSON con esta estructura:
             </div>
           </div>
 
+          {form.contact_id && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-xs text-green-700 flex items-center gap-2">
+              <UserCheck className="w-4 h-4" /> Vinculado a: <strong>{form.contact_name}</strong>
+            </div>
+          )}
           <Button onClick={calculate} className="w-full bg-green-600 hover:bg-green-700">
             <Calculator className="w-4 h-4 mr-2" /> Calcular sistema de baterías
           </Button>
