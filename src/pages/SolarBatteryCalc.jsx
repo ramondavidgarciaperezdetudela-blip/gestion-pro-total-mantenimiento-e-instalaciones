@@ -843,19 +843,19 @@ export default function SolarBatteryCalc() {
                 </CardContent>
               </Card>
 
-              <div className="flex gap-2 flex-wrap no-print items-center">
-                <PrintButton contentRef={combPrintRef} title="Cálculo Solar + Baterías" />
+              <div className="flex gap-2 flex-wrap no-print items-center pt-2 border-t border-gray-100">
+                <PrintButton contentRef={combPrintRef} title="Sistema Completo Solar + Baterías" />
                 {!combEditing && !combSavedId && (
-                  <Button onClick={saveComb} variant="outline" size="sm"><Save className="w-4 h-4 mr-2" />Guardar cálculo</Button>
+                  <Button onClick={saveComb} variant="outline" size="sm" className="border-amber-500 text-amber-700 hover:bg-amber-50"><Save className="w-4 h-4 mr-2" />Guardar cálculo</Button>
                 )}
                 {combSavedId && !combEditing && (
-                  <Button onClick={() => setCombEditing(true)} variant="outline" size="sm" className="border-blue-400 text-blue-600">✏️ Editar y actualizar</Button>
+                  <Button onClick={() => setCombEditing(true)} variant="outline" size="sm" className="border-blue-400 text-blue-600 hover:bg-blue-50"><Edit3 className="w-4 h-4 mr-2" />Editar y actualizar</Button>
                 )}
                 {combEditing && (
                   <Button onClick={saveComb} size="sm" className="bg-blue-600 hover:bg-blue-700"><Save className="w-4 h-4 mr-2" />Guardar cambios</Button>
                 )}
-                {combSavedMsg && <span className="text-xs text-green-600 font-medium">{combSavedMsg}</span>}
-                {combSavedId && <span className="text-[10px] text-gray-400">Guardado en base de datos</span>}
+                {combSavedMsg && <span className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />{combSavedMsg}</span>}
+                {combSavedId && !combSavedMsg && <span className="text-[10px] text-gray-400">✓ Guardado en base de datos</span>}
               </div>
             </div>
           )}
