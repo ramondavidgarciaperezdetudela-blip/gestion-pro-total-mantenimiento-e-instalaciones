@@ -846,6 +846,28 @@ export default function SolarBatteryCalc() {
 
           {combResult && (
             <div ref={combPrintRef} className="space-y-5">
+              <CompanyHeader className="mb-2" />
+              {/* Tabla datos introducidos */}
+              <Card className="border-gray-200">
+                <CardHeader className="bg-gray-50 py-2"><CardTitle className="text-gray-700 text-sm">📋 Datos de la instalación</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                  <table className="w-full text-xs border-collapse">
+                    <tbody>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50 w-1/2">Nº paneles</td><td className="p-2">{combForm.num_panels}</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Potencia panel</td><td className="p-2">{combForm.panel_power_w} W</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Consumo diario</td><td className="p-2">{combForm.consumo_diario} kWh/día</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Autonomía</td><td className="p-2">{combForm.autonomia_dias} días</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Potencia pico máxima</td><td className="p-2">{combForm.potencia_pico_w} W</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Voltaje sistema</td><td className="p-2">{combForm.voltaje_sistema} V</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Tipo instalación</td><td className="p-2">{combForm.tipo_red}</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Distancia paneles → Cuadro DC</td><td className="p-2">{combForm.distance_panels_to_dc_box} m</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Distancia inversor → Baterías</td><td className="p-2">{combForm.distance_inverter_to_batteries} m</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Distancia inversor → Cuadro AC</td><td className="p-2">{combForm.distance_to_ac_box} m</td></tr>
+                      {combForm.contact_name && <tr><td className="p-2 font-medium text-gray-600 bg-gray-50">Cliente</td><td className="p-2">{combForm.contact_name}</td></tr>}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
               {/* Solar part */}
               <Card className="border-amber-200">
                 <CardHeader className="bg-amber-50 py-3"><CardTitle className="text-amber-700 text-base">☀️ Instalación Fotovoltaica — {combResult.solar.totalKwp.toFixed(2)} kWp</CardTitle></CardHeader>
