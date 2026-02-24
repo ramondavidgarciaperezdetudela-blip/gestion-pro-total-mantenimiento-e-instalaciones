@@ -131,9 +131,10 @@ export default function Suppliers() {
   const handleUploadLogo = async (file) => {
     if (!file) return;
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setForm(prev => ({ ...prev, logo_url: file_url }));
+    const newForm = { ...form, logo_url: file_url };
+    setForm(newForm);
     if (editing) {
-      await base44.entities.Supplier.update(editing.id, { ...form, logo_url: file_url });
+      await base44.entities.Supplier.update(editing.id, newForm);
       base44.entities.Supplier.list().then(setSuppliers);
     }
   };
