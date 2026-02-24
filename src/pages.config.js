@@ -81,6 +81,7 @@ import SolarBatteryCalc from './pages/SolarBatteryCalc';
 import SolarCalc from './pages/SolarCalc';
 import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
+import Catalogs from './pages/Catalogs';
 import __Layout from './Layout.jsx';
 
 
@@ -119,6 +120,7 @@ export const PAGES = {
     "SolarCalc": SolarCalc,
     "Suppliers": Suppliers,
     "ThermalCalc": ThermalCalc,
+    "Catalogs": Catalogs,
 }
 
 export const pagesConfig = {
