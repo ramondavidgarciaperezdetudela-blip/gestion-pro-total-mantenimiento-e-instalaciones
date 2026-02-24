@@ -98,6 +98,7 @@ export default function Home() {
       setKpis({ contacts: contacts.length, totalInvoiced, pendingAmount, satPending, overdueInvoices, paidThisMonth, unpaidContacts });
       setRecentDocs(invoices.slice(0, 5));
       setRecentSat(sat.filter(s => s.status === 'pendiente').slice(0, 4));
+      setRecentContacts(contacts.filter(c => c.type === 'cliente').slice(0, 5));
 
       // Alertas
       const newAlerts = [];
