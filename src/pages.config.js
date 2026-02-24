@@ -79,6 +79,8 @@ import AISearch from './pages/AISearch';
 import SmartReminders from './pages/SmartReminders';
 import AIReports from './pages/AIReports';
 import SolarBatteryCalc from './pages/SolarBatteryCalc';
+import LegalDocs from './pages/LegalDocs';
+import AIPlanning from './pages/AIPlanning';
 import __Layout from './Layout.jsx';
 
 
@@ -115,6 +117,8 @@ export const PAGES = {
     "SmartReminders": SmartReminders,
     "AIReports": AIReports,
     "SolarBatteryCalc": SolarBatteryCalc,
+    "LegalDocs": LegalDocs,
+    "AIPlanning": AIPlanning,
 }
 
 export const pagesConfig = {
