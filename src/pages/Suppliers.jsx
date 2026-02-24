@@ -99,17 +99,26 @@ export default function Suppliers() {
   }, []);
 
   const handleSave = async () => {
-    if (editing) {
-      await base44.entities.Supplier.update(editing.id, form);
-    } else {
-      await base44.entities.Supplier.create(form);
+    if (!form.name) {
+      toast.error('El nombre del proveedor es obligatorio');
+      return;
     }
-    // Recargar lista ANTES de cerrar diálogo para asegurar que se refleja el logo
-    const updated = await base44.entities.Supplier.list();
-    setSuppliers(updated);
-    setDialogOpen(false);
-    setEditing(null);
-    setForm(EMPTY_FORM);
+    try {
+      if (editing) {
+        await base44.entities.Supplier.update(editing.id, form);
+      } else {
+        await base44.entities.Supplier.create(form);
+      }
+      const updated = await base44.entities.Supplier.list();
+      setSuppliers(updated);
+      setDialogOpen(false);
+      setEditingNull);
+      setForm(EMPTY_FORM);
+      setSearchProvince('');
+      toast.success(`Proveedor ${editing ? 'actualizado' : 'creado'} correctamente${form.logo_url ? ' con imagen' : ''}`);
+    } catch (error) {
+      toast.error('Error al guardar proveedor');
+    }
   };
 
   const handleEdit = (s) => {
