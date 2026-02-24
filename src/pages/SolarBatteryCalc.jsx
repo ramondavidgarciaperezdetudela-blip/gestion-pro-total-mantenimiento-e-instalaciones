@@ -651,19 +651,19 @@ export default function SolarBatteryCalc() {
 
                   <div><p className="font-semibold text-sm mb-2">🔌 Material para cuadros eléctricos (DC y AC)</p><ElecPanelTableSolar items={solarResult.electricalPanelItems} /></div>
 
-                  <div className="flex gap-2 flex-wrap no-print items-center">
+                  <div className="flex gap-2 flex-wrap no-print items-center pt-2 border-t border-gray-100">
                     <PrintButton contentRef={solarPrintRef} title="Cálculo Solar Fotovoltaico" />
                     {!solarEditing && !solarSavedId && (
-                      <Button onClick={saveSolar} variant="outline" size="sm"><Save className="w-4 h-4 mr-2" />Guardar cálculo</Button>
+                      <Button onClick={saveSolar} variant="outline" size="sm" className="border-amber-400 text-amber-700 hover:bg-amber-50"><Save className="w-4 h-4 mr-2" />Guardar cálculo</Button>
                     )}
                     {solarSavedId && !solarEditing && (
-                      <Button onClick={() => { setSolarEditing(true); }} variant="outline" size="sm" className="border-blue-400 text-blue-600">✏️ Editar y actualizar</Button>
+                      <Button onClick={() => setSolarEditing(true)} variant="outline" size="sm" className="border-blue-400 text-blue-600 hover:bg-blue-50"><Edit3 className="w-4 h-4 mr-2" />Editar y actualizar</Button>
                     )}
                     {solarEditing && (
                       <Button onClick={saveSolar} size="sm" className="bg-blue-600 hover:bg-blue-700"><Save className="w-4 h-4 mr-2" />Guardar cambios</Button>
                     )}
-                    {solarSavedMsg && <span className="text-xs text-green-600 font-medium">{solarSavedMsg}</span>}
-                    {solarSavedId && <span className="text-[10px] text-gray-400">Guardado en base de datos</span>}
+                    {solarSavedMsg && <span className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />{solarSavedMsg}</span>}
+                    {solarSavedId && !solarSavedMsg && <span className="text-[10px] text-gray-400">✓ Guardado en base de datos</span>}
                   </div>
                 </CardContent>
               </Card>
