@@ -233,6 +233,51 @@ ${ALL_ENTITIES.map(e => `- ${e}: ${allData[e]?.length || 0} registros`).join('\n
     setLoading(l => ({ ...l, codezip: false }));
   };
 
+  // ─── RESTAURAR BACKUP ─────────────────────────────────────────────────────
+  const [restoreFile, setRestoreFile] = useState(null);
+  const [restoreData, setRestoreData] = useState(null);
+  const [restoreStatus, setRestoreStatus] = useState('');
+  const [restoring, setRestoring] = useState(false);
+  const restoreRef = React.useRef(null);
+
+  const handleRestoreFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setRestoreFile(file.name);
+    setRestoreData(null);
+    setRestoreStatus('');
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        setRestoreData(parsed);
+        const entities = ALL_ENTITIES.filter(e => parsed[e]);
+        const total = entities.reduce((s, e) => s + (parsed[e]?.length || 0), 0);
+        setRestoreStatus(`✅ Archivo válido. ${entities.length} secciones, ${total} registros totales.`);
+      } catch {
+        setRestoreStatus('❌ Error: el archivo no es un JSON válido o no tiene el formato correcto.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleRestore = async (entityKey) => {
+    if (!restoreData) return;
+    const entitiesToRestore = entityKey ? [entityKey] : ALL_ENTITIES.filter(e => restoreData[e]?.length > 0);
+    setRestoring(true);
+    let total = 0;
+    for (const ent of entitiesToRestore) {
+      const rows = restoreData[ent];
+      if (!rows?.length) continue;
+      const clean = rows.map(r => { const { id, created_date, updated_date, created_by, ...rest } = r; return rest; });
+      await base44.entities[ent].bulkCreate(clean).catch(() => {});
+      total += clean.length;
+    }
+    setRestoreStatus(`✅ Restauración completada: ${total} registros importados.`);
+    setRestoring(false);
+    loadCounts();
+  };
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between flex-wrap gap-2">
