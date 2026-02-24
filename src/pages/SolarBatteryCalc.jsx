@@ -905,6 +905,8 @@ export default function SolarBatteryCalc() {
                 </CardContent>
               </Card>
 
+              <AIReportPanel tipo="combinado" datos={{ solar: { numPanels: combResult.solar.numPanels, totalKwp: combResult.solar.totalKwp, dailyProduction: combResult.solar.dailyProduction, yearlyProduction: combResult.solar.yearlyProduction, inverterKw: combResult.solar.inverterKw }, bat: { numBaterias: combResult.bat.numBaterias, energiaTotalKwh: combResult.bat.energiaTotalKwh, potenciaInversorKw: combResult.bat.potenciaInversorKw, autonomiaDias: combResult.bat.autonomiaDias, tipoRed: combResult.bat.tipoRed }, consumoDiario: combForm.consumo_diario, cliente: combForm.contact_name }} />
+
               <div className="flex gap-2 flex-wrap no-print items-center pt-2 border-t border-gray-100">
                 <PrintButton contentRef={combPrintRef} title="Sistema Completo Solar + Baterías" />
                 {!combEditing && !combSavedId && (
