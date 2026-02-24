@@ -323,11 +323,12 @@ export default function Suppliers() {
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Nuevo'} proveedor</DialogTitle></DialogHeader>
             <Tabs defaultValue="datos">
-              <TabsList className="w-full">
-                <TabsTrigger value="datos" className="flex-1">Datos</TabsTrigger>
-                <TabsTrigger value="catalogos" className="flex-1">Catálogos</TabsTrigger>
-                <TabsTrigger value="comerciales" className="flex-1">Comerciales</TabsTrigger>
-                <TabsTrigger value="acceso" className="flex-1">Acceso / API</TabsTrigger>
+              <TabsList className="w-full grid grid-cols-5">
+                <TabsTrigger value="datos">Datos</TabsTrigger>
+                <TabsTrigger value="precios">Precios</TabsTrigger>
+                <TabsTrigger value="catalogos">Catálogos</TabsTrigger>
+                <TabsTrigger value="comerciales">Comerciales</TabsTrigger>
+                <TabsTrigger value="acceso">Acceso</TabsTrigger>
               </TabsList>
 
               <TabsContent value="datos" className="space-y-3 pt-2">
