@@ -44,7 +44,7 @@ export default function GlobalSearch({ open, onClose }) {
 
   useEffect(() => {
     if (!query.trim() || !allData) {
-      setResults({ contacts: [], invoices: [], sat: [], maintenance: [], notes: [] });
+      setResults({ contacts: [], invoices: [], sat: [], maintenance: [], notes: [], suppliers: [], supplierprices: [] });
       return;
     }
     const q = query.toLowerCase();
@@ -66,6 +66,12 @@ export default function GlobalSearch({ open, onClose }) {
       notes: allData.notes.filter(n =>
         match(n.title) || match(n.content) || match(n.contact_name)
       ).slice(0, 3),
+      suppliers: allData.suppliers.filter(s =>
+        match(s.name) || match(s.province) || match(s.city) || match(s.contact_person) || match(s.phone) || match(s.email) || match(s.category)
+      ).slice(0, 4),
+      supplierprices: allData.supplierprices.filter(p =>
+        match(p.product_code) || match(p.product_name) || match(p.category) || match(p.supplier_name)
+      ).slice(0, 4),
     });
   }, [query, allData]);
 
