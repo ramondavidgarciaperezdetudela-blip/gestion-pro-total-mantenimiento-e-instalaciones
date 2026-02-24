@@ -725,9 +725,19 @@ export default function SolarBatteryCalc() {
 
                   <div><p className="font-semibold text-sm mb-2">🔌 Material cuadros eléctricos del sistema</p><ElecPanelTableBat items={batResult.electricalPanelBat} /></div>
 
-                  <div className="flex gap-2 flex-wrap no-print">
+                  <div className="flex gap-2 flex-wrap no-print items-center">
                     <PrintButton contentRef={batPrintRef} title="Cálculo Baterías" />
-                    {batForm.contact_id && <Button onClick={saveBat} variant="outline" size="sm"><Save className="w-4 h-4 mr-2" />{batSaved ? '¡Guardado!' : 'Guardar en cliente'}</Button>}
+                    {!batEditing && !batSavedId && (
+                      <Button onClick={saveBat} variant="outline" size="sm"><Save className="w-4 h-4 mr-2" />Guardar cálculo</Button>
+                    )}
+                    {batSavedId && !batEditing && (
+                      <Button onClick={() => setBatEditing(true)} variant="outline" size="sm" className="border-blue-400 text-blue-600">✏️ Editar y actualizar</Button>
+                    )}
+                    {batEditing && (
+                      <Button onClick={saveBat} size="sm" className="bg-blue-600 hover:bg-blue-700"><Save className="w-4 h-4 mr-2" />Guardar cambios</Button>
+                    )}
+                    {batSavedMsg && <span className="text-xs text-green-600 font-medium">{batSavedMsg}</span>}
+                    {batSavedId && <span className="text-[10px] text-gray-400">Guardado en base de datos</span>}
                   </div>
                 </CardContent>
               </Card>
