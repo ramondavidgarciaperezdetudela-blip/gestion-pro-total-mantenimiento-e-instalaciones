@@ -722,6 +722,11 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           </div>
         </TabsContent>
 
+        {/* HISTORIAL DE CAMBIOS */}
+        <TabsContent value="historial">
+          <ChangeHistoryTab contactId={contactId} />
+        </TabsContent>
+
         {/* PRESUPUESTO IA */}
         <TabsContent value="aibudget">
           <div className="space-y-3 mt-2">
