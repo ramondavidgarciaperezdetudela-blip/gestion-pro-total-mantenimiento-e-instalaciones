@@ -386,20 +386,37 @@ export default function Suppliers() {
 
                       <div className="border-t pt-2 mt-2">
                         <p className="text-xs font-semibold text-blue-900 mb-2">📌 Proveedores existentes</p>
-                        <Select value={searchProvince} onValueChange={(v) => { setSearchProvince(v); setShowSuggestions(true); }}>
-                          <SelectTrigger className="text-xs h-8"><SelectValue placeholder="Filtrar por provincia..." /></SelectTrigger>
-                          <SelectContent>{SPANISH_PROVINCES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                        </Select>
+                        <div className="grid grid-cols-2 gap-1.5 mb-2">
+                          <Select value={searchProvince} onValueChange={(v) => { setSearchProvince(v); setSearchCity(''); setShowSuggestions(true); }}>
+                            <SelectTrigger className="text-xs h-8"><SelectValue placeholder="Provincia..." /></SelectTrigger>
+                            <SelectContent className="max-h-60">{SPANISH_PROVINCES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <Input 
+                            placeholder="Ciudad..." 
+                            value={searchCity} 
+                            onChange={(e) => { setSearchCity(e.target.value); setShowSuggestions(true); }}
+                            className="text-xs h-8"
+                          />
+                        </div>
                         {showSuggestions && searchProvince && (
-                          <div className="space-y-1 max-h-32 overflow-y-auto mt-2">
-                            {suppliers.filter(s => s.is_active).length === 0 ? (
-                              <p className="text-xs text-gray-500">Sin proveedores en esta provincia</p>
+                          <div className="space-y-1 max-h-40 overflow-y-auto mt-2">
+                            {suppliers
+                              .filter(s => s.is_active)
+                              .filter(s => searchProvince ? s.province === searchProvince : true)
+                              .filter(s => searchCity ? s.city?.toLowerCase().includes(searchCity.toLowerCase()) : true)
+                              .length === 0 ? (
+                              <p className="text-xs text-gray-500">Sin proveedores en {searchCity ? `${searchCity}, ` : ''}esta provincia</p>
                             ) : (
-                              suppliers.filter(s => s.is_active).map(s => (
-                                <button key={s.id} onClick={() => { setForm({...form, name: s.name, website: s.website || '', category: s.category || 'general', notes: s.notes || '', phone: s.phone || '', email: s.email || ''}); setShowSuggestions(false); setSearchProvince(''); }} className="w-full text-left p-2 rounded text-xs bg-white hover:bg-blue-100 border border-blue-100 truncate">
-                                  {s.name}
-                                </button>
-                              ))
+                              suppliers
+                                .filter(s => s.is_active)
+                                .filter(s => searchProvince ? s.province === searchProvince : true)
+                                .filter(s => searchCity ? s.city?.toLowerCase().includes(searchCity.toLowerCase()) : true)
+                                .map(s => (
+                                  <button key={s.id} onClick={() => { setForm({...form, name: s.name, website: s.website || '', category: s.category || 'general', notes: s.notes || '', phone: s.phone || '', email: s.email || ''}); setShowSuggestions(false); setSearchProvince(''); setSearchCity(''); }} className="w-full text-left p-2 rounded text-xs bg-white hover:bg-blue-100 border border-blue-100 truncate">
+                                    <div className="font-medium">{s.name}</div>
+                                    <div className="text-[10px] text-gray-500">{s.city}, {s.province}</div>
+                                  </button>
+                                ))
                             )}
                           </div>
                         )}
