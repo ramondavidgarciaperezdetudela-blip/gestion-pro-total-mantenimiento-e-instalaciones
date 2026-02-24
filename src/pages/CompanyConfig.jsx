@@ -714,6 +714,3 @@ function AICalcConfig() {
     </div>
   );
 }
-    </div>
-  );
-}
