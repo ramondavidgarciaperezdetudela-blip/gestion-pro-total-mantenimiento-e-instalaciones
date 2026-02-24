@@ -90,7 +90,9 @@ export default function BatteryCalc() {
   const [result, setResult] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiBudget, setAiBudget] = useState(null);
-  const [saved, setSaved] = useState(false);
+  const [savedId, setSavedId] = useState(null);
+  const [savedMsg, setSavedMsg] = useState('');
+  const [editing, setEditing] = useState(false);
   const printRef = useRef(null);
 
   useEffect(() => { base44.entities.Contact.list().then(setContacts); }, []);
