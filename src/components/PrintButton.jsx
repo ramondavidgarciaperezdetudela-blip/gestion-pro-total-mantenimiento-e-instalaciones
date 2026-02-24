@@ -55,7 +55,7 @@ const PDF_STYLES_STATIC = `
 
   /* Header empresa */
   .company-header { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%); color: white; border-radius: 6px; margin-bottom: 12px; }
-  .company-header img { width: 50mm !important; height: 30mm !important; max-width: 50mm !important; max-height: 30mm !important; min-width: 50mm !important; min-height: 30mm !important; object-fit: contain !important; background: white; border-radius: 4px; padding: 4px; flex-shrink: 0 !important; display: block !important; }
+  .company-header img { width: var(--logo-w, 35mm); height: var(--logo-h, 20mm); max-width: var(--logo-w, 35mm); max-height: var(--logo-h, 20mm); object-fit: contain; background: white; border-radius: 4px; padding: 4px; flex-shrink: 0; display: block; }
   .company-header h1 { font-size: 14px; font-weight: 700; margin: 0 0 4px; }
   .company-header p { font-size: 8.5px; opacity: 0.85; margin: 0; }
 
