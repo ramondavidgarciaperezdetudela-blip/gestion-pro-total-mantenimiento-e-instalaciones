@@ -493,16 +493,39 @@ export default function SolarBatteryCalc() {
     formSetter(f => ({ ...f, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : '' }));
   };
 
+  const buildSolarTitle = (r) => `Cálculo solar ${r.totalKwp.toFixed(2)}kWp — ${format(new Date(), 'dd/MM/yyyy')}`;
+  const buildSolarDesc = (r) => `${r.numPanels} paneles, ${r.totalKwp.toFixed(2)}kWp, inv. ${r.inverterKw}kW`;
+
   const saveSolar = async () => {
-    if (!solarForm.contact_id || !solarResult) return;
-    await base44.entities.ClientDocument.create({ contact_id: solarForm.contact_id, contact_name: solarForm.contact_name, title: `Cálculo solar ${solarResult.totalKwp.toFixed(2)}kWp - ${format(new Date(), 'dd/MM/yyyy')}`, doc_type: 'calculo_solar', date: format(new Date(), 'yyyy-MM-dd'), description: `${solarResult.numPanels} paneles, ${solarResult.totalKwp.toFixed(2)}kWp, inv. ${solarResult.inverterKw}kW` });
-    setSolarSaved(true); setTimeout(() => setSolarSaved(false), 3000);
+    if (!solarResult) return;
+    const data = { contact_id: solarForm.contact_id || '', contact_name: solarForm.contact_name || 'Sin cliente', title: buildSolarTitle(solarResult), doc_type: 'calculo_solar', date: format(new Date(), 'yyyy-MM-dd'), description: buildSolarDesc(solarResult) };
+    if (solarSavedId) {
+      await base44.entities.SolarCalculation.update(solarSavedId, { num_panels: solarResult.numPanels, total_power_kwp: solarResult.totalKwp, inverter_power_w: solarResult.inverterKw * 1000, notes: buildSolarDesc(solarResult) });
+    } else {
+      const rec = await base44.entities.SolarCalculation.create({ contact_id: solarForm.contact_id || '', contact_name: solarForm.contact_name || 'Sin cliente', calc_mode: solarMode, num_panels: solarResult.numPanels, panel_power_w: parseInt(solarForm.panel_power_w), total_power_kwp: solarResult.totalKwp, inverter_power_w: solarResult.inverterKw * 1000, estimated_production_kwh_year: solarResult.yearlyProduction, date: format(new Date(), 'yyyy-MM-dd'), notes: buildSolarDesc(solarResult) });
+      setSolarSavedId(rec.id);
+      if (solarForm.contact_id) await base44.entities.ClientDocument.create(data);
+    }
+    setSolarSavedMsg(solarSavedId ? '¡Actualizado!' : '¡Guardado!');
+    setSolarEditing(false);
+    setTimeout(() => setSolarSavedMsg(''), 3000);
   };
 
+  const buildBatTitle = (r) => `Cálculo baterías ${r.energiaTotalKwh}kWh — ${format(new Date(), 'dd/MM/yyyy')}`;
+  const buildBatDesc = (r) => `${r.numBaterias}x ${r.capBateria}Ah ${r.voltajeSistema}V, inv. ${r.potenciaInversorKw}kW`;
+
   const saveBat = async () => {
-    if (!batForm.contact_id || !batResult) return;
-    await base44.entities.ClientDocument.create({ contact_id: batForm.contact_id, contact_name: batForm.contact_name, title: `Cálculo baterías ${batResult.energiaTotalKwh}kWh - ${format(new Date(), 'dd/MM/yyyy')}`, doc_type: 'calculo_solar', date: format(new Date(), 'yyyy-MM-dd'), description: `${batResult.numBaterias}x ${batResult.capBateria}Ah ${batResult.voltajeSistema}V, inv. ${batResult.potenciaInversorKw}kW` });
-    setBatSaved(true); setTimeout(() => setBatSaved(false), 3000);
+    if (!batResult) return;
+    if (batSavedId) {
+      await base44.entities.SolarCalculation.update(batSavedId, { battery_capacity_kwh: parseFloat(batResult.energiaTotalKwh), num_batteries: batResult.numBaterias, inverter_power_w: batResult.potenciaInversorKw * 1000, notes: buildBatDesc(batResult) });
+    } else {
+      const rec = await base44.entities.SolarCalculation.create({ contact_id: batForm.contact_id || '', contact_name: batForm.contact_name || 'Sin cliente', calc_mode: 'directo', battery_capacity_kwh: parseFloat(batResult.energiaTotalKwh), num_batteries: batResult.numBaterias, inverter_power_w: batResult.potenciaInversorKw * 1000, date: format(new Date(), 'yyyy-MM-dd'), notes: buildBatDesc(batResult) });
+      setBatSavedId(rec.id);
+      if (batForm.contact_id) await base44.entities.ClientDocument.create({ contact_id: batForm.contact_id, contact_name: batForm.contact_name, title: buildBatTitle(batResult), doc_type: 'calculo_solar', date: format(new Date(), 'yyyy-MM-dd'), description: buildBatDesc(batResult) });
+    }
+    setBatSavedMsg(batSavedId ? '¡Actualizado!' : '¡Guardado!');
+    setBatEditing(false);
+    setTimeout(() => setBatSavedMsg(''), 3000);
   };
 
   const calcCombined = () => {
