@@ -576,5 +576,6 @@ export default function SAT() {
         </DialogContent>
       </Dialog>
     </div>
+    </>
   );
 }
