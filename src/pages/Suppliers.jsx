@@ -158,9 +158,14 @@ export default function Suppliers() {
 
   const saveLogo = async () => {
     if (!editing) return;
-    await base44.entities.Supplier.update(editing.id, form);
-    const updated = await base44.entities.Supplier.list();
-    setSuppliers(updated);
+    try {
+      await base44.entities.Supplier.update(editing.id, form);
+      const updated = await base44.entities.Supplier.list();
+      setSuppliers(updated);
+      toast.success(`Logo guardado en ${form.name}`);
+    } catch (error) {
+      toast.error('Error al guardar el logo');
+    }
   };
 
   const addCommercial = () => setForm(prev => ({...prev, commercials: [...(prev.commercials || []), {...EMPTY_COMMERCIAL}]}));
