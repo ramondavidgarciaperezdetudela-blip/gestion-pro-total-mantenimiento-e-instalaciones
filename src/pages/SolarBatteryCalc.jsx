@@ -573,23 +573,31 @@ export default function SolarBatteryCalc() {
   };
 
   return (
-    <div className="space-y-4 max-w-5xl">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-gradient-to-br from-amber-400 to-green-500 rounded-xl">
-          <Sun className="w-6 h-6 text-white" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">Cálculo Solar y Baterías Unificado</h1>
-          <p className="text-sm text-gray-500">Cálculo fotovoltaico · Almacenamiento · Sistema completo · Legalización</p>
+    <div className="space-y-5 max-w-5xl">
+      {/* Header */}
+      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-[#1e3a5f] via-[#1e5f4a] to-[#1e3a5f] p-6 text-white shadow-lg">
+        <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(circle at 20% 50%, #fbbf24 0%, transparent 50%), radial-gradient(circle at 80% 50%, #10b981 0%, transparent 50%)'}} />
+        <div className="relative flex items-center gap-4">
+          <div className="p-3 bg-white/15 backdrop-blur rounded-2xl border border-white/20 shadow">
+            <Sun className="w-8 h-8 text-amber-300" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Cálculo Solar y Baterías</h1>
+            <p className="text-sm text-white/70 mt-0.5">Fotovoltaico · Almacenamiento · Sistema completo · Informes IA · Legalización</p>
+          </div>
+          <div className="ml-auto hidden md:flex items-center gap-2 bg-white/10 backdrop-blur rounded-xl px-3 py-2 border border-white/20">
+            <Sparkles className="w-4 h-4 text-violet-300" />
+            <span className="text-xs font-medium text-white/90">Con informes IA integrados</span>
+          </div>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full flex-wrap h-auto">
-          <TabsTrigger value="solar" className="flex-1 gap-1"><Sun className="w-4 h-4" />Cálculo Solar</TabsTrigger>
-          <TabsTrigger value="baterias" className="flex-1 gap-1"><Battery className="w-4 h-4" />Cálculo Baterías</TabsTrigger>
-          <TabsTrigger value="combinado" className="flex-1 gap-1"><Zap className="w-4 h-4" />Solar + Baterías</TabsTrigger>
-          <TabsTrigger value="legal" className="flex-1 gap-1"><FileText className="w-4 h-4" />Legalización</TabsTrigger>
+        <TabsList className="w-full flex-wrap h-auto bg-white border border-gray-200 shadow-sm rounded-xl p-1">
+          <TabsTrigger value="solar" className="flex-1 gap-1.5 data-[state=active]:bg-amber-500 data-[state=active]:text-white rounded-lg"><Sun className="w-4 h-4" />Cálculo Solar</TabsTrigger>
+          <TabsTrigger value="baterias" className="flex-1 gap-1.5 data-[state=active]:bg-green-600 data-[state=active]:text-white rounded-lg"><Battery className="w-4 h-4" />Baterías</TabsTrigger>
+          <TabsTrigger value="combinado" className="flex-1 gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-green-600 data-[state=active]:text-white rounded-lg"><Zap className="w-4 h-4" />Solar + Baterías</TabsTrigger>
+          <TabsTrigger value="legal" className="flex-1 gap-1.5 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg"><FileText className="w-4 h-4" />Legalización</TabsTrigger>
         </TabsList>
 
         {/* ═══ TAB SOLAR ══════════════════════════════════════════════════════ */}
