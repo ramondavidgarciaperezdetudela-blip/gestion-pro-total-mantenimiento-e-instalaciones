@@ -465,21 +465,28 @@ export default function SolarBatteryCalc() {
   const [solarMode, setSolarMode] = useState('directo');
   const [solarForm, setSolarForm] = useState({ contact_id: '', contact_name: '', num_panels: 8, panel_power_w: 400, consumption_kwh: 15, distance_panels_to_dc_box: 15, distance_inverter_to_batteries: 3, distance_to_ac_box: 8 });
   const [solarResult, setSolarResult] = useState(null);
-  const [solarSaved, setSolarSaved] = useState(false);
+  const [solarSavedId, setSolarSavedId] = useState(null);
+  const [solarSavedMsg, setSolarSavedMsg] = useState('');
+  const [solarEditing, setSolarEditing] = useState(false);
   const solarPrintRef = useRef(null);
 
   // Battery state
   const [batForm, setBatForm] = useState({ contact_id: '', contact_name: '', consumo_diario: 5, autonomia_dias: 2, profundidad_descarga: 0.8, voltaje_sistema: 48, eficiencia_inversor: 0.9, potencia_pico_w: 3000, tipo_red: 'aislada', num_paneles: 0, panel_power_w: 400 });
   const [batResult, setBatResult] = useState(null);
-  const [batSaved, setBatSaved] = useState(false);
+  const [batSavedId, setBatSavedId] = useState(null);
+  const [batSavedMsg, setBatSavedMsg] = useState('');
+  const [batEditing, setBatEditing] = useState(false);
   const batPrintRef = useRef(null);
 
   // Combined state
   const [combForm, setCombForm] = useState({ contact_id: '', contact_name: '', num_panels: 10, panel_power_w: 400, consumo_diario: 8, autonomia_dias: 1, profundidad_descarga: 0.8, voltaje_sistema: 48, potencia_pico_w: 5000, tipo_red: 'hibrida', distance_panels_to_dc_box: 15, distance_inverter_to_batteries: 3, distance_to_ac_box: 8 });
   const [combResult, setCombResult] = useState(null);
+  const [combSavedId, setCombSavedId] = useState(null);
+  const [combSavedMsg, setCombSavedMsg] = useState('');
+  const [combEditing, setCombEditing] = useState(false);
   const combPrintRef = useRef(null);
 
-  useEffect(() => { base44.entities.Contact.list().then(setContacts); }, []);
+  useEffect(() => { base44.entities.Contact.list().then(setContacts); }, [])
 
   const selectContact = (formSetter) => (v) => {
     const c = contacts.find(co => co.id === v);
