@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
 import { fetchSupplierDataFromAPI, mapCategoryFromSector } from '../components/SupplierDataFetcher';
 import SupplierCatalogManager from '../components/SupplierCatalogManager';
+import SupplierPriceManager from '../components/SupplierPriceManager';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
