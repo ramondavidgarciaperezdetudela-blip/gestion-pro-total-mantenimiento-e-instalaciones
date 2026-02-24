@@ -100,6 +100,7 @@ export default function BatteryCalc() {
   const calculate = () => {
     setResult(calcBattery(form));
     setAiBudget(null);
+    if (!editing) { setSavedId(null); setSavedMsg(''); }
   };
 
   const generateAiBudget = async () => {
