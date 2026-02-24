@@ -261,6 +261,9 @@ export default function Layout({ children, currentPageName }) {
             {navItems.find(n => n.page === currentPageName)?.name || currentPageName}
           </h2>
           <div className="flex items-center gap-1">
+            <button onClick={() => setSearchOpen(true)} className="p-1.5 text-gray-500 hover:text-gray-800">
+              <Search className="w-5 h-5" />
+            </button>
             <NotificationsPanel />
             <button onClick={() => setMobileBarVisible(v => !v)} className="text-gray-400 text-xs border rounded px-1.5 py-0.5">
               {mobileBarVisible ? '⬇' : '⬆'}
