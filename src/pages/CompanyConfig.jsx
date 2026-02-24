@@ -402,7 +402,7 @@ export default function CompanyConfig() {
             <CardContent className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
                 <p className="font-medium mb-1">📄 Escaneo de documentos</p>
-                <p className="text-xs">Configura los parámetros para escanear documentos. Los documentos escaneados se pueden subir directamente desde la ficha del cliente.</p>
+                <p className="text-xs">Los documentos escaneados se pueden subir directamente desde la ficha del cliente.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -428,32 +428,6 @@ export default function CompanyConfig() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Color</label>
-                  <Select defaultValue="color">
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="color">Color</SelectItem>
-                      <SelectItem value="gris">Escala de grises</SelectItem>
-                      <SelectItem value="bw">Blanco y negro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Tamaño de página</label>
-                  <Select defaultValue="A4">
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="A4">A4</SelectItem>
-                      <SelectItem value="A5">A5</SelectItem>
-                      <SelectItem value="Carta">Carta</SelectItem>
-                      <SelectItem value="Legal">Legal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
-                <p>ℹ️ Para escanear documentos ve a la ficha del cliente y usa el botón "Subir documento escaneado".</p>
               </div>
               <Button onClick={handleSave} className={`w-full ${saved ? 'bg-green-600' : 'bg-blue-600'}`}>
                 <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar configuración escáner'}
@@ -461,7 +435,285 @@ export default function CompanyConfig() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ─── USUARIOS ───────────────────────────────────────────────────── */}
+        <TabsContent value="usuarios">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Users className="w-5 h-5" />Gestión de Usuarios</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <UserManager />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ─── RED / ACCESO REMOTO ────────────────────────────────────────── */}
+        <TabsContent value="red">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Globe className="w-5 h-5 text-blue-600" />Acceso en Red y Remoto</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <NetworkAccessInfo />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ─── IA CÁLCULOS ────────────────────────────────────────────────── */}
+        <TabsContent value="ia">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Brain className="w-5 h-5 text-purple-600" />IA para Cálculos Técnicos</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <AICalcConfig />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
+    </div>
+  );
+}
+
+// ─── COMPONENTE: GESTIÓN DE USUARIOS ──────────────────────────────────────────
+function UserManager() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('user');
+  const [inviting, setInviting] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState('');
+
+  useEffect(() => {
+    base44.entities.User.list().then(u => { setUsers(u); setLoading(false); });
+  }, []);
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    setInviteMsg('');
+    try {
+      await base44.users.inviteUser(inviteEmail.trim(), inviteRole);
+      setInviteMsg(`✅ Invitación enviada a ${inviteEmail}`);
+      setInviteEmail('');
+      const u = await base44.entities.User.list();
+      setUsers(u);
+    } catch (e) {
+      setInviteMsg('❌ Error al enviar la invitación.');
+    }
+    setInviting(false);
+  };
+
+  const roleLabel = { admin: '🔑 Admin', user: '👤 Usuario' };
+  const roleColor = { admin: 'bg-red-100 text-red-700', user: 'bg-blue-100 text-blue-700' };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+        <p className="font-medium mb-1">👥 Usuarios del sistema</p>
+        <p>Los usuarios con rol <strong>Admin</strong> tienen acceso completo. Los usuarios normales tienen acceso estándar.
+        Cada usuario accede con su propio correo y contraseña desde cualquier dispositivo.</p>
+      </div>
+
+      {/* Invitar usuario */}
+      <div className="bg-white border rounded-lg p-4 space-y-3">
+        <p className="text-sm font-semibold flex items-center gap-2"><Shield className="w-4 h-4" /> Invitar nuevo usuario</p>
+        <div className="flex gap-2 flex-wrap">
+          <Input placeholder="email@usuario.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+            className="flex-1 min-w-[200px]" onKeyDown={e => e.key === 'Enter' && handleInvite()} />
+          <Select value={inviteRole} onValueChange={setInviteRole}>
+            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="user">Usuario</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={handleInvite} disabled={inviting} className="gap-1">
+            {inviting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            Invitar
+          </Button>
+        </div>
+        {inviteMsg && <p className="text-xs">{inviteMsg}</p>}
+      </div>
+
+      {/* Lista de usuarios */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-gray-700">Usuarios registrados ({users.length})</p>
+        {loading && <p className="text-xs text-gray-400">Cargando...</p>}
+        {users.map(u => (
+          <div key={u.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+            <div>
+              <p className="text-sm font-medium">{u.full_name || u.email}</p>
+              <p className="text-xs text-gray-500">{u.email}</p>
+            </div>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColor[u.role] || 'bg-gray-100 text-gray-600'}`}>
+              {roleLabel[u.role] || u.role}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── COMPONENTE: ACCESO EN RED ─────────────────────────────────────────────────
+function NetworkAccessInfo() {
+  const [copied, setCopied] = useState('');
+  const appUrl = window.location.origin + window.location.pathname.split('/').slice(0, -1).join('/');
+  const currentUrl = window.location.href.split('?')[0].split('#')[0];
+
+  const copy = (text, key) => {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(''), 2000);
+  };
+
+  const CopyBtn = ({ text, id }) => (
+    <button onClick={() => copy(text, id)}
+      className="ml-2 p-1 rounded hover:bg-gray-200 transition-colors flex-shrink-0">
+      {copied === id ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-gray-500" />}
+    </button>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        <p className="text-sm font-bold text-green-800 flex items-center gap-2 mb-2">
+          <Globe className="w-4 h-4" /> Esta aplicación ya funciona en la nube
+        </p>
+        <p className="text-xs text-green-700">
+          El programa ya está alojado en servidores seguros en internet. No necesitas instalar nada.
+          Cualquier usuario con la URL y sus credenciales puede acceder desde cualquier lugar del mundo,
+          tanto desde la red local (LAN) como desde internet (WiFi, 4G, 5G, cable).
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-sm font-semibold flex items-center gap-2"><Wifi className="w-4 h-4" /> URL de acceso</p>
+        <div className="bg-gray-100 rounded-lg p-3 flex items-center gap-2">
+          <span className="text-xs font-mono text-gray-800 break-all flex-1">{currentUrl}</span>
+          <CopyBtn text={currentUrl} id="url" />
+        </div>
+        <p className="text-xs text-gray-500">Comparte esta URL con tus usuarios. Cada uno se conecta con su propio usuario y contraseña.</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        <div className="border rounded-lg p-3 bg-white">
+          <p className="text-sm font-semibold flex items-center gap-2 mb-2">🏠 Acceso desde la red local (LAN)</p>
+          <ul className="text-xs text-gray-600 space-y-1">
+            <li>✅ Abre el navegador en cualquier ordenador de la oficina</li>
+            <li>✅ Escribe la URL del programa en la barra de direcciones</li>
+            <li>✅ Inicia sesión con tu usuario y contraseña</li>
+            <li>✅ No se necesita VPN ni configuración especial</li>
+          </ul>
+        </div>
+        <div className="border rounded-lg p-3 bg-white">
+          <p className="text-sm font-semibold flex items-center gap-2 mb-2">🌍 Acceso desde fuera (internet / móvil)</p>
+          <ul className="text-xs text-gray-600 space-y-1">
+            <li>✅ Funciona desde cualquier dispositivo con internet</li>
+            <li>✅ Móvil, tablet, portátil, PC de casa</li>
+            <li>✅ WiFi, 4G, 5G, cable de red</li>
+            <li>✅ Acceso seguro con HTTPS (cifrado)</li>
+          </ul>
+        </div>
+        <div className="border rounded-lg p-3 bg-white">
+          <p className="text-sm font-semibold flex items-center gap-2 mb-2">📱 Instalar como app en el móvil</p>
+          <ul className="text-xs text-gray-600 space-y-1">
+            <li>1. Abre la URL en Chrome (Android) o Safari (iPhone)</li>
+            <li>2. Pulsa el menú del navegador (⋮ o compartir)</li>
+            <li>3. Selecciona "Añadir a pantalla de inicio"</li>
+            <li>4. Ya tienes el icono como una app nativa</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+        <p className="font-medium mb-1">💡 Para añadir usuarios nuevos</p>
+        <p>Ve a la pestaña <strong>Usuarios</strong> e invita al nuevo usuario por email. Recibirá un correo con las instrucciones de acceso.</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── COMPONENTE: IA PARA CÁLCULOS ─────────────────────────────────────────────
+function AICalcConfig() {
+  const [query, setQuery] = useState('');
+  const [result, setResult] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState('solar');
+
+  const MODES = [
+    { key: 'solar', label: '☀️ Solar/FV', prompt: 'Eres un experto en instalaciones solares fotovoltaicas y sistemas de baterías.' },
+    { key: 'termica', label: '🌡️ Térmica/Clima', prompt: 'Eres un experto en climatización, refrigeración industrial y bomba de calor.' },
+    { key: 'electrica', label: '⚡ Eléctrica', prompt: 'Eres un experto en instalaciones eléctricas de baja tensión (REBT España).' },
+    { key: 'normativa', label: '📋 Normativa', prompt: 'Eres un experto en normativa técnica española: REBT, RITE, F-Gas, RD 244/2019 autoconsumo, etc.' },
+    { key: 'presupuesto', label: '💶 Presupuesto IA', prompt: 'Eres un experto en presupuestación de instalaciones técnicas en España (clima, solar, eléctrico).' },
+  ];
+
+  const activeMode = MODES.find(m => m.key === mode);
+
+  const handleAsk = async () => {
+    if (!query.trim()) return;
+    setLoading(true);
+    setResult('');
+    const res = await base44.integrations.Core.InvokeLLM({
+      prompt: `${activeMode.prompt}\n\nPregunta del técnico: ${query}\n\nResponde de forma técnica, detallada y práctica. Si hay cálculos, muéstralos paso a paso. Si recomiendas materiales, da marcas y modelos reales.`,
+      add_context_from_internet: true,
+    });
+    setResult(res);
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-xs text-purple-800">
+        <p className="font-medium mb-1">🤖 Asistente IA integrado para cálculos técnicos</p>
+        <p>Usa inteligencia artificial para resolver cálculos técnicos, consultar normativa, estimar presupuestos y obtener recomendaciones de materiales en tiempo real.</p>
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        {MODES.map(m => (
+          <button key={m.key} onClick={() => setMode(m.key)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${mode === m.key ? 'bg-purple-600 text-white border-purple-600' : 'bg-white border-gray-200 hover:border-purple-300 text-gray-700'}`}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">
+          Consulta técnica - {activeMode.label}
+        </label>
+        <textarea
+          className="w-full border rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-purple-400"
+          rows={4}
+          placeholder={
+            mode === 'solar' ? 'Ej: Necesito dimensionar una instalación solar de 5kWp con baterías LFP para una vivienda con consumo de 15 kWh/día...' :
+            mode === 'termica' ? 'Ej: Calcula la potencia de climatización para una oficina de 80m² en Madrid, con 10 personas y orientación sur...' :
+            mode === 'electrica' ? 'Ej: ¿Qué sección de cable necesito para 50m de longitud con una carga de 8kW monofásico a 230V?' :
+            mode === 'normativa' ? 'Ej: ¿Qué documentación necesito para legalizar una instalación de autoconsumo de 10kWp en Cataluña?' :
+            'Ej: Presupuesto para instalar 10 paneles de 400W con inversor monofásico y 5kWh de baterías en Madrid...'
+          }
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+        <Button onClick={handleAsk} disabled={loading || !query.trim()} className="w-full bg-purple-600 hover:bg-purple-700 gap-2">
+          {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
+          {loading ? 'Consultando IA...' : 'Consultar IA técnica'}
+        </Button>
+      </div>
+
+      {result && (
+        <div className="bg-white border border-purple-200 rounded-lg p-4">
+          <p className="text-xs font-semibold text-purple-700 mb-2">🤖 Respuesta IA:</p>
+          <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{result}</div>
+        </div>
+      )}
+    </div>
+  );
+}
     </div>
   );
 }
