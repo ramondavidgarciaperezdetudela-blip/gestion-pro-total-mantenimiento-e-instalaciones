@@ -104,15 +104,18 @@ function buildPrintHTML(title, content) {
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <style>${PDF_STYLES}</style>
 </head>
 <body>
-  ${content}
-  <div class="doc-footer">
-    <span>Generado el ${date}</span>
-    <span>${title}</span>
-    <span>Documento confidencial</span>
+  <div class="page-wrapper">
+    ${content}
+    <div class="doc-footer">
+      <span>Generado el ${date}</span>
+      <span>${title}</span>
+      <span>Documento confidencial</span>
+    </div>
   </div>
 </body>
 </html>`;
