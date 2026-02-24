@@ -10,6 +10,7 @@ import {
   CreditCard, Download, Bell, History, Search, FileBarChart
 } from 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
+import GlobalSearch from './components/GlobalSearch';
 
 const navItems = [
   { name: 'Inicio', page: 'Home', icon: Home },
