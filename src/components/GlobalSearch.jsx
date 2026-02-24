@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, FileText, Wrench, ClipboardList, StickyNote, X, ArrowRight, Phone, Mail } from 'lucide-react';
+import { Search, Users, FileText, Wrench, ClipboardList, StickyNote, X, ArrowRight, Phone, Mail, Building2, ShoppingCart } from 'lucide-react';
 
 const CATEGORIES = [
   { key: 'contacts', label: 'Contactos', icon: Users, color: 'text-emerald-600 bg-emerald-50' },
@@ -10,6 +10,8 @@ const CATEGORIES = [
   { key: 'sat', label: 'SAT', icon: Wrench, color: 'text-orange-600 bg-orange-50' },
   { key: 'maintenance', label: 'Mantenimiento', icon: ClipboardList, color: 'text-cyan-600 bg-cyan-50' },
   { key: 'notes', label: 'Notas', icon: StickyNote, color: 'text-lime-600 bg-lime-50' },
+  { key: 'suppliers', label: 'Proveedores', icon: Building2, color: 'text-blue-600 bg-blue-50' },
+  { key: 'supplierprices', label: 'Precios', icon: ShoppingCart, color: 'text-indigo-600 bg-indigo-50' },
 ];
 
 export default function GlobalSearch({ open, onClose }) {
