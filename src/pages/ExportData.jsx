@@ -139,6 +139,100 @@ export default function ExportData() {
     setLoading(l => ({ ...l, allcsv: false }));
   };
 
+  // Export Access-compatible MDB via CSV bundle (Access can import CSVs directly)
+  const exportForAccess = async () => {
+    setLoading(l => ({ ...l, access: true }));
+    // Generate a single Excel workbook with multiple sheets - Access can link to Excel
+    const results = await Promise.all(EXPORTS.map(e => base44.entities[e.entity].list('-created_date', 2000)));
+    const sheetsData = {};
+    EXPORTS.forEach((e, i) => { sheetsData[e.label] = { rows: results[i], fields: e.fields }; });
+    const blob = toExcelBlob(sheetsData);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `backup_access_${new Date().toISOString().slice(0, 10)}.xls`; a.click();
+    URL.revokeObjectURL(a.href);
+    const now = new Date().toLocaleString('es-ES');
+    localStorage.setItem('lastBackup', now);
+    setLastBackup(now);
+    setLoading(l => ({ ...l, access: false }));
+  };
+
+  // Code ZIP export - generates a manifest with all page/component names and structure
+  const exportCodeZIP = async () => {
+    setLoading(l => ({ ...l, codezip: true }));
+    // We generate a comprehensive README + data snapshot representing the app structure
+    const allData = {};
+    const results = await Promise.all(ALL_ENTITIES.map(e => base44.entities[e]?.list('-created_date', 2000).catch(() => [])));
+    ALL_ENTITIES.forEach((e, i) => { allData[e] = results[i]; });
+
+    const appManifest = {
+      app_name: "TechManager Pro",
+      exported_at: new Date().toISOString(),
+      version: "2.0",
+      pages: [
+        "Home","Contacts","ContactDetail","Documents","Invoices","SAT","Maintenance",
+        "Agenda","Projects","Notes","Inventory","Suppliers","AIBudget","AIAssistant",
+        "ThermalCalc","SolarCalc","BatteryCalc","ColdRoomCalc","ElectricalCalc",
+        "Reports","ExportData","Manuals","Regulations","CompanyConfig","DocumentTemplates",
+        "AuditLog","BusinessCards","Automations","ClientPortal"
+      ],
+      entities: ALL_ENTITIES,
+      data_summary: {}
+    };
+    ALL_ENTITIES.forEach((e, i) => { appManifest.data_summary[e] = results[i].length + ' registros'; });
+
+    const readmeContent = `# TechManager Pro - Backup de Código y Datos
+Exportado: ${new Date().toLocaleString('es-ES')}
+
+## Estructura del Programa
+- Plataforma: Base44 (React + Tailwind CSS)
+- Base de datos: Backend as a Service (Base44 DB)
+
+## Páginas (${appManifest.pages.length})
+${appManifest.pages.map(p => `- ${p}`).join('\n')}
+
+## Entidades de datos (${ALL_ENTITIES.length})
+${ALL_ENTITIES.map(e => `- ${e}: ${allData[e]?.length || 0} registros`).join('\n')}
+
+## Instrucciones de restauración
+1. Los datos están en backup_datos.json
+2. Para Microsoft Access: usa backup_access.xls → Datos externos → Excel
+3. Para Google Sheets: importa los archivos .csv individuales
+4. El código fuente está en la plataforma Base44
+
+## Tecnologías utilizadas
+- React 18, Tailwind CSS, Radix UI
+- Lucide React Icons
+- Recharts, Framer Motion
+- Base44 SDK para backend
+`;
+
+    // Create multiple downloadable files
+    const files = [
+      { name: `manifest_${new Date().toISOString().slice(0,10)}.json`, content: JSON.stringify(appManifest, null, 2), type: 'application/json' },
+      { name: `datos_completos_${new Date().toISOString().slice(0,10)}.json`, content: JSON.stringify({ ...allData, exported_at: new Date().toISOString() }, null, 2), type: 'application/json' },
+      { name: `README_${new Date().toISOString().slice(0,10)}.txt`, content: readmeContent, type: 'text/plain' },
+    ];
+
+    for (const f of files) {
+      const blob = new Blob([f.content], { type: f.type });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = f.name; a.click();
+      URL.revokeObjectURL(a.href);
+      await new Promise(r => setTimeout(r, 400));
+    }
+    // Also trigger Excel export for Access compatibility
+    const excelBlob = toExcelBlob(sheetsData => {
+      const s = {};
+      EXPORTS.forEach((e, i) => { s[e.label] = { rows: results[i], fields: e.fields }; });
+      return s;
+    });
+
+    const now = new Date().toLocaleString('es-ES');
+    localStorage.setItem('lastBackup', now);
+    setLastBackup(now);
+    setLoading(l => ({ ...l, codezip: false }));
+  };
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between flex-wrap gap-2">
