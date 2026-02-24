@@ -12,6 +12,7 @@ import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, Sh
 import { toast } from 'sonner';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
 import { fetchSupplierDataFromAPI, mapCategoryFromSector } from '../components/SupplierDataFetcher';
+import SupplierCatalogManager from '../components/SupplierCatalogManager';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
