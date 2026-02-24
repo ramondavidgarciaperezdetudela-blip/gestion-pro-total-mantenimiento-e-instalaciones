@@ -68,6 +68,7 @@ export default function Home() {
   });
   const [recentDocs, setRecentDocs] = useState([]);
   const [recentSat, setRecentSat] = useState([]);
+  const [recentContacts, setRecentContacts] = useState([]);
   const [alerts, setAlerts] = useState([]);
 
   useEffect(() => {
