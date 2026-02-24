@@ -311,6 +311,12 @@ Responde en formato JSON con esta estructura:
                 <p><span className="text-gray-500">Tipo de instalación:</span> <strong>{result.tipoRed}</strong></p>
               </div>
 
+              {/* Wiring Diagram */}
+              <div>
+                <p className="font-semibold text-sm mb-2">Esquema de conexionado</p>
+                <BatteryWiringDiagram result={result} form={form} />
+              </div>
+
               {/* Tabla de componentes */}
               <div>
                 <p className="font-semibold text-sm mb-2">Equipos recomendados</p>
