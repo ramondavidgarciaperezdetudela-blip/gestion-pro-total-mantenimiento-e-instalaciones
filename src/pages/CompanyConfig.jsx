@@ -342,41 +342,146 @@ export default function CompanyConfig() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="impresora">
+        <TabsContent value="impresion">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Printer className="w-5 h-5" />Configuración de impresora</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Tamaño de papel</label>
-                <Select value={form.printer_config?.paper_size || 'A4'} onValueChange={v => updatePrinter('paper_size', v)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="A4">A4</SelectItem>
-                    <SelectItem value="A5">A5</SelectItem>
-                    <SelectItem value="Carta">Carta</SelectItem>
-                  </SelectContent>
-                </Select>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Printer className="w-5 h-5" />Configuración de Impresión y Documentos</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+
+              {/* Papel y márgenes */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-gray-700 border-b pb-1">📄 Papel y márgenes</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="text-sm font-medium">Tamaño de papel</label>
+                    <Select value={form.printer_config?.paper_size || 'A4'} onValueChange={v => updatePrinter('paper_size', v)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="A4">A4 (210×297mm)</SelectItem>
+                        <SelectItem value="A5">A5 (148×210mm)</SelectItem>
+                        <SelectItem value="Carta">Carta (216×279mm)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Margen superior (mm)</label>
+                    <Input type="number" min="5" max="50" value={form.printer_config?.margin_top || 15} onChange={e => updatePrinter('margin_top', parseInt(e.target.value))} className="mt-1" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Margen inferior (mm)</label>
+                    <Input type="number" min="5" max="50" value={form.printer_config?.margin_bottom || 15} onChange={e => updatePrinter('margin_bottom', parseInt(e.target.value))} className="mt-1" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Margen izquierdo (mm)</label>
+                    <Input type="number" min="5" max="50" value={form.printer_config?.margin_left || 15} onChange={e => updatePrinter('margin_left', parseInt(e.target.value))} className="mt-1" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Margen derecho (mm)</label>
+                    <Input type="number" min="5" max="50" value={form.printer_config?.margin_right || 15} onChange={e => updatePrinter('margin_right', parseInt(e.target.value))} className="mt-1" />
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium">Margen superior (mm)</label>
-                  <Input type="number" value={form.printer_config?.margin_top || 15} onChange={e => updatePrinter('margin_top', parseInt(e.target.value))} className="mt-1" />
+
+              {/* Tipografía */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-gray-700 border-b pb-1">🔤 Tipografía</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Tipo de letra</label>
+                    <Select value={form.printer_config?.font_family || 'Segoe UI'} onValueChange={v => updatePrinter('font_family', v)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Segoe UI">Segoe UI (moderna)</SelectItem>
+                        <SelectItem value="Arial">Arial (clásica)</SelectItem>
+                        <SelectItem value="Calibri">Calibri (Office)</SelectItem>
+                        <SelectItem value="Times New Roman">Times New Roman (formal)</SelectItem>
+                        <SelectItem value="Georgia">Georgia (elegante)</SelectItem>
+                        <SelectItem value="Courier New">Courier New (técnica)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Tamaño de letra</label>
+                    <Select value={form.printer_config?.font_size || 'normal'} onValueChange={v => updatePrinter('font_size', v)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="small">Pequeño (8px) — más contenido</SelectItem>
+                        <SelectItem value="normal">Normal (9.5px) — recomendado</SelectItem>
+                        <SelectItem value="large">Grande (11px) — más legible</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Margen inferior (mm)</label>
-                  <Input type="number" value={form.printer_config?.margin_bottom || 15} onChange={e => updatePrinter('margin_bottom', parseInt(e.target.value))} className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Margen izquierdo (mm)</label>
-                  <Input type="number" value={form.printer_config?.margin_left || 15} onChange={e => updatePrinter('margin_left', parseInt(e.target.value))} className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Margen derecho (mm)</label>
-                  <Input type="number" value={form.printer_config?.margin_right || 15} onChange={e => updatePrinter('margin_right', parseInt(e.target.value))} className="mt-1" />
+                <div className="bg-gray-50 rounded-lg p-3 text-sm border">
+                  <span className="text-xs text-gray-500">Vista previa: </span>
+                  <span style={{ fontFamily: form.printer_config?.font_family || 'Segoe UI', fontSize: form.printer_config?.font_size === 'small' ? '8px' : form.printer_config?.font_size === 'large' ? '13px' : '10px' }}>
+                    Texto de ejemplo — Instalación solar fotovoltaica 5kWp
+                  </span>
                 </div>
               </div>
+
+              {/* Logo */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-gray-700 border-b pb-1">🖼️ Logo en documentos</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Ancho logo (mm)</label>
+                    <Input type="number" min="10" max="80" value={form.printer_config?.logo_width_mm || 35} onChange={e => updatePrinter('logo_width_mm', parseInt(e.target.value))} className="mt-1" />
+                    <p className="text-[10px] text-gray-400 mt-1">Máx. recomendado: 35mm</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Alto logo (mm)</label>
+                    <Input type="number" min="5" max="40" value={form.printer_config?.logo_height_mm || 20} onChange={e => updatePrinter('logo_height_mm', parseInt(e.target.value))} className="mt-1" />
+                    <p className="text-[10px] text-gray-400 mt-1">Máx. recomendado: 20mm</p>
+                  </div>
+                </div>
+                {form.logo_url && (
+                  <div className="border rounded-lg p-3 bg-gray-50 flex items-center gap-3">
+                    <img src={form.logo_url} alt="Logo" style={{ maxWidth: `${(form.printer_config?.logo_width_mm || 35) * 3.78}px`, maxHeight: `${(form.printer_config?.logo_height_mm || 20) * 3.78}px`, objectFit: 'contain' }} />
+                    <span className="text-xs text-gray-500">Vista previa del tamaño en pantalla ({form.printer_config?.logo_width_mm || 35}mm × {form.printer_config?.logo_height_mm || 20}mm)</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Encabezado y pie */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-gray-700 border-b pb-1">📋 Encabezado y pie de página</p>
+                <div>
+                  <label className="text-sm font-medium">Texto encabezado personalizado (opcional)</label>
+                  <Input value={form.printer_config?.header_text || ''} onChange={e => updatePrinter('header_text', e.target.value)} placeholder="Ej: Empresa certificada ISO 9001 | Nº registro industrial: XXXXX" className="mt-1" />
+                  <p className="text-[10px] text-gray-400 mt-1">Se muestra bajo los datos de empresa en todos los documentos</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Texto pie de página personalizado (opcional)</label>
+                  <Input value={form.printer_config?.footer_text || ''} onChange={e => updatePrinter('footer_text', e.target.value)} placeholder="Ej: Documento generado por Mi Empresa S.L. — Confidencial" className="mt-1" />
+                  <p className="text-[10px] text-gray-400 mt-1">Se muestra al final de todos los documentos impresos</p>
+                </div>
+              </div>
+
+              {/* Ajuste de página */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-gray-700 border-b pb-1">📐 Ajuste e impresión de tablas</p>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <input type="checkbox" checked={form.printer_config?.fit_to_page !== false} onChange={e => updatePrinter('fit_to_page', e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">Ajustar contenido a la hoja</p>
+                      <p className="text-xs text-blue-600">Reduce el tamaño del contenido automáticamente para que quepa en la hoja</p>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <input type="checkbox" checked={form.printer_config?.avoid_table_breaks !== false} onChange={e => updatePrinter('avoid_table_breaks', e.target.checked)} className="w-4 h-4 accent-green-600" />
+                    <div>
+                      <p className="text-sm font-medium text-green-800">Evitar corte de tablas entre páginas</p>
+                      <p className="text-xs text-green-600">Las tablas que no quepan en la página actual se mueven automáticamente a la siguiente hoja, evitando que se corten filas</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
               <Button onClick={handleSave} className={`w-full ${saved ? 'bg-green-600' : 'bg-blue-600'}`}>
-                <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar configuración'}
+                <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar configuración de impresión'}
               </Button>
             </CardContent>
           </Card>
