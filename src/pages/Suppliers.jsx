@@ -329,7 +329,32 @@ export default function Suppliers() {
                       </div>
                     )}
                   </div>
-                 <Input placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+
+                  {!editing && (
+                    <div className="space-y-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-xs font-semibold text-blue-900">🔍 Buscar proveedor existente</p>
+                      <Select value={searchProvince} onValueChange={(v) => { setSearchProvince(v); setShowSuggestions(true); }}>
+                        <SelectTrigger><SelectValue placeholder="Selecciona provincia..." /></SelectTrigger>
+                        <SelectContent>{SPANISH_PROVINCES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                      </Select>
+                      {showSuggestions && searchProvince && (
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {suppliers.filter(s => s.is_active).length === 0 ? (
+                            <p className="text-xs text-gray-500">Sin proveedores en esta provincia</p>
+                          ) : (
+                            suppliers.filter(s => s.is_active).map(s => (
+                              <button key={s.id} onClick={() => { setForm({...form, name: s.name, website: s.website || '', category: s.category || 'general', notes: s.notes || '', phone: s.phone || '', email: s.email || ''}); setShowSuggestions(false); setSearchProvince(''); }} className="w-full text-left p-2 rounded text-xs bg-white hover:bg-blue-100 border border-blue-100 truncate">
+                                {s.name}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                      <p className="text-[10px] text-blue-700">Si no aparece, rellena los datos manualmente.</p>
+                    </div>
+                  )}
+
+                  <Input placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
                  <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
                    <SelectTrigger><SelectValue /></SelectTrigger>
                    <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
