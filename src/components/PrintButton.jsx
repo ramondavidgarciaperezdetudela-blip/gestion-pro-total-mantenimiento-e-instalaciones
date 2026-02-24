@@ -16,6 +16,7 @@ const PDF_STYLES = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     width: 210mm;
+    margin: 0 auto;
     font-family: 'Segoe UI', Arial, sans-serif;
     color: #1a1a2e;
     background: #fff;
@@ -23,9 +24,9 @@ const PDF_STYLES = `
     line-height: 1.45;
   }
   .page-wrapper {
-    width: 100%;
-    max-width: 186mm;
+    width: 186mm;
     margin: 0 auto;
+    padding: 0;
   }
 
   /* Header empresa */
