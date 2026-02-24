@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Phone, Mail, Navigation, Plus, Calendar, Wrench, FileText, ClipboardList, Calculator, AlertCircle, CheckCircle, Clock, XCircle, Upload, Trash2, Edit, Eye, Send, Bot, ArrowLeft, Printer, MessageCircle, Camera } from 'lucide-react';
+import { Phone, Mail, Navigation, Plus, Calendar, Wrench, FileText, ClipboardList, Calculator, AlertCircle, CheckCircle, Clock, XCircle, Upload, Trash2, Edit, Eye, Send, Bot, ArrowLeft, Printer, MessageCircle, Camera, History } from 'lucide-react';
+import { logChange } from '../components/ChangeLogger';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PrintButton from '../components/PrintButton';
@@ -107,6 +108,7 @@ export default function ContactDetail() {
 
   const saveContact = async () => {
     await base44.entities.Contact.update(contactId, contactForm);
+    logChange({ entityType: 'Contact', entityId: contactId, entityLabel: `${contact.name} ${contact.surname || ''}`.trim(), action: 'editar', contactId, contactName: contact.name, changesSummary: 'Datos del contacto actualizados' });
     setContact({ ...contact, ...contactForm });
     setEditingContact(false);
   };
