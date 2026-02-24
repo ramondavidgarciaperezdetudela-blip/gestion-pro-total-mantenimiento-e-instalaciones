@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Bot, Users, MessageCircle } from 'lucide-react';
+import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Bot, Users, MessageCircle, Download } from 'lucide-react';
+import { fetchCompanyLogo } from '../components/LogoFetcher';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
@@ -56,20 +57,21 @@ const DEFAULT_SUPPLIERS = [
 ];
 
 const EMPTY_FORM = {
-  name: '', website: '', login_url: '', category: 'general',
-  phone: '', email: '', contact_person: '', notes: '', is_active: true,
-  api_key: '', api_url: '', client_code: '', password_hint: '',
-  commercials: []
-};
+   name: '', website: '', login_url: '', category: 'general',
+   phone: '', email: '', contact_person: '', notes: '', is_active: true,
+   api_key: '', api_url: '', client_code: '', password_hint: '',
+   commercials: [], logo_url: ''
+ };
 
 const EMPTY_COMMERCIAL = { name: '', phone: '', whatsapp: '', email: '', notes: '' };
 
 export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [showApiKey, setShowApiKey] = useState(false);
+     const [dialogOpen, setDialogOpen] = useState(false);
+     const [editing, setEditing] = useState(null);
+     const [form, setForm] = useState(EMPTY_FORM);
+     const [showApiKey, setShowApiKey] = useState(false);
+     const [fetchingLogo, setFetchingLogo] = useState(false);
 
   useEffect(() => {
     base44.entities.Supplier.list().then(data => {
@@ -103,9 +105,16 @@ export default function Suppliers() {
       is_active: s.is_active !== false,
       api_key: s.api_key || '', api_url: s.api_url || '',
       client_code: s.client_code || '', password_hint: s.password_hint || '',
-      commercials: s.commercials || []
+      commercials: s.commercials || [], logo_url: s.logo_url || ''
     });
     setDialogOpen(true);
+  };
+
+  const handleAutoFetchLogo = async () => {
+    setFetchingLogo(true);
+    const logo = await fetchCompanyLogo(form.website, form.name);
+    if (logo) setForm(prev => ({ ...prev, logo_url: logo }));
+    setFetchingLogo(false);
   };
 
   const addCommercial = () => setForm(prev => ({...prev, commercials: [...(prev.commercials || []), {...EMPTY_COMMERCIAL}]}));
@@ -203,12 +212,22 @@ export default function Suppliers() {
               </TabsList>
 
               <TabsContent value="datos" className="space-y-3 pt-2">
-                <Input placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-                <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                </Select>
-                <Input placeholder="Sitio web" value={form.website} onChange={e => setForm({...form, website: e.target.value})} />
+                 {form.logo_url && (
+                   <div className="flex items-center gap-2">
+                     <img src={form.logo_url} alt="Logo" className="h-12 w-12 object-contain rounded border bg-gray-50 p-1" />
+                     <button onClick={() => setForm(prev => ({ ...prev, logo_url: '' }))} className="text-xs text-red-600">Quitar</button>
+                   </div>
+                 )}
+                 <Input placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                 <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
+                   <SelectTrigger><SelectValue /></SelectTrigger>
+                   <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                 </Select>
+                 <Input placeholder="Sitio web" value={form.website} onChange={e => setForm({...form, website: e.target.value})} />
+                 <Button onClick={handleAutoFetchLogo} variant="outline" className="w-full" disabled={fetchingLogo || (!form.name && !form.website)}>
+                   <Download className="w-3.5 h-3.5 mr-2" />
+                   {fetchingLogo ? 'Descargando logo...' : 'Descargar logo automáticamente'}
+                 </Button>
                 <Input placeholder="URL tienda / pedidos online" value={form.login_url} onChange={e => setForm({...form, login_url: e.target.value})} />
                 <div className="grid grid-cols-2 gap-2">
                   <Input placeholder="Teléfono" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
