@@ -274,7 +274,8 @@ export default function Contacts() {
                 </Select>
               </div>
               <Input placeholder="Empresa" value={form.company_name} onChange={e => setForm({...form, company_name: e.target.value})} />
-              <Button onClick={handleAutoFetchLogo} variant="outline" size="sm" className="w-full" disabled={fetchingLogo || (!form.company_name && !form.email)}>
+              <Input placeholder="Website de empresa" value={form.website || ''} onChange={e => setForm({...form, website: e.target.value})} />
+              <Button onClick={handleAutoFetchLogo} variant="outline" size="sm" className="w-full" disabled={fetchingLogo || (!form.company_name && !form.website)}>
                 <Download className="w-3.5 h-3.5 mr-2" />
                 {fetchingLogo ? 'Buscando logo...' : 'Descarga logo empresa'}
               </Button>
