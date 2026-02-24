@@ -7,7 +7,7 @@ import {
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette, Battery,
-  CreditCard, Download, Bell, History
+  CreditCard, Download, Bell, History, Search, FileBarChart
 } from 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 
