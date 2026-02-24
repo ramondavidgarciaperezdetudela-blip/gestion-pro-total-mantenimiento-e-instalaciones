@@ -29,10 +29,10 @@ const PDF_STYLES = `
   }
 
   /* Header empresa */
-  .company-header { display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%); color: white; border-radius: 6px; margin-bottom: 14px; }
-  .company-header img { width: 36px; height: 36px; object-fit: contain; background: white; border-radius: 4px; padding: 2px; }
-  .company-header h1 { font-size: 15px; font-weight: 700; }
-  .company-header p { font-size: 9px; opacity: 0.85; }
+  .company-header { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%); color: white; border-radius: 6px; margin-bottom: 12px; }
+  .company-header img { width: 32px; height: 32px; object-fit: contain; background: white; border-radius: 4px; padding: 2px; flex-shrink: 0; }
+  .company-header h1 { font-size: 13px; font-weight: 700; margin: 0; }
+  .company-header p { font-size: 8.5px; opacity: 0.85; margin: 0; }
 
   /* Título del documento */
   .doc-title { font-size: 14px; font-weight: 700; color: #1e3a5f; border-bottom: 3px solid #0ea5e9; padding-bottom: 6px; margin-bottom: 12px; }
