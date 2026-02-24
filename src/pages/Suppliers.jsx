@@ -139,6 +139,7 @@ export default function Suppliers() {
       await base44.entities.Supplier.update(editing.id, newForm);
       base44.entities.Supplier.list().then(setSuppliers);
     }
+    // Si es nuevo, el logo se guardará cuando haga click en "Guardar"
   };
 
   const addCommercial = () => setForm(prev => ({...prev, commercials: [...(prev.commercials || []), {...EMPTY_COMMERCIAL}]}));
