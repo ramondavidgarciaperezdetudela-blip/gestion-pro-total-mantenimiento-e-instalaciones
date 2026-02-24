@@ -117,7 +117,6 @@ const PDF_STYLES_STATIC = `
   .no-print, button, [role="button"] { display: none !important; }
 
   @media print {
-    html, body { width: 210mm; }
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .page-break { page-break-before: always; }
   }
