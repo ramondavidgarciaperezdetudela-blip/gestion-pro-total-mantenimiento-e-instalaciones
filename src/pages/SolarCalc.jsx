@@ -78,7 +78,9 @@ export default function SolarCalc() {
     distance_panels_to_dc_box: 15, distance_inverter_to_batteries: 3, distance_to_ac_box: 8,
   });
   const [result, setResult] = useState(null);
-  const [saved, setSaved] = useState(false);
+  const [savedId, setSavedId] = useState(null);
+  const [savedMsg, setSavedMsg] = useState('');
+  const [editing, setEditing] = useState(false);
   const printRef = useRef(null);
 
   useEffect(() => { base44.entities.Contact.list().then(setContacts); }, []);
