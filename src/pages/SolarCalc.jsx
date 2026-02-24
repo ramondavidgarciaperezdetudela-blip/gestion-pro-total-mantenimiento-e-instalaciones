@@ -88,6 +88,7 @@ export default function SolarCalc() {
   const calculate = () => {
     const res = calcSolar(form, mode);
     setResult(res);
+    if (!editing) { setSavedId(null); setSavedMsg(''); }
   };
 
   const save = async () => {
