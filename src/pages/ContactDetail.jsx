@@ -437,6 +437,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           <TabsTrigger value="citas" className="flex-1 text-xs min-w-[80px]">Citas ({appointments.length})</TabsTrigger>
           <TabsTrigger value="notes" className="flex-1 text-xs min-w-[80px]">Notas ({notes.length})</TabsTrigger>
           <TabsTrigger value="aibudget" className="flex-1 text-xs min-w-[80px]">Presup. IA</TabsTrigger>
+          <TabsTrigger value="historial" className="flex-1 text-xs min-w-[80px]">Historial</TabsTrigger>
         </TabsList>
 
         {/* FACTURAS */}
