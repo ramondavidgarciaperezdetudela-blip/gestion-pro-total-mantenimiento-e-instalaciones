@@ -350,10 +350,10 @@ function ElecPanelTableBat({ items }) {
 // ─── KPI BOX ─────────────────────────────────────────────────────────────────
 function KpiBox({ value, label, sub, color }) {
   return (
-    <div className={`${color} p-3 rounded-lg text-center`}>
-      <p className="text-xl font-bold">{value}</p>
-      <p className="text-xs">{label}</p>
-      {sub && <p className="text-[10px] opacity-70">{sub}</p>}
+    <div className={`${color} p-4 rounded-xl text-center border border-white/60 shadow-sm`}>
+      <p className="text-xl font-bold tracking-tight">{value}</p>
+      <p className="text-xs font-medium mt-0.5 opacity-80">{label}</p>
+      {sub && <p className="text-[10px] opacity-60 mt-0.5">{sub}</p>}
     </div>
   );
 }
