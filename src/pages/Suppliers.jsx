@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Bot, Users, MessageCircle, Download } from 'lucide-react';
+import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Bot, Users, MessageCircle, Download, Bell, Clock, TrendingUp } from 'lucide-react';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
@@ -60,7 +60,8 @@ const EMPTY_FORM = {
    name: '', website: '', login_url: '', category: 'general',
    phone: '', email: '', contact_person: '', notes: '', is_active: true,
    api_key: '', api_url: '', client_code: '', password_hint: '',
-   commercials: [], logo_url: ''
+   commercials: [], logo_url: '', last_order_date: '', reorder_frequency_days: 30,
+   enable_notifications: true
  };
 
 const EMPTY_COMMERCIAL = { name: '', phone: '', whatsapp: '', email: '', notes: '' };
@@ -105,7 +106,9 @@ export default function Suppliers() {
       is_active: s.is_active !== false,
       api_key: s.api_key || '', api_url: s.api_url || '',
       client_code: s.client_code || '', password_hint: s.password_hint || '',
-      commercials: s.commercials || [], logo_url: s.logo_url || ''
+      commercials: s.commercials || [], logo_url: s.logo_url || '',
+      last_order_date: s.last_order_date || '', reorder_frequency_days: s.reorder_frequency_days || 30,
+      enable_notifications: s.enable_notifications !== false
     });
     setDialogOpen(true);
   };
@@ -129,71 +132,88 @@ export default function Suppliers() {
   const activeSuppliers = suppliers.filter(s => s.is_active !== false);
   const inactiveSuppliers = suppliers.filter(s => s.is_active === false);
 
-  const SupplierCard = ({ s }) => (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          {s.logo_url && <img src={s.logo_url} alt={s.name} className="h-10 w-10 object-contain rounded border bg-gray-50 p-1 mr-2 flex-shrink-0" />}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              {!s.logo_url && <Building2 className="w-4 h-4 text-slate-500 flex-shrink-0" />}
-              <h3 className="font-semibold">{s.name}</h3>
-              <Badge variant="outline" className="text-[10px]">{s.category}</Badge>
-              {s.api_key && <Badge className="bg-green-100 text-green-700 text-[10px]"><Key className="w-2.5 h-2.5 mr-1" />API</Badge>}
-              {s.client_code && <Badge className="bg-blue-100 text-blue-700 text-[10px]">Cuenta configurada</Badge>}
-            </div>
-            {s.notes && <p className="text-xs text-gray-500 mb-2">{s.notes}</p>}
-            <div className="flex flex-wrap gap-3 text-xs">
-              {s.phone && <a href={`tel:${s.phone}`} className="flex items-center gap-1 text-blue-600"><Phone className="w-3 h-3" />{s.phone}</a>}
-              {s.email && <a href={`mailto:${s.email}`} className="flex items-center gap-1 text-blue-600"><Mail className="w-3 h-3" />{s.email}</a>}
-              {s.contact_person && <span className="text-gray-400">{s.contact_person}</span>}
-            </div>
-            {s.commercials?.length > 0 && (
-              <div className="mt-2 pt-2 border-t">
-                <p className="text-[10px] font-semibold text-gray-500 flex items-center gap-1 mb-1"><Users className="w-3 h-3" />Comerciales:</p>
-                <div className="flex flex-wrap gap-2">
-                  {s.commercials.map((c, i) => (
-                    <div key={i} className="flex items-center gap-1 text-xs bg-gray-50 rounded px-2 py-1">
-                      <span className="font-medium">{c.name}</span>
-                      {c.phone && <a href={`tel:${c.phone}`} className="text-blue-500"><Phone className="w-3 h-3" /></a>}
-                      {c.whatsapp && (
-                        <a href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500">
-                          <MessageCircle className="w-3 h-3" />
-                        </a>
-                      )}
-                      {c.email && <a href={`mailto:${c.email}`} className="text-blue-500"><Mail className="w-3 h-3" /></a>}
-                    </div>
-                  ))}
-                </div>
+  const getDaysUntilReorder = (lastDate, frequency) => {
+    if (!lastDate) return 0;
+    const last = new Date(lastDate);
+    const nextDate = new Date(last.getTime() + (frequency || 30) * 24 * 60 * 60 * 1000);
+    const days = Math.ceil((nextDate - new Date()) / (24 * 60 * 60 * 1000));
+    return days;
+  };
+
+  const SupplierCard = ({ s }) => {
+    const daysUntilReorder = getDaysUntilReorder(s.last_order_date, s.reorder_frequency_days);
+    const needsReorder = daysUntilReorder <= 7 && s.enable_notifications;
+    
+    return (
+      <Card className={`hover:shadow-md transition-shadow ${needsReorder ? 'border-amber-300 bg-amber-50' : ''}`}>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between">
+            {s.logo_url && <img src={s.logo_url} alt={s.name} className="h-10 w-10 object-contain rounded border bg-white p-1 mr-2 flex-shrink-0" />}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                {!s.logo_url && <Building2 className="w-4 h-4 text-slate-500 flex-shrink-0" />}
+                <h3 className="font-semibold">{s.name}</h3>
+                <Badge variant="outline" className="text-[10px]">{s.category}</Badge>
+                {s.api_key && <Badge className="bg-green-100 text-green-700 text-[10px]"><Key className="w-2.5 h-2.5 mr-1" />API</Badge>}
+                {needsReorder && <Badge className="bg-amber-100 text-amber-700 text-[10px]"><Bell className="w-2.5 h-2.5 mr-1" />Revisar</Badge>}
               </div>
-            )}
+              
+              {s.enable_notifications && s.last_order_date && (
+                <div className="mb-2 p-2 bg-white rounded border border-amber-200 text-xs">
+                  <div className="flex items-center gap-1 text-gray-700">
+                    <Clock className="w-3 h-3" />
+                    <span>Próximo pedido: {daysUntilReorder > 0 ? `en ${daysUntilReorder} días` : 'HOY'}</span>
+                  </div>
+                </div>
+              )}
+              
+              {s.notes && <p className="text-xs text-gray-500 mb-2">{s.notes}</p>}
+              <div className="flex flex-wrap gap-3 text-xs mb-2">
+                {s.phone && <a href={`tel:${s.phone}`} className="flex items-center gap-1 text-blue-600"><Phone className="w-3 h-3" />{s.phone}</a>}
+                {s.email && <a href={`mailto:${s.email}`} className="flex items-center gap-1 text-blue-600"><Mail className="w-3 h-3" />{s.email}</a>}
+              </div>
+              
+              {s.commercials?.length > 0 && (
+                <div className="pt-2 border-t">
+                  <p className="text-[10px] font-semibold text-gray-500 flex items-center gap-1 mb-1"><Users className="w-3 h-3" />Comerciales:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {s.commercials.map((c, i) => (
+                      <div key={i} className="flex items-center gap-1 text-xs bg-gray-100 rounded px-2 py-1">
+                        <span className="font-medium text-gray-700">{c.name}</span>
+                        {c.phone && <a href={`tel:${c.phone}`} className="text-blue-500"><Phone className="w-3 h-3" /></a>}
+                        {c.whatsapp && (
+                          <a href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500">
+                            <MessageCircle className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-1 ml-3 flex-shrink-0">
+              {s.login_url && (
+                <a href={s.login_url} target="_blank" rel="noopener noreferrer"
+                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Tienda online">
+                  <ShoppingCart className="w-4 h-4" />
+                </a>
+              )}
+              {s.website && (
+                <a href={s.website} target="_blank" rel="noopener noreferrer"
+                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Sitio web">
+                  <Globe className="w-4 h-4" />
+                </a>
+              )}
+              <button onClick={() => handleEdit(s)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"><Edit className="w-4 h-4" /></button>
+              <button onClick={() => handleDelete(s.id)} className="p-2 text-red-400 hover:text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+            </div>
           </div>
-          <div className="flex items-center gap-1 ml-3 flex-shrink-0">
-            {s.website && s.website.includes('obramat') && (
-              <a href="https://www.obramat.es/catalogo" target="_blank" rel="noopener noreferrer"
-                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg" title="Ver catálogo">
-                <Bot className="w-4 h-4" />
-              </a>
-            )}
-            {s.login_url && (
-              <a href={s.login_url} target="_blank" rel="noopener noreferrer"
-                className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Ir a tienda online">
-                <ShoppingCart className="w-4 h-4" />
-              </a>
-            )}
-            {s.website && (
-              <a href={s.website} target="_blank" rel="noopener noreferrer"
-                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Sitio web">
-                <Globe className="w-4 h-4" />
-              </a>
-            )}
-            <button onClick={() => handleEdit(s)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"><Edit className="w-4 h-4" /></button>
-            <button onClick={() => handleDelete(s.id)} className="p-2 text-red-400 hover:text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -236,6 +256,24 @@ export default function Suppliers() {
                 </div>
                 <Input placeholder="Persona de contacto" value={form.contact_person} onChange={e => setForm({...form, contact_person: e.target.value})} />
                 <Textarea placeholder="Notas" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} />
+
+                {/* Automatización de pedidos */}
+                <div className="border rounded-lg p-3 space-y-2 bg-blue-50">
+                  <p className="text-sm font-medium text-blue-900 flex items-center gap-2"><Clock className="w-4 h-4" />Automatización de pedidos</p>
+                  <div>
+                    <label className="text-xs text-gray-700">Última fecha de pedido</label>
+                    <Input type="date" value={form.last_order_date} onChange={e => setForm({...form, last_order_date: e.target.value})} className="mt-1" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-700">Cada cuántos días hacer pedido</label>
+                    <Input type="number" min="1" value={form.reorder_frequency_days} onChange={e => setForm({...form, reorder_frequency_days: parseInt(e.target.value) || 30})} className="mt-1" />
+                  </div>
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input type="checkbox" checked={form.enable_notifications} onChange={e => setForm({...form, enable_notifications: e.target.checked})} />
+                    <span className="text-gray-700">Activar notificaciones de revisión de pedidos</span>
+                  </label>
+                </div>
+
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} />
                   Proveedor activo
