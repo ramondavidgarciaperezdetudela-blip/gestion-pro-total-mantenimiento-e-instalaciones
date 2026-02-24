@@ -315,25 +315,6 @@ export default function Suppliers() {
                    <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                  </Select>
                  <Input placeholder="Sitio web" value={form.website} onChange={e => setForm({...form, website: e.target.value})} />
-                 <div className="flex gap-2">
-                   <Button onClick={handleAutoFetchLogo} variant="outline" className="flex-1" disabled={fetchingLogo || (!form.name && !form.website)}>
-                     <Download className="w-3.5 h-3.5 mr-2" />
-                     {fetchingLogo ? 'Descargando...' : 'Auto'}
-                   </Button>
-                   <label className="flex-1">
-                     <Button type="button" variant="outline" className="w-full cursor-pointer" onClick={(e) => { e.preventDefault(); document.getElementById('logo-input').click(); }}>
-                       <Upload className="w-3.5 h-3.5 mr-2" />
-                       Subir
-                     </Button>
-                     <input 
-                       id="logo-input"
-                       type="file" 
-                       accept="image/*" 
-                       className="hidden" 
-                       onChange={(e) => e.target.files?.[0] && handleUploadLogo(e.target.files[0])}
-                     />
-                   </label>
-                   </div>
 
                    <Input placeholder="URL tienda / pedidos online" value={form.login_url} onChange={e => setForm({...form, login_url: e.target.value})} />
                 <div className="grid grid-cols-2 gap-2">
