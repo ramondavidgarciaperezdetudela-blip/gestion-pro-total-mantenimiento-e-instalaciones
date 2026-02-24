@@ -177,10 +177,15 @@ export default function Agenda() {
         </div>
       </div>
 
-      {/* View toggle */}
-      <div className="flex gap-2">
+      {/* View toggle + calendar export */}
+      <div className="flex gap-2 flex-wrap items-center">
         <Button size="sm" variant={viewMode === 'week' ? 'default' : 'outline'} onClick={() => setViewMode('week')}>Semana</Button>
         <Button size="sm" variant={viewMode === 'month' ? 'default' : 'outline'} onClick={() => setViewMode('month')}>Mes completo</Button>
+        <div className="ml-auto flex gap-2">
+          <Button size="sm" variant="outline" onClick={exportAllToICS} className="gap-1 text-indigo-600 border-indigo-300">
+            <Download className="w-3.5 h-3.5" />Exportar .ics (Outlook/Apple)
+          </Button>
+        </div>
       </div>
 
       {/* Week nav */}
