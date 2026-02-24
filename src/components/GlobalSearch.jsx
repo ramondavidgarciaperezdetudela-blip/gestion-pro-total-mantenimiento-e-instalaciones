@@ -16,7 +16,7 @@ const CATEGORIES = [
 
 export default function GlobalSearch({ open, onClose }) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState({ contacts: [], invoices: [], sat: [], maintenance: [], notes: [] });
+  const [results, setResults] = useState({ contacts: [], invoices: [], sat: [], maintenance: [], notes: [], suppliers: [], supplierprices: [] });
   const [loading, setLoading] = useState(false);
   const [allData, setAllData] = useState(null);
   const inputRef = useRef(null);
@@ -34,8 +34,10 @@ export default function GlobalSearch({ open, onClose }) {
       base44.entities.SATOrder.list('-date', 200),
       base44.entities.MaintenanceSheet.list('-date', 100),
       base44.entities.Note.list('-date', 100),
-    ]).then(([contacts, invoices, sat, maintenance, notes]) => {
-      setAllData({ contacts, invoices, sat, maintenance, notes });
+      base44.entities.Supplier.list('-created_date', 300),
+      base44.entities.SupplierPrice.list('-created_date', 500),
+    ]).then(([contacts, invoices, sat, maintenance, notes, suppliers, supplierprices]) => {
+      setAllData({ contacts, invoices, sat, maintenance, notes, suppliers, supplierprices });
       setLoading(false);
     });
   }, [open]);
