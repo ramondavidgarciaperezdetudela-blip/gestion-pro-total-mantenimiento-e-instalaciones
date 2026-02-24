@@ -127,6 +127,16 @@ export default function Suppliers() {
     setFetchingLogo(false);
   };
 
+  const handleUploadLogo = async (file) => {
+    if (!file) return;
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setForm(prev => ({ ...prev, logo_url: file_url }));
+    if (editing) {
+      await base44.entities.Supplier.update(editing.id, { ...form, logo_url: file_url });
+      base44.entities.Supplier.list().then(setSuppliers);
+    }
+  };
+
   const addCommercial = () => setForm(prev => ({...prev, commercials: [...(prev.commercials || []), {...EMPTY_COMMERCIAL}]}));
   const updateCommercial = (i, field, val) => setForm(prev => ({...prev, commercials: prev.commercials.map((c, idx) => idx === i ? {...c, [field]: val} : c)}));
   const removeCommercial = (i) => setForm(prev => ({...prev, commercials: prev.commercials.filter((_, idx) => idx !== i)}));
