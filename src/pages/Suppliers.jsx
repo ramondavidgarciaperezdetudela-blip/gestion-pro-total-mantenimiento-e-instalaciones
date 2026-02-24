@@ -121,16 +121,19 @@ export default function Suppliers() {
     if (logo) {
       const newForm = { ...form, logo_url: logo };
       setForm(newForm);
-      // Guardar automáticamente en BD (nuevo o existente)
+      // Guardar automáticamente en BD
       if (editing) {
         await base44.entities.Supplier.update(editing.id, newForm);
-      } else if (form.name) {
+        const updated = await base44.entities.Supplier.list();
+        setSuppliers(updated);
+      } else if (form.name && form.name.trim()) {
         // Si es nuevo pero tiene nombre, crear el proveedor con el logo
         const created = await base44.entities.Supplier.create(newForm);
         setEditing(created);
+        setForm({...newForm, id: created.id});
+        const updated = await base44.entities.Supplier.list();
+        setSuppliers(updated);
       }
-      const updated = await base44.entities.Supplier.list();
-      setSuppliers(updated);
     }
     setFetchingLogo(false);
   };
