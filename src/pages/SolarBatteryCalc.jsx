@@ -784,6 +784,8 @@ export default function SolarBatteryCalc() {
 
                   <div><p className="font-semibold text-sm mb-2">🔌 Material cuadros eléctricos del sistema</p><ElecPanelTableBat items={batResult.electricalPanelBat} /></div>
 
+                  <AIReportPanel tipo="baterias" datos={{ consumoDiarioKwh: batResult.consumoDiarioKwh, autonomiaDias: batResult.autonomiaDias, voltajeSistema: batResult.voltajeSistema, numBaterias: batResult.numBaterias, capBateria: batResult.capBateria, energiaTotalKwh: batResult.energiaTotalKwh, potenciaInversorKw: batResult.potenciaInversorKw, tipoRed: batResult.tipoRed, corrienteBmsA: batResult.corrienteBmsA, cliente: batForm.contact_name }} />
+
                   <div className="flex gap-2 flex-wrap no-print items-center pt-2 border-t border-gray-100">
                     <PrintButton contentRef={batPrintRef} title="Cálculo Baterías y Almacenamiento" />
                     {!batEditing && !batSavedId && (
