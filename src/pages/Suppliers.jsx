@@ -133,9 +133,10 @@ export default function Suppliers() {
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
+          {s.logo_url && <img src={s.logo_url} alt={s.name} className="h-10 w-10 object-contain rounded border bg-gray-50 p-1 mr-2 flex-shrink-0" />}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <Building2 className="w-4 h-4 text-slate-500 flex-shrink-0" />
+              {!s.logo_url && <Building2 className="w-4 h-4 text-slate-500 flex-shrink-0" />}
               <h3 className="font-semibold">{s.name}</h3>
               <Badge variant="outline" className="text-[10px]">{s.category}</Badge>
               {s.api_key && <Badge className="bg-green-100 text-green-700 text-[10px]"><Key className="w-2.5 h-2.5 mr-1" />API</Badge>}
