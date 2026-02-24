@@ -195,8 +195,17 @@ export default function Contacts() {
 
   const handleAutoFetchLogo = async () => {
     setFetchingLogo(true);
-    const logo = await fetchCompanyLogo(form.email, form.company_name);
-    if (logo) setForm(prev => ({ ...prev, photo_url: logo }));
+    // Buscar logo por website si existe, sino por nombre de empresa
+    const logoUrl = form.website 
+      ? await fetchCompanyLogo(form.website, form.company_name)
+      : await fetchCompanyLogo(null, form.company_name);
+    if (logoUrl) {
+      setForm(prev => ({ ...prev, company_logo_url: logoUrl }));
+      if (editing) {
+        await base44.entities.Contact.update(editing.id, { ...form, company_logo_url: logoUrl });
+        loadContacts();
+      }
+    }
     setFetchingLogo(false);
   };
 
