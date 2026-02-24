@@ -631,6 +631,24 @@ export default function SolarBatteryCalc() {
           {solarResult && (
             <div ref={solarPrintRef} className="space-y-4">
               <CompanyHeader className="mb-2" />
+              {/* Tabla datos introducidos */}
+              <Card className="border-gray-200">
+                <CardHeader className="bg-gray-50 py-2"><CardTitle className="text-gray-700 text-sm">📋 Datos de la instalación</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                  <table className="w-full text-xs border-collapse">
+                    <tbody>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50 w-1/2">Modo de cálculo</td><td className="p-2">{solarMode === 'directo' ? 'Por número de paneles' : 'Por consumo (kWh)'}</td></tr>
+                      {solarMode === 'directo' && <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Nº paneles</td><td className="p-2">{solarForm.num_panels}</td></tr>}
+                      {solarMode === 'por_consumo' && <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Consumo (kWh)</td><td className="p-2">{solarForm.consumption_kwh}</td></tr>}
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Potencia panel</td><td className="p-2">{solarForm.panel_power_w} W</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Distancia paneles → Cuadro DC</td><td className="p-2">{solarForm.distance_panels_to_dc_box} m</td></tr>
+                      <tr className="border-b border-gray-100"><td className="p-2 font-medium text-gray-600 bg-gray-50">Distancia inversor → Baterías</td><td className="p-2">{solarForm.distance_inverter_to_batteries} m</td></tr>
+                      <tr className="border-b border-gray-100 last:border-0"><td className="p-2 font-medium text-gray-600 bg-gray-50">Distancia inversor → Cuadro AC</td><td className="p-2">{solarForm.distance_to_ac_box} m</td></tr>
+                      {solarForm.contact_name && <tr><td className="p-2 font-medium text-gray-600 bg-gray-50">Cliente</td><td className="p-2">{solarForm.contact_name}</td></tr>}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
               <Card className="border-amber-200">
                 <CardHeader className="bg-amber-50 py-3"><CardTitle className="text-amber-700">Resultado — Instalación Fotovoltaica</CardTitle></CardHeader>
                 <CardContent className="p-4 space-y-5">
