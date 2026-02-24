@@ -276,45 +276,37 @@ export default function Suppliers() {
               </TabsList>
 
               <TabsContent value="datos" className="space-y-3 pt-2">
-                 <div className="border rounded-lg p-4 text-center bg-gradient-to-br from-slate-50 to-slate-100">
-                   <p className="text-xs font-medium text-gray-600 mb-3">Foto de proveedor</p>
-                   <div className="w-24 h-24 mx-auto rounded-lg bg-white border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden mb-3">
-                     {form.logo_url ? (
-                       <img src={form.logo_url} alt="Logo" className="w-full h-full object-cover" />
-                     ) : (
-                       <Building2 className="w-8 h-8 text-slate-300" />
-                     )}
-                   </div>
-                   <div className="flex gap-2">
-                     <label className="flex-1">
-                       <Button type="button" variant="outline" className="w-full cursor-pointer text-xs h-8" onClick={(e) => { e.preventDefault(); document.getElementById('logo-input-main').click(); }}>
-                         <Upload className="w-3 h-3 mr-1" />
-                         Subir foto
-                       </Button>
-                       <input 
-                         id="logo-input-main"
-                         type="file" 
-                         accept="image/*" 
-                         className="hidden" 
-                         onChange={(e) => e.target.files?.[0] && handleUploadLogo(e.target.files[0])}
-                       />
-                     </label>
-                     <Button onClick={handleAutoFetchLogo} variant="outline" className="flex-1 text-xs h-8" disabled={fetchingLogo || (!form.name && !form.website)}>
-                       <Download className="w-3 h-3 mr-1" />
-                       {fetchingLogo ? 'Auto...' : 'Auto'}
-                     </Button>
-                   </div>
-                   <div className="flex gap-2 mt-2">
-                     {form.logo_url && (
-                       <>
-                         <Button onClick={saveLogo} className="flex-1 text-xs h-8 bg-green-600 hover:bg-green-700">
-                           Guardar logo
-                         </Button>
-                         <button onClick={() => setForm(prev => ({ ...prev, logo_url: '' }))} className="text-xs text-red-600 flex-1 h-8 flex items-center justify-center">Quitar</button>
-                       </>
-                     )}
-                   </div>
-                 </div>
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-gray-600 mb-3">Foto de proveedor (clic para cambiar)</p>
+                    <div className="relative w-24 h-24 mx-auto rounded-lg bg-white border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group cursor-pointer" onClick={() => document.getElementById('logo-input-main').click()}>
+                      {form.logo_url ? (
+                        <img src={form.logo_url} alt="Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        <Building2 className="w-8 h-8 text-slate-300" />
+                      )}
+                      <div className="absolute inset-0 rounded-lg bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Upload className="w-5 h-5 text-white" />
+                      </div>
+                      <input 
+                        id="logo-input-main"
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => e.target.files?.[0] && handleUploadLogo(e.target.files[0])}
+                      />
+                    </div>
+                    {form.logo_url && (
+                      <div className="flex gap-2 mt-2 justify-center">
+                        <Button onClick={() => setForm(prev => ({ ...prev, logo_url: '' }))} variant="outline" className="text-xs h-8">
+                          <Trash2 className="w-3 h-3 mr-1" />Quitar
+                        </Button>
+                        <Button onClick={handleAutoFetchLogo} variant="outline" className="text-xs h-8" disabled={fetchingLogo || (!form.name && !form.website)}>
+                          <Download className="w-3 h-3 mr-1" />
+                          {fetchingLogo ? 'Auto...' : 'Auto'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                  <Input placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
                  <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
                    <SelectTrigger><SelectValue /></SelectTrigger>
