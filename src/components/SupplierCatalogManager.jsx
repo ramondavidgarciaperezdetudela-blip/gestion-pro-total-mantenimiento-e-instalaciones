@@ -136,9 +136,21 @@ export default function SupplierCatalogManager({ supplierId, supplierName, suppl
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-sm">Catálogos</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-semibold text-sm">Catálogos de {supplierName}</h3>
         <div className="flex gap-2">
+          <Button
+            onClick={() => {
+              setEditingCatalog(null);
+              setForm({ catalog_type: 'pdf_url', title: '', description: '', url: '', auto_update_enabled: true, products: [], notes: '' });
+              setDialogOpen(true);
+            }}
+            size="sm"
+            className="text-xs h-8 bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            Agregar catálogo
+          </Button>
           <Button
             onClick={handleFetchCatalogs}
             disabled={fetching}
@@ -148,18 +160,6 @@ export default function SupplierCatalogManager({ supplierId, supplierName, suppl
           >
             {fetching ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
             Buscar
-          </Button>
-          <Button
-            onClick={() => {
-              setEditingCatalog(null);
-              setForm({ catalog_type: 'pdf_url', title: '', description: '', url: '', auto_update_enabled: true, products: [], notes: '' });
-              setDialogOpen(true);
-            }}
-            size="sm"
-            className="text-xs h-8"
-          >
-            <Plus className="w-3 h-3 mr-1" />
-            Añadir
           </Button>
         </div>
       </div>
