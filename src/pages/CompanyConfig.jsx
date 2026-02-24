@@ -473,6 +473,10 @@ export default function CompanyConfig() {
         </TabsContent>
 
       </Tabs>
+    </div>
+  );
+}
+
 // ─── COMPONENTE: GESTIÓN DE USUARIOS ──────────────────────────────────────────
 function UserManager() {
   const [users, setUsers] = useState([]);
