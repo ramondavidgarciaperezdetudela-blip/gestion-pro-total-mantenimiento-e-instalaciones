@@ -61,6 +61,7 @@ export default function SAT() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM, ...(preContactId ? { contact_id: preContactId } : {}) });
   const [activeTab, setActiveTab] = useState('lista');
+  const [autoGenerateInvoice, setAutoGenerateInvoice] = useState(false);
   const printRef = useRef(null);
 
   useEffect(() => { loadAll(); }, []);
