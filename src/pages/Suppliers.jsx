@@ -262,9 +262,9 @@ export default function Suppliers() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Proveedores / Distribuidores</h1>
-        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditing(null); setShowApiKey(false); } }}>
+        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditing(null); setForm(EMPTY_FORM); setShowApiKey(false); } }}>
           <DialogTrigger asChild>
-            <Button className="bg-slate-700 hover:bg-slate-800"><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
+            <Button className="bg-slate-700 hover:bg-slate-800" onClick={() => { setEditing(null); setForm(EMPTY_FORM); }}><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Nuevo'} proveedor</DialogTitle></DialogHeader>
