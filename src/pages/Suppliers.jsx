@@ -86,6 +86,7 @@ export default function Suppliers() {
   }, []);
 
   const handleSave = async () => {
+    // Asegurar que guardamos todos los datos incluyendo logo
     if (editing) {
       await base44.entities.Supplier.update(editing.id, form);
     } else {
