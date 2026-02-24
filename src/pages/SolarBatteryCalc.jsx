@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sun, Battery, Zap, Calculator, Save, UserCheck, Download, FileText, Printer, ShoppingCart, Plug, Cpu, Package, Cable, Layers, Edit3, CheckCircle } from 'lucide-react';
+import { Sun, Battery, Zap, Calculator, Save, UserCheck, Download, FileText, Printer, ShoppingCart, Plug, Cpu, Package, Cable, Layers, Edit3, CheckCircle, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import SolarWiringDiagram from '../components/SolarWiringDiagram';
 import BatteryWiringDiagram from '../components/BatteryWiringDiagram';
+import AIReportPanel from '../components/solar/AIReportPanel';
 
 // ─── CÁLCULO SOLAR ────────────────────────────────────────────────────────────
 function calcSolar(form, mode) {
