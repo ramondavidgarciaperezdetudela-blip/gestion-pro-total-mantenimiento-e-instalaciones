@@ -282,29 +282,29 @@ function ElecPanelTableSolar({ items }) {
 // ─── COMPONENTE TABLA EQUIPOS BATERÍAS ───────────────────────────────────────
 function EquipmentTableBat({ items }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-lg border border-green-200">
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="bg-green-100">
-            <th className="border border-green-200 p-2 text-left">Equipo</th>
-            <th className="border border-green-200 p-2 text-center">Cant.</th>
-            <th className="border border-green-200 p-2 text-left">Especificación</th>
-            <th className="border border-green-200 p-2 text-left">Marcas / Modelos</th>
-            <th className="border border-green-200 p-2 text-left">Dónde comprar</th>
-            <th className="border border-green-200 p-2 text-left">Notas</th>
-            <th className="border border-green-200 p-2 text-right">Precio ref.</th>
+          <tr className="bg-green-700 text-white">
+            <th className="p-2 text-left">🔋 Equipo</th>
+            <th className="p-2 text-center w-12">Cant.</th>
+            <th className="p-2 text-left">Especificación</th>
+            <th className="p-2 text-left">Marcas / Modelos</th>
+            <th className="p-2 text-left">Dónde comprar</th>
+            <th className="p-2 text-left">Notas</th>
+            <th className="p-2 text-right w-20">Precio ref.</th>
           </tr>
         </thead>
         <tbody>
           {items.filter(it => it.qty > 0).map((m, i) => (
-            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-green-50'}>
-              <td className="border border-gray-200 p-2 font-medium">{m.equipo}</td>
-              <td className="border border-gray-200 p-2 text-center font-bold text-green-700">{m.qty}</td>
-              <td className="border border-gray-200 p-2 text-gray-600">{m.spec}</td>
-              <td className="border border-gray-200 p-2 text-blue-700">{m.brands}</td>
-              <td className="border border-gray-200 p-2 text-green-700">{m.shop}</td>
-              <td className="border border-gray-200 p-2 text-gray-500">{m.notes}</td>
-              <td className="border border-gray-200 p-2 text-right text-gray-500">{m.price_ref}</td>
+            <tr key={i} className={i % 2 === 0 ? 'bg-white hover:bg-green-50' : 'bg-green-50 hover:bg-green-100'}>
+              <td className="border-b border-gray-100 p-2 font-medium">{m.equipo}</td>
+              <td className="border-b border-gray-100 p-2 text-center font-bold text-green-700 bg-green-50">{m.qty}</td>
+              <td className="border-b border-gray-100 p-2 text-gray-600">{m.spec}</td>
+              <td className="border-b border-gray-100 p-2 text-blue-700 font-medium">{m.brands}</td>
+              <td className="border-b border-gray-100 p-2 text-green-700">{m.shop}</td>
+              <td className="border-b border-gray-100 p-2 text-gray-500">{m.notes}</td>
+              <td className="border-b border-gray-100 p-2 text-right font-semibold text-gray-700">{m.price_ref}</td>
             </tr>
           ))}
         </tbody>
@@ -315,27 +315,29 @@ function EquipmentTableBat({ items }) {
 
 function ElecPanelTableBat({ items }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-lg border border-purple-200">
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="bg-purple-100">
-            <th className="border border-purple-200 p-2 text-left">Elemento</th>
-            <th className="border border-purple-200 p-2 text-left">Especificación</th>
-            <th className="border border-purple-200 p-2 text-center">Cant.</th>
-            <th className="border border-purple-200 p-2 text-left">Marcas</th>
-            <th className="border border-purple-200 p-2 text-left">Dónde comprar</th>
-            <th className="border border-purple-200 p-2 text-left">Función</th>
+          <tr className="bg-purple-700 text-white">
+            <th className="p-2 text-left">⚡ Elemento</th>
+            <th className="p-2 text-left">Especificación</th>
+            <th className="p-2 text-center w-12">Cant.</th>
+            <th className="p-2 text-left">Marcas</th>
+            <th className="p-2 text-left">Dónde comprar</th>
+            <th className="p-2 text-left">Función</th>
           </tr>
         </thead>
         <tbody>
           {items.filter(it => it.qty > 0).map((m, i) => (
-            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-purple-50'}>
-              <td className="border border-gray-200 p-2 font-medium">{m.element}</td>
-              <td className="border border-gray-200 p-2 text-gray-600">{m.spec}</td>
-              <td className="border border-gray-200 p-2 text-center font-bold">{m.qty}</td>
-              <td className="border border-gray-200 p-2 text-blue-700">{m.brands}</td>
-              <td className="border border-gray-200 p-2 text-green-700">{m.shop}</td>
-              <td className="border border-gray-200 p-2 text-gray-500">{m.notes}</td>
+            <tr key={i} className={i % 2 === 0 ? 'bg-white hover:bg-purple-50' : 'bg-purple-50 hover:bg-purple-100'}>
+              <td className="border-b border-gray-100 p-2 font-medium">
+                <span className="mr-1">{getMaterialIcon(m.element)}</span>{m.element}
+              </td>
+              <td className="border-b border-gray-100 p-2 text-gray-600">{m.spec}</td>
+              <td className="border-b border-gray-100 p-2 text-center font-bold text-purple-700 bg-purple-50">{m.qty}</td>
+              <td className="border-b border-gray-100 p-2 text-blue-700 font-medium">{m.brands}</td>
+              <td className="border-b border-gray-100 p-2 text-green-700">{m.shop}</td>
+              <td className="border-b border-gray-100 p-2 text-gray-500">{m.notes}</td>
             </tr>
           ))}
         </tbody>
