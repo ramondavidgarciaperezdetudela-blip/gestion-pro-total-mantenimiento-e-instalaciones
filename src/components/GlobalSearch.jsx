@@ -225,7 +225,55 @@ export default function GlobalSearch({ open, onClose }) {
               ))}
             </div>
           )}
-        </div>
+
+          {/* Proveedores */}
+          {results.suppliers.length > 0 && (
+            <div className="p-2 border-t border-gray-50">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase px-2 mb-1">Proveedores</p>
+              {results.suppliers.map(s => (
+                <button key={s.id} onClick={() => go(createPageUrl(`Suppliers`))}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-blue-50 text-left transition-colors group">
+                  <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    {s.logo_url ? (
+                      <img src={s.logo_url} className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-gray-900">{s.name}</span>
+                    <span className="text-xs text-gray-500 ml-1">{s.city}{s.city && s.province ? ', ' : ''}{s.province}</span>
+                    {s.contact_person && <p className="text-xs text-gray-400 truncate">{s.contact_person}</p>}
+                  </div>
+                  {s.phone && <a href={`tel:${s.phone}`} onClick={e => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-green-600"><Phone className="w-4 h-4" /></a>}
+                  <ArrowRight className="w-3.5 h-3.5 text-gray-300 opacity-0 group-hover:opacity-100" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Precios de Proveedor */}
+          {results.supplierprices.length > 0 && (
+            <div className="p-2 border-t border-gray-50">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase px-2 mb-1">Precios de Proveedor</p>
+              {results.supplierprices.map(p => (
+                <button key={p.id} onClick={() => go(createPageUrl(`Suppliers`))}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-indigo-50 text-left transition-colors group">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                    <ShoppingCart className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-gray-900">{p.product_name}</span>
+                    <span className="text-xs text-gray-500 ml-1">Cód: {p.product_code}</span>
+                    <p className="text-xs text-gray-400 truncate">{p.supplier_name}{p.category ? ` • ${p.category}` : ''}</p>
+                  </div>
+                  {p.cost_price && <span className="text-xs font-bold text-gray-700">{p.cost_price}€</span>}
+                  <ArrowRight className="w-3.5 h-3.5 text-gray-300 opacity-0 group-hover:opacity-100" />
+                </button>
+              ))}
+            </div>
+          )}
+          </div>
 
         {/* Footer hint */}
         <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
