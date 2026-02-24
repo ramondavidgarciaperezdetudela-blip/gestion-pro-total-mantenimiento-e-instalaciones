@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileSpreadsheet, FileText, Users, Wrench, ClipboardList, FileCheck, Package, Building2, Database, RefreshCw, Shield, Calendar } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, Users, Wrench, ClipboardList, FileCheck, Package, Building2, Database, RefreshCw, Shield, Calendar, Archive, Table } from 'lucide-react';
 
 const EXPORTS = [
   { key: 'contacts', label: 'Contactos / Clientes', icon: Users, color: 'blue', entity: 'Contact', fields: ['name', 'surname', 'company_name', 'type', 'category', 'nif', 'phone', 'phone2', 'email', 'address', 'city', 'province', 'postal_code', 'country', 'payment_profile', 'pending_amount', 'notes', 'is_active', 'created_date'] },
