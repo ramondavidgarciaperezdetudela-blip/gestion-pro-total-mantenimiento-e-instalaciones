@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Battery, Calculator, Save, ShoppingCart, Loader2, Zap } from 'lucide-react';
+import { Battery, Calculator, Save, ShoppingCart, Loader2, UserCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
+import BatteryWiringDiagram from '../components/BatteryWiringDiagram';
 
 function calcBattery(form) {
   const consumoDiarioKwh = parseFloat(form.consumo_diario) || 5;
