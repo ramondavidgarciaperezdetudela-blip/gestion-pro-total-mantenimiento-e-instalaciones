@@ -8,10 +8,10 @@ export const fetchCompanyLogo = async (website, companyName) => {
       try {
         const domain = new URL(website).hostname.replace('www.', '');
         const url = `https://logo.clearbit.com/${domain}?size=400`;
-        const response = await fetch(url, { method: 'HEAD' });
-        if (response.ok) return url;
+        // Directamente retornar la URL sin verificar con HEAD (CORS issue)
+        return url;
       } catch (e) {
-        // Continuar si falla
+        // Continuar si falla parse URL
       }
     }
 
@@ -22,12 +22,7 @@ export const fetchCompanyLogo = async (website, companyName) => {
       
       for (const domain of domains) {
         const testUrl = `https://logo.clearbit.com/${slugName}${domain}?size=400`;
-        try {
-          const response = await fetch(testUrl, { method: 'HEAD' });
-          if (response.ok) return testUrl;
-        } catch (e) {
-          // Continuar
-        }
+        return testUrl;
       }
     }
 
