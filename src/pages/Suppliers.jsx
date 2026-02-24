@@ -137,7 +137,7 @@ export default function Suppliers() {
       client_code: s.client_code || '', password_hint: s.password_hint || '',
       commercials: s.commercials || [], logo_url: s.logo_url || '',
       last_order_date: s.last_order_date || '', reorder_frequency_days: s.reorder_frequency_days || 30,
-      enable_notifications: s.enable_notifications !== false
+      enable_notifications: s.enable_notifications !== false, province: s.province || '', city: s.city || ''
     });
     setDialogOpen(true);
   };
