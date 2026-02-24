@@ -631,9 +631,19 @@ export default function SolarBatteryCalc() {
 
                   <div><p className="font-semibold text-sm mb-2">🔌 Material para cuadros eléctricos (DC y AC)</p><ElecPanelTableSolar items={solarResult.electricalPanelItems} /></div>
 
-                  <div className="flex gap-2 flex-wrap no-print">
+                  <div className="flex gap-2 flex-wrap no-print items-center">
                     <PrintButton contentRef={solarPrintRef} title="Cálculo Solar Fotovoltaico" />
-                    {solarForm.contact_id && <Button onClick={saveSolar} variant="outline" size="sm"><Save className="w-4 h-4 mr-2" />{solarSaved ? '¡Guardado!' : 'Guardar en cliente'}</Button>}
+                    {!solarEditing && !solarSavedId && (
+                      <Button onClick={saveSolar} variant="outline" size="sm"><Save className="w-4 h-4 mr-2" />Guardar cálculo</Button>
+                    )}
+                    {solarSavedId && !solarEditing && (
+                      <Button onClick={() => { setSolarEditing(true); }} variant="outline" size="sm" className="border-blue-400 text-blue-600">✏️ Editar y actualizar</Button>
+                    )}
+                    {solarEditing && (
+                      <Button onClick={saveSolar} size="sm" className="bg-blue-600 hover:bg-blue-700"><Save className="w-4 h-4 mr-2" />Guardar cambios</Button>
+                    )}
+                    {solarSavedMsg && <span className="text-xs text-green-600 font-medium">{solarSavedMsg}</span>}
+                    {solarSavedId && <span className="text-[10px] text-gray-400">Guardado en base de datos</span>}
                   </div>
                 </CardContent>
               </Card>
