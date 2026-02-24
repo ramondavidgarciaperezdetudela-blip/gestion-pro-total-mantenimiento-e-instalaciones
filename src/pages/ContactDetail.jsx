@@ -17,6 +17,43 @@ import { es } from 'date-fns/locale';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 
+function ChangeHistoryTab({ contactId }) {
+  const [logs, setLogs] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    base44.entities.ChangeLog.filter({ contact_id: contactId }).then(data => {
+      setLogs(data.sort((a, b) => (b.datetime || b.date || '').localeCompare(a.datetime || a.date || '')));
+      setLoading(false);
+    });
+  }, [contactId]);
+
+  const actionColors = { crear: 'bg-green-100 text-green-700', editar: 'bg-blue-100 text-blue-700', eliminar: 'bg-red-100 text-red-700' };
+
+  if (loading) return <p className="text-center text-gray-400 py-6 text-sm">Cargando historial...</p>;
+
+  return (
+    <div className="space-y-2 mt-2">
+      {logs.length === 0 && (
+        <div className="text-center py-8 text-gray-400">
+          <History className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">Sin historial de cambios registrado</p>
+        </div>
+      )}
+      {logs.map(log => (
+        <div key={log.id} className="flex items-start gap-2 text-sm border-b pb-2">
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0 mt-0.5 ${actionColors[log.action] || 'bg-gray-100 text-gray-700'}`}>{log.action}</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-xs">{log.entity_type} {log.entity_label && `— ${log.entity_label}`}</p>
+            {log.changes_summary && <p className="text-xs text-gray-500">{log.changes_summary}</p>}
+            <p className="text-[10px] text-gray-400">{log.datetime || log.date} {log.user_email && `· ${log.user_email}`}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const PAYMENT_PROFILES = {
   buen_pagador: { label: 'Buen pagador', color: 'bg-green-100 text-green-700', icon: '✅' },
   pagador_normal: { label: 'Pagador normal', color: 'bg-blue-100 text-blue-700', icon: '💳' },
