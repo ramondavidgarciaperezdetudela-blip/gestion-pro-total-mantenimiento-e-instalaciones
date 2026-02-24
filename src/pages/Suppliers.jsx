@@ -143,19 +143,23 @@ export default function Suppliers() {
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
     const newForm = { ...form, logo_url: file_url };
     setForm(newForm);
-    // Guardar automáticamente en BD
+    // Guardar automáticamente en BD inmediatamente
     if (editing) {
       await base44.entities.Supplier.update(editing.id, newForm);
-      const updated = await base44.entities.Supplier.list();
-      setSuppliers(updated);
     } else if (form.name && form.name.trim()) {
-      // Si es nuevo pero tiene nombre, crear el proveedor con el logo
       const created = await base44.entities.Supplier.create(newForm);
       setEditing(created);
       setForm({...newForm, id: created.id});
-      const updated = await base44.entities.Supplier.list();
-      setSuppliers(updated);
     }
+    const updated = await base44.entities.Supplier.list();
+    setSuppliers(updated);
+  };
+
+  const saveLogo = async () => {
+    if (!editing) return;
+    await base44.entities.Supplier.update(editing.id, form);
+    const updated = await base44.entities.Supplier.list();
+    setSuppliers(updated);
   };
 
   const addCommercial = () => setForm(prev => ({...prev, commercials: [...(prev.commercials || []), {...EMPTY_COMMERCIAL}]}));
