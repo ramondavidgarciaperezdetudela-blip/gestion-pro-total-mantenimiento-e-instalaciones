@@ -87,6 +87,7 @@ export default function Suppliers() {
   const [fetchingLogo, setFetchingLogo] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchProvince, setSearchProvince] = useState('');
+  const [searchCity, setSearchCity] = useState('');
   const [fetchingData, setFetchingData] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
