@@ -67,6 +67,8 @@ const mobileTabItems = [
   { name: 'Solar', page: 'SolarCalc', icon: Sun },
   { name: 'Baterías', page: 'BatteryCalc', icon: Battery },
   { name: 'Eléctrico', page: 'ElectricalCalc', icon: Zap },
+  { name: 'Docs Legal.', page: 'LegalDocs', icon: FileText },
+  { name: 'Plan. IA', page: 'AIPlanning', icon: ClipboardList },
   { name: 'Informes', page: 'Reports', icon: BarChart3 },
   { name: 'Pres. IA', page: 'AIBudget', icon: Bot },
   { name: 'Asist. IA', page: 'AIAssistant', icon: Bot },
