@@ -102,8 +102,11 @@ export default function SAT() {
     setSaving(true);
     const total = calcTotal(form);
     const data = { ...form, total };
+    let savedOrder = null;
+
     if (editing) {
       await base44.entities.SATOrder.update(editing.id, data);
+      savedOrder = { ...data, id: editing.id };
       // Actualizar el documento vinculado si existe
       if (form.contact_id) {
         const docs = await base44.entities.ClientDocument.filter({ contact_id: form.contact_id, doc_type: 'orden_sat' });
@@ -118,6 +121,7 @@ export default function SAT() {
       }
     } else {
       const saved = await base44.entities.SATOrder.create(data);
+      savedOrder = saved;
       if (form.contact_id) {
         await base44.entities.ClientDocument.create({
           contact_id: form.contact_id,
@@ -129,9 +133,43 @@ export default function SAT() {
         });
       }
     }
+
+    // Auto-generar factura si orden está completada y opción activa
+    if (autoGenerateInvoice && form.status === 'completada' && form.contact_id && savedOrder) {
+      try {
+        await base44.entities.Invoice.create({
+          doc_type: 'factura',
+          contact_id: form.contact_id,
+          contact_name: form.contact_name,
+          date: form.date,
+          status: 'borrador',
+          work_type: form.equipment_type || 'otro',
+          items: form.materials_used?.length > 0 ? form.materials_used.map(m => ({
+            description: m.material,
+            quantity: m.quantity,
+            unit_price: m.unit_price,
+            total: (m.quantity || 0) * (m.unit_price || 0)
+          })) : [{
+            description: form.description,
+            quantity: 1,
+            unit_price: (form.labor_hours || 0) * (form.labor_rate || 0),
+            total: (form.labor_hours || 0) * (form.labor_rate || 0)
+          }],
+          subtotal: total,
+          iva_rate: 21,
+          iva_amount: total * 0.21,
+          total: total * 1.21,
+          observations: `Generada automáticamente desde Orden SAT #${form.order_number || savedOrder.id.slice(-6)}`
+        });
+      } catch (e) {
+        console.log('Auto-invoice creation skipped');
+      }
+    }
+
     setSaving(false);
     setDialogOpen(false);
     setEditing(null);
+    setAutoGenerateInvoice(false);
     await loadAll();
   };
 
