@@ -219,6 +219,57 @@ export default function Home() {
         </Card>
       </div>
 
+      {/* Clientes recientes + acciones rápidas documentación */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-emerald-500" />Clientes recientes</CardTitle>
+            <Link to={createPageUrl('Contacts')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {recentContacts.length === 0 ? (
+              <p className="text-xs text-gray-400 py-3 text-center">Sin clientes</p>
+            ) : recentContacts.map(c => (
+              <Link key={c.id} to={createPageUrl(`ContactDetail?id=${c.id}`)} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg group transition-colors">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {c.photo_url ? <img src={c.photo_url} alt="" className="w-full h-full object-cover" /> : <span className="text-xs font-bold text-emerald-700">{c.name?.[0]?.toUpperCase()}</span>}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate">{c.name} {c.surname}</p>
+                  <p className="text-[10px] text-gray-400 truncate">{c.company_name || c.city || c.phone || '-'}</p>
+                </div>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {c.phone && <a href={`tel:${c.phone}`} onClick={e => e.stopPropagation()} className="p-1 text-green-600 hover:bg-green-50 rounded"><Phone className="w-3 h-3" /></a>}
+                  <ChevronRight className="w-3 h-3 text-gray-300" />
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-violet-500" />Crear documento rápido</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-2">
+            {[
+              { label: '+ Factura', page: 'Documents?type=factura', color: 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100' },
+              { label: '+ Presupuesto', page: 'Documents?type=presupuesto', color: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' },
+              { label: '+ SAT', page: 'SAT', color: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100' },
+              { label: '+ Mantenimiento', page: 'Maintenance', color: 'bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100' },
+              { label: '+ Cálculo Solar', page: 'SolarBatteryCalc', color: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' },
+              { label: '+ Presupuesto IA', page: 'AIBudget', color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' },
+            ].map(item => (
+              <Link key={item.page} to={createPageUrl(item.page)}>
+                <div className={`border rounded-lg px-3 py-2.5 text-xs font-semibold text-center cursor-pointer transition-colors ${item.color}`}>
+                  {item.label}
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Acceso rápido */}
       <div>
         <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
