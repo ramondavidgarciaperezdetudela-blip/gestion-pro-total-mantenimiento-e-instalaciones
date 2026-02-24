@@ -238,6 +238,13 @@ export default function Agenda() {
                               <MessageCircle className="w-3 h-3" />
                             </button>
                           )}
+                          <button
+                            title="Añadir a Google Calendar"
+                            onClick={() => exportToGoogleCalendar(apt)}
+                            className="text-blue-400 hover:text-blue-600"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </button>
                           <button onClick={() => handleDelete(apt.id)} className="text-red-400 hover:text-red-600">
                             <Trash2 className="w-3 h-3" />
                           </button>
