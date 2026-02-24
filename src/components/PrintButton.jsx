@@ -13,25 +13,26 @@ const PDF_STYLES = `
     size: A4 portrait;
     margin: 15mm 15mm 15mm 15mm;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { margin: 0; padding: 0; }
-  body {
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
     font-family: 'Segoe UI', Arial, sans-serif;
     color: #1a1a2e;
     background: #fff;
     font-size: 9.5px;
     line-height: 1.45;
-    margin: 0;
-    padding: 0;
   }
   .page-wrapper {
     width: 100%;
   }
 
   /* Header empresa */
-  .company-header { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%); color: white; border-radius: 6px; margin-bottom: 12px; }
-  .company-header img { width: 32px; height: 32px; object-fit: contain; background: white; border-radius: 4px; padding: 2px; flex-shrink: 0; }
-  .company-header h1 { font-size: 13px; font-weight: 700; margin: 0; }
+  .company-header { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%); color: white; border-radius: 6px; margin-bottom: 12px; }
+  .company-header .logo-wrap { flex-shrink: 0; width: 50mm; height: 30mm; background: white; border-radius: 4px; padding: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .company-header .logo-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+  .company-header .logo-text { flex-shrink: 0; width: 50mm; height: 30mm; background: rgba(255,255,255,0.15); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; }
+  .company-header h1 { font-size: 14px; font-weight: 700; margin: 0 0 4px; }
   .company-header p { font-size: 8.5px; opacity: 0.85; margin: 0; }
 
   /* Título del documento */
