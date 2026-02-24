@@ -77,6 +77,7 @@ import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
 import AISearch from './pages/AISearch';
 import SmartReminders from './pages/SmartReminders';
+import AIReports from './pages/AIReports';
 import __Layout from './Layout.jsx';
 
 
@@ -111,6 +112,7 @@ export const PAGES = {
     "ThermalCalc": ThermalCalc,
     "AISearch": AISearch,
     "SmartReminders": SmartReminders,
+    "AIReports": AIReports,
 }
 
 export const pagesConfig = {
