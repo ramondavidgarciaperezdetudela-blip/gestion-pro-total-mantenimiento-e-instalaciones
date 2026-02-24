@@ -266,14 +266,30 @@ ${ALL_ENTITIES.map(e => `- ${e}: ${allData[e]?.length || 0} registros`).join('\n
             </Button>
             <Button onClick={exportAllCSV} disabled={loading.allcsv} variant="outline" className="border-green-400 text-green-700 gap-2">
               {loading.allcsv ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              {loading.allcsv ? '...' : 'Todo en CSV (ZIP manual)'}
+              {loading.allcsv ? '...' : 'Todo en CSV'}
+            </Button>
+            <Button onClick={exportForAccess} disabled={loading.access} variant="outline" className="border-purple-400 text-purple-700 gap-2">
+              {loading.access ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Table className="w-4 h-4" />}
+              {loading.access ? '...' : 'Para Microsoft Access'}
             </Button>
           </div>
+
+          {/* Code/App backup */}
+          <div className="border-t pt-3 mt-1">
+            <p className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1"><Archive className="w-3.5 h-3.5" /> Backup de Código + Datos (paquete completo)</p>
+            <Button onClick={exportCodeZIP} disabled={loading.codezip} className="bg-slate-700 hover:bg-slate-800 gap-2 text-sm">
+              {loading.codezip ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+              {loading.codezip ? 'Generando archivos...' : 'Descargar Backup Completo (JSON + Manifest + README)'}
+            </Button>
+            <p className="text-xs text-gray-500 mt-1">Descarga: manifest de la app, datos completos JSON y README. El código fuente está en la plataforma Base44.</p>
+          </div>
+
           <div className="bg-blue-50 border border-blue-200 rounded p-2 text-xs text-blue-700 space-y-0.5">
             <p className="font-medium">💡 Compatibilidad</p>
-            <p>• <strong>Excel / Access:</strong> Usa los archivos .xls o .csv → Datos → Importar desde CSV</p>
-            <p>• <strong>Google Sheets:</strong> Archivo → Importar → Subir CSV</p>
-            <p>• <strong>Restaurar:</strong> El JSON contiene todos los datos organizados por entidad</p>
+            <p>• <strong>Microsoft Access:</strong> Usa "Para Microsoft Access" → Datos externos → Importar → Excel (.xls)</p>
+            <p>• <strong>Excel:</strong> Abre directamente el .xls exportado (todas las secciones en hojas separadas)</p>
+            <p>• <strong>Google Sheets:</strong> Archivo → Importar → Subir CSV o XLS</p>
+            <p>• <strong>Restaurar datos:</strong> El JSON contiene todos los datos organizados por entidad</p>
           </div>
         </CardContent>
       </Card>
