@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sun, Calculator, Save, Printer } from 'lucide-react';
+import { Sun, Calculator, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
+import SolarWiringDiagram from '../components/SolarWiringDiagram';
 
 function calcSolar(form, mode) {
   let numPanels = parseInt(form.num_panels) || 0;
