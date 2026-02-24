@@ -33,6 +33,7 @@ const navItems = [
   { name: 'Planificación IA', page: 'AIPlanning', icon: ClipboardList },
   { name: 'Manuales', page: 'Manuals', icon: BookOpen },
   { name: 'Proveedores', page: 'Suppliers', icon: Building2 },
+  { name: 'Catálogos', page: 'Catalogs', icon: FileText },
   { name: 'Informes', page: 'Reports', icon: BarChart3 },
   { name: 'Presupuesto IA', page: 'AIBudget', icon: Bot },
   { name: 'Asistente IA', page: 'AIAssistant', icon: Bot },
