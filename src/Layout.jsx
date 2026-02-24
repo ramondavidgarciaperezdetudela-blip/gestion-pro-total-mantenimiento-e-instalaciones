@@ -62,6 +62,7 @@ const mobileTabItems = [
   { name: 'Inventario', page: 'Inventory', icon: Package },
   { name: 'Proyectos', page: 'Projects', icon: FolderOpen },
   { name: 'Proveedores', page: 'Suppliers', icon: Building2 },
+  { name: 'Catálogos', page: 'Catalogs', icon: FileText },
   { name: 'Térmico', page: 'ThermalCalc', icon: Thermometer },
   { name: 'C. Frig.', page: 'ColdRoomCalc', icon: Thermometer },
   { name: 'Solar+Bat.', page: 'SolarBatteryCalc', icon: Sun },
