@@ -122,23 +122,32 @@ const PDF_STYLES_STATIC = `
   }
 `;
 
-function buildPrintHTML(title, content) {
+function buildPrintHTML(title, content, cfg = {}) {
   const date = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const logoW = cfg.logo_width_mm || 35;
+  const logoH = cfg.logo_height_mm || 20;
+  const footerText = cfg.footer_text || 'Documento confidencial';
+  const headerText = cfg.header_text || '';
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
-  <style>${PDF_STYLES}</style>
+  <style>
+    :root { --logo-w: ${logoW}mm; --logo-h: ${logoH}mm; }
+    ${getPdfStyles(cfg)}
+    ${PDF_STYLES_STATIC}
+  </style>
 </head>
 <body>
   <div class="page-wrapper">
+    ${headerText ? `<div style="text-align:center;font-size:8px;color:#64748b;padding:4px 0 8px;border-bottom:1px solid #e2e8f0;margin-bottom:8px;">${headerText}</div>` : ''}
     ${content}
     <div class="doc-footer">
       <span>Generado el ${date}</span>
       <span>${title}</span>
-      <span>Documento confidencial</span>
+      <span>${footerText}</span>
     </div>
   </div>
 </body>
@@ -146,16 +155,21 @@ function buildPrintHTML(title, content) {
 }
 
 export default function PrintButton({ contentRef, title = "Documento", className = "" }) {
-  const openPrintWindow = () => {
+  const openPrintWindow = async () => {
     const el = contentRef?.current;
     if (!el) return;
+    let cfg = {};
+    try {
+      const settings = await base44.entities.CompanySettings.list();
+      if (settings.length > 0) cfg = settings[0].printer_config || {};
+    } catch(e) {}
     const win = window.open('', '_blank');
-    const html = buildPrintHTML(title, el.innerHTML);
+    const html = buildPrintHTML(title, el.innerHTML, cfg);
     win.document.open();
     win.document.write(html);
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); }, 800);
+    setTimeout(() => { win.print(); }, 900);
   };
 
   return (
