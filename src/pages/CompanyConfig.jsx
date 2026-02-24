@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check } from 'lucide-react';
+import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw } from 'lucide-react';
 
 function TechnicianManager({ technicians, onChange }) {
   const [newName, setNewName] = useState('');
