@@ -100,7 +100,7 @@ export default function GlobalSearch({ open, onClose }) {
             ref={inputRef}
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Buscar contactos, facturas, SAT, notas..."
+            placeholder="Buscar contactos, documentos, proveedores, precios..."
             className="flex-1 text-sm outline-none bg-transparent placeholder-gray-400"
             onKeyDown={e => e.key === 'Escape' && onClose()}
           />
