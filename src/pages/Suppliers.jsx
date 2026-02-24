@@ -157,13 +157,18 @@ export default function Suppliers() {
   };
 
   const saveLogo = async () => {
-    if (!editing) return;
+    if (!editing || !form.logo_url) {
+      toast.error('No hay logo para guardar');
+      return;
+    }
     try {
-      await base44.entities.Supplier.update(editing.id, form);
+      const updatedSupplier = await base44.entities.Supplier.update(editing.id, { logo_url: form.logo_url });
+      setEditing(updatedSupplier);
       const updated = await base44.entities.Supplier.list();
       setSuppliers(updated);
-      toast.success(`Logo guardado en ${form.name}`);
+      toast.success(`✓ Logo guardado en ${form.name}`);
     } catch (error) {
+      console.error('Error guardando logo:', error);
       toast.error('Error al guardar el logo');
     }
   };
