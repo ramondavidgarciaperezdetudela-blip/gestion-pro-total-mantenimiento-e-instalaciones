@@ -178,7 +178,6 @@ export default function Suppliers() {
              </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                {!s.logo_url && <Building2 className="w-4 h-4 text-slate-500 flex-shrink-0" />}
                 <h3 className="font-semibold">{s.name}</h3>
                 <Badge variant="outline" className="text-[10px]">{s.category}</Badge>
                 {s.api_key && <Badge className="bg-green-100 text-green-700 text-[10px]"><Key className="w-2.5 h-2.5 mr-1" />API</Badge>}
