@@ -29,6 +29,8 @@ const navItems = [
   { name: 'Cálculo Baterías', page: 'BatteryCalc', icon: Battery },
   { name: 'Cálculo Eléctrico', page: 'ElectricalCalc', icon: Zap },
   { name: 'Normativas', page: 'Regulations', icon: Shield },
+  { name: 'Docs Legalización', page: 'LegalDocs', icon: FileText },
+  { name: 'Planificación IA', page: 'AIPlanning', icon: ClipboardList },
   { name: 'Manuales', page: 'Manuals', icon: BookOpen },
   { name: 'Proveedores', page: 'Suppliers', icon: Building2 },
   { name: 'Informes', page: 'Reports', icon: BarChart3 },
