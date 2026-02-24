@@ -121,12 +121,16 @@ export default function Suppliers() {
     if (logo) {
       const newForm = { ...form, logo_url: logo };
       setForm(newForm);
-      // Guardar automáticamente el logo en BD
+      // Guardar automáticamente en BD (nuevo o existente)
       if (editing) {
         await base44.entities.Supplier.update(editing.id, newForm);
-        base44.entities.Supplier.list().then(setSuppliers);
+      } else if (form.name) {
+        // Si es nuevo pero tiene nombre, crear el proveedor con el logo
+        const created = await base44.entities.Supplier.create(newForm);
+        setEditing(created);
       }
-      // Si es nuevo, el logo se guardará cuando haga click en "Guardar"
+      const updated = await base44.entities.Supplier.list();
+      setSuppliers(updated);
     }
     setFetchingLogo(false);
   };
