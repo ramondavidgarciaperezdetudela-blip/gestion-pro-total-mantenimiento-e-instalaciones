@@ -219,7 +219,7 @@ export default function Suppliers() {
               )}
             </div>
             
-            <div className="flex items-center gap-1 ml-3 flex-shrink-0">
+            <div className="flex items-center gap-1 ml-auto flex-shrink-0">
               {s.login_url && (
                 <a href={s.login_url} target="_blank" rel="noopener noreferrer"
                   className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Tienda online">
