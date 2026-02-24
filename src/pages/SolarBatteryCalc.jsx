@@ -195,32 +195,48 @@ const PASOS_LEGALIZACION = [
   { step: 7, title: '(Opcional) Solicitar compensación económica', desc: 'Si hay excedentes, tramitar con la comercializadora el contrato de compensación de excedentes (RD 244/2019) para recibir compensación en factura.' },
 ];
 
+// ─── ICONOS POR TIPO DE MATERIAL ─────────────────────────────────────────────
+const MATERIAL_ICONS = {
+  'Panel': '☀️', 'Inversor': '⚡', 'Cable': '🔴', 'Conector': '🔌', 'Estructura': '🏗️',
+  'Batería': '🔋', 'Tubo': '🔧', 'Contador': '📊', 'BMS': '🛡️', 'Regulador': '🔆',
+  'Cargador': '🔌', 'Generador': '🏭', 'Shunt': '📡', 'Descargador': '⚡', 'Fusible': '🔴',
+  'default': '📦'
+};
+function getMaterialIcon(name) {
+  for (const [key, icon] of Object.entries(MATERIAL_ICONS)) {
+    if (name?.toLowerCase().includes(key.toLowerCase())) return icon;
+  }
+  return MATERIAL_ICONS.default;
+}
+
 // ─── COMPONENTE TABLA MATERIALES SOLAR ───────────────────────────────────────
 function MaterialTableSolar({ materials }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-lg border border-amber-200">
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="bg-amber-100">
-            <th className="border border-amber-200 p-2 text-left">Material / Equipo</th>
-            <th className="border border-amber-200 p-2 text-center">Cant.</th>
-            <th className="border border-amber-200 p-2 text-left">Ud.</th>
-            <th className="border border-amber-200 p-2 text-left">Especificación</th>
-            <th className="border border-amber-200 p-2 text-left">Marcas sugeridas</th>
-            <th className="border border-amber-200 p-2 text-left">Dónde comprar</th>
-            <th className="border border-amber-200 p-2 text-right">Precio ref.</th>
+          <tr className="bg-amber-600 text-white">
+            <th className="p-2 text-left">Material / Equipo</th>
+            <th className="p-2 text-center w-12">Cant.</th>
+            <th className="p-2 text-left w-10">Ud.</th>
+            <th className="p-2 text-left">Especificación</th>
+            <th className="p-2 text-left">Marcas sugeridas</th>
+            <th className="p-2 text-left">Dónde comprar</th>
+            <th className="p-2 text-right w-20">Precio ref.</th>
           </tr>
         </thead>
         <tbody>
           {materials.map((m, i) => (
-            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-amber-50'}>
-              <td className="border border-gray-200 p-2 font-medium">{m.material}</td>
-              <td className="border border-gray-200 p-2 text-center font-bold text-amber-700">{m.qty}</td>
-              <td className="border border-gray-200 p-2">{m.unit}</td>
-              <td className="border border-gray-200 p-2 text-gray-600">{m.spec}</td>
-              <td className="border border-gray-200 p-2 text-blue-700">{m.brands}</td>
-              <td className="border border-gray-200 p-2 text-green-700">{m.shop}</td>
-              <td className="border border-gray-200 p-2 text-right text-gray-500">{m.approx_price}</td>
+            <tr key={i} className={i % 2 === 0 ? 'bg-white hover:bg-amber-50' : 'bg-amber-50 hover:bg-amber-100'}>
+              <td className="border-b border-gray-100 p-2 font-medium">
+                <span className="mr-1">{getMaterialIcon(m.material)}</span>{m.material}
+              </td>
+              <td className="border-b border-gray-100 p-2 text-center font-bold text-amber-700 bg-amber-50">{m.qty}</td>
+              <td className="border-b border-gray-100 p-2 text-gray-500">{m.unit}</td>
+              <td className="border-b border-gray-100 p-2 text-gray-600">{m.spec}</td>
+              <td className="border-b border-gray-100 p-2 text-blue-700 font-medium">{m.brands}</td>
+              <td className="border-b border-gray-100 p-2 text-green-700">{m.shop}</td>
+              <td className="border-b border-gray-100 p-2 text-right font-semibold text-gray-700">{m.approx_price}</td>
             </tr>
           ))}
         </tbody>
