@@ -15,6 +15,7 @@ import { format, parseISO, differenceInDays } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
+import AIChat from '../components/AIChat';
 
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
