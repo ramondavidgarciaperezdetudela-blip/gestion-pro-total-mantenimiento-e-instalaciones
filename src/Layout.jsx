@@ -110,6 +110,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <div className="min-h-screen bg-slate-50 flex select-none overscroll-none" dir="ltr" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <style>{`
         :root {
           --primary: #1e3a5f;
