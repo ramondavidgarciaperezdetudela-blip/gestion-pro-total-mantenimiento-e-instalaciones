@@ -331,6 +331,18 @@ export default function Suppliers() {
                 <TabsTrigger value="acceso">Acceso</TabsTrigger>
               </TabsList>
 
+              <TabsContent value="precios" className="pt-2">
+                {editing && (
+                  <SupplierPriceManager 
+                    supplierId={editing.id} 
+                    supplierName={form.name || editing.name}
+                  />
+                )}
+                {!editing && (
+                  <p className="text-xs text-gray-400 py-4">Guarda el proveedor primero para gestionar precios</p>
+                )}
+              </TabsContent>
+
               <TabsContent value="datos" className="space-y-3 pt-2">
                   <div className="text-center">
                     <p className="text-xs font-medium text-gray-600 mb-3">Foto de proveedor (clic para cambiar)</p>
