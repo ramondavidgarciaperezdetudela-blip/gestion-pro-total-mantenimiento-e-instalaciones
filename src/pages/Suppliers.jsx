@@ -464,6 +464,19 @@ export default function Suppliers() {
                 </label>
               </TabsContent>
 
+              <TabsContent value="catalogos" className="pt-2">
+                {editing && (
+                  <SupplierCatalogManager 
+                    supplierId={editing.id} 
+                    supplierName={form.name || editing.name}
+                    supplierCategory={form.category || editing.category}
+                  />
+                )}
+                {!editing && (
+                  <p className="text-xs text-gray-400 py-4">Guarda el proveedor primero para añadir catálogos</p>
+                )}
+              </TabsContent>
+
               <TabsContent value="comerciales" className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium">Comerciales de {form.name || 'este proveedor'}</p>
