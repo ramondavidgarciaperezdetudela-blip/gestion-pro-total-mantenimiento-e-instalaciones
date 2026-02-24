@@ -11,10 +11,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Plus, Search, Phone, Mail, Building2, User, Navigation, Trash2, Edit,
-  Camera, Users, AlertTriangle, Euro, LayoutGrid, List, Star, MapPin,
-  ChevronRight, TrendingUp, FileText, Wrench
-} from 'lucide-react';
+   Plus, Search, Phone, Mail, Building2, User, Navigation, Trash2, Edit,
+   Camera, Users, AlertTriangle, Euro, LayoutGrid, List, Star, MapPin,
+   ChevronRight, TrendingUp, FileText, Wrench, Download
+ } from 'lucide-react';
+import { fetchCompanyLogo } from '../components/LogoFetcher';
 
 const PAYMENT_PROFILES = {
   buen_pagador: { label: 'Buen pagador', color: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
@@ -163,6 +164,7 @@ export default function Contacts() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [fetchingLogo, setFetchingLogo] = useState(false);
   const photoInputRef = React.useRef(null);
   const cameraInputRef = React.useRef(null);
 
@@ -189,6 +191,13 @@ export default function Contacts() {
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
     setForm(prev => ({ ...prev, photo_url: file_url }));
     setPhotoUploading(false);
+  };
+
+  const handleAutoFetchLogo = async () => {
+    setFetchingLogo(true);
+    const logo = await fetchCompanyLogo(form.email, form.company_name);
+    if (logo) setForm(prev => ({ ...prev, photo_url: logo }));
+    setFetchingLogo(false);
   };
 
   const handleEdit = (c) => {
@@ -256,6 +265,10 @@ export default function Contacts() {
                 </Select>
               </div>
               <Input placeholder="Empresa" value={form.company_name} onChange={e => setForm({...form, company_name: e.target.value})} />
+              <Button onClick={handleAutoFetchLogo} variant="outline" size="sm" className="w-full" disabled={fetchingLogo || (!form.company_name && !form.email)}>
+                <Download className="w-3.5 h-3.5 mr-2" />
+                {fetchingLogo ? 'Buscando logo...' : 'Descarga logo empresa'}
+              </Button>
               <div className="grid grid-cols-2 gap-2">
                 <Input placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
                 <Input placeholder="Apellidos" value={form.surname} onChange={e => setForm({...form, surname: e.target.value})} />
