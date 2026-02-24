@@ -473,12 +473,6 @@ export default function CompanyConfig() {
         </TabsContent>
 
       </Tabs>
-    </div>
-  );
-}
-
-// ─── necesitamos RefreshCw en UserManager e AICalcConfig, ya importado arriba
-
 // ─── COMPONENTE: GESTIÓN DE USUARIOS ──────────────────────────────────────────
 function UserManager() {
   const [users, setUsers] = useState([]);
