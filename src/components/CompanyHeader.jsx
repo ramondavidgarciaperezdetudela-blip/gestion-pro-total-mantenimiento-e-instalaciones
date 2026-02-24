@@ -13,18 +13,24 @@ export default function CompanyHeader({ className = "" }) {
   if (!company) return null;
 
   return (
-    <div className={`flex items-center gap-4 ${className}`}>
+    <div className={`flex items-start gap-3 border-b border-gray-200 pb-3 mb-2 ${className}`}>
+      {/* Logo: máximo 3,5cm × 2cm */}
       {company.logo_url && (
-        <img src={company.logo_url} alt="Logo" className="h-12 w-auto object-contain" />
+        <img
+          src={company.logo_url}
+          alt="Logo"
+          style={{ maxWidth: '132px', maxHeight: '75px', width: 'auto', height: 'auto', objectFit: 'contain', flexShrink: 0 }}
+        />
       )}
-      <div>
-        <h3 className="font-bold text-lg">{company.company_name}</h3>
-        <p className="text-xs text-gray-500">
-          NIF: {company.nif} | {company.address}, {company.city} {company.postal_code} {company.province}
-        </p>
-        <p className="text-xs text-gray-500">
-          Tel: {company.phone} | {company.email}
-        </p>
+      <div className="flex-1 min-w-0">
+        <h3 className="font-bold text-base leading-tight">{company.company_name}</h3>
+        {company.nif && <p className="text-xs text-gray-500">NIF: {company.nif}</p>}
+        {(company.address || company.city) && (
+          <p className="text-xs text-gray-500">{[company.address, company.city, company.postal_code, company.province].filter(Boolean).join(', ')}</p>
+        )}
+        {(company.phone || company.email) && (
+          <p className="text-xs text-gray-500">{[company.phone && `Tel: ${company.phone}`, company.email].filter(Boolean).join(' | ')}</p>
+        )}
       </div>
     </div>
   );
