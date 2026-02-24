@@ -532,6 +532,23 @@ export default function SolarBatteryCalc() {
     const solar = calcSolar({ ...combForm, distance_panels_to_dc_box: combForm.distance_panels_to_dc_box, distance_inverter_to_batteries: combForm.distance_inverter_to_batteries, distance_to_ac_box: combForm.distance_to_ac_box }, 'directo');
     const bat = calcBattery({ ...combForm, num_paneles: combForm.num_panels });
     setCombResult({ solar, bat });
+    setCombSavedId(null); // reset saved state when recalculating
+    setCombEditing(false);
+  };
+
+  const saveComb = async () => {
+    if (!combResult) return;
+    const desc = `Solar ${combResult.solar.totalKwp.toFixed(1)}kWp + ${combResult.bat.numBaterias} baterías ${combResult.bat.energiaTotalKwh}kWh`;
+    if (combSavedId) {
+      await base44.entities.SolarCalculation.update(combSavedId, { num_panels: combResult.solar.numPanels, total_power_kwp: combResult.solar.totalKwp, battery_capacity_kwh: parseFloat(combResult.bat.energiaTotalKwh), num_batteries: combResult.bat.numBaterias, inverter_power_w: combResult.solar.inverterKw * 1000, notes: desc });
+    } else {
+      const rec = await base44.entities.SolarCalculation.create({ contact_id: combForm.contact_id || '', contact_name: combForm.contact_name || 'Sin cliente', calc_mode: 'directo', num_panels: combResult.solar.numPanels, panel_power_w: parseInt(combForm.panel_power_w), total_power_kwp: combResult.solar.totalKwp, battery_capacity_kwh: parseFloat(combResult.bat.energiaTotalKwh), num_batteries: combResult.bat.numBaterias, inverter_power_w: combResult.solar.inverterKw * 1000, date: format(new Date(), 'yyyy-MM-dd'), notes: desc });
+      setCombSavedId(rec.id);
+      if (combForm.contact_id) await base44.entities.ClientDocument.create({ contact_id: combForm.contact_id, contact_name: combForm.contact_name, title: `Sistema solar+baterías ${combResult.solar.totalKwp.toFixed(1)}kWp ${combResult.bat.energiaTotalKwh}kWh — ${format(new Date(), 'dd/MM/yyyy')}`, doc_type: 'calculo_solar', date: format(new Date(), 'yyyy-MM-dd'), description: desc });
+    }
+    setCombSavedMsg(combSavedId ? '¡Actualizado!' : '¡Guardado!');
+    setCombEditing(false);
+    setTimeout(() => setCombSavedMsg(''), 3000);
   };
 
   return (
