@@ -418,8 +418,7 @@ export default function Suppliers() {
                           <Button
                             onClick={() => setShowSuggestions(true)}
                             disabled={!searchProvince && !searchCity}
-                            variant="outline"
-                            className="h-9 w-full text-xs flex items-center gap-1 justify-center"
+                            className="h-9 w-full flex items-center gap-1 justify-center bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium"
                           >
                             <Search className="w-3 h-3" /> Buscar proveedores
                           </Button>
