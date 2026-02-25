@@ -92,9 +92,10 @@ Pregunta: ${input}`,
             </div>
             <button
               onClick={() => setOpen(false)}
-              className="text-white hover:bg-purple-800 rounded p-1 transition-colors"
+              className="bg-white/20 hover:bg-white/40 text-white rounded-full p-1.5 transition-colors flex items-center justify-center"
+              title="Cerrar chat"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" strokeWidth={2.5} />
             </button>
           </CardHeader>
 
