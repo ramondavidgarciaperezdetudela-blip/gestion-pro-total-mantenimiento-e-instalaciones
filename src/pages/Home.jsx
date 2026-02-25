@@ -65,12 +65,16 @@ export default function Home() {
   const [kpis, setKpis] = useState({
     contacts: 0, totalInvoiced: 0, pendingAmount: 0,
     satPending: 0, overdueInvoices: 0, paidThisMonth: 0,
-    unpaidContacts: 0, maintenanceDue: 0
+    unpaidContacts: 0, maintenanceDue: 0,
+    totalSuppliers: 0, invoicesPaid: 0, invoicesPending: 0, invoicesOverdue: 0
   });
   const [recentDocs, setRecentDocs] = useState([]);
   const [recentSat, setRecentSat] = useState([]);
   const [recentContacts, setRecentContacts] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [supplierSpending, setSupplierSpending] = useState([]);
+  const [topSuppliers, setTopSuppliers] = useState([]);
+  const [reorderAlerts, setReorderAlerts] = useState([]);
 
   useEffect(() => {
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -83,7 +87,9 @@ export default function Home() {
       base44.entities.SATOrder.list('-date', 50),
       base44.entities.CompanySettings.list(),
       base44.entities.MaintenanceSheet.list('-date', 10),
-    ]).then(([appts, contacts, invoices, sat, comp, maintenance]) => {
+      base44.entities.Supplier.list(),
+      base44.entities.SupplierPrice.list('-created_date', 500),
+    ]).then(([appts, contacts, invoices, sat, comp, maintenance, suppliers, prices]) => {
       setAppointments(appts);
       if (comp.length > 0) setCompany(comp[0]);
 
@@ -93,19 +99,57 @@ export default function Home() {
       const pendingAmount = facturas.filter(d => ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0);
       const paidThisMonth = facturas.filter(d => d.status === 'pagado' && d.date >= monthStart).reduce((s, d) => s + (d.total || 0), 0);
       const overdueInvoices = facturas.filter(d => d.status === 'vencido').length;
+      const invoicesPaid = facturas.filter(d => d.status === 'pagado').length;
+      const invoicesPending = facturas.filter(d => d.status === 'enviado').length;
       const satPending = sat.filter(s => s.status === 'pendiente').length;
       const unpaidContacts = contacts.filter(c => (c.pending_amount || 0) > 0).length;
 
-      setKpis({ contacts: contacts.length, totalInvoiced, pendingAmount, satPending, overdueInvoices, paidThisMonth, unpaidContacts });
+      setKpis({ contacts: contacts.length, totalInvoiced, pendingAmount, satPending, overdueInvoices, paidThisMonth, unpaidContacts, totalSuppliers: suppliers.filter(s => s.is_active !== false).length, invoicesPaid, invoicesPending, invoicesOverdue: overdueInvoices });
       setRecentDocs(invoices.slice(0, 5));
       setRecentSat(sat.filter(s => s.status === 'pendiente').slice(0, 4));
       setRecentContacts(contacts.filter(c => c.type === 'cliente').slice(0, 5));
 
-      // Alertas
+      // Gastos por proveedor (basado en precios)
+      const spendMap = {};
+      prices.forEach(p => {
+        if (!spendMap[p.supplier_name]) spendMap[p.supplier_name] = 0;
+        spendMap[p.supplier_name] += (p.cost_price || 0) * (p.quantity || 1);
+      });
+      const spendData = Object.entries(spendMap)
+        .map(([name, total]) => ({ name: name.length > 14 ? name.slice(0, 14) + '…' : name, total: Math.round(total) }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 6);
+      setSupplierSpending(spendData);
+
+      // Top proveedores por nº de precios registrados (proxy de pedidos)
+      const orderMap = {};
+      prices.forEach(p => {
+        if (!orderMap[p.supplier_name]) orderMap[p.supplier_name] = { name: p.supplier_name, count: 0 };
+        orderMap[p.supplier_name].count++;
+      });
+      setTopSuppliers(Object.values(orderMap).sort((a, b) => b.count - a.count).slice(0, 5));
+
+      // Alertas de pedido próximos
+      const reorder = suppliers.filter(s => {
+        if (!s.last_order_date || !s.enable_notifications || s.is_active === false) return false;
+        const last = new Date(s.last_order_date);
+        const nextDate = new Date(last.getTime() + (s.reorder_frequency_days || 30) * 86400000);
+        const daysLeft = Math.ceil((nextDate - new Date()) / 86400000);
+        return daysLeft <= 7;
+      }).map(s => {
+        const last = new Date(s.last_order_date);
+        const nextDate = new Date(last.getTime() + (s.reorder_frequency_days || 30) * 86400000);
+        const daysLeft = Math.ceil((nextDate - new Date()) / 86400000);
+        return { name: s.name, daysLeft };
+      });
+      setReorderAlerts(reorder);
+
+      // Alertas generales
       const newAlerts = [];
       if (overdueInvoices > 0) newAlerts.push({ type: 'danger', text: `${overdueInvoices} factura(s) vencidas sin cobrar`, page: 'Documents' });
       if (pendingAmount > 500) newAlerts.push({ type: 'warning', text: `${pendingAmount.toFixed(0)}€ pendientes de cobro`, page: 'Documents' });
       if (satPending > 3) newAlerts.push({ type: 'warning', text: `${satPending} órdenes SAT pendientes`, page: 'SAT' });
+      reorder.forEach(r => newAlerts.push({ type: 'warning', text: `Revisar pedido a ${r.name} (${r.daysLeft <= 0 ? 'HOY' : `en ${r.daysLeft} días`})`, page: 'Suppliers' }));
       setAlerts(newAlerts);
     });
   }, []);
