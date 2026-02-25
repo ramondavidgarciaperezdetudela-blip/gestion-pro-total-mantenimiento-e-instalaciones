@@ -187,13 +187,98 @@ export default function Home() {
         </div>
       )}
 
-      {/* KPIs */}
+      {/* KPIs principales */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Contactos" value={kpis.contacts} icon={Users} color="border-emerald-400" linkPage="Contacts" />
         <StatCard label="Facturado total" value={`${(kpis.totalInvoiced/1000).toFixed(1)}k€`} icon={Euro} color="border-violet-400" linkPage="Documents" />
         <StatCard label="Pendiente cobro" value={`${kpis.pendingAmount.toFixed(0)}€`} sub={kpis.overdueInvoices > 0 ? `${kpis.overdueInvoices} vencidas` : undefined} icon={AlertCircle} color="border-orange-400" linkPage="Documents" />
         <StatCard label="SAT pendientes" value={kpis.satPending} icon={Wrench} color="border-red-400" linkPage="SAT" />
       </div>
+
+      {/* KPIs proveedores y facturas */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Proveedores activos" value={kpis.totalSuppliers} icon={Building2} color="border-blue-400" linkPage="Suppliers" />
+        <StatCard label="Facturas pagadas" value={kpis.invoicesPaid} icon={CheckCircle} color="border-green-400" linkPage="Documents" />
+        <StatCard label="Facturas pendientes" value={kpis.invoicesPending} icon={Clock} color="border-amber-400" linkPage="Documents" />
+        <StatCard label="Facturas vencidas" value={kpis.invoicesOverdue} icon={XCircle} color="border-red-400" linkPage="Documents" />
+      </div>
+
+      {/* Gráficos proveedores */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Gastos por proveedor */}
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Euro className="w-4 h-4 text-violet-500" />Gasto por proveedor</CardTitle>
+            <Link to={createPageUrl('Suppliers')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
+          </CardHeader>
+          <CardContent>
+            {supplierSpending.length === 0 ? (
+              <p className="text-xs text-gray-400 py-4 text-center">Sin datos de precios registrados</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={supplierSpending} layout="vertical" margin={{ left: 4, right: 16, top: 4, bottom: 4 }}>
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v) => [`${v}€`, 'Gasto']} />
+                  <Bar dataKey="total" radius={[0, 4, 4, 0]}>
+                    {supplierSpending.map((_, i) => (
+                      <Cell key={i} fill={['#6366f1','#8b5cf6','#a78bfa','#c4b5fd','#ddd6fe','#ede9fe'][i % 6]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Top proveedores por pedidos */}
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><ShoppingCart className="w-4 h-4 text-blue-500" />Proveedores con más referencias</CardTitle>
+            <Link to={createPageUrl('Suppliers')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {topSuppliers.length === 0 ? (
+              <p className="text-xs text-gray-400 py-4 text-center">Sin precios registrados</p>
+            ) : topSuppliers.map((s, i) => (
+              <div key={s.name} className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center mb-0.5">
+                    <span className="text-xs font-medium truncate">{s.name}</span>
+                    <span className="text-xs text-gray-500 ml-2">{s.count} ref.</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5">
+                    <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, (s.count / (topSuppliers[0]?.count || 1)) * 100)}%` }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Alertas de pedidos próximos */}
+      {reorderAlerts.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-800"><Bell className="w-4 h-4" />Pedidos pendientes de revisar</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {reorderAlerts.map((r, i) => (
+              <Link key={i} to={createPageUrl('Suppliers')}>
+                <div className="flex items-center gap-2 bg-white border border-amber-200 rounded-lg p-2 hover:shadow-sm transition-shadow">
+                  <Building2 className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium truncate">{r.name}</p>
+                    <p className="text-[10px] text-amber-600 font-semibold">{r.daysLeft <= 0 ? '⚠ HOY' : `En ${r.daysLeft} días`}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Citas hoy */}
