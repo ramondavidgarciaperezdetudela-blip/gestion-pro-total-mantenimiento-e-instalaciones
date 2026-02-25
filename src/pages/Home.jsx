@@ -11,8 +11,9 @@ import {
   Building2, FolderOpen, Zap, BarChart3, Clock, AlertCircle,
   StickyNote, Package, Battery, Palette, CreditCard, Bell, Download,
   TrendingUp, TrendingDown, Euro, CheckCircle, XCircle, AlertTriangle,
-  ArrowRight, Phone, MapPin, ChevronRight
+  ArrowRight, Phone, MapPin, ChevronRight, ShoppingCart
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { format, isAfter, isBefore, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 
