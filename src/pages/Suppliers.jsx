@@ -402,17 +402,27 @@ export default function Suppliers() {
 
                       <div className="border-t pt-2 mt-2">
                         <p className="text-xs font-semibold text-blue-900 mb-2">📌 Proveedores existentes</p>
-                        <div className="grid grid-cols-2 gap-1.5 mb-2">
-                          <Select value={searchProvince} onValueChange={(v) => { setSearchProvince(v); setSearchCity(''); setShowSuggestions(true); }}>
-                            <SelectTrigger className="text-xs h-8"><SelectValue placeholder="Provincia..." /></SelectTrigger>
-                            <SelectContent className="max-h-60">{SPANISH_PROVINCES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                          </Select>
-                          <Input 
-                            placeholder="Ciudad..." 
-                            value={searchCity} 
-                            onChange={(e) => { setSearchCity(e.target.value); setShowSuggestions(true); }}
-                            className="text-xs h-8"
-                          />
+                        <div className="flex flex-col gap-1.5 mb-2">
+                          <div className="flex gap-1.5">
+                            <Select value={searchProvince} onValueChange={(v) => { setSearchProvince(v); setSearchCity(''); setShowSuggestions(true); }}>
+                              <SelectTrigger className="text-xs h-9 flex-1"><SelectValue placeholder="Provincia..." /></SelectTrigger>
+                              <SelectContent className="max-h-60">{SPANISH_PROVINCES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                            </Select>
+                            <Input 
+                              placeholder="Ciudad..." 
+                              value={searchCity} 
+                              onChange={(e) => { setSearchCity(e.target.value); setShowSuggestions(true); }}
+                              className="text-xs h-9 flex-1"
+                            />
+                          </div>
+                          <Button
+                            onClick={() => setShowSuggestions(true)}
+                            disabled={!searchProvince && !searchCity}
+                            variant="outline"
+                            className="h-9 w-full text-xs flex items-center gap-1 justify-center"
+                          >
+                            <Search className="w-3 h-3" /> Buscar proveedores
+                          </Button>
                         </div>
                         {showSuggestions && searchProvince && (
                           <div className="space-y-1 max-h-40 overflow-y-auto mt-2">
