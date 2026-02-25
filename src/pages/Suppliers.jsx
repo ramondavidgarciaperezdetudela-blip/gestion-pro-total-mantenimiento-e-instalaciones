@@ -386,14 +386,14 @@ export default function Suppliers() {
                             value={searchQuery} 
                             onChange={e => setSearchQuery(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleFetchSupplierData()}
-                            className="text-xs h-8" 
+                            className="text-xs h-9 flex-1" 
                           />
                           <Button 
                             onClick={handleFetchSupplierData} 
                             disabled={fetchingData || !searchQuery.trim()}
-                            className="h-8 px-2 text-xs"
+                            className="h-9 px-3 text-xs flex-shrink-0 flex items-center gap-1"
                           >
-                            {fetchingData ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3 mr-1" />}
+                            {fetchingData ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
                             {fetchingData ? 'Buscando...' : 'Buscar'}
                           </Button>
                         </div>

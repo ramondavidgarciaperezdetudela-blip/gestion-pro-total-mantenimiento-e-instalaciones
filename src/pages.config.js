@@ -57,6 +57,7 @@ import AuditLog from './pages/AuditLog';
 import Automations from './pages/Automations';
 import BatteryCalc from './pages/BatteryCalc';
 import BusinessCards from './pages/BusinessCards';
+import Catalogs from './pages/Catalogs';
 import ClientPortal from './pages/ClientPortal';
 import ColdRoomCalc from './pages/ColdRoomCalc';
 import CompanyConfig from './pages/CompanyConfig';
@@ -81,7 +82,6 @@ import SolarBatteryCalc from './pages/SolarBatteryCalc';
 import SolarCalc from './pages/SolarCalc';
 import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
-import Catalogs from './pages/Catalogs';
 import __Layout from './Layout.jsx';
 
 
@@ -96,6 +96,7 @@ export const PAGES = {
     "Automations": Automations,
     "BatteryCalc": BatteryCalc,
     "BusinessCards": BusinessCards,
+    "Catalogs": Catalogs,
     "ClientPortal": ClientPortal,
     "ColdRoomCalc": ColdRoomCalc,
     "CompanyConfig": CompanyConfig,
@@ -120,7 +121,6 @@ export const PAGES = {
     "SolarCalc": SolarCalc,
     "Suppliers": Suppliers,
     "ThermalCalc": ThermalCalc,
-    "Catalogs": Catalogs,
 }
 
 export const pagesConfig = {
