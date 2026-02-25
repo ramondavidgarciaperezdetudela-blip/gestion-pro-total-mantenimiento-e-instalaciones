@@ -391,7 +391,7 @@ export default function Suppliers() {
                           <Button 
                             onClick={handleFetchSupplierData} 
                             disabled={fetchingData || !searchQuery.trim()}
-                            className="h-9 px-3 text-xs flex-shrink-0 flex items-center gap-1"
+                            className="h-9 px-3 flex-shrink-0 flex items-center gap-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium"
                           >
                             {fetchingData ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
                             {fetchingData ? 'Buscando...' : 'Buscar'}
