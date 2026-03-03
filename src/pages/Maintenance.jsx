@@ -88,10 +88,10 @@ export default function Maintenance() {
     }
     setDialogOpen(false);
     setEditing(null);
-    setForm(EMPTY_FORM);
-    alert(editing ? '✅ Ficha actualizada correctamente' : '✅ Ficha guardada y vinculada al cliente');
     const s = await base44.entities.MaintenanceSheet.list('-date', 500);
     setSheets(s);
+    setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(s.map(x => x.sheet_number || '')) });
+    alert(editing ? '✅ Ficha actualizada correctamente' : '✅ Ficha guardada y vinculada al cliente');
   };
 
   const handleEdit = (sheet) => {
