@@ -58,6 +58,8 @@ export default function Maintenance() {
       setSheets(s);
       setContacts(c);
       if (settings[0]?.technicians) setTechnicians(settings[0].technicians);
+      // Pre-calcular número para nueva ficha
+      setForm(f => ({ ...f, sheet_number: getNextAvailableNumber(s.map(x => x.sheet_number || '')) }));
     });
   }, []);
 
