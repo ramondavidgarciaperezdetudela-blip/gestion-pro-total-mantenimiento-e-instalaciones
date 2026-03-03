@@ -239,7 +239,7 @@ export default function SAT() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Wrench className="w-6 h-6 text-orange-600" /> Órdenes SAT
         </h1>
-        <Button className="bg-orange-600 hover:bg-orange-700" onClick={() => { setEditing(null); setForm(EMPTY_FORM); setDialogOpen(true); }}>
+        <Button className="bg-orange-600 hover:bg-orange-700" onClick={() => { setEditing(null); setForm({ ...EMPTY_FORM, order_number: getNextSATNumber(orders) }); setDialogOpen(true); }}>
           <Plus className="w-4 h-4 mr-1" />Nueva orden
         </Button>
       </div>
