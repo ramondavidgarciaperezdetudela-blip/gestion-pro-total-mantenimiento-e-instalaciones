@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Phone, Mail, Navigation, Plus, Calendar, Wrench, FileText, ClipboardList, Calculator, AlertCircle, CheckCircle, Clock, XCircle, Upload, Trash2, Edit, Eye, Send, Bot, ArrowLeft, Printer, MessageCircle, Camera, History } from 'lucide-react';
 import ClientMachineTab from '../components/ClientMachineTab';
+import SATOrderDialog from '../components/SATOrderDialog';
 import { logChange } from '../components/ChangeLogger';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
