@@ -57,30 +57,63 @@ const DOC_TYPES = {
   }
 };
 
-// ─── NORMATIVA VIGENTE (sin links de descarga directa) ────────────────────────
+// ─── NORMATIVA VIGENTE CON ENLACES BOE ────────────────────────────────────────
 const NORMATIVA = {
   solar: [
-    { label: 'RD 244/2019 Autoconsumo', ref: 'BOE-A-2019-5089' },
-    { label: 'REBT RD 842/2002', ref: 'BOE-A-2002-18099' },
-    { label: 'RD 1183/2020 Acceso y Conexión', ref: 'BOE-A-2020-17277' },
-    { label: 'ITC-BT-40 Instalaciones generadoras', ref: 'Incluido en REBT' },
+    { label: 'RD 244/2019 Autoconsumo fotovoltaico', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2019-5089' },
+    { label: 'REBT RD 842/2002 (texto consolidado)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2002-18099' },
+    { label: 'RD 1183/2020 Acceso y Conexión', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2020-17277' },
+    { label: 'RD 647/2020 Modalidades autoconsumo', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2020-6614' },
   ],
   electrico: [
-    { label: 'REBT RD 842/2002', ref: 'BOE-A-2002-18099' },
-    { label: 'UNE-HD 60364 Instalaciones eléctricas', ref: 'AENOR' },
-    { label: 'RD 560/2010 Instrucciones Técnicas', ref: 'BOE-A-2010-9232' },
+    { label: 'REBT RD 842/2002 (texto consolidado)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2002-18099' },
+    { label: 'RD 560/2010 ITC instalaciones eléctricas', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2010-9232' },
+    { label: 'RD 614/2001 Disposiciones seguridad eléctrica', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2001-11736' },
   ],
   clima: [
-    { label: 'RITE RD 1027/2007', ref: 'BOE-A-2007-15820' },
-    { label: 'CTE DB-HE Ahorro de Energía', ref: 'BOE-A-2013-12631' },
-    { label: 'RD 235/2013 Certificación Energética', ref: 'BOE-A-2013-3904' },
+    { label: 'RITE RD 1027/2007 (texto consolidado)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2007-15820' },
+    { label: 'RD 235/2013 Certificación Energética', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2013-3904' },
+    { label: 'RD 390/2021 CTE - DB-HE actualización', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2021-5825' },
   ],
   frio: [
-    { label: 'RD 138/2011 Reglamento Frigorías', ref: 'BOE-A-2011-2815' },
-    { label: 'Reglamento F-Gas UE 517/2014', ref: 'DOUE L-150/2014' },
-    { label: 'RD 115/2017 F-Gas España', ref: 'BOE-A-2017-1664' },
+    { label: 'RD 138/2011 Reglamento Frigorías (consolidado)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2011-2815' },
+    { label: 'RD 115/2017 F-Gas España (consolidado)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2017-1664' },
+    { label: 'Reglamento UE 517/2014 F-Gas (EUR-Lex)', url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32014R0517' },
   ]
 };
+
+// ─── TODOS LOS GASES REFRIGERANTES ───────────────────────────────────────────
+const ALL_GASES = [
+  // HFCs comunes climatización
+  { value: 'R-32', label: 'R-32', gwp: '675' },
+  { value: 'R-410A', label: 'R-410A', gwp: '2088' },
+  { value: 'R-134a', label: 'R-134a', gwp: '1430' },
+  { value: 'R-407C', label: 'R-407C', gwp: '1774' },
+  { value: 'R-407F', label: 'R-407F', gwp: '1825' },
+  // HFCs refrigeración industrial
+  { value: 'R-404A', label: 'R-404A', gwp: '3922' },
+  { value: 'R-507A', label: 'R-507A', gwp: '3985' },
+  { value: 'R-422D', label: 'R-422D', gwp: '2729' },
+  // HFOs y mezclas bajas GWP
+  { value: 'R-448A', label: 'R-448A (HFO)', gwp: '1387' },
+  { value: 'R-449A', label: 'R-449A (HFO)', gwp: '1282' },
+  { value: 'R-452A', label: 'R-452A (HFO)', gwp: '2140' },
+  { value: 'R-452B', label: 'R-452B (HFO)', gwp: '698' },
+  { value: 'R-454B', label: 'R-454B (HFO)', gwp: '466' },
+  { value: 'R-454C', label: 'R-454C (HFO)', gwp: '148' },
+  { value: 'R-455A', label: 'R-455A (HFO)', gwp: '148' },
+  { value: 'R-1234yf', label: 'R-1234yf (HFO)', gwp: '4' },
+  { value: 'R-1234ze', label: 'R-1234ze (HFO)', gwp: '7' },
+  // Naturales
+  { value: 'R-290', label: 'R-290 (Propano)', gwp: '3' },
+  { value: 'R-600a', label: 'R-600a (Isobutano)', gwp: '3' },
+  { value: 'R-717', label: 'R-717 (Amoniaco/NH3)', gwp: '0' },
+  { value: 'R-744', label: 'R-744 (CO2)', gwp: '1' },
+  { value: 'R-170', label: 'R-170 (Etano)', gwp: '6' },
+  // Otros
+  { value: 'R-22', label: 'R-22 (uso restringido)', gwp: '1810' },
+  { value: 'otro', label: 'Otro gas (especificar)', gwp: '' },
+];
 
 function buildPrompt(typeKey, docId, form, contact, companyData) {
   const today = format(new Date(), 'dd/MM/yyyy');
