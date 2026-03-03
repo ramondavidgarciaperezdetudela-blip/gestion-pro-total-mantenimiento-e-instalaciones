@@ -509,18 +509,23 @@ export default function LegalDocs() {
                 {/* Campos específicos frío */}
                 {activeType === 'frio' && (
                   <div className="grid grid-cols-3 gap-2 pt-1 border-t">
-                    <div>
+                    <div className="col-span-2">
                       <label className="text-xs text-gray-500">Gas refrigerante</label>
                       <Select value={form.gas} onValueChange={v => {
-                        const gwps = { 'R-32':'675','R-410A':'2088','R-404A':'3922','R-134a':'1430','R-448A':'1387','R-449A':'1282','R-290':'3','R-744':'1' };
-                        setForm(f => ({ ...f, gas: v, gwp: gwps[v] || '' }));
+                        const g = ALL_GASES.find(x => x.value === v);
+                        setForm(f => ({ ...f, gas: v, gwp: g?.gwp || f.gwp, gas_custom: '' }));
                       }}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{['R-32','R-410A','R-404A','R-134a','R-448A','R-449A','R-290','R-744'].map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                        <SelectContent className="max-h-64">
+                          {ALL_GASES.map(g => <SelectItem key={g.value} value={g.value}>{g.label}{g.gwp ? ` — GWP ${g.gwp}` : ''}</SelectItem>)}
+                        </SelectContent>
                       </Select>
+                      {form.gas === 'otro' && (
+                        <Input className="mt-1" placeholder="Especificar gas (ej: R-513A)" value={form.gas_custom || ''} onChange={e => setF('gas_custom', e.target.value)} />
+                      )}
                     </div>
+                    <div><label className="text-xs text-gray-500">GWP</label><Input value={form.gwp} onChange={e => setF('gwp', e.target.value)} placeholder="GWP del gas" /></div>
                     <div><label className="text-xs text-gray-500">Carga gas (kg)</label><Input type="number" value={form.carga_gas} onChange={e => setF('carga_gas', e.target.value)} /></div>
-                    <div><label className="text-xs text-gray-500">GWP</label><Input value={form.gwp} onChange={e => setF('gwp', e.target.value)} /></div>
                     <div><label className="text-xs text-gray-500">Temp. diseño</label><Input value={form.temperatura} onChange={e => setF('temperatura', e.target.value)} placeholder="-18°C" /></div>
                     <div><label className="text-xs text-gray-500">Marca equipo</label><Input value={form.marca_equipo} onChange={e => setF('marca_equipo', e.target.value)} /></div>
                     <div><label className="text-xs text-gray-500">Nº serie</label><Input value={form.num_serie} onChange={e => setF('num_serie', e.target.value)} /></div>
@@ -533,10 +538,18 @@ export default function LegalDocs() {
                     <div><label className="text-xs text-gray-500">Sistema</label><Input value={form.sistema} onChange={e => setF('sistema', e.target.value)} placeholder="VRF / Split / Aerotermia..." /></div>
                     <div>
                       <label className="text-xs text-gray-500">Gas refrigerante</label>
-                      <Select value={form.gas} onValueChange={v => setF('gas', v)}>
+                      <Select value={form.gas} onValueChange={v => {
+                        const g = ALL_GASES.find(x => x.value === v);
+                        setForm(f => ({ ...f, gas: v, gwp: g?.gwp || f.gwp, gas_custom: '' }));
+                      }}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{['R-32','R-410A','R-290'].map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                        <SelectContent className="max-h-64">
+                          {ALL_GASES.map(g => <SelectItem key={g.value} value={g.value}>{g.label}{g.gwp ? ` — GWP ${g.gwp}` : ''}</SelectItem>)}
+                        </SelectContent>
                       </Select>
+                      {form.gas === 'otro' && (
+                        <Input className="mt-1" placeholder="Especificar gas (ej: R-513A)" value={form.gas_custom || ''} onChange={e => setF('gas_custom', e.target.value)} />
+                      )}
                     </div>
                   </div>
                 )}
