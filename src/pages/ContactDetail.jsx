@@ -256,6 +256,20 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
     setNotes(nts);
   };
 
+  const openEditDoc = (doc) => {
+    setEditingDoc(doc);
+    setEditDocForm({ title: doc.title || '', doc_type: doc.doc_type || 'otro', description: doc.description || '' });
+    setEditDocDialog(true);
+  };
+
+  const saveEditDoc = async () => {
+    await base44.entities.ClientDocument.update(editingDoc.id, editDocForm);
+    setEditDocDialog(false);
+    setEditingDoc(null);
+    const docs = await base44.entities.ClientDocument.filter({ contact_id: contactId });
+    setDocuments(docs);
+  };
+
   const sendWhatsApp = (text) => {
     const phone = contact.phone?.replace(/\D/g, '');
     const msg = encodeURIComponent(text);
