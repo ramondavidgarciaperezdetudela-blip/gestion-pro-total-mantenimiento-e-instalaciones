@@ -206,7 +206,8 @@ export default function Documents() {
 
   const handleEdit = (doc) => {
     setEditing(doc);
-    setForm({ ...EMPTY_FORM, ...doc, items: doc.items || [{ description: '', quantity: 1, unit_price: 0, discount: 0, total: 0 }] });
+    const items = (doc.items?.length ? doc.items : [newItem()]).map((it, idx) => ({ _id: idx, ...it }));
+    setForm({ ...EMPTY_FORM, ...doc, items });
     setDialogOpen(true);
   };
 
