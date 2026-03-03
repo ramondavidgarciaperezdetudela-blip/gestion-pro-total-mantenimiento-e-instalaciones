@@ -471,9 +471,9 @@ export default function SAT() {
               <Input placeholder="Nombre del técnico" value={form.technician === '__otro__' ? '' : form.technician} onChange={e => setForm({ ...form, technician: e.target.value })} />
             )}
 
-            <Textarea placeholder="Descripción del problema *" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} />
-            <Textarea placeholder="Diagnóstico" value={form.diagnosis} onChange={e => setForm({ ...form, diagnosis: e.target.value })} rows={2} />
-            <Textarea placeholder="Solución aplicada" value={form.solution} onChange={e => setForm({ ...form, solution: e.target.value })} rows={2} />
+            <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Descripción del problema *" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} />
+            <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Diagnóstico" value={form.diagnosis} onChange={e => setForm({ ...form, diagnosis: e.target.value })} rows={2} />
+            <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Solución aplicada" value={form.solution} onChange={e => setForm({ ...form, solution: e.target.value })} rows={2} />
 
             {/* Materiales */}
             <div>
