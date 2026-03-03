@@ -413,15 +413,20 @@ export default function Documents() {
                 <span className="col-span-1"></span>
               </div>
               {form.items.map((item, i) => (
-                <div key={i} className="grid grid-cols-12 gap-1 items-center">
-                  <Input className="col-span-5 text-xs h-8" placeholder="Descripción" value={item.description} onChange={e => handleItemChange(i, 'description', e.target.value)} />
-                  <Input className="col-span-2 text-xs h-8" type="number" placeholder="Cant." value={item.quantity} onChange={e => handleItemChange(i, 'quantity', parseFloat(e.target.value) || 0)} />
-                  <Input className="col-span-2 text-xs h-8" type="number" placeholder="Precio" value={item.unit_price} onChange={e => handleItemChange(i, 'unit_price', parseFloat(e.target.value) || 0)} />
-                  <Input className="col-span-1 text-xs h-8" type="number" placeholder="Dto" value={item.discount || 0} onChange={e => handleItemChange(i, 'discount', parseFloat(e.target.value) || 0)} />
-                  <span className="col-span-1 text-xs text-right font-medium text-green-700">{item.total?.toFixed(2)}</span>
-                  <button className="col-span-1 text-red-400 hover:text-red-600 text-lg leading-none text-center" onClick={() => removeItem(i)}>×</button>
-                </div>
-              ))}
+                 <div key={item._id ?? i} className="grid grid-cols-12 gap-1 items-center">
+                   <input
+                     className="col-span-5 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
+                     placeholder="Descripción"
+                     value={item.description}
+                     onChange={e => handleItemChange(i, 'description', e.target.value)}
+                   />
+                   <input className="col-span-2 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" type="number" placeholder="Cant." value={item.quantity} onChange={e => handleItemChange(i, 'quantity', parseFloat(e.target.value) || 0)} />
+                   <input className="col-span-2 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" type="number" placeholder="Precio" value={item.unit_price} onChange={e => handleItemChange(i, 'unit_price', parseFloat(e.target.value) || 0)} />
+                   <input className="col-span-1 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" type="number" placeholder="Dto" value={item.discount || 0} onChange={e => handleItemChange(i, 'discount', parseFloat(e.target.value) || 0)} />
+                   <span className="col-span-1 text-xs text-right font-medium text-green-700">{item.total?.toFixed(2)}</span>
+                   <button className="col-span-1 text-red-400 hover:text-red-600 text-lg leading-none text-center" onClick={() => removeItem(i)}>×</button>
+                 </div>
+               ))}
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Línea</Button>
                 <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => setSupplierSearchOpen(true)}>
