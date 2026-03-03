@@ -15,6 +15,7 @@ import {
   BarChart3, Target, Zap, ListTodo
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { getNextAvailableNumber } from '../components/autoNumber';
 
 const TYPES = ['clima', 'refrigeracion', 'electrico', 'solar', 'mixto'];
 const STATUSES = ['planificacion', 'en_curso', 'pausado', 'completado', 'cancelado'];
