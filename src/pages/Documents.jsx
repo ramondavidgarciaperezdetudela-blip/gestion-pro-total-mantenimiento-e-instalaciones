@@ -448,12 +448,12 @@ export default function Documents() {
             </button>
             {showAdvanced && (
               <div className="space-y-2">
-                <Textarea placeholder="Observaciones" value={form.observations || ''} onChange={e => { const v = e.target.value; setForm(p => ({ ...p, observations: v })); }} rows={3} />
-                <Textarea placeholder="Condiciones de pago" value={form.payment_terms || ''} onChange={e => { const v = e.target.value; setForm(p => ({ ...p, payment_terms: v })); }} rows={4} />
+                <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Observaciones" value={form.observations || ''} onChange={e => { const v = e.target.value; setForm(p => ({ ...p, observations: v })); }} rows={3} />
+                <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Condiciones de pago" value={form.payment_terms || ''} onChange={e => { const v = e.target.value; setForm(p => ({ ...p, payment_terms: v })); }} rows={4} />
                 {form.normative_references && (
                   <div className="bg-blue-50 p-3 rounded-lg text-xs">
                     <p className="font-medium text-blue-700 mb-1">Normativa aplicable:</p>
-                    <Textarea value={form.normative_references || ''} onChange={e => { const v = e.target.value; setForm(p => ({ ...p, normative_references: v })); }} rows={2} className="text-xs" />
+                    <textarea className="w-full border border-input rounded-md px-3 py-2 text-xs resize-y focus:outline-none focus:ring-1 focus:ring-ring" value={form.normative_references || ''} onChange={e => { const v = e.target.value; setForm(p => ({ ...p, normative_references: v })); }} rows={2} />
                   </div>
                 )}
               </div>
