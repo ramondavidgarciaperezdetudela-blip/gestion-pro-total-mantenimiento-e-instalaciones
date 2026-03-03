@@ -721,6 +721,9 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
                         <Eye className="w-3 h-3" /> Ver
                       </a>
                     )}
+                    <button onClick={() => openEditDoc(d)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-50 text-gray-700 hover:bg-gray-100">
+                      <Edit className="w-3 h-3" /> Editar
+                    </button>
                     {d.file_url && (
                       <button onClick={() => { const w=window.open('','_blank'); w.document.write(`<html><head><title>${d.title}</title></head><body style="font-family:sans-serif;padding:20px"><h2>${d.title}</h2><p>Cliente: ${contact.name} ${contact.surname||''}</p><p>Fecha: ${fmtDate(d.date)}</p><p>Tipo: ${d.doc_type?.replace(/_/g,' ')}</p>${d.description?`<p>${d.description}</p>`:''}<br/><a href="${d.file_url}">Ver archivo adjunto</a></body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-slate-50 text-slate-700 hover:bg-slate-100">
                         <Printer className="w-3 h-3" /> Imprimir
