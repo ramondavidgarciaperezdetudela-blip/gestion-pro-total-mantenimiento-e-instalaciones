@@ -128,7 +128,7 @@ export default function Documents() {
   }, []);
 
   const addItem = useCallback(() => {
-    setForm(prev => ({ ...prev, items: [...prev.items, { description: '', quantity: 1, unit_price: 0, discount: 0, total: 0 }] }));
+    setForm(prev => ({ ...prev, items: [...prev.items, newItem()] }));
   }, []);
 
   const removeItem = useCallback((i) => {
