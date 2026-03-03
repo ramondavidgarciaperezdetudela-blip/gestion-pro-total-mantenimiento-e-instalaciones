@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import { format, startOfMonth } from 'date-fns';
+import { getNextAvailableNumber } from '../components/autoNumber';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 

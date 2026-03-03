@@ -12,6 +12,7 @@ import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone, Mail, Calendar, B
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
+import { getNextAvailableNumber } from '../components/autoNumber';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';

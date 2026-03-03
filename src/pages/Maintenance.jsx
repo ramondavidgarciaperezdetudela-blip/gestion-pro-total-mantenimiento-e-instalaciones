@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, ClipboardList, Trash2, Edit, PenLine, Eye, Phone, Send } from 'lucide-react';
 import { format } from 'date-fns';
+import { getNextAvailableNumber } from '../components/autoNumber';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
