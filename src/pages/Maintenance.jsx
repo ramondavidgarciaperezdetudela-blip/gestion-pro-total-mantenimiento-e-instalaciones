@@ -141,7 +141,7 @@ export default function Maintenance() {
         <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditing(null); setForm(EMPTY_FORM); } }}>
           <DialogTrigger asChild>
             <Button className="bg-cyan-600" onClick={() => { setEditing(null); setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(sheets.map(x => x.sheet_number || '')) }); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Nueva ficha</Button>
-          </DialogTrigger>
+
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Nueva'} ficha de mantenimiento</DialogTitle></DialogHeader>
             <div className="space-y-3">
