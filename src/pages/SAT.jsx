@@ -174,6 +174,11 @@ export default function SAT() {
     await loadAll();
   };
 
+  const getNextSATNumber = (currentOrders) => {
+    const nums = currentOrders.map(o => o.order_number || '');
+    return getNextAvailableNumber(nums);
+  };
+
   const handleEdit = (order) => {
     setEditing(order);
     setForm({ ...EMPTY_FORM, ...order, materials_used: order.materials_used || [], photos_before: order.photos_before || [], photos_after: order.photos_after || [] });

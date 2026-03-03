@@ -118,6 +118,9 @@ export default function Documents() {
       baseForm.contact_nif = contact.nif || '';
       baseForm.contact_address = `${contact.address || ''}, ${contact.city || ''} ${contact.postal_code || ''} ${contact.province || ''}`.trim();
     }
+    // Auto-numerar: coger todos los doc_number del mismo tipo
+    const sametype = docs.filter(d => d.doc_type === docType).map(d => d.doc_number || '');
+    baseForm.doc_number = getNextAvailableNumber(sametype);
     setEditing(null); setForm(baseForm); setDialogOpen(true); setShowAdvanced(false);
   };
 
