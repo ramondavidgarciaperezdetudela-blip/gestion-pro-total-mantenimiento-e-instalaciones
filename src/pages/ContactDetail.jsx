@@ -761,6 +761,11 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           </div>
         </TabsContent>
 
+        {/* MAQUINARIA */}
+        <TabsContent value="maquinaria">
+          <ClientMachineTab contactId={contactId} contactName={`${contact.name} ${contact.surname || ''}`.trim()} />
+        </TabsContent>
+
         {/* HISTORIAL DE CAMBIOS */}
         <TabsContent value="historial">
           <ChangeHistoryTab contactId={contactId} />
