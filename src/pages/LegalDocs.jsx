@@ -447,14 +447,16 @@ export default function LegalDocs() {
 
           {/* Normativa de referencia */}
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">📋 Normativa de referencia</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">📋 Normativa — enlaces BOE</CardTitle></CardHeader>
             <CardContent className="p-3 space-y-1">
               {(NORMATIVA[activeType] || []).map((n, i) => (
-                <div key={i} className="text-xs py-1 border-b border-gray-100 last:border-0">
-                  <p className="font-medium text-gray-700">{n.label}</p>
-                  <p className="text-gray-400">{n.ref}</p>
-                </div>
+                <a key={i} href={n.url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-start gap-1.5 text-xs py-1.5 border-b border-gray-100 last:border-0 text-blue-700 hover:text-blue-900 hover:bg-blue-50 rounded px-1 transition-colors group">
+                  <span className="mt-0.5 flex-shrink-0 text-blue-400 group-hover:text-blue-600">↗</span>
+                  <span className="underline underline-offset-2">{n.label}</span>
+                </a>
               ))}
+              <p className="text-[10px] text-gray-400 pt-1">* Los enlaces abren el texto oficial en el BOE/EUR-Lex</p>
             </CardContent>
           </Card>
         </div>
