@@ -319,7 +319,6 @@ export default function Maintenance() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
 
       {/* Signature modals */}
       <SignaturePad open={sigTechOpen} onClose={() => setSigTechOpen(false)} title="Firma del técnico" onSave={sig => setForm({ ...form, signature_technician: sig })} />
