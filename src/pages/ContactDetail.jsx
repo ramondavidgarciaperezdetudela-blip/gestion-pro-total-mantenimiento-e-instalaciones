@@ -459,6 +459,35 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
         </DialogContent>
       </Dialog>
 
+      {/* Edit Document Dialog */}
+      <Dialog open={editDocDialog} onOpenChange={setEditDocDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Editar archivo</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-gray-500">Título</label>
+              <Input value={editDocForm.title} onChange={e => setEditDocForm({ ...editDocForm, title: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Tipo de documento</label>
+              <Select value={editDocForm.doc_type} onValueChange={v => setEditDocForm({ ...editDocForm, doc_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {['factura','presupuesto','recibo','ficha_mantenimiento','orden_sat','calculo_termico','calculo_solar','informe','nota','otro'].map(t => (
+                    <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Descripción / Notas</label>
+              <Textarea rows={3} value={editDocForm.description} onChange={e => setEditDocForm({ ...editDocForm, description: e.target.value })} placeholder="Descripción del documento..." />
+            </div>
+            <Button onClick={saveEditDoc} className="w-full bg-blue-600">Guardar cambios</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* AI Report Dialog */}
       <Dialog open={aiReportDialog} onOpenChange={setAiReportDialog}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
