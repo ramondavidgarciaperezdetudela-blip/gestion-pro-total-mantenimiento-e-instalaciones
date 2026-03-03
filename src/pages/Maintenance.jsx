@@ -138,10 +138,12 @@ export default function Maintenance() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Fichas de Mantenimiento</h1>
-        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditing(null); setForm(EMPTY_FORM); } }}>
-          <DialogTrigger asChild>
-            <Button className="bg-cyan-600" onClick={() => { setEditing(null); setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(sheets.map(x => x.sheet_number || '')) }); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Nueva ficha</Button>
+        <Button className="bg-cyan-600" onClick={() => { setEditing(null); setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(sheets.map(x => x.sheet_number || '')) }); setDialogOpen(true); }}>
+          <Plus className="w-4 h-4 mr-2" />Nueva ficha
+        </Button>
+      </div>
 
+      <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditing(null); setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(sheets.map(x => x.sheet_number || '')) }); } }}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Nueva'} ficha de mantenimiento</DialogTitle></DialogHeader>
             <div className="space-y-3">
