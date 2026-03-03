@@ -47,10 +47,13 @@ const NORMATIVE_MAP = {
 
 const PAYMENT_TERMS = "Forma de pago: Máximo 3 pagos.\n1º Pago: 100% material + 50% mano de obra (al aceptar presupuesto)\n2º Pago: 25% mano de obra (al iniciar trabajos)\n3º Pago: 25% mano de obra restante (al finalizar)";
 
+let _itemId = 0;
+const newItem = () => ({ _id: ++_itemId, description: '', quantity: 1, unit_price: 0, discount: 0, total: 0 });
+
 const EMPTY_FORM = {
   doc_type: 'presupuesto', doc_number: '', contact_id: '', contact_name: '', contact_nif: '', contact_address: '',
   date: format(new Date(), 'yyyy-MM-dd'), due_date: '', status: 'borrador', work_type: 'otro',
-  items: [{ description: '', quantity: 1, unit_price: 0, discount: 0, total: 0 }],
+  items: [newItem()],
   subtotal: 0, iva_rate: 21, iva_amount: 0, total: 0, observations: '', payment_terms: PAYMENT_TERMS, normative_references: ''
 };
 
