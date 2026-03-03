@@ -640,18 +640,14 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
                       </div>
                     </div>
                     <div className="flex gap-1 mt-2 border-t pt-2 flex-wrap">
-                      <Link to={createPageUrl(`SAT?view=${o.id}`)}>
-                        <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-orange-50 text-orange-700 hover:bg-orange-100 cursor-pointer">
-                          <Eye className="w-3 h-3" /> Ver
-                        </span>
-                      </Link>
-                      <Link to={createPageUrl(`SAT?edit=${o.id}`)}>
-                        <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer">
-                          <Edit className="w-3 h-3" /> Editar
-                        </span>
-                      </Link>
+                      <button onClick={() => { setSatDialog(o); setSatDialogMode('view'); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-orange-50 text-orange-700 hover:bg-orange-100">
+                        <Eye className="w-3 h-3" /> Ver
+                      </button>
+                      <button onClick={() => { setSatDialog(o); setSatDialogMode('edit'); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                        <Edit className="w-3 h-3" /> Editar
+                      </button>
                       <button onClick={() => sendWhatsApp(`Orden SAT #${o.order_number || ''}\nFecha: ${o.date}\nTipo: ${o.type}\nDescripción: ${o.description || '-'}\nEstado: ${o.status}`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
-                        <Phone className="w-3 h-3" /> WA
+                        <MessageCircle className="w-3 h-3" /> WA
                       </button>
                       {contact.email && (
                         <button onClick={() => sendEmail(`Orden SAT #${o.order_number || ''}`, `Estimado/a ${contact.name},\n\nAdjuntamos resumen de la Orden SAT #${o.order_number}.\nFecha: ${o.date} | Tipo: ${o.type}\n${o.solution ? `Solución: ${o.solution}` : ''}\n\nAtentamente`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
@@ -668,6 +664,22 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
             })}
             {satOrders.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Sin órdenes SAT</p>}
           </div>
+
+          {/* SAT inline dialog */}
+          {satDialog && (
+            <SATOrderDialog
+              order={satDialog}
+              contact={contact}
+              mode={satDialogMode}
+              open={!!satDialog}
+              onClose={() => setSatDialog(null)}
+              onSaved={(updated) => {
+                setSatOrders(prev => prev.map(o => o.id === updated.id ? { ...o, ...updated } : o));
+                setSatDialog(updated);
+                setSatDialogMode('view');
+              }}
+            />
+          )}
         </TabsContent>
 
         {/* MANTENIMIENTO */}
