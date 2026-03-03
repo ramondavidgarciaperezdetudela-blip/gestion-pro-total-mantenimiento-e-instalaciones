@@ -483,10 +483,10 @@ export default function SAT() {
               </div>
               {form.materials_used?.map((m, i) => (
                 <div key={i} className="grid grid-cols-4 gap-1 mb-1">
-                  <Input className="col-span-2 h-7 text-xs" placeholder="Material" value={m.material} onChange={e => updateMaterial(i, 'material', e.target.value)} />
-                  <Input type="number" className="h-7 text-xs" placeholder="Cant" value={m.quantity} onChange={e => updateMaterial(i, 'quantity', parseFloat(e.target.value) || 0)} />
+                  <input className="col-span-2 h-7 text-xs border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Material" value={m.material} onChange={e => updateMaterial(i, 'material', e.target.value)} />
+                  <input type="number" className="h-7 text-xs border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Cant" value={m.quantity} onChange={e => updateMaterial(i, 'quantity', parseFloat(e.target.value) || 0)} />
                   <div className="flex gap-1">
-                    <Input type="number" className="h-7 text-xs flex-1" placeholder="€/ud" value={m.unit_price} onChange={e => updateMaterial(i, 'unit_price', parseFloat(e.target.value) || 0)} />
+                    <input type="number" className="h-7 text-xs flex-1 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="€/ud" value={m.unit_price} onChange={e => updateMaterial(i, 'unit_price', parseFloat(e.target.value) || 0)} />
                     <button onClick={() => removeMaterial(i)} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
