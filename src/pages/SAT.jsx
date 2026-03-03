@@ -89,7 +89,7 @@ export default function SAT() {
     if (preContactId && !preEditId && !preViewId) {
       const ct = c.find(co => co.id === preContactId);
       if (ct) {
-        setForm({ ...EMPTY_FORM, contact_id: preContactId, contact_name: `${ct.name} ${ct.surname || ''}`.trim() });
+        setForm({ ...EMPTY_FORM, contact_id: preContactId, contact_name: `${ct.name} ${ct.surname || ''}`.trim(), order_number: getNextAvailableNumber(o.map(x => x.order_number || '')) });
         setDialogOpen(true);
       }
     }
