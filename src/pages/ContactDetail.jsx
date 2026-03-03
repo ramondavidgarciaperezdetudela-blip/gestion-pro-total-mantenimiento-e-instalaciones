@@ -461,29 +461,83 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
 
       {/* Edit Document Dialog */}
       <Dialog open={editDocDialog} onOpenChange={setEditDocDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Editar archivo</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar archivo — {editDocForm.title}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-3">
-            <div>
-              <label className="text-xs text-gray-500">Título</label>
-              <Input value={editDocForm.title} onChange={e => setEditDocForm({ ...editDocForm, title: e.target.value })} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-gray-500">Título</label>
+                <Input value={editDocForm.title} onChange={e => setEditDocForm({ ...editDocForm, title: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Tipo de documento</label>
+                <Select value={editDocForm.doc_type} onValueChange={v => setEditDocForm({ ...editDocForm, doc_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['factura','presupuesto','recibo','ficha_mantenimiento','orden_sat','calculo_termico','calculo_solar','informe','nota','otro'].map(t => (
+                      <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <label className="text-xs text-gray-500">Tipo de documento</label>
-              <Select value={editDocForm.doc_type} onValueChange={v => setEditDocForm({ ...editDocForm, doc_type: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {['factura','presupuesto','recibo','ficha_mantenimiento','orden_sat','calculo_termico','calculo_solar','informe','nota','otro'].map(t => (
-                    <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            {/* Si la descripción contiene HTML (documentos LEGAL/generados), mostrar previsualización */}
+            {editDocForm.description && editDocForm.description.trim().startsWith('<') ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-gray-700">Contenido del documento</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setEditDocForm(f => ({ ...f, _htmlMode: !f._htmlMode }))}
+                      className={`text-xs px-2 py-1 rounded border transition-colors ${editDocForm._htmlMode ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-blue-50 text-blue-700 border-blue-200'}`}
+                    >
+                      {editDocForm._htmlMode ? '← Vista previa' : 'Editar HTML'}
+                    </button>
+                  </div>
+                </div>
+
+                {editDocForm._htmlMode ? (
+                  <textarea
+                    className="w-full border border-input rounded-md px-3 py-2 text-xs font-mono resize-y focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={editDocForm.description}
+                    onChange={e => setEditDocForm({ ...editDocForm, description: e.target.value })}
+                    rows={20}
+                  />
+                ) : (
+                  <div className="border rounded-lg p-4 bg-white overflow-auto max-h-[50vh]">
+                    <CompanyHeader className="pb-3 border-b mb-4" />
+                    <div
+                      className="text-xs"
+                      style={{ lineHeight: '1.6' }}
+                      dangerouslySetInnerHTML={{
+                        __html: editDocForm.description
+                          .replace(/<table/g, '<table style="border-collapse:collapse;width:100%;margin:8px 0"')
+                          .replace(/<td/g, '<td style="border:1px solid #ccc;padding:4px 8px;vertical-align:top"')
+                          .replace(/<th/g, '<th style="border:1px solid #ccc;padding:4px 8px;background:#f3f4f6;font-weight:600;text-align:left"')
+                          .replace(/<h2/g, '<h2 style="font-size:14px;font-weight:700;margin:16px 0 6px;color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:4px"')
+                          .replace(/<h3/g, '<h3 style="font-size:12px;font-weight:600;margin:12px 0 4px;color:#374151"')
+                      }}
+                    />
+                    <div className="mt-6 pt-3 border-t text-[10px] text-gray-400">
+                      Documento generado por sistema informático — Requiere revisión y firma de técnico cualificado
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <label className="text-xs text-gray-500">Descripción / Notas</label>
+                <Textarea rows={5} value={editDocForm.description} onChange={e => setEditDocForm({ ...editDocForm, description: e.target.value })} placeholder="Descripción del documento..." />
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button onClick={saveEditDoc} className="flex-1 bg-blue-600">Guardar cambios</Button>
+              <Button variant="outline" onClick={() => setEditDocDialog(false)}>Cancelar</Button>
             </div>
-            <div>
-              <label className="text-xs text-gray-500">Descripción / Notas</label>
-              <Textarea rows={3} value={editDocForm.description} onChange={e => setEditDocForm({ ...editDocForm, description: e.target.value })} placeholder="Descripción del documento..." />
-            </div>
-            <Button onClick={saveEditDoc} className="w-full bg-blue-600">Guardar cambios</Button>
           </div>
         </DialogContent>
       </Dialog>
