@@ -762,6 +762,47 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           </div>
         </TabsContent>
 
+        {/* LEGALIZACIÓN */}
+        <TabsContent value="legalizacion">
+          <div className="space-y-3 mt-2">
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-sm text-indigo-800">
+              <p className="font-medium mb-1">📄 Documentos de Legalización</p>
+              <p className="text-xs">Genera certificados, memorias y boletines vinculados a este cliente.</p>
+            </div>
+            <Link to={createPageUrl(`LegalDocs?contact_id=${contactId}`)}>
+              <Button className="bg-indigo-600 hover:bg-indigo-700">
+                <FileText className="w-4 h-4 mr-2" />Generar documento de legalización
+              </Button>
+            </Link>
+            {/* Mostrar documentos de legalización guardados */}
+            {documents.filter(d => d.title?.startsWith('LEGAL:')).map(d => (
+              <Card key={d.id} className="hover:shadow-sm">
+                <CardContent className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{d.title.replace('LEGAL: ', '')}</p>
+                      <p className="text-xs text-gray-500">{fmtDate(d.date)}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Link to={createPageUrl(`LegalDocs?contact_id=${contactId}`)}>
+                        <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100 cursor-pointer">
+                          <Edit className="w-3 h-3" />Editar
+                        </span>
+                      </Link>
+                      <button onClick={() => deleteDocument(d.id)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {documents.filter(d => d.title?.startsWith('LEGAL:')).length === 0 && (
+              <p className="text-gray-400 text-sm text-center py-4">Sin documentos de legalización guardados</p>
+            )}
+          </div>
+        </TabsContent>
+
         {/* MAQUINARIA */}
         <TabsContent value="maquinaria">
           <ClientMachineTab contactId={contactId} contactName={`${contact.name} ${contact.surname || ''}`.trim()} />
