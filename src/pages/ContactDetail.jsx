@@ -88,6 +88,8 @@ export default function ContactDetail() {
   const [editDocDialog, setEditDocDialog] = useState(false);
   const [editingDoc, setEditingDoc] = useState(null);
   const [editDocForm, setEditDocForm] = useState({ title: '', doc_type: 'otro', description: '' });
+  const [satDialog, setSatDialog] = useState(null); // { order, mode }
+  const [satDialogMode, setSatDialogMode] = useState('view');
   const [photoUploading, setPhotoUploading] = useState(false);
   const [aiReportLoading, setAiReportLoading] = useState(false);
   const [aiReport, setAiReport] = useState('');
