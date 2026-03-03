@@ -773,46 +773,88 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
             <Button size="sm" variant="outline" onClick={() => setUploadDialog(true)}>
               <Upload className="w-4 h-4 mr-1" />Subir documento
             </Button>
-            {documents.map(d => (
-              <Card key={d.id} className="hover:shadow-md">
-                <CardContent className="p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{d.title}</p>
-                      <p className="text-xs text-gray-500">{d.doc_type?.replace(/_/g, ' ')} | {fmtDate(d.date)}</p>
-                      {d.description && <p className="text-xs text-gray-400 truncate">{d.description}</p>}
+            {documents.map(d => {
+              const isHtmlDoc = d.description && d.description.trim().startsWith('<');
+              const openDocPreview = () => {
+                const w = window.open('', '_blank');
+                if (isHtmlDoc) {
+                  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${d.title}</title><style>
+                    body{font-family:Arial,sans-serif;padding:20px;max-width:900px;margin:0 auto;font-size:10px;line-height:1.6}
+                    h2{font-size:14px;font-weight:700;color:#1e3a5f;border-bottom:2px solid #0ea5e9;padding-bottom:6px}
+                    h3{font-size:12px;font-weight:600;color:#374151}
+                    table{width:100%;border-collapse:collapse;margin:8px 0}
+                    td,th{border:1px solid #ccc;padding:4px 8px;vertical-align:top}
+                    th{background:#f3f4f6;font-weight:600;text-align:left}
+                    .header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #e5e7eb;padding-bottom:10px;margin-bottom:14px}
+                    .footer{margin-top:20px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:8px;color:#9ca3af;text-align:center}
+                    @media print{body{padding:10px}}
+                  </style></head><body>
+                  <div class="header"><div><strong style="font-size:13px">${d.title}</strong><br/><span style="color:#64748b;font-size:9px">Cliente: ${contact.name} ${contact.surname||''} | Fecha: ${d.date || ''}</span></div></div>
+                  ${d.description}
+                  <div class="footer">Documento generado — Requiere revisión y firma de técnico cualificado</div>
+                  </body></html>`);
+                } else {
+                  w.document.write(`<!DOCTYPE html><html><head><title>${d.title}</title><style>body{font-family:Arial,sans-serif;padding:20px;font-size:11px}</style></head><body>
+                  <h2>${d.title}</h2>
+                  <p>Cliente: ${contact.name} ${contact.surname||''}</p>
+                  <p>Fecha: ${d.date || ''} | Tipo: ${d.doc_type?.replace(/_/g,' ')}</p>
+                  ${d.description ? `<div style="white-space:pre-wrap;margin-top:12px">${d.description}</div>` : ''}
+                  ${d.file_url ? `<p><a href="${d.file_url}">Ver archivo adjunto</a></p>` : ''}
+                  </body></html>`);
+                }
+                w.document.close();
+              };
+              return (
+                <Card key={d.id} className="hover:shadow-md">
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{d.title}</p>
+                        <p className="text-xs text-gray-500">{d.doc_type?.replace(/_/g, ' ')} | {d.date}</p>
+                        {!isHtmlDoc && d.description && <p className="text-xs text-gray-400 truncate">{d.description}</p>}
+                        {isHtmlDoc && <span className="text-[10px] text-indigo-500 font-medium">📄 Documento HTML generado</span>}
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Badge variant="outline" className="text-[10px]">{d.doc_type?.replace(/_/g,' ')}</Badge>
+                        <button
+                          onClick={() => { if(confirm('¿Eliminar este archivo?')) deleteDocument(d.id); }}
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <Badge variant="outline" className="text-[10px] flex-shrink-0">{d.doc_type?.replace(/_/g,' ')}</Badge>
-                  </div>
-                  <div className="flex gap-1 mt-2 border-t pt-2 flex-wrap">
-                    {d.file_url && (
-                      <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
-                        <Eye className="w-3 h-3" /> Ver
-                      </a>
-                    )}
-                    <button onClick={() => openEditDoc(d)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-50 text-gray-700 hover:bg-gray-100">
-                      <Edit className="w-3 h-3" /> Editar
-                    </button>
-                    {d.file_url && (
-                      <button onClick={() => { const w=window.open('','_blank'); w.document.write(`<html><head><title>${d.title}</title></head><body style="font-family:sans-serif;padding:20px"><h2>${d.title}</h2><p>Cliente: ${contact.name} ${contact.surname||''}</p><p>Fecha: ${fmtDate(d.date)}</p><p>Tipo: ${d.doc_type?.replace(/_/g,' ')}</p>${d.description?`<p>${d.description}</p>`:''}<br/><a href="${d.file_url}">Ver archivo adjunto</a></body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-slate-50 text-slate-700 hover:bg-slate-100">
+                    <div className="flex gap-1 mt-2 border-t pt-2 flex-wrap">
+                      {isHtmlDoc && (
+                        <button onClick={openDocPreview} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                          <Eye className="w-3 h-3" /> Ver impresión
+                        </button>
+                      )}
+                      {d.file_url && (
+                        <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                          <Eye className="w-3 h-3" /> {isHtmlDoc ? 'Adjunto' : 'Ver'}
+                        </a>
+                      )}
+                      <button onClick={() => openEditDoc(d)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-50 text-gray-700 hover:bg-gray-100">
+                        <Edit className="w-3 h-3" /> Editar
+                      </button>
+                      <button onClick={openDocPreview} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-slate-50 text-slate-700 hover:bg-slate-100">
                         <Printer className="w-3 h-3" /> Imprimir
                       </button>
-                    )}
-                    <button onClick={() => sendWhatsApp(`Documento: ${d.title} — ${d.doc_type?.replace(/_/g,' ')} del ${fmtDate(d.date)}${d.file_url ? '\n' + d.file_url : ''}`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
-                      <MessageCircle className="w-3 h-3" /> WA
-                    </button>
-                    {contact.email && (
-                      <button onClick={() => sendEmail(`Documento: ${d.title}`, `Estimado/a ${contact.name},\n\nLe enviamos el documento: ${d.title}\nTipo: ${d.doc_type?.replace(/_/g,' ')}\nFecha: ${fmtDate(d.date)}\n${d.description || ''}\n\nAtentamente`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
-                        <Send className="w-3 h-3" /> Email
+                      <button onClick={() => sendWhatsApp(`Documento: ${d.title} — ${d.doc_type?.replace(/_/g,' ')} del ${d.date}${d.file_url ? '\n' + d.file_url : ''}`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+                        <MessageCircle className="w-3 h-3" /> WA
                       </button>
-                    )}
-                    <button onClick={() => { if(confirm('¿Eliminar?')) deleteDocument(d.id); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
-                      <Trash2 className="w-3 h-3" /> Eliminar
-                    </button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                      {contact.email && (
+                        <button onClick={() => sendEmail(`Documento: ${d.title}`, `Estimado/a ${contact.name},\n\nLe enviamos el documento: ${d.title}\nTipo: ${d.doc_type?.replace(/_/g,' ')}\nFecha: ${d.date}\n\nAtentamente`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                          <Send className="w-3 h-3" /> Email
+                        </button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
             {documents.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Sin archivos</p>}
           </div>
         </TabsContent>
