@@ -68,6 +68,11 @@ export default function Maintenance() {
     if (editing) {
       await base44.entities.MaintenanceSheet.update(editing.id, data);
     } else {
+      // Re-calcular número justo antes de guardar (por si otro guardó mientras tanto)
+      const latest = await base44.entities.MaintenanceSheet.list('-date', 500);
+      if (!data.sheet_number || data.sheet_number === getNextAvailableNumber(latest.filter(x => x.id !== editing?.id).map(x => x.sheet_number || ''))) {
+        data.sheet_number = getNextAvailableNumber(latest.map(x => x.sheet_number || ''));
+      }
       const saved = await base44.entities.MaintenanceSheet.create(data);
       if (form.contact_id) {
         await base44.entities.ClientDocument.create({
