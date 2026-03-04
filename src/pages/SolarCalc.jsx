@@ -305,6 +305,11 @@ export default function SolarCalc() {
           />
         </TabsContent>
 
+        {/* ═══ INVERSORES ═══ */}
+        <TabsContent value="inversores" className="mt-4">
+          <InverterComparison targetKwp={result.totalKwp} />
+        </TabsContent>
+
         {/* ═══ PLANO SOLAR ═══ */}
         <TabsContent value="situacion">
           <SolarSiteReport
