@@ -544,13 +544,38 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-2">
+                  <div className="col-span-2 relative">
                     <label className="text-xs text-gray-500">Ciudad / Municipio</label>
-                    <Input value={city} onChange={e => {
-                      setCity(e.target.value);
-                      if (e.target.value.length >= 3) fetchPostalCode(e.target.value, country);
-                      triggerAutoSearch(street, streetNum, e.target.value, postalCode, country);
-                    }} className="mt-1 h-8 text-xs" placeholder="Ciudad" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
+                    <Input
+                      value={city}
+                      onChange={e => {
+                        setCity(e.target.value);
+                        searchCitySuggestions(e.target.value);
+                        triggerAutoSearch(street, streetNum, e.target.value, postalCode, country);
+                      }}
+                      onFocus={() => setCityInputFocused(true)}
+                      onBlur={() => setTimeout(() => setCityInputFocused(false), 200)}
+                      className="mt-1 h-8 text-xs"
+                      placeholder="Escribe para buscar municipio..."
+                      onKeyDown={e => e.key === 'Enter' && searchAddress()}
+                      autoComplete="off"
+                    />
+                    {cityInputFocused && citySuggestions.length > 0 && (
+                      <div className="absolute z-[2000] top-full left-0 right-0 mt-0.5 bg-white border border-blue-200 rounded-lg shadow-xl max-h-52 overflow-y-auto">
+                        {citySuggestions.map((s, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onMouseDown={() => selectCity(s)}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-gray-100 last:border-0"
+                          >
+                            <div className="font-medium text-gray-800 truncate">{s.city || s.display.split(',')[0]}</div>
+                            <div className="text-gray-400 truncate text-[10px]">{s.display}</div>
+                            {s.postcode && <span className="text-blue-500 text-[10px]">CP: {s.postcode}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 flex items-center gap-1">
