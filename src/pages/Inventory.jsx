@@ -120,6 +120,21 @@ export default function Inventory() {
     setUploadingStock(false);
   };
 
+  const handleCmPhotoUpload = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    setUploadingCm(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setCmForm(prev => ({ ...prev, photo_url: file_url }));
+    setUploadingCm(false);
+  };
+
+  const handleSaveCm = async () => {
+    if (!cmForm.name) return;
+    if (editingCm) await base44.entities.ClientMachine.update(editingCm.id, cmForm);
+    else await base44.entities.ClientMachine.create(cmForm);
+    setCmDialog(false); setEditingCm(null); setCmForm(EMPTY_CM); loadAll();
+  };
+
   const filteredEq = equipment.filter(e =>
     `${e.name} ${e.brand} ${e.model} ${e.serial_number}`.toLowerCase().includes(eqSearch.toLowerCase())
   );
