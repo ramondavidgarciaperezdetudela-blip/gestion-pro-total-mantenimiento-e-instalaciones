@@ -954,21 +954,13 @@ export default function SolarBatteryCalc() {
 
         {/* ═══ TAB RENTABILIDAD PVGIS ═════════════════════════════════════════ */}
         <TabsContent value="rentabilidad" className="mt-4">
-          {solarResult ? (
-            <PVGISReport
-              totalKwp={solarResult.totalKwp}
-              numPanels={solarResult.numPanels}
-              panelW={parseInt(solarForm.panel_power_w) || 400}
-              contactName={solarForm.contact_name}
-              contactId={solarForm.contact_id}
-            />
-          ) : (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center text-amber-700">
-              <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="font-semibold">Primero calcula la instalación solar en la pestaña "Cálculo Solar"</p>
-              <p className="text-xs mt-1 text-amber-600">El informe PVGIS se generará automáticamente con los datos calculados.</p>
-            </div>
-          )}
+          <PVGISReport
+            totalKwp={solarResult ? solarResult.totalKwp : (combResult ? combResult.solar.totalKwp : ((parseInt(solarForm.num_panels)||8) * (parseInt(solarForm.panel_power_w)||400) / 1000))}
+            numPanels={solarResult ? solarResult.numPanels : (combResult ? combResult.solar.numPanels : (parseInt(solarForm.num_panels)||8))}
+            panelW={parseInt(solarForm.panel_power_w) || 400}
+            contactName={solarForm.contact_name || combForm.contact_name}
+            contactId={solarForm.contact_id || combForm.contact_id}
+          />
         </TabsContent>
 
         {/* ═══ TAB INVERSORES ═════════════════════════════════════════════════ */}
