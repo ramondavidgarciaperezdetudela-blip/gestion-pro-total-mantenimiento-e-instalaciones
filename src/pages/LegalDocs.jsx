@@ -449,6 +449,19 @@ export default function LegalDocs() {
     a.click();
   };
 
+  const downloadStandardTemplates = async () => {
+    try {
+      setGenerating(true);
+      const res = await base44.functions.invoke('downloadLegalDocuments');
+      toast.success(`✅ ${res.data.message}`);
+      // Recargar templates
+      loadDefaultTemplates();
+    } catch (e) {
+      toast.error('Error descargando plantillas: ' + e.message);
+    }
+    setGenerating(false);
+  };
+
   const loadSavedDocContent = (doc) => {
     setDocContent(doc.description || '');
     setEditContent(doc.description || '');
