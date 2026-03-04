@@ -310,6 +310,44 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
         </div>
       </div>
 
+      {/* ─── Vincular a cliente + guardar ─── */}
+      <Card className="border-green-200 bg-green-50">
+        <CardContent className="p-3 flex flex-wrap items-center gap-3">
+          <Users className="w-5 h-5 text-green-700 flex-shrink-0" />
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-xs text-green-800 font-semibold block mb-1">Vincular informe a cliente</label>
+            <Select value={selectedContactId} onValueChange={v => {
+              setSelectedContactId(v);
+              const c = contacts.find(co => co.id === v);
+              if (c) setClientName(`${c.name} ${c.surname || ''}`.trim());
+              setSavedDocId(null);
+            }}>
+              <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Seleccionar cliente..." /></SelectTrigger>
+              <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <Button
+            onClick={saveToClient}
+            disabled={!selectedContactId && !contactId}
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Save className="w-4 h-4 mr-1" />
+            {savedDocId ? 'Actualizar en ficha' : 'Guardar en ficha cliente'}
+          </Button>
+          {savedMsg && (
+            <span className="text-xs text-green-700 font-semibold flex items-center gap-1">
+              <CheckCircle className="w-4 h-4" />{savedMsg}
+            </span>
+          )}
+          {selectedContactId && !savedMsg && (
+            <span className="text-xs text-green-600 flex items-center gap-1">
+              <UserCheck className="w-4 h-4" />Vinculado: <strong>{clientName}</strong>
+            </span>
+          )}
+        </CardContent>
+      </Card>
+
       {/* ═══ SECCIÓN 1: GEOLOCALIZACIÓN ═══ */}
       <Card className="border-blue-300">
         <div className="bg-blue-600 text-white px-4 py-3 rounded-t-lg flex items-center gap-2">
