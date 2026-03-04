@@ -577,9 +577,15 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
             <div className="mt-3 bg-blue-50 rounded-lg p-3 grid grid-cols-2 gap-2 text-xs">
               <div><span className="text-gray-500">Latitud GPS:</span> <strong>{typeof lat === 'number' ? lat.toFixed(6) : lat}</strong></div>
               <div><span className="text-gray-500">Longitud GPS:</span> <strong>{typeof lng === 'number' ? lng.toFixed(6) : lng}</strong></div>
-              {refCatastral && <div className="col-span-2"><span className="text-gray-500">Ref. Catastral:</span> <strong>{refCatastral}</strong></div>}
+              {refCatastral
+                ? <div className="col-span-2"><span className="text-gray-500">Ref. Catastral:</span> <strong>{refCatastral}</strong></div>
+                : <div className="col-span-2 text-orange-600 text-[10px]">
+                    Sin ref. catastral —{' '}
+                    <a href="https://www1.sedecatastro.gob.es/Cartografia/mapa.aspx?buscar=S" target="_blank" rel="noopener noreferrer" className="underline font-semibold">buscar manualmente →</a>
+                  </div>
+              }
               <div className="col-span-2">
-                <a href={`https://www.sedecatastro.gob.es/Cartografia/mapa.aspx?del=&mun=&refcat=${refCatastral}`} target="_blank" className="text-blue-600 hover:underline text-[10px]">
+                <a href={refCatastral ? `https://www1.sedecatastro.gob.es/Cartografia/mapa.aspx?buscar=S` : `https://www1.sedecatastro.gob.es/Cartografia/mapa.aspx?buscar=S`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-[10px]">
                   🔗 Ver en Catastro
                 </a>
                 {' · '}
