@@ -300,6 +300,7 @@ function EquipmentTableBat({ items }) {
             <th className="p-2 text-left">Dónde comprar</th>
             <th className="p-2 text-left">Notas</th>
             <th className="p-2 text-right w-20">Precio ref.</th>
+            <th className="p-2 text-left">Precio proveedor</th>
           </tr>
         </thead>
         <tbody>
@@ -312,6 +313,7 @@ function EquipmentTableBat({ items }) {
               <td className="border-b border-gray-100 p-2 text-green-700">{m.shop}</td>
               <td className="border-b border-gray-100 p-2 text-gray-500">{m.notes}</td>
               <td className="border-b border-gray-100 p-2 text-right font-semibold text-gray-700">{m.price_ref}</td>
+              <td className="border-b border-gray-100 p-2"><SupplierPriceLookup materialName={m.equipo} defaultPrice={m.price_ref} /></td>
             </tr>
           ))}
         </tbody>
