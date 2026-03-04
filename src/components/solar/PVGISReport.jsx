@@ -543,7 +543,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                   </div>
                   <div className="col-span-1">
                     <label className="text-xs text-gray-500">Número</label>
-                    <Input value={streetNum} onChange={e => { setStreetNum(e.target.value); triggerAutoSearch(street, e.target.value, city, postalCode, country); }} className="mt-1 h-8 text-xs" placeholder="Nº" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
+                    <Input value={streetNum} onChange={e => { setStreetNum(e.target.value); triggerAutoSearch(street, e.target.value, city, province, postalCode, country); }} className="mt-1 h-8 text-xs" placeholder="Nº" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
