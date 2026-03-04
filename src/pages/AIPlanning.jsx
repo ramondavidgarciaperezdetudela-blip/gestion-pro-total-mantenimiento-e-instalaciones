@@ -414,6 +414,9 @@ export default function AIPlanning() {
                   </div>
                   <div className="flex gap-2 flex-wrap no-print">
                     <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(plan.content)}>Copiar</Button>
+                    <Button size="sm" variant={editingPlan ? 'default' : 'outline'} onClick={() => setEditingPlan(e => !e)}>
+                      {editingPlan ? <><Check className="w-3 h-3 mr-1" />Listo</> : <><Edit className="w-3 h-3 mr-1" />Editar</>}
+                    </Button>
                     {selectedContact && selectedContact !== 'none' && (
                       <Button size="sm" variant="outline" onClick={savePlan}><Save className="w-3 h-3 mr-1" />Guardar en cliente</Button>
                     )}
@@ -428,9 +431,18 @@ export default function AIPlanning() {
                     <h2 className="text-lg font-bold">Plan de Proyecto: {plan.title}</h2>
                     {plan.client && <p className="text-sm text-gray-500">Cliente: {plan.client} · Generado: {plan.date}</p>}
                   </div>
-                  <ReactMarkdown className="text-xs prose prose-sm max-w-none prose-headings:text-gray-800 prose-headings:font-bold prose-h2:text-sm prose-h3:text-xs [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-1 [&_th]:border [&_th]:border-gray-300 [&_th]:p-1 [&_th]:bg-gray-100 prose-ul:list-disc prose-ol:list-decimal">
-                    {plan.content}
-                  </ReactMarkdown>
+                  {editingPlan ? (
+                    <Textarea
+                      value={plan.content}
+                      onChange={e => setPlan(p => ({ ...p, content: e.target.value }))}
+                      rows={30}
+                      className="font-mono text-xs"
+                    />
+                  ) : (
+                    <ReactMarkdown className="text-xs prose prose-sm max-w-none prose-headings:text-gray-800 prose-headings:font-bold prose-h2:text-sm prose-h3:text-xs [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:p-1 [&_th]:border [&_th]:border-gray-300 [&_th]:p-1 [&_th]:bg-gray-100 prose-ul:list-disc prose-ol:list-decimal">
+                      {plan.content}
+                    </ReactMarkdown>
+                  )}
                   <div className="mt-6 pt-3 border-t text-[10px] text-gray-400">
                     Plan generado por IA · {plan.date} · Adaptar según condiciones reales de la instalación
                   </div>
