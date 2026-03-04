@@ -594,7 +594,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-xs text-gray-500">País</label>
-                    <Input value={country} onChange={e => { setCountry(e.target.value); triggerAutoSearch(street, streetNum, city, postalCode, e.target.value); }} className="mt-1 h-8 text-xs" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
+                    <Input value={country} onChange={e => { setCountry(e.target.value); triggerAutoSearch(street, streetNum, city, province, postalCode, e.target.value); }} className="mt-1 h-8 text-xs" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
                   </div>
                   <div>
                    <label className="text-xs text-gray-500 flex items-center gap-1">
