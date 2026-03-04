@@ -73,6 +73,18 @@ function MapClickHandler({ onMapClick }) {
   return null;
 }
 
+// ─── Componente para mover la vista del mapa ─────────────────────────────────
+import { useMap } from 'react-leaflet';
+function FlyToLocation({ center, zoom = 16 }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center && center[0] && center[1]) {
+      map.flyTo(center, zoom, { animate: true, duration: 1 });
+    }
+  }, [center[0], center[1]]);
+  return null;
+}
+
 export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 400, contactName = '', contactId = '' }) {
   const printRef = useRef(null);
   const [mapKey, setMapKey] = useState(0);
