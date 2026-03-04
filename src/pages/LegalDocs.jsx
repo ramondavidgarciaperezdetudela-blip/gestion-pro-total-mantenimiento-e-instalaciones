@@ -472,14 +472,34 @@ export default function LegalDocs() {
 
   return (
     <div className="space-y-4 max-w-5xl">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
-          <FileText className="w-6 h-6 text-white" />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
+            <FileText className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Documentos de Legalización</h1>
+            <p className="text-sm text-gray-500">Genera, edita y guarda documentos oficiales vinculados a cada cliente</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold">Documentos de Legalización</h1>
-          <p className="text-sm text-gray-500">Genera, edita y guarda documentos oficiales vinculados a cada cliente</p>
-        </div>
+        <Button 
+          onClick={downloadStandardTemplates}
+          disabled={generating}
+          variant="outline"
+          className="gap-2 whitespace-nowrap"
+        >
+          {generating ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Descargando...
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4" />
+              Descargar plantillas
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Selector de cliente global */}
