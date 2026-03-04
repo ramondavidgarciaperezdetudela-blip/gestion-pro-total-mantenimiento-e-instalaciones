@@ -75,7 +75,7 @@ function MapClickHandler({ onMapClick }) {
 
 // ─── Componente para mover la vista del mapa ─────────────────────────────────
 function FlyToLocation({ center, zoom = 16 }) {
-  const map = useMap(); // useMap importado arriba junto a MapContainer
+  const map = useMap();
   useEffect(() => {
     if (center && center[0] && center[1]) {
       map.flyTo(center, zoom, { animate: true, duration: 1 });
