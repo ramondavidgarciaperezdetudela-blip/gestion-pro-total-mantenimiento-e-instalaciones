@@ -11,7 +11,7 @@ import {
   Building2, FolderOpen, Zap, BarChart3, Clock, AlertCircle,
   StickyNote, Package, Battery, Palette, CreditCard, Bell, Download,
   TrendingUp, TrendingDown, Euro, CheckCircle, XCircle, AlertTriangle,
-  ArrowRight, Phone, MapPin, ChevronRight, ShoppingCart
+  ArrowRight, Phone, MapPin, ChevronRight, ShoppingCart, Search
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { format, isAfter, isBefore, parseISO, startOfMonth, endOfMonth } from 'date-fns';
@@ -77,6 +77,8 @@ export default function Home() {
   const [supplierSpending, setSupplierSpending] = useState([]);
   const [topSuppliers, setTopSuppliers] = useState([]);
   const [reorderAlerts, setReorderAlerts] = useState([]);
+  const [maintenanceMachines, setMaintenanceMachines] = useState([]);
+  const [stockItems, setStockItems] = useState([]);
 
   useEffect(() => {
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -92,7 +94,8 @@ export default function Home() {
       base44.entities.Supplier.list(),
       base44.entities.SupplierPrice.list('-created_date', 500),
       base44.entities.ClientMachine.list(),
-    ]).then(([appts, contacts, invoices, sat, comp, maintenance, suppliers, prices, machines]) => {
+      base44.entities.StockItem.list('-updated_date', 100),
+    ]).then(([appts, contacts, invoices, sat, comp, maintenance, suppliers, prices, machines, stock]) => {
       setAppointments(appts);
       if (comp.length > 0) setCompany(comp[0]);
 
@@ -155,14 +158,27 @@ export default function Home() {
       });
       setReorderAlerts(reorder);
 
+      // Máquinas con mantenimiento próximo
+       const machinesWithMaint = machines.filter(m => {
+         if (!m.next_maintenance_date || m.status !== 'operativo') return false;
+         const nextDate = new Date(m.next_maintenance_date);
+         const daysUntil = Math.ceil((nextDate - new Date()) / 86400000);
+         return daysUntil <= 30 && daysUntil > 0;
+       }).slice(0, 5);
+       setMaintenanceMachines(machinesWithMaint);
+
+       // Stock bajo
+       const lowStock = stock.filter(s => (s.quantity || 0) <= (s.min_stock || 0)).slice(0, 6);
+       setStockItems(lowStock);
+
       // Alertas generales
-      const newAlerts = [];
-      if (overdueInvoices > 0) newAlerts.push({ type: 'danger', text: `${overdueInvoices} factura(s) vencidas sin cobrar`, page: 'Documents' });
-      if (pendingAmount > 500) newAlerts.push({ type: 'warning', text: `${pendingAmount.toFixed(0)}€ pendientes de cobro`, page: 'Documents' });
-      if (satPending > 3) newAlerts.push({ type: 'warning', text: `${satPending} órdenes SAT pendientes`, page: 'SAT' });
-      if (maintenanceDue > 0) newAlerts.push({ type: 'warning', text: `${maintenanceDue} equipo(s) con mantenimiento próximo`, page: 'Maintenance' });
-      reorder.forEach(r => newAlerts.push({ type: 'warning', text: `Revisar pedido a ${r.name} (${r.daysLeft <= 0 ? 'HOY' : `en ${r.daysLeft} días`})`, page: 'Suppliers' }));
-      setAlerts(newAlerts);
+       const newAlerts = [];
+       if (overdueInvoices > 0) newAlerts.push({ type: 'danger', text: `${overdueInvoices} factura(s) vencidas sin cobrar`, page: 'Documents' });
+       if (pendingAmount > 500) newAlerts.push({ type: 'warning', text: `${pendingAmount.toFixed(0)}€ pendientes de cobro`, page: 'Documents' });
+       if (satPending > 3) newAlerts.push({ type: 'warning', text: `${satPending} órdenes SAT pendientes`, page: 'SAT' });
+       if (maintenanceDue > 0) newAlerts.push({ type: 'warning', text: `${maintenanceDue} equipo(s) con mantenimiento próximo`, page: 'Maintenance' });
+       reorder.forEach(r => newAlerts.push({ type: 'warning', text: `Revisar pedido a ${r.name} (${r.daysLeft <= 0 ? 'HOY' : `en ${r.daysLeft} días`})`, page: 'Suppliers' }));
+       setAlerts(newAlerts);
     });
   }, []);
 
@@ -271,26 +287,80 @@ export default function Home() {
       </div>
 
       {/* Alertas de pedidos próximos */}
-      {reorderAlerts.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-800"><Bell className="w-4 h-4" />Pedidos pendientes de revisar</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {reorderAlerts.map((r, i) => (
-              <Link key={i} to={createPageUrl('Suppliers')}>
-                <div className="flex items-center gap-2 bg-white border border-amber-200 rounded-lg p-2 hover:shadow-sm transition-shadow">
-                  <Building2 className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium truncate">{r.name}</p>
-                    <p className="text-[10px] text-amber-600 font-semibold">{r.daysLeft <= 0 ? '⚠ HOY' : `En ${r.daysLeft} días`}</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+       {reorderAlerts.length > 0 && (
+         <Card className="border-amber-200 bg-amber-50">
+           <CardHeader className="pb-2">
+             <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-800"><Bell className="w-4 h-4" />Pedidos pendientes de revisar</CardTitle>
+           </CardHeader>
+           <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2">
+             {reorderAlerts.map((r, i) => (
+               <Link key={i} to={createPageUrl('Suppliers')}>
+                 <div className="flex items-center gap-2 bg-white border border-amber-200 rounded-lg p-2 hover:shadow-sm transition-shadow">
+                   <Building2 className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                   <div className="min-w-0">
+                     <p className="text-xs font-medium truncate">{r.name}</p>
+                     <p className="text-[10px] text-amber-600 font-semibold">{r.daysLeft <= 0 ? '⚠ HOY' : `En ${r.daysLeft} días`}</p>
+                   </div>
+                 </div>
+               </Link>
+             ))}
+           </CardContent>
+         </Card>
+       )}
+
+       {/* Dashboard Mantenimiento + Buscador Repuestos */}
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+         {/* Dashboard Mantenimiento */}
+         <Card>
+           <CardHeader className="pb-2 flex flex-row items-center justify-between">
+             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Wrench className="w-4 h-4 text-cyan-500" />Mantenimiento próximo</CardTitle>
+             <Link to={createPageUrl('Maintenance')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
+           </CardHeader>
+           <CardContent className="space-y-2">
+             {maintenanceMachines.length === 0 ? (
+               <p className="text-xs text-gray-400 py-3 text-center">Sin mantenimiento próximo</p>
+             ) : maintenanceMachines.map(m => {
+               const nextDate = new Date(m.next_maintenance_date);
+               const daysUntil = Math.ceil((nextDate - new Date()) / 86400000);
+               return (
+                 <div key={m.id} className="p-2 bg-cyan-50 rounded-lg border border-cyan-100">
+                   <p className="text-xs font-medium truncate">{m.name}</p>
+                   <div className="flex justify-between items-center mt-1">
+                     <p className="text-[10px] text-gray-500">{m.brand} {m.model}</p>
+                     <Badge className="text-[10px] bg-cyan-100 text-cyan-700">{daysUntil} días</Badge>
+                   </div>
+                 </div>
+               );
+             })}
+           </CardContent>
+         </Card>
+
+         {/* Buscador Repuestos Rápidos Online */}
+         <Card>
+           <CardHeader className="pb-2 flex flex-row items-center justify-between">
+             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Search className="w-4 h-4 text-emerald-500" />Stock bajo - Buscar repuestos</CardTitle>
+             <Link to={createPageUrl('Inventory')} className="text-xs text-blue-500 hover:underline">Ver inventario</Link>
+           </CardHeader>
+           <CardContent className="space-y-2">
+             {stockItems.length === 0 ? (
+               <p className="text-xs text-gray-400 py-3 text-center">Stock en niveles óptimos</p>
+             ) : stockItems.map(item => (
+               <div key={item.id} className="flex items-center justify-between gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                 <div className="min-w-0 flex-1">
+                   <p className="text-xs font-medium truncate">{item.name}</p>
+                   <p className="text-[10px] text-gray-500 truncate">{item.supplier_name || 'Sin proveedor'}</p>
+                 </div>
+                 <div className="flex items-center gap-1.5 flex-shrink-0">
+                   <span className="text-xs font-bold text-emerald-600">{item.quantity || 0} {item.unit}</span>
+                   <Link to={createPageUrl('SupplierProductSearch')} className="bg-emerald-500 hover:bg-emerald-600 text-white p-1.5 rounded-lg transition-colors">
+                     <Search className="w-3 h-3" />
+                   </Link>
+                 </div>
+               </div>
+             ))}
+           </CardContent>
+         </Card>
+       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Citas hoy */}
