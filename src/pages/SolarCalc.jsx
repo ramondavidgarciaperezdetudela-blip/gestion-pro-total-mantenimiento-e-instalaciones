@@ -77,7 +77,9 @@ export default function SolarCalc() {
     contact_id: '', contact_name: '',
     num_panels: 8, panel_power_w: 400, consumption_kwh: 15,
     distance_panels_to_dc_box: 15, distance_inverter_to_batteries: 3, distance_to_ac_box: 8,
+    lat: '', lng: '', ref_catastral: '', tilt: '', azimuth: '',
   });
+  const [activeTab, setActiveTab] = useState('calculo');
   const [result, setResult] = useState(null);
   const [savedId, setSavedId] = useState(null);
   const [savedMsg, setSavedMsg] = useState('');
