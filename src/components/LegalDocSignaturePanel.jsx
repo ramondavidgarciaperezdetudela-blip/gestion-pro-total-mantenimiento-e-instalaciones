@@ -163,9 +163,9 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
             </div>
             <canvas
               ref={technicianCanvasRef}
-              width={300}
-              height={120}
-              className="border border-gray-300 rounded bg-white cursor-crosshair touch-none w-full"
+              width={800}
+              height={300}
+              className="border-2 border-blue-300 rounded bg-white cursor-crosshair touch-none w-full"
               onMouseDown={(e) => startDrawing(e, false)}
               onMouseMove={(e) => draw(e, false)}
               onMouseUp={stopDrawing}
