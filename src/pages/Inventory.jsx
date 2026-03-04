@@ -141,6 +141,9 @@ export default function Inventory() {
   const filteredStock = stock.filter(s =>
     `${s.name} ${s.reference} ${s.barcode} ${s.category}`.toLowerCase().includes(stockSearch.toLowerCase())
   );
+  const filteredCm = clientMachines.filter(m =>
+    `${m.name} ${m.brand} ${m.model} ${m.serial_number} ${m.contact_name}`.toLowerCase().includes(cmSearch.toLowerCase())
+  );
   const lowStock = stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock);
 
   // Barcode scanner: focus input, reads via keyboard (lector USB actúa como teclado)
