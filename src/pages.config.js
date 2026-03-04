@@ -86,6 +86,7 @@ import SparePartsManager from './pages/SparePartsManager';
 import Suppliers from './pages/Suppliers';
 import TecniciansRoutes from './pages/TecniciansRoutes';
 import ThermalCalc from './pages/ThermalCalc';
+import IncidentManagement from './pages/IncidentManagement';
 import __Layout from './Layout.jsx';
 
 
@@ -129,6 +130,7 @@ export const PAGES = {
     "Suppliers": Suppliers,
     "TecniciansRoutes": TecniciansRoutes,
     "ThermalCalc": ThermalCalc,
+    "IncidentManagement": IncidentManagement,
 }
 
 export const pagesConfig = {
