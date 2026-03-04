@@ -115,7 +115,7 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
         <Card className="border-blue-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              📝 Firma Técnico
+              📝 Firma Técnico Frigorista
               {technicianSigned && <Check className="w-4 h-4 text-green-600" />}
             </CardTitle>
           </CardHeader>
@@ -138,6 +138,29 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
                 className="text-sm"
               />
             )}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Nombre técnico responsable</label>
+                <Input
+                  placeholder="Nombre técnico"
+                  value={technicianName}
+                  onChange={(e) => setTechnicianName(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Fecha de la hoja</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    value={technicianDate}
+                    onChange={(e) => setTechnicianDate(e.target.value)}
+                    className="text-sm flex-1"
+                  />
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+            </div>
             <canvas
               ref={technicianCanvasRef}
               width={300}
