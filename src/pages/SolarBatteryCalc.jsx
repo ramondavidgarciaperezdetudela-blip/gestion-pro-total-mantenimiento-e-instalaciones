@@ -946,6 +946,18 @@ export default function SolarBatteryCalc() {
 
               <AIReportPanel tipo="combinado" datos={{ solar: { numPanels: combResult.solar.numPanels, totalKwp: combResult.solar.totalKwp, dailyProduction: combResult.solar.dailyProduction, yearlyProduction: combResult.solar.yearlyProduction, inverterKw: combResult.solar.inverterKw }, bat: { numBaterias: combResult.bat.numBaterias, energiaTotalKwh: combResult.bat.energiaTotalKwh, potenciaInversorKw: combResult.bat.potenciaInversorKw, autonomiaDias: combResult.bat.autonomiaDias, tipoRed: combResult.bat.tipoRed }, consumoDiario: combForm.consumo_diario, cliente: combForm.contact_name }} />
 
+              {/* ═══ PVGIS INTEGRADO COMBINADO ═══ */}
+              <div className="border-t-4 border-teal-500 pt-4">
+                <p className="font-bold text-teal-700 text-base mb-3">📈 Informe PVGIS / Rentabilidad — en tiempo real</p>
+                <PVGISReport
+                  totalKwp={combResult.solar.totalKwp}
+                  numPanels={combResult.solar.numPanels}
+                  panelW={parseInt(combForm.panel_power_w) || 400}
+                  contactName={combForm.contact_name}
+                  contactId={combForm.contact_id}
+                />
+              </div>
+
               <div className="flex gap-2 flex-wrap no-print items-center pt-2 border-t border-gray-100">
                 <PrintButton contentRef={combPrintRef} title="Sistema Completo Solar + Baterías" />
                 {!combEditing && !combSavedId && (
