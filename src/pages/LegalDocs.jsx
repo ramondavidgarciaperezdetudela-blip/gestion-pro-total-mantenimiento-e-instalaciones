@@ -244,7 +244,13 @@ DATOS PARA EL DOCUMENTO:
 ${baseInfo}
 Datos específicos: ${specific}
 
-El documento debe estar en español, ser profesional y completo, con estructura oficial numerada. Usa <h2>, <h3>, <p>, <table> en HTML. El resultado debe ser HTML listo para insertar en un documento.`;
+REGLAS DE FORMATO ESTRICTAS (seguir siempre igual):
+- Responde ÚNICAMENTE con HTML puro. NUNCA uses bloques de código markdown (\`\`\`html), NUNCA uses triple backtick.
+- Estructura SIEMPRE: <h2> para secciones principales numeradas (1., 2., 3...), <h3> para subsecciones, <p> para texto, <table> para datos técnicos.
+- Las tablas SIEMPRE con este formato exacto: <table border="1" style="border-collapse:collapse;width:100%"><thead><tr><th>...</th></tr></thead><tbody><tr><td>...</td></tr></tbody></table>
+- El documento en español, profesional y completo con estructura oficial.
+- NO incluyas <!DOCTYPE>, <html>, <head>, <body> — solo el contenido interior del documento.
+- El resultado debe ser siempre del mismo tipo de estructura para el mismo tipo de documento.`;
 }
 
 export default function LegalDocs() {
