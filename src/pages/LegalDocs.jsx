@@ -327,6 +327,7 @@ export default function LegalDocs() {
   };
 
   const saveEdit = () => {
+    // editContent se actualiza en onInput, pero por si acaso también leemos el div
     setDocContent(editContent);
     setEditing(false);
   };
