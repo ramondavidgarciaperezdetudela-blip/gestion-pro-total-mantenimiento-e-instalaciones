@@ -178,14 +178,36 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Input
-              placeholder="Nombre cliente"
-              value={clientNameInput}
-              onChange={(e) => setClientNameInput(e.target.value)}
-              className="text-sm"
-              readOnly={!!contactName}
-              title={contactName ? 'Autorrelleno desde contacto seleccionado' : ''}
-            />
+            {contacts.length > 0 ? (
+              <>
+                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                  <SelectTrigger className="text-sm"><SelectValue placeholder="Selecciona cliente" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>— O escribe el nombre manualmente —</SelectItem>
+                    {contacts.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} {c.surname || ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!selectedClientId && (
+                  <Input
+                    placeholder="Nombre cliente (manual)"
+                    value={clientNameCustom}
+                    onChange={(e) => setClientNameCustom(e.target.value)}
+                    className="text-sm"
+                  />
+                )}
+              </>
+            ) : (
+              <Input
+                placeholder="Nombre cliente"
+                value={clientNameInput}
+                onChange={(e) => setClientNameInput(e.target.value)}
+                className="text-sm"
+              />
+            )}
             <canvas
               ref={clientCanvasRef}
               width={300}
