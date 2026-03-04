@@ -247,8 +247,8 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
       }
     } catch(e) {}
     setSearchLoading(false);
-    // También buscar ref catastral automáticamente
-    if (street && streetNum && city) fetchRefCatastral(street, streetNum, city, postalCode);
+    // Buscar ref catastral automáticamente (solo si es España)
+    if (country.toLowerCase().includes('espa')) fetchRefCatastral(street, streetNum, city, postalCode);
   };
 
   const searchCatastral = async () => {
