@@ -25,6 +25,7 @@ const quickLinks = [
   { name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500' },
   { name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
   { name: 'Contactos', page: 'Contacts', icon: Users, color: 'bg-emerald-500' },
+  { name: 'Docs Legalización', page: 'LegalDocs', icon: FileText, color: 'bg-indigo-600' },
   { name: 'Electricidad', page: 'ElectricalCalc', icon: Zap, color: 'bg-yellow-500' },
   { name: 'Exportar', page: 'ExportData', icon: Download, color: 'bg-lime-600' },
   { name: 'Factura', page: 'Documents?type=factura', icon: FileText, color: 'bg-violet-500' },
