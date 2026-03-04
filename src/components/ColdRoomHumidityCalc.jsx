@@ -157,6 +157,9 @@ export default function ColdRoomHumidityCalc({ tempCold = 2, presionEvap = 5.72,
   const [temp, setTemp] = useState(tempCold);
   const [pressure, setPressure] = useState(presionEvap);
   const [exterior, setExterior] = useState(tempExterior);
+  const [suppliers, setSuppliers] = useState([]);
+  const [selectedSupplier, setSelectedSupplier] = useState('salvador-escoda');
+  const [materialPrices, setMaterialPrices] = useState({});
   
   const humidityResult = useMemo(() => calcRelativeHumidity(parseFloat(temp), parseFloat(exterior), parseFloat(pressure)), [temp, exterior, pressure]);
   const materials = getMaterials(parseFloat(humidityResult.rh), parseFloat(temp));
