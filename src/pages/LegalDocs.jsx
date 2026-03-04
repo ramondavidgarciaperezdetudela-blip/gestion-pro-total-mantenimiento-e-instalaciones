@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Bot, Loader2, Save, Sun, Zap, Thermometer, Snowflake, Edit, Check, X, FolderOpen, Link, Download } from 'lucide-react';
+import { FileText, Bot, Loader2, Save, Sun, Zap, Thermometer, Snowflake, Edit, Check, X, FolderOpen, Link, Download, Zap as Lightning } from 'lucide-react';
 import { format } from 'date-fns';
 import CompanyHeader from '../components/CompanyHeader';
 import PrintButton from '../components/PrintButton';
