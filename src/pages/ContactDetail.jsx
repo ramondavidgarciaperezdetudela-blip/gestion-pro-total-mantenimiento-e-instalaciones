@@ -1017,7 +1017,48 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
             </Link>
           </div>
         </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
+
+        {/* FOTOS DE EQUIPO INSTALADO */}
+        <TabsContent value="fotos_equipo">
+          <div className="space-y-3 mt-2">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+              <p className="font-medium mb-1">📸 Fotografías del Equipo Instalado</p>
+              <p className="text-xs">Las imágenes se incluirán automáticamente como anexos en los documentos de legalización.</p>
+            </div>
+            <Button size="sm" className="bg-amber-600" onClick={() => photoUploadRef.current?.click()} disabled={uploading}>
+              <Camera className="w-4 h-4 mr-1" />{uploading ? 'Subiendo...' : 'Añadir fotografía'}
+            </Button>
+            <input ref={photoUploadRef} type="file" accept="image/*" className="hidden" onChange={handleEquipmentPhotoUpload} />
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {equipmentPhotos.map(photo => (
+                <Card key={photo.id} className="overflow-hidden hover:shadow-lg">
+                  <div className="aspect-square overflow-hidden bg-gray-100">
+                    <img src={photo.file_url} alt={photo.title} className="w-full h-full object-cover" />
+                  </div>
+                  <CardContent className="p-2">
+                    <p className="text-xs truncate">{photo.title}</p>
+                    <p className="text-[10px] text-gray-400">{photo.date}</p>
+                    <button
+                      onClick={() => deleteEquipmentPhoto(photo.id)}
+                      className="mt-1 w-full flex items-center justify-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100"
+                    >
+                      <Trash2 className="w-3 h-3" /> Eliminar
+                    </button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            {equipmentPhotos.length === 0 && (
+              <div className="text-center py-8 text-gray-400">
+                <Camera className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No hay fotografías del equipo instalado</p>
+                <p className="text-xs">Sube imágenes que se adjuntarán automáticamente a los documentos de legalización</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+        </Tabs>
+        </div>
+        );
+        }
