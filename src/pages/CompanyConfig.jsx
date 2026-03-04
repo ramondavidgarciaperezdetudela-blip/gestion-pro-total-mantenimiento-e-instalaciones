@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, Layout } from 'lucide-react';
 
 function TechnicianManager({ technicians, onChange }) {
-  const [newTech, setNewTech] = useState({ name: '', registration_number: '', certificate_number: '', certificate_type: '' });
+  const [newTech, setNewTech] = useState({ name: '', fgas_carnet: '', rite_certificate: '' });
   const [editing, setEditing] = useState(null);
 
   const addTechnician = () => {
@@ -17,12 +17,11 @@ function TechnicianManager({ technicians, onChange }) {
     const tech = {
       id: Date.now().toString(),
       name: newTech.name.trim(),
-      registration_number: newTech.registration_number || '',
-      certificate_number: newTech.certificate_number || '',
-      certificate_type: newTech.certificate_type || 'refrigeracion'
+      fgas_carnet: newTech.fgas_carnet || '',
+      rite_certificate: newTech.rite_certificate || ''
     };
     onChange([...technicians, tech]);
-    setNewTech({ name: '', registration_number: '', certificate_number: '', certificate_type: '' });
+    setNewTech({ name: '', fgas_carnet: '', rite_certificate: '' });
   };
 
   const updateTechnician = (id, updated) => {
@@ -36,23 +35,16 @@ function TechnicianManager({ technicians, onChange }) {
   return (
     <div className="space-y-3">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
-        <p className="font-medium mb-1">👷 Técnicos con carné y registro</p>
-        <p>Añade técnicos con su número de registro autónomo y número de certificado. Se rellenarán automáticamente en los documentos de legalización.</p>
+        <p className="font-medium mb-1">👷 Técnicos con credenciales</p>
+        <p>Añade técnicos con su carnet F-Gas (gases fluorados) y certificado RITE (climatización). Se rellenarán automáticamente en los documentos de legalización.</p>
       </div>
 
       <div className="border rounded-lg p-4 space-y-3 bg-gray-50">
         <p className="text-sm font-medium">Nuevo técnico</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <Input placeholder="Nombre completo" value={newTech.name} onChange={e => setNewTech({...newTech, name: e.target.value})} />
-          <select value={newTech.certificate_type} onChange={e => setNewTech({...newTech, certificate_type: e.target.value})} className="border rounded-lg px-3 py-2 text-sm">
-            <option value="refrigeracion">🧊 Refrigeración</option>
-            <option value="clima">❄️ Clima</option>
-            <option value="electrico">⚡ Eléctrico</option>
-            <option value="solar">☀️ Solar</option>
-            <option value="fontaneria">💧 Fontanería</option>
-          </select>
-          <Input placeholder="Nº registro autónomo" value={newTech.registration_number} onChange={e => setNewTech({...newTech, registration_number: e.target.value})} />
-          <Input placeholder="Nº carné/certificado" value={newTech.certificate_number} onChange={e => setNewTech({...newTech, certificate_number: e.target.value})} />
+          <Input placeholder="Nº carnet F-Gas (gases fluorados)" value={newTech.fgas_carnet} onChange={e => setNewTech({...newTech, fgas_carnet: e.target.value})} />
+          <Input placeholder="Nº certificado RITE (climatización)" value={newTech.rite_certificate} onChange={e => setNewTech({...newTech, rite_certificate: e.target.value})} />
         </div>
         <Button onClick={addTechnician} className="w-full gap-2">
           <Plus className="w-4 h-4" /> Añadir técnico
@@ -62,48 +54,37 @@ function TechnicianManager({ technicians, onChange }) {
       {technicians.length === 0 && <p className="text-sm text-gray-400 text-center py-4">No hay técnicos. Añade el primero.</p>}
       
       <div className="space-y-2">
-        {technicians.map((tech) => {
-          const certTypeLabel = { refrigeracion: '🧊 Refrigeración', clima: '❄️ Clima', electrico: '⚡ Eléctrico', solar: '☀️ Solar', fontaneria: '💧 Fontanería' };
-          return (
-            <div key={tech.id} className="bg-white rounded-lg border p-3">
-              {editing === tech.id ? (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <Input value={tech.name} onChange={e => updateTechnician(tech.id, {...tech, name: e.target.value})} />
-                    <select value={tech.certificate_type || 'refrigeracion'} onChange={e => updateTechnician(tech.id, {...tech, certificate_type: e.target.value})} className="border rounded-lg px-3 py-2 text-sm">
-                      <option value="refrigeracion">🧊 Refrigeración</option>
-                      <option value="clima">❄️ Clima</option>
-                      <option value="electrico">⚡ Eléctrico</option>
-                      <option value="solar">☀️ Solar</option>
-                      <option value="fontaneria">💧 Fontanería</option>
-                    </select>
-                    <Input placeholder="Nº registro autónomo" value={tech.registration_number || ''} onChange={e => updateTechnician(tech.id, {...tech, registration_number: e.target.value})} />
-                    <Input placeholder="Nº carné/certificado" value={tech.certificate_number || ''} onChange={e => updateTechnician(tech.id, {...tech, certificate_number: e.target.value})} />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => setEditing(null)} className="flex-1">Guardar</Button>
-                    <Button size="sm" variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
-                  </div>
+        {technicians.map((tech) => (
+          <div key={tech.id} className="bg-white rounded-lg border p-3">
+            {editing === tech.id ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <Input value={tech.name} onChange={e => updateTechnician(tech.id, {...tech, name: e.target.value})} />
+                  <Input placeholder="Nº carnet F-Gas" value={tech.fgas_carnet || ''} onChange={e => updateTechnician(tech.id, {...tech, fgas_carnet: e.target.value})} />
+                  <Input placeholder="Nº certificado RITE" value={tech.rite_certificate || ''} onChange={e => updateTechnician(tech.id, {...tech, rite_certificate: e.target.value})} />
                 </div>
-              ) : (
-                <div className="flex items-start justify-between">
-                  <div className="text-sm">
-                    <p className="font-medium">{tech.name}</p>
-                    <p className="text-xs text-gray-500">{certTypeLabel[tech.certificate_type || 'refrigeracion']}</p>
-                    {tech.registration_number && <p className="text-xs text-gray-600">Reg: {tech.registration_number}</p>}
-                    {tech.certificate_number && <p className="text-xs text-gray-600">Carné: {tech.certificate_number}</p>}
-                  </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => setEditing(tech.id)} className="p-1 text-blue-600 hover:bg-blue-50 rounded">✏️</button>
-                    <button onClick={() => removeTechnician(tech.id)} className="p-1 text-red-400 hover:text-red-600">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => setEditing(null)} className="flex-1">Guardar</Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
                 </div>
-              )}
-            </div>
-          );
-        })}
+              </div>
+            ) : (
+              <div className="flex items-start justify-between">
+                <div className="text-sm flex-1">
+                  <p className="font-medium">{tech.name}</p>
+                  {tech.fgas_carnet && <p className="text-xs text-gray-600">🧊 F-Gas: {tech.fgas_carnet}</p>}
+                  {tech.rite_certificate && <p className="text-xs text-gray-600">❄️ RITE: {tech.rite_certificate}</p>}
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button onClick={() => setEditing(tech.id)} className="p-1 text-blue-600 hover:bg-blue-50 rounded">✏️</button>
+                  <button onClick={() => removeTechnician(tech.id)} className="p-1 text-red-400 hover:text-red-600">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -60,7 +60,6 @@ import BusinessCards from './pages/BusinessCards';
 import Catalogs from './pages/Catalogs';
 import ClientPortal from './pages/ClientPortal';
 import ColdRoomCalc from './pages/ColdRoomCalc';
-import CompanyConfig from './pages/CompanyConfig';
 import ContactDetail from './pages/ContactDetail';
 import Contacts from './pages/Contacts';
 import DocumentTemplates from './pages/DocumentTemplates';
@@ -86,9 +85,10 @@ import SolarBatteryCalc from './pages/SolarBatteryCalc';
 import SolarCalc from './pages/SolarCalc';
 import SparePartsManager from './pages/SparePartsManager';
 import Suppliers from './pages/Suppliers';
+import TechnicianFieldWork from './pages/TechnicianFieldWork';
 import TecniciansRoutes from './pages/TecniciansRoutes';
 import ThermalCalc from './pages/ThermalCalc';
-import TechnicianFieldWork from './pages/TechnicianFieldWork';
+import CompanyConfig from './pages/CompanyConfig';
 import __Layout from './Layout.jsx';
 
 
@@ -106,7 +106,6 @@ export const PAGES = {
     "Catalogs": Catalogs,
     "ClientPortal": ClientPortal,
     "ColdRoomCalc": ColdRoomCalc,
-    "CompanyConfig": CompanyConfig,
     "ContactDetail": ContactDetail,
     "Contacts": Contacts,
     "DocumentTemplates": DocumentTemplates,
@@ -132,9 +131,10 @@ export const PAGES = {
     "SolarCalc": SolarCalc,
     "SparePartsManager": SparePartsManager,
     "Suppliers": Suppliers,
+    "TechnicianFieldWork": TechnicianFieldWork,
     "TecniciansRoutes": TecniciansRoutes,
     "ThermalCalc": ThermalCalc,
-    "TechnicianFieldWork": TechnicianFieldWork,
+    "CompanyConfig": CompanyConfig,
 }
 
 export const pagesConfig = {
