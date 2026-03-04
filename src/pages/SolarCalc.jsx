@@ -125,7 +125,7 @@ export default function SolarCalc() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full flex-wrap h-auto gap-1 p-1">
           <TabsTrigger value="calculo" className="flex-1 min-w-[80px]">⚡ Instalación</TabsTrigger>
-          <TabsTrigger value="rentabilidad" className="flex-1 min-w-[80px]">📈 Rentabilidad</TabsTrigger>
+          <TabsTrigger value="rentabilidad" className="flex-1 min-w-[80px]">📈 Rentabilidad / PVGIS</TabsTrigger>
           <TabsTrigger value="inversores" className="flex-1 min-w-[80px]">⚡ Inversores</TabsTrigger>
           <TabsTrigger value="situacion" className="flex-1 min-w-[80px]">🗺️ Plano solar</TabsTrigger>
           <TabsTrigger value="repuestos" className="flex-1 min-w-[80px]">📦 Repuestos</TabsTrigger>
