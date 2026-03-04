@@ -188,31 +188,44 @@ export default function CameraCapture({ onCapture, onCancel, label = 'Capturar f
       )}
 
       {error && (
-        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          {error}
-          <Button
-            onClick={() => {
-              setError('');
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.accept = 'image/*';
-              input.onchange = (e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onload = (ev) => {
-                    onCapture(file, ev.target?.result);
-                  };
-                  reader.readAsDataURL(file);
-                }
-              };
-              input.click();
+        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 space-y-2">
+          <p>{error}</p>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => {
+                setError('');
+                startCamera();
+              }}
+              variant="link"
+              className="h-auto p-0 text-red-700 underline text-xs"
+            >
+              Reintentar cámara
+            </Button>
+            <span className="text-gray-400">o</span>
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="link"
+              className="h-auto p-0 text-red-700 underline text-xs"
+            >
+              Seleccionar archivo
+            </Button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  onCapture(file, ev.target?.result);
+                };
+                reader.readAsDataURL(file);
+              }
             }}
-            variant="link"
-            className="h-auto p-0 text-red-700 underline text-xs mt-2"
-          >
-            O selecciona un archivo
-          </Button>
+          />
         </div>
       )}
 
