@@ -203,14 +203,34 @@ export default function TecniciansRoutes() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Navigation className="w-6 h-6 text-teal-600" /> Optimización de Rutas de Técnicos
         </h1>
-        <Button onClick={() => { setEditingStop(null); setForm({ address: '', lat: 0, lng: 0, duration: 1, description: '', serviceType: 'mantenimiento', cost: 0 }); setDialogOpen(true); }} 
-          disabled={!selectedRoute} className="bg-teal-600">
-          <Plus className="w-4 h-4 mr-1" /> Nueva parada
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={optimizeRouteOrder}
+            disabled={!selectedRoute || stops.length < 2 || optimizingRoute}
+            variant="outline"
+            className="gap-1"
+          >
+            {optimizingRoute ? (
+              <>
+                <Loader className="w-4 h-4 animate-spin" />
+                <span className="hidden sm:inline">Optimizando...</span>
+              </>
+            ) : (
+              <>
+                <Zap className="w-4 h-4" />
+                <span className="hidden sm:inline">Optimizar ruta</span>
+              </>
+            )}
+          </Button>
+          <Button onClick={() => { setEditingStop(null); setForm({ address: '', lat: 0, lng: 0, duration: 1, description: '', serviceType: 'mantenimiento', cost: 0 }); setDialogOpen(true); }} 
+            disabled={!selectedRoute} className="bg-teal-600">
+            <Plus className="w-4 h-4 mr-1" /> Nueva parada
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
