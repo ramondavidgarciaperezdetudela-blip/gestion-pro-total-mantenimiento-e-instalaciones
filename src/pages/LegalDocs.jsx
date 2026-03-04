@@ -807,14 +807,24 @@ export default function LegalDocs() {
 
                          <CardContent className="p-4 space-y-4">
                            {!editing && (
-                             <LegalDocSignaturePanel 
-                               onTechnicianSign={setTechnicianSignature}
-                               onClientSign={setClientSignature}
-                               docContent={docContent}
-                               setDocContent={setDocContent}
-                               technicians={companyData?.technicians || []}
-                               contactName={contact ? `${contact.name} ${contact.surname || ''}`.trim() : ''}
-                             />
+                             <div className="space-y-3">
+                               <LegalDocSignaturePanel 
+                                 onTechnicianSign={setTechnicianSignature}
+                                 onClientSign={setClientSignature}
+                                 docContent={docContent}
+                                 setDocContent={setDocContent}
+                                 technicians={companyData?.technicians || []}
+                                 contactName={contact ? `${contact.name} ${contact.surname || ''}`.trim() : ''}
+                                 contacts={contacts}
+                               />
+                               <SendDocumentEmailPanel
+                                 docContent={docContent}
+                                 selectedDoc={selectedDoc}
+                                 contact={contact}
+                                 companyData={companyData}
+                                 onEmailSent={loadSavedDocs}
+                               />
+                             </div>
                            )}
                 <div ref={printRef}>
                   <CompanyHeader className="pb-3 border-b mb-4" />
