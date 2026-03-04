@@ -351,11 +351,29 @@ export default function LegalDocs() {
       .trim();
   };
 
+  const fillDocumentWithData = (content) => {
+    // Rellenar datos de empresa y cliente automáticamente
+    let filled = content;
+    filled = filled.replace(/{{empresa}}/g, form.empresa || companyData?.company_name || '_______________________');
+    filled = filled.replace(/{{tecnico}}/g, form.tecnico || '_______________________');
+    filled = filled.replace(/{{cliente}}/g, contact?.name || form.cliente || '_______________________');
+    filled = filled.replace(/{{gas}}/g, form.gas || 'R-410A');
+    filled = filled.replace(/{{carga_gas}}/g, form.carga_gas || '__');
+    filled = filled.replace(/{{nif_empresa}}/g, companyData?.nif || form.nif_empresa || 'B00000000');
+    filled = filled.replace(/{{direccion_empresa}}/g, companyData?.address || form.direccion_empresa || '_______________________');
+    filled = filled.replace(/{{tel_empresa}}/g, companyData?.phone || form.tel_empresa || '_______________________');
+    filled = filled.replace(/{{nif_cliente}}/g, contact?.nif || form.nif_cliente || 'XXXXXXXX-X');
+    filled = filled.replace(/{{direccion}}/g, contact?.address || form.direccion || '_______________________');
+    return filled;
+  };
+
   const generate = async () => {
     if (!selectedDoc) return;
     setGenerating(true);
     setDocContent('');
     setEditing(false);
+    setTechnicianSignature(null);
+    setClientSignature(null);
     
     // Check if template exists
     const templateList = templates[activeType] || [];
@@ -363,12 +381,7 @@ export default function LegalDocs() {
     
     if (template && template.content) {
       // Use template and fill with form data
-      let content = template.content;
-      content = content.replace(/{{empresa}}/g, form.empresa || companyData?.company_name || 'EMPRESA');
-      content = content.replace(/{{tecnico}}/g, form.tecnico || 'Técnico');
-      content = content.replace(/{{cliente}}/g, contact?.name || form.cliente || 'Cliente');
-      content = content.replace(/{{gas}}/g, form.gas || 'R-410A');
-      content = content.replace(/{{carga_gas}}/g, form.carga_gas || '__');
+      let content = fillDocumentWithData(template.content);
       setDocContent(content);
       setEditContent(content);
     } else {
@@ -376,8 +389,9 @@ export default function LegalDocs() {
       const prompt = buildPrompt(activeType, selectedDoc.id, form, contact, companyData);
       const res = await base44.integrations.Core.InvokeLLM({ prompt, add_context_from_internet: false });
       const cleaned = cleanHtml(res);
-      setDocContent(cleaned);
-      setEditContent(cleaned);
+      const filled = fillDocumentWithData(cleaned);
+      setDocContent(filled);
+      setEditContent(filled);
     }
     setGenerating(false);
   };
