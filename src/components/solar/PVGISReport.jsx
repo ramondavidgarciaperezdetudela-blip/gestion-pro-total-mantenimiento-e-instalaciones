@@ -1018,7 +1018,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
           <CardContent className="p-4 space-y-4">
             <div>
               <p className="text-sm font-semibold text-gray-700">Producción mensual de energía del sistema fotovoltaico</p>
-              <p className="text-xs text-gray-500">Producción anual de energía fotovoltaica: <strong className="text-blue-700 text-sm">{results.totalKwh.toLocaleString('es-ES')} kWh</strong></p>
+              <p className="text-xs text-gray-500">Producción anual de energía fotovoltaica: <strong className="text-blue-700 text-sm">{results.totalKwh.toLocaleString('es-ES')} kWh</strong> · {effectiveNumPanels} paneles × {effectivePanelW}W = {effectiveKwp.toFixed(2)} kWp</p>
               <p className="text-xs text-gray-400">Variabilidad de un año a otro: <strong>{results.variabilidad}%</strong> ({Math.round(results.totalKwh * results.variabilidad / 100)} kWh)</p>
             </div>
 
