@@ -547,7 +547,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-2 relative" style={{gridColumn: 'span 3'}}>
+                  <div className="col-span-3 relative">
                     <label className="text-xs text-gray-500">Ciudad / Municipio</label>
                     <Input
                       value={city}
@@ -573,18 +573,22 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                             className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-gray-100 last:border-0"
                           >
                             <div className="font-medium text-gray-800 truncate">{s.city || s.display.split(',')[0]}</div>
-                            <div className="text-gray-400 truncate text-[10px]">{s.display}</div>
+                            <div className="text-gray-400 truncate text-[10px]">{s.province ? `${s.province} — ` : ''}{s.display}</div>
                             {s.postcode && <span className="text-blue-500 text-[10px]">CP: {s.postcode}</span>}
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-gray-500">Provincia</label>
+                    <Input value={province} onChange={e => { setProvince(e.target.value); triggerAutoSearch(street, streetNum, city, e.target.value, postalCode, country); }} className="mt-1 h-8 text-xs" placeholder="Provincia" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
+                  </div>
                   <div>
                     <label className="text-xs text-gray-500 flex items-center gap-1">
                       C. Postal {postalLoading && <span className="text-[9px] text-blue-500 animate-pulse">buscando...</span>}
                     </label>
-                    <Input value={postalCode} onChange={e => { setPostalCode(e.target.value); triggerAutoSearch(street, streetNum, city, e.target.value, country); }} className="mt-1 h-8 text-xs" placeholder="00000" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
+                    <Input value={postalCode} onChange={e => { setPostalCode(e.target.value); triggerAutoSearch(street, streetNum, city, province, e.target.value, country); }} className="mt-1 h-8 text-xs" placeholder="00000" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
