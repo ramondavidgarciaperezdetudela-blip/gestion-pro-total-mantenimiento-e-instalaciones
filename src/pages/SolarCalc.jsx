@@ -109,16 +109,25 @@ export default function SolarCalc() {
     setTimeout(() => setSavedMsg(''), 3000);
   };
 
+  const contact = contacts.find(c => c.id === form.contact_id);
+
   return (
-    <div className="space-y-4 max-w-3xl">
+    <div className="space-y-4 max-w-4xl">
       <h1 className="text-2xl font-bold flex items-center gap-2"><Sun className="w-6 h-6 text-amber-500" />Cálculo Solar Fotovoltaico</h1>
 
-      <Tabs value={mode} onValueChange={setMode}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full">
-          <TabsTrigger value="directo" className="flex-1">Por número de paneles</TabsTrigger>
-          <TabsTrigger value="por_consumo" className="flex-1">Por consumo (kWh)</TabsTrigger>
+          <TabsTrigger value="calculo" className="flex-1">⚡ Cálculo instalación</TabsTrigger>
+          <TabsTrigger value="situacion" className="flex-1">🗺️ Plano situación e informe solar</TabsTrigger>
         </TabsList>
-      </Tabs>
+
+      <TabsContent value="calculo">
+        <Tabs value={mode} onValueChange={setMode}>
+          <TabsList className="w-full">
+            <TabsTrigger value="directo" className="flex-1">Por número de paneles</TabsTrigger>
+            <TabsTrigger value="por_consumo" className="flex-1">Por consumo (kWh)</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
       <Card>
         <CardContent className="p-4 space-y-3">
