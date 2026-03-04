@@ -30,15 +30,15 @@ export default function RefrigerantSelector({ value, onChange, label = "Gas refr
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Seleccionar gas..." />
         </SelectTrigger>
-        <SelectContent className="max-h-96">
+        <SelectContent className="max-h-96 p-0">
           {/* Gases modernos - Recomendado */}
           {getGasGroup('moderno').length > 0 && (
             <>
-              <div className="px-2 py-1.5 font-semibold text-xs bg-blue-50 text-blue-700 sticky top-0 z-20">
+              <div className="px-2 py-2 font-semibold text-xs bg-blue-50 text-blue-700 sticky top-0 z-50 border-b border-blue-200">
                 ✓ RECOMENDADO (Moderno)
               </div>
               {getGasGroup('moderno').map(gas => (
-                <SelectItem key={gas.code} value={gas.code} className="text-sm">
+                <SelectItem key={gas.code} value={gas.code} className="text-sm py-1.5">
                   {gas.code} - {gas.name}
                 </SelectItem>
               ))}
@@ -48,11 +48,11 @@ export default function RefrigerantSelector({ value, onChange, label = "Gas refr
           {/* Gases de transición */}
           {getGasGroup('transicion').length > 0 && (
             <>
-              <div className="px-2 py-1.5 font-semibold text-xs bg-yellow-50 text-yellow-700 sticky top-12 z-20">
+              <div className="px-2 py-2 font-semibold text-xs bg-yellow-50 text-yellow-700 sticky z-50 border-b border-yellow-200">
                 ⚠️ TRANSICIÓN (Siendo eliminado)
               </div>
               {getGasGroup('transicion').map(gas => (
-                <SelectItem key={gas.code} value={gas.code} className="text-sm">
+                <SelectItem key={gas.code} value={gas.code} className="text-sm py-1.5">
                   {gas.code} - {gas.name}
                 </SelectItem>
               ))}
@@ -62,11 +62,11 @@ export default function RefrigerantSelector({ value, onChange, label = "Gas refr
           {/* Gases naturales */}
           {getGasGroup('natural').length > 0 && (
             <>
-              <div className="px-2 py-1.5 font-semibold text-xs bg-green-50 text-green-700 sticky top-24 z-20">
+              <div className="px-2 py-2 font-semibold text-xs bg-green-50 text-green-700 sticky z-50 border-b border-green-200">
                 🌱 NATURALES (Ecológicos)
               </div>
               {getGasGroup('natural').map(gas => (
-                <SelectItem key={gas.code} value={gas.code} className="text-sm">
+                <SelectItem key={gas.code} value={gas.code} className="text-sm py-1.5">
                   {gas.code} - {gas.name}
                 </SelectItem>
               ))}
@@ -76,11 +76,11 @@ export default function RefrigerantSelector({ value, onChange, label = "Gas refr
           {/* Gases futuros */}
           {getGasGroup('futuro').length > 0 && (
             <>
-              <div className="px-2 py-1.5 font-semibold text-xs bg-purple-50 text-purple-700 sticky top-36 z-20">
+              <div className="px-2 py-2 font-semibold text-xs bg-purple-50 text-purple-700 sticky z-50 border-b border-purple-200">
                 🔮 FUTURO
               </div>
               {getGasGroup('futuro').map(gas => (
-                <SelectItem key={gas.code} value={gas.code} className="text-sm">
+                <SelectItem key={gas.code} value={gas.code} className="text-sm py-1.5">
                   {gas.code} - {gas.name}
                 </SelectItem>
               ))}
@@ -90,11 +90,11 @@ export default function RefrigerantSelector({ value, onChange, label = "Gas refr
           {/* Gases antiguos - Prohibidos/Legado */}
           {getGasGroup('antiguo').length > 0 && (
             <>
-              <div className="px-2 py-1.5 font-semibold text-xs bg-red-50 text-red-700 sticky top-48 z-20">
+              <div className="px-2 py-2 font-semibold text-xs bg-red-50 text-red-700 sticky z-50 border-b border-red-200">
                 ❌ PROHIBIDO (Legado)
               </div>
               {getGasGroup('antiguo').map(gas => (
-                <SelectItem key={gas.code} value={gas.code} className="text-sm">
+                <SelectItem key={gas.code} value={gas.code} className="text-sm py-1.5">
                   {gas.code} - {gas.name}
                 </SelectItem>
               ))}
