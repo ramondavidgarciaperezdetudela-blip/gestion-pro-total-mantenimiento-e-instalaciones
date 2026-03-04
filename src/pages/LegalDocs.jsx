@@ -299,6 +299,15 @@ export default function LegalDocs() {
   const contact = contacts.find(c => c.id === selectedContact);
   const setF = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  const cleanHtml = (raw) => {
+    // Eliminar bloques ```html ... ``` y similares
+    return raw
+      .replace(/^```html\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/```\s*$/i, '')
+      .trim();
+  };
+
   const generate = async () => {
     if (!selectedDoc) return;
     setGenerating(true);
@@ -306,8 +315,9 @@ export default function LegalDocs() {
     setEditing(false);
     const prompt = buildPrompt(activeType, selectedDoc.id, form, contact, companyData);
     const res = await base44.integrations.Core.InvokeLLM({ prompt, add_context_from_internet: false });
-    setDocContent(res);
-    setEditContent(res);
+    const cleaned = cleanHtml(res);
+    setDocContent(cleaned);
+    setEditContent(cleaned);
     setGenerating(false);
   };
 
