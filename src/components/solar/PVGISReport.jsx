@@ -408,9 +408,29 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
     });
   };
 
-  const handleMapClick = (newLat, newLng) => {
+  const handleMapClick = async (newLat, newLng) => {
     setLat(newLat); setLng(newLng);
     setMarkerPos([newLat, newLng]);
+    
+    // Reverse geocoding — obtener dirección desde coordenadas
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLat.toFixed(6)}&lon=${newLng.toFixed(6)}&addressdetails=1`);
+      const data = await res.json();
+      if (data.address) {
+        const streetInfo = data.address.road || data.address.street || '';
+        const numInfo = data.address.house_number || '';
+        const postalInfo = data.address.postcode || '';
+        const cityInfo = data.address.city || data.address.town || data.address.village || '';
+        const provInfo = data.address.state || data.address.county || '';
+        
+        if (streetInfo) setStreet(streetInfo);
+        if (numInfo) setStreetNum(numInfo);
+        if (postalInfo) setPostalCode(postalInfo);
+        if (cityInfo) setCity(cityInfo);
+        if (provInfo) setProvince(provInfo);
+        if (data.address.country) setCountry(data.address.country);
+      }
+    } catch(e) {}
   };
 
   // ─── Cálculos PVGIS ────────────────────────────────────────────────────────
