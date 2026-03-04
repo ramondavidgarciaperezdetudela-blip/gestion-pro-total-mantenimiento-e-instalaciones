@@ -374,8 +374,10 @@ export default function ColdRoomCalc() {
               <CompanyHeader className="mb-4" />
               <ColdRoomHumidityCalc 
                 tempCold={form.cold_room_temp} 
-                presionEvap={parseFloat(result.evapPressure) || 5.72} // Ensure this is a number for the component
+                presionEvap={parseFloat(result.evapPressure) || 5.72}
                 tempExterior={form.exterior_temp}
+                refrigerantType={form.refrigerant_type}
+                refrigerantWeight={result.refCharge}
               />
               <Card className="border-green-200 mt-4">
                 <CardHeader className="bg-green-50">
@@ -467,16 +469,24 @@ export default function ColdRoomCalc() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <div><label className="text-[10px] text-gray-500">T. cámara (°C)</label><Input type="number" value={form.cold_room_temp} onChange={e => setForm({...form, cold_room_temp: parseFloat(e.target.value)||0})} /></div>
                 <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="number" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)||0})} /></div>
                 <div>
                   <label className="text-[10px] text-gray-500">Presión evaporación (bar)</label>
                   <Input 
                     type="number" 
+                    step="0.1"
                     value={form.humidity_evap_pressure} 
                     onChange={e => setForm({...form, humidity_evap_pressure: parseFloat(e.target.value)||0})} 
                   />
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500">Gas refrigerante</label>
+                  <Select value={form.refrigerant_type} onValueChange={v => setForm({...form, refrigerant_type: v})}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>{REFRIGERANTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -495,6 +505,8 @@ export default function ColdRoomCalc() {
               tempCold={form.cold_room_temp} 
               presionEvap={form.humidity_evap_pressure}
               tempExterior={form.exterior_temp}
+              refrigerantType="R-449A"
+              refrigerantWeight={0}
             />
             <div className="flex gap-2 mt-4">
               <PrintButton contentRef={humidityPrintRef} title="Cálculo Humedad Relativa" />
