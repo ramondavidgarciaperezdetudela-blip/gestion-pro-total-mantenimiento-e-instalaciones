@@ -219,9 +219,9 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   };
 
   // ─── Auto-actualizar mapa al cambiar dirección (debounce 1.2s) ─────────────
-  const triggerAutoSearch = (newStreet, newNum, newCity, newPostal, newCountry) => {
+  const triggerAutoSearch = (newStreet, newNum, newCity, newProvince, newPostal, newCountry) => {
     if (autoSearchTimerRef.current) clearTimeout(autoSearchTimerRef.current);
-    const query = [newStreet, newNum, newPostal, newCity, newCountry].filter(Boolean).join(', ');
+    const query = [newStreet, newNum, newPostal, newCity, newProvince, newCountry].filter(Boolean).join(', ');
     if (!query || query.trim().length < 5) return;
     autoSearchTimerRef.current = setTimeout(async () => {
       try {
@@ -233,7 +233,6 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
           setLat(newLat); setLng(newLng);
           setMarkerPos([newLat, newLng]);
           setMapCenter([newLat, newLng]);
-          setMapKey(k => k + 1);
           if (data[0].address?.postcode && !newPostal) setPostalCode(data[0].address.postcode);
         }
       } catch(e) {}
