@@ -153,10 +153,12 @@ function RegulationProcess({ rh, tempCold }) {
   );
 }
 
-export default function ColdRoomHumidityCalc({ tempCold = 2, presionEvap = 5.72, tempExterior = 25 }) {
+export default function ColdRoomHumidityCalc({ tempCold = 2, presionEvap = 5.72, tempExterior = 25, refrigerantType = 'R-449A', refrigerantWeight = 0 }) {
   const [temp, setTemp] = useState(tempCold);
   const [pressure, setPressure] = useState(presionEvap);
   const [exterior, setExterior] = useState(tempExterior);
+  const [refrigerant, setRefrigerant] = useState(refrigerantType);
+  const [refWeight, setRefWeight] = useState(refrigerantWeight);
   const [suppliers, setSuppliers] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState('salvador-escoda');
   const [materialPrices, setMaterialPrices] = useState({});
@@ -207,7 +209,7 @@ export default function ColdRoomHumidityCalc({ tempCold = 2, presionEvap = 5.72,
         <CardContent className="p-4 space-y-4">
           
           {/* Inputs */}
-          <div className="grid grid-cols-3 gap-3 p-3 bg-purple-50 rounded-lg">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-purple-50 rounded-lg">
             <div>
               <label className="text-xs text-purple-700 font-semibold block mb-1">Temperatura cámara (°C)</label>
               <Input type="number" value={temp} onChange={e => setTemp(e.target.value)} className="text-sm" />
@@ -215,32 +217,57 @@ export default function ColdRoomHumidityCalc({ tempCold = 2, presionEvap = 5.72,
             <div>
               <label className="text-xs text-purple-700 font-semibold block mb-1">Presión evaporación (bar)</label>
               <Input type="number" step="0.1" value={pressure} onChange={e => setPressure(e.target.value)} className="text-sm" />
-              <p className="text-[10px] text-purple-600 mt-1">📍 Presión según gas refrigerante</p>
+              <p className="text-[10px] text-purple-600 mt-1">📍 Según gas refrigerante</p>
             </div>
             <div>
               <label className="text-xs text-purple-700 font-semibold block mb-1">Temperatura exterior (°C)</label>
               <Input type="number" value={exterior} onChange={e => setExterior(e.target.value)} className="text-sm" />
             </div>
+            <div>
+              <label className="text-xs text-purple-700 font-semibold block mb-1">Tipo refrigerante</label>
+              <Select value={refrigerant} onValueChange={setRefrigerant}>
+                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="R-404A">R-404A</SelectItem>
+                  <SelectItem value="R-448A">R-448A</SelectItem>
+                  <SelectItem value="R-449A">R-449A</SelectItem>
+                  <SelectItem value="R-452A">R-452A</SelectItem>
+                  <SelectItem value="R-134a">R-134a</SelectItem>
+                  <SelectItem value="R-290">R-290</SelectItem>
+                  <SelectItem value="R-744">R-744 (CO2)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-4">
+              <label className="text-xs text-purple-700 font-semibold block mb-1">Peso refrigerante instalado (kg) - Opcional</label>
+              <Input type="number" step="0.1" value={refWeight} onChange={e => setRefWeight(parseFloat(e.target.value)||0)} className="text-sm" placeholder="Ej: 2.5 kg" />
+              <p className="text-[10px] text-purple-600 mt-1">💾 Si se conoce, influye en el comportamiento de evaporación</p>
+            </div>
           </div>
 
           {/* Resultados principales */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-gradient-to-br from-purple-100 to-purple-50 p-4 rounded-lg border border-purple-200 text-center">
               <p className="text-3xl font-bold text-purple-700">{humidityResult.rh}%</p>
               <p className="text-sm text-purple-600 font-semibold">Humedad Relativa</p>
-              <Badge className={`mt-2 w-full justify-center ${parseFloat(humidityResult.rh) > 85 ? 'bg-red-100 text-red-800' : parseFloat(humidityResult.rh) < 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+              <Badge className={`mt-2 w-full justify-center text-xs ${parseFloat(humidityResult.rh) > 85 ? 'bg-red-100 text-red-800' : parseFloat(humidityResult.rh) < 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
                 {parseFloat(humidityResult.rh) > 85 ? '⚠️ Muy húmedo' : parseFloat(humidityResult.rh) < 50 ? '⚠️ Muy seco' : '✓ Óptimo'}
               </Badge>
             </div>
             <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-4 rounded-lg border border-blue-200 text-center">
               <p className="text-3xl font-bold text-blue-700">{humidityResult.dewPoint}°C</p>
               <p className="text-sm text-blue-600 font-semibold">Punto de Rocío</p>
-              <p className="text-xs text-blue-500 mt-2">Temp. donde se condensa</p>
+              <p className="text-xs text-blue-500 mt-2">Condensación</p>
             </div>
             <div className="bg-gradient-to-br from-cyan-100 to-cyan-50 p-4 rounded-lg border border-cyan-200 text-center">
               <p className="text-3xl font-bold text-cyan-700">{humidityResult.psat_cold}</p>
-              <p className="text-sm text-cyan-600 font-semibold">Psat Cámara (bar)</p>
-              <p className="text-xs text-cyan-500 mt-2">Presión saturación</p>
+              <p className="text-sm text-cyan-600 font-semibold">Psat (bar)</p>
+              <p className="text-xs text-cyan-500 mt-2">Cámara</p>
+            </div>
+            <div className="bg-gradient-to-br from-green-100 to-green-50 p-4 rounded-lg border border-green-200 text-center">
+              <p className="text-2xl font-bold text-green-700">{refrigerant}</p>
+              <p className="text-sm text-green-600 font-semibold">Refrigerante</p>
+              {refWeight > 0 && <p className="text-xs text-green-500 mt-2">{refWeight} kg</p>}
             </div>
           </div>
 
