@@ -389,7 +389,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
     const lossFactor = (100 - totalPerdidas) / 100;
     const monthly = MESES.map((mes, i) => {
       const hsp = zonaData.hsp_base * SEASONAL[i];
-      const kwh = Math.round(totalKwp * hsp * azFactor * tiltFactor * lossFactor * 30);
+      const kwh = Math.round(kwpCalc * hsp * azFactor * tiltFactor * lossFactor * 30);
       const irr = Math.round(zonaData.monthly_irr[i] * tiltFactor * azFactor);
       const horas = Math.round(kwh / totalKwp);
       const diasMes = [31,28,31,30,31,30,31,31,30,31,30,31][i];
