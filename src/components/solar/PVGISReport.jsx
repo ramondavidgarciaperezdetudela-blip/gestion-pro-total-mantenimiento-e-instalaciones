@@ -913,8 +913,8 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
               {[
                 { v: dimResult.nP, l: 'Paneles necesarios', c: 'bg-amber-100 text-amber-800' },
                 { v: `${dimResult.kwp.toFixed(2)} kWp`, l: 'Potencia total', c: 'bg-orange-100 text-orange-800' },
-                { v: `${dimResult.numBat} × 2,4kWh`, l: 'Baterías LiFePO4', c: 'bg-green-100 text-green-800' },
-                { v: `${dimResult.invKw} kW`, l: 'Inversor híbrido', c: 'bg-blue-100 text-blue-800' },
+                ...(dimResult.numBat > 0 ? [{ v: `${dimResult.numBat} × ${dimResult.batCapacity}kWh`, l: `Baterías ${tipoInstalacion === 'aislada' ? '(2 días)' : ''}`, c: 'bg-green-100 text-green-800' }] : []),
+                { v: `${dimResult.invKw} kW`, l: `Inversor ${tipoInstalacion === 'red' ? 'Red' : 'Híbrido'}`, c: 'bg-blue-100 text-blue-800' },
               ].map((k, i) => (
                 <div key={i} className={`${k.c} rounded-lg p-2 text-center`}>
                   <p className="text-base font-bold">{k.v}</p>
@@ -922,9 +922,21 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                 </div>
               ))}
             </div>
+
+            {/* Tipo de conexión */}
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2.5 mb-3">
+              <p className="text-xs font-bold text-indigo-800 mb-1.5">🔌 ESQUEMA DE CONEXIÓN</p>
+              <div className="space-y-1 text-[10px] text-indigo-700">
+                <p><strong>Configuración:</strong> {dimResult.tipoConexion === 'serie' ? 'En SERIE' : dimResult.tipoConexion === 'serie+paralelo' ? 'SERIE + PARALELO (ramas)' : 'MÚLTIPLE PARALELO'}</p>
+                <p><strong>Strings (ramales):</strong> {dimResult.numStrings} ramales de {Math.ceil(dimResult.nP / dimResult.numStrings)} paneles cada uno</p>
+                <p><strong>Voltaje DC:</strong> {dimResult.numStrings === 1 ? '600-800V' : '400-600V'} (según serie)</p>
+                <p><strong>Cable DC:</strong> {dimResult.tipoConexion === 'serie' ? '4mm²' : '6mm²'} (según corriente)</p>
+              </div>
+            </div>
+
             <div className="text-xs text-purple-700 space-y-0.5 mb-3">
               <p>📈 Producción estimada: <strong>{dimResult.prodDia.toFixed(1)} kWh/día</strong> · <strong>{dimResult.prodAnio.toFixed(0)} kWh/año</strong></p>
-              <p>🔗 Strings: <strong>{dimResult.numStrings}</strong> · Capacidad baterías: <strong>{(dimResult.numBat * 2.4).toFixed(1)} kWh</strong></p>
+              <p>🔗 Strings: <strong>{dimResult.numStrings}</strong> {dimResult.numBat > 0 ? `· Capacidad baterías: ${(dimResult.numBat * dimResult.batCapacity).toFixed(1)} kWh` : ''}</p>
             </div>
             {/* Mini lista de materiales */}
             <p className="text-xs font-bold text-purple-800 mb-1">🛒 Material necesario estimado</p>
