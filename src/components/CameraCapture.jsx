@@ -112,13 +112,18 @@ export default function CameraCapture({ onCapture, onCancel, label = 'Capturar f
   return (
     <div className="w-full max-w-md mx-auto rounded-lg bg-white border border-gray-200 p-4">
       {!cameraActive && !capturedImage && (
-        <Button
-          onClick={startCamera}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
-        >
-          <Camera className="w-4 h-4" />
-          {label}
-        </Button>
+        <div className="space-y-2">
+          <Button
+            onClick={startCamera}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+          >
+            <Camera className="w-4 h-4" />
+            {label}
+          </Button>
+          <p className="text-xs text-gray-500 text-center">
+            💡 Asegúrate de haber permitido acceso a la cámara en los permisos del navegador
+          </p>
+        </div>
       )}
 
       {cameraActive && (
