@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -450,10 +449,10 @@ export default function ColdRoomCalc() {
           )}
         </TabsContent>
 
-        {/* TAB 3: Solo Humedad Relativa */}
+        {/* TAB 3: Humedad + Cámara Frigorífica */}
         <TabsContent value="humedad" className="space-y-4">
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Droplets className="w-6 h-6 text-orange-600" />Cálculo Humedad Relativa - Cámara Frigorífica
+            <Droplets className="w-6 h-6 text-orange-600" />Cálculo Humedad + Cálculo Cámara Frigorífica
           </h1>
           
           <Card>
