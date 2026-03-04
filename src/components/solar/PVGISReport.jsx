@@ -107,13 +107,13 @@ function DraggableMarker({ position, onDragEnd }) {
 }
 
 // ─── Componente para mover la vista del mapa ─────────────────────────────────
-function FlyToLocation({ center, zoom = 16 }) {
+function FlyToLocation({ center, zoom = 17 }) {
   const map = useMap();
   useEffect(() => {
     if (center && center[0] && center[1]) {
-      map.flyTo(center, zoom, { animate: true, duration: 1 });
+      map.flyTo(center, zoom, { animate: false, duration: 0.3 });
     }
-  }, [center[0], center[1]]);
+  }, [center, zoom]);
   return null;
 }
 
