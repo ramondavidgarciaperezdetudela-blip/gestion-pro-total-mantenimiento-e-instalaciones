@@ -250,10 +250,10 @@ export default function DocumentTemplates() {
 
       <Tabs defaultValue="factura">
         <TabsList className="w-full flex-wrap h-auto">
-          {DOC_TYPES.map(t => (
-            <TabsTrigger key={t} value={t} className="flex-1 capitalize text-xs">{t} ({grouped[t]?.length || 0})</TabsTrigger>
-          ))}
-        </TabsList>
+           {DOC_TYPES.map(t => (
+             <TabsTrigger key={t} value={t} className="flex-1 capitalize text-xs" title={TEMPLATE_DESCRIPTIONS[t]}>{t} ({grouped[t]?.length || 0})</TabsTrigger>
+           ))}
+         </TabsList>
 
         {DOC_TYPES.map(type => (
           <TabsContent key={type} value={type} className="space-y-3 pt-3">
