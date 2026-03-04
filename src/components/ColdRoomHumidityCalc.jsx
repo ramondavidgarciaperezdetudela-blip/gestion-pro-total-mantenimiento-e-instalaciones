@@ -267,26 +267,54 @@ export default function ColdRoomHumidityCalc({ tempCold = 2, presionEvap = 5.72,
         </CardContent>
       </Card>
 
-      {/* Materiales para regulación */}
+      {/* Materiales para regulación con precios */}
       {materials.length > 0 && (
         <Card className="border-orange-300">
           <CardHeader className="bg-orange-50">
-            <CardTitle className="flex items-center gap-2 text-orange-700">
-              <Gauge className="w-5 h-5" />
-              Equipos necesarios para regulación
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-orange-700">
+                <Gauge className="w-5 h-5" />
+                Equipos necesarios para regulación
+              </CardTitle>
+              <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
+                <SelectTrigger className="w-48 text-xs">
+                  <SelectValue placeholder="Seleccionar proveedor..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {suppliers.length === 0 ? (
+                    <SelectItem value="salvador-escoda">Salvador Escoda</SelectItem>
+                  ) : (
+                    suppliers.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent className="p-4">
             <div className="grid md:grid-cols-2 gap-3">
-              {materials.map((m, i) => (
-                <div key={i} className="p-3 bg-orange-50 rounded-lg border border-orange-200 flex gap-3">
-                  <div className="text-2xl">{m.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-orange-900 text-sm">{m.name}</p>
-                    <p className="text-xs text-orange-700">{m.desc}</p>
+              {materials.map((m, i) => {
+                const price = getMaterialPrice(m.name);
+                return (
+                  <div key={i} className="p-3 bg-orange-50 rounded-lg border border-orange-200 flex gap-3">
+                    <div className="text-2xl">{m.icon}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-orange-900 text-sm">{m.name}</p>
+                      <p className="text-xs text-orange-700">{m.desc}</p>
+                      {price && (
+                        <div className="mt-2 p-2 bg-white rounded border border-orange-100">
+                          <p className="text-[10px] text-gray-500"><strong>Referencia:</strong> {price.product_code}</p>
+                          <div className="flex justify-between items-center mt-1">
+                            <span className="text-[10px] text-orange-800 font-semibold">Coste: {price.cost_price}€</span>
+                            <span className="text-[10px] text-green-700 font-bold">Venta: {price.sale_price}€</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
