@@ -228,6 +228,7 @@ function MaterialTableSolar({ materials }) {
             <th className="p-2 text-left">Marcas sugeridas</th>
             <th className="p-2 text-left">Dónde comprar</th>
             <th className="p-2 text-right w-20">Precio ref.</th>
+            <th className="p-2 text-left">Precio proveedor</th>
           </tr>
         </thead>
         <tbody>
@@ -242,6 +243,7 @@ function MaterialTableSolar({ materials }) {
               <td className="border-b border-gray-100 p-2 text-blue-700 font-medium">{m.brands}</td>
               <td className="border-b border-gray-100 p-2 text-green-700">{m.shop}</td>
               <td className="border-b border-gray-100 p-2 text-right font-semibold text-gray-700">{m.approx_price}</td>
+              <td className="border-b border-gray-100 p-2"><SupplierPriceLookup materialName={m.material} defaultPrice={m.approx_price} /></td>
             </tr>
           ))}
         </tbody>
