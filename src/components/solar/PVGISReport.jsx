@@ -421,7 +421,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
       produccionMediaDia, horasMediaDia, variabilidad,
       coste, costeEst, ahorroAnual, excedentes, beneficioAnual, payback, co2, cobertura, autoconsumoKwh,
     };
-  }, [zona, montaje, tiltAngle, azimuthDeg, totalPerdidas, totalKwp, precioKwh, costeInstalacion, consumoAnual, autoconsumo]);
+  }, [zona, montaje, tiltAngle, azimuthDeg, totalPerdidas, effectiveKwp, precioKwh, costeInstalacion, consumoAnual, autoconsumo, dimMode, dimResult]);
 
   const paybackColor = results.payback < 8 ? '#16a34a' : results.payback < 12 ? '#d97706' : '#dc2626';
   const address = [streetNum, street].filter(Boolean).join(' ');
