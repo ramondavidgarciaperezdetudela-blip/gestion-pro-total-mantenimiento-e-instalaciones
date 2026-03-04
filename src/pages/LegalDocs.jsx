@@ -474,7 +474,22 @@ export default function LegalDocs() {
                   </div>
                   <div>
                     <label className="text-xs text-gray-500">Técnico responsable</label>
-                    <Input value={form.tecnico} onChange={e => setF('tecnico', e.target.value)} placeholder="Nombre técnico" />
+                    {companyData?.technicians?.length > 0 ? (
+                      <Select value={form.tecnico} onValueChange={v => setF('tecnico', v)}>
+                        <SelectTrigger><SelectValue placeholder="Seleccionar técnico" /></SelectTrigger>
+                        <SelectContent>
+                          {companyData.technicians.map((t, i) => (
+                            <SelectItem key={i} value={t}>{t}</SelectItem>
+                          ))}
+                          <SelectItem value="__otro__">Otro (escribir manualmente)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input value={form.tecnico} onChange={e => setF('tecnico', e.target.value)} placeholder="Nombre técnico" />
+                    )}
+                    {form.tecnico === '__otro__' && (
+                      <Input className="mt-1" placeholder="Nombre técnico" onChange={e => setF('tecnico', e.target.value)} />
+                    )}
                   </div>
                   <div>
                     <label className="text-xs text-gray-500">Nº carnet / registro autonómico</label>
