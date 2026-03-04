@@ -85,7 +85,7 @@ function HumidityDiagram({ rh, materials, tempCold }) {
       {/* Indicador color HR */}
       <rect x="80" y="150" width="60" height="20" fill={bgColor} stroke="#666" strokeWidth="1" rx="3" />
       <text x="110" y="165" fontSize="11" fontWeight="bold" textAnchor="middle" fill="#1f2937">
-        {rh > 85 ? '⚠️ Muy húmedo' : rh < 50 ? '⚠️ Muy seco' : '✓ Normal'}
+        {statusText}
       </text>
       
       {/* Equipos regulación */}
