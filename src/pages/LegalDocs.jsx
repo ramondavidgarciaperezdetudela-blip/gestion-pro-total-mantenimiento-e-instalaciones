@@ -655,40 +655,42 @@ export default function LegalDocs() {
                   </div>
                   <div>
                     <label className="text-xs text-gray-500">Técnico responsable</label>
-                    {companyData?.technicians?.length > 0 ? (
-                      <Select value={selectedTechnician || ''} onValueChange={v => {
-                        const tech = companyData.technicians.find(t => {
-                          if (typeof t === 'object' && t.id) return t.id === v;
-                          return false;
-                        });
-                        setSelectedTechnician(v);
-                        if (tech && typeof tech === 'object') {
-                          setF('tecnico', tech.name || '');
-                          setF('num_carnet', tech.fgas_carnet || '');
-                        } else {
-                          setF('tecnico', v);
-                        }
-                      }}>
-                        <SelectTrigger><SelectValue placeholder="Seleccionar técnico" /></SelectTrigger>
-                        <SelectContent>
-                          {companyData.technicians.map((t, idx) => {
-                            if (typeof t === 'object' && t.id) {
-                              return (
-                                <SelectItem key={t.id} value={t.id}>
-                                  {t.name} {t.fgas_carnet ? `(F-Gas: ${t.fgas_carnet})` : ''}
-                                </SelectItem>
-                              );
-                            }
-                            return null;
-                          })}
-                          <SelectItem value="__otro__">Otro (escribir manualmente)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    {Array.isArray(companyData?.technicians) && companyData.technicians.length > 0 ? (
+                      <>
+                        <Select value={selectedTechnician || ''} onValueChange={v => {
+                          const tech = companyData.technicians.find(t => {
+                            if (typeof t === 'object' && t.id) return t.id === v;
+                            return false;
+                          });
+                          setSelectedTechnician(v);
+                          if (tech && typeof tech === 'object') {
+                            setF('tecnico', tech.name || '');
+                            setF('num_carnet', tech.fgas_carnet || '');
+                          } else {
+                            setF('tecnico', v);
+                          }
+                        }}>
+                          <SelectTrigger><SelectValue placeholder="Seleccionar técnico" /></SelectTrigger>
+                          <SelectContent>
+                            {companyData.technicians.map((t, idx) => {
+                              if (typeof t === 'object' && t.id && t.name) {
+                                return (
+                                  <SelectItem key={t.id} value={t.id}>
+                                    {t.name} {t.fgas_carnet ? `(F-Gas: ${t.fgas_carnet})` : ''}
+                                  </SelectItem>
+                                );
+                              }
+                              return null;
+                            })}
+                            <SelectItem value="__otro__">Otro (escribir manualmente)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {selectedTechnician === '__otro__' && (
+                          <Input className="mt-1" placeholder="Nombre técnico" onChange={e => setF('tecnico', e.target.value)} />
+                        )}
+                      </>
                     ) : (
                       <Input value={form.tecnico} onChange={e => setF('tecnico', e.target.value)} placeholder="Nombre técnico" />
-                    )}
-                    {selectedTechnician === '__otro__' && (
-                      <Input className="mt-1" placeholder="Nombre técnico" onChange={e => setF('tecnico', e.target.value)} />
                     )}
                   </div>
                   <div>
