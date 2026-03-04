@@ -263,6 +263,7 @@ export default function LegalDocs() {
   const [activeType, setActiveType] = useState('solar');
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [selectedContact, setSelectedContact] = useState(preContactId || '');
+  const [selectedTechnician, setSelectedTechnician] = useState(null);
   const [form, setForm] = useState({
     empresa: '', tecnico: '', num_carnet: '', cliente: '', nif_cliente: '',
     direccion: '', potencia: '', descripcion: '', tipo_instalacion: '',
