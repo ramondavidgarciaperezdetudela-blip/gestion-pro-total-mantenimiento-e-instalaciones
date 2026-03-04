@@ -280,6 +280,8 @@ export default function LegalDocs() {
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [templates, setTemplates] = useState({});
   const [loadingTemplates, setLoadingTemplates] = useState(true);
+  const [technicianSignature, setTechnicianSignature] = useState(null);
+  const [clientSignature, setClientSignature] = useState(null);
   const printRef = useRef(null);
 
   useEffect(() => {
