@@ -31,6 +31,8 @@ export default function TecniciansRoutes() {
   const [selectedTech, setSelectedTech] = useState('');
   const [contacts, setContacts] = useState([]);
   const [showClientSelector, setShowClientSelector] = useState(false);
+  const [loadingCoords, setLoadingCoords] = useState(false);
+  const addressInputRef = useRef(null);
 
   useEffect(() => {
     // Cargamos técnicos desde CompanySettings y clientes
