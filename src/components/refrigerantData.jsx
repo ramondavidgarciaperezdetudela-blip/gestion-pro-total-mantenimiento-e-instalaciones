@@ -12,7 +12,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'Completamente prohibido. Requiere cambio de equipo o retrofit completo con extracción de aceite antiguo',
     ozone_depletion: 1.0,
-    gwp: 0
+    gwp: 0,
+    fgas_ban_date: '1995-01-01',
+    fgas_status: 'Prohibido desde 1995'
   },
   {
     code: 'R-12',
@@ -25,7 +27,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'Prohibido desde 1995. Cambio total de equipo o aceite PAO + limpieza de sistema',
     ozone_depletion: 1.0,
-    gwp: 10200
+    gwp: 10200,
+    fgas_ban_date: '1995-01-01',
+    fgas_status: 'Prohibido desde 1995'
   },
   {
     code: 'R-22',
@@ -38,7 +42,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'Prohibido desde enero 2020. Requiere cambio total de compresor y tuberías. Extracción completa de aceite mineral',
     ozone_depletion: 0.055,
-    gwp: 1810
+    gwp: 1810,
+    fgas_ban_date: '2020-01-01',
+    fgas_status: 'Prohibido desde 01/01/2020'
   },
   {
     code: 'R-502',
@@ -51,7 +57,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'Mezcla de R-22 + R-115. Prohibido. Cambio total necesario',
     ozone_depletion: 0.33,
-    gwp: 4657
+    gwp: 4657,
+    fgas_ban_date: '2015-01-01',
+    fgas_status: 'Prohibido desde 2015'
   },
 
   // Gases HCFC (transitorios, siendo eliminados)
@@ -66,7 +74,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: true,
     notes: 'Sustituto directo de R-22. Compatible con POE. Deslizamiento de temperatura ~8°C',
     ozone_depletion: 0.0,
-    gwp: 1626
+    gwp: 1626,
+    fgas_ban_date: '2030-12-31',
+    fgas_status: 'Prohibido desde 31/12/2030'
   },
 
   // Gases HFC (siendo eliminados - F-Gas)
@@ -81,7 +91,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'Requiere cambio completo de aceite (POE). No miscible con aceite mineral. Fue común en automoción',
     ozone_depletion: 0.0,
-    gwp: 1430
+    gwp: 1430,
+    fgas_ban_date: '2026-12-31',
+    fgas_status: 'Prohibido desde 31/12/2026'
   },
   {
     code: 'R-404A',
@@ -94,7 +106,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'Prohibido en equipos nuevos desde 2020. Aún permitido para mantenimiento hasta 2030',
     ozone_depletion: 0.0,
-    gwp: 3922
+    gwp: 3922,
+    fgas_ban_date: '2030-12-31',
+    fgas_status: 'Permitido solo mantenimiento hasta 31/12/2030'
   },
 
   // Gases HFO (Bajo GWP - Nuevas generaciones)
@@ -109,7 +123,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'Mayor eficiencia que R-410A. Ligeramente inflamable (A2L). Cambio de compresor recomendado pero no obligatorio',
     ozone_depletion: 0.0,
-    gwp: 675
+    gwp: 675,
+    fgas_ban_date: null,
+    fgas_status: 'Permitido - Transición hacia HFO'
   },
   {
     code: 'R-410A',
@@ -122,7 +138,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'Muy común en aires acondicionados. Presiones más altas que R-22. Requiere POE siempre',
     ozone_depletion: 0.0,
-    gwp: 2088
+    gwp: 2088,
+    fgas_ban_date: '2025-01-01',
+    fgas_status: 'Prohibido para nuevos equipos desde 01/01/2025'
   },
 
   // Gases HFO (Ultra bajo GWP - Futuro)
@@ -137,7 +155,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'GWP muy bajo (4). Inflamable (A2L). Caro. Futuro estándar en automoción',
     ozone_depletion: 0.0,
-    gwp: 4
+    gwp: 4,
+    fgas_ban_date: null,
+    fgas_status: 'Permitido - Estándar futuro'
   },
   {
     code: 'R-1234ze',
@@ -150,7 +170,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'GWP = 6. No inflamable. Eficiencia similar a R-134a pero ecológico',
     ozone_depletion: 0.0,
-    gwp: 6
+    gwp: 6,
+    fgas_ban_date: null,
+    fgas_status: 'Permitido - Recomendado para nuevos equipos'
   },
 
   // Gases de cuarta generación (HFC-HFO blend)
@@ -165,7 +187,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'Drop-in para R-404A. GWP 48% menor. Cambio mínimo de aceite. Muy recomendado',
     ozone_depletion: 0.0,
-    gwp: 1387
+    gwp: 1387,
+    fgas_ban_date: null,
+    fgas_status: 'Permitido - Transición para refrigeración'
   },
   {
     code: 'R-449A',
@@ -178,7 +202,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'Alternativa R-448A con ligeramente menor GWP. Drop-in compatible',
     ozone_depletion: 0.0,
-    gwp: 1397
+    gwp: 1397,
+    fgas_ban_date: null,
+    fgas_status: 'Permitido - Transición para refrigeración'
   },
   {
     code: 'R-452A',
@@ -191,7 +217,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'Drop-in para R-410A con 65% menos GWP. Compatible con sistemas existentes',
     ozone_depletion: 0.0,
-    gwp: 2141
+    gwp: 2141,
+    fgas_ban_date: null,
+    fgas_status: 'Permitido - Transición para clima'
   },
 
   // Gases naturales
@@ -206,7 +234,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'GWP = 3. Inflamable (A3). Requiere seguridad especial. Excelente eficiencia. Caro a instalar',
     ozone_depletion: 0.0,
-    gwp: 3
+    gwp: 3,
+    fgas_ban_date: null,
+    fgas_status: 'Permitido - No regulado por F-Gas'
   },
   {
     code: 'R-600a',
@@ -219,7 +249,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'GWP = 3. Inflamable. Usado en frigoríficos domésticos. Menor eficiencia',
     ozone_depletion: 0.0,
-    gwp: 3
+    gwp: 3,
+    fgas_ban_date: null,
+    fgas_status: 'Permitido - No regulado por F-Gas'
   },
   {
     code: 'R-744',
@@ -232,7 +264,9 @@ export const REFRIGERANT_DATABASE = [
     can_mix: false,
     notes: 'GWP = 1. Presiones muy altas (>70 bar). Requiere compresor especial. Excelente seguridad',
     ozone_depletion: 0.0,
-    gwp: 1
+    gwp: 1,
+    fgas_ban_date: null,
+    fgas_status: 'Permitido - No regulado por F-Gas'
   }
 ];
 

@@ -34,7 +34,7 @@ export default function RefrigerantSelector({ value, onChange, label = "Gas refr
           {/* Gases modernos - Recomendado */}
           {getGasGroup('moderno').length > 0 && (
             <>
-              <div className="px-2 py-1.5 font-semibold text-xs bg-blue-50 text-blue-700 sticky top-0">
+              <div className="px-2 py-1.5 font-semibold text-xs bg-blue-50 text-blue-700 sticky top-0 z-20">
                 ✓ RECOMENDADO (Moderno)
               </div>
               {getGasGroup('moderno').map(gas => (
@@ -48,7 +48,7 @@ export default function RefrigerantSelector({ value, onChange, label = "Gas refr
           {/* Gases de transición */}
           {getGasGroup('transicion').length > 0 && (
             <>
-              <div className="px-2 py-1.5 font-semibold text-xs bg-yellow-50 text-yellow-700 sticky top-12">
+              <div className="px-2 py-1.5 font-semibold text-xs bg-yellow-50 text-yellow-700 sticky top-12 z-20">
                 ⚠️ TRANSICIÓN (Siendo eliminado)
               </div>
               {getGasGroup('transicion').map(gas => (
@@ -62,7 +62,7 @@ export default function RefrigerantSelector({ value, onChange, label = "Gas refr
           {/* Gases naturales */}
           {getGasGroup('natural').length > 0 && (
             <>
-              <div className="px-2 py-1.5 font-semibold text-xs bg-green-50 text-green-700 sticky top-24">
+              <div className="px-2 py-1.5 font-semibold text-xs bg-green-50 text-green-700 sticky top-24 z-20">
                 🌱 NATURALES (Ecológicos)
               </div>
               {getGasGroup('natural').map(gas => (
@@ -76,7 +76,7 @@ export default function RefrigerantSelector({ value, onChange, label = "Gas refr
           {/* Gases futuros */}
           {getGasGroup('futuro').length > 0 && (
             <>
-              <div className="px-2 py-1.5 font-semibold text-xs bg-purple-50 text-purple-700 sticky top-36">
+              <div className="px-2 py-1.5 font-semibold text-xs bg-purple-50 text-purple-700 sticky top-36 z-20">
                 🔮 FUTURO
               </div>
               {getGasGroup('futuro').map(gas => (
@@ -90,7 +90,7 @@ export default function RefrigerantSelector({ value, onChange, label = "Gas refr
           {/* Gases antiguos - Prohibidos/Legado */}
           {getGasGroup('antiguo').length > 0 && (
             <>
-              <div className="px-2 py-1.5 font-semibold text-xs bg-red-50 text-red-700 sticky top-48">
+              <div className="px-2 py-1.5 font-semibold text-xs bg-red-50 text-red-700 sticky top-48 z-20">
                 ❌ PROHIBIDO (Legado)
               </div>
               {getGasGroup('antiguo').map(gas => (
@@ -164,6 +164,19 @@ export default function RefrigerantSelector({ value, onChange, label = "Gas refr
               <p className="text-xs text-gray-700 mb-1"><strong>¿Se pueden mezclar?</strong> {selectedRef.can_mix ? '✓ SÍ' : '✗ NO'}</p>
               {selectedRef.replacement && (
                 <p className="text-xs text-gray-700"><strong>Sustitutos:</strong> {selectedRef.replacement}</p>
+              )}
+            </div>
+
+            {/* Información F-Gas */}
+            <div className={`bg-white p-2 rounded border ${selectedRef.fgas_ban_date ? 'border-red-200' : 'border-green-200'}`}>
+              <p className="font-semibold text-gray-700 text-xs mb-1">📋 Regulación F-Gas</p>
+              <p className={`text-sm font-bold ${selectedRef.fgas_ban_date ? 'text-red-700' : 'text-green-700'}`}>
+                {selectedRef.fgas_status}
+              </p>
+              {selectedRef.fgas_ban_date && (
+                <p className="text-xs text-gray-600 mt-1">
+                  ⚖️ Según Regulación (UE) nº 517/2014 sobre gases fluorados
+                </p>
               )}
             </div>
 
