@@ -135,13 +135,29 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   const optTilt = Math.round(zonaData.lat * 0.87 - 1.5);
   const totalPerdidas = perdidaCable + perdidaInversor + perdidaPV;
 
+  // ─── Código postal autorellenable ──────────────────────────────────────────
+  const [postalCode, setPostalCode] = useState('');
+  const [postalLoading, setPostalLoading] = useState(false);
+  const fetchPostalCode = async (cityName, countryName) => {
+    if (!cityName || cityName.length < 3) return;
+    setPostalLoading(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityName + ', ' + (countryName || 'España'))}&limit=1&addressdetails=1`);
+      const data = await res.json();
+      if (data.length > 0 && data[0].address?.postcode) {
+        setPostalCode(data[0].address.postcode);
+      }
+    } catch(e) {}
+    setPostalLoading(false);
+  };
+
   // ─── Búsqueda por dirección ────────────────────────────────────────────────
   const searchAddress = async () => {
-    const query = [streetNum, street, city, country].filter(Boolean).join(', ');
+    const query = [street, streetNum, postalCode, city, country].filter(Boolean).join(', ');
     if (!query.trim()) return;
     setSearchLoading(true);
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`);
       const data = await res.json();
       if (data.length > 0) {
         const newLat = parseFloat(data[0].lat);
@@ -150,6 +166,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
         setMarkerPos([newLat, newLng]);
         setMapCenter([newLat, newLng]);
         setMapKey(k => k + 1);
+        if (data[0].address?.postcode && !postalCode) setPostalCode(data[0].address.postcode);
       }
     } catch(e) {}
     setSearchLoading(false);
