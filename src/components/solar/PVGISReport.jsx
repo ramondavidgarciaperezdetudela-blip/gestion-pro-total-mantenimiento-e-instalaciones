@@ -231,7 +231,6 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
         setLat(newLat); setLng(newLng);
         setMarkerPos([newLat, newLng]);
         setMapCenter([newLat, newLng]);
-        setMapKey(k => k + 1);
         if (data[0].address?.postcode && !postalCode) setPostalCode(data[0].address.postcode);
       }
     } catch(e) {}
