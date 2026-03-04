@@ -658,13 +658,20 @@ export default function LegalDocs() {
                     {companyData?.technicians && companyData.technicians.length > 0 ? (
                       <>
                         <Select value={selectedTechnician || ''} onValueChange={v => {
-                          const tech = companyData.technicians.find(t => t?.name && (t.id === v || t.name === v));
+                          let tech = null;
+                          if (v !== '__otro__') {
+                            const techIdx = companyData.technicians.findIndex((t, idx) => {
+                              const key = t?.id || `tech-${idx}`;
+                              return key === v;
+                            });
+                            if (techIdx >= 0) {
+                              tech = companyData.technicians[techIdx];
+                            }
+                          }
                           setSelectedTechnician(v);
                           if (tech) {
                             setF('tecnico', tech.name || '');
-                            setF('num_carnet', tech.fgas_carnet || tech.rite_certificate || '');
-                          } else {
-                            setF('tecnico', v);
+                            setF('num_carnet', tech.fgas_carnet || '');
                           }
                         }}>
                           <SelectTrigger><SelectValue placeholder="Seleccionar técnico" /></SelectTrigger>
