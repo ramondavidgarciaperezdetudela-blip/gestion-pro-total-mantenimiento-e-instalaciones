@@ -171,6 +171,10 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   const [consumoVivienda, setConsumoVivienda] = useState(4500); // kWh/año
   const [numPanelsInput, setNumPanelsInput] = useState(numPanels || 8);
   const [panelWInput, setPanelWInput] = useState(panelW || 400);
+  
+  // ─── Tipo de instalación ────────────────────────────────────────────────────
+  const [tipoInstalacion, setTipoInstalacion] = useState('hibrida'); // 'hibrida' | 'aislada' | 'red'
+  const [hstRatio, setHstRatio] = useState(1.2); // ratio HSP según tipo de instalación
 
   // Cálculo dinámico de paneles/baterías según modo
   const dimResult = React.useMemo(() => {
