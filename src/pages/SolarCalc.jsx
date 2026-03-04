@@ -287,8 +287,8 @@ export default function SolarCalc() {
               {editing && <Button onClick={save} size="sm" className="bg-blue-600 hover:bg-blue-700"><Save className="w-4 h-4 mr-2" />Guardar cambios</Button>}
               {savedMsg && <span className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />{savedMsg}</span>}
               {savedId && !savedMsg && <span className="text-[10px] text-gray-400">✓ Guardado</span>}
-              <Button variant="ghost" size="sm" className="text-green-600 ml-auto" onClick={() => setActiveTab('rentabilidad')}>
-                <TrendingUp className="w-4 h-4 mr-1" /> Ver rentabilidad →
+              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white ml-auto" onClick={() => setActiveTab('rentabilidad')}>
+                <TrendingUp className="w-4 h-4 mr-1" /> Ver informe PVGIS / Rentabilidad →
               </Button>
             </div>
           </div>
