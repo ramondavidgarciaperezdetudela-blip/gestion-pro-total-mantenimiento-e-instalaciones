@@ -469,12 +469,12 @@ export default function DocumentTemplates() {
 
             {/* Vista previa en tiempo real */}
             {showPreviewInEdit && (
-            <div className="flex-1 border-l overflow-y-auto bg-gray-50 p-3">
-              <p className="text-xs font-semibold text-gray-600 mb-2">👁️ Vista previa en vivo</p>
-              <div className="bg-white rounded-lg overflow-hidden border">
-                <PreviewDoc tpl={form} />
+              <div className="flex-1 border-l overflow-y-auto bg-gray-50 p-3">
+                <p className="text-xs font-semibold text-gray-600 mb-2">👁️ Vista previa en vivo</p>
+                <div className="bg-white rounded-lg overflow-hidden border">
+                  <PreviewDoc tpl={form} />
+                </div>
               </div>
-            </div>
             )}
             </div>
             </DialogContent>
