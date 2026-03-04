@@ -178,7 +178,7 @@ export default function SolarCalc() {
       {result && (
         <div ref={printRef}>
           <CompanyHeader className="mb-4" />
-          <Card className="border-amber-200" id="resultado-calculo">
+          <Card className="border-amber-200">
             <CardHeader className="bg-amber-50">
               <CardTitle className="text-amber-700">Resultado instalación solar</CardTitle>
             </CardHeader>
