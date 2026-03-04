@@ -186,6 +186,9 @@ export default function Inventory() {
             <TabsTrigger value="material" className="flex-1">
               <Package className="w-4 h-4 mr-1" />Stock ({stock.length})
             </TabsTrigger>
+            <TabsTrigger value="clientes" className="flex-1">
+              <Users className="w-4 h-4 mr-1" />Equipos Cliente ({clientMachines.length})
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== MAQUINARIA ===== */}
