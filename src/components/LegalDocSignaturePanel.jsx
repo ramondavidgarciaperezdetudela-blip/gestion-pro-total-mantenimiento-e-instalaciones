@@ -97,7 +97,13 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
       return;
     }
 
-    const signatureDataUrl = canvas.toDataURL('image/png');
+    // Redimensionar la firma a tamaño más pequeño para el documento
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = 300;
+    tempCanvas.height = 120;
+    const ctx = tempCanvas.getContext('2d');
+    ctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+    const signatureDataUrl = tempCanvas.toDataURL('image/png');
 
     if (isClient) {
       setClientSigned(true);
