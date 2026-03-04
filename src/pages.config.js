@@ -69,9 +69,11 @@ import ElectricalCalc from './pages/ElectricalCalc';
 import EquipmentFailureHistory from './pages/EquipmentFailureHistory';
 import ExportData from './pages/ExportData';
 import Home from './pages/Home';
+import IncidentManagement from './pages/IncidentManagement';
 import Inventory from './pages/Inventory';
 import LegalDocs from './pages/LegalDocs';
 import Maintenance from './pages/Maintenance';
+import MaintenancePlanning from './pages/MaintenancePlanning';
 import Manuals from './pages/Manuals';
 import Notes from './pages/Notes';
 import ProjectTimeline from './pages/ProjectTimeline';
@@ -86,8 +88,7 @@ import SparePartsManager from './pages/SparePartsManager';
 import Suppliers from './pages/Suppliers';
 import TecniciansRoutes from './pages/TecniciansRoutes';
 import ThermalCalc from './pages/ThermalCalc';
-import IncidentManagement from './pages/IncidentManagement';
-import MaintenancePlanning from './pages/MaintenancePlanning';
+import TechnicianFieldWork from './pages/TechnicianFieldWork';
 import __Layout from './Layout.jsx';
 
 
@@ -114,9 +115,11 @@ export const PAGES = {
     "EquipmentFailureHistory": EquipmentFailureHistory,
     "ExportData": ExportData,
     "Home": Home,
+    "IncidentManagement": IncidentManagement,
     "Inventory": Inventory,
     "LegalDocs": LegalDocs,
     "Maintenance": Maintenance,
+    "MaintenancePlanning": MaintenancePlanning,
     "Manuals": Manuals,
     "Notes": Notes,
     "ProjectTimeline": ProjectTimeline,
@@ -131,8 +134,7 @@ export const PAGES = {
     "Suppliers": Suppliers,
     "TecniciansRoutes": TecniciansRoutes,
     "ThermalCalc": ThermalCalc,
-    "IncidentManagement": IncidentManagement,
-    "MaintenancePlanning": MaintenancePlanning,
+    "TechnicianFieldWork": TechnicianFieldWork,
 }
 
 export const pagesConfig = {
