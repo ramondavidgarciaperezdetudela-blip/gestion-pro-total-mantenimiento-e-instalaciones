@@ -938,6 +938,84 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
               <p>📈 Producción estimada: <strong>{dimResult.prodDia.toFixed(1)} kWh/día</strong> · <strong>{dimResult.prodAnio.toFixed(0)} kWh/año</strong></p>
               <p>🔗 Strings: <strong>{dimResult.numStrings}</strong> {dimResult.numBat > 0 ? `· Capacidad baterías: ${(dimResult.numBat * dimResult.batCapacity).toFixed(1)} kWh` : ''}</p>
             </div>
+            {/* Esquema visual conexión */}
+            {dimResult.tipoConexion && (
+              <div className="bg-white border border-purple-200 rounded-lg p-3 mb-3 text-xs">
+                <p className="font-bold text-purple-800 mb-2">📋 ESQUEMA DE CONEXIONADO</p>
+                <div className="bg-gray-50 p-2 rounded text-[9px] font-mono overflow-x-auto">
+                  {dimResult.tipoConexion === 'serie' ? (
+                    <pre>{`PANELES (${dimResult.nP} x ${dimResult.pW}W)
+            ↓
+            [+] [Panel] [−]
+            ↓
+            [+] [Panel] [−]
+            ↓
+            [+] [Panel] [−]
+            ↓ DC ${dimResult.numStrings === 1 ? '600-800V' : '400-600V'}
+            ┌──────────────┐
+            │  Fusible DC  │
+            │   25A 1000V  │
+            └──────────────┘
+            ↓
+            ┌──────────────┐
+            │  Protección  │
+            │   Fotovol.   │
+            └──────────────┘
+            ↓
+            ┌──────────────────┐
+            │ Inversor Híbrido │
+            │    ${dimResult.invKw}kW          │
+            └──────────────────┘`}
+                    </pre>
+                  ) : dimResult.tipoConexion === 'serie+paralelo' ? (
+                    <pre>{`RAMALES (${dimResult.numStrings} strings en paralelo)
+
+            String 1          String 2          String N
+            ┌─────────┐      ┌─────────┐      ┌─────────┐
+            │ Panel 1 │      │ Panel 1 │      │ Panel 1 │
+            │ Panel 2 │      │ Panel 2 │      │ Panel 2 │
+            │  .....  │      │  .....  │      │  .....  │
+            └─────────┘      └─────────┘      └─────────┘
+            ↓                ↓                ↓
+            Cable 4mm²     Cable 4mm²     Cable 4mm²
+            ↓                ↓                ↓
+            └────┬───────────┬────────────┬───┘
+            ↓
+            ┌─────────────┐
+            │ Conectores  │
+            │    MC4      │
+            └─────────────┘
+            ↓
+            ┌──────────────┐
+            │  Inversor    │
+            │  ${dimResult.invKw}kW       │
+            └──────────────┘`}
+                    </pre>
+                  ) : (
+                    <pre>{`MÚLTIPLE PARALELO (${dimResult.numStrings} strings)
+            Paneles en grupos paralelos conectados a barras
+
+            ┌─ String 1 (4mm²)
+            ├─ String 2 (4mm²)
+            ├─ String 3 (4mm²)
+            │  ...
+            └─ String N (4mm²)
+            ↓
+            ┌───────────┐
+            │  Barra DC │
+            │  6mm² DC  │
+            └───────────┘
+            ↓
+            ┌─────────────────┐
+            │ Inversor Híbrido│
+            │      ${dimResult.invKw}kW        │
+            └─────────────────┘`}
+                    </pre>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Mini lista de materiales */}
             <p className="text-xs font-bold text-purple-800 mb-1">🛒 Material necesario estimado</p>
             <div className="overflow-x-auto rounded border border-purple-200">
