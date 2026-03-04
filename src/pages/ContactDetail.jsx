@@ -610,7 +610,8 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           <TabsTrigger value="legalizacion" className="flex-1 text-xs min-w-[80px]">Legaliz.</TabsTrigger>
           <TabsTrigger value="maquinaria" className="flex-1 text-xs min-w-[80px]">Maquinaria</TabsTrigger>
           <TabsTrigger value="historial" className="flex-1 text-xs min-w-[80px]">Historial</TabsTrigger>
-        </TabsList>
+          <TabsTrigger value="fotos_equipo" className="flex-1 text-xs min-w-[80px]">📸 Equipo ({equipmentPhotos.length})</TabsTrigger>
+          </TabsList>
 
         {/* FACTURAS */}
         <TabsContent value="facturas">
