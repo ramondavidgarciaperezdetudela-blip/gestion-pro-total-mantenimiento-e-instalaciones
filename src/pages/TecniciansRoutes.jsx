@@ -70,7 +70,7 @@ export default function TecniciansRoutes() {
   };
 
   const handleChangeAddress = () => {
-    setShowClientSelector(false);
+    setShowClientSelector(true);
   };
 
   const getCoordinatesFromAddress = async (address) => {
