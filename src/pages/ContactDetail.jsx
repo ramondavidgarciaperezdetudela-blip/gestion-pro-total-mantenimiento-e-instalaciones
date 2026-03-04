@@ -85,6 +85,9 @@ export default function ContactDetail() {
   const [uploadDocType, setUploadDocType] = useState('otro');
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [equipmentPhotos, setEquipmentPhotos] = useState([]);
+  const [photoGalleryDialog, setPhotoGalleryDialog] = useState(false);
+  const photoUploadRef = useRef(null);
   const [editDocDialog, setEditDocDialog] = useState(false);
   const [editingDoc, setEditingDoc] = useState(null);
   const [editDocForm, setEditDocForm] = useState({ title: '', doc_type: 'otro', description: '' });
