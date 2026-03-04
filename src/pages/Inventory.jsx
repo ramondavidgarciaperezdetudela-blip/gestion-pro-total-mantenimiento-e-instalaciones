@@ -15,6 +15,9 @@ const EQ_CATEGORIES = ['herramienta', 'maquinaria', 'vehiculo', 'instrumento_med
 const EQ_STATUSES = ['operativo', 'en_revision', 'averiado', 'baja'];
 const STOCK_CATEGORIES = ['tuberias_accesorios', 'cables_electricidad', 'refrigerantes', 'filtros', 'herramientas_consumibles', 'equipos_climatizacion', 'material_solar', 'fontaneria', 'otro'];
 const STATUS_COLORS = { operativo: 'bg-green-100 text-green-700', en_revision: 'bg-yellow-100 text-yellow-700', averiado: 'bg-red-100 text-red-700', baja: 'bg-gray-100 text-gray-500' };
+const CM_TYPES = ['aire_acondicionado','bomba_calor','camara_frigorifica','ventilacion','caldera','aerotermia','solar_fotovoltaico','solar_termico','electrico_cuadro','grupo_frio','otro'];
+const CM_STATUSES = ['operativo','en_reparacion','fuera_servicio','baja'];
+const EMPTY_CM = { contact_id: '', contact_name: '', name: '', machine_type: 'otro', brand: '', model: '', serial_number: '', installation_date: '', location: '', refrigerant_type: '', power_kw: '', warranty_expiry: '', next_maintenance_date: '', maintenance_interval_months: 12, status: 'operativo', photo_url: '', notes: '' };
 
 const EMPTY_EQ = { name: '', brand: '', model: '', serial_number: '', category: 'herramienta', status: 'operativo', purchase_date: '', purchase_price: '', next_revision_date: '', location: '', assigned_to: '', notes: '', photo_url: '' };
 const EMPTY_STOCK = { name: '', reference: '', barcode: '', category: 'otro', supplier_name: '', quantity: 0, unit: 'uds', min_stock: 0, unit_price: '', location: '', notes: '', photo_url: '' };
