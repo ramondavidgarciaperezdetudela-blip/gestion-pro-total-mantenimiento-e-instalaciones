@@ -156,6 +156,52 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   const citySearchTimerRef = useRef(null);
   const autoSearchTimerRef = useRef(null);
 
+  // ─── Buscar sugerencias de municipios ──────────────────────────────────────
+  const searchCitySuggestions = (value) => {
+    if (citySearchTimerRef.current) clearTimeout(citySearchTimerRef.current);
+    if (!value || value.length < 2) { setCitySuggestions([]); return; }
+    citySearchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=8&addressdetails=1&featuretype=city,town,village,municipality`);
+        const data = await res.json();
+        const seen = new Set();
+        const suggestions = data
+          .filter(d => {
+            const key = d.display_name;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
+          .map(d => ({
+            display: d.display_name,
+            city: d.address?.city || d.address?.town || d.address?.village || d.address?.municipality || d.address?.county || d.name,
+            postcode: d.address?.postcode || '',
+            lat: parseFloat(d.lat),
+            lng: parseFloat(d.lon),
+          }));
+        setCitySuggestions(suggestions);
+      } catch(e) {}
+    }, 350);
+  };
+
+  // ─── Seleccionar un municipio de la lista ──────────────────────────────────
+  const selectCity = (suggestion) => {
+    const cityName = suggestion.city || suggestion.display.split(',')[0].trim();
+    setCity(cityName);
+    if (suggestion.postcode) setPostalCode(suggestion.postcode);
+    setLat(suggestion.lat); setLng(suggestion.lng);
+    setMarkerPos([suggestion.lat, suggestion.lng]);
+    setMapCenter([suggestion.lat, suggestion.lng]);
+    setCitySuggestions([]);
+    setCityInputFocused(false);
+    // Buscar catastral si es España
+    setTimeout(() => {
+      if (country.toLowerCase().includes('espa')) {
+        fetchRefCatastral(street, streetNum, cityName, suggestion.postcode, suggestion.lat, suggestion.lng);
+      }
+    }, 100);
+  };
+
   const fetchPostalCode = async (cityName, countryName) => {
     if (!cityName || cityName.length < 3) return;
     setPostalLoading(true);
