@@ -78,7 +78,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   const [mapKey, setMapKey] = useState(0);
 
   // ─── Geolocalización ───────────────────────────────────────────────────────
-  const [locMode, setLocMode] = useState('direccion'); // 'direccion' | 'gps' | 'geolocado'
+  const [locMode, setLocMode] = useState('direccion');
   const [street, setStreet] = useState('');
   const [streetNum, setStreetNum] = useState('');
   const [city, setCity] = useState('');
@@ -93,7 +93,25 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   // ─── Datos proyecto ────────────────────────────────────────────────────────
   const [projectName, setProjectName] = useState('Proyecto Solar');
   const [clientName, setClientName] = useState(contactName || '');
+  const [selectedContactId, setSelectedContactId] = useState(contactId || '');
   const [zona, setZona] = useState('centro');
+  const [contacts, setContacts] = useState([]);
+
+  // ─── Guardar en cliente ────────────────────────────────────────────────────
+  const [savedDocId, setSavedDocId] = useState(null);
+  const [savedMsg, setSavedMsg] = useState('');
+
+  useEffect(() => {
+    base44.entities.Contact.list().then(setContacts);
+  }, []);
+
+  useEffect(() => {
+    if (contactName) setClientName(contactName);
+  }, [contactName]);
+
+  useEffect(() => {
+    if (contactId) setSelectedContactId(contactId);
+  }, [contactId]);
 
   // ─── Sistema ───────────────────────────────────────────────────────────────
   const [montaje, setMontaje] = useState('1seccion');
