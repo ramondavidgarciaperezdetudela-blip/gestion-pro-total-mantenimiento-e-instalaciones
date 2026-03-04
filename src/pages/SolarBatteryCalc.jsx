@@ -952,6 +952,11 @@ export default function SolarBatteryCalc() {
         <TabsContent value="legal" className="mt-4">
           <LegalizacionSection />
         </TabsContent>
+
+        {/* ═══ TAB REPUESTOS ══════════════════════════════════════════════════ */}
+        <TabsContent value="repuestos" className="mt-4">
+          <SolarSparePartsTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
