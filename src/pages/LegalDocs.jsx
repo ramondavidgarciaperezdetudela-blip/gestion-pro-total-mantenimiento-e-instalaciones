@@ -417,17 +417,26 @@ export default function LegalDocs() {
       return;
     }
     setSaving(true);
-    
+
     // Insertar las firmas en el documento si existen
     let finalContent = docContent;
     if (technicianSignature) {
+      const techDate = technicianSignature.date ? new Date(technicianSignature.date).toLocaleDateString('es-ES') : format(new Date(), 'dd/MM/yyyy');
       finalContent = finalContent.replace(
         'Firma: ☐',
-        `Firma: <img src="${technicianSignature.signature}" style="max-width:100px;height:auto"/>`
+        `Firma: <img src="${technicianSignature.signature}" style="max-width:100px;height:auto"/><br/><small>${technicianSignature.name}</small><br/><small>Fecha: ${techDate}</small>`
       );
       finalContent = finalContent.replace(
         /<th[^>]*>FIRMA<\/th>/,
         `<th>${technicianSignature.name}</th>`
+      );
+      finalContent = finalContent.replace(
+        /Técnico responsable:|Técnico Frigorista:|Instalador:/gi,
+        `$& ${technicianSignature.name}`
+      );
+      finalContent = finalContent.replace(
+        /Fecha de instalación|Fecha del documento|Fecha:/gi,
+        `$& ${techDate}`
       );
     }
     if (clientSignature) {
