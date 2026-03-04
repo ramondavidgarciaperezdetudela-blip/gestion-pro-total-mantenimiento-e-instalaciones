@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
-// Templates estándar de documentos legalizados en España
+// Templates estándar de documentos legalizados en España - COMPLETOS
 const LEGAL_TEMPLATES = {
   solar: [
     {
