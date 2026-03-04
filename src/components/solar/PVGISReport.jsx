@@ -176,6 +176,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
           .map(d => ({
             display: d.display_name,
             city: d.address?.city || d.address?.town || d.address?.village || d.address?.municipality || d.address?.county || d.name,
+            province: d.address?.state || d.address?.county || '',
             postcode: d.address?.postcode || '',
             lat: parseFloat(d.lat),
             lng: parseFloat(d.lon),
