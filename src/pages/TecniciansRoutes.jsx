@@ -32,6 +32,7 @@ export default function TecniciansRoutes() {
   const [contacts, setContacts] = useState([]);
   const [showClientSelector, setShowClientSelector] = useState(false);
   const [loadingCoords, setLoadingCoords] = useState(false);
+  const [optimizingRoute, setOptimizingRoute] = useState(false);
   const addressInputRef = useRef(null);
 
   useEffect(() => {
