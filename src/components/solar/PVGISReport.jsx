@@ -860,8 +860,8 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
               </div>
               <div className="bg-amber-50 rounded-lg p-2 text-xs">
                 <p className="font-semibold text-amber-800 mb-1">Potencia fotovoltaica instalada pico (kWp)</p>
-                <p className="text-2xl font-bold text-amber-700">{totalKwp.toFixed(2)} <span className="text-sm">kWp</span></p>
-                <p className="text-gray-500 mt-0.5">{numPanels} paneles × {panelW}W · Silicio Cristalino · PVGIS-SARAH3</p>
+                <p className="text-2xl font-bold text-amber-700">{effectiveKwp.toFixed(2)} <span className="text-sm">kWp</span></p>
+                <p className="text-gray-500 mt-0.5">{effectiveNumPanels} paneles × {effectivePanelW}W · Silicio Cristalino · PVGIS-SARAH3</p>
               </div>
             </div>
             <div className="space-y-2">
