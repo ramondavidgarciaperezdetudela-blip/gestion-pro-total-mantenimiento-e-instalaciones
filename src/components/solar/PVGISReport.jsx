@@ -293,25 +293,27 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
     setPostalLoading(false);
   };
 
-  // ─── Auto-actualizar mapa al cambiar dirección (debounce 1.2s) ─────────────
+  // ─── Auto-actualizar mapa al cambiar dirección (debounce 800ms) ─────────────
   const triggerAutoSearch = (newStreet, newNum, newCity, newProvince, newPostal, newCountry) => {
     if (autoSearchTimerRef.current) clearTimeout(autoSearchTimerRef.current);
     const query = [newStreet, newNum, newPostal, newCity, newProvince, newCountry].filter(Boolean).join(', ');
-    if (!query || query.trim().length < 5) return;
+    if (!query || query.trim().length < 3) return;
     autoSearchTimerRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&countrycodes=es`);
         const data = await res.json();
         if (data.length > 0) {
           const newLat = parseFloat(data[0].lat);
           const newLng = parseFloat(data[0].lon);
-          setLat(newLat); setLng(newLng);
+          setLat(newLat); 
+          setLng(newLng);
           setMarkerPos([newLat, newLng]);
           setMapCenter([newLat, newLng]);
+          setMapKey(k => k + 1); // Fuerza actualización del mapa
           if (data[0].address?.postcode && !newPostal) setPostalCode(data[0].address.postcode);
         }
-      } catch(e) {}
-    }, 1200);
+      } catch(e) { console.error('Search error:', e); }
+    }, 800);
   };
 
   // ─── Buscar referencia catastral por coordenadas ─────────────────────────
