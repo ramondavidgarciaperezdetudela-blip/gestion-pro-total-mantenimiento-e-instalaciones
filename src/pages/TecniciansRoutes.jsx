@@ -26,9 +26,11 @@ export default function TecniciansRoutes() {
   const [stops, setStops] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStop, setEditingStop] = useState(null);
-  const [form, setForm] = useState({ address: '', lat: 0, lng: 0, duration: 1, description: '', serviceType: 'mantenimiento', cost: 0 });
+  const [form, setForm] = useState({ address: '', lat: 0, lng: 0, duration: 1, description: '', serviceType: 'mantenimiento', cost: 0, contactId: '' });
   const [technicians, setTechnicians] = useState([]);
   const [selectedTech, setSelectedTech] = useState('');
+  const [contacts, setContacts] = useState([]);
+  const [showClientSelector, setShowClientSelector] = useState(false);
 
   useEffect(() => {
     // Cargamos técnicos desde CompanySettings
