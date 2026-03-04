@@ -10,19 +10,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Edit, Trash2, Palette, Save, Star, Eye, Download } from 'lucide-react';
 
-const DOC_TYPES = ['factura', 'presupuesto', 'recibo', 'sat', 'mantenimiento', 'informe', 'tarjeta_contacto'];
+const DOC_TYPES = ['factura', 'presupuesto', 'recibo', 'sat', 'mantenimiento', 'informe', 'legalización', 'tarjeta_contacto'];
 const FONT_SIZES = { small: '11px', medium: '13px', large: '15px' };
 
 const DEFAULT_TEMPLATES = [
-  { name: 'Factura estándar', doc_type: 'factura', primary_color: '#1e3a5f', secondary_color: '#0ea5e9', show_logo: true, show_iban: true, show_signature_box: false, font_size: 'medium', iva_rate: 21, is_default: true, header_text: '', footer_text: 'Gracias por su confianza.', notes_template: '' },
-  { name: 'Presupuesto estándar', doc_type: 'presupuesto', primary_color: '#1e3a5f', secondary_color: '#0ea5e9', show_logo: true, show_iban: false, show_signature_box: true, font_size: 'medium', iva_rate: 21, is_default: true, header_text: '', footer_text: 'Presupuesto válido por 30 días.', notes_template: '' },
-  { name: 'Recibo estándar', doc_type: 'recibo', primary_color: '#166534', secondary_color: '#4ade80', show_logo: true, show_iban: true, show_signature_box: true, font_size: 'medium', iva_rate: 21, is_default: true, header_text: '', footer_text: '', notes_template: '' },
+  { name: 'Factura estándar', doc_type: 'factura', primary_color: '#1e3a5f', secondary_color: '#0ea5e9', show_logo: true, show_iban: true, show_signature_box: false, font_size: 'medium', iva_rate: 21, is_default: true, header_text: '', footer_text: 'Gracias por su confianza.', notes_template: 'Forma de pago: Transferencia bancaria. Plazo: 30 días desde factura.' },
+  { name: 'Presupuesto estándar', doc_type: 'presupuesto', primary_color: '#1e3a5f', secondary_color: '#0ea5e9', show_logo: true, show_iban: false, show_signature_box: true, font_size: 'medium', iva_rate: 21, is_default: true, header_text: '', footer_text: 'Presupuesto válido por 30 días.', notes_template: 'Condiciones: Este presupuesto incluye material y mano de obra. Plazo de entrega: según disponibilidad.' },
+  { name: 'Recibo estándar', doc_type: 'recibo', primary_color: '#166534', secondary_color: '#4ade80', show_logo: true, show_iban: true, show_signature_box: true, font_size: 'medium', iva_rate: 21, is_default: true, header_text: '', footer_text: '', notes_template: 'Recibido conforme. Acuse de recibo.' },
+  { name: 'SAT estándar', doc_type: 'sat', primary_color: '#7c2d12', secondary_color: '#ea580c', show_logo: true, show_iban: false, show_signature_box: true, font_size: 'medium', iva_rate: 21, is_default: true, header_text: 'Orden de Trabajo SAT', footer_text: 'Garantía de trabajo realizado según normativa vigente.', notes_template: 'Se realizaron las verificaciones y reparaciones indicadas. Material utilizado conforme a especificaciones técnicas.' },
+  { name: 'Mantenimiento estándar', doc_type: 'mantenimiento', primary_color: '#0369a1', secondary_color: '#0284c7', show_logo: true, show_iban: false, show_signature_box: true, font_size: 'medium', iva_rate: 21, is_default: true, header_text: 'Ficha de Mantenimiento', footer_text: 'Próximo mantenimiento recomendado según cronograma.', notes_template: 'Se han realizado las inspecciones y limpiezas estándar. Equipos en estado óptimo.' },
+  { name: 'Informe técnico estándar', doc_type: 'informe', primary_color: '#4f46e5', secondary_color: '#6366f1', show_logo: true, show_iban: false, show_signature_box: false, font_size: 'medium', iva_rate: 0, is_default: true, header_text: 'Informe Técnico', footer_text: 'Informe confeccionado según normativa técnica aplicable.', notes_template: 'Inspección visual y pruebas funcionales realizadas. Recomendaciones indicadas en observaciones.' },
   { name: 'Tarjeta de contacto', doc_type: 'tarjeta_contacto', primary_color: '#1e3a5f', secondary_color: '#0ea5e9', show_logo: true, show_iban: false, show_signature_box: false, font_size: 'medium', iva_rate: 0, is_default: true, header_text: 'Técnico SAT', footer_text: 'Servicio de Asistencia Técnica', notes_template: '' },
 ];
 
 const FONT_FAMILIES = ['Arial', 'Times New Roman', 'Georgia', 'Verdana', 'Calibri', 'Trebuchet MS'];
 
 const EMPTY_TPL = { name: '', doc_type: 'factura', primary_color: '#1e3a5f', secondary_color: '#0ea5e9', show_logo: true, show_iban: true, show_signature_box: false, font_size: 'medium', font_family: 'Arial', iva_rate: 21, is_default: false, header_text: '', footer_text: '', notes_template: '', margin_top: 15, margin_bottom: 15, margin_left: 15, margin_right: 15, zoom: 100, table_style: 'striped', show_work_type_badge: true };
+
+const TEMPLATE_DESCRIPTIONS = {
+  factura: 'Documento de cobro con datos bancarios y términos de pago',
+  presupuesto: 'Oferta con límite de validez y recuadro de firma del cliente',
+  recibo: 'Comprobante de pago conforme con firmas',
+  sat: 'Orden de trabajo técnica con especificaciones y garantía',
+  mantenimiento: 'Ficha de mantenimiento preventivo con cronograma',
+  informe: 'Informe técnico sin IVA aplicable',
+  legalización: 'Documentos legalizados y normalizados',
+  tarjeta_contacto: 'Tarjeta de visita del técnico'
+};
 
 export default function DocumentTemplates() {
   const [templates, setTemplates] = useState([]);
