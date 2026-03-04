@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sun, Battery, Zap, Calculator, Save, UserCheck, Download, FileText, Printer, ShoppingCart, Plug, Cpu, Package, Cable, Layers, Edit3, CheckCircle, Sparkles, Wrench, TrendingUp } from 'lucide-react';
 import SolarSparePartsTab from '../components/solar/SolarSparePartsTab';
 import PVGISReport from '../components/solar/PVGISReport';
+import InverterComparison from '../components/solar/InverterComparison';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';

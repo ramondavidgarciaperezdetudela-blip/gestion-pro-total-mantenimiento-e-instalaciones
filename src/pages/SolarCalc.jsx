@@ -14,6 +14,7 @@ import SolarSiteReport from '../components/solar/SolarSiteReport';
 import SolarPVGISCalc from '../components/solar/SolarPVGISCalc';
 import PVGISReport from '../components/solar/PVGISReport';
 import ClientSparePartsTab from '../components/solar/ClientSparePartsTab';
+import InverterComparison from '../components/solar/InverterComparison';
 
 function calcSolar(form, mode) {
   let numPanels = parseInt(form.num_panels) || 0;
