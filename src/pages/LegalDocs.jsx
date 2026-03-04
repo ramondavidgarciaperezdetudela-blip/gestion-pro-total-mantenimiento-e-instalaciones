@@ -657,18 +657,30 @@ export default function LegalDocs() {
                     <label className="text-xs text-gray-500">Técnico responsable</label>
                     {companyData?.technicians?.length > 0 ? (
                       <Select value={selectedTechnician || ''} onValueChange={v => {
-                        const tech = companyData.technicians.find(t => t.id === v);
+                        const tech = companyData.technicians.find(t => {
+                          if (typeof t === 'object' && t.id) return t.id === v;
+                          return false;
+                        });
                         setSelectedTechnician(v);
-                        setF('tecnico', tech?.name || v);
-                        setF('num_carnet', tech?.fgas_carnet || '');
+                        if (tech && typeof tech === 'object') {
+                          setF('tecnico', tech.name || '');
+                          setF('num_carnet', tech.fgas_carnet || '');
+                        } else {
+                          setF('tecnico', v);
+                        }
                       }}>
                         <SelectTrigger><SelectValue placeholder="Seleccionar técnico" /></SelectTrigger>
                         <SelectContent>
-                          {companyData.technicians.map((t) => (
-                            <SelectItem key={t.id} value={t.id}>
-                              {t.name} {t.fgas_carnet ? `(F-Gas: ${t.fgas_carnet})` : ''}
-                            </SelectItem>
-                          ))}
+                          {companyData.technicians.map((t, idx) => {
+                            if (typeof t === 'object' && t.id) {
+                              return (
+                                <SelectItem key={t.id} value={t.id}>
+                                  {t.name} {t.fgas_carnet ? `(F-Gas: ${t.fgas_carnet})` : ''}
+                                </SelectItem>
+                              );
+                            }
+                            return null;
+                          })}
                           <SelectItem value="__otro__">Otro (escribir manualmente)</SelectItem>
                         </SelectContent>
                       </Select>
