@@ -329,9 +329,8 @@ export default function DocumentTemplates() {
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? 'Editar plantilla' : 'Nueva plantilla'}</DialogTitle></DialogHeader>
           <div className="flex gap-4 h-[calc(90vh-100px)]">
-          {/* Formulario */}
-          <div className="flex-1 overflow-y-auto">
-          <div className="space-y-3">
+            {/* Formulario */}
+            <div className="flex-1 overflow-y-auto space-y-3">
             <Input placeholder="Nombre de la plantilla *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">
               <div>
