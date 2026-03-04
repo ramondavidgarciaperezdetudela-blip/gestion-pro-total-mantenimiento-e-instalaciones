@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Thermometer, Save, Calculator } from 'lucide-react';
+import { Thermometer, Save, Calculator, Droplets } from 'lucide-react';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
 import ColdRoomHumidityCalc from '../components/ColdRoomHumidityCalc';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const REFRIGERANTS = ['R-404A', 'R-448A', 'R-449A', 'R-452A', 'R-134a', 'R-290', 'R-744 (CO2)'];
 
