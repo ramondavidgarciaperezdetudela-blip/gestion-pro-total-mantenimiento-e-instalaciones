@@ -176,45 +176,32 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
     }, 1200);
   };
 
-  // ─── Buscar referencia catastral automáticamente ───────────────────────────
+  // ─── Buscar referencia catastral por coordenadas (más fiable) ─────────────
   const fetchRefCatastral = async (streetVal, numVal, cityVal, postalVal) => {
     if (!streetVal || !numVal || !cityVal) return;
     setCatastralLoading(true);
     try {
-      // API Catastro: OVCSWService2 - Consulta por dirección
-      const muni = encodeURIComponent(cityVal.toUpperCase());
-      const via = encodeURIComponent(streetVal.toUpperCase());
-      const num = encodeURIComponent(numVal);
-      const url = `https://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCFotoFachada.svc/RecuperaFoto?refcat=&anyoConsulta=2024&municipio=${muni}&nombreVia=${via}&numero=${num}&bloque=&escalera=&piso=&puerta=`;
-      // Usamos endpoint de consulta por dirección para obtener la refcat
-      const catUrl = `https://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCCallejero.svc/json/Consulta_DNPRC?SRS=EPSG:4326&Provincia=&Municipio=${muni}&RC=`;
-      // Endpoint real para buscar por dirección:
-      const searchUrl = `https://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCCoordenadas.svc/json/Consulta_RCCOOR?SRS=EPSG:4326&Provincia=&Municipio=${muni}&NVia=${via}&Numero=${num}&Bloque=&Escalera=&Piso=&Puerta=`;
-      const res = await fetch(searchUrl);
-      if (res.ok) {
-        const data = await res.json();
-        // La respuesta del catastro viene en lrcdnp.rcdnp o similar
-        const rc = data?.consulta_dnpLocalizacionList?.consulta_dnpLocalizacion?.[0]?.rc?.pc1 
-          ? data.consulta_dnpLocalizacionList.consulta_dnpLocalizacion[0].rc.pc1 + data.consulta_dnpLocalizacionList.consulta_dnpLocalizacion[0].rc.pc2
-          : null;
-        if (rc) { setRefCatastral(rc); }
-        else {
-          // Fallback: buscar por coordenadas Nominatim + luego catastro
-          const nomRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent([streetVal, numVal, postalVal, cityVal, 'España'].filter(Boolean).join(', '))}&limit=1`);
-          const nomData = await nomRes.json();
-          if (nomData.length > 0) {
-            const latC = parseFloat(nomData[0].lat).toFixed(6);
-            const lngC = parseFloat(nomData[0].lon).toFixed(6);
-            const rcUrl = `https://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCCoordenadas.svc/json/Consulta_RCCOOR?SRS=EPSG:4326&Coordenada_X=${lngC}&Coordenada_Y=${latC}`;
-            const rcRes = await fetch(rcUrl);
-            if (rcRes.ok) {
-              const rcData = await rcRes.json();
-              const rcVal = rcData?.consulta_coordenadas?.coordenadas?.coord?.[0]?.pc?.pc1;
-              const rcVal2 = rcData?.consulta_coordenadas?.coordenadas?.coord?.[0]?.pc?.pc2;
-              if (rcVal && rcVal2) setRefCatastral(rcVal + rcVal2);
-            }
-          }
-        }
+      // Paso 1: obtener coordenadas con Nominatim
+      const query = [streetVal, numVal, postalVal, cityVal, 'España'].filter(Boolean).join(', ');
+      const nomRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=es`);
+      const nomData = await nomRes.json();
+      if (!nomData.length) { setCatastralLoading(false); return; }
+
+      const latC = parseFloat(nomData[0].lat).toFixed(6);
+      const lngC = parseFloat(nomData[0].lon).toFixed(6);
+
+      // Paso 2: consultar catastro por coordenadas (endpoint JSON público)
+      const rcUrl = `https://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCCoordenadas.svc/json/Consulta_RCCOOR?SRS=EPSG:4326&Coordenada_X=${lngC}&Coordenada_Y=${latC}`;
+      const rcRes = await fetch(rcUrl);
+      if (!rcRes.ok) { setCatastralLoading(false); return; }
+      const rcData = await rcRes.json();
+
+      const coord = rcData?.consulta_coordenadas?.coordenadas?.coord;
+      const first = Array.isArray(coord) ? coord[0] : coord;
+      const pc1 = first?.pc?.pc1;
+      const pc2 = first?.pc?.pc2;
+      if (pc1 && pc2) {
+        setRefCatastral((pc1 + pc2).trim());
       }
     } catch(e) {}
     setCatastralLoading(false);
