@@ -686,6 +686,18 @@ export default function SolarBatteryCalc() {
 
                   <AIReportPanel tipo="solar" datos={{ numPanels: solarResult.numPanels, totalKwp: solarResult.totalKwp, dailyProduction: solarResult.dailyProduction, yearlyProduction: solarResult.yearlyProduction, inverterKw: solarResult.inverterKw, numBatteries: solarResult.numBatteries, batteryKwh: solarResult.batteryKwh, numStrings: solarResult.numStrings, panelPowerW: solarForm.panel_power_w, modo: solarMode, cliente: solarForm.contact_name }} />
 
+                  {/* ═══ PVGIS INTEGRADO ═══ */}
+                  <div className="border-t-4 border-teal-500 pt-4">
+                    <p className="font-bold text-teal-700 text-base mb-3">📈 Informe PVGIS / Rentabilidad — en tiempo real</p>
+                    <PVGISReport
+                      totalKwp={solarResult.totalKwp}
+                      numPanels={solarResult.numPanels}
+                      panelW={parseInt(solarForm.panel_power_w) || 400}
+                      contactName={solarForm.contact_name}
+                      contactId={solarForm.contact_id}
+                    />
+                  </div>
+
                   <div className="flex gap-2 flex-wrap no-print items-center pt-2 border-t border-gray-100">
                     <PrintButton contentRef={solarPrintRef} title="Cálculo Solar Fotovoltaico" />
                     {!solarEditing && !solarSavedId && (
