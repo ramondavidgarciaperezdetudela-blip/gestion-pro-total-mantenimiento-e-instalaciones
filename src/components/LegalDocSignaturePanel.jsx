@@ -123,9 +123,10 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
               <Select value={technicianName} onValueChange={setTechnicianName}>
                 <SelectTrigger className="text-sm"><SelectValue placeholder="Selecciona técnico" /></SelectTrigger>
                 <SelectContent>
-                  {technicians.map((t, i) => (
-                    <SelectItem key={i} value={t}>{t}</SelectItem>
-                  ))}
+                  {technicians.map((t, i) => {
+                    const name = typeof t === 'object' ? t.name : t;
+                    return name ? <SelectItem key={i} value={name}>{name}</SelectItem> : null;
+                  })}
                 </SelectContent>
               </Select>
             ) : (
