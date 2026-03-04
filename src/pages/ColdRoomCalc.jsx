@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,15 +64,16 @@ export default function ColdRoomCalc() {
      panel_thickness: '80mm', refrigerant_type: 'R-449A',
      pipe_distance: 8, pipe_height_diff: 3,
      photos_evaporator: [], photos_condenser: [], photos_other: [],
+     humidity_evap_pressure: 5.72, // New state for humidity calculation in Tab 3
    });
    const [result, setResult] = useState(null);
    const [saved, setSaved] = useState(false);
-   const printRef = useRef(null);
-   const humidityRef = useRef(null);
+   const printRef = useRef(null); // Ref for cold room calculation print area (and combined)
+   const humidityPrintRef = useRef(null); // Ref for only humidity calculation print area
 
   useEffect(() => { base44.entities.Contact.list().then(setContacts); }, []);
 
-  const calculate = () => {
+  const calculateColdRoomData = () => {
     const loadW = calcColdRoom(form);
     const equip = COLD_CATALOG.filter(e => e.power_kw * 1000 >= loadW * 0.9)[0] || COLD_CATALOG[COLD_CATALOG.length - 1];
     const actualDist = parseFloat(form.pipe_distance) || 8;
@@ -81,13 +83,15 @@ export default function ColdRoomCalc() {
     // Temperatura de evaporación aprox
     const coldTemp = parseFloat(form.cold_room_temp);
     const evapTemp = coldTemp - 8;
-    const evapKey = evapTemp <= -35 ? '-35' : evapTemp <= -25 ? '-25' : evapTemp <= -15 ? '-15' : evapTemp <= -10 ? '-10' : evapTemp <= 0 ? '0' : '5';
+    const evapKey = String(evapTemp <= -35 ? '-35' : evapTemp <= -25 ? '-25' : evapTemp <= -15 ? '-15' : evapTemp <= -10 ? '-10' : evapTemp <= 0 ? '0' : '5');
     const pr = REF_PRESSURES[form.refrigerant_type] || REF_PRESSURES['R-449A'];
     const evapPressure = pr[evapKey] || '—';
-    const condPressure = (parseFloat(form.exterior_temp || 25) > 35 ? (Object.values(pr).slice(-1)[0] * 1.15) : Object.values(pr).slice(-1)[0]).toFixed(2);
+    
+    const baseCondPressure = Object.values(pr).length > 0 ? parseFloat(Object.values(pr).slice(-1)[0]) : 0;
+    const condPressure = (parseFloat(form.exterior_temp || 25) > 35 ? (baseCondPressure * 1.15) : baseCondPressure).toFixed(2);
 
     // Panel frigorífico necesario (m²)
-    const panelArea = 2 * (form.length * form.width + form.length * form.height + form.width * form.height);
+    const panelArea = 2 * (form.length * form.width + form.length * form.height + form.width * f.height);
 
     // Carga de refrigerante base
     const refCharge = (equip.power_kw * 0.35 + actualDist * (EXTRA_REF_G_PER_M[form.refrigerant_type] || 18) / 1000).toFixed(2);
@@ -112,178 +116,398 @@ export default function ColdRoomCalc() {
     setResult({ loadW, equip, extraGrams, evapPressure, condPressure, evapKey, refCharge, panelArea: panelArea.toFixed(1), materials, maxDist, actualDist });
   };
 
-  const saveToClient = async () => {
+  const saveToClient = async (titleSuffix = '', descriptionSuffix = '') => {
     if (!form.contact_id || !result) return;
     await base44.entities.ClientDocument.create({
       contact_id: form.contact_id, contact_name: form.contact_name,
-      title: `Cálculo cámara frigorífica - ${format(new Date(), 'dd/MM/yyyy')}`,
+      title: `Cálculo cámara frigorífica ${titleSuffix} - ${format(new Date(), 'dd/MM/yyyy')}`,
       doc_type: 'calculo_termico', date: format(new Date(), 'yyyy-MM-dd'),
-      description: `Cámara ${form.cold_room_type}, ${form.length}x${form.width}x${form.height}m, ${result.loadW}W. Equipo: ${result.equip?.brand} ${result.equip?.model}`,
+      description: `Cámara ${form.cold_room_type}, ${form.length}x${form.width}x${form.height}m, ${result.loadW}W. Equipo: ${result.equip?.brand} ${result.equip?.model}. ${descriptionSuffix}`,
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
 
   return (
-    <div className="space-y-4 max-w-3xl">
-      <h1 className="text-2xl font-bold flex items-center gap-2">
-        <Thermometer className="w-6 h-6 text-blue-600" />Cálculo Cámara Frigorífica
-      </h1>
+    <div className="space-y-4 max-w-4xl"> {/* Changed max-w-3xl to max-w-4xl */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="camara" className="flex items-center gap-2">
+            <Thermometer className="w-4 h-4" /> Cálculo Cámara Frigorífica
+          </TabsTrigger>
+          <TabsTrigger value="combinado" className="flex items-center gap-2">
+            <Droplets className="w-4 h-4" /> Cámara + Humedad
+          </TabsTrigger>
+          <TabsTrigger value="humedad" className="flex items-center gap-2">
+            <Droplets className="w-4 h-4" /> Solo Humedad Relativa
+          </TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <Select value={form.contact_id} onValueChange={v => {
-              const c = contacts.find(co => co.id === v);
-              setForm({...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : ''});
-            }}>
-              <SelectTrigger><SelectValue placeholder="Vincular a cliente" /></SelectTrigger>
-              <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
-            </Select>
-            <Select value={form.refrigerant_type} onValueChange={v => setForm({...form, refrigerant_type: v})}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{REFRIGERANTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
+        {/* TAB 1: Cálculo Cámara Frigorífica */}
+        <TabsContent value="camara" className="space-y-4">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Thermometer className="w-6 h-6 text-blue-600" />Cálculo Cámara Frigorífica
+          </h1>
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={form.contact_id} onValueChange={v => {
+                  const c = contacts.find(co => co.id === v);
+                  setForm({...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : ''});
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Vincular a cliente" /></SelectTrigger>
+                  <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={form.refrigerant_type} onValueChange={v => setForm({...form, refrigerant_type: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{REFRIGERANTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
 
-          <div className="bg-blue-50 p-3 rounded-lg space-y-2">
-            <p className="text-sm font-medium text-blue-700">Dimensiones cámara</p>
-            <div className="grid grid-cols-3 gap-2">
-              <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="number" value={form.length} onChange={e => setForm({...form, length: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="number" value={form.width} onChange={e => setForm({...form, width: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="number" value={form.height} onChange={e => setForm({...form, height: parseFloat(e.target.value)||0})} /></div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <div>
-              <label className="text-[10px] text-gray-500">Tipo cámara</label>
-              <Select value={form.cold_room_type} onValueChange={v => setForm({...form, cold_room_type: v})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="positiva">Positiva (+2/+10°C)</SelectItem>
-                  <SelectItem value="negativa">Negativa (-18/-25°C)</SelectItem>
-                  <SelectItem value="media">Media (-5/+2°C)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div><label className="text-[10px] text-gray-500">T. cámara (°C)</label><Input type="number" value={form.cold_room_temp} onChange={e => setForm({...form, cold_room_temp: parseFloat(e.target.value)||0})} /></div>
-            <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="number" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)||0})} /></div>
-            <div><label className="text-[10px] text-gray-500">Producto (kg)</label><Input type="number" value={form.product_kg} onChange={e => setForm({...form, product_kg: parseFloat(e.target.value)||0})} /></div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="text-[10px] text-gray-500">Espesor panel</label>
-              <Select value={form.panel_thickness} onValueChange={v => setForm({...form, panel_thickness: v})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="60mm">60mm (pos. ≥ 0°C)</SelectItem>
-                  <SelectItem value="80mm">80mm (pos. ≥ -5°C)</SelectItem>
-                  <SelectItem value="100mm">100mm (neg. ≥ -18°C)</SelectItem>
-                  <SelectItem value="120mm">120mm (neg. ≤ -25°C)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div><label className="text-[10px] text-gray-500">Long. tubería (m)</label><Input type="number" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: parseFloat(e.target.value)||0})} /></div>
-            <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><Input type="number" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: parseFloat(e.target.value)||0})} /></div>
-          </div>
-
-          <div className="space-y-2">
-            <PhotoGallery photos={form.photos_evaporator} onChange={p => setForm({...form, photos_evaporator: p})} label="Fotos placa evaporadora" maxPhotos={10} />
-            <PhotoGallery photos={form.photos_condenser} onChange={p => setForm({...form, photos_condenser: p})} label="Fotos grupo frío (condensadora, compresor, cuadro, VET...)" maxPhotos={30} />
-            <PhotoGallery photos={form.photos_other} onChange={p => setForm({...form, photos_other: p})} label="Otras fotos" maxPhotos={10} />
-          </div>
-
-          <Button onClick={calculate} className="w-full bg-blue-600 hover:bg-blue-700">
-            <Calculator className="w-4 h-4 mr-2" /> Calcular cámara frigorífica
-          </Button>
-        </CardContent>
-      </Card>
-
-      {result && (
-        <>
-          {/* Sección Humedad Relativa */}
-          <ColdRoomHumidityCalc 
-            tempCold={form.cold_room_temp} 
-            presionEvap={typeof result.evapPressure === 'number' ? result.evapPressure : 5.72}
-            tempExterior={form.exterior_temp}
-          />
-
-          {/* Sección Resultado Principal */}
-          <div ref={printRef}>
-            <CompanyHeader className="mb-4" />
-            <Card className="border-blue-200">
-            <CardHeader className="bg-blue-50">
-              <CardTitle className="text-blue-700">Resultado - Cámara Frigorífica</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-blue-50 p-3 rounded-lg text-center">
-                  <p className="text-xl font-bold text-blue-600">{result.loadW} W</p>
-                  <p className="text-xs text-blue-500">Carga frigorífica</p>
-                </div>
-                <div className="bg-cyan-50 p-3 rounded-lg text-center">
-                  <p className="text-xl font-bold text-cyan-600">{Math.round(result.loadW * 0.86)}</p>
-                  <p className="text-xs text-cyan-500">Frig/hora</p>
-                </div>
-                <div className="bg-indigo-50 p-3 rounded-lg text-center">
-                  <p className="text-xl font-bold text-indigo-600">{result.panelArea} m²</p>
-                  <p className="text-xs text-indigo-500">Panel frigorífico</p>
+              <div className="bg-blue-50 p-3 rounded-lg space-y-2">
+                <p className="text-sm font-medium text-blue-700">Dimensiones cámara</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="number" value={form.length} onChange={e => setForm({...form, length: parseFloat(e.target.value)||0})} /></div>
+                  <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="number" value={form.width} onChange={e => setForm({...form, width: parseFloat(e.target.value)||0})} /></div>
+                  <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="number" value={form.height} onChange={e => setForm({...form, height: parseFloat(e.target.value)||0})} /></div>
                 </div>
               </div>
 
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="font-semibold text-sm mb-2">Equipo sugerido</p>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <p><span className="text-gray-500">Marca:</span> {result.equip?.brand}</p>
-                  <p><span className="text-gray-500">Modelo:</span> {result.equip?.model}</p>
-                  <p><span className="text-gray-500">Potencia:</span> {result.equip?.power_kw} kW</p>
-                  <p><span className="text-gray-500">Gas:</span> {result.equip?.gas}</p>
-                  <p><span className="text-gray-500">Rango temp.:</span> {result.equip?.temp_range}</p>
-                  <p><span className="text-gray-500">Tipo:</span> {result.equip?.type}</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div>
+                  <label className="text-[10px] text-gray-500">Tipo cámara</label>
+                  <Select value={form.cold_room_type} onValueChange={v => setForm({...form, cold_room_type: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="positiva">Positiva (+2/+10°C)</SelectItem>
+                      <SelectItem value="negativa">Negativa (-18/-25°C)</SelectItem>
+                      <SelectItem value="media">Media (-5/+2°C)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                {result.extraGrams > 0 && (
-                  <div className="mt-2 p-2 bg-yellow-100 rounded text-yellow-800 text-sm">
-                    ⚠️ Distancia ({result.actualDist}m) supera máximo ({result.maxDist}m). Añadir <strong>{result.extraGrams}g</strong> de {form.refrigerant_type} extra.
-                  </div>
-                )}
+                <div><label className="text-[10px] text-gray-500">T. cámara (°C)</label><Input type="number" value={form.cold_room_temp} onChange={e => setForm({...form, cold_room_temp: parseFloat(e.target.value)||0})} /></div>
+                <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="number" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)||0})} /></div>
+                <div><label className="text-[10px] text-gray-500">Producto (kg)</label><Input type="number" value={form.product_kg} onChange={e => setForm({...form, product_kg: parseFloat(e.target.value)||0})} /></div>
               </div>
 
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="font-semibold text-sm mb-2">Presiones {form.refrigerant_type} — Temperatura evaporación ≈ {parseInt(form.cold_room_temp) - 8}°C</p>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <p>P. evaporación: <strong>{result.evapPressure} bar</strong></p>
-                  <p>P. condensación: <strong>{result.condPressure} bar</strong></p>
-                  <p>Carga refrigerante: <strong>{result.refCharge} kg</strong></p>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] text-gray-500">Espesor panel</label>
+                  <Select value={form.panel_thickness} onValueChange={v => setForm({...form, panel_thickness: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="60mm">60mm (pos. ≥ 0°C)</SelectItem>
+                      <SelectItem value="80mm">80mm (pos. ≥ -5°C)</SelectItem>
+                      <SelectItem value="100mm">100mm (neg. ≥ -18°C)</SelectItem>
+                      <SelectItem value="120mm">120mm (neg. ≤ -25°C)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                <div><label className="text-[10px] text-gray-500">Long. tubería (m)</label><Input type="number" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: parseFloat(e.target.value)||0})} /></div>
+                <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><Input type="number" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: parseFloat(e.target.value)||0})} /></div>
               </div>
 
-              <div>
-                <p className="font-semibold text-sm mb-2">Material necesario para el montaje</p>
-                <table className="w-full text-xs border-collapse">
-                  <thead><tr className="bg-gray-100"><th className="border p-1 text-left">Material</th><th className="border p-1 text-right">Cant.</th><th className="border p-1">Ud.</th></tr></thead>
-                  <tbody>
-                    {result.materials.map((m, i) => (
-                      <tr key={i} className="border-b"><td className="border p-1">{m.material}</td><td className="border p-1 text-right">{m.quantity}</td><td className="border p-1">{m.unit}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-2">
+                <PhotoGallery photos={form.photos_evaporator} onChange={p => setForm({...form, photos_evaporator: p})} label="Fotos placa evaporadora" maxPhotos={10} />
+                <PhotoGallery photos={form.photos_condenser} onChange={p => setForm({...form, photos_condenser: p})} label="Fotos grupo frío (condensadora, compresor, cuadro, VET...)" maxPhotos={30} />
+                <PhotoGallery photos={form.photos_other} onChange={p => setForm({...form, photos_other: p})} label="Otras fotos" maxPhotos={10} />
               </div>
 
-              <div className="flex gap-2">
-                <PrintButton contentRef={printRef} title="Cálculo Cámara Frigorífica" />
-                {form.contact_id && (
-                  <Button onClick={saveToClient} variant="outline">
-                    <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar en cliente'}
-                  </Button>
-                )}
-              </div>
+              <Button onClick={calculateColdRoomData} className="w-full bg-blue-600 hover:bg-blue-700">
+                <Calculator className="w-4 h-4 mr-2" /> Calcular cámara frigorífica
+              </Button>
             </CardContent>
           </Card>
+
+          {result && (
+            <div ref={printRef}>
+              <CompanyHeader className="mb-4" />
+              <Card className="border-blue-200">
+                <CardHeader className="bg-blue-50">
+                  <CardTitle className="text-blue-700">Resultado - Cámara Frigorífica</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-blue-50 p-3 rounded-lg text-center">
+                      <p className="text-xl font-bold text-blue-600">{result.loadW} W</p>
+                      <p className="text-xs text-blue-500">Carga frigorífica</p>
+                    </div>
+                    <div className="bg-cyan-50 p-3 rounded-lg text-center">
+                      <p className="text-xl font-bold text-cyan-600">{Math.round(result.loadW * 0.86)}</p>
+                      <p className="text-xs text-cyan-500">Frig/hora</p>
+                    </div>
+                    <div className="bg-indigo-50 p-3 rounded-lg text-center">
+                      <p className="text-xl font-bold text-indigo-600">{result.panelArea} m²</p>
+                      <p className="text-xs text-indigo-500">Panel frigorífico</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="font-semibold text-sm mb-2">Equipo sugerido</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <p><span className="text-gray-500">Marca:</span> {result.equip?.brand}</p>
+                      <p><span className="text-gray-500">Modelo:</span> {result.equip?.model}</p>
+                      <p><span className="text-gray-500">Potencia:</span> {result.equip?.power_kw} kW</p>
+                      <p><span className="text-gray-500">Gas:</span> {result.equip?.gas}</p>
+                      <p><span className="text-gray-500">Rango temp.:</span> {result.equip?.temp_range}</p>
+                      <p><span className="text-gray-500">Tipo:</span> {result.equip?.type}</p>
+                    </div>
+                    {result.extraGrams > 0 && (
+                      <div className="mt-2 p-2 bg-yellow-100 rounded text-yellow-800 text-sm">
+                        ⚠️ Distancia ({result.actualDist}m) supera máximo ({result.maxDist}m). Añadir <strong>{result.extraGrams}g</strong> de {form.refrigerant_type} extra.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="font-semibold text-sm mb-2">Presiones {form.refrigerant_type} — Temperatura evaporación ≈ {parseInt(form.cold_room_temp) - 8}°C</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <p>P. evaporación: <strong>{result.evapPressure} bar</strong></p>
+                      <p>P. condensación: <strong>{result.condPressure} bar</strong></p>
+                      <p>Carga refrigerante: <strong>{result.refCharge} kg</strong></p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="font-semibold text-sm mb-2">Material necesario para el montaje</p>
+                    <table className="w-full text-xs border-collapse">
+                      <thead><tr className="bg-gray-100"><th className="border p-1 text-left">Material</th><th className="border p-1 text-right">Cant.</th><th className="border p-1">Ud.</th></tr></thead>
+                      <tbody>
+                        {result.materials.map((m, i) => (
+                          <tr key={i} className="border-b"><td className="border p-1">{m.material}</td><td className="border p-1 text-right">{m.quantity}</td><td className="border p-1">{m.unit}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <PrintButton contentRef={printRef} title="Cálculo Cámara Frigorífica" />
+                    {form.contact_id && (
+                      <Button onClick={() => saveToClient()} variant="outline">
+                        <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar en cliente'}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* TAB 2: Cámara + Humedad Relativa */}
+        <TabsContent value="combinado" className="space-y-4">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Thermometer className="w-6 h-6 text-green-600" />Cálculo Cámara + Humedad Relativa
+          </h1>
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={form.contact_id} onValueChange={v => {
+                  const c = contacts.find(co => co.id === v);
+                  setForm({...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : ''});
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Vincular a cliente" /></SelectTrigger>
+                  <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={form.refrigerant_type} onValueChange={v => setForm({...form, refrigerant_type: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{REFRIGERANTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+
+              <div className="bg-blue-50 p-3 rounded-lg space-y-2">
+                <p className="text-sm font-medium text-blue-700">Dimensiones cámara</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="number" value={form.length} onChange={e => setForm({...form, length: parseFloat(e.target.value)||0})} /></div>
+                  <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="number" value={form.width} onChange={e => setForm({...form, width: parseFloat(e.target.value)||0})} /></div>
+                  <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="number" value={form.height} onChange={e => setForm({...form, height: parseFloat(e.target.value)||0})} /></div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div>
+                  <label className="text-[10px] text-gray-500">Tipo cámara</label>
+                  <Select value={form.cold_room_type} onValueChange={v => setForm({...form, cold_room_type: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="positiva">Positiva (+2/+10°C)</SelectItem>
+                      <SelectItem value="negativa">Negativa (-18/-25°C)</SelectItem>
+                      <SelectItem value="media">Media (-5/+2°C)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><label className="text-[10px] text-gray-500">T. cámara (°C)</label><Input type="number" value={form.cold_room_temp} onChange={e => setForm({...form, cold_room_temp: parseFloat(e.target.value)||0})} /></div>
+                <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="number" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)||0})} /></div>
+                <div><label className="text-[10px] text-gray-500">Producto (kg)</label><Input type="number" value={form.product_kg} onChange={e => setForm({...form, product_kg: parseFloat(e.target.value)||0})} /></div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] text-gray-500">Espesor panel</label>
+                  <Select value={form.panel_thickness} onValueChange={v => setForm({...form, panel_thickness: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="60mm">60mm (pos. ≥ 0°C)</SelectItem>
+                      <SelectItem value="80mm">80mm (pos. ≥ -5°C)</SelectItem>
+                      <SelectItem value="100mm">100mm (neg. ≥ -18°C)</SelectItem>
+                      <SelectItem value="120mm">120mm (neg. ≤ -25°C)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><label className="text-[10px] text-gray-500">Long. tubería (m)</label><Input type="number" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: parseFloat(e.target.value)||0})} /></div>
+                <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><Input type="number" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: parseFloat(e.target.value)||0})} /></div>
+              </div>
+
+              <div className="space-y-2">
+                <PhotoGallery photos={form.photos_evaporator} onChange={p => setForm({...form, photos_evaporator: p})} label="Fotos placa evaporadora" maxPhotos={10} />
+                <PhotoGallery photos={form.photos_condenser} onChange={p => setForm({...form, photos_condenser: p})} label="Fotos grupo frío (condensadora, compresor, cuadro, VET...)" maxPhotos={30} />
+                <PhotoGallery photos={form.photos_other} onChange={p => setForm({...form, photos_other: p})} label="Otras fotos" maxPhotos={10} />
+              </div>
+
+              <Button onClick={calculateColdRoomData} className="w-full bg-green-600 hover:bg-green-700">
+                <Calculator className="w-4 h-4 mr-2" /> Calcular cámara + humedad
+              </Button>
+            </CardContent>
+          </Card>
+
+          {result && (
+            <div ref={printRef}> {/* This printRef wraps both humidity and cold room calc results */}
+              <CompanyHeader className="mb-4" />
+              <ColdRoomHumidityCalc 
+                tempCold={form.cold_room_temp} 
+                presionEvap={parseFloat(result.evapPressure) || 5.72} // Ensure this is a number for the component
+                tempExterior={form.exterior_temp}
+              />
+              <Card className="border-green-200 mt-4">
+                <CardHeader className="bg-green-50">
+                  <CardTitle className="text-green-700">Resultado - Cámara Frigorífica</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-blue-50 p-3 rounded-lg text-center">
+                      <p className="text-xl font-bold text-blue-600">{result.loadW} W</p>
+                      <p className="text-xs text-blue-500">Carga frigorífica</p>
+                    </div>
+                    <div className="bg-cyan-50 p-3 rounded-lg text-center">
+                      <p className="text-xl font-bold text-cyan-600">{Math.round(result.loadW * 0.86)}</p>
+                      <p className="text-xs text-cyan-500">Frig/hora</p>
+                    </div>
+                    <div className="bg-indigo-50 p-3 rounded-lg text-center">
+                      <p className="text-xl font-bold text-indigo-600">{result.panelArea} m²</p>
+                      <p className="text-xs text-indigo-500">Panel frigorífico</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="font-semibold text-sm mb-2">Equipo sugerido</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <p><span className="text-gray-500">Marca:</span> {result.equip?.brand}</p>
+                      <p><span className="text-gray-500">Modelo:</span> {result.equip?.model}</p>
+                      <p><span className="text-gray-500">Potencia:</span> {result.equip?.power_kw} kW</p>
+                      <p><span className="text-gray-500">Gas:</span> {result.equip?.gas}</p>
+                      <p><span className="text-gray-500">Rango temp.:</span> {result.equip?.temp_range}</p>
+                      <p><span className="text-gray-500">Tipo:</span> {result.equip?.type}</p>
+                    </div>
+                    {result.extraGrams > 0 && (
+                      <div className="mt-2 p-2 bg-yellow-100 rounded text-yellow-800 text-sm">
+                        ⚠️ Distancia ({result.actualDist}m) supera máximo ({result.maxDist}m). Añadir <strong>{result.extraGrams}g</strong> de {form.refrigerant_type} extra.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="font-semibold text-sm mb-2">Presiones {form.refrigerant_type} — Temperatura evaporación ≈ {parseInt(form.cold_room_temp) - 8}°C</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <p>P. evaporación: <strong>{result.evapPressure} bar</strong></p>
+                      <p>P. condensación: <strong>{result.condPressure} bar</strong></p>
+                      <p>Carga refrigerante: <strong>{result.refCharge} kg</strong></p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="font-semibold text-sm mb-2">Material necesario para el montaje</p>
+                    <table className="w-full text-xs border-collapse">
+                      <thead><tr className="bg-gray-100"><th className="border p-1 text-left">Material</th><th className="border p-1 text-right">Cant.</th><th className="border p-1">Ud.</th></tr></thead>
+                      <tbody>
+                        {result.materials.map((m, i) => (
+                          <tr key={i} className="border-b"><td className="border p-1">{m.material}</td><td className="border p-1 text-right">{m.quantity}</td><td className="border p-1">{m.unit}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <PrintButton contentRef={printRef} title="Cálculo Cámara + Humedad Relativa" />
+                    {form.contact_id && (
+                      <Button onClick={() => saveToClient('y Humedad Relativa', 'Cálculo combinado.')} variant="outline">
+                        <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar en cliente'}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* TAB 3: Solo Humedad Relativa */}
+        <TabsContent value="humedad" className="space-y-4">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Droplets className="w-6 h-6 text-orange-600" />Cálculo Humedad Relativa - Cámara Frigorífica
+          </h1>
+          
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={form.contact_id} onValueChange={v => {
+                  const c = contacts.find(co => co.id === v);
+                  setForm({...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : ''});
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Vincular a cliente" /></SelectTrigger>
+                  <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div><label className="text-[10px] text-gray-500">T. cámara (°C)</label><Input type="number" value={form.cold_room_temp} onChange={e => setForm({...form, cold_room_temp: parseFloat(e.target.value)||0})} /></div>
+                <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="number" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)||0})} /></div>
+                <div>
+                  <label className="text-[10px] text-gray-500">Presión evaporación (bar)</label>
+                  <Input 
+                    type="number" 
+                    value={form.humidity_evap_pressure} 
+                    onChange={e => setForm({...form, humidity_evap_pressure: parseFloat(e.target.value)||0})} 
+                  />
+                </div>
+              </div>
+
+              {/* The ColdRoomHumidityCalc component reacts to prop changes, so no explicit "calculate" trigger is strictly needed beyond input changes.
+                  However, to match the outline's button structure and provide a visual cue/trigger for reactive components,
+                  we can force a state update which will cause a re-render. */}
+              <Button onClick={() => setForm({...form})} className="w-full bg-orange-600 hover:bg-orange-700">
+                <Calculator className="w-4 h-4 mr-2" /> Calcular humedad relativa
+              </Button>
+            </CardContent>
+          </Card>
+
+          <div ref={humidityPrintRef}> {/* Wrap ColdRoomHumidityCalc for printing */}
+            <CompanyHeader className="mb-4" />
+            <ColdRoomHumidityCalc 
+              tempCold={form.cold_room_temp} 
+              presionEvap={form.humidity_evap_pressure}
+              tempExterior={form.exterior_temp}
+            />
+            <div className="flex gap-2 mt-4">
+              <PrintButton contentRef={humidityPrintRef} title="Cálculo Humedad Relativa" />
+              {form.contact_id && (
+                <Button onClick={() => saveToClient('de Humedad Relativa', 'Cálculo de humedad.')} variant="outline">
+                  <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar en cliente'}
+                </Button>
+              )}
+            </div>
           </div>
-        </>
-      )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
