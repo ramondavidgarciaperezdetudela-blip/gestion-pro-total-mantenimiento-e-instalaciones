@@ -271,7 +271,7 @@ export default function Layout({ children, currentPageName }) {
         </main>
 
         {/* Mobile bottom tab bar - solo en móvil real */}
-        <nav className="flex lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg print:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <nav className="flex lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg print:hidden hidden md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="flex overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
             {mobileTabItems.map(item => {
               const Icon = item.icon;
