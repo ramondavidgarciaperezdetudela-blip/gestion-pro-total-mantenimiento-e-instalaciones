@@ -345,6 +345,9 @@ Genera informe de inventario con:
                 <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(report.content)}>
                   Copiar
                 </Button>
+                <Button size="sm" variant={editingReport ? 'default' : 'outline'} onClick={() => setEditingReport(e => !e)}>
+                  {editingReport ? <><Check className="w-3 h-3 mr-1" />Listo</> : <><Edit className="w-3 h-3 mr-1" />Editar</>}
+                </Button>
                 <PrintButton contentRef={printRef} title={report.typeLabel} />
               </div>
             </div>
@@ -353,9 +356,18 @@ Genera informe de inventario con:
             <div ref={printRef} className="space-y-4">
               <CompanyHeader className="pb-3 border-b" />
               <div className="text-right text-xs text-gray-400">{report.typeLabel} · {report.date}</div>
-              <ReactMarkdown className="text-sm prose prose-sm max-w-none [&>*:first-child]:mt-0 prose-headings:text-gray-800 prose-headings:font-bold prose-h2:text-base prose-h3:text-sm prose-strong:text-gray-900 prose-ul:list-disc prose-ol:list-decimal">
-                {report.content}
-              </ReactMarkdown>
+              {editingReport ? (
+                <Textarea
+                  value={report.content}
+                  onChange={e => setReport(r => ({ ...r, content: e.target.value }))}
+                  rows={30}
+                  className="font-mono text-xs"
+                />
+              ) : (
+                <ReactMarkdown className="text-sm prose prose-sm max-w-none [&>*:first-child]:mt-0 prose-headings:text-gray-800 prose-headings:font-bold prose-h2:text-base prose-h3:text-sm prose-strong:text-gray-900 prose-ul:list-disc prose-ol:list-decimal">
+                  {report.content}
+                </ReactMarkdown>
+              )}
             </div>
           </CardContent>
         </Card>
