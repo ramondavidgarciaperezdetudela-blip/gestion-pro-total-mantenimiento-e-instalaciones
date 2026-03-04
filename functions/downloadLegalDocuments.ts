@@ -278,6 +278,50 @@ const LEGAL_TEMPLATES = {
 </p>`
     },
     {
+      id: 'ficha_equipo_fgas',
+      name: 'Ficha de Equipo F-Gas',
+      content: `<h2>FICHA TÉCNICA DE EQUIPO F-GAS</h2>
+<p><strong>Conforme a RD 115/2017 y Reglamento (UE) 517/2014</strong></p>
+
+<h3>IDENTIFICACIÓN EQUIPO</h3>
+<table border="1" style="border-collapse:collapse;width:100%;margin:10px 0">
+  <tbody>
+    <tr><td style="padding:8px;border:1px solid #ccc;width:50%"><strong>Ubicación:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Propietario:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Marca:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Modelo:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Nº serie:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Año fabricación:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+  </tbody>
+</table>
+
+<h3>DATOS REFRIGERANTE</h3>
+<table border="1" style="border-collapse:collapse;width:100%;margin:10px 0">
+  <tbody>
+    <tr><td style="padding:8px;border:1px solid #ccc;width:50%"><strong>Tipo gas:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>GWP:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Carga (kg):</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>CO₂ eq (t):</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+  </tbody>
+</table>
+
+<h3>HISTORIAL DE INTERVENCIONES</h3>
+<table border="1" style="border-collapse:collapse;width:100%;margin:10px 0">
+  <thead>
+    <tr>
+      <th style="padding:8px;background:#f3f4f6">FECHA</th>
+      <th style="padding:8px;background:#f3f4f6">TIPO INTERVENCIÓN</th>
+      <th style="padding:8px;background:#f3f4f6">CANTIDAD (kg)</th>
+      <th style="padding:8px;background:#f3f4f6">TÉCNICO</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="padding:8px;border:1px solid #ccc">_______</td><td style="padding:8px;border:1px solid #ccc">Instalación</td><td style="padding:8px;border:1px solid #ccc">_______</td><td style="padding:8px;border:1px solid #ccc">_______</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc">_______</td><td style="padding:8px;border:1px solid #ccc">Revisión/Reposición</td><td style="padding:8px;border:1px solid #ccc">_______</td><td style="padding:8px;border:1px solid #ccc">_______</td></tr>
+  </tbody>
+</table>`
+    },
+    {
       id: 'fgas_registro',
       name: 'Registro F-Gas y Libro Seguimiento',
       content: `<h2>REGISTRO F-GAS Y LIBRO DE SEGUIMIENTO</h2>
