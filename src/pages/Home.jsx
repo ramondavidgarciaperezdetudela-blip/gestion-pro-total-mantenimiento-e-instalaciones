@@ -160,6 +160,7 @@ export default function Home() {
       if (overdueInvoices > 0) newAlerts.push({ type: 'danger', text: `${overdueInvoices} factura(s) vencidas sin cobrar`, page: 'Documents' });
       if (pendingAmount > 500) newAlerts.push({ type: 'warning', text: `${pendingAmount.toFixed(0)}€ pendientes de cobro`, page: 'Documents' });
       if (satPending > 3) newAlerts.push({ type: 'warning', text: `${satPending} órdenes SAT pendientes`, page: 'SAT' });
+      if (maintenanceDue > 0) newAlerts.push({ type: 'warning', text: `${maintenanceDue} equipo(s) con mantenimiento próximo`, page: 'Maintenance' });
       reorder.forEach(r => newAlerts.push({ type: 'warning', text: `Revisar pedido a ${r.name} (${r.daysLeft <= 0 ? 'HOY' : `en ${r.daysLeft} días`})`, page: 'Suppliers' }));
       setAlerts(newAlerts);
     });
