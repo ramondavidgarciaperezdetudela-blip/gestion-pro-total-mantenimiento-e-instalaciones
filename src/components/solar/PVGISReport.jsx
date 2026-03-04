@@ -407,7 +407,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
     const produccionMediaDia = (totalKwh / 365).toFixed(2);
     const horasMediaDia = (totalHoras / 365).toFixed(2);
     const variabilidad = 3.56;
-    const costeEst = Math.round(totalKwp * 1200);
+    const costeEst = Math.round(kwpCalc * 1200);
     const coste = parseFloat(costeInstalacion) || costeEst;
     const autoconsumoKwh = totalKwh * (autoconsumo / 100);
     const ahorroAnual = autoconsumoKwh * precioKwh;
