@@ -599,19 +599,20 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
           <span className="font-bold">GEOLOCALIZACIÓN</span>
         </div>
         <CardContent className="p-0">
-          {/* Mapa satelital */}
+          {/* Mapa satelital interactivo */}
           <div className="h-72 relative" style={{ zIndex: 0 }}>
-            <MapContainer center={mapCenter} zoom={16} style={{ height: '100%', width: '100%' }} zoomControl={true}>
+            <MapContainer center={mapCenter} zoom={17} style={{ height: '100%', width: '100%' }} zoomControl={true} dragging={true}>
               <TileLayer
                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                attribution='Tiles © Esri — Source: Esri, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP'
+                attribution='Tiles © Esri'
               />
-              <Marker position={markerPos} />
+              <DraggableMarker position={markerPos} onDragEnd={handleMapClick} />
               <MapClickHandler onMapClick={handleMapClick} />
               <FlyToLocation center={mapCenter} zoom={17} />
             </MapContainer>
-            <div className="absolute bottom-2 right-2 z-[1000] bg-white/90 rounded-lg shadow px-2 py-1 text-[10px] text-gray-600">
-              Haz clic en el mapa para mover el marcador
+            <div className="absolute bottom-2 right-2 z-[1000] bg-white/90 rounded-lg shadow px-2 py-1 text-[10px] text-gray-600 flex flex-col items-end gap-1">
+              <span>🖱️ Arrastra marcador o haz clic</span>
+              <span className="text-[9px] text-gray-500">Dirección se actualiza automáticamente</span>
             </div>
           </div>
 
