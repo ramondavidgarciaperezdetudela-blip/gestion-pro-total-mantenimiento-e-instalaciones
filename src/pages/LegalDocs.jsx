@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Bot, Loader2, Save, Sun, Zap, Thermometer, Snowflake, Edit, Check, X, FolderOpen, Link } from 'lucide-react';
+import { FileText, Bot, Loader2, Save, Sun, Zap, Thermometer, Snowflake, Edit, Check, X, FolderOpen, Link, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import CompanyHeader from '../components/CompanyHeader';
 import PrintButton from '../components/PrintButton';
@@ -277,6 +277,8 @@ export default function LegalDocs() {
   const [saving, setSaving] = useState(false);
   const [savedDocs, setSavedDocs] = useState([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
+  const [templates, setTemplates] = useState({});
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
   const printRef = useRef(null);
 
   useEffect(() => {
@@ -287,7 +289,39 @@ export default function LegalDocs() {
       setContacts(cs);
       if (settings[0]) setCompanyData(settings[0]);
     });
+    loadDefaultTemplates();
   }, []);
+
+  const loadDefaultTemplates = async () => {
+    setLoadingTemplates(true);
+    const prompt = `Genera un JSON con plantillas predeterminadas de legalización para instalaciones de climatización, refrigeración, solar y electricidad en España.
+    
+    Responde SOLO con JSON válido, sin markdown, sin explicaciones. Formato:
+    {
+      "solar": [
+        {"id": "mtd", "name": "Memoria Técnica de Diseño", "content": "<h2>MEMORIA TÉCNICA DE DISEÑO (MTD)</h2><p>...</p>"},
+        ...
+      ],
+      "clima": [...],
+      "frio": [...],
+      "electrico": [...]
+    }
+    
+    Cada template debe:
+    - Tener estructura HTML completa y profesional
+    - Incluir campos con __________ para rellenar
+    - Ser reutilizable como base
+    - Cumplir normativa española actual`;
+    
+    try {
+      const res = await base44.integrations.Core.InvokeLLM({ prompt, add_context_from_internet: true });
+      const data = JSON.parse(res);
+      setTemplates(data);
+    } catch (e) {
+      console.log('Templates will load on demand');
+    }
+    setLoadingTemplates(false);
+  };
 
   useEffect(() => {
     if (selectedContact) loadSavedDocs();
@@ -319,11 +353,29 @@ export default function LegalDocs() {
     setGenerating(true);
     setDocContent('');
     setEditing(false);
-    const prompt = buildPrompt(activeType, selectedDoc.id, form, contact, companyData);
-    const res = await base44.integrations.Core.InvokeLLM({ prompt, add_context_from_internet: false });
-    const cleaned = cleanHtml(res);
-    setDocContent(cleaned);
-    setEditContent(cleaned);
+    
+    // Check if template exists
+    const templateList = templates[activeType] || [];
+    const template = templateList.find(t => t.id === selectedDoc.id);
+    
+    if (template && template.content) {
+      // Use template and fill with form data
+      let content = template.content;
+      content = content.replace(/{{empresa}}/g, form.empresa || companyData?.company_name || 'EMPRESA');
+      content = content.replace(/{{tecnico}}/g, form.tecnico || 'Técnico');
+      content = content.replace(/{{cliente}}/g, contact?.name || form.cliente || 'Cliente');
+      content = content.replace(/{{gas}}/g, form.gas || 'R-410A');
+      content = content.replace(/{{carga_gas}}/g, form.carga_gas || '__');
+      setDocContent(content);
+      setEditContent(content);
+    } else {
+      // Generate from scratch using AI
+      const prompt = buildPrompt(activeType, selectedDoc.id, form, contact, companyData);
+      const res = await base44.integrations.Core.InvokeLLM({ prompt, add_context_from_internet: false });
+      const cleaned = cleanHtml(res);
+      setDocContent(cleaned);
+      setEditContent(cleaned);
+    }
     setGenerating(false);
   };
 
@@ -362,6 +414,39 @@ export default function LegalDocs() {
     if (!confirm('¿Eliminar este documento guardado?')) return;
     await base44.entities.ClientDocument.delete(id);
     loadSavedDocs();
+  };
+
+  const downloadAsHTML = () => {
+    if (!docContent) return;
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${selectedDoc?.label || 'Documento'}</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; color: #333; }
+    h2 { border-bottom: 2px solid #1e3a5f; padding-bottom: 8px; margin: 20px 0 10px; }
+    h3 { margin: 15px 0 8px; color: #374151; }
+    table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #f3f4f6; font-weight: 600; }
+    p { margin: 8px 0; }
+  </style>
+</head>
+<body>
+  ${docContent}
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc; font-size: 11px; color: #999;">
+    <p>Documento generado automáticamente - Revisar y firmar antes de presentar</p>
+  </div>
+</body>
+</html>`;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedDoc?.label || 'documento'}.html`;
+    a.click();
   };
 
   const loadSavedDocContent = (doc) => {
@@ -627,11 +712,16 @@ export default function LegalDocs() {
                       </>
                     )}
                     {selectedContact && selectedContact !== 'none' && !editing && (
-                      <Button size="sm" onClick={saveToClient} disabled={saving} className="bg-green-600 hover:bg-green-700">
-                        <Save className="w-3.5 h-3.5 mr-1" />{saving ? 'Guardando...' : 'Guardar en cliente'}
-                      </Button>
-                    )}
-                    {!editing && <PrintButton contentRef={printRef} title={selectedDoc?.label || 'Documento'} />}
+                       <Button size="sm" onClick={saveToClient} disabled={saving} className="bg-green-600 hover:bg-green-700">
+                         <Save className="w-3.5 h-3.5 mr-1" />{saving ? 'Guardando...' : 'Guardar en cliente'}
+                       </Button>
+                     )}
+                     {!editing && <PrintButton contentRef={printRef} title={selectedDoc?.label || 'Documento'} />}
+                     {!editing && (
+                       <Button size="sm" variant="outline" onClick={downloadAsHTML}>
+                         <Download className="w-3.5 h-3.5 mr-1" />Descargar HTML
+                       </Button>
+                     )}
                   </div>
                 </div>
                 <p className="text-[10px] text-gray-400 mt-1">⚠️ Revisar y firmar por técnico cualificado antes de presentar oficialmente</p>
