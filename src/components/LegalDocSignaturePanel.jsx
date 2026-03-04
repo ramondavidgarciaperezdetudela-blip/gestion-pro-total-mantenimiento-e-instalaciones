@@ -1,60 +1,65 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Save, Check } from 'lucide-react';
 
-export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign, docContent, setDocContent }) {
+export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign, docContent, setDocContent, technicians = [], clientName = '', contactName = '' }) {
   const technicianCanvasRef = useRef(null);
   const clientCanvasRef = useRef(null);
   const [isDrawingTechnician, setIsDrawingTechnician] = useState(false);
   const [isDrawingClient, setIsDrawingClient] = useState(false);
   const [technicianName, setTechnicianName] = useState('');
-  const [clientName, setClientName] = useState('');
+  const [clientNameInput, setClientNameInput] = useState(contactName || '');
   const [technicianSigned, setTechnicianSigned] = useState(false);
   const [clientSigned, setClientSigned] = useState(false);
 
+  const getPointerPosition = (e) => {
+    const canvas = e.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  };
+
   const startDrawing = (e, isClient) => {
+    e.preventDefault();
     const canvas = isClient ? clientCanvasRef.current : technicianCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
+    const pos = getPointerPosition(e);
+    
     if (isClient) {
       setIsDrawingClient(true);
-      ctx.beginPath();
-      ctx.moveTo(x, y);
     } else {
       setIsDrawingTechnician(true);
-      ctx.beginPath();
-      ctx.moveTo(x, y);
     }
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
   };
 
   const draw = (e, isClient) => {
+    e.preventDefault();
     if ((isClient && !isDrawingClient) || (!isClient && !isDrawingTechnician)) return;
     const canvas = isClient ? clientCanvasRef.current : technicianCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const pos = getPointerPosition(e);
 
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.lineTo(x, y);
+    ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
   };
 
-  const stopDrawing = (isClient) => {
-    if (isClient) {
-      setIsDrawingClient(false);
-    } else {
-      setIsDrawingTechnician(false);
-    }
+  const stopDrawing = () => {
+    setIsDrawingClient(false);
+    setIsDrawingTechnician(false);
   };
 
   const clearSignature = (isClient) => {
@@ -69,7 +74,7 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
 
   const saveSignature = (isClient) => {
     const canvas = isClient ? clientCanvasRef.current : technicianCanvasRef.current;
-    const name = isClient ? clientName : technicianName;
+    const name = isClient ? clientNameInput : technicianName;
     
     if (!canvas || !name) {
       alert(`Por favor ingresa el nombre ${isClient ? 'del cliente' : 'del técnico'}`);
@@ -99,21 +104,35 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Input
-              placeholder="Nombre técnico"
-              value={technicianName}
-              onChange={(e) => setTechnicianName(e.target.value)}
-              className="text-sm"
-            />
+            {technicians.length > 0 ? (
+              <Select value={technicianName} onValueChange={setTechnicianName}>
+                <SelectTrigger className="text-sm"><SelectValue placeholder="Selecciona técnico" /></SelectTrigger>
+                <SelectContent>
+                  {technicians.map((t, i) => (
+                    <SelectItem key={i} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                placeholder="Nombre técnico"
+                value={technicianName}
+                onChange={(e) => setTechnicianName(e.target.value)}
+                className="text-sm"
+              />
+            )}
             <canvas
               ref={technicianCanvasRef}
               width={300}
               height={120}
-              className="border border-gray-300 rounded bg-white cursor-crosshair"
+              className="border border-gray-300 rounded bg-white cursor-crosshair touch-none w-full"
               onMouseDown={(e) => startDrawing(e, false)}
               onMouseMove={(e) => draw(e, false)}
-              onMouseUp={() => stopDrawing(false)}
-              onMouseLeave={() => stopDrawing(false)}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={(e) => startDrawing(e, false)}
+              onTouchMove={(e) => draw(e, false)}
+              onTouchEnd={stopDrawing}
             />
             <div className="flex gap-2">
               <Button
@@ -146,19 +165,24 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
           <CardContent className="space-y-2">
             <Input
               placeholder="Nombre cliente"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
+              value={clientNameInput}
+              onChange={(e) => setClientNameInput(e.target.value)}
               className="text-sm"
+              readOnly={!!contactName}
+              title={contactName ? 'Autorrelleno desde contacto seleccionado' : ''}
             />
             <canvas
               ref={clientCanvasRef}
               width={300}
               height={120}
-              className="border border-gray-300 rounded bg-white cursor-crosshair"
+              className="border border-gray-300 rounded bg-white cursor-crosshair touch-none w-full"
               onMouseDown={(e) => startDrawing(e, true)}
               onMouseMove={(e) => draw(e, true)}
-              onMouseUp={() => stopDrawing(true)}
-              onMouseLeave={() => stopDrawing(true)}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={(e) => startDrawing(e, true)}
+              onTouchMove={(e) => draw(e, true)}
+              onTouchEnd={stopDrawing}
             />
             <div className="flex gap-2">
               <Button
