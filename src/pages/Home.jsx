@@ -35,6 +35,7 @@ const quickLinks = [
   { name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList, color: 'bg-cyan-500' },
   { name: 'Normativas', page: 'Regulations', icon: Shield, color: 'bg-indigo-500' },
   { name: 'Notas', page: 'Notes', icon: StickyNote, color: 'bg-lime-500' },
+  { name: 'Optimizar Ruta', page: 'TecniciansRoutes', icon: Navigation, color: 'bg-teal-600' },
   { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette, color: 'bg-rose-500' },
   { name: 'Presupuesto', page: 'Documents?type=presupuesto', icon: FileText, color: 'bg-blue-600' },
   { name: 'Presupuesto IA', page: 'AIBudget', icon: Bot, color: 'bg-purple-500' },
