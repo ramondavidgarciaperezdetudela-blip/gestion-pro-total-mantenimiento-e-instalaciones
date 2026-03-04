@@ -11,9 +11,11 @@ import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
 import ColdRoomHumidityCalc from '../components/ColdRoomHumidityCalc';
+import RefrigerantSelector from '../components/RefrigerantSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const REFRIGERANTS = ['R-404A', 'R-448A', 'R-449A', 'R-452A', 'R-134a', 'R-290', 'R-744 (CO2)'];
+import { REFRIGERANT_DATABASE } from '../components/refrigerantData';
+const REFRIGERANTS = REFRIGERANT_DATABASE.map(r => r.code);
 
 // Presiones saturación por gas y temperatura de evaporación (bar)
 const REF_PRESSURES = {
@@ -481,13 +483,7 @@ export default function ColdRoomCalc() {
                     onChange={e => setForm({...form, humidity_evap_pressure: parseFloat(e.target.value)||0})} 
                   />
                 </div>
-                <div>
-                  <label className="text-[10px] text-gray-500">Gas refrigerante</label>
-                  <Select value={form.refrigerant_type} onValueChange={v => setForm({...form, refrigerant_type: v})}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>{REFRIGERANTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
+                <RefrigerantSelector value={form.refrigerant_type} onChange={v => setForm({...form, refrigerant_type: v})} label="Gas refrigerante" />
               </div>
 
               {/* The ColdRoomHumidityCalc component reacts to prop changes, so no explicit "calculate" trigger is strictly needed beyond input changes.
