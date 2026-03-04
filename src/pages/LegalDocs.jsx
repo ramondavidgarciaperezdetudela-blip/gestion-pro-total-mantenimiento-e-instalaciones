@@ -655,17 +655,14 @@ export default function LegalDocs() {
                   </div>
                   <div>
                     <label className="text-xs text-gray-500">Técnico responsable</label>
-                    {Array.isArray(companyData?.technicians) && companyData.technicians.length > 0 ? (
+                    {companyData?.technicians && companyData.technicians.length > 0 ? (
                       <>
                         <Select value={selectedTechnician || ''} onValueChange={v => {
-                          const tech = companyData.technicians.find(t => {
-                            if (typeof t === 'object' && t.id) return t.id === v;
-                            return false;
-                          });
+                          const tech = companyData.technicians.find(t => t?.name && (t.id === v || t.name === v));
                           setSelectedTechnician(v);
-                          if (tech && typeof tech === 'object') {
+                          if (tech) {
                             setF('tecnico', tech.name || '');
-                            setF('num_carnet', tech.fgas_carnet || '');
+                            setF('num_carnet', tech.fgas_carnet || tech.rite_certificate || '');
                           } else {
                             setF('tecnico', v);
                           }
@@ -673,14 +670,14 @@ export default function LegalDocs() {
                           <SelectTrigger><SelectValue placeholder="Seleccionar técnico" /></SelectTrigger>
                           <SelectContent>
                             {companyData.technicians.map((t, idx) => {
-                              if (typeof t === 'object' && t.id && t.name) {
-                                return (
-                                  <SelectItem key={t.id} value={t.id}>
-                                    {t.name} {t.fgas_carnet ? `(F-Gas: ${t.fgas_carnet})` : ''}
-                                  </SelectItem>
-                                );
-                              }
-                              return null;
+                              const key = t?.id || `tech-${idx}`;
+                              const name = t?.name || '';
+                              const creds = t?.fgas_carnet ? `F-Gas: ${t.fgas_carnet}` : (t?.rite_certificate ? `RITE: ${t.rite_certificate}` : '');
+                              return name ? (
+                                <SelectItem key={key} value={key}>
+                                  {name} {creds && `(${creds})`}
+                                </SelectItem>
+                              ) : null;
                             })}
                             <SelectItem value="__otro__">Otro (escribir manualmente)</SelectItem>
                           </SelectContent>
