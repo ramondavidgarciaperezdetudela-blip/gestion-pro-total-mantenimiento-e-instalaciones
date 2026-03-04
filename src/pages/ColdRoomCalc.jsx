@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
+import ColdRoomHumidityCalc from '../components/ColdRoomHumidityCalc';
 
 const REFRIGERANTS = ['R-404A', 'R-448A', 'R-449A', 'R-452A', 'R-134a', 'R-290', 'R-744 (CO2)'];
 

@@ -80,9 +80,9 @@ import SAT from './pages/SAT';
 import SmartReminders from './pages/SmartReminders';
 import SolarBatteryCalc from './pages/SolarBatteryCalc';
 import SolarCalc from './pages/SolarCalc';
+import SparePartsManager from './pages/SparePartsManager';
 import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
-import SparePartsManager from './pages/SparePartsManager';
 import __Layout from './Layout.jsx';
 
 
@@ -120,9 +120,9 @@ export const PAGES = {
     "SmartReminders": SmartReminders,
     "SolarBatteryCalc": SolarBatteryCalc,
     "SolarCalc": SolarCalc,
+    "SparePartsManager": SparePartsManager,
     "Suppliers": Suppliers,
     "ThermalCalc": ThermalCalc,
-    "SparePartsManager": SparePartsManager,
 }
 
 export const pagesConfig = {
