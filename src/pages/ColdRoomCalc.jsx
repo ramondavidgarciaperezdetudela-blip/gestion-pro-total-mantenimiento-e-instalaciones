@@ -53,19 +53,21 @@ function calcColdRoom(f) {
 }
 
 export default function ColdRoomCalc() {
-  const [contacts, setContacts] = useState([]);
-  const [form, setForm] = useState({
-    contact_id: '', contact_name: '',
-    length: 4, width: 3, height: 2.5,
-    cold_room_temp: 2, exterior_temp: 25,
-    product_kg: 200, cold_room_type: 'positiva',
-    panel_thickness: '80mm', refrigerant_type: 'R-449A',
-    pipe_distance: 8, pipe_height_diff: 3,
-    photos_evaporator: [], photos_condenser: [], photos_other: [],
-  });
-  const [result, setResult] = useState(null);
-  const [saved, setSaved] = useState(false);
-  const printRef = useRef(null);
+   const [contacts, setContacts] = useState([]);
+   const [activeTab, setActiveTab] = useState('camara');
+   const [form, setForm] = useState({
+     contact_id: '', contact_name: '',
+     length: 4, width: 3, height: 2.5,
+     cold_room_temp: 2, exterior_temp: 25,
+     product_kg: 200, cold_room_type: 'positiva',
+     panel_thickness: '80mm', refrigerant_type: 'R-449A',
+     pipe_distance: 8, pipe_height_diff: 3,
+     photos_evaporator: [], photos_condenser: [], photos_other: [],
+   });
+   const [result, setResult] = useState(null);
+   const [saved, setSaved] = useState(false);
+   const printRef = useRef(null);
+   const humidityRef = useRef(null);
 
   useEffect(() => { base44.entities.Contact.list().then(setContacts); }, []);
 
