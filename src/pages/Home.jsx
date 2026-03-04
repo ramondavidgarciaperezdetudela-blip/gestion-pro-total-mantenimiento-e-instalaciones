@@ -29,15 +29,18 @@ const quickLinks = [
   { name: 'Exportar', page: 'ExportData', icon: Download, color: 'bg-lime-600' },
   { name: 'Factura', page: 'Documents?type=factura', icon: FileText, color: 'bg-violet-500' },
   { name: 'Informes', page: 'Reports', icon: BarChart3, color: 'bg-fuchsia-500' },
+  { name: 'Informes IA', page: 'AIReports', icon: BarChart3, color: 'bg-fuchsia-400' },
   { name: 'Inventario', page: 'Inventory', icon: Package, color: 'bg-teal-500' },
   { name: 'Manuales', page: 'Manuals', icon: BookOpen, color: 'bg-teal-600' },
   { name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList, color: 'bg-cyan-500' },
   { name: 'Normativas', page: 'Regulations', icon: Shield, color: 'bg-indigo-500' },
   { name: 'Notas', page: 'Notes', icon: StickyNote, color: 'bg-lime-500' },
+  { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette, color: 'bg-rose-500' },
   { name: 'Presupuesto', page: 'Documents?type=presupuesto', icon: FileText, color: 'bg-blue-600' },
   { name: 'Presupuesto IA', page: 'AIBudget', icon: Bot, color: 'bg-purple-500' },
   { name: 'Proyectos', page: 'Projects', icon: FolderOpen, color: 'bg-pink-500' },
   { name: 'Proveedores', page: 'Suppliers', icon: Building2, color: 'bg-slate-500' },
+  { name: 'Repuestos', page: 'SparePartsManager', icon: Package, color: 'bg-teal-700' },
   { name: 'SAT', page: 'SAT', icon: Wrench, color: 'bg-orange-500' },
   { name: 'Solar+Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-amber-500' },
 ];
@@ -197,6 +200,29 @@ export default function Home() {
             {company?.company_name || 'Panel de Control'}
           </h1>
           <p className="text-gray-500 text-sm capitalize">{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+        </div>
+      </div>
+
+      {/* Acceso directo rápido - Arriba de todo */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+        <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2 text-sm">
+          <Zap className="w-4 h-4 text-blue-600" />
+          Acceso rápido a módulos
+        </h2>
+        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+          {quickLinks.map(link => {
+            const Icon = link.icon;
+            return (
+              <Link key={link.page} to={createPageUrl(link.page)}>
+                <div className="group flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-white transition-all hover:shadow-md cursor-pointer">
+                  <div className={`${link.color} p-2 rounded-lg text-white group-hover:scale-110 transition-transform`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-medium text-gray-700 text-center leading-tight line-clamp-2">{link.name}</span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
 
@@ -523,30 +549,7 @@ export default function Home() {
         </Card>
       </div>
 
-      {/* Acceso rápido */}
-      <div>
-        <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <Zap className="w-4 h-4 text-amber-500" />
-          Acceso rápido
-        </h2>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-          {quickLinks.map(link => {
-            const Icon = link.icon;
-            return (
-              <Link key={link.page} to={createPageUrl(link.page)}>
-                <Card className="hover:shadow-lg transition-all hover:-translate-y-0.5 cursor-pointer group">
-                  <CardContent className="p-3 flex flex-col items-center text-center gap-2">
-                    <div className={`${link.color} p-2.5 rounded-xl text-white group-hover:scale-110 transition-transform`}>
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-medium text-gray-700 leading-tight">{link.name}</span>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
+
     </div>
   );
 }
