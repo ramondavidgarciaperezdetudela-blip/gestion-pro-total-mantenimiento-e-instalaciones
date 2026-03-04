@@ -404,6 +404,92 @@ const LEGAL_TEMPLATES = {
   ],
   electrico: [
     {
+      id: 'memoria_bt',
+      name: 'Memoria Descriptiva BT',
+      content: `<h2>MEMORIA DESCRIPTIVA - INSTALACIÓN ELÉCTRICA BAJA TENSIÓN</h2>
+<p><strong>Conforme a REBT RD 842/2002</strong></p>
+
+<h3>DATOS GENERALES</h3>
+<table border="1" style="border-collapse:collapse;width:100%;margin:10px 0">
+  <tbody>
+    <tr><td style="padding:8px;border:1px solid #ccc;width:50%"><strong>Empresa Instaladora:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Ubicación:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Titular:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Tensión:</strong></td><td style="padding:8px;border:1px solid #ccc">☐ 230V monofásico ☐ 400V trifásico</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Potencia contratada:</strong></td><td style="padding:8px;border:1px solid #ccc">_______ kW</td></tr>
+  </tbody>
+</table>
+
+<h3>DESCRIPCIÓN INSTALACIÓN</h3>
+<p>_________________________________________________________________</p>
+<p>_________________________________________________________________</p>
+
+<h3>CÁLCULO DE SECCIONES Y PROTECCIONES</h3>
+<table border="1" style="border-collapse:collapse;width:100%;margin:10px 0">
+  <thead>
+    <tr>
+      <th style="padding:8px;background:#f3f4f6">CIRCUITO</th>
+      <th style="padding:8px;background:#f3f4f6">CARGA (A)</th>
+      <th style="padding:8px;background:#f3f4f6">SECCIÓN (mm²)</th>
+      <th style="padding:8px;background:#f3f4f6">PROTECCIÓN (A)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="padding:8px;border:1px solid #ccc">C1 - _______</td><td style="padding:8px;border:1px solid #ccc">_____</td><td style="padding:8px;border:1px solid #ccc">_____</td><td style="padding:8px;border:1px solid #ccc">_____</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc">C2 - _______</td><td style="padding:8px;border:1px solid #ccc">_____</td><td style="padding:8px;border:1px solid #ccc">_____</td><td style="padding:8px;border:1px solid #ccc">_____</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc">C3 - _______</td><td style="padding:8px;border:1px solid #ccc">_____</td><td style="padding:8px;border:1px solid #ccc">_____</td><td style="padding:8px;border:1px solid #ccc">_____</td></tr>
+  </tbody>
+</table>
+
+<h3>FIRMA TÉCNICO</h3>
+<p style="margin-top:30px">
+  Técnico: _______________________ Colegiado: _______________________<br/>
+  Firma: ☐ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Fecha: _______________________
+</p>`
+    },
+    {
+      id: 'boletin_bt',
+      name: 'Boletín Instalación BT',
+      content: `<h2>BOLETÍN OFICIAL DE INSTALACIÓN ELÉCTRICA DE BAJA TENSIÓN</h2>
+<p><strong>Conforme a REBT RD 842/2002</strong></p>
+
+<h3>IDENTIFICACIÓN</h3>
+<table border="1" style="border-collapse:collapse;width:100%;margin:10px 0">
+  <tbody>
+    <tr><td style="padding:8px;border:1px solid #ccc;width:50%"><strong>Empresa Instaladora:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Nº Colegiado:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Titular:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Ubicación:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+  </tbody>
+</table>
+
+<h3>DATOS TÉCNICOS</h3>
+<p><strong>Tensión:</strong> ☐ 230V ☐ 400V &nbsp;&nbsp; <strong>Potencia:</strong> _______ kW &nbsp;&nbsp; <strong>Esquema:</strong> ☐ TT ☐ TN-S ☐ TN-C-S</p>
+
+<h3>ELEMENTOS DE PROTECCIÓN</h3>
+<table border="1" style="border-collapse:collapse;width:100%;margin:10px 0">
+  <thead>
+    <tr>
+      <th style="padding:8px;background:#f3f4f6">ELEMENTO</th>
+      <th style="padding:8px;background:#f3f4f6">ESPECIFICACIÓN</th>
+      <th style="padding:8px;background:#f3f4f6">VERIFICADO</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="padding:8px;border:1px solid #ccc">IGA (Principal)</td><td style="padding:8px;border:1px solid #ccc">_______ A</td><td style="padding:8px;border:1px solid #ccc">☐</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc">Diferencial (IID/A)</td><td style="padding:8px;border:1px solid #ccc">_______ A / _______ mA</td><td style="padding:8px;border:1px solid #ccc">☐</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc">Magnetotérmicos</td><td style="padding:8px;border:1px solid #ccc">Varios según circuitos</td><td style="padding:8px;border:1px solid #ccc">☐</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc">Toma de tierra</td><td style="padding:8px;border:1px solid #ccc">_______ Ω (&lt;80 Ω)</td><td style="padding:8px;border:1px solid #ccc">☐</td></tr>
+  </tbody>
+</table>
+
+<h3>FIRMA Y CERTIFICACIÓN</h3>
+<p style="margin-top:30px">
+  Técnico: _______________________ Colegiado: _______________________<br/>
+  Firma: ☐ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Fecha: _______________________
+</p>`
+    },
+    {
       id: 'cie_bt',
       name: 'Certificado Instalación BT (CIE)',
       content: `<h2>CERTIFICADO DE INSTALACIÓN ELÉCTRICA BAJA TENSIÓN (CIE-BT)</h2>
