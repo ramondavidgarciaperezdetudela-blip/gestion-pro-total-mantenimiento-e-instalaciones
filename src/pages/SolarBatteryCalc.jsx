@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sun, Battery, Zap, Calculator, Save, UserCheck, Download, FileText, Printer, ShoppingCart, Plug, Cpu, Package, Cable, Layers, Edit3, CheckCircle, Sparkles, Wrench, TrendingUp } from 'lucide-react';
 import SolarSparePartsTab from '../components/solar/SolarSparePartsTab';
+import SupplierPriceLookup from '../components/solar/SupplierPriceLookup';
 import PVGISReport from '../components/solar/PVGISReport';
 import InverterComparison from '../components/solar/InverterComparison';
 import { format } from 'date-fns';
