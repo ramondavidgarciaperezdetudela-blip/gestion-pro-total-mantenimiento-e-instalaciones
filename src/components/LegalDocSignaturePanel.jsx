@@ -78,7 +78,7 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
   const saveSignature = (isClient) => {
     const canvas = isClient ? clientCanvasRef.current : technicianCanvasRef.current;
     let name = '';
-    
+
     if (isClient) {
       if (selectedClientId) {
         const selectedContact = contacts.find(c => c.id === selectedClientId);
@@ -91,20 +91,20 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
     } else {
       name = technicianName;
     }
-    
+
     if (!canvas || !name) {
       alert(`Por favor ingresa el nombre ${isClient ? 'del cliente' : 'del técnico'}`);
       return;
     }
 
     const signatureDataUrl = canvas.toDataURL('image/png');
-    
+
     if (isClient) {
       setClientSigned(true);
       onClientSign({ name, signature: signatureDataUrl });
     } else {
       setTechnicianSigned(true);
-      onTechnicianSign({ name, signature: signatureDataUrl });
+      onTechnicianSign({ name, signature: signatureDataUrl, date: technicianDate });
     }
   };
 
