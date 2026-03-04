@@ -54,9 +54,30 @@ export default function TecniciansRoutes() {
     setStops(stored ? JSON.parse(stored) : []);
   }, [selectedRoute]);
 
+  const handleSelectClient = (contactId) => {
+    const client = contacts.find(c => c.id === contactId);
+    if (client) {
+      setForm(f => ({
+        ...f,
+        contactId: client.id,
+        address: client.address || '',
+        description: `${client.name} ${client.surname || ''} - ${client.phone || ''}`,
+      }));
+      setShowClientSelector(false);
+    }
+  };
+
+  const handleChangeAddress = () => {
+    setShowClientSelector(false);
+  };
+
   const handleSaveStop = () => {
-    if (!form.address || form.lat === 0 || form.lng === 0) {
-      alert('Completa dirección y coordenadas');
+    if (!form.address) {
+      toast.error('Completa la dirección');
+      return;
+    }
+    if (form.lat === 0 || form.lng === 0) {
+      toast.error('Completa coordenadas (lat/lng)');
       return;
     }
     
@@ -69,8 +90,9 @@ export default function TecniciansRoutes() {
     setStops(updated);
     localStorage.setItem(`route_${selectedRoute}`, JSON.stringify(updated));
     setDialogOpen(false);
-    setForm({ address: '', lat: 0, lng: 0, duration: 1, description: '', serviceType: 'mantenimiento', cost: 0 });
+    setForm({ address: '', lat: 0, lng: 0, duration: 1, description: '', serviceType: 'mantenimiento', cost: 0, contactId: '' });
     setEditingStop(null);
+    toast.success('Parada guardada');
   };
 
   const deleteStop = (idx) => {
