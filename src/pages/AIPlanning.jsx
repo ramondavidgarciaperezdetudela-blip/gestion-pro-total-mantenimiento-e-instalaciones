@@ -211,6 +211,7 @@ export default function AIPlanning() {
   const [generating, setGenerating] = useState(false);
   const [plan, setPlan] = useState(null);
   const [savedPlans, setSavedPlans] = useState([]);
+  const [editingPlan, setEditingPlan] = useState(false);
   const printRef = useRef(null);
 
   useEffect(() => {

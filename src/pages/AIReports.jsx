@@ -25,6 +25,7 @@ export default function AIReports() {
   const [period, setPeriod] = useState('3');
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
+  const [editingReport, setEditingReport] = useState(false);
   const [savedReports, setSavedReports] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
