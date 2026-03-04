@@ -656,11 +656,18 @@ export default function LegalDocs() {
                   <div>
                     <label className="text-xs text-gray-500">Técnico responsable</label>
                     {companyData?.technicians?.length > 0 ? (
-                      <Select value={form.tecnico} onValueChange={v => setF('tecnico', v)}>
+                      <Select value={selectedTechnician || ''} onValueChange={v => {
+                        const tech = companyData.technicians.find(t => t.id === v);
+                        setSelectedTechnician(v);
+                        setF('tecnico', tech?.name || v);
+                        setF('num_carnet', tech?.certificate_number || '');
+                      }}>
                         <SelectTrigger><SelectValue placeholder="Seleccionar técnico" /></SelectTrigger>
                         <SelectContent>
-                          {companyData.technicians.map((t, i) => (
-                            <SelectItem key={i} value={t}>{t}</SelectItem>
+                          {companyData.technicians.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>
+                              {t.name || t} {typeof t === 'string' ? '' : `(${t.certificate_type})`}
+                            </SelectItem>
                           ))}
                           <SelectItem value="__otro__">Otro (escribir manualmente)</SelectItem>
                         </SelectContent>
@@ -668,7 +675,7 @@ export default function LegalDocs() {
                     ) : (
                       <Input value={form.tecnico} onChange={e => setF('tecnico', e.target.value)} placeholder="Nombre técnico" />
                     )}
-                    {form.tecnico === '__otro__' && (
+                    {selectedTechnician === '__otro__' && (
                       <Input className="mt-1" placeholder="Nombre técnico" onChange={e => setF('tecnico', e.target.value)} />
                     )}
                   </div>
