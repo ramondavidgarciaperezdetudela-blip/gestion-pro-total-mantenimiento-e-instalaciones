@@ -547,7 +547,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-2 relative">
+                  <div className="col-span-2 relative" style={{gridColumn: 'span 3'}}>
                     <label className="text-xs text-gray-500">Ciudad / Municipio</label>
                     <Input
                       value={city}
