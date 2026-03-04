@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import CompanyHeader from '../components/CompanyHeader';
 import PrintButton from '../components/PrintButton';
 import LegalDocSignaturePanel from '../components/LegalDocSignaturePanel';
+import SendDocumentEmailPanel from '../components/SendDocumentEmailPanel';
 import { toast } from 'sonner';
 
 // ─── TIPOS DE DOCUMENTOS ─────────────────────────────────────────────────────
