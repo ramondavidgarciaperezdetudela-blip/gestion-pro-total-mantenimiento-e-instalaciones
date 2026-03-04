@@ -443,12 +443,43 @@ export default function DocumentTemplates() {
               <label className="text-xs text-gray-500">Observaciones por defecto</label>
               <Textarea className="mt-1" rows={3} placeholder="Texto que aparecerá automáticamente en observaciones" value={form.notes_template} onChange={e => setForm({ ...form, notes_template: e.target.value })} />
             </div>
-            <Button onClick={handleSave} className="w-full bg-purple-600">
-              <Save className="w-4 h-4 mr-2" />{editing ? 'Actualizar plantilla' : 'Crear plantilla'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+            <div className="space-y-2 border rounded-lg p-3 bg-blue-50">
+              <label className="text-xs font-semibold text-blue-700">📄 Ejemplo de documento personalizado</label>
+              <p className="text-xs text-gray-600 mb-2">Sube un PDF o imagen como referencia para usar este estilo en los documentos generados</p>
+              <Button variant="outline" className="w-full text-xs" onClick={() => fileUploadRef.current?.click()} disabled={uploading}>
+                <Download className="w-3 h-3 mr-1" />{uploading ? 'Subiendo...' : 'Subir ejemplo de documento'}
+              </Button>
+              <input ref={fileUploadRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleUploadExample} />
+              {form.example_file_name && (
+                <p className="text-xs text-green-700 bg-white p-2 rounded">✓ {form.example_file_name}</p>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={() => setShowPreviewInEdit(!showPreviewInEdit)} variant="outline" className="w-full">
+                <Eye className="w-4 h-4 mr-2" />{showPreviewInEdit ? 'Ocultar vista previa' : 'Ver vista previa'}
+              </Button>
+              <Button onClick={handleSaveAsDefault} className="w-full bg-amber-600" title="Guardar como plantilla predeterminada para este tipo de documento">
+                <Star className="w-4 h-4 mr-2" />Guardar como predeterminada
+              </Button>
+              <Button onClick={handleSave} className="w-full bg-purple-600">
+                <Save className="w-4 h-4 mr-2" />Guardar plantilla
+              </Button>
+            </div>
+            </div>
+
+            {/* Vista previa en tiempo real */}
+            {showPreviewInEdit && (
+            <div className="flex-1 border-l overflow-y-auto bg-gray-50 p-3">
+              <p className="text-xs font-semibold text-gray-600 mb-2">👁️ Vista previa en vivo</p>
+              <div className="bg-white rounded-lg overflow-hidden border">
+                <PreviewDoc tpl={form} />
+              </div>
+            </div>
+            )}
+            </div>
+            </DialogContent>
+            </Dialog>
 
       {/* Preview dialog */}
       <Dialog open={!!previewTpl} onOpenChange={() => setPreviewTpl(null)}>
