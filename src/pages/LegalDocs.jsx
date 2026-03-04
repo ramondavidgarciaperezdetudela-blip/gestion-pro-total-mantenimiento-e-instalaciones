@@ -809,6 +809,8 @@ export default function LegalDocs() {
                                onClientSign={setClientSignature}
                                docContent={docContent}
                                setDocContent={setDocContent}
+                               technicians={companyData?.technicians || []}
+                               contactName={contact ? `${contact.name} ${contact.surname || ''}`.trim() : ''}
                              />
                            )}
                 <div ref={printRef}>
