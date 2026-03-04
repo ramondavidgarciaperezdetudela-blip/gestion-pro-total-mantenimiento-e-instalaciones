@@ -711,6 +711,8 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                   <SelectContent>{MONTAJES.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+              {/* Ilustración posición montaje */}
+              <MontajeIllustration montaje={montaje} tilt={tilt !== '' ? tilt : montajeData.tilt} azimuth={azimuth} />
               <div>
                 <label className="text-xs text-gray-500">Zona geográfica (para irradiación)</label>
                 <Select value={zona} onValueChange={setZona}>
