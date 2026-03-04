@@ -227,8 +227,9 @@ export default function SolarCalc() {
                         <th className="p-2 text-left w-10">Ud.</th>
                         <th className="p-2 text-left">Especificación</th>
                         <th className="p-2 text-left">Marcas sugeridas</th>
-                        <th className="p-2 text-left">Dónde comprar</th>
-                        <th className="p-2 text-right w-20">Precio ref.</th>
+                            <th className="p-2 text-left">Dónde comprar</th>
+                            <th className="p-2 text-right w-20">Precio ref.</th>
+                            <th className="p-2 text-left">Precio proveedor</th>
                       </tr>
                     </thead>
                     <tbody>
