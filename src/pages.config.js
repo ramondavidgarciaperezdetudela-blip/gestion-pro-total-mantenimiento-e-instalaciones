@@ -83,6 +83,8 @@ import SolarCalc from './pages/SolarCalc';
 import SparePartsManager from './pages/SparePartsManager';
 import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
+import ProjectTimeline from './pages/ProjectTimeline';
+import TecniciansRoutes from './pages/TecniciansRoutes';
 import __Layout from './Layout.jsx';
 
 
@@ -123,6 +125,8 @@ export const PAGES = {
     "SparePartsManager": SparePartsManager,
     "Suppliers": Suppliers,
     "ThermalCalc": ThermalCalc,
+    "ProjectTimeline": ProjectTimeline,
+    "TecniciansRoutes": TecniciansRoutes,
 }
 
 export const pagesConfig = {
