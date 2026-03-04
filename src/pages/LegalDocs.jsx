@@ -631,32 +631,40 @@ export default function LegalDocs() {
               </CardHeader>
 
               <CardContent className="p-4">
-                {editing ? (
-                  <textarea
-                    className="w-full border border-input rounded-md px-3 py-2 text-xs font-mono resize-y focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={editContent}
-                    onChange={e => setEditContent(e.target.value)}
-                    rows={30}
-                  />
-                ) : (
-                  <div ref={printRef}>
-                    <CompanyHeader className="pb-3 border-b mb-4" />
+                <div ref={printRef}>
+                  <CompanyHeader className="pb-3 border-b mb-4" />
+                  {editing ? (
+                    <div
+                      className="text-xs border rounded-lg p-4 bg-white"
+                      style={{ lineHeight: '1.6', minHeight: '600px' }}
+                      contentEditable
+                      suppressContentEditableWarning
+                      onInput={e => setEditContent(e.currentTarget.innerHTML)}
+                      dangerouslySetInnerHTML={{ __html: editContent
+                        .replace(/<table(?![^>]*style)/g, '<table style="border-collapse:collapse;width:100%;margin:8px 0"')
+                        .replace(/<td(?![^>]*style)/g, '<td style="border:1px solid #ccc;padding:4px 6px;vertical-align:top"')
+                        .replace(/<th(?![^>]*style)/g, '<th style="border:1px solid #ccc;padding:4px 6px;background:#f3f4f6;font-weight:600;text-align:left"')
+                        .replace(/<h2(?![^>]*style)/g, '<h2 style="font-size:14px;font-weight:700;margin:16px 0 6px;color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:4px"')
+                        .replace(/<h3(?![^>]*style)/g, '<h3 style="font-size:12px;font-weight:600;margin:12px 0 4px;color:#374151"')
+                      }}
+                    />
+                  ) : (
                     <div
                       className="text-xs"
                       style={{ lineHeight: '1.6' }}
                       dangerouslySetInnerHTML={{ __html: docContent
-                        .replace(/<table/g, '<table style="border-collapse:collapse;width:100%;margin:8px 0"')
-                        .replace(/<td/g, '<td style="border:1px solid #ccc;padding:4px 6px;vertical-align:top"')
-                        .replace(/<th/g, '<th style="border:1px solid #ccc;padding:4px 6px;background:#f3f4f6;font-weight:600;text-align:left"')
-                        .replace(/<h2/g, '<h2 style="font-size:14px;font-weight:700;margin:16px 0 6px;color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:4px"')
-                        .replace(/<h3/g, '<h3 style="font-size:12px;font-weight:600;margin:12px 0 4px;color:#374151"')
+                        .replace(/<table(?![^>]*style)/g, '<table style="border-collapse:collapse;width:100%;margin:8px 0"')
+                        .replace(/<td(?![^>]*style)/g, '<td style="border:1px solid #ccc;padding:4px 6px;vertical-align:top"')
+                        .replace(/<th(?![^>]*style)/g, '<th style="border:1px solid #ccc;padding:4px 6px;background:#f3f4f6;font-weight:600;text-align:left"')
+                        .replace(/<h2(?![^>]*style)/g, '<h2 style="font-size:14px;font-weight:700;margin:16px 0 6px;color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:4px"')
+                        .replace(/<h3(?![^>]*style)/g, '<h3 style="font-size:12px;font-weight:600;margin:12px 0 4px;color:#374151"')
                       }}
                     />
-                    <div className="mt-8 pt-4 border-t text-[10px] text-gray-400">
-                      Documento generado por sistema informático — Requiere revisión y firma de técnico cualificado
-                    </div>
+                  )}
+                  <div className="mt-8 pt-4 border-t text-[10px] text-gray-400">
+                    Documento generado por sistema informático — Requiere revisión y firma de técnico cualificado
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           )}
