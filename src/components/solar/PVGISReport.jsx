@@ -176,36 +176,65 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   const [tipoInstalacion, setTipoInstalacion] = useState('hibrida'); // 'hibrida' | 'aislada' | 'red'
   const [hstRatio, setHstRatio] = useState(1.2); // ratio HSP según tipo de instalación
 
-  // Cálculo dinámico de paneles/baterías según modo
+  // Cálculo dinámico de paneles/baterías según modo e instalación
   const dimResult = React.useMemo(() => {
-    const hsp = 4.5;
     const pW = parseInt(panelWInput) || 400;
     let nP = parseInt(numPanelsInput) || 0;
+    
+    // HSP base según tipo de instalación
+    let hspBase = 4.5;
+    let invKwMultiplier = 0.9;
+    let batFactorDays = 0.5;
+    let batCapacity = 2.4;
+    
+    if (tipoInstalacion === 'aislada') {
+      hspBase = 4.2; // HSP más conservadora
+      invKwMultiplier = 1.1; // Inversor más grande para autonomía
+      batFactorDays = 2; // 2 días de autonomía
+      batCapacity = 5.12; // Baterías más grandes
+    } else if (tipoInstalacion === 'red') {
+      hspBase = 4.5;
+      invKwMultiplier = 1.0;
+      batFactorDays = 0; // Sin baterías
+      batCapacity = 0;
+    }
+    
     const consumoKwhDia = parseFloat(consumoVivienda) > 50 ? parseFloat(consumoVivienda) / 365 : parseFloat(consumoVivienda);
     if (dimMode === 'consumo') {
-      nP = Math.ceil((consumoKwhDia * 1000) / (pW * hsp * 0.8));
+      const factor = tipoInstalacion === 'aislada' ? 1.3 : 1.1;
+      nP = Math.ceil((consumoKwhDia * factor * 1000) / (pW * hspBase * 0.8));
     }
+    
     const kwp = (nP * pW) / 1000;
-    const prodDia = kwp * hsp * 0.8;
+    const prodDia = kwp * hspBase * 0.8;
     const prodAnio = prodDia * 365;
-    const invKw = Math.ceil(kwp * 0.9) || 1;
-    const batKwh = prodDia * 0.5;
-    const numBat = Math.ceil(batKwh / 2.4) || 1;
+    const invKw = Math.ceil(kwp * invKwMultiplier) || 1;
+    const batKwh = batFactorDays > 0 ? Math.max(consumoKwhDia * batFactorDays, prodDia * batFactorDays) : 0;
+    const numBat = batCapacity > 0 ? Math.ceil(batKwh / batCapacity) : 0;
     const numStrings = Math.max(1, Math.ceil(nP / 16));
+    
+    // Tipo de conexión según número de paneles
+    let tipoConexion = 'serie';
+    let numSeriesParalelo = 1;
+    if (nP > 8) { tipoConexion = 'serie+paralelo'; numSeriesParalelo = Math.ceil(nP / 16); }
+    if (nP > 20) { tipoConexion = 'multiple paralelo'; }
+    
     const mats = [
       { nombre: `Panel solar ${pW}Wp monocristalino`, qty: nP, ud: 'ud', precio: `${(pW * 0.22).toFixed(0)} €/ud` },
-      { nombre: `Inversor híbrido ${invKw}kW`, qty: 1, ud: 'ud', precio: `${(invKw * 180 + 400).toFixed(0)} €` },
-      { nombre: `Batería LiFePO4 2,4kWh 51,2V`, qty: numBat, ud: 'ud', precio: '850 €/ud' },
-      { nombre: `Cable solar DC 6mm²`, qty: 30 * 2, ud: 'm', precio: '1,80 €/m' },
+      { nombre: tipoInstalacion === 'red' ? `Inversor conectado red ${invKw}kW` : `Inversor híbrido ${invKw}kW`, qty: 1, ud: 'ud', precio: `${(invKw * (tipoInstalacion === 'red' ? 120 : 180) + 400).toFixed(0)} €` },
+      ...(numBat > 0 ? [{ nombre: `Batería LiFePO4 ${batCapacity}kWh 51,2V`, qty: numBat, ud: 'ud', precio: `${(batCapacity > 2.5 ? 1250 : 850)} €/ud` }] : []),
+      { nombre: `Cable solar DC ${tipoConexion === 'serie' ? '4' : '6'}mm²`, qty: (30 + numStrings * 10), ud: 'm', precio: `${tipoConexion === 'serie' ? '1.20' : '1.80'} €/m` },
       { nombre: `Conector MC4 macho+hembra`, qty: nP * 4, ud: 'par', precio: '1,50 €/par' },
       { nombre: `Estructura soporte aluminio`, qty: nP, ud: 'panel', precio: '25 €/panel' },
-      { nombre: `Fusibles gPV 15A/1000V DC`, qty: numStrings * 2, ud: 'ud', precio: '3 €/ud' },
-      { nombre: `Descargador sobretensión DC tipo 2`, qty: numStrings, ud: 'ud', precio: '25 €/ud' },
-      { nombre: `Tubo corrugado PVC Ø32mm`, qty: 40, ud: 'm', precio: '1,20 €/m' },
-      { nombre: `Contador bidireccional MID`, qty: 1, ud: 'ud', precio: '180 €' },
+      { nombre: `Fusibles gPV 25A/1000V DC`, qty: numStrings * 2, ud: 'ud', precio: '4 €/ud' },
+      { nombre: `Protección DC fotovoltaica`, qty: numStrings, ud: 'ud', precio: '45 €/ud' },
+      { nombre: `Tubo corrugado PVC Ø32mm`, qty: (40 + numStrings * 15), ud: 'm', precio: '1,20 €/m' },
+      ...(tipoInstalacion === 'red' ? [{ nombre: `Contador bidireccional MID`, qty: 1, ud: 'ud', precio: '180 €' }] : [{ nombre: `Disyuntor DC 63A bipolar`, qty: 1, ud: 'ud', precio: '120 €' }]),
+      ...(tipoInstalacion === 'aislada' ? [{ nombre: `MPPT 80A 48V`, qty: 1, ud: 'ud', precio: '450 €' }] : []),
     ];
-    return { nP, kwp, prodDia, prodAnio, invKw, numBat, batKwh, numStrings, mats, pW };
-  }, [dimMode, numPanelsInput, panelWInput, consumoVivienda]);
+    
+    return { nP, kwp, prodDia, prodAnio, invKw, numBat, batKwh, numStrings, mats, pW, tipoConexion, numSeriesParalelo, batCapacity };
+  }, [dimMode, numPanelsInput, panelWInput, consumoVivienda, tipoInstalacion]);
 
   // Sincronizar totalKwp con dimResult si el modo cambia
   const effectiveKwp = dimMode !== 'fijo' ? dimResult.kwp : totalKwp;
