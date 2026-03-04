@@ -554,7 +554,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                       onChange={e => {
                         setCity(e.target.value);
                         searchCitySuggestions(e.target.value);
-                        triggerAutoSearch(street, streetNum, e.target.value, postalCode, country);
+                        triggerAutoSearch(street, streetNum, e.target.value, province, postalCode, country);
                       }}
                       onFocus={() => setCityInputFocused(true)}
                       onBlur={() => setTimeout(() => setCityInputFocused(false), 200)}
