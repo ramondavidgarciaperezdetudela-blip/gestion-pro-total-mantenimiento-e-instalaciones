@@ -250,7 +250,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
         lngC = parseFloat(lngOverride).toFixed(6);
       } else {
         if (!streetVal || !numVal || !cityVal) { setCatastralLoading(false); return; }
-        const query = [streetVal, numVal, postalVal, cityVal, 'España'].filter(Boolean).join(', ');
+        const query = [streetVal, numVal, postalVal, cityVal, province, 'España'].filter(Boolean).join(', ');
         const nomRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=es`);
         const nomData = await nomRes.json();
         if (!nomData.length) { setCatastralLoading(false); setCatastralNotFound(true); return; }
