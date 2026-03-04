@@ -87,6 +87,7 @@ import Suppliers from './pages/Suppliers';
 import TecniciansRoutes from './pages/TecniciansRoutes';
 import ThermalCalc from './pages/ThermalCalc';
 import IncidentManagement from './pages/IncidentManagement';
+import MaintenancePlanning from './pages/MaintenancePlanning';
 import __Layout from './Layout.jsx';
 
 
@@ -131,6 +132,7 @@ export const PAGES = {
     "TecniciansRoutes": TecniciansRoutes,
     "ThermalCalc": ThermalCalc,
     "IncidentManagement": IncidentManagement,
+    "MaintenancePlanning": MaintenancePlanning,
 }
 
 export const pagesConfig = {
