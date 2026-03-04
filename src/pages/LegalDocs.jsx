@@ -10,6 +10,7 @@ import { FileText, Bot, Loader2, Save, Sun, Zap, Thermometer, Snowflake, Edit, C
 import { format } from 'date-fns';
 import CompanyHeader from '../components/CompanyHeader';
 import PrintButton from '../components/PrintButton';
+import LegalDocSignaturePanel from '../components/LegalDocSignaturePanel';
 import { toast } from 'sonner';
 
 // ─── TIPOS DE DOCUMENTOS ─────────────────────────────────────────────────────
