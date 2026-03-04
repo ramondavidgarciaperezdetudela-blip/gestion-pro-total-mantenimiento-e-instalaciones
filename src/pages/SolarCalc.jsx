@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sun, Calculator, Save, UserCheck, Edit3, CheckCircle } from 'lucide-react';
+import { Sun, Calculator, Save, UserCheck, Edit3, CheckCircle, TrendingUp, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import SolarWiringDiagram from '../components/SolarWiringDiagram';
 import SolarSiteReport from '../components/solar/SolarSiteReport';
+import SolarPVGISCalc from '../components/solar/SolarPVGISCalc';
+import ClientSparePartsTab from '../components/solar/ClientSparePartsTab';
 
 function calcSolar(form, mode) {
   let numPanels = parseInt(form.num_panels) || 0;
@@ -89,7 +91,6 @@ export default function SolarCalc() {
 
   useEffect(() => { base44.entities.Contact.list().then(setContacts); }, []);
 
-  // Cálculo en tiempo real
   const result = useMemo(() => calcSolar(form, mode), [form, mode]);
 
   const save = async () => {
@@ -115,16 +116,19 @@ export default function SolarCalc() {
         <div className="p-2 bg-amber-500 rounded-xl"><Sun className="w-6 h-6 text-white" /></div>
         <div>
           <h1 className="text-2xl font-bold">Cálculo Solar Fotovoltaico</h1>
-          <p className="text-sm text-gray-500">Los resultados se actualizan en tiempo real al modificar los datos</p>
+          <p className="text-sm text-gray-500">Cálculo + rentabilidad PVGIS + plano situación + repuestos</p>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full">
-          <TabsTrigger value="calculo" className="flex-1">⚡ Cálculo instalación</TabsTrigger>
-          <TabsTrigger value="situacion" className="flex-1">🗺️ Plano situación e informe solar</TabsTrigger>
+        <TabsList className="w-full flex-wrap h-auto">
+          <TabsTrigger value="calculo" className="flex-1">⚡ Instalación</TabsTrigger>
+          <TabsTrigger value="rentabilidad" className="flex-1">📈 Rentabilidad</TabsTrigger>
+          <TabsTrigger value="situacion" className="flex-1">🗺️ Plano solar</TabsTrigger>
+          <TabsTrigger value="repuestos" className="flex-1">📦 Repuestos</TabsTrigger>
         </TabsList>
 
+        {/* ═══ CÁLCULO ═══ */}
         <TabsContent value="calculo" className="space-y-4">
           <Tabs value={mode} onValueChange={setMode}>
             <TabsList className="w-full">
@@ -133,7 +137,6 @@ export default function SolarCalc() {
             </TabsList>
           </Tabs>
 
-          {/* Formulario */}
           <Card>
             <CardContent className="p-4 space-y-3">
               <Select value={form.contact_id} onValueChange={v => {
@@ -180,8 +183,6 @@ export default function SolarCalc() {
           {/* Resultados en tiempo real */}
           <div ref={printRef} className="space-y-4">
             <CompanyHeader className="mb-2" />
-
-            {/* KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <KpiBox value={result.numPanels} label="Paneles" color="bg-amber-50 text-amber-700" />
               <KpiBox value={`${result.totalKwp.toFixed(2)} kWp`} label="Potencia pico" color="bg-orange-50 text-orange-700" />
@@ -189,7 +190,6 @@ export default function SolarCalc() {
               <KpiBox value={`${result.numBatteries}x 2,4kWh`} label="Baterías" color="bg-green-50 text-green-700" />
             </div>
 
-            {/* Resumen técnico */}
             <Card className="border-gray-200">
               <CardHeader className="bg-gray-50 py-2"><CardTitle className="text-gray-700 text-sm">📊 Resumen técnico</CardTitle></CardHeader>
               <CardContent className="p-0">
@@ -206,13 +206,11 @@ export default function SolarCalc() {
               </CardContent>
             </Card>
 
-            {/* Esquema */}
             <Card className="border-amber-200">
               <CardHeader className="bg-amber-50 py-2"><CardTitle className="text-amber-700 text-sm">📐 Esquema de conexionado</CardTitle></CardHeader>
               <CardContent className="p-3"><SolarWiringDiagram result={result} form={form} /></CardContent>
             </Card>
 
-            {/* Materiales */}
             <Card className="border-amber-200">
               <CardHeader className="bg-amber-50 py-2"><CardTitle className="text-amber-700 text-sm">🛒 Lista de materiales — marcas, tiendas y precios</CardTitle></CardHeader>
               <CardContent className="p-0">
@@ -247,7 +245,6 @@ export default function SolarCalc() {
               </CardContent>
             </Card>
 
-            {/* Cuadros eléctricos */}
             <Card className="border-blue-200">
               <CardHeader className="bg-blue-50 py-2"><CardTitle className="text-blue-700 text-sm">🔌 Material cuadros eléctricos DC y AC</CardTitle></CardHeader>
               <CardContent className="p-0">
@@ -280,24 +277,44 @@ export default function SolarCalc() {
               </CardContent>
             </Card>
 
-            {/* Acciones */}
             <div className="flex gap-2 flex-wrap no-print items-center pt-2 border-t border-gray-100">
               <PrintButton contentRef={printRef} title="Cálculo Solar Fotovoltaico" />
               {!editing && !savedId && <Button onClick={save} variant="outline" size="sm" className="border-amber-400 text-amber-700"><Save className="w-4 h-4 mr-2" />Guardar cálculo</Button>}
               {savedId && !editing && <Button onClick={() => setEditing(true)} variant="outline" size="sm" className="border-blue-400 text-blue-600"><Edit3 className="w-4 h-4 mr-2" />Editar y actualizar</Button>}
               {editing && <Button onClick={save} size="sm" className="bg-blue-600 hover:bg-blue-700"><Save className="w-4 h-4 mr-2" />Guardar cambios</Button>}
               {savedMsg && <span className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />{savedMsg}</span>}
-              {savedId && !savedMsg && <span className="text-[10px] text-gray-400">✓ Guardado en base de datos</span>}
+              {savedId && !savedMsg && <span className="text-[10px] text-gray-400">✓ Guardado</span>}
+              <Button variant="ghost" size="sm" className="text-green-600 ml-auto" onClick={() => setActiveTab('rentabilidad')}>
+                <TrendingUp className="w-4 h-4 mr-1" /> Ver rentabilidad →
+              </Button>
             </div>
           </div>
         </TabsContent>
 
+        {/* ═══ RENTABILIDAD ═══ */}
+        <TabsContent value="rentabilidad" className="mt-4">
+          <SolarPVGISCalc
+            totalKwp={result.totalKwp}
+            numPanels={result.numPanels}
+            panelW={parseInt(form.panel_power_w) || 400}
+          />
+        </TabsContent>
+
+        {/* ═══ PLANO SOLAR ═══ */}
         <TabsContent value="situacion">
           <SolarSiteReport
             form={form}
             result={result}
             contact={contact}
             onSiteDataChange={siteData => setForm(f => ({ ...f, ...siteData }))}
+          />
+        </TabsContent>
+
+        {/* ═══ REPUESTOS ═══ */}
+        <TabsContent value="repuestos" className="mt-4">
+          <ClientSparePartsTab
+            contactId={form.contact_id || null}
+            contactName={form.contact_name || null}
           />
         </TabsContent>
       </Tabs>
