@@ -317,8 +317,8 @@ export default function Maintenance() {
 
               <Button onClick={handleSave} className="w-full bg-cyan-600">{editing ? 'Actualizar' : 'Guardar ficha'}</Button>
             </div>
-          </DialogContent>
-        </Dialog>
+        </DialogContent>
+      </Dialog>
 
       {/* Signature modals */}
       <SignaturePad open={sigTechOpen} onClose={() => setSigTechOpen(false)} title="Firma del técnico" onSave={sig => setForm({ ...form, signature_technician: sig })} />
