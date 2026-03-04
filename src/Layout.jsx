@@ -94,6 +94,7 @@ const mobileTabItems = [
   { name: 'SAT', page: 'SAT', icon: Wrench },
   { name: 'Solar+Bat.', page: 'SolarBatteryCalc', icon: Sun },
   { name: 'T.Visita', page: 'BusinessCards', icon: CreditCard },
+  { name: 'Camp.', page: 'TechnicianFieldWork', icon: Wrench },
 ];
 
 export default function Layout({ children, currentPageName }) {
