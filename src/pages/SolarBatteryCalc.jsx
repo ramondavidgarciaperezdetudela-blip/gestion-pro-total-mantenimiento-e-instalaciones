@@ -599,6 +599,7 @@ export default function SolarBatteryCalc() {
           <TabsTrigger value="baterias" className="flex-1 gap-1.5 data-[state=active]:bg-green-600 data-[state=active]:text-white rounded-lg"><Battery className="w-4 h-4" />Baterías</TabsTrigger>
           <TabsTrigger value="combinado" className="flex-1 gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-green-600 data-[state=active]:text-white rounded-lg"><Zap className="w-4 h-4" />Solar + Baterías</TabsTrigger>
           <TabsTrigger value="legal" className="flex-1 gap-1.5 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg"><FileText className="w-4 h-4" />Legalización</TabsTrigger>
+          <TabsTrigger value="repuestos" className="flex-1 gap-1.5 data-[state=active]:bg-orange-600 data-[state=active]:text-white rounded-lg"><Package className="w-4 h-4" />Repuestos</TabsTrigger>
         </TabsList>
 
         {/* ═══ TAB SOLAR ══════════════════════════════════════════════════════ */}
