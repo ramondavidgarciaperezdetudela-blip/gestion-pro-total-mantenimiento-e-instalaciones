@@ -199,9 +199,18 @@ export default function ColdRoomCalc() {
       </Card>
 
       {result && (
-        <div ref={printRef}>
-          <CompanyHeader className="mb-4" />
-          <Card className="border-blue-200">
+        <>
+          {/* Sección Humedad Relativa */}
+          <ColdRoomHumidityCalc 
+            tempCold={form.cold_room_temp} 
+            presionEvap={typeof result.evapPressure === 'number' ? result.evapPressure : 5.72}
+            tempExterior={form.exterior_temp}
+          />
+
+          {/* Sección Resultado Principal */}
+          <div ref={printRef}>
+            <CompanyHeader className="mb-4" />
+            <Card className="border-blue-200">
             <CardHeader className="bg-blue-50">
               <CardTitle className="text-blue-700">Resultado - Cámara Frigorífica</CardTitle>
             </CardHeader>
