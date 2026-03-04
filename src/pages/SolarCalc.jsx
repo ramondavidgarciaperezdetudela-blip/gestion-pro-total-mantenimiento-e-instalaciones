@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sun, Calculator, Save, UserCheck, Edit3, CheckCircle, TrendingUp, Package } from 'lucide-react';
+import SupplierPriceLookup from '../components/solar/SupplierPriceLookup';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
