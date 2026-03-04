@@ -179,79 +179,12 @@ export default function SolarCalc() {
         <div ref={printRef}>
           <CompanyHeader className="mb-4" />
           <Card className="border-amber-200">
-            <CardHeader className="bg-amber-50">
-              <CardTitle className="text-amber-700">Resultado instalación solar</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-amber-50 p-3 rounded-lg text-center">
-                  <p className="text-xl font-bold text-amber-600">{result.numPanels}</p>
-                  <p className="text-xs text-amber-500">Paneles</p>
-                </div>
-                <div className="bg-orange-50 p-3 rounded-lg text-center">
-                  <p className="text-xl font-bold text-orange-600">{result.totalKwp.toFixed(2)} kWp</p>
-                  <p className="text-xs text-orange-500">Potencia pico</p>
-                </div>
-                <div className="bg-blue-50 p-3 rounded-lg text-center">
-                  <p className="text-xl font-bold text-blue-600">{result.inverterKw} kW</p>
-                  <p className="text-xs text-blue-500">Inversor</p>
-                </div>
-                <div className="bg-green-50 p-3 rounded-lg text-center">
-                  <p className="text-xl font-bold text-green-600">{result.numBatteries}x 2,4kWh</p>
-                  <p className="text-xs text-green-500">Baterías</p>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 p-3 rounded-lg text-sm space-y-1">
-                <p><span className="text-gray-500">Producción diaria estimada:</span> <strong>{result.dailyProduction.toFixed(2)} kWh/día</strong></p>
-                <p><span className="text-gray-500">Producción anual estimada:</span> <strong>{result.yearlyProduction.toFixed(0)} kWh/año</strong></p>
-                <p><span className="text-gray-500">Nº strings:</span> <strong>{result.numStrings}</strong></p>
-                <p><span className="text-gray-500">Capacidad baterías total:</span> <strong>{(result.numBatteries * 2.4).toFixed(1)} kWh</strong></p>
-                <p><span className="text-gray-500">Sección cable DC:</span> <strong>{result.dcCableMm2} mm²</strong></p>
-              </div>
-
-              <div>
-                <p className="font-semibold text-sm mb-2">Esquema de conexionado</p>
-                <SolarWiringDiagram result={result} form={form} />
-              </div>
-
-              <div>
-                <p className="font-semibold text-sm mb-2">Lista de materiales</p>
-                <table className="w-full text-xs border-collapse">
-                  <thead><tr className="bg-gray-100"><th className="border p-1 text-left">Material</th><th className="border p-1 text-right">Cant.</th><th className="border p-1 text-left">Ud.</th></tr></thead>
-                  <tbody>
-                    {result.materials.map((m, i) => (
-                      <tr key={i} className="border-b"><td className="border p-1">{m.material}</td><td className="border p-1 text-right">{m.quantity}</td><td className="border p-1">{m.specification}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div>
-                <p className="font-semibold text-sm mb-2">Material eléctrico cuadros</p>
-                <table className="w-full text-xs border-collapse">
-                  <thead><tr className="bg-gray-100"><th className="border p-1 text-left">Elemento</th><th className="border p-1 text-left">Especificación</th><th className="border p-1 text-right">Cant.</th></tr></thead>
-                  <tbody>
-                    {result.electricalMaterials.map((m, i) => (
-                      <tr key={i} className="border-b"><td className="border p-1">{m.material}</td><td className="border p-1">{m.specification}</td><td className="border p-1 text-right">{m.quantity}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex gap-2 flex-wrap no-print items-center">
-                <PrintButton contentRef={printRef} title="Cálculo Solar Fotovoltaico" />
-                {!editing && !savedId && <Button onClick={save} variant="outline" size="sm"><Save className="w-4 h-4 mr-2" />Guardar cálculo</Button>}
-                {savedId && !editing && <Button onClick={() => setEditing(true)} variant="outline" size="sm" className="border-blue-400 text-blue-600">✏️ Editar y actualizar</Button>}
-                {editing && <Button onClick={save} size="sm" className="bg-blue-600 hover:bg-blue-700"><Save className="w-4 h-4 mr-2" />Guardar cambios</Button>}
-                {savedMsg && <span className="text-xs text-green-600 font-medium">{savedMsg}</span>}
-                {savedId && <span className="text-[10px] text-gray-400">Guardado en base de datos</span>}
+...
               </div>
             </CardContent>
           </Card>
         </div>
       )}
-    </div>
       </TabsContent>
 
       <TabsContent value="situacion">
