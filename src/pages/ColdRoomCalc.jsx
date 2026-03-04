@@ -278,7 +278,8 @@ export default function ColdRoomCalc() {
               </div>
             </CardContent>
           </Card>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
