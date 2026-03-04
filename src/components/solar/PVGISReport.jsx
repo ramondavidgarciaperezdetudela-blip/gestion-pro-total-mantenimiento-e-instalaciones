@@ -940,7 +940,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
             </div>
             {/* Info geolocalización */}
             <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-              <div><span className="text-xs text-gray-500 block">PV instalado</span><strong>{totalKwp.toFixed(2)} kWp</strong></div>
+              <div><span className="text-xs text-gray-500 block">PV instalado</span><strong>{effectiveKwp.toFixed(2)} kWp</strong></div>
               <div><span className="text-xs text-gray-500 block">País</span><strong>{country}</strong></div>
               <div><span className="text-xs text-gray-500 block">Ciudad</span><strong>{city || '—'}</strong></div>
               <div><span className="text-xs text-gray-500 block">Dirección</span><strong>{address || '—'}</strong></div>
