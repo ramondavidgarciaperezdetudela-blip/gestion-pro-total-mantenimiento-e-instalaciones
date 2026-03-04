@@ -252,5 +252,17 @@ export default function SolarCalc() {
         </div>
       )}
     </div>
+      </TabsContent>
+
+      <TabsContent value="situacion">
+        <SolarSiteReport
+          form={form}
+          result={result}
+          contact={contact}
+          onSiteDataChange={siteData => setForm(f => ({ ...f, ...siteData }))}
+        />
+      </TabsContent>
+      </Tabs>
+    </div>
   );
 }
