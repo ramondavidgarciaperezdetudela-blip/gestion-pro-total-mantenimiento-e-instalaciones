@@ -660,13 +660,13 @@ export default function LegalDocs() {
                         const tech = companyData.technicians.find(t => t.id === v);
                         setSelectedTechnician(v);
                         setF('tecnico', tech?.name || v);
-                        setF('num_carnet', tech?.certificate_number || '');
+                        setF('num_carnet', tech?.fgas_carnet || '');
                       }}>
                         <SelectTrigger><SelectValue placeholder="Seleccionar técnico" /></SelectTrigger>
                         <SelectContent>
                           {companyData.technicians.map((t) => (
                             <SelectItem key={t.id} value={t.id}>
-                              {t.name || t} {typeof t === 'string' ? '' : `(${t.certificate_type})`}
+                              {t.name} {t.fgas_carnet ? `(F-Gas: ${t.fgas_carnet})` : ''}
                             </SelectItem>
                           ))}
                           <SelectItem value="__otro__">Otro (escribir manualmente)</SelectItem>
