@@ -332,7 +332,6 @@ export default function TecniciansRoutes() {
                   placeholder="Ej: Calle Principal 123, Madrid" 
                   value={form.address} 
                   onChange={e => setForm({ ...form, address: e.target.value })}
-                  disabled={form.contactId && !showClientSelector}
                 />
                 <Button
                   onClick={() => getCoordinatesFromAddress(form.address)}
