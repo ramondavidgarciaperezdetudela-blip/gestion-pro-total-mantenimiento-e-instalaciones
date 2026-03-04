@@ -585,7 +585,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                   </div>
               }
               <div className="col-span-2">
-                <a href={refCatastral ? `https://www1.sedecatastro.gob.es/Cartografia/mapa.aspx?buscar=S` : `https://www1.sedecatastro.gob.es/Cartografia/mapa.aspx?buscar=S`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-[10px]">
+                <a href={refCatastral ? `https://www1.sedecatastro.gob.es/Cartografia/mapa.aspx?buscar=S&refcat=${refCatastral}` : `https://www1.sedecatastro.gob.es/Cartografia/mapa.aspx?buscar=S`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-[10px]">
                   🔗 Ver en Catastro
                 </a>
                 {' · '}
