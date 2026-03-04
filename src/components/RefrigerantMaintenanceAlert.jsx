@@ -3,9 +3,14 @@ import { AlertTriangle, AlertCircle, TrendingUp, Calendar, CheckCircle2 } from '
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
-export default function RefrigerantMaintenanceAlert({ refrigerantData, weight }) {
+export default function RefrigerantMaintenanceAlert({ refrigerantData, weight = null }) {
   const alert = useMemo(() => {
-    if (!refrigerantData || !refrigerantData.fgas_ban_date) {
+    if (!refrigerantData) {
+      return null;
+    }
+
+    // Si no hay fecha de prohibición, retorna null (gas permitido indefinidamente)
+    if (!refrigerantData.fgas_ban_date) {
       return null;
     }
 
