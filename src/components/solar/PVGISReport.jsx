@@ -188,24 +188,29 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
     }, 1200);
   };
 
-  // ─── Buscar referencia catastral por coordenadas (más fiable) ─────────────
-  const fetchRefCatastral = async (streetVal, numVal, cityVal, postalVal) => {
-    if (!streetVal || !numVal || !cityVal) return;
+  // ─── Buscar referencia catastral por coordenadas ─────────────────────────
+  const fetchRefCatastral = async (streetVal, numVal, cityVal, postalVal, latOverride, lngOverride) => {
     setCatastralLoading(true);
+    setCatastralNotFound(false);
     try {
-      // Paso 1: obtener coordenadas con Nominatim
-      const query = [streetVal, numVal, postalVal, cityVal, 'España'].filter(Boolean).join(', ');
-      const nomRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=es`);
-      const nomData = await nomRes.json();
-      if (!nomData.length) { setCatastralLoading(false); return; }
+      let latC, lngC;
+      if (latOverride && lngOverride) {
+        latC = parseFloat(latOverride).toFixed(6);
+        lngC = parseFloat(lngOverride).toFixed(6);
+      } else {
+        if (!streetVal || !numVal || !cityVal) { setCatastralLoading(false); return; }
+        const query = [streetVal, numVal, postalVal, cityVal, 'España'].filter(Boolean).join(', ');
+        const nomRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=es`);
+        const nomData = await nomRes.json();
+        if (!nomData.length) { setCatastralLoading(false); setCatastralNotFound(true); return; }
+        latC = parseFloat(nomData[0].lat).toFixed(6);
+        lngC = parseFloat(nomData[0].lon).toFixed(6);
+      }
 
-      const latC = parseFloat(nomData[0].lat).toFixed(6);
-      const lngC = parseFloat(nomData[0].lon).toFixed(6);
-
-      // Paso 2: consultar catastro por coordenadas (endpoint JSON público)
+      // Consultar catastro por coordenadas (endpoint JSON público, solo España)
       const rcUrl = `https://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCCoordenadas.svc/json/Consulta_RCCOOR?SRS=EPSG:4326&Coordenada_X=${lngC}&Coordenada_Y=${latC}`;
       const rcRes = await fetch(rcUrl);
-      if (!rcRes.ok) { setCatastralLoading(false); return; }
+      if (!rcRes.ok) { setCatastralLoading(false); setCatastralNotFound(true); return; }
       const rcData = await rcRes.json();
 
       const coord = rcData?.consulta_coordenadas?.coordenadas?.coord;
@@ -214,8 +219,13 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
       const pc2 = first?.pc?.pc2;
       if (pc1 && pc2) {
         setRefCatastral((pc1 + pc2).trim());
+        setCatastralNotFound(false);
+      } else {
+        setCatastralNotFound(true);
       }
-    } catch(e) {}
+    } catch(e) {
+      setCatastralNotFound(true);
+    }
     setCatastralLoading(false);
   };
 
