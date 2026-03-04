@@ -383,6 +383,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
 
   // ─── Cálculos PVGIS ────────────────────────────────────────────────────────
   const results = useMemo(() => {
+    const kwpCalc = effectiveKwp;
     const azFactor = getAzimutFactor(azimuthDeg);
     const tiltFactor = getTiltFactor(tiltAngle, zonaData.lat);
     const lossFactor = (100 - totalPerdidas) / 100;
