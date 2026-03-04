@@ -5,13 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Save, Check } from 'lucide-react';
 
-export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign, docContent, setDocContent, technicians = [], clientName = '', contactName = '' }) {
+export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign, docContent, setDocContent, technicians = [], contactName = '', contacts = [] }) {
   const technicianCanvasRef = useRef(null);
   const clientCanvasRef = useRef(null);
   const [isDrawingTechnician, setIsDrawingTechnician] = useState(false);
   const [isDrawingClient, setIsDrawingClient] = useState(false);
   const [technicianName, setTechnicianName] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState('');
   const [clientNameInput, setClientNameInput] = useState(contactName || '');
+  const [clientNameCustom, setClientNameCustom] = useState('');
   const [technicianSigned, setTechnicianSigned] = useState(false);
   const [clientSigned, setClientSigned] = useState(false);
 
