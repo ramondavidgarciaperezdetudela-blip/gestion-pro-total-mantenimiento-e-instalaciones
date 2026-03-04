@@ -489,17 +489,13 @@ export default function LegalDocs() {
   const downloadStandardTemplates = async () => {
     try {
       setGenerating(true);
+      // Descargar y guardar plantillas para la categoría seleccionada
       const res = await base44.functions.invoke('downloadLegalDocuments');
-      toast.success(`✅ Se cargaron ${res.data.templates?.length || 6} plantillas de legalización`);
+      toast.success(`✅ Plantillas de ${DOC_TYPES[activeType]?.label} guardadas en templates`);
       // Recargar desde base de datos
-      const loaded = await base44.entities.DocumentTemplate.list();
-      const legalTemplates = loaded.filter(t => t.name?.startsWith('LEGAL:'));
-      const grouped = {};
-      legalTemplates.forEach(t => {
-        const type = t.doc_type || 'solar';
-        if (!grouped[type]) grouped[type] = [];
-        grouped[type].push({ id: t.id, name: t.name.replace('LEGAL: ', ''), content: t.notes_template });
-      });
+      const loaded = await base44.entities.DocumentTemplate.filter({ doc_type: activeType });
+      const grouped = { ...templates };
+      grouped[activeType] = loaded.map(t => ({ id: t.id, name: t.name.replace('LEGAL: ', ''), content: t.notes_template }));
       setTemplates(grouped);
     } catch (e) {
       toast.error('Error: ' + e.message);
