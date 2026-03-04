@@ -12,6 +12,7 @@ import CompanyHeader from '../components/CompanyHeader';
 import SolarWiringDiagram from '../components/SolarWiringDiagram';
 import SolarSiteReport from '../components/solar/SolarSiteReport';
 import SolarPVGISCalc from '../components/solar/SolarPVGISCalc';
+import PVGISReport from '../components/solar/PVGISReport';
 import ClientSparePartsTab from '../components/solar/ClientSparePartsTab';
 
 function calcSolar(form, mode) {
