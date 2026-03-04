@@ -5,25 +5,57 @@ import { Button } from '@/components/ui/button';
 export default function CameraCapture({ onCapture, onCancel, label = 'Capturar foto' }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [error, setError] = useState('');
-  const [facingMode, setFacingMode] = useState('environment'); // 'environment' trasera, 'user' frontal
+  const [facingMode, setFacingMode] = useState('environment');
+  const [cameraSupported, setCameraSupported] = useState(true);
 
   const startCamera = async () => {
     try {
       setError('');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode },
+      
+      // Verificar soporte
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraSupported(false);
+        setError('Tu navegador no soporta acceso a cámara. Usa el selector de archivos.');
+        return;
+      }
+
+      // Solicitar con mejor manejo de constraints
+      const constraints = {
+        video: {
+          facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
         audio: false,
-      });
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        // Esperar a que el video esté listo
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(e => console.error('Play error:', e));
+        };
         setCameraActive(true);
       }
     } catch (err) {
-      setError('No se pudo acceder a la cámara. Verifica los permisos.');
       console.error('Camera error:', err);
+      
+      if (err.name === 'NotAllowedError') {
+        setError('❌ Permiso denegado. Habilita la cámara en ajustes del navegador.');
+      } else if (err.name === 'NotFoundError') {
+        setError('❌ No se encontró cámara en el dispositivo.');
+      } else if (err.name === 'NotReadableError') {
+        setError('❌ La cámara está siendo usada por otra aplicación.');
+      } else {
+        setError('❌ Error al acceder a la cámara. ' + err.message);
+      }
+      setCameraSupported(false);
     }
   };
 
