@@ -74,7 +74,6 @@ function MapClickHandler({ onMapClick }) {
 }
 
 // ─── Componente para mover la vista del mapa ─────────────────────────────────
-import { useMap } from 'react-leaflet';
 function FlyToLocation({ center, zoom = 16 }) {
   const map = useMap();
   useEffect(() => {
