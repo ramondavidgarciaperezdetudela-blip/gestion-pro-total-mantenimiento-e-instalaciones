@@ -442,13 +442,14 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
         <CardContent className="p-0">
           {/* Mapa satelital */}
           <div className="h-72 relative" style={{ zIndex: 0 }}>
-            <MapContainer key={mapKey} center={mapCenter} zoom={16} style={{ height: '100%', width: '100%' }} zoomControl={true}>
+            <MapContainer center={mapCenter} zoom={16} style={{ height: '100%', width: '100%' }} zoomControl={true}>
               <TileLayer
                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                 attribution='Tiles © Esri — Source: Esri, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP'
               />
               <Marker position={markerPos} />
               <MapClickHandler onMapClick={handleMapClick} />
+              <FlyToLocation center={mapCenter} zoom={17} />
             </MapContainer>
             <div className="absolute bottom-2 right-2 z-[1000] bg-white/90 rounded-lg shadow px-2 py-1 text-[10px] text-gray-600">
               Haz clic en el mapa para mover el marcador
