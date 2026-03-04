@@ -684,9 +684,10 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
             </div>
             {/* Mapa en el informe (solo pantalla, no print) */}
             <div className="h-64 no-print" style={{ zIndex: 0 }}>
-              <MapContainer key={`report-${mapKey}`} center={mapCenter} zoom={17} style={{ height: '100%', width: '100%' }} zoomControl={false} scrollWheelZoom={false} dragging={false}>
+              <MapContainer center={mapCenter} zoom={17} style={{ height: '100%', width: '100%' }} zoomControl={false} scrollWheelZoom={false} dragging={false}>
                 <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="" />
                 <Marker position={markerPos} />
+                <FlyToLocation center={mapCenter} zoom={17} />
               </MapContainer>
             </div>
             {/* Info geolocalización */}
