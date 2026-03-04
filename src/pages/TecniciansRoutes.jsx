@@ -73,6 +73,36 @@ export default function TecniciansRoutes() {
     setShowClientSelector(false);
   };
 
+  const getCoordinatesFromAddress = async (address) => {
+    if (!address || address.trim().length < 5) {
+      toast.error('Escribe una dirección completa');
+      return;
+    }
+    
+    setLoadingCoords(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
+      );
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        setForm(f => ({
+          ...f,
+          lat: parseFloat(lat),
+          lng: parseFloat(lon),
+        }));
+        toast.success('Coordenadas obtenidas automáticamente');
+      } else {
+        toast.error('No se encontró la dirección. Verifica y prueba de nuevo.');
+      }
+    } catch (e) {
+      toast.error('Error al obtener coordenadas');
+    }
+    setLoadingCoords(false);
+  };
+
   const handleSaveStop = () => {
     if (!form.address) {
       toast.error('Completa la dirección');
