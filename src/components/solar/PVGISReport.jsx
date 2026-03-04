@@ -134,6 +134,48 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   const [perdidaInversor, setPerdidaInversor] = useState(2);
   const [perdidaPV, setPerdidaPV] = useState(0.5);
 
+  // ─── Modo de dimensionado ──────────────────────────────────────────────────
+  const [dimMode, setDimMode] = useState('fijo'); // 'fijo' | 'consumo'
+  const [consumoVivienda, setConsumoVivienda] = useState(4500); // kWh/año
+  const [numPanelsInput, setNumPanelsInput] = useState(numPanels || 8);
+  const [panelWInput, setPanelWInput] = useState(panelW || 400);
+
+  // Cálculo dinámico de paneles/baterías según modo
+  const dimResult = React.useMemo(() => {
+    const hsp = 4.5;
+    const pW = parseInt(panelWInput) || 400;
+    let nP = parseInt(numPanelsInput) || 0;
+    const consumoKwhDia = parseFloat(consumoVivienda) > 50 ? parseFloat(consumoVivienda) / 365 : parseFloat(consumoVivienda);
+    if (dimMode === 'consumo') {
+      nP = Math.ceil((consumoKwhDia * 1000) / (pW * hsp * 0.8));
+    }
+    const kwp = (nP * pW) / 1000;
+    const prodDia = kwp * hsp * 0.8;
+    const prodAnio = prodDia * 365;
+    const invKw = Math.ceil(kwp * 0.9) || 1;
+    const batKwh = prodDia * 0.5;
+    const numBat = Math.ceil(batKwh / 2.4) || 1;
+    const numStrings = Math.max(1, Math.ceil(nP / 16));
+    const mats = [
+      { nombre: `Panel solar ${pW}Wp monocristalino`, qty: nP, ud: 'ud', precio: `${(pW * 0.22).toFixed(0)} €/ud` },
+      { nombre: `Inversor híbrido ${invKw}kW`, qty: 1, ud: 'ud', precio: `${(invKw * 180 + 400).toFixed(0)} €` },
+      { nombre: `Batería LiFePO4 2,4kWh 51,2V`, qty: numBat, ud: 'ud', precio: '850 €/ud' },
+      { nombre: `Cable solar DC 6mm²`, qty: 30 * 2, ud: 'm', precio: '1,80 €/m' },
+      { nombre: `Conector MC4 macho+hembra`, qty: nP * 4, ud: 'par', precio: '1,50 €/par' },
+      { nombre: `Estructura soporte aluminio`, qty: nP, ud: 'panel', precio: '25 €/panel' },
+      { nombre: `Fusibles gPV 15A/1000V DC`, qty: numStrings * 2, ud: 'ud', precio: '3 €/ud' },
+      { nombre: `Descargador sobretensión DC tipo 2`, qty: numStrings, ud: 'ud', precio: '25 €/ud' },
+      { nombre: `Tubo corrugado PVC Ø32mm`, qty: 40, ud: 'm', precio: '1,20 €/m' },
+      { nombre: `Contador bidireccional MID`, qty: 1, ud: 'ud', precio: '180 €' },
+    ];
+    return { nP, kwp, prodDia, prodAnio, invKw, numBat, batKwh, numStrings, mats, pW };
+  }, [dimMode, numPanelsInput, panelWInput, consumoVivienda]);
+
+  // Sincronizar totalKwp con dimResult si el modo cambia
+  const effectiveKwp = dimMode !== 'fijo' ? dimResult.kwp : totalKwp;
+  const effectiveNumPanels = dimMode !== 'fijo' ? dimResult.nP : numPanels;
+  const effectivePanelW = dimMode !== 'fijo' ? dimResult.pW : panelW;
+
   // ─── Económicos ────────────────────────────────────────────────────────────
   const [precioKwh, setPrecioKwh] = useState(0.18);
   const [costeInstalacion, setCosteInstalacion] = useState('');
