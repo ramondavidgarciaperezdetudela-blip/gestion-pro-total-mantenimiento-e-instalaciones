@@ -1120,7 +1120,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
             <p className="font-bold text-sm">☀️ IRRADIACIÓN MENSUAL EN PLANO FIJO (kWh/m²)</p>
           </div>
           <CardContent className="p-4 space-y-3">
-            <p className="text-xs text-gray-600">Irradiación anual: <strong className="text-orange-700">{results.totalIrr.toLocaleString('es-ES')} kWh/m²</strong></p>
+            <p className="text-xs text-gray-600">Irradiación anual: <strong className="text-orange-700">{results.totalIrr.toLocaleString('es-ES')} kWh/m²</strong> · Paneles: <strong>{effectiveNumPanels} × {effectivePanelW}W = {effectiveKwp.toFixed(2)} kWp</strong></p>
 
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
