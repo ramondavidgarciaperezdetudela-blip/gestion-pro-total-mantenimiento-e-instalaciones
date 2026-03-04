@@ -17,6 +17,7 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
   const [clientNameCustom, setClientNameCustom] = useState('');
   const [technicianSigned, setTechnicianSigned] = useState(false);
   const [clientSigned, setClientSigned] = useState(false);
+  const [expandedCanvas, setExpandedCanvas] = useState(null);
 
   const getPointerPosition = (e) => {
     const canvas = e.currentTarget;
