@@ -413,17 +413,37 @@ export default function LegalDocs() {
       return;
     }
     setSaving(true);
+    
+    // Insertar las firmas en el documento si existen
+    let finalContent = docContent;
+    if (technicianSignature) {
+      finalContent = finalContent.replace(
+        'Firma: ☐',
+        `Firma: <img src="${technicianSignature.signature}" style="max-width:100px;height:auto"/>`
+      );
+      finalContent = finalContent.replace(
+        /<th[^>]*>FIRMA<\/th>/,
+        `<th>${technicianSignature.name}</th>`
+      );
+    }
+    if (clientSignature) {
+      finalContent = finalContent.replace(
+        /Firma: ☐(\s|<)/g,
+        `Firma: <img src="${clientSignature.signature}" style="max-width:100px;height:auto"/> $1`
+      );
+    }
+
     const title = `LEGAL: ${selectedDoc?.label || 'Documento'} — ${format(new Date(), 'dd/MM/yyyy')}`;
     await base44.entities.ClientDocument.create({
       contact_id: selectedContact,
       contact_name: contact ? `${contact.name} ${contact.surname || ''}`.trim() : '',
       title,
       doc_type: 'informe',
-      description: docContent,
+      description: finalContent,
       date: format(new Date(), 'yyyy-MM-dd'),
     });
     setSaving(false);
-    toast.success('Documento guardado en la ficha del cliente');
+    toast.success('Documento guardado con firmas en la ficha del cliente');
     loadSavedDocs();
   };
 
