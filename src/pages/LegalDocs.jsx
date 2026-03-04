@@ -374,16 +374,17 @@ export default function LegalDocs() {
     setEditing(false);
     setTechnicianSignature(null);
     setClientSignature(null);
-    
+
     // Check if template exists
     const templateList = templates[activeType] || [];
-    const template = templateList.find(t => t.id === selectedDoc.id);
-    
+    const template = templateList.find(t => t.id === selectedDoc.id || (t.name && t.name === selectedDoc.label));
+
     if (template && template.content) {
-      // Use template and fill with form data
+      // Use saved template and fill with form data
       let content = fillDocumentWithData(template.content);
       setDocContent(content);
       setEditContent(content);
+      toast.info('📋 Usando plantilla guardada');
     } else {
       // Generate from scratch using AI
       const prompt = buildPrompt(activeType, selectedDoc.id, form, contact, companyData);
@@ -392,6 +393,7 @@ export default function LegalDocs() {
       const filled = fillDocumentWithData(cleaned);
       setDocContent(filled);
       setEditContent(filled);
+      toast.info('🤖 Documento generado por IA');
     }
     setGenerating(false);
   };
