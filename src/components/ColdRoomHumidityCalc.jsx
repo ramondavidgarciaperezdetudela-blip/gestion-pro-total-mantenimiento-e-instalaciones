@@ -56,6 +56,15 @@ function getMaterials(rh, tempCold) {
 }
 
 function HumidityDiagram({ rh, materials, tempCold }) {
+  // Determinar color según humedad
+  let bgColor = '#dcfce7';
+  if (rh > 85) bgColor = '#fee2e2';
+  if (rh < 50) bgColor = '#fef3c7';
+  
+  let statusText = '✓ Normal';
+  if (rh > 85) statusText = '⚠️ Muy húmedo';
+  if (rh < 50) statusText = '⚠️ Muy seco';
+
   return (
     <svg viewBox="0 0 400 250" className="w-full border border-gray-200 rounded-lg bg-white">
       {/* Background */}
@@ -74,10 +83,6 @@ function HumidityDiagram({ rh, materials, tempCold }) {
       <text x="110" y="120" fontSize="14" fontWeight="bold" textAnchor="middle" fill="#0c4a6e">{rh}% HR</text>
       
       {/* Indicador color HR */}
-      let bgColor = '#dcfce7';
-      if (rh > 85) bgColor = '#fee2e2';
-      if (rh < 50) bgColor = '#fef3c7';
-      
       <rect x="80" y="150" width="60" height="20" fill={bgColor} stroke="#666" strokeWidth="1" rx="3" />
       <text x="110" y="165" fontSize="11" fontWeight="bold" textAnchor="middle" fill="#1f2937">
         {rh > 85 ? '⚠️ Muy húmedo' : rh < 50 ? '⚠️ Muy seco' : '✓ Normal'}
