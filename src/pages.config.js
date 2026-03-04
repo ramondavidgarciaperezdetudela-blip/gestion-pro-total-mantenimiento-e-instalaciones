@@ -66,6 +66,7 @@ import Contacts from './pages/Contacts';
 import DocumentTemplates from './pages/DocumentTemplates';
 import Documents from './pages/Documents';
 import ElectricalCalc from './pages/ElectricalCalc';
+import EquipmentFailureHistory from './pages/EquipmentFailureHistory';
 import ExportData from './pages/ExportData';
 import Home from './pages/Home';
 import Inventory from './pages/Inventory';
@@ -73,6 +74,7 @@ import LegalDocs from './pages/LegalDocs';
 import Maintenance from './pages/Maintenance';
 import Manuals from './pages/Manuals';
 import Notes from './pages/Notes';
+import ProjectTimeline from './pages/ProjectTimeline';
 import Projects from './pages/Projects';
 import Regulations from './pages/Regulations';
 import Reports from './pages/Reports';
@@ -82,10 +84,8 @@ import SolarBatteryCalc from './pages/SolarBatteryCalc';
 import SolarCalc from './pages/SolarCalc';
 import SparePartsManager from './pages/SparePartsManager';
 import Suppliers from './pages/Suppliers';
-import ThermalCalc from './pages/ThermalCalc';
-import ProjectTimeline from './pages/ProjectTimeline';
 import TecniciansRoutes from './pages/TecniciansRoutes';
-import EquipmentFailureHistory from './pages/EquipmentFailureHistory';
+import ThermalCalc from './pages/ThermalCalc';
 import __Layout from './Layout.jsx';
 
 
@@ -109,6 +109,7 @@ export const PAGES = {
     "DocumentTemplates": DocumentTemplates,
     "Documents": Documents,
     "ElectricalCalc": ElectricalCalc,
+    "EquipmentFailureHistory": EquipmentFailureHistory,
     "ExportData": ExportData,
     "Home": Home,
     "Inventory": Inventory,
@@ -116,6 +117,7 @@ export const PAGES = {
     "Maintenance": Maintenance,
     "Manuals": Manuals,
     "Notes": Notes,
+    "ProjectTimeline": ProjectTimeline,
     "Projects": Projects,
     "Regulations": Regulations,
     "Reports": Reports,
@@ -125,10 +127,8 @@ export const PAGES = {
     "SolarCalc": SolarCalc,
     "SparePartsManager": SparePartsManager,
     "Suppliers": Suppliers,
-    "ThermalCalc": ThermalCalc,
-    "ProjectTimeline": ProjectTimeline,
     "TecniciansRoutes": TecniciansRoutes,
-    "EquipmentFailureHistory": EquipmentFailureHistory,
+    "ThermalCalc": ThermalCalc,
 }
 
 export const pagesConfig = {
