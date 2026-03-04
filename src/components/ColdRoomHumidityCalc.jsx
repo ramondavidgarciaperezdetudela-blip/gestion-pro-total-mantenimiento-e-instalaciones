@@ -161,8 +161,31 @@ export default function ColdRoomHumidityCalc({ tempCold = 2, presionEvap = 5.72,
   const [selectedSupplier, setSelectedSupplier] = useState('salvador-escoda');
   const [materialPrices, setMaterialPrices] = useState({});
   
+  useEffect(() => {
+    Promise.all([
+      base44.entities.Supplier.filter({ is_active: true }),
+      base44.entities.SupplierPrice.list('-created_date', 1000),
+    ]).then(([supp, prices]) => {
+      setSuppliers(supp);
+      // Agrupar precios por supplier y producto
+      const pricesMap = {};
+      prices.forEach(p => {
+        const key = `${p.supplier_name}|${p.product_name}`;
+        pricesMap[key] = p;
+      });
+      setMaterialPrices(pricesMap);
+    });
+  }, []);
+
   const humidityResult = useMemo(() => calcRelativeHumidity(parseFloat(temp), parseFloat(exterior), parseFloat(pressure)), [temp, exterior, pressure]);
   const materials = getMaterials(parseFloat(humidityResult.rh), parseFloat(temp));
+
+  // Buscar precios de materiales para el proveedor seleccionado
+  const getMaterialPrice = (materialName) => {
+    const supplierName = suppliers.find(s => s.id === selectedSupplier)?.name || 'Salvador Escoda';
+    const key = `${supplierName}|${materialName}`;
+    return materialPrices[key];
+  };
   
   // Gráfico interactivo de humedad según temperatura
   const tempRange = Array.from({ length: 20 }, (_, i) => {
