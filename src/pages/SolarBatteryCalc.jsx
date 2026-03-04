@@ -971,6 +971,11 @@ export default function SolarBatteryCalc() {
           )}
         </TabsContent>
 
+        {/* ═══ TAB INVERSORES ═════════════════════════════════════════════════ */}
+        <TabsContent value="inversores" className="mt-4">
+          <InverterComparison targetKwp={solarResult ? solarResult.totalKwp : 3.2} />
+        </TabsContent>
+
         {/* ═══ TAB LEGALIZACIÓN ═══════════════════════════════════════════════ */}
         <TabsContent value="legal" className="mt-4">
           <LegalizacionSection />
