@@ -53,6 +53,7 @@ const navItems = [
   { name: 'SAT', page: 'SAT', icon: Wrench },
   { name: 'Solar + Baterías', page: 'SolarBatteryCalc', icon: Sun },
   { name: 'Tarjetas Visita', page: 'BusinessCards', icon: CreditCard },
+  { name: 'Trabajo de Campo', page: 'TechnicianFieldWork', icon: Wrench },
 ];
 
 // Bottom tabs for mobile
