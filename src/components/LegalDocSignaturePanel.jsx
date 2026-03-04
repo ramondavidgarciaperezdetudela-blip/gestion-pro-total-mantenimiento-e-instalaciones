@@ -115,6 +115,48 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
     }
   };
 
+  // Modal expandido para firma en grande
+  if (expandedCanvas) {
+    const isClient = expandedCanvas === 'client';
+    const canvas = isClient ? clientCanvasRef.current : technicianCanvasRef.current;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex flex-col p-4">
+        <div className="bg-white rounded-lg flex flex-col h-full max-w-4xl mx-auto w-full shadow-lg">
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="text-lg font-semibold">{isClient ? 'Firma Cliente - Zona Ampliada' : 'Firma Técnico - Zona Ampliada'}</h2>
+            <Button variant="outline" size="sm" onClick={() => setExpandedCanvas(null)}>
+              <Minimize2 className="w-4 h-4 mr-2" /> Cerrar
+            </Button>
+          </div>
+          <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+            <canvas
+              ref={isClient ? clientCanvasRef : technicianCanvasRef}
+              width={1200}
+              height={600}
+              className="border-3 border-gray-400 rounded bg-white cursor-crosshair touch-none max-w-full max-h-full shadow-lg"
+              onMouseDown={(e) => startDrawing(e, isClient)}
+              onMouseMove={(e) => draw(e, isClient)}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={(e) => startDrawing(e, isClient)}
+              onTouchMove={(e) => draw(e, isClient)}
+              onTouchEnd={stopDrawing}
+            />
+          </div>
+          <div className="flex gap-2 p-4 border-t">
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => clearSignature(isClient)}>
+              <Trash2 className="w-4 h-4 mr-2" /> Limpiar firma
+            </Button>
+            <Button size="sm" className={`flex-1 ${isClient ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`} onClick={() => { saveSignature(isClient); setExpandedCanvas(null); }}>
+              <Save className="w-4 h-4 mr-2" /> Guardar y cerrar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
