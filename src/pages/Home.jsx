@@ -107,7 +107,15 @@ export default function Home() {
       const satPending = sat.filter(s => s.status === 'pendiente').length;
       const unpaidContacts = contacts.filter(c => (c.pending_amount || 0) > 0).length;
 
-      setKpis({ contacts: contacts.length, totalInvoiced, pendingAmount, satPending, overdueInvoices, paidThisMonth, unpaidContacts, totalSuppliers: suppliers.filter(s => s.is_active !== false).length, invoicesPaid, invoicesPending, invoicesOverdue: overdueInvoices });
+      // Alertas de mantenimiento inteligente
+      const maintenanceDue = machines.filter(m => {
+        if (!m.next_maintenance_date || m.status !== 'operativo') return false;
+        const nextDate = new Date(m.next_maintenance_date);
+        const daysUntil = Math.ceil((nextDate - new Date()) / 86400000);
+        return daysUntil <= 30 && daysUntil > 0;
+      }).length;
+
+      setKpis({ contacts: contacts.length, totalInvoiced, pendingAmount, satPending, overdueInvoices, paidThisMonth, unpaidContacts, maintenanceDue, totalSuppliers: suppliers.filter(s => s.is_active !== false).length, invoicesPaid, invoicesPending, invoicesOverdue: overdueInvoices });
       setRecentDocs(invoices.slice(0, 5));
       setRecentSat(sat.filter(s => s.status === 'pendiente').slice(0, 4));
       setRecentContacts(contacts.filter(c => c.type === 'cliente').slice(0, 5));
