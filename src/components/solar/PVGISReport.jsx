@@ -86,7 +86,6 @@ function FlyToLocation({ center, zoom = 16 }) {
 
 export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 400, contactName = '', contactId = '' }) {
   const printRef = useRef(null);
-  const [mapKey, setMapKey] = useState(0);
 
   // ─── Geolocalización ───────────────────────────────────────────────────────
   const [locMode, setLocMode] = useState('direccion');
