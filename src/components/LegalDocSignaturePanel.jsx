@@ -76,7 +76,20 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
 
   const saveSignature = (isClient) => {
     const canvas = isClient ? clientCanvasRef.current : technicianCanvasRef.current;
-    const name = isClient ? clientNameInput : technicianName;
+    let name = '';
+    
+    if (isClient) {
+      if (selectedClientId) {
+        const selectedContact = contacts.find(c => c.id === selectedClientId);
+        name = selectedContact ? `${selectedContact.name} ${selectedContact.surname || ''}`.trim() : '';
+      } else if (clientNameCustom) {
+        name = clientNameCustom;
+      } else {
+        name = clientNameInput;
+      }
+    } else {
+      name = technicianName;
+    }
     
     if (!canvas || !name) {
       alert(`Por favor ingresa el nombre ${isClient ? 'del cliente' : 'del técnico'}`);
