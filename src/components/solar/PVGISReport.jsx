@@ -720,21 +720,29 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-xs text-gray-500">Latitud</label>
-                    <Input type="number" step="0.000001" value={lat} onChange={e => { setLat(parseFloat(e.target.value)); }} className="mt-1 h-8 text-xs" />
+                    <Input type="number" step="0.000001" value={lat} onChange={e => { 
+                      const newLat = parseFloat(e.target.value);
+                      setLat(newLat);
+                      setMarkerPos([newLat, lng]);
+                      setMapCenter([newLat, lng]);
+                    }} className="mt-1 h-8 text-xs" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500">Longitud</label>
-                    <Input type="number" step="0.000001" value={lng} onChange={e => { setLng(parseFloat(e.target.value)); }} className="mt-1 h-8 text-xs" />
+                    <Input type="number" step="0.000001" value={lng} onChange={e => { 
+                      const newLng = parseFloat(e.target.value);
+                      setLng(newLng);
+                      setMarkerPos([lat, newLng]);
+                      setMapCenter([lat, newLng]);
+                    }} className="mt-1 h-8 text-xs" />
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={() => { setMarkerPos([parseFloat(lat), parseFloat(lng)]); setMapCenter([parseFloat(lat), parseFloat(lng)]); setMapKey(k => k+1); }} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white flex-1">
-                    <MapPin className="w-4 h-4 mr-1" />Ir a coordenadas
-                  </Button>
                   <Button onClick={getGeoLocation} variant="outline" size="sm" className="flex-1">
                     <Navigation className="w-4 h-4 mr-1" />Usar mi ubicación
                   </Button>
                 </div>
+                <p className="text-[10px] text-gray-400">💡 El mapa se actualiza automáticamente al cambiar coordenadas</p>
               </div>
             )}
 
