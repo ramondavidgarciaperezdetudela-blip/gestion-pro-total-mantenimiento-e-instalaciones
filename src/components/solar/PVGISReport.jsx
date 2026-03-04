@@ -190,6 +190,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   const selectCity = (suggestion) => {
     const cityName = suggestion.city || suggestion.display.split(',')[0].trim();
     setCity(cityName);
+    if (suggestion.province) setProvince(suggestion.province);
     if (suggestion.postcode) setPostalCode(suggestion.postcode);
     setLat(suggestion.lat); setLng(suggestion.lng);
     setMarkerPos([suggestion.lat, suggestion.lng]);
