@@ -253,14 +253,55 @@ export default function TecniciansRoutes() {
       </div>
 
       {/* Dialog para nueva parada */}
-      <Dialog open={dialogOpen} onOpenChange={o => { setDialogOpen(o); if (!o) { setEditingStop(null); } }}>
+      <Dialog open={dialogOpen} onOpenChange={o => { setDialogOpen(o); if (!o) { setEditingStop(null); setShowClientSelector(false); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editingStop !== null ? 'Editar' : 'Nueva'} parada</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {/* Selector de cliente */}
             <div>
-              <label className="text-xs text-gray-500">Dirección completa *</label>
-              <Input className="mt-1" placeholder="Ej: Calle Principal 123, Madrid" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
+              <label className="text-xs text-gray-500 font-semibold block mb-1">👤 Seleccionar cliente</label>
+              <Select value={form.contactId} onValueChange={handleSelectClient}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Buscar cliente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>Sin cliente vinculado</SelectItem>
+                  {contacts.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} {c.surname || ''} {c.address ? `- ${c.address.substring(0, 30)}...` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.address && form.contactId && (
+                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                  <Check className="w-3 h-3" /> Dirección cargada del cliente
+                </p>
+              )}
             </div>
+
+            {/* Dirección */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs text-gray-500 font-semibold">Dirección completa *</label>
+                {form.contactId && form.address && (
+                  <button 
+                    onClick={handleChangeAddress}
+                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                  >
+                    <Edit2 className="w-3 h-3" /> Cambiar
+                  </button>
+                )}
+              </div>
+              <Input 
+                className="mt-1" 
+                placeholder="Ej: Calle Principal 123, Madrid" 
+                value={form.address} 
+                onChange={e => setForm({ ...form, address: e.target.value })}
+                disabled={form.contactId && !showClientSelector}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-gray-500">Latitud *</label>
