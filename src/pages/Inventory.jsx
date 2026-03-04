@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Trash2, Edit, Package, Wrench, AlertTriangle, Upload, Barcode, ScanLine, ChevronDown } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, Package, Wrench, AlertTriangle, Upload, Barcode, ScanLine, ChevronDown, Users } from 'lucide-react';
 import PrintButton from '../components/PrintButton';
 
 const EQ_CATEGORIES = ['herramienta', 'maquinaria', 'vehiculo', 'instrumento_medicion', 'equipo_proteccion', 'otro'];
