@@ -44,12 +44,13 @@ const navItems = [
   { name: 'Proveedores', page: 'Suppliers', icon: Building2 },
   { name: 'Recordatorios', page: 'Automations', icon: Bell },
   { name: 'Recordatorios IA', page: 'SmartReminders', icon: Bell },
+  { name: 'Repuestos', page: 'SparePartsManager', icon: Package },
   { name: 'SAT', page: 'SAT', icon: Wrench },
   { name: 'Solar + Baterías', page: 'SolarBatteryCalc', icon: Sun },
   { name: 'Tarjetas Visita', page: 'BusinessCards', icon: CreditCard },
 ];
 
-// Bottom tabs for mobile - shown as scrollable row
+// Bottom tabs for mobile
 const mobileTabItems = [
   { name: 'Inicio', page: 'Home', icon: Home },
   { name: 'Agenda', page: 'Agenda', icon: Calendar },
@@ -60,6 +61,7 @@ const mobileTabItems = [
   { name: 'Manten.', page: 'Maintenance', icon: ClipboardList },
   { name: 'Notas', page: 'Notes', icon: StickyNote },
   { name: 'Inventario', page: 'Inventory', icon: Package },
+  { name: 'Repuestos', page: 'SparePartsManager', icon: Package },
   { name: 'Proyectos', page: 'Projects', icon: FolderOpen },
   { name: 'Proveedores', page: 'Suppliers', icon: Building2 },
   { name: 'Catálogos', page: 'Catalogs', icon: FileText },
@@ -121,13 +123,6 @@ export default function Layout({ children, currentPageName }) {
           --primary-light: #2d5f8a;
           --accent: #0ea5e9;
           --accent-light: #38bdf8;
-        }
-        @media (prefers-color-scheme: dark) {
-          :root {
-            --bg: #0f172a;
-            --surface: #1e293b;
-            --text: #f1f5f9;
-          }
         }
         html { overscroll-behavior: none; }
         .no-print { display: block; }
@@ -269,38 +264,33 @@ export default function Layout({ children, currentPageName }) {
               <Search className="w-5 h-5" />
             </button>
             <NotificationsPanel />
-            <button onClick={() => setMobileBarVisible(v => !v)} className="text-gray-400 text-xs border rounded px-1.5 py-0.5">
-              {mobileBarVisible ? '⬇' : '⬆'}
-            </button>
           </div>
         </header>
-        <main className="p-4 md:p-6 max-w-7xl mx-auto relative z-10 pb-24 lg:pb-6">
+        <main className="p-4 md:p-6 max-w-7xl mx-auto relative z-10 pb-6 lg:pb-6">
           {children}
         </main>
 
-        {/* Mobile bottom tab bar - scrollable, hideable - only on real mobile */}
-        {mobileBarVisible && (
-          <nav className="flex lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-            <div className="flex overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-              {mobileTabItems.map(item => {
-                const Icon = item.icon;
-                const isActive = currentPageName === item.page;
-                return (
-                  <Link
-                    key={item.page}
-                    to={createPageUrl(item.page)}
-                    className={`flex-shrink-0 flex flex-col items-center gap-0.5 py-2 px-3 transition-colors min-w-[56px] ${
-                      isActive ? 'text-[var(--accent)]' : 'text-gray-400'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-[9px] font-medium whitespace-nowrap">{item.name}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
-        )}
+        {/* Mobile bottom tab bar - solo en móvil real */}
+        <nav className="flex lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="flex overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
+            {mobileTabItems.map(item => {
+              const Icon = item.icon;
+              const isActive = currentPageName === item.page;
+              return (
+                <Link
+                  key={item.page}
+                  to={createPageUrl(item.page)}
+                  className={`flex-shrink-0 flex flex-col items-center gap-0.5 py-2 px-3 transition-colors min-w-[56px] ${
+                    isActive ? 'text-[var(--accent)]' : 'text-gray-400'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-[9px] font-medium whitespace-nowrap">{item.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
       </div>
     </div>
   );
