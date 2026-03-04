@@ -68,10 +68,42 @@ function getTiltFactor(tilt, lat) {
 }
 const SEASONAL = [0.55, 0.62, 0.82, 1.02, 1.13, 1.23, 1.28, 1.22, 1.03, 0.83, 0.58, 0.48];
 
-// ─── Componente clic en mapa ────────────────────────────────────────────────
+// ─── Componente clic en mapa + arrastrar marcador ────────────────────────────
 function MapClickHandler({ onMapClick }) {
-  useMapEvents({ click: (e) => onMapClick(e.latlng.lat, e.latlng.lng) });
+  useMapEvents({ 
+    click: (e) => onMapClick(e.latlng.lat, e.latlng.lng),
+    dragend: (e) => {
+      const bounds = e.target.getBounds();
+      const center = e.target.getCenter();
+      onMapClick(center.lat, center.lng);
+    }
+  });
   return null;
+}
+
+// ─── Marcador arrastrabl ────────────────────────────────────────────────────
+function DraggableMarker({ position, onDragEnd }) {
+  const markerRef = useRef(null);
+  const map = useMap();
+
+  const eventHandlers = {
+    dragend() {
+      const marker = markerRef.current;
+      if (marker != null) {
+        const { lat, lng } = marker.getLatLng();
+        onDragEnd(lat, lng);
+      }
+    },
+  };
+
+  return (
+    <Marker 
+      ref={markerRef} 
+      position={position} 
+      draggable={true} 
+      eventHandlers={eventHandlers}
+    />
+  );
 }
 
 // ─── Componente para mover la vista del mapa ─────────────────────────────────
