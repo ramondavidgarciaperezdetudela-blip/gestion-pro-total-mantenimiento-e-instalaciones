@@ -93,6 +93,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   const [street, setStreet] = useState('');
   const [streetNum, setStreetNum] = useState('');
   const [city, setCity] = useState('');
+  const [province, setProvince] = useState('');
   const [country, setCountry] = useState('España');
   const [refCatastral, setRefCatastral] = useState('');
   const [lat, setLat] = useState(40.416775);
