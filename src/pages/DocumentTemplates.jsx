@@ -39,13 +39,16 @@ const TEMPLATE_DESCRIPTIONS = {
 };
 
 export default function DocumentTemplates() {
-  const [templates, setTemplates] = useState([]);
-  const [company, setCompany] = useState(null);
-  const [editDialog, setEditDialog] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(EMPTY_TPL);
-  const [previewTpl, setPreviewTpl] = useState(null);
-  const printRef = useRef(null);
+   const [templates, setTemplates] = useState([]);
+   const [company, setCompany] = useState(null);
+   const [editDialog, setEditDialog] = useState(false);
+   const [editing, setEditing] = useState(null);
+   const [form, setForm] = useState(EMPTY_TPL);
+   const [previewTpl, setPreviewTpl] = useState(null);
+   const [showPreviewInEdit, setShowPreviewInEdit] = useState(false);
+   const printRef = useRef(null);
+   const fileUploadRef = useRef(null);
+   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     Promise.all([
