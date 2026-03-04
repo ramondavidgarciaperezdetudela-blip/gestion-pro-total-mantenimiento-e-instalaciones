@@ -108,12 +108,6 @@ export default function SAT() {
     if (editing) {
       await base44.entities.SATOrder.update(editing.id, data);
       savedOrder = { ...data, id: editing.id };
-    } else {
-      // Recalcular número justo antes de guardar por si hubo concurrencia
-      const latest = await base44.entities.SATOrder.list('-date', 500);
-      if (!data.order_number) {
-        data.order_number = getNextAvailableNumber(latest.map(x => x.order_number || ''));
-      }
       // Actualizar el documento vinculado si existe
       if (form.contact_id) {
         const docs = await base44.entities.ClientDocument.filter({ contact_id: form.contact_id, doc_type: 'orden_sat' });
@@ -127,13 +121,18 @@ export default function SAT() {
         }
       }
     } else {
+      // Recalcular número justo antes de guardar por si hubo concurrencia
+      const latest = await base44.entities.SATOrder.list('-date', 500);
+      if (!data.order_number) {
+        data.order_number = getNextAvailableNumber(latest.map(x => x.order_number || ''));
+      }
       const saved = await base44.entities.SATOrder.create(data);
       savedOrder = saved;
       if (form.contact_id) {
         await base44.entities.ClientDocument.create({
           contact_id: form.contact_id,
           contact_name: form.contact_name,
-          title: `Orden SAT #${form.order_number || saved.id.slice(-6)} - ${form.type}`,
+          title: `Orden SAT #${data.order_number || saved.id.slice(-6)} - ${form.type}`,
           doc_type: 'orden_sat',
           date: form.date,
           description: `${form.type} | ${form.equipment_type?.replace(/_/g, ' ')} | ${form.description || ''} | Estado: ${form.status} | Total: ${total.toFixed(2)} €`,
