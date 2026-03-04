@@ -369,7 +369,6 @@ export default function Home() {
                   <p className="text-[10px] text-gray-400 truncate">{c.company_name || c.city || c.phone || '-'}</p>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {c.phone && <a href={`tel:${c.phone}`} onClick={e => e.stopPropagation()} className="p-1 text-green-600 hover:bg-green-50 rounded"><Phone className="w-3 h-3" /></a>}
                   <ChevronRight className="w-3 h-3 text-gray-300" />
                 </div>
               </Link>
