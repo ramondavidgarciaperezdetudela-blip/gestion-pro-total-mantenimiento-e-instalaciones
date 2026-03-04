@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import SolarWiringDiagram from '../components/SolarWiringDiagram';
+import SolarSiteReport from '../components/solar/SolarSiteReport';
 
 function calcSolar(form, mode) {
   let numPanels = parseInt(form.num_panels) || 0;
