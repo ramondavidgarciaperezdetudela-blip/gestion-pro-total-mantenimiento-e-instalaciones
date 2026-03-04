@@ -242,10 +242,11 @@ export default function SolarCalc() {
                           <td className="border-b border-gray-100 p-2 text-blue-700">{m.brands}</td>
                           <td className="border-b border-gray-100 p-2 text-green-700">{m.shop}</td>
                           <td className="border-b border-gray-100 p-2 text-right font-semibold">{m.price}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                           <td className="border-b border-gray-100 p-2"><SupplierPriceLookup materialName={m.material} defaultPrice={m.price} /></td>
+                          </tr>
+                          ))}
+                          </tbody>
+                          </table>
                 </div>
               </CardContent>
             </Card>
