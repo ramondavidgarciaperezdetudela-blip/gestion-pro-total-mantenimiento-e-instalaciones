@@ -108,6 +108,12 @@ export default function SAT() {
     if (editing) {
       await base44.entities.SATOrder.update(editing.id, data);
       savedOrder = { ...data, id: editing.id };
+    } else {
+      // Recalcular número justo antes de guardar por si hubo concurrencia
+      const latest = await base44.entities.SATOrder.list('-date', 500);
+      if (!data.order_number) {
+        data.order_number = getNextAvailableNumber(latest.map(x => x.order_number || ''));
+      }
       // Actualizar el documento vinculado si existe
       if (form.contact_id) {
         const docs = await base44.entities.ClientDocument.filter({ contact_id: form.contact_id, doc_type: 'orden_sat' });
