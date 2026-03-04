@@ -325,13 +325,30 @@ export default function TecniciansRoutes() {
                   </button>
                 )}
               </div>
-              <Input 
-                className="mt-1" 
-                placeholder="Ej: Calle Principal 123, Madrid" 
-                value={form.address} 
-                onChange={e => setForm({ ...form, address: e.target.value })}
-                disabled={form.contactId && !showClientSelector}
-              />
+              <div className="flex gap-2">
+                <Input 
+                  ref={addressInputRef}
+                  className="mt-1 flex-1" 
+                  placeholder="Ej: Calle Principal 123, Madrid" 
+                  value={form.address} 
+                  onChange={e => setForm({ ...form, address: e.target.value })}
+                  disabled={form.contactId && !showClientSelector}
+                />
+                <Button
+                  onClick={() => getCoordinatesFromAddress(form.address)}
+                  disabled={loadingCoords || !form.address}
+                  size="sm"
+                  variant="outline"
+                  className="mt-1"
+                  title="Obtener coordenadas desde la dirección"
+                >
+                  {loadingCoords ? (
+                    <Loader className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <MapPin className="w-3.5 h-3.5" />
+                  )}
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
