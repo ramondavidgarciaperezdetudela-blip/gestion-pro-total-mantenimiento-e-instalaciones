@@ -81,6 +81,89 @@ const LEGAL_TEMPLATES = {
 <p>Firma: ☐ (espacio para firma)</p>`
     },
     {
+      id: 'boletin_solar',
+      name: 'Boletín Instalación Baja Tensión',
+      content: `<h2>BOLETÍN OFICIAL DE INSTALACIÓN ELÉCTRICA DE BAJA TENSIÓN - FOTOVOLTAICA</h2>
+<p><strong>Conforme a REBT RD 842/2002 - ITC-BT-40</strong></p>
+
+<h3>DATOS GENERALES</h3>
+<table border="1" style="border-collapse:collapse;width:100%;margin:10px 0">
+  <tbody>
+    <tr><td style="padding:8px;border:1px solid #ccc;width:50%"><strong>Empresa Instaladora:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Nº Colegiado MINCOTUR:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Titular Instalación:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Dirección Obra:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Fecha finalización:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+  </tbody>
+</table>
+
+<h3>CIRCUITOS Y PROTECCIONES</h3>
+<table border="1" style="border-collapse:collapse;width:100%;margin:10px 0">
+  <thead>
+    <tr>
+      <th style="padding:8px;background:#f3f4f6">CIRCUITO</th>
+      <th style="padding:8px;background:#f3f4f6">PROTECCIÓN (A)</th>
+      <th style="padding:8px;background:#f3f4f6">SECCIÓN (mm²)</th>
+      <th style="padding:8px;background:#f3f4f6">LONGITUD (m)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="padding:8px;border:1px solid #ccc">Paneles - Inversor (DC)</td><td style="padding:8px;border:1px solid #ccc">_______</td><td style="padding:8px;border:1px solid #ccc">_______</td><td style="padding:8px;border:1px solid #ccc">_______</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc">Inversor - Cuadro (AC)</td><td style="padding:8px;border:1px solid #ccc">_______</td><td style="padding:8px;border:1px solid #ccc">_______</td><td style="padding:8px;border:1px solid #ccc">_______</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc">Cuadro - Distribuidora</td><td style="padding:8px;border:1px solid #ccc">_______</td><td style="padding:8px;border:1px solid #ccc">_______</td><td style="padding:8px;border:1px solid #ccc">_______</td></tr>
+  </tbody>
+</table>
+
+<h3>PRUEBAS DE SEGURIDAD</h3>
+<p><strong>Aislamiento DC:</strong> _____ MΩ ☐ ≥1 MΩ</p>
+<p><strong>Aislamiento AC:</strong> _____ MΩ ☐ ≥1 MΩ</p>
+<p><strong>Puesta a tierra:</strong> _____ Ω ☐ &lt;80 Ω</p>
+<p><strong>Funcionamiento diferencial:</strong> ☐ Correcto</p>
+
+<h3>FIRMA DEL TÉCNICO</h3>
+<p style="margin-top:30px">
+  Técnico: _______________________ Colegiado: _______________________<br/>
+  Firma: ☐ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Fecha: _______________________
+</p>`
+    },
+    {
+      id: 'cau_solar',
+      name: 'Comunicación de Autoconsumo (CAU)',
+      content: `<h2>COMUNICACIÓN DE AUTOCONSUMO (CAU) - RD 244/2019</h2>
+<p><strong>Formulario oficial de tramitación ante distribuidora</strong></p>
+
+<h3>IDENTIFICACIÓN INSTALACIÓN</h3>
+<table border="1" style="border-collapse:collapse;width:100%;margin:10px 0">
+  <tbody>
+    <tr><td style="padding:8px;border:1px solid #ccc;width:50%"><strong>CUPS:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Distribuidora:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Titular:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>DNI/NIF:</strong></td><td style="padding:8px;border:1px solid #ccc">_______________________</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ccc"><strong>Modalidad:</strong></td><td style="padding:8px;border:1px solid #ccc">☐ Sin excedentes ☐ Con excedentes</td></tr>
+  </tbody>
+</table>
+
+<h3>CARACTERÍSTICAS INSTALACIÓN</h3>
+<p><strong>Potencia pico (kWp):</strong> _______________________</p>
+<p><strong>Nº paneles:</strong> _______ × _______ Wp = _______ kWp</p>
+<p><strong>Inversor:</strong> _______ kW - _______________________</p>
+<p><strong>Baterías (si aplica):</strong> _______ kWh - _______________________</p>
+
+<h3>CONFORMIDAD NORMATIVA</h3>
+<ul>
+  <li>☐ Conforme RD 244/2019</li>
+  <li>☐ Conforme REBT RD 842/2002</li>
+  <li>☐ Instalación completada y funcional</li>
+  <li>☐ Puesta a tierra verificada</li>
+</ul>
+
+<h3>FIRMA SOLICITANTE</h3>
+<p style="margin-top:30px">
+  Nombre: _______________________ DNI: _______________________<br/>
+  Firma: ☐ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Fecha: _______________________
+</p>`
+    },
+    {
       id: 'cie_solar',
       name: 'Certificado de Instalación Eléctrica (CIE)',
       content: `<h2>CERTIFICADO DE INSTALACIÓN ELÉCTRICA (CIE) - FOTOVOLTAICA</h2>
