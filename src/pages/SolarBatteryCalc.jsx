@@ -601,7 +601,7 @@ export default function SolarBatteryCalc() {
           <TabsTrigger value="baterias" className="flex-1 gap-1.5 data-[state=active]:bg-green-600 data-[state=active]:text-white rounded-lg"><Battery className="w-4 h-4" />Baterías</TabsTrigger>
           <TabsTrigger value="combinado" className="flex-1 gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-green-600 data-[state=active]:text-white rounded-lg"><Zap className="w-4 h-4" />Solar + Baterías</TabsTrigger>
           <TabsTrigger value="legal" className="flex-1 gap-1.5 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg"><FileText className="w-4 h-4" />Legalización</TabsTrigger>
-          <TabsTrigger value="rentabilidad" className="flex-1 gap-1.5 data-[state=active]:bg-teal-600 data-[state=active]:text-white rounded-lg"><TrendingUp className="w-4 h-4" />Rentabilidad</TabsTrigger>
+          <TabsTrigger value="rentabilidad" className="flex-1 gap-1.5 data-[state=active]:bg-teal-600 data-[state=active]:text-white rounded-lg"><TrendingUp className="w-4 h-4" />Rentabilidad / PVGIS</TabsTrigger>
           <TabsTrigger value="inversores" className="flex-1 gap-1.5 data-[state=active]:bg-amber-500 data-[state=active]:text-white rounded-lg"><Zap className="w-4 h-4" />Inversores</TabsTrigger>
           <TabsTrigger value="repuestos" className="flex-1 gap-1.5 data-[state=active]:bg-orange-600 data-[state=active]:text-white rounded-lg"><Package className="w-4 h-4" />Repuestos</TabsTrigger>
         </TabsList>
