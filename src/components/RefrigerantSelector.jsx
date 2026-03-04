@@ -3,12 +3,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown } from 'lucide-react';
-import { REFRIGERANT_DATABASE, getRefrigerantInfo, getCompatibeOils } from '@/lib/refrigerantData';
+import { REFRIGERANT_DATABASE, getRefrigerantInfo, getCompatibleOils } from '@/components/refrigerantData';
 
 export default function RefrigerantSelector({ value, onChange, label = "Gas refrigerante" }) {
   const [expanded, setExpanded] = useState(false);
   const selectedRef = getRefrigerantInfo(value);
-  const compatibleOils = getCompatibeOils(value);
+  const compatibleOils = getCompatibleOils(value);
 
   const categoryColors = {
     antiguo: 'bg-red-100 text-red-800',
