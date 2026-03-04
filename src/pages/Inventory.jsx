@@ -55,21 +55,30 @@ function PhotoUploader({ photoUrl, onUpload, uploading, inputRef, label }) {
 export default function Inventory() {
   const [equipment, setEquipment] = useState([]);
   const [stock, setStock] = useState([]);
+  const [clientMachines, setClientMachines] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const printRef = useRef(null);
   const [eqSearch, setEqSearch] = useState('');
   const [stockSearch, setStockSearch] = useState('');
+  const [cmSearch, setCmSearch] = useState('');
   const [eqDialog, setEqDialog] = useState(false);
   const [stockDialog, setStockDialog] = useState(false);
+  const [cmDialog, setCmDialog] = useState(false);
   const [editingEq, setEditingEq] = useState(null);
   const [editingStock, setEditingStock] = useState(null);
+  const [editingCm, setEditingCm] = useState(null);
   const [eqForm, setEqForm] = useState(EMPTY_EQ);
   const [stockForm, setStockForm] = useState(EMPTY_STOCK);
+  const [cmForm, setCmForm] = useState(EMPTY_CM);
   const [uploading, setUploading] = useState(false);
   const [uploadingStock, setUploadingStock] = useState(false);
+  const [uploadingCm, setUploadingCm] = useState(false);
   const [viewEq, setViewEq] = useState(null);
   const [viewStock, setViewStock] = useState(null);
+  const [viewCm, setViewCm] = useState(null);
   const fileRef = useRef(null);
   const fileStockRef = useRef(null);
+  const fileCmRef = useRef(null);
   const barcodeRef = useRef(null);
 
   useEffect(() => { loadAll(); }, []);
@@ -77,6 +86,8 @@ export default function Inventory() {
   const loadAll = () => {
     base44.entities.Equipment.list('name', 500).then(setEquipment);
     base44.entities.StockItem.list('name', 500).then(setStock);
+    base44.entities.ClientMachine.list('name', 1000).then(setClientMachines);
+    base44.entities.Contact.list('name', 500).then(setContacts);
   };
 
   const handleSaveEq = async () => {
