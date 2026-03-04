@@ -840,6 +840,7 @@ export default function LegalDocs() {
                                  docContent={docContent}
                                  setDocContent={setDocContent}
                                  technicians={companyData?.technicians || []}
+                                 technicianName={form.tecnico}
                                  contactName={contact ? `${contact.name} ${contact.surname || ''}`.trim() : ''}
                                  contacts={contacts}
                                />
