@@ -409,28 +409,23 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   };
 
   const handleMapClick = async (newLat, newLng) => {
-    setLat(newLat); setLng(newLng);
+    setLat(newLat); 
+    setLng(newLng);
     setMarkerPos([newLat, newLng]);
+    setMapCenter([newLat, newLng]);
     
     // Reverse geocoding — obtener dirección desde coordenadas
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLat.toFixed(6)}&lon=${newLng.toFixed(6)}&addressdetails=1`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${newLat.toFixed(6)}&lon=${newLng.toFixed(6)}&addressdetails=1&zoom=18`);
       const data = await res.json();
       if (data.address) {
-        const streetInfo = data.address.road || data.address.street || '';
-        const numInfo = data.address.house_number || '';
-        const postalInfo = data.address.postcode || '';
-        const cityInfo = data.address.city || data.address.town || data.address.village || '';
-        const provInfo = data.address.state || data.address.county || '';
-        
-        if (streetInfo) setStreet(streetInfo);
-        if (numInfo) setStreetNum(numInfo);
-        if (postalInfo) setPostalCode(postalInfo);
-        if (cityInfo) setCity(cityInfo);
-        if (provInfo) setProvince(provInfo);
-        if (data.address.country) setCountry(data.address.country);
+        if (data.address.road) setStreet(data.address.road);
+        if (data.address.house_number) setStreetNum(data.address.house_number);
+        if (data.address.postcode) setPostalCode(data.address.postcode);
+        if (data.address.city || data.address.town || data.address.village) setCity(data.address.city || data.address.town || data.address.village || '');
+        if (data.address.state) setProvince(data.address.state);
       }
-    } catch(e) {}
+    } catch(e) { console.error('Geocoding error:', e); }
   };
 
   // ─── Cálculos PVGIS ────────────────────────────────────────────────────────
