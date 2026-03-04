@@ -140,6 +140,64 @@ export default function TecniciansRoutes() {
     return { totalDuration, totalCost };
   };
 
+  // Distancia euclidiana simplificada entre dos puntos (en km aproximados)
+  const calcDistance = (lat1, lng1, lat2, lng2) => {
+    const R = 6371; // Radio de la tierra en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Algoritmo de optimización: Nearest Neighbor + 2-opt simplificado
+  const optimizeRouteOrder = async () => {
+    if (stops.length < 2) {
+      toast.error('Necesitas al menos 2 paradas para optimizar');
+      return;
+    }
+
+    setOptimizingRoute(true);
+    try {
+      // Nearest Neighbor: comienza en primer stop y va al más cercano
+      let unvisited = [...stops].map((s, i) => ({ ...s, originalIdx: i }));
+      let optimized = [unvisited[0]];
+      unvisited = unvisited.slice(1);
+
+      while (unvisited.length > 0) {
+        const last = optimized[optimized.length - 1];
+        let nearest = null;
+        let nearestIdx = -1;
+        let minDist = Infinity;
+
+        unvisited.forEach((stop, idx) => {
+          const dist = calcDistance(last.lat, last.lng, stop.lat, stop.lng);
+          if (dist < minDist) {
+            minDist = dist;
+            nearest = stop;
+            nearestIdx = idx;
+          }
+        });
+
+        if (nearest) {
+          optimized.push(nearest);
+          unvisited.splice(nearestIdx, 1);
+        }
+      }
+
+      // Guardar orden optimizado
+      const optimizedStops = optimized.map((s, i) => ({ ...s, order: i + 1 }));
+      setStops(optimizedStops);
+      localStorage.setItem(`route_${selectedRoute}`, JSON.stringify(optimizedStops));
+      toast.success('Ruta optimizada: orden más eficiente calculado');
+    } catch (e) {
+      toast.error('Error al optimizar ruta');
+    }
+    setOptimizingRoute(false);
+  };
+
   const { totalDuration, totalCost } = calcRouteStats();
   const centerCoords = stops.length > 0 ? [stops[0].lat, stops[0].lng] : [40, -4]; // Centro en España
 
