@@ -33,11 +33,15 @@ export default function TecniciansRoutes() {
   const [showClientSelector, setShowClientSelector] = useState(false);
 
   useEffect(() => {
-    // Cargamos técnicos desde CompanySettings
-    base44.entities.CompanySettings.list().then(data => {
-      if (data.length > 0 && data[0].technicians) {
-        setTechnicians(data[0].technicians || []);
+    // Cargamos técnicos desde CompanySettings y clientes
+    Promise.all([
+      base44.entities.CompanySettings.list(),
+      base44.entities.Contact.list('-created_date', 300),
+    ]).then(([companyData, contactsList]) => {
+      if (companyData.length > 0 && companyData[0].technicians) {
+        setTechnicians(companyData[0].technicians || []);
       }
+      setContacts(contactsList);
     });
   }, []);
 
