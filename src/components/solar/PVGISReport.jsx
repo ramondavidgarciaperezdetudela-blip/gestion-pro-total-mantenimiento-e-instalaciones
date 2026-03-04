@@ -234,6 +234,30 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   const paybackColor = results.payback < 8 ? '#16a34a' : results.payback < 12 ? '#d97706' : '#dc2626';
   const address = [streetNum, street].filter(Boolean).join(' ');
 
+  // ─── Guardar informe PVGIS en ficha de cliente ──────────────────────────────
+  const saveToClient = async () => {
+    const cId = selectedContactId || contactId;
+    const cName = clientName || contactName;
+    if (!cId) return;
+    const desc = `Informe PVGIS: ${totalKwp.toFixed(2)} kWp · ${results.totalKwh.toLocaleString('es-ES')} kWh/año · Payback ${results.payback.toFixed(1)} años · ${[streetNum, street, city].filter(Boolean).join(', ')}`;
+    const docData = {
+      contact_id: cId,
+      contact_name: cName,
+      title: `Informe PVGIS — ${projectName} — ${new Date().toLocaleDateString('es-ES')}`,
+      doc_type: 'calculo_solar',
+      date: new Date().toISOString().slice(0, 10),
+      description: desc,
+    };
+    if (savedDocId) {
+      await base44.entities.ClientDocument.update(savedDocId, docData);
+    } else {
+      const rec = await base44.entities.ClientDocument.create(docData);
+      setSavedDocId(rec.id);
+    }
+    setSavedMsg(savedDocId ? '¡Informe actualizado en la ficha!' : '¡Informe guardado en la ficha del cliente!');
+    setTimeout(() => setSavedMsg(''), 4000);
+  };
+
   // ─── Print ─────────────────────────────────────────────────────────────────
   const handlePrint = async () => {
     let cfg = {};
