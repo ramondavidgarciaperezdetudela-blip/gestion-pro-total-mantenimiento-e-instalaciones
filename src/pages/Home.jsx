@@ -88,10 +88,11 @@ export default function Home() {
       base44.entities.Invoice.list('-date', 200),
       base44.entities.SATOrder.list('-date', 50),
       base44.entities.CompanySettings.list(),
-      base44.entities.MaintenanceSheet.list('-date', 10),
+      base44.entities.MaintenanceSheet.list('-date', 100),
       base44.entities.Supplier.list(),
       base44.entities.SupplierPrice.list('-created_date', 500),
-    ]).then(([appts, contacts, invoices, sat, comp, maintenance, suppliers, prices]) => {
+      base44.entities.ClientMachine.list(),
+    ]).then(([appts, contacts, invoices, sat, comp, maintenance, suppliers, prices, machines]) => {
       setAppointments(appts);
       if (comp.length > 0) setCompany(comp[0]);
 
