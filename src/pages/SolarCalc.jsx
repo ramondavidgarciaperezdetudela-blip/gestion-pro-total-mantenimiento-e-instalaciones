@@ -293,11 +293,13 @@ export default function SolarCalc() {
         </TabsContent>
 
         {/* ═══ RENTABILIDAD ═══ */}
-        <TabsContent value="rentabilidad" className="mt-4">
-          <SolarPVGISCalc
+        <TabsContent value="rentabilidad" className="mt-4 space-y-4">
+          <PVGISReport
             totalKwp={result.totalKwp}
             numPanels={result.numPanels}
             panelW={parseInt(form.panel_power_w) || 400}
+            contactName={form.contact_name}
+            contactId={form.contact_id}
           />
         </TabsContent>
 
