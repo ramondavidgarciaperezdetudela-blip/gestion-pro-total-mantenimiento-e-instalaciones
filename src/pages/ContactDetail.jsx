@@ -122,6 +122,9 @@ export default function ContactDetail() {
       setNotes(nts);
       setAppointments(apts);
       setCalculations(calcs);
+      // Cargar fotos de equipos instalados
+      const equipPhotos = docs.filter(d => d.doc_type === 'foto_equipo') || [];
+      setEquipmentPhotos(equipPhotos);
     });
   }, [contactId]);
 
