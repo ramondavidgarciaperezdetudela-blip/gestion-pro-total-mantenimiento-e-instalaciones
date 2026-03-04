@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, Layout } from 'lucide-react';
 
 function TechnicianManager({ technicians, onChange }) {
-  const [newTech, setNewTech] = useState({ name: '', fgas_certificate: '', rite_certificate: '', certificate_type: '' });
+  const [newTech, setNewTech] = useState({ name: '', registration_number: '', certificate_number: '', certificate_type: '' });
   const [editing, setEditing] = useState(null);
 
   const addTechnician = () => {
@@ -17,12 +17,12 @@ function TechnicianManager({ technicians, onChange }) {
     const tech = {
       id: Date.now().toString(),
       name: newTech.name.trim(),
-      fgas_certificate: newTech.fgas_certificate || '',
-      rite_certificate: newTech.rite_certificate || '',
+      registration_number: newTech.registration_number || '',
+      certificate_number: newTech.certificate_number || '',
       certificate_type: newTech.certificate_type || 'refrigeracion'
     };
     onChange([...technicians, tech]);
-    setNewTech({ name: '', fgas_certificate: '', rite_certificate: '', certificate_type: '' });
+    setNewTech({ name: '', registration_number: '', certificate_number: '', certificate_type: '' });
   };
 
   const updateTechnician = (id, updated) => {
