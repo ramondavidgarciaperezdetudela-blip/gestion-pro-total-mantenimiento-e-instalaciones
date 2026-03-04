@@ -405,27 +405,33 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
             {locMode === 'direccion' && (
               <div className="space-y-2">
                 <div className="grid grid-cols-4 gap-2">
-                  <div className="col-span-1">
-                    <label className="text-xs text-gray-500">Número</label>
-                    <Input value={streetNum} onChange={e => setStreetNum(e.target.value)} className="mt-1 h-8 text-xs" placeholder="Nº" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
-                  </div>
                   <div className="col-span-3">
                     <label className="text-xs text-gray-500">Calle / Vía</label>
                     <Input value={street} onChange={e => setStreet(e.target.value)} className="mt-1 h-8 text-xs" placeholder="Nombre de la calle" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
                   </div>
+                  <div className="col-span-1">
+                    <label className="text-xs text-gray-500">Número</label>
+                    <Input value={streetNum} onChange={e => setStreetNum(e.target.value)} className="mt-1 h-8 text-xs" placeholder="Nº" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
                     <label className="text-xs text-gray-500">Ciudad / Municipio</label>
-                    <Input value={city} onChange={e => setCity(e.target.value)} className="mt-1 h-8 text-xs" placeholder="Ciudad" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
+                    <Input value={city} onChange={e => { setCity(e.target.value); if (e.target.value.length >= 3) fetchPostalCode(e.target.value, country); }} className="mt-1 h-8 text-xs" placeholder="Ciudad" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500">País</label>
-                    <Input value={country} onChange={e => setCountry(e.target.value)} className="mt-1 h-8 text-xs" />
+                    <label className="text-xs text-gray-500 flex items-center gap-1">
+                      C. Postal {postalLoading && <span className="text-[9px] text-blue-500 animate-pulse">buscando...</span>}
+                    </label>
+                    <Input value={postalCode} onChange={e => setPostalCode(e.target.value)} className="mt-1 h-8 text-xs" placeholder="00000" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
                   </div>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">País</label>
+                  <Input value={country} onChange={e => setCountry(e.target.value)} className="mt-1 h-8 text-xs" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
                 </div>
                 <Button onClick={searchAddress} disabled={searchLoading} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white w-full">
-                  <Search className="w-4 h-4 mr-1" />{searchLoading ? 'Buscando...' : 'ACTUALIZAR UBICACIÓN'}
+                  <Search className="w-4 h-4 mr-1" />{searchLoading ? 'Buscando...' : 'ACTUALIZAR UBICACIÓN EN EL MAPA'}
                 </Button>
               </div>
             )}
