@@ -86,6 +86,21 @@ export default function DocumentTemplates() {
     loadAll();
   };
 
+  const handleUploadExample = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !form.doc_type) return;
+    setUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setForm({ ...form, example_file_url: file_url, example_file_name: file.name });
+    setUploading(false);
+  };
+
+  const handleSaveAsDefault = async () => {
+    const sameType = templates.filter(t => t.doc_type === form.doc_type && t.id !== editing?.id);
+    await Promise.all(sameType.map(t => base44.entities.DocumentTemplate.update(t.id, { is_default: false })));
+    await handleSave();
+  };
+
   const grouped = DOC_TYPES.reduce((acc, type) => {
     acc[type] = templates.filter(t => t.doc_type === type);
     return acc;
