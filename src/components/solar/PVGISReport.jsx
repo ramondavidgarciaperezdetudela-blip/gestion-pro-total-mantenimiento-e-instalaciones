@@ -826,7 +826,38 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
         </CardContent>
       </Card>
 
-      {/* ═══ SECCIÓN 1b: DIMENSIONADO INTELIGENTE ═══ */}
+      {/* ═══ SECCIÓN 1b: TIPO DE INSTALACIÓN ═══ */}
+      <Card className="border-indigo-300">
+        <div className="bg-indigo-600 text-white px-4 py-3 rounded-t-lg flex items-center gap-2">
+          <span className="text-lg">🔌</span>
+          <span className="font-bold">TIPO DE INSTALACIÓN</span>
+        </div>
+        <CardContent className="p-4 space-y-3">
+          <p className="text-xs text-gray-600 mb-2">Selecciona el tipo de instalación para optimizar componentes y cálculos</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { val: 'hibrida', label: '🔋 Híbrida', desc: 'Con baterías y red' },
+              { val: 'aislada', label: '🏠 Aislada', desc: 'Sin conexión a red' },
+              { val: 'red', label: '🌐 Conectada a Red', desc: 'Sin baterías' },
+            ].map(t => (
+              <button
+                key={t.val}
+                onClick={() => setTipoInstalacion(t.val)}
+                className={`py-3 px-2 rounded-lg border transition-all ${
+                  tipoInstalacion === t.val 
+                    ? 'bg-indigo-100 border-indigo-500 shadow-sm' 
+                    : 'bg-white border-gray-200 hover:border-indigo-300'
+                }`}
+              >
+                <p className="font-bold text-sm">{t.label}</p>
+                <p className="text-[10px] text-gray-500">{t.desc}</p>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ═══ SECCIÓN 1c: DIMENSIONADO INTELIGENTE ═══ */}
       <Card className="border-purple-300">
         <div className="bg-purple-600 text-white px-4 py-3 rounded-t-lg flex items-center gap-2">
           <span className="text-lg">⚡</span>
