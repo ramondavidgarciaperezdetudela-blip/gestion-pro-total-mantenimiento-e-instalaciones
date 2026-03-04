@@ -174,6 +174,29 @@ export default function ContactDetail() {
     setPhotoUploading(false);
   };
 
+  const handleEquipmentPhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const photoDoc = await base44.entities.ClientDocument.create({
+      contact_id: contactId,
+      contact_name: contact?.name,
+      title: `Equipo instalado - ${format(new Date(), 'dd/MM/yyyy')}`,
+      doc_type: 'foto_equipo',
+      file_url,
+      date: format(new Date(), 'yyyy-MM-dd'),
+    });
+    setEquipmentPhotos([...equipmentPhotos, photoDoc]);
+    setUploading(false);
+  };
+
+  const deleteEquipmentPhoto = async (id) => {
+    if (!confirm('¿Eliminar esta fotografía?')) return;
+    await base44.entities.ClientDocument.delete(id);
+    setEquipmentPhotos(equipmentPhotos.filter(p => p.id !== id));
+  };
+
   const generateAIReport = async () => {
     setAiReportLoading(true); setAiReportDialog(true); setAiReport('');
     const totalFacturado = invoices.filter(i => i.doc_type === 'factura').reduce((s, i) => s + (i.total || 0), 0);
