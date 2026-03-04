@@ -150,6 +150,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   const [postalCode, setPostalCode] = useState('');
   const [postalLoading, setPostalLoading] = useState(false);
   const [catastralLoading, setCatastralLoading] = useState(false);
+  const [catastralNotFound, setCatastralNotFound] = useState(false);
   const autoSearchTimerRef = useRef(null);
 
   const fetchPostalCode = async (cityName, countryName) => {
