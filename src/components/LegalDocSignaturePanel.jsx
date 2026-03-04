@@ -210,19 +210,30 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
                 </div>
               </div>
             </div>
-            <canvas
-              ref={technicianCanvasRef}
-              width={800}
-              height={300}
-              className="border-2 border-blue-300 rounded bg-white cursor-crosshair touch-none w-full"
-              onMouseDown={(e) => startDrawing(e, false)}
-              onMouseMove={(e) => draw(e, false)}
-              onMouseUp={stopDrawing}
-              onMouseLeave={stopDrawing}
-              onTouchStart={(e) => startDrawing(e, false)}
-              onTouchMove={(e) => draw(e, false)}
-              onTouchEnd={stopDrawing}
-            />
+            <div className="relative">
+              <canvas
+                ref={technicianCanvasRef}
+                width={800}
+                height={300}
+                className="border-2 border-blue-300 rounded bg-white cursor-crosshair touch-none w-full"
+                onMouseDown={(e) => startDrawing(e, false)}
+                onMouseMove={(e) => draw(e, false)}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={(e) => startDrawing(e, false)}
+                onTouchMove={(e) => draw(e, false)}
+                onTouchEnd={stopDrawing}
+              />
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => setExpandedCanvas('technician')}
+                className="absolute top-2 right-2 bg-white/90"
+                title="Expandir zona de firma para firmar en grande"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </Button>
+            </div>
             <div className="flex gap-2">
               <Button
                 size="sm"
