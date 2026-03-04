@@ -516,10 +516,19 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                     <Input value={country} onChange={e => { setCountry(e.target.value); triggerAutoSearch(street, streetNum, city, postalCode, e.target.value); }} className="mt-1 h-8 text-xs" onKeyDown={e => e.key === 'Enter' && searchAddress()} />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 flex items-center gap-1">
-                      Ref. Catastral {catastralLoading && <span className="text-[9px] text-orange-500 animate-pulse">buscando...</span>}
-                    </label>
-                    <Input value={refCatastral} onChange={e => setRefCatastral(e.target.value)} className="mt-1 h-8 text-xs" placeholder="Auto (buscar al confirmar)" />
+                   <label className="text-xs text-gray-500 flex items-center gap-1">
+                     Ref. Catastral {catastralLoading && <span className="text-[9px] text-orange-500 animate-pulse">buscando...</span>}
+                   </label>
+                   <Input value={refCatastral} onChange={e => { setRefCatastral(e.target.value); setCatastralNotFound(false); }} className="mt-1 h-8 text-xs" placeholder="Auto (buscar al confirmar)" />
+                   {catastralNotFound && !catastralLoading && (
+                     <div className="mt-1 p-2 bg-orange-50 border border-orange-200 rounded text-[10px] text-orange-700">
+                       No encontrada automáticamente.{' '}
+                       <a href="https://www1.sedecatastro.gob.es/Cartografia/mapa.aspx?buscar=S" target="_blank" rel="noopener noreferrer" className="font-semibold underline text-orange-800 hover:text-orange-900">
+                         Búscala manualmente aquí →
+                       </a>
+                       {' '}y pégala en el campo.
+                     </div>
+                   )}
                   </div>
                 </div>
                 <Button onClick={searchAddress} disabled={searchLoading} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white w-full">
