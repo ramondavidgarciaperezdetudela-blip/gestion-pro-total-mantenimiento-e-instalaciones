@@ -282,7 +282,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
 
   // ─── Búsqueda por dirección (manual) ─────────────────────────────────────
   const searchAddress = async () => {
-    const query = [street, streetNum, postalCode, city, country].filter(Boolean).join(', ');
+    const query = [street, streetNum, postalCode, city, province, country].filter(Boolean).join(', ');
     if (!query.trim()) return;
     setSearchLoading(true);
     try {
@@ -295,6 +295,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
         setMarkerPos([newLat, newLng]);
         setMapCenter([newLat, newLng]);
         if (data[0].address?.postcode && !postalCode) setPostalCode(data[0].address.postcode);
+        if (data[0].address?.state && !province) setProvince(data[0].address.state);
       }
     } catch(e) {}
     setSearchLoading(false);
