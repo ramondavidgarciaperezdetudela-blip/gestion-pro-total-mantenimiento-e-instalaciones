@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Printer, Mail, MessageCircle, Sun, Euro, Clock, Leaf, MapPin, Search, Navigation, Info, Save, CheckCircle, UserCheck, Users } from 'lucide-react';
 import CompanyHeader from '../CompanyHeader';
+import MontajeIllustration from './MontajeIlustration';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // Fix Leaflet marker
