@@ -735,6 +735,101 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
         </CardContent>
       </Card>
 
+      {/* ═══ SECCIÓN 1b: DIMENSIONADO INTELIGENTE ═══ */}
+      <Card className="border-purple-300">
+        <div className="bg-purple-600 text-white px-4 py-3 rounded-t-lg flex items-center gap-2">
+          <span className="text-lg">⚡</span>
+          <span className="font-bold">DIMENSIONADO: Calcula paneles, baterías y material</span>
+        </div>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex gap-3">
+            <button
+              onClick={() => setDimMode('fijo')}
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold border transition-all ${dimMode === 'fijo' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-300 hover:border-purple-400'}`}
+            >
+              🔢 Sé el nº de paneles
+            </button>
+            <button
+              onClick={() => setDimMode('consumo')}
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold border transition-all ${dimMode === 'consumo' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-300 hover:border-purple-400'}`}
+            >
+              🏠 Calcular por consumo de vivienda
+            </button>
+          </div>
+
+          {dimMode === 'fijo' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-gray-500">Nº paneles a instalar</label>
+                <Input type="number" value={numPanelsInput} onChange={e => setNumPanelsInput(e.target.value)} className="mt-1 h-8 text-xs" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Potencia panel (W)</label>
+                <Input type="number" value={panelWInput} onChange={e => setPanelWInput(e.target.value)} className="mt-1 h-8 text-xs" />
+              </div>
+            </div>
+          )}
+
+          {dimMode === 'consumo' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-gray-500">Consumo vivienda (kWh/año o kWh/día)</label>
+                <Input type="number" value={consumoVivienda} onChange={e => setConsumoVivienda(e.target.value)} className="mt-1 h-8 text-xs" placeholder="4500 (anual) o 12 (día)" />
+                <p className="text-[10px] text-gray-400 mt-0.5">Si &gt;50 → anual, si ≤50 → diario</p>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Potencia panel (W)</label>
+                <Input type="number" value={panelWInput} onChange={e => setPanelWInput(e.target.value)} className="mt-1 h-8 text-xs" />
+              </div>
+            </div>
+          )}
+
+          {/* Resultados dimensionado */}
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+            <p className="text-xs font-bold text-purple-800 mb-2">📊 Resultado del dimensionado</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+              {[
+                { v: dimResult.nP, l: 'Paneles necesarios', c: 'bg-amber-100 text-amber-800' },
+                { v: `${dimResult.kwp.toFixed(2)} kWp`, l: 'Potencia total', c: 'bg-orange-100 text-orange-800' },
+                { v: `${dimResult.numBat} × 2,4kWh`, l: 'Baterías LiFePO4', c: 'bg-green-100 text-green-800' },
+                { v: `${dimResult.invKw} kW`, l: 'Inversor híbrido', c: 'bg-blue-100 text-blue-800' },
+              ].map((k, i) => (
+                <div key={i} className={`${k.c} rounded-lg p-2 text-center`}>
+                  <p className="text-base font-bold">{k.v}</p>
+                  <p className="text-[10px]">{k.l}</p>
+                </div>
+              ))}
+            </div>
+            <div className="text-xs text-purple-700 space-y-0.5 mb-3">
+              <p>📈 Producción estimada: <strong>{dimResult.prodDia.toFixed(1)} kWh/día</strong> · <strong>{dimResult.prodAnio.toFixed(0)} kWh/año</strong></p>
+              <p>🔗 Strings: <strong>{dimResult.numStrings}</strong> · Capacidad baterías: <strong>{(dimResult.numBat * 2.4).toFixed(1)} kWh</strong></p>
+            </div>
+            {/* Mini lista de materiales */}
+            <p className="text-xs font-bold text-purple-800 mb-1">🛒 Material necesario estimado</p>
+            <div className="overflow-x-auto rounded border border-purple-200">
+              <table className="w-full text-[10px] border-collapse">
+                <thead><tr className="bg-purple-700 text-white">
+                  <th className="p-1.5 text-left">Material</th>
+                  <th className="p-1.5 text-center w-12">Cant.</th>
+                  <th className="p-1.5 text-left w-10">Ud.</th>
+                  <th className="p-1.5 text-right">Precio ref.</th>
+                </tr></thead>
+                <tbody>
+                  {dimResult.mats.map((m, i) => (
+                    <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-purple-50'}>
+                      <td className="p-1.5 font-medium">{m.nombre}</td>
+                      <td className="p-1.5 text-center font-bold text-purple-700">{m.qty}</td>
+                      <td className="p-1.5 text-gray-500">{m.ud}</td>
+                      <td className="p-1.5 text-right text-gray-700">{m.precio}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ═══ SECCIÓN 2: INFORMACIÓN DEL SISTEMA ═══ */}
       <Card className="border-amber-300">
         <div className="bg-amber-600 text-white px-4 py-3 rounded-t-lg flex items-center gap-2">
