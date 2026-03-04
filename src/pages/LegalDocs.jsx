@@ -796,17 +796,25 @@ export default function LegalDocs() {
                        </Button>
                      )}
                      {!editing && <PrintButton contentRef={printRef} title={selectedDoc?.label || 'Documento'} />}
-                     {!editing && (
-                       <Button size="sm" variant="outline" onClick={downloadAsHTML}>
-                         <Download className="w-3.5 h-3.5 mr-1" />Descargar HTML
-                       </Button>
-                     )}
-                  </div>
-                </div>
-                <p className="text-[10px] text-gray-400 mt-1">⚠️ Revisar y firmar por técnico cualificado antes de presentar oficialmente</p>
-              </CardHeader>
+                                {!editing && (
+                                  <Button size="sm" variant="outline" onClick={downloadAsHTML}>
+                                    <Download className="w-3.5 h-3.5 mr-1" />Descargar HTML
+                                  </Button>
+                                )}
+                             </div>
+                           </div>
+                           <p className="text-[10px] text-gray-400 mt-1">⚠️ Revisar y firmar por técnico cualificado antes de presentar oficialmente</p>
+                         </CardHeader>
 
-              <CardContent className="p-4">
+                         <CardContent className="p-4 space-y-4">
+                           {!editing && (
+                             <LegalDocSignaturePanel 
+                               onTechnicianSign={setTechnicianSignature}
+                               onClientSign={setClientSignature}
+                               docContent={docContent}
+                               setDocContent={setDocContent}
+                             />
+                           )}
                 <div ref={printRef}>
                   <CompanyHeader className="pb-3 border-b mb-4" />
                   {editing ? (
