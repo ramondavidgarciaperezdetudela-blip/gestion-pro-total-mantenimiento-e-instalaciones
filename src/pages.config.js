@@ -85,6 +85,7 @@ import Suppliers from './pages/Suppliers';
 import ThermalCalc from './pages/ThermalCalc';
 import ProjectTimeline from './pages/ProjectTimeline';
 import TecniciansRoutes from './pages/TecniciansRoutes';
+import EquipmentFailureHistory from './pages/EquipmentFailureHistory';
 import __Layout from './Layout.jsx';
 
 
@@ -127,6 +128,7 @@ export const PAGES = {
     "ThermalCalc": ThermalCalc,
     "ProjectTimeline": ProjectTimeline,
     "TecniciansRoutes": TecniciansRoutes,
+    "EquipmentFailureHistory": EquipmentFailureHistory,
 }
 
 export const pagesConfig = {
