@@ -280,6 +280,18 @@ export default function SolarCalc() {
               </CardContent>
             </Card>
 
+            {/* ═══ PVGIS INTEGRADO ═══ */}
+            <div className="border-t-4 border-teal-500 pt-4">
+              <p className="font-bold text-teal-700 text-base mb-3">📈 Informe PVGIS / Rentabilidad — en tiempo real</p>
+              <PVGISReport
+                totalKwp={result.totalKwp}
+                numPanels={result.numPanels}
+                panelW={parseInt(form.panel_power_w) || 400}
+                contactName={form.contact_name}
+                contactId={form.contact_id}
+              />
+            </div>
+
             <div className="flex gap-2 flex-wrap no-print items-center pt-2 border-t border-gray-100">
               <PrintButton contentRef={printRef} title="Cálculo Solar Fotovoltaico" />
               {!editing && !savedId && <Button onClick={save} variant="outline" size="sm" className="border-amber-400 text-amber-700"><Save className="w-4 h-4 mr-2" />Guardar cálculo</Button>}
