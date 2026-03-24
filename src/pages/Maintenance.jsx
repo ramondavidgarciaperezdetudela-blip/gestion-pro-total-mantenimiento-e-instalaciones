@@ -179,7 +179,10 @@ export default function Maintenance() {
                     <Select value={form.technician_name} onValueChange={v => setForm({ ...form, technician_name: v === '__manual__' ? '' : v })}>
                       <SelectTrigger><SelectValue placeholder="Técnico" /></SelectTrigger>
                       <SelectContent>
-                        {technicians.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                        {technicians.map((t, i) => {
+                          const name = typeof t === 'object' ? t.name : t;
+                          return name ? <SelectItem key={i} value={name}>{name}</SelectItem> : null;
+                        })}
                         <SelectItem value="__manual__">Escribir manualmente...</SelectItem>
                       </SelectContent>
                     </Select>
