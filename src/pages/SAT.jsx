@@ -410,7 +410,7 @@ export default function SAT() {
       </Tabs>
 
       {/* ===== DIALOG EDITAR/CREAR ===== */}
-      <Dialog open={dialogOpen} onOpenChange={o => { setDialogOpen(o); if (!o) { setEditing(null); setForm(EMPTY_FORM); } }}>
+      <Dialog open={dialogOpen} onOpenChange={() => {}}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>{editing ? `Editar Orden SAT #${editing.order_number || editing.id.slice(-6)}` : 'Nueva Orden SAT'}</DialogTitle>
