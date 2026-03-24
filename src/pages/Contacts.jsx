@@ -239,12 +239,17 @@ export default function Contacts() {
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Users className="w-6 h-6 text-emerald-500" />Contactos
         </h1>
-        <Dialog open={dialogOpen} onOpenChange={o => { setDialogOpen(o); if (!o) { setEditing(null); setForm(EMPTY_FORM); } }}>
+        <Dialog open={dialogOpen} onOpenChange={() => {}}>
           <DialogTrigger asChild>
-            <Button className="bg-emerald-600 hover:bg-emerald-700"><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => { setEditing(null); setForm(EMPTY_FORM); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editing ? 'Editar contacto' : 'Nuevo contacto'}</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle>{editing ? 'Editar contacto' : 'Nuevo contacto'}</DialogTitle>
+                <Button size="sm" variant="ghost" onClick={() => { setDialogOpen(false); setEditing(null); setForm(EMPTY_FORM); }} className="text-gray-400">✕</Button>
+              </div>
+            </DialogHeader>
             <div className="space-y-3">
               {/* Foto */}
               <div className="flex items-center gap-3">
