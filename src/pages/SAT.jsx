@@ -413,7 +413,10 @@ export default function SAT() {
       <Dialog open={dialogOpen} onOpenChange={() => {}}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>{editing ? `Editar Orden SAT #${editing.order_number || editing.id.slice(-6)}` : 'Nueva Orden SAT'}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>{editing ? `Editar Orden SAT #${editing.order_number || editing.id.slice(-6)}` : 'Nueva Orden SAT'}</DialogTitle>
+              <Button size="sm" variant="ghost" onClick={() => { setDialogOpen(false); setEditing(null); setForm(EMPTY_FORM); }} className="text-gray-400 hover:text-gray-600">✕</Button>
+            </div>
           </DialogHeader>
           <div className="space-y-3">
             {/* Datos básicos */}
