@@ -143,7 +143,7 @@ export default function Maintenance() {
         </Button>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditing(null); setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(sheets.map(x => x.sheet_number || '')) }); } }}>
+      <Dialog open={dialogOpen} onOpenChange={() => {}}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Nueva'} ficha de mantenimiento</DialogTitle></DialogHeader>
             <div className="space-y-3">
