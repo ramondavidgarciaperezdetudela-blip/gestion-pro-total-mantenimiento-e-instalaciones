@@ -476,7 +476,10 @@ export default function SAT() {
               <Select value={form.technician} onValueChange={v => setForm({ ...form, technician: v })}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar técnico" /></SelectTrigger>
                 <SelectContent>
-                  {technicians.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  {technicians.map((t, i) => {
+                    const name = typeof t === 'object' ? t.name : t;
+                    return name ? <SelectItem key={i} value={name}>{name}</SelectItem> : null;
+                  })}
                   <SelectItem value="__otro__">Otro (escribir)</SelectItem>
                 </SelectContent>
               </Select>
