@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Phone, Mail, Navigation, Plus, Calendar, Wrench, FileText, ClipboardList, Calculator, AlertCircle, CheckCircle, Clock, XCircle, Upload, Trash2, Edit, Eye, Send, Bot, ArrowLeft, Printer, MessageCircle, Camera, History } from 'lucide-react';
 import ClientMachineTab from '../components/ClientMachineTab';
+import EquipmentDiaryTab from '../components/EquipmentDiaryTab';
 import SATOrderDialog from '../components/SATOrderDialog';
 import { logChange } from '../components/ChangeLogger';
 import { format } from 'date-fns';
@@ -611,6 +612,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           <TabsTrigger value="maquinaria" className="flex-1 text-xs min-w-[80px]">Maquinaria</TabsTrigger>
           <TabsTrigger value="historial" className="flex-1 text-xs min-w-[80px]">Historial</TabsTrigger>
           <TabsTrigger value="fotos_equipo" className="flex-1 text-xs min-w-[80px]">📸 Equipo ({equipmentPhotos.length})</TabsTrigger>
+          <TabsTrigger value="diario" className="flex-1 text-xs min-w-[80px]">🔧 Diario</TabsTrigger>
           </TabsList>
 
         {/* FACTURAS */}
@@ -1058,6 +1060,13 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
             )}
           </div>
         </TabsContent>
+        {/* DIARIO DE REPARACIONES */}
+        <TabsContent value="diario">
+          <div className="mt-2">
+            <EquipmentDiaryTab contactId={contactId} contactName={`${contact.name} ${contact.surname || ''}`.trim()} />
+          </div>
+        </TabsContent>
+
         </Tabs>
         </div>
         );
