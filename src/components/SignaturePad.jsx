@@ -17,7 +17,7 @@ export default function SignaturePad({ open, onClose, onSave, title = "Firma" })
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = '#1e3a5f';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         setHasSignature(false);
@@ -77,28 +77,38 @@ export default function SignaturePad({ open, onClose, onSave, title = "Firma" })
 
   const save = () => {
     const canvas = canvasRef.current;
-    const dataUrl = canvas.toDataURL('image/png');
+    // Redimensionar a tamaño pequeño para guardar
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = 400;
+    tempCanvas.height = 160;
+    const ctx = tempCanvas.getContext('2d');
+    ctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+    const dataUrl = tempCanvas.toDataURL('image/png');
     onSave(dataUrl);
     onClose();
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={() => {}}>
+      <DialogContent className="max-w-2xl w-full" onOpenAutoFocus={e => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <PenLine className="w-5 h-5 text-blue-600" />
-            {title}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <PenLine className="w-5 h-5 text-blue-600" />
+              {title}
+            </DialogTitle>
+            <Button size="sm" variant="ghost" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</Button>
+          </div>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm text-gray-500">Firme en el recuadro de abajo con el dedo o ratón</p>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-white">
+          <p className="text-sm text-gray-500">Firme en el recuadro de abajo con el dedo o ratón. La zona de firma es amplia para mayor comodidad.</p>
+          <div className="border-2 border-dashed border-blue-300 rounded-lg overflow-hidden bg-white shadow-inner">
             <canvas
               ref={canvasRef}
-              width={400}
-              height={180}
+              width={900}
+              height={320}
               className="w-full cursor-crosshair touch-none"
+              style={{ minHeight: '200px' }}
               onMouseDown={startDraw}
               onMouseMove={draw}
               onMouseUp={stopDraw}
@@ -108,6 +118,7 @@ export default function SignaturePad({ open, onClose, onSave, title = "Firma" })
               onTouchEnd={stopDraw}
             />
           </div>
+          <p className="text-xs text-center text-gray-400">↑ Zona de firma ampliada — firme aquí directamente</p>
           <div className="flex gap-2">
             <Button variant="outline" onClick={clear} className="flex-1">
               <RotateCcw className="w-4 h-4 mr-2" />Borrar
