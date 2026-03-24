@@ -316,12 +316,17 @@ export default function Suppliers() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Proveedores / Distribuidores</h1>
-        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditing(null); setForm(EMPTY_FORM); setShowApiKey(false); } }}>
+        <Dialog open={dialogOpen} onOpenChange={() => {}}>
           <DialogTrigger asChild>
-            <Button className="bg-slate-700 hover:bg-slate-800" onClick={() => { setEditing(null); setForm(EMPTY_FORM); }}><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
+            <Button className="bg-slate-700 hover:bg-slate-800" onClick={() => { setEditing(null); setForm(EMPTY_FORM); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Nuevo'} proveedor</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle>{editing ? 'Editar' : 'Nuevo'} proveedor</DialogTitle>
+                <Button size="sm" variant="ghost" onClick={() => { setDialogOpen(false); setEditing(null); setForm(EMPTY_FORM); setShowApiKey(false); }} className="text-gray-400 hover:text-gray-600">✕</Button>
+              </div>
+            </DialogHeader>
             <Tabs defaultValue="datos">
               <TabsList className="w-full grid grid-cols-5">
                 <TabsTrigger value="datos">Datos</TabsTrigger>
@@ -363,17 +368,20 @@ export default function Suppliers() {
                         onChange={(e) => e.target.files?.[0] && handleUploadLogo(e.target.files[0])}
                       />
                     </div>
-                    {form.logo_url && (
-                      <div className="flex gap-2 mt-2 justify-center">
-                        <Button onClick={() => setForm(prev => ({ ...prev, logo_url: '' }))} variant="outline" className="text-xs h-8">
+                    <div className="flex gap-2 mt-2 justify-center flex-wrap">
+                      <Button onClick={() => document.getElementById('logo-input-main').click()} variant="outline" className="text-xs h-8">
+                        <Upload className="w-3 h-3 mr-1" />Subir imagen
+                      </Button>
+                      <Button onClick={handleAutoFetchLogo} variant="outline" className="text-xs h-8" disabled={fetchingLogo || (!form.name && !form.website)}>
+                        {fetchingLogo ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Download className="w-3 h-3 mr-1" />}
+                        {fetchingLogo ? 'Descargando...' : 'Descargar auto'}
+                      </Button>
+                      {form.logo_url && (
+                        <Button onClick={() => setForm(prev => ({ ...prev, logo_url: '' }))} variant="outline" className="text-xs h-8 text-red-500 hover:text-red-600">
                           <Trash2 className="w-3 h-3 mr-1" />Quitar
                         </Button>
-                        <Button onClick={handleAutoFetchLogo} variant="outline" className="text-xs h-8" disabled={fetchingLogo || (!form.name && !form.website)}>
-                          <Download className="w-3 h-3 mr-1" />
-                          {fetchingLogo ? 'Auto...' : 'Auto'}
-                        </Button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   {!editing && (
