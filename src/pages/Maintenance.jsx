@@ -145,7 +145,12 @@ export default function Maintenance() {
 
       <Dialog open={dialogOpen} onOpenChange={() => {}}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Nueva'} ficha de mantenimiento</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle>{editing ? 'Editar' : 'Nueva'} ficha de mantenimiento</DialogTitle>
+                <Button size="sm" variant="ghost" onClick={() => { setDialogOpen(false); setEditing(null); setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(sheets.map(x => x.sheet_number || '')) }); }} className="text-gray-400 hover:text-gray-600">✕</Button>
+              </div>
+            </DialogHeader>
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
                 <Input placeholder="Nº ficha" value={form.sheet_number} onChange={e => setForm({ ...form, sheet_number: e.target.value })} />
