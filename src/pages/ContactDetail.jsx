@@ -478,8 +478,8 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
             <Select value={uploadDocType} onValueChange={setUploadDocType}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {['factura','presupuesto','recibo','ficha_mantenimiento','orden_sat','calculo_termico','calculo_solar','informe','nota','otro'].map(t => (
-                  <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>
+                {['manual','factura','presupuesto','recibo','ficha_mantenimiento','orden_sat','calculo_termico','calculo_solar','informe','nota','otro'].map(t => (
+                  <SelectItem key={t} value={t}>{t === 'manual' ? '📘 Manual' : t.replace(/_/g, ' ')}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -509,8 +509,8 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
                 <Select value={editDocForm.doc_type} onValueChange={v => setEditDocForm({ ...editDocForm, doc_type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {['factura','presupuesto','recibo','ficha_mantenimiento','orden_sat','calculo_termico','calculo_solar','informe','nota','otro'].map(t => (
-                      <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>
+                    {['manual','factura','presupuesto','recibo','ficha_mantenimiento','orden_sat','calculo_termico','calculo_solar','informe','nota','otro'].map(t => (
+                      <SelectItem key={t} value={t}>{t === 'manual' ? '📘 Manual' : t.replace(/_/g, ' ')}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -604,7 +604,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           <TabsTrigger value="sat" className="flex-1 text-xs min-w-[80px]">SAT ({satOrders.length})</TabsTrigger>
           <TabsTrigger value="maint" className="flex-1 text-xs min-w-[80px]">Manten. ({maintenance.length})</TabsTrigger>
           <TabsTrigger value="calcs" className="flex-1 text-xs min-w-[80px]">Cálculos ({calculations.length})</TabsTrigger>
-          <TabsTrigger value="files" className="flex-1 text-xs min-w-[80px]">Archivos ({documents.length})</TabsTrigger>
+          <TabsTrigger value="files" className="flex-1 text-xs min-w-[80px]">Archivos ({documents.filter(d=>d.doc_type!=='manual').length}) {documents.filter(d=>d.doc_type==='manual').length > 0 && `| 📘${documents.filter(d=>d.doc_type==='manual').length}`}</TabsTrigger>
           <TabsTrigger value="citas" className="flex-1 text-xs min-w-[80px]">Citas ({appointments.length})</TabsTrigger>
           <TabsTrigger value="notes" className="flex-1 text-xs min-w-[80px]">Notas ({notes.length})</TabsTrigger>
           <TabsTrigger value="aibudget" className="flex-1 text-xs min-w-[80px]">Presup. IA</TabsTrigger>
@@ -805,7 +805,56 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
             <Button size="sm" variant="outline" onClick={() => setUploadDialog(true)}>
               <Upload className="w-4 h-4 mr-1" />Subir documento
             </Button>
-            {documents.map(d => {
+
+            {/* MANUALES */}
+            {documents.filter(d => d.doc_type === 'manual').length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-semibold text-blue-700 uppercase mb-2 flex items-center gap-1">
+                  📘 Manuales ({documents.filter(d => d.doc_type === 'manual').length})
+                </p>
+                {documents.filter(d => d.doc_type === 'manual').map(d => (
+                  <Card key={d.id} className="hover:shadow-md mb-2 border-blue-200">
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">📘 {d.title}</p>
+                          <p className="text-xs text-gray-500">{d.date}</p>
+                          {d.description && <p className="text-xs text-gray-400 truncate">{d.description}</p>}
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button onClick={() => { if(confirm('¿Eliminar este manual?')) deleteDocument(d.id); }} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 mt-2 border-t pt-2 flex-wrap">
+                        {d.file_url && (
+                          <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                            <Eye className="w-3 h-3" /> Abrir
+                          </a>
+                        )}
+                        <button onClick={() => openEditDoc(d)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-50 text-gray-700 hover:bg-gray-100">
+                          <Edit className="w-3 h-3" /> Editar
+                        </button>
+                        <button onClick={() => sendWhatsApp(`Manual: ${d.title}${d.file_url ? '\n' + d.file_url : ''}`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+                          <MessageCircle className="w-3 h-3" /> WA
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* RESTO DE ARCHIVOS */}
+            {documents.filter(d => d.doc_type !== 'manual').length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                  📁 Archivos ({documents.filter(d => d.doc_type !== 'manual').length})
+                </p>
+              </div>
+            )}
+            {documents.filter(d => d.doc_type !== 'manual').map(d => {
               const isHtmlDoc = d.description && d.description.trim().startsWith('<');
               const openDocPreview = () => {
                 const w = window.open('', '_blank');
