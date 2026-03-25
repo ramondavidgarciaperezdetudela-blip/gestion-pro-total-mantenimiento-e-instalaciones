@@ -1,24 +1,34 @@
-import React, { useRef } from 'react';
-import { Button } from "@/components/ui/button";
-import { Camera, X, Plus, FolderOpen } from "lucide-react";
+import React, { useRef, useState } from 'react';
+import { Camera, X, Plus, FolderOpen, Loader2 } from "lucide-react";
 import { base44 } from '@/api/base44Client';
 
 export default function PhotoGallery({ photos = [], onChange, label = "Fotos", maxPhotos = 30 }) {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
 
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     const remaining = maxPhotos - photos.length;
     const toUpload = files.slice(0, remaining);
-    
-    const newUrls = [];
-    for (const file of toUpload) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      newUrls.push(file_url);
-    }
-    onChange([...photos, ...newUrls]);
+
+    setUploading(true);
+    setUploadProgress({ done: 0, total: toUpload.length });
+
+    // Subir todas en paralelo
+    const results = await Promise.all(
+      toUpload.map(async (file) => {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        setUploadProgress(prev => ({ ...prev, done: prev.done + 1 }));
+        return file_url;
+      })
+    );
+
+    onChange([...photos, ...results]);
+    setUploading(false);
+    setUploadProgress({ done: 0, total: 0 });
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
@@ -37,17 +47,19 @@ export default function PhotoGallery({ photos = [], onChange, label = "Fotos", m
           <div className="flex gap-1">
             <button
               type="button"
+              disabled={uploading}
               onClick={() => cameraInputRef.current?.click()}
-              className="flex items-center gap-1 text-xs text-green-600 border border-green-300 rounded px-2 py-1 hover:bg-green-50"
+              className="flex items-center gap-1 text-xs text-green-600 border border-green-300 rounded px-2 py-1 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Camera className="w-3 h-3" />Cámara
             </button>
             <button
               type="button"
+              disabled={uploading}
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1 text-xs text-blue-600 border border-blue-300 rounded px-2 py-1 hover:bg-blue-50"
+              className="flex items-center gap-1 text-xs text-blue-600 border border-blue-300 rounded px-2 py-1 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <FolderOpen className="w-3 h-3" />Archivo
+              <FolderOpen className="w-3 h-3" />{uploading ? `Subiendo ${uploadProgress.done}/${uploadProgress.total}...` : 'Archivo'}
             </button>
           </div>
         )}
@@ -64,7 +76,13 @@ export default function PhotoGallery({ photos = [], onChange, label = "Fotos", m
             </button>
           </div>
         ))}
-        {canAdd && photos.length === 0 && (
+        {uploading && (
+          <div className="w-20 h-20 rounded-lg border-2 border-blue-300 bg-blue-50 flex flex-col items-center justify-center gap-1">
+            <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+            <span className="text-[10px] text-blue-600 font-medium">{uploadProgress.done}/{uploadProgress.total}</span>
+          </div>
+        )}
+        {canAdd && !uploading && photos.length === 0 && (
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
