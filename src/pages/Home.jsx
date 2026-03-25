@@ -198,16 +198,16 @@ export default function Home() {
         <img src={company.logo_url} alt="Logo" className="h-14 w-14 rounded-xl object-cover shadow-md" />
         }
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+          <h1 className="text-gray-900 text-4xl font-extrabold md:text-3xl">
             {company?.company_name || 'Panel de Control'}
           </h1>
-          <p className="text-gray-500 text-sm capitalize">{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+          <p className="text-gray-500 text-base font-black capitalize">{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
         </div>
       </div>
 
       {/* Acceso directo rápido - Arriba de todo */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
-        <h2 className="text-gray-800 mb-3 text-base font-semibold flex items-center gap-2">Acceso rápido a módulos
+        <h2 className="text-gray-800 mb-3 text-2xl font-extrabold flex items-center gap-2">Acceso rápido a módulos
 
 
         </h2>
