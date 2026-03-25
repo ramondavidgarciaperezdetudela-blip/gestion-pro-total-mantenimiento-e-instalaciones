@@ -207,7 +207,7 @@ export default function Home() {
 
       {/* Acceso directo rápido - Arriba de todo */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
-        <h2 className="text-gray-800 mb-3 text-2xl font-extrabold flex items-center gap-2">Acceso rápido a módulos
+        <h2 className="text-gray-800 mb-3 text-3xl font-extrabold flex items-center gap-2">Acceso rápido a módulos
 
 
         </h2>
@@ -262,17 +262,17 @@ export default function Home() {
       {/* KPIs Avanzados */}
       <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border-2 border-indigo-200 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-bold text-gray-800 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-indigo-600" />Panel de KPIs Avanzados
+          <h2 className="text-gray-800 text-4xl font-bold flex items-center gap-2">Panel de KPIs Avanzados
+
           </h2>
           <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border">ℹ️ KPI = Indicador de Rendimiento Clave</div>
         </div>
-        <p className="bg-opacity-60 text-gray-600 p-2.5 text-sm leading-relaxed rounded-lg">¿Qué son los KPIs? Son métricas que miden el rendimiento de tu negocio. Estos indicadores te ayudan a:
-Salud Financiera: Facturación, cobros, pendientes y margen de beneficio
-Gestión Operativa: Órdenes SAT, mantenimientos y utilización de técnicos
-Relación Cliente: Clientes activos, valor de compra y rentabilidad por cliente
-Logística: Stock, rotación de inventario y necesidades de reposición
-Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
+        <p className="bg-opacity-60 text-gray-600 p-2.5 text-base leading-relaxed rounded-lg">¿Qué son los KPIs? Son métricas que miden el rendimiento de tu negocio. Estos indicadores te ayudan a: Salud Financiera: Facturación, cobros, pendientes y margen de beneficio Gestión Operativa: Órdenes SAT, mantenimientos y utilización de técnicos Relación Cliente: Clientes activos, valor de compra y rentabilidad por cliente Logística: Stock, rotación de inventario y necesidades de reposición Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
+
+
+
+
+
 
 
 
@@ -280,23 +280,23 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           <div className="bg-white rounded-lg p-2 border-l-4 border-violet-400 text-center">
             <p className="text-2xl font-bold text-violet-600">{kpis.contacts}</p>
-            <p className="text-[10px] text-gray-500">Total Contactos</p>
+            <p className="text-gray-500 text-lg">Total Contactos</p>
           </div>
           <div className="bg-white rounded-lg p-2 border-l-4 border-green-400 text-center">
             <p className="text-2xl font-bold text-green-600">{kpis.invoicesPaid}</p>
-            <p className="text-[10px] text-gray-500">Facturas Pagadas</p>
+            <p className="text-gray-500 text-lg">Facturas Pagadas</p>
           </div>
           <div className="bg-white rounded-lg p-2 border-l-4 border-orange-400 text-center">
             <p className="text-2xl font-bold text-orange-600">{kpis.satPending}</p>
-            <p className="text-[10px] text-gray-500">SAT Pendientes</p>
+            <p className="text-gray-500 text-base">SAT Pendientes</p>
           </div>
           <div className="bg-white rounded-lg p-2 border-l-4 border-cyan-400 text-center">
             <p className="text-2xl font-bold text-cyan-600">{kpis.maintenanceDue}</p>
-            <p className="text-[10px] text-gray-500">Mant. Próximo</p>
+            <p className="text-gray-500 text-xl">Mant. Próximo</p>
           </div>
           <div className="bg-white rounded-lg p-2 border-l-4 border-red-400 text-center">
             <p className="text-2xl font-bold text-red-600">{kpis.invoicesOverdue}</p>
-            <p className="text-[10px] text-gray-500">Vencidas</p>
+            <p className="text-gray-500 text-xl">Vencidas</p>
           </div>
         </div>
       </div>
@@ -307,7 +307,7 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Euro className="w-4 h-4 text-violet-500" />Gasto por proveedor</CardTitle>
-            <Link to={createPageUrl('Suppliers')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
+            <Link to={createPageUrl('Suppliers')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todos</Link>
           </CardHeader>
           <CardContent>
             {supplierSpending.length === 0 ?
@@ -333,7 +333,7 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2"><ShoppingCart className="w-4 h-4 text-blue-500" />Proveedores con más referencias</CardTitle>
-            <Link to={createPageUrl('Suppliers')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
+            <Link to={createPageUrl('Suppliers')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todos</Link>
           </CardHeader>
           <CardContent className="space-y-2">
             {topSuppliers.length === 0 ?
@@ -384,7 +384,7 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
          <Card>
            <CardHeader className="pb-2 flex flex-row items-center justify-between">
              <CardTitle className="text-sm font-semibold flex items-center gap-2"><Wrench className="w-4 h-4 text-cyan-500" />Mantenimiento próximo</CardTitle>
-             <Link to={createPageUrl('Maintenance')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
+             <Link to={createPageUrl('Maintenance')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todos</Link>
            </CardHeader>
            <CardContent className="space-y-2">
              {maintenanceMachines.length === 0 ?
@@ -409,7 +409,7 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
          <Card>
            <CardHeader className="pb-2 flex flex-row items-center justify-between">
              <CardTitle className="text-sm font-semibold flex items-center gap-2"><Search className="w-4 h-4 text-emerald-500" />Stock bajo - Buscar repuestos</CardTitle>
-             <Link to={createPageUrl('Inventory')} className="text-xs text-blue-500 hover:underline">Ver inventario</Link>
+             <Link to={createPageUrl('Inventory')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver inventario</Link>
            </CardHeader>
            <CardContent className="space-y-2">
              {stockItems.length === 0 ?
@@ -437,7 +437,7 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Clock className="w-4 h-4 text-blue-500" />Citas de hoy</CardTitle>
-            <Link to={createPageUrl('Agenda')} className="text-xs text-blue-500 hover:underline">Ver todas</Link>
+            <Link to={createPageUrl('Agenda')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todas</Link>
           </CardHeader>
           <CardContent className="space-y-2">
             {appointments.length === 0 ?
@@ -459,7 +459,7 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-violet-500" />Últimos documentos</CardTitle>
-            <Link to={createPageUrl('Documents')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
+            <Link to={createPageUrl('Documents')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todos</Link>
           </CardHeader>
           <CardContent className="space-y-2">
             {recentDocs.length === 0 ?
@@ -483,7 +483,7 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Wrench className="w-4 h-4 text-orange-500" />SAT pendientes</CardTitle>
-            <Link to={createPageUrl('SAT')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
+            <Link to={createPageUrl('SAT')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todos</Link>
           </CardHeader>
           <CardContent className="space-y-2">
             {recentSat.length === 0 ?
@@ -506,7 +506,7 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-emerald-500" />Clientes recientes</CardTitle>
-            <Link to={createPageUrl('Contacts')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
+            <Link to={createPageUrl('Contacts')} className="text-blue-500 text-sm font-black hover:underline">Ver todos</Link>
           </CardHeader>
           <CardContent className="space-y-1">
             {recentContacts.length === 0 ?
