@@ -56,7 +56,7 @@ function StatCard({ label, value, sub, icon: Icon, color, linkPage }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-2xl font-bold text-gray-900">{value}</p>
-          <p className="text-xs text-gray-500 font-medium">{label}</p>
+          <p className="text-gray-500 text-xs font-extrabold">{label}</p>
           {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
         </div>
         {linkPage && <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />}
@@ -267,15 +267,15 @@ export default function Home() {
           </h2>
           <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border">ℹ️ KPI = Indicador de Rendimiento Clave</div>
         </div>
-        <p className="text-xs text-gray-600 bg-white bg-opacity-60 rounded-lg p-2.5 leading-relaxed">
-          <strong>¿Qué son los KPIs?</strong> Son métricas que miden el rendimiento de tu negocio. Estos indicadores te ayudan a:
-          <ul className="mt-2 ml-4 space-y-1 list-disc text-gray-700">
-            <li><strong>Salud Financiera:</strong> Facturación, cobros, pendientes y margen de beneficio</li>
-            <li><strong>Gestión Operativa:</strong> Órdenes SAT, mantenimientos y utilización de técnicos</li>
-            <li><strong>Relación Cliente:</strong> Clientes activos, valor de compra y rentabilidad por cliente</li>
-            <li><strong>Logística:</strong> Stock, rotación de inventario y necesidades de reposición</li>
-            <li><strong>Control Temporal:</strong> Proyectos retrasados, mantenimiento vencido, cobros vencidos</li>
-          </ul>
+        <p className="bg-opacity-60 text-gray-600 p-2.5 text-sm leading-relaxed rounded-lg">¿Qué son los KPIs? Son métricas que miden el rendimiento de tu negocio. Estos indicadores te ayudan a:
+Salud Financiera: Facturación, cobros, pendientes y margen de beneficio
+Gestión Operativa: Órdenes SAT, mantenimientos y utilización de técnicos
+Relación Cliente: Clientes activos, valor de compra y rentabilidad por cliente
+Logística: Stock, rotación de inventario y necesidades de reposición
+Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
+
+
+
         </p>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           <div className="bg-white rounded-lg p-2 border-l-4 border-violet-400 text-center">
@@ -467,8 +467,8 @@ export default function Home() {
             recentDocs.map((doc) =>
             <div key={doc.id} className="flex items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate capitalize">{doc.doc_type} {doc.doc_number}</p>
-                  <p className="text-[10px] text-gray-500 truncate">{doc.contact_name}</p>
+                  <p className="text-xs font-extrabold capitalize truncate">{doc.doc_type} {doc.doc_number}</p>
+                  <p className="text-gray-500 text-base truncate">{doc.contact_name}</p>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   <span className="text-xs font-bold">{doc.total?.toFixed(0)}€</span>
@@ -517,8 +517,8 @@ export default function Home() {
                   {c.photo_url ? <img src={c.photo_url} alt="" className="w-full h-full object-cover" /> : <span className="text-xs font-bold text-emerald-700">{c.name?.[0]?.toUpperCase()}</span>}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">{c.name} {c.surname}</p>
-                  <p className="text-[10px] text-gray-400 truncate">{c.company_name || c.city || c.phone || '-'}</p>
+                  <p className="text-base font-extrabold truncate">{c.name} {c.surname}</p>
+                  <p className="text-gray-400 text-sm truncate">{c.company_name || c.city || c.phone || '-'}</p>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <ChevronRight className="w-3 h-3 text-gray-300" />
