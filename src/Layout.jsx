@@ -187,7 +187,7 @@ export default function Layout({ children, currentPageName }) {
             <kbd className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded">⌘K</kbd>
           </button>
           <div className="flex items-center justify-between px-2 py-1">
-            <span className="text-xs text-blue-200">Alertas</span>
+            <span className="text-blue-200 text-base font-black">Alertas</span>
             <NotificationsPanel />
           </div>
           <button onClick={handleLogout} className="flex items-center gap-2 text-blue-200 hover:text-white text-sm w-full px-2 py-2 rounded hover:bg-white/10 transition-all">
