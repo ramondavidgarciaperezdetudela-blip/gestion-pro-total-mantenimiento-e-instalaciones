@@ -9,6 +9,8 @@ import { Eye, Edit, Save, RefreshCw, Phone, Mail, Printer, Trash2, Plus } from '
 import { format } from 'date-fns';
 import CompanyHeader from './CompanyHeader';
 import PrintButton from './PrintButton';
+import PhotoGallery from './PhotoGallery';
+import SATSignaturePanel from './SATSignaturePanel';
 
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
@@ -30,7 +32,7 @@ const EMPTY_FORM = {
 };
 
 // ─── VISTA PREVIA ────────────────────────────────────────────────────────────
-function SATPreview({ order, onEdit, onClose, contact }) {
+function SATPreview({ order, onEdit, onClose, contact, onUpdate }) {
   const printRef = useRef(null);
 
   const sendWhatsApp = () => {
@@ -107,18 +109,24 @@ function SATPreview({ order, onEdit, onClose, contact }) {
         )}
         {order.notes && <div className="bg-amber-50 rounded p-3 text-sm"><p className="text-xs font-medium text-amber-600 mb-1">Notas</p>{order.notes}</div>}
 
-        <div className="grid grid-cols-2 gap-6 mt-6 pt-4 border-t">
-          <div className="text-center">
-            <div className="border-b border-gray-400 h-16 mb-1"></div>
-            <p className="text-xs text-gray-500">Firma del Técnico</p>
-            {order.technician && <p className="text-xs font-medium">{order.technician}</p>}
+        {/* Firmas digitales */}
+        <SATSignaturePanel order={order} onUpdate={onUpdate || (() => {})} />
+
+        {/* Mostrar firmas guardadas en print */}
+        {(order.signature_technician || order.signature_client) && (
+          <div className="grid grid-cols-2 gap-6 mt-2 pt-2 border-t print-only">
+            <div className="text-center">
+              {order.signature_technician && <img src={order.signature_technician} alt="Firma técnico" className="h-16 mx-auto object-contain" />}
+              <p className="text-xs text-gray-500 mt-1">Firma del Técnico</p>
+              {order.technician && <p className="text-xs font-medium">{order.technician}</p>}
+            </div>
+            <div className="text-center">
+              {order.signature_client && <img src={order.signature_client} alt="Firma cliente" className="h-16 mx-auto object-contain" />}
+              <p className="text-xs text-gray-500 mt-1">Conformidad del Cliente</p>
+              <p className="text-xs font-medium">{order.contact_name}</p>
+            </div>
           </div>
-          <div className="text-center">
-            <div className="border-b border-gray-400 h-16 mb-1"></div>
-            <p className="text-xs text-gray-500">Conformidad del Cliente</p>
-            <p className="text-xs font-medium">{order.contact_name}</p>
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="flex gap-2 mt-3 flex-wrap pt-3 border-t">
@@ -211,6 +219,9 @@ function SATForm({ order, contact, onSave, onCancel }) {
       </div>
       <p className="text-xs text-right text-gray-500">Total estimado: <strong className="text-orange-700">{calcTotal(form).toFixed(2)} €</strong></p>
 
+      <PhotoGallery photos={form.photos_before||[]} onChange={p => setForm({...form, photos_before: p})} label="Fotos antes de reparación" maxPhotos={20} />
+      <PhotoGallery photos={form.photos_after||[]} onChange={p => setForm({...form, photos_after: p})} label="Fotos después de reparación" maxPhotos={20} />
+
       <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Notas internas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
 
       <div className="flex gap-2">
@@ -260,7 +271,7 @@ export default function SATOrderDialog({ order, contact, mode = 'view', open, on
         </DialogHeader>
 
         {currentMode === 'view' ? (
-          <SATPreview order={currentOrder} contact={contact} onEdit={() => setCurrentMode('edit')} onClose={onClose} />
+          <SATPreview order={currentOrder} contact={contact} onEdit={() => setCurrentMode('edit')} onClose={onClose} onUpdate={(updated) => { setCurrentOrder(updated); if (onSaved) onSaved(updated); }} />
         ) : (
           <SATForm order={currentOrder} contact={contact} onSave={handleSaved} onCancel={() => setCurrentMode('view')} />
         )}

@@ -16,6 +16,7 @@ import {
    ChevronRight, TrendingUp, FileText, Wrench, Download
  } from 'lucide-react';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
+import CityAutocomplete from '../components/CityAutocomplete';
 
 const PAYMENT_PROFILES = {
   buen_pagador: { label: 'Buen pagador', color: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
@@ -296,7 +297,12 @@ export default function Contacts() {
               <Input placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
               <Input placeholder="Dirección" value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
               <div className="grid grid-cols-3 gap-2">
-                <Input placeholder="Ciudad" value={form.city} onChange={e => setForm({...form, city: e.target.value})} />
+                <CityAutocomplete
+                  city={form.city}
+                  province={form.province}
+                  postal_code={form.postal_code}
+                  onChange={({ city, province, postal_code }) => setForm(prev => ({ ...prev, city, province, postal_code }))}
+                />
                 <Input placeholder="Provincia" value={form.province} onChange={e => setForm({...form, province: e.target.value})} />
                 <Input placeholder="C.P." value={form.postal_code} onChange={e => setForm({...form, postal_code: e.target.value})} />
               </div>

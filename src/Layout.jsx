@@ -51,6 +51,7 @@ const navItems = [
   { name: 'Recordatorios IA', page: 'SmartReminders', icon: Bell },
   { name: 'Repuestos', page: 'SparePartsManager', icon: Package },
   { name: 'SAT', page: 'SAT', icon: Wrench },
+  { name: 'Diario Reparaciones', page: 'EquipmentDiaryPage', icon: ClipboardList },
   { name: 'Solar + Baterías', page: 'SolarBatteryCalc', icon: Sun },
   { name: 'Tarjetas Visita', page: 'BusinessCards', icon: CreditCard },
   { name: 'Trabajo de Campo', page: 'TechnicianFieldWork', icon: Wrench },

@@ -89,6 +89,7 @@ import TechnicianFieldWork from './pages/TechnicianFieldWork';
 import TecniciansRoutes from './pages/TecniciansRoutes';
 import ThermalCalc from './pages/ThermalCalc';
 import CompanyConfig from './pages/CompanyConfig';
+import EquipmentDiaryPage from './pages/EquipmentDiaryPage';
 import __Layout from './Layout.jsx';
 
 
@@ -135,6 +136,7 @@ export const PAGES = {
     "TecniciansRoutes": TecniciansRoutes,
     "ThermalCalc": ThermalCalc,
     "CompanyConfig": CompanyConfig,
+    "EquipmentDiaryPage": EquipmentDiaryPage,
 }
 
 export const pagesConfig = {
