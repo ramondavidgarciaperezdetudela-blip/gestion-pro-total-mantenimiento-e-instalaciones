@@ -56,7 +56,7 @@ function StatCard({ label, value, sub, icon: Icon, color, linkPage }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-2xl font-bold text-gray-900">{value}</p>
-          <p className="text-gray-500 text-xs font-extrabold">{label}</p>
+          <p className="text-gray-500 text-sm font-extrabold">{label}</p>
           {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
         </div>
         {linkPage && <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />}
