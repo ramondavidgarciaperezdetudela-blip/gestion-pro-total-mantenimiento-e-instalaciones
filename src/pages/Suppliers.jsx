@@ -18,65 +18,65 @@ import SupplierPriceManager from '../components/SupplierPriceManager';
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
 const SPANISH_PROVINCES = [
-  'Álava', 'Albacete', 'Alicante', 'Almería', 'Asturias', 'Ávila', 'Badajoz', 'Barcelona',
-  'Burgos', 'Cáceres', 'Cádiz', 'Cantabria', 'Castellón', 'Ciudad Real', 'Córdoba', 'Cuenca',
-  'Girona', 'Granada', 'Guadalajara', 'Guipúzcoa', 'Huelva', 'Huesca', 'Jaén', 'La Coruña',
-  'La Rioja', 'Las Palmas', 'León', 'Lérida', 'Lugo', 'Madrid', 'Málaga', 'Murcia', 'Navarra',
-  'Orense', 'Palencia', 'Palma de Mallorca', 'Palmas', 'Pontevedra', 'Salamanca', 'Segovia',
-  'Sevilla', 'Soria', 'Tarragona', 'Tenerife', 'Teruel', 'Toledo', 'Valencia', 'Valladolid',
-  'Vizcaya', 'Zamora', 'Zaragoza'
-];
+'Álava', 'Albacete', 'Alicante', 'Almería', 'Asturias', 'Ávila', 'Badajoz', 'Barcelona',
+'Burgos', 'Cáceres', 'Cádiz', 'Cantabria', 'Castellón', 'Ciudad Real', 'Córdoba', 'Cuenca',
+'Girona', 'Granada', 'Guadalajara', 'Guipúzcoa', 'Huelva', 'Huesca', 'Jaén', 'La Coruña',
+'La Rioja', 'Las Palmas', 'León', 'Lérida', 'Lugo', 'Madrid', 'Málaga', 'Murcia', 'Navarra',
+'Orense', 'Palencia', 'Palma de Mallorca', 'Palmas', 'Pontevedra', 'Salamanca', 'Segovia',
+'Sevilla', 'Soria', 'Tarragona', 'Tenerife', 'Teruel', 'Toledo', 'Valencia', 'Valladolid',
+'Vizcaya', 'Zamora', 'Zaragoza'];
+
 
 const DEFAULT_SUPPLIERS = [
-  {
-    name: 'Salvador Escoda', website: 'https://www.salvadorescoda.com',
-    login_url: 'https://www.salvadorescoda.com/tienda', category: 'refrigeracion',
-    phone: '93 265 81 00', email: 'info@salvadorescoda.com',
-    notes: 'Distribuidor oficial climatización y refrigeración. Sede Barcelona.', is_active: true
-  },
-  {
-    name: 'Hidro Tarraco', website: 'https://www.hidrotarraco.com',
-    login_url: 'https://www.hidrotarraco.com', category: 'fontaneria',
-    phone: '977 55 00 00', email: 'info@hidrotarraco.com', contact_person: 'Comercial',
-    notes: 'Distribuidor fontanería, climatización y energías renovables. Zona Tarragona.', is_active: true
-  },
-  {
-    name: 'Elektra Cataluña', website: 'https://www.elektra.es',
-    login_url: 'https://www.elektra.es', category: 'electrico',
-    phone: '93 000 00 00', email: 'info@elektra.es',
-    notes: 'Material eléctrico, automatización y electricidad industrial. Zona Cataluña.', is_active: true
-  },
-  {
-    name: 'ABC Tarraconès', website: '', login_url: '', category: 'general',
-    phone: '977 00 00 00', email: '', contact_person: 'Comercial',
-    notes: 'Distribuidor material de construcción e instalaciones. Tarragona.', is_active: true
-  },
-  {
-    name: 'Obramat', website: 'https://www.obramat.es',
-    login_url: 'https://www.obramat.es', category: 'general',
-    phone: '900 10 11 12', email: '',
-    notes: 'Material de construcción y ferretería industrial. Amplia red de tiendas.', is_active: true
-  },
-  {
-    name: 'Comfred Suministros', website: '', login_url: '', category: 'refrigeracion',
-    phone: '977 00 11 22', email: 'info@comfred.es', contact_person: 'Dpt. Ventas',
-    notes: 'Especialistas en componentes para refrigeración y climatización.', is_active: true
-  },
-  {
-    name: 'Saltoki', website: 'https://www.saltoki.es',
-    login_url: 'https://www.saltoki.es/catalogo', category: 'fontaneria',
-    phone: '948 00 00 00', email: 'atencion@saltoki.es',
-    notes: 'Material de fontanería, calefacción y climatización. Catálogo online amplio.', is_active: true
-  },
-];
+{
+  name: 'Salvador Escoda', website: 'https://www.salvadorescoda.com',
+  login_url: 'https://www.salvadorescoda.com/tienda', category: 'refrigeracion',
+  phone: '93 265 81 00', email: 'info@salvadorescoda.com',
+  notes: 'Distribuidor oficial climatización y refrigeración. Sede Barcelona.', is_active: true
+},
+{
+  name: 'Hidro Tarraco', website: 'https://www.hidrotarraco.com',
+  login_url: 'https://www.hidrotarraco.com', category: 'fontaneria',
+  phone: '977 55 00 00', email: 'info@hidrotarraco.com', contact_person: 'Comercial',
+  notes: 'Distribuidor fontanería, climatización y energías renovables. Zona Tarragona.', is_active: true
+},
+{
+  name: 'Elektra Cataluña', website: 'https://www.elektra.es',
+  login_url: 'https://www.elektra.es', category: 'electrico',
+  phone: '93 000 00 00', email: 'info@elektra.es',
+  notes: 'Material eléctrico, automatización y electricidad industrial. Zona Cataluña.', is_active: true
+},
+{
+  name: 'ABC Tarraconès', website: '', login_url: '', category: 'general',
+  phone: '977 00 00 00', email: '', contact_person: 'Comercial',
+  notes: 'Distribuidor material de construcción e instalaciones. Tarragona.', is_active: true
+},
+{
+  name: 'Obramat', website: 'https://www.obramat.es',
+  login_url: 'https://www.obramat.es', category: 'general',
+  phone: '900 10 11 12', email: '',
+  notes: 'Material de construcción y ferretería industrial. Amplia red de tiendas.', is_active: true
+},
+{
+  name: 'Comfred Suministros', website: '', login_url: '', category: 'refrigeracion',
+  phone: '977 00 11 22', email: 'info@comfred.es', contact_person: 'Dpt. Ventas',
+  notes: 'Especialistas en componentes para refrigeración y climatización.', is_active: true
+},
+{
+  name: 'Saltoki', website: 'https://www.saltoki.es',
+  login_url: 'https://www.saltoki.es/catalogo', category: 'fontaneria',
+  phone: '948 00 00 00', email: 'atencion@saltoki.es',
+  notes: 'Material de fontanería, calefacción y climatización. Catálogo online amplio.', is_active: true
+}];
+
 
 const EMPTY_FORM = {
-   name: '', website: '', login_url: '', category: 'general',
-   phone: '', email: '', contact_person: '', notes: '', is_active: true,
-   api_key: '', api_url: '', client_code: '', password_hint: '',
-   commercials: [], logo_url: '', last_order_date: '', reorder_frequency_days: 30,
-   enable_notifications: true, province: '', city: ''
- };
+  name: '', website: '', login_url: '', category: 'general',
+  phone: '', email: '', contact_person: '', notes: '', is_active: true,
+  api_key: '', api_url: '', client_code: '', password_hint: '',
+  commercials: [], logo_url: '', last_order_date: '', reorder_frequency_days: 30,
+  enable_notifications: true, province: '', city: ''
+};
 
 const EMPTY_COMMERCIAL = { name: '', phone: '', whatsapp: '', email: '', notes: '' };
 
@@ -94,10 +94,10 @@ export default function Suppliers() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    base44.entities.Supplier.list().then(data => {
+    base44.entities.Supplier.list().then((data) => {
       if (data.length === 0) {
-        Promise.all(DEFAULT_SUPPLIERS.map(s => base44.entities.Supplier.create(s)))
-          .then(() => base44.entities.Supplier.list().then(setSuppliers));
+        Promise.all(DEFAULT_SUPPLIERS.map((s) => base44.entities.Supplier.create(s))).
+        then(() => base44.entities.Supplier.list().then(setSuppliers));
       } else {
         setSuppliers(data);
       }
@@ -147,7 +147,7 @@ export default function Suppliers() {
     setFetchingLogo(true);
     const logo = await fetchCompanyLogo(form.website, form.name);
     if (logo) {
-      setForm(prev => ({ ...prev, logo_url: logo }));
+      setForm((prev) => ({ ...prev, logo_url: logo }));
     }
     setFetchingLogo(false);
   };
@@ -160,7 +160,7 @@ export default function Suppliers() {
     setFetchingData(true);
     const data = await fetchSupplierDataFromAPI(searchQuery);
     if (data) {
-      setForm(prev => ({
+      setForm((prev) => ({
         ...prev,
         name: data.name || prev.name,
         phone: data.phone || prev.phone,
@@ -168,7 +168,7 @@ export default function Suppliers() {
         website: data.website || prev.website,
         address: data.address || prev.address,
         category: mapCategoryFromSector(data.sector) || prev.category,
-        notes: (data.description ? `${data.description}\nNIF: ${data.nif || 'No disponible'}` : prev.notes) || prev.notes,
+        notes: (data.description ? `${data.description}\nNIF: ${data.nif || 'No disponible'}` : prev.notes) || prev.notes
       }));
       toast.success(`Datos obtenidos de ${data.name}`);
       setSearchQuery('');
@@ -182,7 +182,7 @@ export default function Suppliers() {
     if (!file) return;
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setForm(prev => ({ ...prev, logo_url: file_url }));
+      setForm((prev) => ({ ...prev, logo_url: file_url }));
       toast.success('Foto guardada correctamente');
     } catch (error) {
       toast.error('Error al subir la foto');
@@ -199,10 +199,10 @@ export default function Suppliers() {
       await base44.entities.Supplier.update(editing.id, { logo_url: form.logo_url });
       const updated = await base44.entities.Supplier.list();
       setSuppliers(updated);
-      const updatedSupplier = updated.find(s => s.id === editing.id);
+      const updatedSupplier = updated.find((s) => s.id === editing.id);
       if (updatedSupplier) {
         setEditing(updatedSupplier);
-        setForm(prev => ({ ...prev, logo_url: updatedSupplier.logo_url }));
+        setForm((prev) => ({ ...prev, logo_url: updatedSupplier.logo_url }));
       }
       toast.success(`Logo guardado en ${form.name}`);
     } catch (error) {
@@ -211,17 +211,17 @@ export default function Suppliers() {
     }
   };
 
-  const addCommercial = () => setForm(prev => ({...prev, commercials: [...(prev.commercials || []), {...EMPTY_COMMERCIAL}]}));
-  const updateCommercial = (i, field, val) => setForm(prev => ({...prev, commercials: prev.commercials.map((c, idx) => idx === i ? {...c, [field]: val} : c)}));
-  const removeCommercial = (i) => setForm(prev => ({...prev, commercials: prev.commercials.filter((_, idx) => idx !== i)}));
+  const addCommercial = () => setForm((prev) => ({ ...prev, commercials: [...(prev.commercials || []), { ...EMPTY_COMMERCIAL }] }));
+  const updateCommercial = (i, field, val) => setForm((prev) => ({ ...prev, commercials: prev.commercials.map((c, idx) => idx === i ? { ...c, [field]: val } : c) }));
+  const removeCommercial = (i) => setForm((prev) => ({ ...prev, commercials: prev.commercials.filter((_, idx) => idx !== i) }));
 
   const handleDelete = async (id) => {
     await base44.entities.Supplier.delete(id);
-    setSuppliers(suppliers.filter(s => s.id !== id));
+    setSuppliers(suppliers.filter((s) => s.id !== id));
   };
 
-  const activeSuppliers = suppliers.filter(s => s.is_active !== false);
-  const inactiveSuppliers = suppliers.filter(s => s.is_active === false);
+  const activeSuppliers = suppliers.filter((s) => s.is_active !== false);
+  const inactiveSuppliers = suppliers.filter((s) => s.is_active === false);
 
   const getDaysUntilReorder = (lastDate, frequency) => {
     if (!lastDate) return 0;
@@ -232,20 +232,20 @@ export default function Suppliers() {
   };
 
   const SupplierCard = ({ s }) => {
-     const daysUntilReorder = getDaysUntilReorder(s.last_order_date, s.reorder_frequency_days);
-     const needsReorder = daysUntilReorder <= 7 && s.enable_notifications;
+    const daysUntilReorder = getDaysUntilReorder(s.last_order_date, s.reorder_frequency_days);
+    const needsReorder = daysUntilReorder <= 7 && s.enable_notifications;
 
-     return (
-       <Card className={`hover:shadow-md transition-shadow ${needsReorder ? 'border-amber-300 bg-amber-50' : ''}`}>
+    return (
+      <Card className={`hover:shadow-md transition-shadow ${needsReorder ? 'border-amber-300 bg-amber-50' : ''}`}>
          <CardContent className="p-4">
            <div className="flex items-start gap-3">
              {/* Logo como foto del proveedor */}
              <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden border border-slate-200 flex-shrink-0">
-               {s.logo_url ? (
-                 <img src={s.logo_url} alt={s.name} className="w-full h-full object-cover" />
-               ) : (
-                 <Building2 className="w-6 h-6 text-slate-400" />
-               )}
+               {s.logo_url ?
+              <img src={s.logo_url} alt={s.name} className="w-full h-full object-cover" /> :
+
+              <Building2 className="w-6 h-6 text-slate-400" />
+              }
              </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -255,14 +255,14 @@ export default function Suppliers() {
                 {needsReorder && <Badge className="bg-amber-100 text-amber-700 text-[10px]"><Bell className="w-2.5 h-2.5 mr-1" />Revisar</Badge>}
               </div>
               
-              {s.enable_notifications && s.last_order_date && (
-                <div className="mb-2 p-2 bg-white rounded border border-amber-200 text-xs">
+              {s.enable_notifications && s.last_order_date &&
+              <div className="mb-2 p-2 bg-white rounded border border-amber-200 text-xs">
                   <div className="flex items-center gap-1 text-gray-700">
                     <Clock className="w-3 h-3" />
                     <span>Próximo pedido: {daysUntilReorder > 0 ? `en ${daysUntilReorder} días` : 'HOY'}</span>
                   </div>
                 </div>
-              )}
+              }
               
               {s.notes && <p className="text-xs text-gray-500 mb-2">{s.notes}</p>}
               <div className="flex flex-wrap gap-3 text-xs mb-2">
@@ -270,46 +270,46 @@ export default function Suppliers() {
                 {s.email && <a href={`mailto:${s.email}`} className="flex items-center gap-1 text-blue-600"><Mail className="w-3 h-3" />{s.email}</a>}
               </div>
               
-              {s.commercials?.length > 0 && (
-                <div className="pt-2 border-t">
+              {s.commercials?.length > 0 &&
+              <div className="pt-2 border-t">
                   <p className="text-[10px] font-semibold text-gray-500 flex items-center gap-1 mb-1"><Users className="w-3 h-3" />Comerciales:</p>
                   <div className="flex flex-wrap gap-2">
-                    {s.commercials.map((c, i) => (
-                      <div key={i} className="flex items-center gap-1 text-xs bg-gray-100 rounded px-2 py-1">
+                    {s.commercials.map((c, i) =>
+                  <div key={i} className="flex items-center gap-1 text-xs bg-gray-100 rounded px-2 py-1">
                         <span className="font-medium text-gray-700">{c.name}</span>
                         {c.phone && <a href={`tel:${c.phone}`} className="text-blue-500"><Phone className="w-3 h-3" /></a>}
-                        {c.whatsapp && (
-                          <a href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500">
+                        {c.whatsapp &&
+                    <a href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500">
                             <MessageCircle className="w-3 h-3" />
                           </a>
-                        )}
+                    }
                       </div>
-                    ))}
+                  )}
                   </div>
                 </div>
-              )}
+              }
             </div>
             
             <div className="flex items-center gap-1 ml-auto flex-shrink-0">
-              {s.login_url && (
-                <a href={s.login_url} target="_blank" rel="noopener noreferrer"
-                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Tienda online">
+              {s.login_url &&
+              <a href={s.login_url} target="_blank" rel="noopener noreferrer"
+              className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Tienda online">
                   <ShoppingCart className="w-4 h-4" />
                 </a>
-              )}
-              {s.website && (
-                <a href={s.website} target="_blank" rel="noopener noreferrer"
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Sitio web">
+              }
+              {s.website &&
+              <a href={s.website} target="_blank" rel="noopener noreferrer"
+              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Sitio web">
                   <Globe className="w-4 h-4" />
                 </a>
-              )}
+              }
               <button onClick={() => handleEdit(s)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"><Edit className="w-4 h-4" /></button>
               <button onClick={() => handleDelete(s.id)} className="p-2 text-red-400 hover:text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button>
             </div>
           </div>
         </CardContent>
-      </Card>
-    );
+      </Card>);
+
   };
 
   return (
@@ -318,89 +318,89 @@ export default function Suppliers() {
         <h1 className="text-2xl font-bold">Proveedores / Distribuidores</h1>
         <Dialog open={dialogOpen} onOpenChange={() => {}}>
           <DialogTrigger asChild>
-            <Button className="bg-slate-700 hover:bg-slate-800" onClick={() => { setEditing(null); setForm(EMPTY_FORM); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
+            <Button className="bg-slate-700 hover:bg-slate-800" onClick={() => {setEditing(null);setForm(EMPTY_FORM);setDialogOpen(true);}}><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <DialogTitle>{editing ? 'Editar' : 'Nuevo'} proveedor</DialogTitle>
-                <Button size="sm" variant="ghost" onClick={() => { setDialogOpen(false); setEditing(null); setForm(EMPTY_FORM); setShowApiKey(false); }} className="text-gray-400 hover:text-gray-600">✕</Button>
+                <Button size="sm" variant="ghost" onClick={() => {setDialogOpen(false);setEditing(null);setForm(EMPTY_FORM);setShowApiKey(false);}} className="text-gray-400 hover:text-gray-600">✕</Button>
               </div>
             </DialogHeader>
             <Tabs defaultValue="datos">
               <TabsList className="w-full grid grid-cols-5">
-                <TabsTrigger value="datos">Datos</TabsTrigger>
-                <TabsTrigger value="precios">Precios</TabsTrigger>
+                <TabsTrigger value="datos" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow">Datos</TabsTrigger>
+                <TabsTrigger value="precios" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow">Precios</TabsTrigger>
                 <TabsTrigger value="catalogos">Catálogos</TabsTrigger>
-                <TabsTrigger value="comerciales">Comerciales</TabsTrigger>
-                <TabsTrigger value="acceso">Acceso</TabsTrigger>
+                <TabsTrigger value="comerciales" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow">Comerciales</TabsTrigger>
+                <TabsTrigger value="acceso" className="px-3 py-1 text-sm font-extrabold rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow">Acceso</TabsTrigger>
               </TabsList>
 
               <TabsContent value="precios" className="pt-2">
-                {editing && (
-                  <SupplierPriceManager 
-                    supplierId={editing.id} 
-                    supplierName={form.name || editing.name}
-                  />
-                )}
-                {!editing && (
-                  <p className="text-xs text-gray-400 py-4">Guarda el proveedor primero para gestionar precios</p>
-                )}
+                {editing &&
+                <SupplierPriceManager
+                  supplierId={editing.id}
+                  supplierName={form.name || editing.name} />
+
+                }
+                {!editing &&
+                <p className="text-xs text-gray-400 py-4">Guarda el proveedor primero para gestionar precios</p>
+                }
               </TabsContent>
 
               <TabsContent value="datos" className="space-y-3 pt-2">
                   <div className="text-center">
                     <p className="text-xs font-medium text-gray-600 mb-3">Foto de proveedor (clic para cambiar)</p>
                     <div className="relative w-24 h-24 mx-auto rounded-lg bg-white border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group cursor-pointer" onClick={() => document.getElementById('logo-input-main').click()}>
-                      {form.logo_url ? (
-                        <img src={form.logo_url} alt="Logo" className="w-full h-full object-cover" />
-                      ) : (
-                        <Building2 className="w-8 h-8 text-slate-300" />
-                      )}
+                      {form.logo_url ?
+                    <img src={form.logo_url} alt="Logo" className="w-full h-full object-cover" /> :
+
+                    <Building2 className="w-8 h-8 text-slate-300" />
+                    }
                       <div className="absolute inset-0 rounded-lg bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <Upload className="w-5 h-5 text-white" />
                       </div>
-                      <input 
-                        id="logo-input-main"
-                        type="file" 
-                        accept="image/*" 
-                        className="hidden" 
-                        onChange={(e) => e.target.files?.[0] && handleUploadLogo(e.target.files[0])}
-                      />
+                      <input
+                      id="logo-input-main"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => e.target.files?.[0] && handleUploadLogo(e.target.files[0])} />
+                    
                     </div>
                     <div className="flex gap-2 mt-2 justify-center flex-wrap">
                       <Button onClick={() => document.getElementById('logo-input-main').click()} variant="outline" className="text-xs h-8">
                         <Upload className="w-3 h-3 mr-1" />Subir imagen
                       </Button>
-                      <Button onClick={handleAutoFetchLogo} variant="outline" className="text-xs h-8" disabled={fetchingLogo || (!form.name && !form.website)}>
+                      <Button onClick={handleAutoFetchLogo} variant="outline" className="text-xs h-8" disabled={fetchingLogo || !form.name && !form.website}>
                         {fetchingLogo ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Download className="w-3 h-3 mr-1" />}
                         {fetchingLogo ? 'Descargando...' : 'Descargar auto'}
                       </Button>
-                      {form.logo_url && (
-                        <Button onClick={() => setForm(prev => ({ ...prev, logo_url: '' }))} variant="outline" className="text-xs h-8 text-red-500 hover:text-red-600">
+                      {form.logo_url &&
+                    <Button onClick={() => setForm((prev) => ({ ...prev, logo_url: '' }))} variant="outline" className="text-xs h-8 text-red-500 hover:text-red-600">
                           <Trash2 className="w-3 h-3 mr-1" />Quitar
                         </Button>
-                      )}
+                    }
                     </div>
                   </div>
 
-                  {!editing && (
-                    <div className="space-y-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  {!editing &&
+                <div className="space-y-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
                       <div className="space-y-2">
                         <p className="text-xs font-semibold text-blue-900">🌐 Buscar datos públicos AEAT/Registro Mercantil</p>
                         <div className="flex gap-1.5">
-                          <Input 
-                            placeholder="NIF, nombre o descripción..." 
-                            value={searchQuery} 
-                            onChange={e => setSearchQuery(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleFetchSupplierData()}
-                            className="text-xs h-9 flex-1" 
-                          />
-                          <Button 
-                            onClick={handleFetchSupplierData} 
-                            disabled={fetchingData || !searchQuery.trim()}
-                            className="h-9 px-3 flex-shrink-0 flex items-center gap-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium"
-                          >
+                          <Input
+                        placeholder="NIF, nombre o descripción..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleFetchSupplierData()}
+                        className="text-xs h-9 flex-1" />
+                      
+                          <Button
+                        onClick={handleFetchSupplierData}
+                        disabled={fetchingData || !searchQuery.trim()}
+                        className="h-9 px-3 flex-shrink-0 flex items-center gap-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium">
+                        
                             {fetchingData ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
                             {fetchingData ? 'Buscando...' : 'Buscar'}
                           </Button>
@@ -412,109 +412,109 @@ export default function Suppliers() {
                         <p className="text-xs font-semibold text-blue-900 mb-2">📌 Proveedores existentes</p>
                         <div className="flex flex-col gap-1.5 mb-2">
                           <div className="flex gap-1.5">
-                            <Select value={searchProvince} onValueChange={(v) => { setSearchProvince(v); setSearchCity(''); setShowSuggestions(true); }}>
+                            <Select value={searchProvince} onValueChange={(v) => {setSearchProvince(v);setSearchCity('');setShowSuggestions(true);}}>
                               <SelectTrigger className="text-xs h-9 flex-1"><SelectValue placeholder="Provincia..." /></SelectTrigger>
-                              <SelectContent className="max-h-60">{SPANISH_PROVINCES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                              <SelectContent className="max-h-60">{SPANISH_PROVINCES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                             </Select>
-                            <Input 
-                              placeholder="Ciudad..." 
-                              value={searchCity} 
-                              onChange={(e) => { setSearchCity(e.target.value); setShowSuggestions(true); }}
-                              className="text-xs h-9 flex-1"
-                            />
+                            <Input
+                          placeholder="Ciudad..."
+                          value={searchCity}
+                          onChange={(e) => {setSearchCity(e.target.value);setShowSuggestions(true);}}
+                          className="text-xs h-9 flex-1" />
+                        
                           </div>
                           <Button
-                            onClick={() => setShowSuggestions(true)}
-                            disabled={!searchProvince && !searchCity}
-                            className="h-9 w-full flex items-center gap-1 justify-center bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium"
-                          >
+                        onClick={() => setShowSuggestions(true)}
+                        disabled={!searchProvince && !searchCity}
+                        className="h-9 w-full flex items-center gap-1 justify-center bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium">
+                        
                             <Search className="w-3 h-3" /> Buscar proveedores
                           </Button>
                         </div>
-                        {showSuggestions && searchProvince && (
-                          <div className="space-y-1 max-h-40 overflow-y-auto mt-2">
-                            {suppliers
-                              .filter(s => s.is_active)
-                              .filter(s => searchProvince ? s.province === searchProvince : true)
-                              .filter(s => searchCity ? s.city?.toLowerCase().includes(searchCity.toLowerCase()) : true)
-                              .length === 0 ? (
-                              <p className="text-xs text-gray-500">Sin proveedores en {searchCity ? `${searchCity}, ` : ''}esta provincia</p>
-                            ) : (
-                              suppliers
-                                .filter(s => s.is_active)
-                                .filter(s => searchProvince ? s.province === searchProvince : true)
-                                .filter(s => searchCity ? s.city?.toLowerCase().includes(searchCity.toLowerCase()) : true)
-                                .map(s => (
-                                  <button key={s.id} onClick={() => { setForm({...form, name: s.name, website: s.website || '', category: s.category || 'general', notes: s.notes || '', phone: s.phone || '', email: s.email || ''}); setShowSuggestions(false); setSearchProvince(''); setSearchCity(''); }} className="w-full text-left p-2 rounded text-xs bg-white hover:bg-blue-100 border border-blue-100 truncate">
+                        {showSuggestions && searchProvince &&
+                    <div className="space-y-1 max-h-40 overflow-y-auto mt-2">
+                            {suppliers.
+                      filter((s) => s.is_active).
+                      filter((s) => searchProvince ? s.province === searchProvince : true).
+                      filter((s) => searchCity ? s.city?.toLowerCase().includes(searchCity.toLowerCase()) : true).
+                      length === 0 ?
+                      <p className="text-xs text-gray-500">Sin proveedores en {searchCity ? `${searchCity}, ` : ''}esta provincia</p> :
+
+                      suppliers.
+                      filter((s) => s.is_active).
+                      filter((s) => searchProvince ? s.province === searchProvince : true).
+                      filter((s) => searchCity ? s.city?.toLowerCase().includes(searchCity.toLowerCase()) : true).
+                      map((s) =>
+                      <button key={s.id} onClick={() => {setForm({ ...form, name: s.name, website: s.website || '', category: s.category || 'general', notes: s.notes || '', phone: s.phone || '', email: s.email || '' });setShowSuggestions(false);setSearchProvince('');setSearchCity('');}} className="w-full text-left p-2 rounded text-xs bg-white hover:bg-blue-100 border border-blue-100 truncate">
                                     <div className="font-medium">{s.name}</div>
                                     <div className="text-[10px] text-gray-500">{s.city}, {s.province}</div>
                                   </button>
-                                ))
-                            )}
+                      )
+                      }
                           </div>
-                        )}
+                    }
                       </div>
                     </div>
-                  )}
+                }
 
-                  <Input placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-                 <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
+                  <Input placeholder="Nombre *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                    <SelectTrigger><SelectValue /></SelectTrigger>
-                   <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                   <SelectContent>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                  </Select>
-                 <Input placeholder="Sitio web" value={form.website} onChange={e => setForm({...form, website: e.target.value})} />
+                 <Input placeholder="Sitio web" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
 
-                   <Input placeholder="URL tienda / pedidos online" value={form.login_url} onChange={e => setForm({...form, login_url: e.target.value})} />
+                   <Input placeholder="URL tienda / pedidos online" value={form.login_url} onChange={(e) => setForm({ ...form, login_url: e.target.value })} />
                 
                 <div className="grid grid-cols-2 gap-2">
-                  <Select value={form.province} onValueChange={v => setForm({...form, province: v})}>
+                  <Select value={form.province} onValueChange={(v) => setForm({ ...form, province: v })}>
                     <SelectTrigger><SelectValue placeholder="Provincia" /></SelectTrigger>
-                    <SelectContent className="max-h-60">{SPANISH_PROVINCES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    <SelectContent className="max-h-60">{SPANISH_PROVINCES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                   </Select>
-                  <Input placeholder="Ciudad / Población" value={form.city} onChange={e => setForm({...form, city: e.target.value})} />
+                  <Input placeholder="Ciudad / Población" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <Input placeholder="Teléfono" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
-                  <Input placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+                  <Input placeholder="Teléfono" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  <Input placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
-                <Input placeholder="Persona de contacto" value={form.contact_person} onChange={e => setForm({...form, contact_person: e.target.value})} />
-                <Textarea placeholder="Notas" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} />
+                <Input placeholder="Persona de contacto" value={form.contact_person} onChange={(e) => setForm({ ...form, contact_person: e.target.value })} />
+                <Textarea placeholder="Notas" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
 
                 {/* Automatización de pedidos */}
                 <div className="border rounded-lg p-3 space-y-2 bg-blue-50">
                   <p className="text-sm font-medium text-blue-900 flex items-center gap-2"><Clock className="w-4 h-4" />Automatización de pedidos</p>
                   <div>
                     <label className="text-xs text-gray-700">Última fecha de pedido</label>
-                    <Input type="date" value={form.last_order_date} onChange={e => setForm({...form, last_order_date: e.target.value})} className="mt-1" />
+                    <Input type="date" value={form.last_order_date} onChange={(e) => setForm({ ...form, last_order_date: e.target.value })} className="mt-1" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-700">Cada cuántos días hacer pedido</label>
-                    <Input type="number" min="1" value={form.reorder_frequency_days} onChange={e => setForm({...form, reorder_frequency_days: parseInt(e.target.value) || 30})} className="mt-1" />
+                    <Input type="number" min="1" value={form.reorder_frequency_days} onChange={(e) => setForm({ ...form, reorder_frequency_days: parseInt(e.target.value) || 30 })} className="mt-1" />
                   </div>
                   <label className="flex items-center gap-2 text-xs cursor-pointer">
-                    <input type="checkbox" checked={form.enable_notifications} onChange={e => setForm({...form, enable_notifications: e.target.checked})} />
+                    <input type="checkbox" checked={form.enable_notifications} onChange={(e) => setForm({ ...form, enable_notifications: e.target.checked })} />
                     <span className="text-gray-700">Activar notificaciones de revisión de pedidos</span>
                   </label>
                 </div>
 
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} />
+                  <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
                   Proveedor activo
                 </label>
               </TabsContent>
 
               <TabsContent value="catalogos" className="pt-2">
-                {editing && (
-                  <SupplierCatalogManager 
-                    supplierId={editing.id} 
-                    supplierName={form.name || editing.name}
-                    supplierCategory={form.category || editing.category}
-                  />
-                )}
-                {!editing && (
-                  <p className="text-xs text-gray-400 py-4">Guarda el proveedor primero para añadir catálogos</p>
-                )}
+                {editing &&
+                <SupplierCatalogManager
+                  supplierId={editing.id}
+                  supplierName={form.name || editing.name}
+                  supplierCategory={form.category || editing.category} />
+
+                }
+                {!editing &&
+                <p className="text-xs text-gray-400 py-4">Guarda el proveedor primero para añadir catálogos</p>
+                }
               </TabsContent>
 
               <TabsContent value="comerciales" className="space-y-3 pt-2">
@@ -523,18 +523,18 @@ export default function Suppliers() {
                   <Button size="sm" variant="outline" onClick={addCommercial}><Plus className="w-3 h-3 mr-1" />Añadir</Button>
                 </div>
                 {(form.commercials || []).length === 0 && <p className="text-center text-gray-400 py-4 text-sm">No hay comerciales. Pulsa Añadir.</p>}
-                {(form.commercials || []).map((c, i) => (
-                  <div key={i} className="border rounded-lg p-3 space-y-2 relative">
+                {(form.commercials || []).map((c, i) =>
+                <div key={i} className="border rounded-lg p-3 space-y-2 relative">
                     <button onClick={() => removeCommercial(i)} className="absolute top-2 right-2 text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
-                    <Input placeholder="Nombre del comercial *" value={c.name} onChange={e => updateCommercial(i, 'name', e.target.value)} />
+                    <Input placeholder="Nombre del comercial *" value={c.name} onChange={(e) => updateCommercial(i, 'name', e.target.value)} />
                     <div className="grid grid-cols-2 gap-2">
-                      <Input placeholder="Teléfono" value={c.phone} onChange={e => updateCommercial(i, 'phone', e.target.value)} />
-                      <Input placeholder="WhatsApp" value={c.whatsapp} onChange={e => updateCommercial(i, 'whatsapp', e.target.value)} />
+                      <Input placeholder="Teléfono" value={c.phone} onChange={(e) => updateCommercial(i, 'phone', e.target.value)} />
+                      <Input placeholder="WhatsApp" value={c.whatsapp} onChange={(e) => updateCommercial(i, 'whatsapp', e.target.value)} />
                     </div>
-                    <Input placeholder="Email" value={c.email} onChange={e => updateCommercial(i, 'email', e.target.value)} />
-                    <Input placeholder="Notas" value={c.notes} onChange={e => updateCommercial(i, 'notes', e.target.value)} />
+                    <Input placeholder="Email" value={c.email} onChange={(e) => updateCommercial(i, 'email', e.target.value)} />
+                    <Input placeholder="Notas" value={c.notes} onChange={(e) => updateCommercial(i, 'notes', e.target.value)} />
                   </div>
-                ))}
+                )}
               </TabsContent>
 
               <TabsContent value="acceso" className="space-y-3 pt-2">
@@ -544,7 +544,7 @@ export default function Suppliers() {
                 </div>
                 <div>
                   <label className="text-sm font-medium">Código de cliente</label>
-                  <Input className="mt-1" placeholder="Tu nº de cliente en este distribuidor" value={form.client_code} onChange={e => setForm({...form, client_code: e.target.value})} />
+                  <Input className="mt-1" placeholder="Tu nº de cliente en este distribuidor" value={form.client_code} onChange={(e) => setForm({ ...form, client_code: e.target.value })} />
                 </div>
                 <div>
                   <label className="text-sm font-medium">API Key (si el distribuidor la proporciona)</label>
@@ -553,32 +553,32 @@ export default function Suppliers() {
                       type={showApiKey ? 'text' : 'password'}
                       placeholder="API Key del distribuidor"
                       value={form.api_key}
-                      onChange={e => setForm({...form, api_key: e.target.value})}
-                    />
+                      onChange={(e) => setForm({ ...form, api_key: e.target.value })} />
+                    
                     <button
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                    >
+                      onClick={() => setShowApiKey(!showApiKey)}>
+                      
                       {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium">URL API (si disponible)</label>
-                  <Input className="mt-1" placeholder="https://api.distribuidor.com/v1" value={form.api_url} onChange={e => setForm({...form, api_url: e.target.value})} />
+                  <Input className="mt-1" placeholder="https://api.distribuidor.com/v1" value={form.api_url} onChange={(e) => setForm({ ...form, api_url: e.target.value })} />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Nota de contraseña (recordatorio)</label>
-                  <Input className="mt-1" placeholder="Ej: misma que email" value={form.password_hint} onChange={e => setForm({...form, password_hint: e.target.value})} />
+                  <Input className="mt-1" placeholder="Ej: misma que email" value={form.password_hint} onChange={(e) => setForm({ ...form, password_hint: e.target.value })} />
                 </div>
                 <div className="border rounded-lg p-3 space-y-2">
                   <p className="text-sm font-medium">Acceso directo</p>
-                  {form.login_url ? (
-                    <a href={form.login_url} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-blue-600 text-sm hover:underline">
+                  {form.login_url ?
+                  <a href={form.login_url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-blue-600 text-sm hover:underline">
                       <ExternalLink className="w-4 h-4" /> Ir a la tienda online
-                    </a>
-                  ) : <p className="text-xs text-gray-400">Introduce la URL de la tienda para acceso directo</p>}
+                    </a> :
+                  <p className="text-xs text-gray-400">Introduce la URL de la tienda para acceso directo</p>}
                 </div>
               </TabsContent>
             </Tabs>
@@ -588,15 +588,15 @@ export default function Suppliers() {
       </div>
 
       <div className="space-y-3">
-        {activeSuppliers.map(s => <SupplierCard key={s.id} s={s} />)}
-        {inactiveSuppliers.length > 0 && (
-          <div>
+        {activeSuppliers.map((s) => <SupplierCard key={s.id} s={s} />)}
+        {inactiveSuppliers.length > 0 &&
+        <div>
             <p className="text-xs text-gray-400 mb-2">Inactivos</p>
-            {inactiveSuppliers.map(s => <SupplierCard key={s.id} s={s} />)}
+            {inactiveSuppliers.map((s) => <SupplierCard key={s.id} s={s} />)}
           </div>
-        )}
+        }
         {suppliers.length === 0 && <p className="text-center text-gray-400 py-6">No hay proveedores configurados</p>}
       </div>
-    </div>
-  );
+    </div>);
+
 }
