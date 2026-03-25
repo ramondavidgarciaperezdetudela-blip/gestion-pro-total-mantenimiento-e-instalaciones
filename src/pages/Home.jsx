@@ -220,7 +220,7 @@ export default function Home() {
                   <div className={`${link.color} p-2 rounded-lg text-white group-hover:scale-110 transition-transform`}>
                     <Icon className="w-4 h-4" />
                   </div>
-                  <span className="text-[10px] font-medium text-gray-700 text-center leading-tight line-clamp-2">{link.name}</span>
+                  <span className="text-gray-700 text-base font-extrabold text-center leading-tight line-clamp-2">{link.name}</span>
                 </div>
               </Link>);
 
