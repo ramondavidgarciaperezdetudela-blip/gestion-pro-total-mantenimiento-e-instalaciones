@@ -6,8 +6,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger } from
-"@/components/ui/dropdown-menu";
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function getPdfStyles(cfg = {}) {
   const mt = cfg.margin_top || 15;
@@ -45,7 +45,7 @@ function getPdfStyles(cfg = {}) {
   thead { display: table-header-group; }
   tfoot { display: table-footer-group; }
   .section-card { page-break-inside: avoid; }
-  ` : ''}`;
+  ` : ''}`
 }
 
 const PDF_STYLES_STATIC = `
@@ -162,20 +162,20 @@ export default function PrintButton({ contentRef, title = "Documento", className
     try {
       const settings = await base44.entities.CompanySettings.list();
       if (settings.length > 0) cfg = settings[0].printer_config || {};
-    } catch (e) {}
+    } catch(e) {}
     const win = window.open('', '_blank');
     const html = buildPrintHTML(title, el.innerHTML, cfg);
     win.document.open();
     win.document.write(html);
     win.document.close();
     win.focus();
-    setTimeout(() => {win.print();}, 900);
+    setTimeout(() => { win.print(); }, 900);
   };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="bg-background pr-4 pl-4 text-lg font-extrabold rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input shadow-sm hover:bg-accent hover:text-accent-foreground h-8">
+        <Button variant="outline" size="sm" className={className}>
           <Printer className="w-4 h-4 mr-2" />
           Imprimir / PDF
         </Button>
@@ -190,6 +190,6 @@ export default function PrintButton({ contentRef, title = "Documento", className
           Exportar como PDF
         </DropdownMenuItem>
       </DropdownMenuContent>
-    </DropdownMenu>);
-
+    </DropdownMenu>
+  );
 }

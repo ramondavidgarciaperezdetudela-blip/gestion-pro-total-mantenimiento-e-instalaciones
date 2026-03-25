@@ -56,7 +56,7 @@ function StatCard({ label, value, sub, icon: Icon, color, linkPage }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-2xl font-bold text-gray-900">{value}</p>
-          <p className="text-gray-500 text-sm font-extrabold">{label}</p>
+          <p className="text-xs text-gray-500 font-medium">{label}</p>
           {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
         </div>
         {linkPage && <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />}
@@ -217,10 +217,10 @@ export default function Home() {
             return (
               <Link key={link.page} to={createPageUrl(link.page)}>
                 <div className="group flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-white transition-all hover:shadow-md cursor-pointer">
-                  <div className="bg-amber-500 text-white px-4 py-2 rounded-lg group-hover:scale-110 transition-transform">
+                  <div className={`${link.color} p-2 rounded-lg text-white group-hover:scale-110 transition-transform`}>
                     <Icon className="w-4 h-4" />
                   </div>
-                  <span className="text-gray-700 text-lg font-extrabold text-center leading-tight line-clamp-2">{link.name}</span>
+                  <span className="text-[10px] font-medium text-gray-700 text-center leading-tight line-clamp-2">{link.name}</span>
                 </div>
               </Link>);
 
@@ -267,36 +267,36 @@ export default function Home() {
           </h2>
           <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border">ℹ️ KPI = Indicador de Rendimiento Clave</div>
         </div>
-        <p className="bg-opacity-60 text-gray-600 p-2.5 text-base leading-relaxed rounded-lg">¿Qué son los KPIs? Son métricas que miden el rendimiento de tu negocio. Estos indicadores te ayudan a:
-Salud Financiera: Facturación, cobros, pendientes y margen de beneficio
-Gestión Operativa: Órdenes SAT, mantenimientos y utilización de técnicos
-Relación Cliente: Clientes activos, valor de compra y rentabilidad por cliente
-Logística: Stock, rotación de inventario y necesidades de reposición
-Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
-
-
-
+        <p className="text-xs text-gray-600 bg-white bg-opacity-60 rounded-lg p-2.5 leading-relaxed">
+          <strong>¿Qué son los KPIs?</strong> Son métricas que miden el rendimiento de tu negocio. Estos indicadores te ayudan a:
+          <ul className="mt-2 ml-4 space-y-1 list-disc text-gray-700">
+            <li><strong>Salud Financiera:</strong> Facturación, cobros, pendientes y margen de beneficio</li>
+            <li><strong>Gestión Operativa:</strong> Órdenes SAT, mantenimientos y utilización de técnicos</li>
+            <li><strong>Relación Cliente:</strong> Clientes activos, valor de compra y rentabilidad por cliente</li>
+            <li><strong>Logística:</strong> Stock, rotación de inventario y necesidades de reposición</li>
+            <li><strong>Control Temporal:</strong> Proyectos retrasados, mantenimiento vencido, cobros vencidos</li>
+          </ul>
         </p>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           <div className="bg-white rounded-lg p-2 border-l-4 border-violet-400 text-center">
-            <p className="text-violet-600 text-4xl font-bold">{kpis.contacts}</p>
-            <p className="text-gray-500 font-black">Total Contactos</p>
+            <p className="text-2xl font-bold text-violet-600">{kpis.contacts}</p>
+            <p className="text-[10px] text-gray-500">Total Contactos</p>
           </div>
           <div className="bg-white rounded-lg p-2 border-l-4 border-green-400 text-center">
-            <p className="text-green-600 text-4xl font-bold">{kpis.invoicesPaid}</p>
-            <p className="text-gray-500 font-black">Facturas Pagadas</p>
+            <p className="text-2xl font-bold text-green-600">{kpis.invoicesPaid}</p>
+            <p className="text-[10px] text-gray-500">Facturas Pagadas</p>
           </div>
           <div className="bg-white rounded-lg p-2 border-l-4 border-orange-400 text-center">
-            <p className="text-orange-600 text-4xl font-bold">{kpis.satPending}</p>
-            <p className="text-gray-500 font-black">SAT Pendientes</p>
+            <p className="text-2xl font-bold text-orange-600">{kpis.satPending}</p>
+            <p className="text-[10px] text-gray-500">SAT Pendientes</p>
           </div>
           <div className="bg-white rounded-lg p-2 border-l-4 border-cyan-400 text-center">
-            <p className="text-cyan-600 text-4xl font-bold">{kpis.maintenanceDue}</p>
-            <p className="text-gray-500 font-black">Mant. Próximo</p>
+            <p className="text-2xl font-bold text-cyan-600">{kpis.maintenanceDue}</p>
+            <p className="text-[10px] text-gray-500">Mant. Próximo</p>
           </div>
           <div className="bg-white rounded-lg p-2 border-l-4 border-red-400 text-center">
-            <p className="text-red-600 text-4xl font-bold">{kpis.invoicesOverdue}</p>
-            <p className="text-gray-500 font-black">Vencidas</p>
+            <p className="text-2xl font-bold text-red-600">{kpis.invoicesOverdue}</p>
+            <p className="text-[10px] text-gray-500">Vencidas</p>
           </div>
         </div>
       </div>
@@ -306,12 +306,12 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
         {/* Gastos por proveedor */}
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="px-4 py-2 text-sm font-semibold tracking-tight flex items-center gap-2"><Euro className="w-4 h-4 text-violet-500" />Gasto por proveedor</CardTitle>
-            <Link to={createPageUrl('Suppliers')} className="text-blue-500 text-xs font-extrabold hover:underline">Ver todos</Link>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Euro className="w-4 h-4 text-violet-500" />Gasto por proveedor</CardTitle>
+            <Link to={createPageUrl('Suppliers')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
           </CardHeader>
           <CardContent>
             {supplierSpending.length === 0 ?
-            <p className="text-slate-950 py-4 text-sm font-extrabold text-center">Sin datos de precios registrados</p> :
+            <p className="text-xs text-gray-400 py-4 text-center">Sin datos de precios registrados</p> :
 
             <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={supplierSpending} layout="vertical" margin={{ left: 4, right: 16, top: 4, bottom: 4 }}>
@@ -331,13 +331,13 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
 
         {/* Top proveedores por pedidos */}
         <Card>
-          <CardHeader className="px-4 py-2 space-y-1.5 flex flex-row items-center justify-between">
-            <CardTitle className="my-4 text-sm font-semibold tracking-tight flex items-center gap-2"><ShoppingCart className="w-4 h-4 text-blue-500" />Proveedores con más referencias</CardTitle>
-            <Link to={createPageUrl('Suppliers')} className="text-blue-500 text-xs font-extrabold hover:underline">Ver todos</Link>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><ShoppingCart className="w-4 h-4 text-blue-500" />Proveedores con más referencias</CardTitle>
+            <Link to={createPageUrl('Suppliers')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
           </CardHeader>
           <CardContent className="space-y-2">
             {topSuppliers.length === 0 ?
-            <p className="text-slate-950 py-4 text-sm font-extrabold text-center">Sin precios registrados</p> :
+            <p className="text-xs text-gray-400 py-4 text-center">Sin precios registrados</p> :
             topSuppliers.map((s, i) =>
             <div key={s.name} className="flex items-center gap-2">
                 <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
@@ -382,13 +382,13 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
          {/* Dashboard Mantenimiento */}
          <Card>
-           <CardHeader className="px-4 py-4 space-y-1.5 flex flex-row items-center justify-between">
-             <CardTitle className="px-4 py-2 text-sm font-semibold tracking-tight flex items-center gap-2"><Wrench className="w-4 h-4 text-cyan-500" />Mantenimiento próximo</CardTitle>
-             <Link to={createPageUrl('Maintenance')} className="text-blue-500 text-xs font-extrabold hover:underline">Ver todos</Link>
+           <CardHeader className="pb-2 flex flex-row items-center justify-between">
+             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Wrench className="w-4 h-4 text-cyan-500" />Mantenimiento próximo</CardTitle>
+             <Link to={createPageUrl('Maintenance')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
            </CardHeader>
            <CardContent className="space-y-2">
              {maintenanceMachines.length === 0 ?
-            <p className="text-slate-950 py-3 text-base font-black text-center">Sin mantenimiento próximo</p> :
+            <p className="text-xs text-gray-400 py-3 text-center">Sin mantenimiento próximo</p> :
             maintenanceMachines.map((m) => {
               const nextDate = new Date(m.next_maintenance_date);
               const daysUntil = Math.ceil((nextDate - new Date()) / 86400000);
@@ -407,13 +407,13 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
 
          {/* Buscador Repuestos Rápidos Online */}
          <Card>
-           <CardHeader className="px-4 py-2 space-y-1.5 flex flex-row items-center justify-between">
-             <CardTitle className="px-4 py-2 text-sm font-semibold tracking-tight flex items-center gap-2"><Search className="w-4 h-4 text-emerald-500" />Stock bajo - Buscar repuestos</CardTitle>
-             <Link to={createPageUrl('Inventory')} className="text-blue-500 text-xs font-extrabold hover:underline">Ver inventario</Link>
+           <CardHeader className="pb-2 flex flex-row items-center justify-between">
+             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Search className="w-4 h-4 text-emerald-500" />Stock bajo - Buscar repuestos</CardTitle>
+             <Link to={createPageUrl('Inventory')} className="text-xs text-blue-500 hover:underline">Ver inventario</Link>
            </CardHeader>
            <CardContent className="space-y-2">
              {stockItems.length === 0 ?
-            <p className="text-slate-950 py-3 text-sm font-black text-center">Stock en niveles óptimos</p> :
+            <p className="text-xs text-gray-400 py-3 text-center">Stock en niveles óptimos</p> :
             stockItems.map((item) =>
             <div key={item.id} className="flex items-center justify-between gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-100">
                  <div className="min-w-0 flex-1">
@@ -436,12 +436,12 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
         {/* Citas hoy */}
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="px-4 py-2 text-sm font-semibold tracking-tight flex items-center gap-2"><Clock className="w-4 h-4 text-blue-500" />Citas de hoy</CardTitle>
-            <Link to={createPageUrl('Agenda')} className="text-blue-500 text-xs font-extrabold hover:underline">Ver todas</Link>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Clock className="w-4 h-4 text-blue-500" />Citas de hoy</CardTitle>
+            <Link to={createPageUrl('Agenda')} className="text-xs text-blue-500 hover:underline">Ver todas</Link>
           </CardHeader>
           <CardContent className="space-y-2">
             {appointments.length === 0 ?
-            <p className="text-slate-950 py-3 text-sm font-extrabold text-center">Sin citas hoy</p> :
+            <p className="text-xs text-gray-400 py-3 text-center">Sin citas hoy</p> :
             appointments.map((apt) =>
             <div key={apt.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="text-xs font-bold text-blue-600 min-w-[40px]">{apt.time_start || '--'}</span>
@@ -457,9 +457,9 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
 
         {/* Últimos documentos */}
         <Card>
-          <CardHeader className="px-4 py-2 space-y-1.5 flex flex-row items-center justify-between">
-            <CardTitle className="px-4 py-2 text-sm font-semibold tracking-tight flex items-center gap-2"><FileText className="w-4 h-4 text-violet-500" />Últimos documentos</CardTitle>
-            <Link to={createPageUrl('Documents')} className="text-blue-500 text-xs font-black hover:underline">Ver todos</Link>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-violet-500" />Últimos documentos</CardTitle>
+            <Link to={createPageUrl('Documents')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
           </CardHeader>
           <CardContent className="space-y-2">
             {recentDocs.length === 0 ?
@@ -467,12 +467,12 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
             recentDocs.map((doc) =>
             <div key={doc.id} className="flex items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-extrabold capitalize truncate">{doc.doc_type} {doc.doc_number}</p>
-                  <p className="text-gray-500 font-medium truncate">{doc.contact_name}</p>
+                  <p className="text-xs font-medium truncate capitalize">{doc.doc_type} {doc.doc_number}</p>
+                  <p className="text-[10px] text-gray-500 truncate">{doc.contact_name}</p>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <span className="text-sm font-extrabold">{doc.total?.toFixed(0)}€</span>
-                  <Badge className="bg-gray-100 text-slate-950 px-2.5 py-0.5 font-semibold rounded-md inline-flex items-center border transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent shadow hover:bg-primary/80">{doc.status}</Badge>
+                  <span className="text-xs font-bold">{doc.total?.toFixed(0)}€</span>
+                  <Badge className={`text-[10px] ${STATUS_COLORS[doc.status] || ''}`}>{doc.status}</Badge>
                 </div>
               </div>
             )}
@@ -481,13 +481,13 @@ Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
 
         {/* SAT pendientes */}
         <Card>
-          <CardHeader className="px-4 py-2 space-y-1.5 flex flex-row items-center justify-between">
-            <CardTitle className="px-4 py-2 text-sm font-semibold tracking-tight flex items-center gap-2"><Wrench className="w-4 h-4 text-orange-500" />SAT pendientes</CardTitle>
-            <Link to={createPageUrl('SAT')} className="text-blue-500 text-xs font-black hover:underline">Ver todos</Link>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Wrench className="w-4 h-4 text-orange-500" />SAT pendientes</CardTitle>
+            <Link to={createPageUrl('SAT')} className="text-xs text-blue-500 hover:underline">Ver todos</Link>
           </CardHeader>
           <CardContent className="space-y-2">
             {recentSat.length === 0 ?
-            <p className="text-slate-950 py-3 text-sm font-extrabold text-center">Sin órdenes pendientes</p> :
+            <p className="text-xs text-gray-400 py-3 text-center">Sin órdenes pendientes</p> :
             recentSat.map((sat) =>
             <div key={sat.id} className="p-2 bg-orange-50 rounded-lg">
                 <p className="text-xs font-medium truncate">{sat.contact_name}</p>
