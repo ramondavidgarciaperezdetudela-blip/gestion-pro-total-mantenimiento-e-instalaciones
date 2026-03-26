@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Plus, Search, FileText, Trash2, Edit, Eye, ShoppingCart, Copy,
   ChevronDown, ChevronUp, Save, Phone, Mail, BarChart3, TrendingUp,
-  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer, FileDown } from
+  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer, FileDown, Bell, X } from
 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import { format, startOfMonth } from 'date-fns';
@@ -229,6 +229,8 @@ export default function Documents() {
     setDocs(docs.map((d) => d.id === doc.id ? { ...d, status: newStatus } : d));
   };
 
+  const getSignLink = (doc) => `${window.location.origin}/presupuesto-publico?id=${doc.id}`;
+
   const sendWhatsApp = (doc) => {
     const c = contacts.find((x) => x.id === doc.contact_id);
     const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
@@ -243,6 +245,37 @@ export default function Documents() {
     const body = encodeURIComponent(`Estimado/a ${doc.contact_name},\n\nAdjunto ${doc.doc_type} Nº${doc.doc_number} de fecha ${doc.date}.\nTotal: ${doc.total?.toFixed(2)} €\n\nQuedamos a su disposición.`);
     window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
   };
+
+  const sendReminderWhatsApp = (doc) => {
+    const c = contacts.find((x) => x.id === doc.contact_id);
+    const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
+    const diasPendiente = Math.floor((new Date() - new Date(doc.date)) / (1000 * 60 * 60 * 24));
+    const link = getSignLink(doc);
+    const msg = encodeURIComponent(
+      `Estimado/a *${doc.contact_name}*,\n\nLe recordamos que tiene pendiente de respuesta nuestro *PRESUPUESTO Nº${doc.doc_number}* de fecha ${doc.date} por importe de *${doc.total?.toFixed(2)} €*.\n\nHace ${diasPendiente} días que está pendiente de confirmación.\n\nPuede *ACEPTAR o RECHAZAR* el presupuesto y firmarlo digitalmente aquí:\n${link}\n\nQuedamos a su disposición para cualquier consulta.`
+    );
+    window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+  };
+
+  const sendReminderEmail = (doc) => {
+    const c = contacts.find((x) => x.id === doc.contact_id);
+    const email = c?.email || '';
+    const diasPendiente = Math.floor((new Date() - new Date(doc.date)) / (1000 * 60 * 60 * 24));
+    const link = getSignLink(doc);
+    const subject = encodeURIComponent(`Recordatorio: Presupuesto Nº${doc.doc_number} pendiente de confirmación`);
+    const body = encodeURIComponent(`Estimado/a ${doc.contact_name},\n\nLe recordamos que tiene pendiente de respuesta nuestro Presupuesto Nº${doc.doc_number} de fecha ${doc.date} por importe de ${doc.total?.toFixed(2)} €.\n\nHace ${diasPendiente} días que está pendiente de confirmación.\n\nPuede aceptar o rechazar el presupuesto y firmarlo digitalmente aquí:\n${link}\n\nQuedamos a su disposición para cualquier consulta.`);
+    window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+  };
+
+  // Presupuestos pendientes >7 días
+  const presupuestosPendientes = docs.filter(d => {
+    if (d.doc_type !== 'presupuesto') return false;
+    if (!['borrador', 'enviado'].includes(d.status)) return false;
+    const dias = Math.floor((new Date() - new Date(d.date)) / (1000 * 60 * 60 * 24));
+    return dias > 7;
+  }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const [showPendientes, setShowPendientes] = useState(true);
 
   const exportPDF = async (doc) => {
     const csArr = await base44.entities.CompanySettings.list();
@@ -365,6 +398,67 @@ export default function Documents() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Panel presupuestos pendientes >7 días */}
+      {presupuestosPendientes.length > 0 && (
+        <div className="border border-orange-200 rounded-xl bg-orange-50 overflow-hidden">
+          <div
+            className="flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-orange-100 transition-colors"
+            onClick={() => setShowPendientes(v => !v)}
+          >
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-orange-500" />
+              <span className="font-semibold text-orange-800 text-sm">
+                {presupuestosPendientes.length} presupuesto{presupuestosPendientes.length > 1 ? 's' : ''} sin respuesta hace más de 7 días
+              </span>
+            </div>
+            <ChevronDown className={`w-4 h-4 text-orange-400 transition-transform ${showPendientes ? 'rotate-180' : ''}`} />
+          </div>
+          {showPendientes && (
+            <div className="divide-y divide-orange-100">
+              {presupuestosPendientes.map(doc => {
+                const diasPendiente = Math.floor((new Date() - new Date(doc.date)) / (1000 * 60 * 60 * 24));
+                const c = contacts.find(x => x.id === doc.contact_id);
+                return (
+                  <div key={doc.id} className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap bg-white/60">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-slate-800 truncate">
+                        Presupuesto Nº{doc.doc_number} — {doc.contact_name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Fecha: {doc.date} · Total: <strong>{doc.total?.toFixed(2)} €</strong>
+                        <span className="ml-2 text-orange-600 font-semibold">⏱ {diasPendiente} días pendiente</span>
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5 flex-shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-green-700 border-green-200 hover:bg-green-50 h-7 text-xs px-2"
+                        onClick={() => sendReminderWhatsApp(doc)}
+                        title={c?.phone ? `WhatsApp a ${c.phone}` : 'WhatsApp (sin teléfono)'}
+                      >
+                        <Phone className="w-3 h-3 mr-1" />
+                        {c?.phone ? 'WhatsApp' : 'WhatsApp (sin tel.)'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-blue-700 border-blue-200 hover:bg-blue-50 h-7 text-xs px-2"
+                        onClick={() => sendReminderEmail(doc)}
+                        title={c?.email ? `Email a ${c.email}` : 'Email (sin dirección)'}
+                      >
+                        <Mail className="w-3 h-3 mr-1" />
+                        {c?.email ? 'Email' : 'Email (sin dirección)'}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="flex gap-2 flex-wrap">
