@@ -345,9 +345,9 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           <button onClick={() => setInvoiceDialog(doc)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
             <Eye className="w-3 h-3" /> Ver
           </button>
-          <button onClick={() => setInvoiceDialog({ ...doc, _openEdit: true })} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-50 text-gray-700 hover:bg-gray-100">
+          <Link to={createPageUrl(`Documents?edit=${doc.id}`)} onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-50 text-gray-700 hover:bg-gray-100">
             <Edit className="w-3 h-3" /> Editar
-          </button>
+          </Link>
           {onDelete && (
             <button onClick={() => { if(confirm('¿Eliminar?')) onDelete(doc.id); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
               <Trash2 className="w-3 h-3" /> Eliminar

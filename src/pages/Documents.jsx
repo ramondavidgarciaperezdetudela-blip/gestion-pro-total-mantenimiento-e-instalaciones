@@ -87,6 +87,8 @@ export default function Documents() {
   const [supplierSearchOpen, setSupplierSearchOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [autoSaved, setAutoSaved] = useState(false);
+  const autoSaveTimer = useRef(null);
   const [form, setForm] = useState({ ...EMPTY_FORM, doc_type: preType || 'presupuesto', contact_id: preContactId || '' });
   const [activeTab, setActiveTab] = useState('all'); // all | facturas | presupuestos
   const printRef = useRef(null);
@@ -109,13 +111,45 @@ export default function Documents() {
       } else if (preEditId) {
         const docToEdit = d.find(doc => doc.id === preEditId);
         if (docToEdit) {
-          const items = (docToEdit.items?.length ? docToEdit.items : [newItem()]).map((it, idx) => ({ _id: idx, ...it }));
-          setEditing(docToEdit);
-          setForm({ ...EMPTY_FORM, ...docToEdit, items });
+          // Abre directamente en modo edición
+          const draft = (() => { try { const r = localStorage.getItem('doc_draft'); return r ? JSON.parse(r) : null; } catch { return null; } })();
+          if (draft && draft.editing === docToEdit.id) {
+            setEditing(docToEdit);
+            setForm(draft.form);
+          } else {
+            const items = (docToEdit.items?.length ? docToEdit.items : [newItem()]).map((it, idx) => ({ _id: idx, ...it }));
+            setEditing(docToEdit);
+            setForm({ ...EMPTY_FORM, ...docToEdit, items });
+          }
           setDialogOpen(true);
         }
       }
     });
+  }, []);
+
+  // Autoguardado en localStorage cada vez que cambia el formulario
+  useEffect(() => {
+    if (!dialogOpen) return;
+    clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      localStorage.setItem('doc_draft', JSON.stringify({ form, editing: editing?.id || null }));
+      setAutoSaved(true);
+      setTimeout(() => setAutoSaved(false), 1500);
+    }, 800);
+    return () => clearTimeout(autoSaveTimer.current);
+  }, [form, dialogOpen]);
+
+  // Al abrir el dialog, intentar restaurar borrador si existe y coincide
+  const restoreDraft = useCallback(() => {
+    try {
+      const raw = localStorage.getItem('doc_draft');
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch { return null; }
+  }, []);
+
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem('doc_draft');
   }, []);
 
   const openNew = (docType = 'presupuesto', contact = null, tpl = null) => {
@@ -130,7 +164,15 @@ export default function Documents() {
     // Auto-numerar: coger todos los doc_number del mismo tipo
     const sametype = docs.filter((d) => d.doc_type === docType).map((d) => d.doc_number || '');
     baseForm.doc_number = getNextAvailableNumber(sametype);
-    setEditing(null);setForm(baseForm);setDialogOpen(true);setShowAdvanced(false);
+    // Comprobar si hay borrador para nuevo doc del mismo tipo
+    const draft = restoreDraft();
+    if (draft && !draft.editing && draft.form?.doc_type === docType) {
+      setForm(draft.form);
+    } else {
+      setForm(baseForm);
+      clearDraft();
+    }
+    setEditing(null);setDialogOpen(true);setShowAdvanced(false);
   };
 
   const handleItemChange = useCallback((index, field, value) => {
@@ -199,6 +241,7 @@ export default function Documents() {
       }
     }
     setSaving(false);
+    clearDraft();
     setDialogOpen(false);setEditing(null);
     const d = await base44.entities.Invoice.list('-date', 500);
     setDocs(d);
@@ -219,8 +262,15 @@ export default function Documents() {
 
   const handleEdit = (doc) => {
     setEditing(doc);
-    const items = (doc.items?.length ? doc.items : [newItem()]).map((it, idx) => ({ _id: idx, ...it }));
-    setForm({ ...EMPTY_FORM, ...doc, items });
+    // Comprobar si hay borrador para este mismo documento
+    const draft = restoreDraft();
+    if (draft && draft.editing === doc.id) {
+      setForm(draft.form);
+    } else {
+      const items = (doc.items?.length ? doc.items : [newItem()]).map((it, idx) => ({ _id: idx, ...it }));
+      setForm({ ...EMPTY_FORM, ...doc, items });
+      clearDraft();
+    }
     setDialogOpen(true);
   };
 
@@ -492,10 +542,32 @@ export default function Documents() {
       <p className="text-xs text-gray-400">{filtered.length} documento{filtered.length !== 1 ? 's' : ''} · Total: <strong>{filtered.reduce((s, d) => s + (d.total || 0), 0).toFixed(2)} €</strong></p>
 
       {/* ===== DIALOG CREAR/EDITAR ===== */}
-      <Dialog open={dialogOpen} onOpenChange={(o) => {setDialogOpen(o);if (!o) {setEditing(null);setShowAdvanced(false);}}}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <Dialog open={dialogOpen} onOpenChange={(o) => {
+        // Solo cerrar si el usuario pulsa X explícitamente (no al hacer click fuera)
+        if (o === false) return; // bloquear cierre por click fuera
+        setDialogOpen(o);
+        if (!o) { setEditing(null); setShowAdvanced(false); }
+      }}>
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
-            <DialogTitle>{editing ? `Editar ${editing.doc_type} ${editing.doc_number}` : 'Nuevo documento'}</DialogTitle>
+            <div className="flex items-center justify-between gap-2">
+              <DialogTitle>{editing ? `Editar ${editing.doc_type} ${editing.doc_number}` : 'Nuevo documento'}</DialogTitle>
+              <div className="flex items-center gap-2">
+                {autoSaved && <span className="text-xs text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" />Borrador guardado</span>}
+                <button
+                  className="text-gray-400 hover:text-gray-700 p-1 rounded"
+                  onClick={() => { clearDraft(); setDialogOpen(false); setEditing(null); setShowAdvanced(false); }}
+                  title="Cerrar sin guardar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-2">
@@ -620,10 +692,12 @@ export default function Documents() {
               </div>
             }
 
-            <Button onClick={handleSave} disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 gap-2">
-              <Save className="w-4 h-4" />
-              {saving ? 'Guardando...' : editing ? 'Actualizar documento' : 'Guardar documento'}
-            </Button>
+            <div className="sticky bottom-0 pt-2 bg-white border-t mt-2">
+              <Button onClick={handleSave} disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 gap-2 h-11 text-base font-semibold">
+                <Save className="w-4 h-4" />
+                {saving ? 'Guardando...' : editing ? '💾 Actualizar documento' : '💾 Guardar documento'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -742,6 +816,7 @@ export default function Documents() {
                       {STATUSES.map((s) => <SelectItem key={s} value={s} className="text-xs capitalize">{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <button onClick={(e) => { e.stopPropagation(); handleEdit(doc); }} className="text-gray-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
                   <button onClick={() => handleDuplicate(doc)} className="text-gray-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Duplicar"><Copy className="w-3.5 h-3.5" /></button>
                   <button onClick={() => handleDelete(doc.id)} className="text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
