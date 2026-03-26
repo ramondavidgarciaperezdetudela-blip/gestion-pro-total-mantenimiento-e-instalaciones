@@ -83,13 +83,13 @@ export default function AIAssistant() {
   const clearHistory = () => setHistory([]);
 
   return (
-    <div className="space-y-4 max-w-3xl">
+    <div className="space-y-3 max-w-3xl pb-24 lg:pb-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Bot className="w-6 h-6 text-green-600" />Asistente IA
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <Bot className="w-5 h-5 text-green-600" />Asistente IA
         </h1>
         <Select value={queryType} onValueChange={setQueryType}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-36">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -101,12 +101,12 @@ export default function AIAssistant() {
         </Select>
       </div>
 
-      {/* Prompts rápidos */}
-      <div className="flex gap-2 flex-wrap">
+      {/* Prompts rápidos — scroll horizontal en móvil */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 sm:flex-wrap sm:overflow-visible">
         {QUICK_PROMPTS[queryType]?.map((p, i) => (
           <button key={i} onClick={() => sendMessage(p)}
-            className="text-xs bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-full hover:bg-green-100 transition-colors text-left">
-            {p.length > 50 ? p.slice(0, 50) + '...' : p}
+            className="flex-shrink-0 text-xs bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-full hover:bg-green-100 transition-colors text-left whitespace-nowrap sm:whitespace-normal">
+            {p.length > 40 ? p.slice(0, 40) + '...' : p}
           </button>
         ))}
       </div>
@@ -114,7 +114,7 @@ export default function AIAssistant() {
       {/* Chat */}
       <Card>
         <CardContent className="p-0">
-          <div className="h-96 overflow-y-auto p-4 space-y-4">
+          <div className="h-72 sm:h-96 overflow-y-auto p-3 sm:p-4 space-y-4">
             {history.length === 0 && (
               <div className="text-center text-gray-400 py-8">
                 <Bot className="w-12 h-12 mx-auto mb-2 opacity-30" />

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Thermometer, Save, Printer, Calculator } from 'lucide-react';
+import { Thermometer, Save, Printer, Calculator, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
@@ -103,6 +103,113 @@ export default function ThermalCalc() {
 
     setSelectedEquip(equip);
     setResult({ loadW, loadFrigorias, loadKW, equip, extraGrams, pr, materials, maxDist, actualDist });
+  };
+
+  const generatePDF = async () => {
+    if (!result) return;
+    const [settingsList, contactList] = await Promise.all([
+      base44.entities.CompanySettings.list(),
+      form.contact_id ? base44.entities.Contact.filter({ id: form.contact_id }) : Promise.resolve([]),
+    ]);
+    const company = settingsList[0] || {};
+    const contact = contactList[0] || {};
+
+    let equipPhotos = [];
+    if (form.contact_id) {
+      const clientDocs = await base44.entities.ClientDocument.filter({ contact_id: form.contact_id });
+      equipPhotos = clientDocs.filter(d => d.doc_type === 'foto_equipo').map(d => d.file_url);
+    }
+
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+      <title>Cálculo Térmico</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:20px;max-width:800px;margin:0 auto;font-size:11px;color:#111}
+        .header{display:flex;align-items:center;gap:16px;border-bottom:3px solid #1e3a5f;padding-bottom:10px;margin-bottom:14px}
+        .header img{height:60px;object-fit:contain}
+        .section{margin-top:12px;padding:10px;background:#f8fafc;border-left:4px solid #dc2626;border-radius:4px}
+        .section-title{font-weight:700;font-size:12px;color:#dc2626;margin-bottom:6px}
+        .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+        .kpi{background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:10px;text-align:center}
+        .kpi-val{font-size:22px;font-weight:700}
+        .kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px}
+        table{width:100%;border-collapse:collapse;font-size:10px}
+        td,th{border:1px solid #e5e7eb;padding:4px 6px}
+        th{background:#f3f4f6;font-weight:600}
+        .footer{margin-top:20px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:8px;color:#9ca3af;text-align:center}
+        @media print{@page{margin:15mm}}
+      </style></head><body>
+      <div class="header">
+        ${company.logo_url ? `<img src="${company.logo_url}" alt="logo"/>` : ''}
+        <div>
+          <div style="font-size:18px;font-weight:700;color:#1e3a5f">${company.company_name||'Empresa'}</div>
+          <div style="font-size:10px;color:#6b7280">${company.address||''} ${company.city||''} | ${company.phone||''}</div>
+        </div>
+        <div style="margin-left:auto;text-align:right">
+          <div style="font-size:15px;font-weight:700;color:#dc2626">Informe Cálculo Térmico</div>
+          <div style="font-size:10px;color:#6b7280">${new Date().toLocaleDateString('es-ES')}</div>
+        </div>
+      </div>
+
+      ${form.contact_id ? `<div class="section">
+        <div class="section-title">Cliente</div>
+        <div class="grid2">
+          <div><span style="color:#6b7280">Nombre: </span><b>${form.contact_name||'-'}</b></div>
+          <div><span style="color:#6b7280">Teléfono: </span>${contact.phone||'-'}</div>
+          <div><span style="color:#6b7280">Dirección: </span>${contact.address||''} ${contact.city||''}</div>
+        </div>
+      </div>` : ''}
+
+      <div class="section">
+        <div class="section-title">Parámetros del cálculo</div>
+        <div class="grid2">
+          <div><span style="color:#6b7280">Dimensiones: </span><b>${form.length}×${form.width}×${form.height} m</b></div>
+          <div><span style="color:#6b7280">Orientación: </span>${form.orientation}</div>
+          <div><span style="color:#6b7280">Aislamiento: </span>${form.insulation_type}</div>
+          <div><span style="color:#6b7280">Gas: </span>${form.refrigerant_type}</div>
+          <div><span style="color:#6b7280">T. exterior: </span>${form.exterior_temp}°C</div>
+          <div><span style="color:#6b7280">T. objetivo: </span>${form.target_temp}°C</div>
+          <div><span style="color:#6b7280">Sup. ventanas: </span>${form.window_area} m²</div>
+          <div><span style="color:#6b7280">Nº personas: </span>${form.num_people}</div>
+          <div><span style="color:#6b7280">Tubería: </span>${form.pipe_distance} m</div>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-val" style="color:#dc2626">${result.loadW} W</div><div style="font-size:9px;color:#6b7280">Carga térmica</div></div>
+        <div class="kpi"><div class="kpi-val" style="color:#ea580c">${result.loadFrigorias}</div><div style="font-size:9px;color:#6b7280">Frig/hora</div></div>
+        <div class="kpi"><div class="kpi-val" style="color:#2563eb">${result.loadKW} kW</div><div style="font-size:9px;color:#6b7280">Potencia</div></div>
+      </div>
+
+      <div class="section" style="margin-top:14px">
+        <div class="section-title">Equipo sugerido</div>
+        <div class="grid2">
+          <div><span style="color:#6b7280">Marca: </span><b>${result.equip.brand}</b></div>
+          <div><span style="color:#6b7280">Modelo: </span><b>${result.equip.model}</b></div>
+          <div><span style="color:#6b7280">Potencia: </span>${result.equip.power_kw} kW</div>
+          <div><span style="color:#6b7280">Gas: </span>${result.equip.gas}</div>
+        </div>
+        ${result.extraGrams > 0 ? `<p style="margin-top:6px;background:#fef9c3;padding:4px 6px;border-radius:4px;font-size:10px">⚠️ Añadir <b>${result.extraGrams}g</b> de ${form.refrigerant_type} extra por distancia de tubería</p>` : ''}
+      </div>
+
+      <div style="margin-top:12px">
+        <p style="font-weight:600;font-size:11px;margin-bottom:4px">Material necesario</p>
+        <table><thead><tr><th>Material</th><th>Cantidad</th><th>Unidad</th></tr></thead><tbody>
+          ${result.materials.map(m => `<tr><td>${m.material}</td><td style="text-align:right">${m.quantity}</td><td>${m.specification}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+
+      ${equipPhotos.length ? `<div style="margin-top:14px"><p style="font-weight:600;font-size:11px;margin-bottom:6px">Fotos equipo instalado</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${equipPhotos.map(url => `<img src="${url}" style="width:120px;height:90px;object-fit:cover;border:1px solid #e5e7eb;border-radius:4px"/>`).join('')}
+        </div></div>` : ''}
+
+      <div class="footer">Informe generado el ${new Date().toLocaleDateString('es-ES')} — ${company.company_name||''} | Valores orientativos</div>
+    </body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 600);
   };
 
   const saveToClient = async () => {
@@ -254,8 +361,11 @@ export default function ThermalCalc() {
                 </table>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <PrintButton contentRef={printRef} title="Cálculo Térmico Clima" />
+                <Button onClick={generatePDF} variant="outline" className="gap-2">
+                  <FileDown className="w-4 h-4" /> PDF completo
+                </Button>
                 {form.contact_id && (
                   <Button onClick={saveToClient} variant="outline" disabled={saving}>
                     <Save className="w-4 h-4 mr-2" />

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ClipboardList, Trash2, Edit, PenLine, Eye, Phone, Send } from 'lucide-react';
+import { Plus, ClipboardList, Trash2, Edit, PenLine, Eye, Phone, Send, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
 import PrintButton from '../components/PrintButton';
@@ -133,6 +133,137 @@ export default function Maintenance() {
   const updatePlumbing = (field, val) => setForm({ ...form, readings_plumbing: { ...form.readings_plumbing, [field]: val } });
 
   const typeColor = { clima: 'bg-blue-100 text-blue-700', refrigeracion: 'bg-cyan-100 text-cyan-700', electrico: 'bg-yellow-100 text-yellow-700', solar: 'bg-amber-100 text-amber-700', fontaneria: 'bg-teal-100 text-teal-700', general: 'bg-gray-100 text-gray-700' };
+
+  const generatePDF = async (sheet) => {
+    const [settingsList, contactList] = await Promise.all([
+      base44.entities.CompanySettings.list(),
+      base44.entities.Contact.filter({ id: sheet.contact_id }),
+    ]);
+    const company = settingsList[0] || {};
+    const contact = contactList[0] || {};
+
+    // Fotos del equipo del cliente
+    let equipPhotos = [];
+    if (sheet.contact_id) {
+      const clientDocs = await base44.entities.ClientDocument.filter({ contact_id: sheet.contact_id });
+      equipPhotos = clientDocs.filter(d => d.doc_type === 'foto_equipo').map(d => d.file_url);
+    }
+
+    const photosHtml = (photos, label) => {
+      if (!photos?.length) return '';
+      return `<div style="margin-top:12px"><p style="font-weight:600;font-size:11px;color:#374151;margin-bottom:6px">${label}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${photos.map(url => `<img src="${url}" style="width:120px;height:90px;object-fit:cover;border:1px solid #e5e7eb;border-radius:4px" />`).join('')}
+        </div></div>`;
+    };
+
+    const readingsHtml = () => {
+      if ((sheet.type === 'clima' || sheet.type === 'refrigeracion') && sheet.readings_climate) {
+        const r = sheet.readings_climate;
+        return `<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:8px">
+          <tr style="background:#f0f9ff"><th colspan="4" style="padding:4px 6px;text-align:left;color:#0369a1">Lecturas Clima/Refrigeración</th></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">P. Alta</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.pressure_high||0} bar</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">P. Baja</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.pressure_low||0} bar</b></td></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">T. Impulsión</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.temp_impulsion||0} °C</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">T. Retorno</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.temp_retorno||0} °C</b></td></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">Gas</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.refrigerant_type||'-'}</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">Carga gas</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.refrigerant_charge||0} kg</b></td></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">Recalent.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.superheat||0} °C</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">Subenfr.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.subcooling||0} °C</b></td></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">GWP</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.fgas_gwp||0}</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">CO₂ equiv.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${(r.fgas_equivalent_co2||0).toFixed(3)} t</b></td></tr>
+        </table>`;
+      }
+      if (sheet.type === 'electrico' && sheet.readings_electric) {
+        const r = sheet.readings_electric;
+        return `<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:8px">
+          <tr style="background:#fefce8"><th colspan="4" style="padding:4px 6px;text-align:left;color:#a16207">Lecturas Eléctricas</th></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">V L1</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.voltage_l1||0} V</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">V L2</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.voltage_l2||0} V</b></td></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">R. Tierra</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.ground_resistance||0} Ω</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">R. Aislam.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.insulation_resistance||0} MΩ</b></td></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">Test dif.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.differential_test?'✓':'✗'}</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">Test térm.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.thermal_test?'✓':'✗'}</b></td></tr>
+        </table>`;
+      }
+      return '';
+    };
+
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+      <title>Ficha Mantenimiento #${sheet.sheet_number}</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:20px;max-width:800px;margin:0 auto;font-size:11px;color:#111}
+        .header{display:flex;align-items:center;gap:16px;border-bottom:3px solid #1e3a5f;padding-bottom:10px;margin-bottom:14px}
+        .header img{height:60px;object-fit:contain}
+        .title{color:#1e3a5f;font-size:18px;font-weight:700}
+        .section{margin-top:14px;padding:10px;background:#f8fafc;border-left:4px solid #0ea5e9;border-radius:4px}
+        .section-title{font-weight:700;font-size:12px;color:#0369a1;margin-bottom:6px}
+        .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+        .field{font-size:10px}.field span{color:#6b7280}
+        .sig-box{border:1px solid #e5e7eb;padding:8px;text-align:center;border-radius:4px}
+        .sig-box img{height:60px;max-width:100%;object-fit:contain}
+        .footer{margin-top:20px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:8px;color:#9ca3af;text-align:center}
+        @media print{@page{margin:15mm}}
+      </style></head><body>
+      <div class="header">
+        ${company.logo_url ? `<img src="${company.logo_url}" alt="logo"/>` : ''}
+        <div>
+          <div class="title">${company.company_name || 'Empresa'}</div>
+          <div style="font-size:10px;color:#6b7280">${company.address||''} ${company.city||''} | ${company.phone||''} | ${company.email||''}</div>
+        </div>
+        <div style="margin-left:auto;text-align:right">
+          <div style="font-size:16px;font-weight:700;color:#0ea5e9">Ficha Mantenimiento</div>
+          <div style="font-size:20px;font-weight:700">#${sheet.sheet_number}</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Datos del Cliente</div>
+        <div class="grid2">
+          <div class="field"><span>Cliente: </span><b>${sheet.contact_name||'-'}</b></div>
+          <div class="field"><span>NIF: </span>${contact.nif||'-'}</div>
+          <div class="field"><span>Teléfono: </span>${contact.phone||'-'}</div>
+          <div class="field"><span>Email: </span>${contact.email||'-'}</div>
+          <div class="field"><span>Dirección: </span>${contact.address||''} ${contact.city||''}</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Datos del Equipo</div>
+        <div class="grid2">
+          <div class="field"><span>Fecha: </span><b>${sheet.date}</b></div>
+          <div class="field"><span>Tipo: </span><b>${sheet.type}</b></div>
+          <div class="field"><span>Marca: </span>${sheet.equipment_brand||'-'}</div>
+          <div class="field"><span>Modelo: </span>${sheet.equipment_model||'-'}</div>
+          <div class="field"><span>Nº serie: </span>${sheet.serial_number||'-'}</div>
+          <div class="field"><span>Ubicación: </span>${sheet.location||'-'}</div>
+          <div class="field"><span>Técnico: </span><b>${sheet.technician_name||'-'}</b></div>
+        </div>
+      </div>
+
+      ${readingsHtml()}
+
+      ${sheet.observations ? `<div class="section"><div class="section-title">Observaciones</div><p style="font-size:10px">${sheet.observations}</p></div>` : ''}
+      ${sheet.recommendations ? `<div class="section"><div class="section-title">Recomendaciones</div><p style="font-size:10px;color:#1d4ed8">${sheet.recommendations}</p></div>` : ''}
+
+      ${photosHtml(sheet.photos_before, 'Fotos antes')}
+      ${photosHtml(sheet.photos_after, 'Fotos después')}
+      ${equipPhotos.length ? photosHtml(equipPhotos, 'Fotos equipo instalado (archivo cliente)') : ''}
+
+      ${(sheet.signature_technician || sheet.signature_client) ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        ${sheet.signature_technician ? `<div class="sig-box"><img src="${sheet.signature_technician}" /><p style="font-size:9px;color:#6b7280;margin-top:4px">Técnico: ${sheet.technician_name||''}</p></div>` : '<div></div>'}
+        ${sheet.signature_client ? `<div class="sig-box"><img src="${sheet.signature_client}" /><p style="font-size:9px;color:#6b7280;margin-top:4px">Cliente: ${sheet.contact_name||''}</p></div>` : ''}
+      </div>` : ''}
+
+      <div class="footer">Documento generado el ${new Date().toLocaleDateString('es-ES')} — ${company.company_name||''} | NIF: ${company.nif||''}</div>
+    </body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 600);
+  };
 
   return (
     <div className="space-y-4">
@@ -368,7 +499,12 @@ export default function Maintenance() {
               )}
             </div>
           )}
-          <PrintButton contentRef={printRef} title={`Mantenimiento ${preview?.sheet_number}`} />
+          <div className="flex gap-2 mt-4">
+            <PrintButton contentRef={printRef} title={`Mantenimiento ${preview?.sheet_number}`} />
+            <Button variant="outline" onClick={() => generatePDF(preview)} className="gap-2">
+              <FileDown className="w-4 h-4" /> PDF completo con fotos
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -397,6 +533,9 @@ export default function Maintenance() {
                 </button>
                 <button onClick={() => handleEdit(s)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
                   <Edit className="w-3 h-3" /> Editar
+                </button>
+                <button onClick={() => generatePDF(s)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                  <FileDown className="w-3 h-3" /> PDF
                 </button>
                 <button
                   onClick={() => {
