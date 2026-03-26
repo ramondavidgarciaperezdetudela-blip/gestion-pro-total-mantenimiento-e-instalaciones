@@ -18,7 +18,7 @@ import AIChat from './components/AIChat';
 const MAIN_TABS = [
   { name: 'Inicio', page: 'Home', icon: Home },
   { name: 'SAT', page: 'SAT', icon: Wrench },
-  { name: 'Asist. IA', page: 'AIAssistant', icon: Bot },
+  { name: 'IA', page: 'AIAssistant', icon: Bot },
   { name: 'Agenda', page: 'Agenda', icon: Calendar },
   { name: 'Más', page: null, icon: MoreHorizontal, isMore: true },
 ];
@@ -41,7 +41,7 @@ function MobileBottomBar({ currentPageName }) {
                 <button key="more" onClick={() => setMoreOpen(true)}
                   className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${moreOpen ? 'text-[var(--accent)]' : 'text-gray-400'}`}>
                   <Icon className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">{item.name}</span>
+                  <span className="text-[9px] font-medium leading-tight">{item.name}</span>
                 </button>
               );
             }
@@ -50,7 +50,7 @@ function MobileBottomBar({ currentPageName }) {
               <Link key={item.page} to={createPageUrl(item.page)}
                 className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${isActive ? 'text-[var(--accent)]' : 'text-gray-400'}`}>
                 <Icon className="w-5 h-5" />
-                <span className="text-[10px] font-medium">{item.name}</span>
+                <span className="text-[9px] font-medium leading-tight">{item.name}</span>
               </Link>
             );
           })}
