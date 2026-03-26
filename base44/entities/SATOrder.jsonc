@@ -1,0 +1,119 @@
+{
+  "name": "SATOrder",
+  "type": "object",
+  "properties": {
+    "order_number": {
+      "type": "string"
+    },
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "reparacion",
+        "mantenimiento",
+        "instalacion",
+        "revision",
+        "urgencia"
+      ],
+      "default": "reparacion"
+    },
+    "equipment_type": {
+      "type": "string",
+      "enum": [
+        "aire_acondicionado",
+        "bomba_calor",
+        "camara_frigorifica",
+        "electrico",
+        "solar",
+        "otro"
+      ],
+      "default": "otro"
+    },
+    "description": {
+      "type": "string"
+    },
+    "diagnosis": {
+      "type": "string"
+    },
+    "solution": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendiente",
+        "en_curso",
+        "completada",
+        "cancelada"
+      ],
+      "default": "pendiente"
+    },
+    "photos_before": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Fotos antes de reparaci\u00f3n (max 30)"
+    },
+    "photos_after": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Fotos despu\u00e9s de reparaci\u00f3n (max 30)"
+    },
+    "materials_used": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "material": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "labor_hours": {
+      "type": "number"
+    },
+    "labor_rate": {
+      "type": "number"
+    },
+    "total": {
+      "type": "number"
+    },
+    "technician": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "signature_technician": {
+      "type": "string",
+      "description": "Firma digital del t\u00e9cnico (base64 PNG)"
+    },
+    "signature_client": {
+      "type": "string",
+      "description": "Firma digital de conformidad del cliente (base64 PNG)"
+    }
+  },
+  "required": [
+    "contact_name",
+    "date"
+  ]
+}

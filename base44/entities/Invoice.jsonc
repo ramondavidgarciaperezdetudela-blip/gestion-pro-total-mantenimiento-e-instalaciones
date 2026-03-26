@@ -1,0 +1,135 @@
+{
+  "name": "Invoice",
+  "type": "object",
+  "properties": {
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "factura",
+        "presupuesto",
+        "recibo"
+      ],
+      "default": "factura"
+    },
+    "doc_number": {
+      "type": "string"
+    },
+    "contact_id": {
+      "type": "string",
+      "description": "ID del contacto/cliente"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_nif": {
+      "type": "string"
+    },
+    "contact_address": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "borrador",
+        "enviado",
+        "pagado",
+        "vencido",
+        "cancelado"
+      ],
+      "default": "borrador"
+    },
+    "work_type": {
+      "type": "string",
+      "enum": [
+        "electrico",
+        "clima",
+        "refrigeracion_industrial",
+        "solar",
+        "otro"
+      ],
+      "default": "otro"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "discount": {
+            "type": "number",
+            "default": 0
+          },
+          "total": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "subtotal": {
+      "type": "number"
+    },
+    "iva_rate": {
+      "type": "number",
+      "default": 21
+    },
+    "iva_amount": {
+      "type": "number"
+    },
+    "total": {
+      "type": "number"
+    },
+    "observations": {
+      "type": "string"
+    },
+    "payment_terms": {
+      "type": "string"
+    },
+    "materials_section": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "material": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "supplier": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "normative_references": {
+      "type": "string"
+    },
+    "signature_client": {
+      "type": "string",
+      "description": "Firma digital del cliente (base64 PNG)"
+    }
+  },
+  "required": [
+    "doc_type",
+    "contact_name"
+  ]
+}

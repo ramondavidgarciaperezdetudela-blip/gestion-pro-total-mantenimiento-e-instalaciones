@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Edit, Save, RefreshCw, Phone, Mail, Printer, Trash2, Plus } from 'lucide-react';
+import { Eye, Edit, Save, RefreshCw, Phone, Mail, Printer, Trash2, Plus, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
 import CompanyHeader from './CompanyHeader';
 import PrintButton from './PrintButton';
@@ -34,6 +34,79 @@ const EMPTY_FORM = {
 // ─── VISTA PREVIA ────────────────────────────────────────────────────────────
 function SATPreview({ order, onEdit, onClose, contact, onUpdate }) {
   const printRef = useRef(null);
+
+  const exportPDF = async () => {
+    const csArr = await base44.entities.CompanySettings.list();
+    const cs = csArr?.[0] || {};
+    const materialsHtml = (order.materials_used || []).map((m, i) => `
+      <tr style="background:${i%2===0?'#f9fafb':'#fff'}">
+        <td style="padding:5px 8px;border-bottom:1px solid #e5e7eb">${m.material||''}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:center">${m.quantity||0}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:right">${(m.unit_price||0).toFixed(2)} €</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600">${((m.quantity||0)*(m.unit_price||0)).toFixed(2)} €</td>
+      </tr>`).join('');
+
+    const photosBeforeHtml = (order.photos_before||[]).slice(0,6).map(p => `<img src="${p}" style="width:100px;height:80px;object-fit:cover;border-radius:4px;border:1px solid #e5e7eb" />`).join('');
+    const photosAfterHtml = (order.photos_after||[]).slice(0,6).map(p => `<img src="${p}" style="width:100px;height:80px;object-fit:cover;border-radius:4px;border:1px solid #e5e7eb" />`).join('');
+
+    const signaturesHtml = (order.signature_technician || order.signature_client) ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;padding-top:12px;border-top:1px solid #e5e7eb">
+        <div style="text-align:center">
+          ${order.signature_technician ? `<img src="${order.signature_technician}" style="height:60px;max-width:100%;object-fit:contain" />` : '<div style="height:60px;border-bottom:1px solid #ccc;margin:0 20px"></div>'}
+          <p style="font-size:9px;color:#666;margin-top:4px">Firma del Técnico</p>
+          <p style="font-size:9px;font-weight:700">${order.technician||''}</p>
+        </div>
+        <div style="text-align:center">
+          ${order.signature_client ? `<img src="${order.signature_client}" style="height:60px;max-width:100%;object-fit:contain" />` : '<div style="height:60px;border-bottom:1px solid #ccc;margin:0 20px"></div>'}
+          <p style="font-size:9px;color:#666;margin-top:4px">Conformidad del Cliente</p>
+          <p style="font-size:9px;font-weight:700">${order.contact_name||''}</p>
+        </div>
+      </div>` : '';
+
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>SAT #${order.order_number||''}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10px;color:#111;padding:20px;max-width:800px;margin:0 auto}
+    .header{display:flex;justify-content:space-between;border-bottom:2px solid #c2410c;padding-bottom:12px;margin-bottom:16px}
+    .title{font-size:20px;font-weight:800;color:#c2410c}.badge{background:#fed7aa;color:#9a3412;padding:2px 8px;border-radius:12px;font-size:8px;font-weight:700}
+    .section{background:#f9fafb;border-left:3px solid #e5e7eb;padding:8px 12px;border-radius:4px;margin:8px 0}
+    .section-title{font-size:8px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:4px}
+    table{width:100%;border-collapse:collapse;font-size:9px;margin:8px 0}th{background:#374151;color:white;padding:6px 8px;text-align:left}
+    .logo{max-height:45px;max-width:100px;object-fit:contain}
+    @media print{body{padding:10px}@page{margin:10mm;size:A4}}</style></head><body>
+    <div class="header">
+      <div>${cs.logo_url?`<img src="${cs.logo_url}" class="logo" alt="Logo" /><br/>`:''}
+        <span style="font-size:13px;font-weight:700;color:#1e3a5f">${cs.company_name||''}</span>
+        <div style="font-size:9px;color:#555;margin-top:2px">${cs.nif?`NIF: ${cs.nif} · `:''}${cs.phone||''} ${cs.email?'· '+cs.email:''}</div>
+        ${cs.address?`<div style="font-size:9px;color:#555">${cs.address}${cs.city?', '+cs.city:''}</div>`:''}
+      </div>
+      <div style="text-align:right"><div class="title">ORDEN SAT</div>
+        <div style="font-size:11px;font-weight:700">#${order.order_number||'S/N'}</div>
+        <div style="margin-top:4px"><span class="badge">${(order.status||'').toUpperCase()}</span></div>
+        <div style="font-size:9px;color:#666;margin-top:4px">Fecha: ${order.date||'-'}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="section"><div class="section-title">Cliente</div><strong>${order.contact_name||''}</strong></div>
+      <div class="section"><div class="section-title">Tipo / Equipo</div>${(order.type||'').replace(/_/g,' ')} / ${(order.equipment_type||'').replace(/_/g,' ')}</div>
+      ${order.technician?`<div class="section"><div class="section-title">Técnico</div>${order.technician}</div>`:''}
+    </div>
+    ${order.description?`<div class="section"><div class="section-title">Descripción del problema</div><p style="white-space:pre-wrap">${order.description}</p></div>`:''}
+    ${order.diagnosis?`<div class="section" style="border-left-color:#3b82f6"><div class="section-title" style="color:#3b82f6">Diagnóstico</div><p style="white-space:pre-wrap">${order.diagnosis}</p></div>`:''}
+    ${order.solution?`<div class="section" style="border-left-color:#16a34a"><div class="section-title" style="color:#16a34a">Solución aplicada</div><p style="white-space:pre-wrap">${order.solution}</p></div>`:''}
+    ${order.materials_used?.length?`<table><thead><tr><th>Material</th><th style="text-align:center">Cant.</th><th style="text-align:right">€/ud</th><th style="text-align:right">Total</th></tr></thead><tbody>${materialsHtml}</tbody></table>`:''}
+    <div style="text-align:right;border-top:2px solid #e5e7eb;padding-top:8px;margin-top:8px">
+      <span style="font-size:9px;color:#555">Mano de obra: ${order.labor_hours||0}h × ${order.labor_rate||0} €/h = ${((order.labor_hours||0)*(order.labor_rate||0)).toFixed(2)} €</span><br/>
+      <span style="font-size:16px;font-weight:800;color:#c2410c">TOTAL: ${(order.total||0).toFixed(2)} €</span>
+    </div>
+    ${photosBeforeHtml?`<div style="margin-top:10px"><div class="section-title" style="margin-bottom:6px">Fotos antes de reparación</div><div style="display:flex;flex-wrap:wrap;gap:6px">${photosBeforeHtml}</div></div>`:''}
+    ${photosAfterHtml?`<div style="margin-top:10px"><div class="section-title" style="margin-bottom:6px">Fotos después de reparación</div><div style="display:flex;flex-wrap:wrap;gap:6px">${photosAfterHtml}</div></div>`:''}
+    ${signaturesHtml}
+    <div style="margin-top:16px;border-top:1px solid #e5e7eb;padding-top:6px;font-size:8px;color:#aaa;text-align:center">${cs.company_name||''} · ${cs.phone||''} · ${cs.email||''}</div>
+    </body></html>`;
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 500);
+  };
 
   const sendWhatsApp = () => {
     const phone = contact?.phone?.replace(/[^0-9]/g, '') || '';
@@ -146,7 +219,9 @@ function SATPreview({ order, onEdit, onClose, contact, onUpdate }) {
       </div>
 
       <div className="flex gap-2 mt-3 flex-wrap pt-3 border-t">
-        <PrintButton contentRef={printRef} title={`SAT_${order.order_number || 'orden'}`} />
+        <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white font-semibold" onClick={exportPDF}>
+          <FileDown className="w-3.5 h-3.5 mr-1" />Exportar PDF
+        </Button>
         <Button variant="outline" size="sm" onClick={onEdit}><Edit className="w-3.5 h-3.5 mr-1" />Editar</Button>
         <Button variant="outline" size="sm" className="text-green-700" onClick={sendWhatsApp}><Phone className="w-3.5 h-3.5 mr-1" />WA</Button>
         {contact?.email && <Button variant="outline" size="sm" className="text-blue-700" onClick={sendEmail}><Mail className="w-3.5 h-3.5 mr-1" />Email</Button>}
@@ -239,6 +314,9 @@ function SATForm({ order, contact, onSave, onCancel }) {
       <PhotoGallery photos={form.photos_after||[]} onChange={p => setForm({...form, photos_after: p})} label="Fotos después de reparación" maxPhotos={20} />
 
       <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Notas internas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
+
+      {/* Firmas en modo edición también */}
+      {order?.id && <SATSignaturePanel order={{ ...order, ...form }} onUpdate={(updated) => setForm(prev => ({ ...prev, signature_technician: updated.signature_technician, signature_client: updated.signature_client }))} />}
 
       <div className="flex gap-2">
         <Button onClick={handleSave} disabled={saving} className="flex-1 bg-orange-600 hover:bg-orange-700">

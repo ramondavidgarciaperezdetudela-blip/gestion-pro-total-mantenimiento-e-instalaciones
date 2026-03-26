@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Edit, Printer, Phone, Mail, Copy, Save, Plus, ChevronDown, ChevronUp, FileDown, X } from 'lucide-react';
 import CompanyHeader from './CompanyHeader';
+import SignatureCanvas from './SignaturePad';
 import { format } from 'date-fns';
 import { getNextAvailableNumber } from './autoNumber';
 
@@ -130,6 +131,13 @@ function buildPrintHtml(doc, companySettings) {
   ${doc.observations ? `<div class="obs"><strong>Observaciones:</strong>\n${doc.observations}</div>` : ''}
   ${doc.payment_terms ? `<div class="obs" style="margin-top:6px">${doc.payment_terms}</div>` : ''}
   ${doc.normative_references ? `<div style="margin-top:8px;font-size:8px;color:#3b82f6">Normativa: ${doc.normative_references}</div>` : ''}
+
+  ${doc.signature_client ? `
+  <div style="margin-top:20px;padding-top:12px;border-top:1px solid #e5e7eb;text-align:right">
+    <img src="${doc.signature_client}" style="height:60px;max-width:200px;object-fit:contain" />
+    <p style="font-size:9px;color:#666;margin-top:4px">Firma de conformidad del cliente</p>
+    <p style="font-size:9px;font-weight:700">${doc.contact_name||''}</p>
+  </div>` : ''}
 
   <div class="footer">Documento generado por sistema · ${cs.company_name || ''} · ${cs.phone || ''} · ${cs.email || ''}</div>
 </body>
@@ -288,6 +296,18 @@ export default function InvoicePreviewDialog({ doc, open, onClose, onSaved, cont
             {doc.observations && <div className="bg-gray-50 p-3 rounded text-xs text-gray-600 whitespace-pre-wrap"><strong>Observaciones:</strong> {doc.observations}</div>}
             {doc.payment_terms && <p className="text-xs text-gray-500 whitespace-pre-wrap border-t pt-2">{doc.payment_terms}</p>}
             {doc.normative_references && <p className="text-xs text-blue-600 border-t pt-2">Normativa: {doc.normative_references}</p>}
+
+            {/* Firma digital del cliente */}
+            <div className="border-t pt-3 mt-2">
+              <SignatureCanvas
+                label="✍️ Firma de conformidad del cliente"
+                value={doc.signature_client}
+                onSave={async (dataUrl) => {
+                  await base44.entities.Invoice.update(doc.id, { signature_client: dataUrl });
+                  if (onSaved) onSaved({ ...doc, signature_client: dataUrl });
+                }}
+              />
+            </div>
 
             <div className="flex gap-2 pt-3 border-t flex-wrap">
               <Button variant="outline" size="sm" className="text-green-700" onClick={sendWhatsApp}>
