@@ -90,17 +90,21 @@ export default function Home() {
     const today = format(new Date(), 'yyyy-MM-dd');
     const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
 
-    const [appts, contacts, invoices, sat, comp, maintenance, suppliers, prices, machines, stock] = await Promise.all([
+    // Carga prioritaria: datos críticos primero
+    const [appts, comp, sat, invoices] = await Promise.all([
       base44.entities.Appointment.filter({ date: today }),
-      base44.entities.Contact.list(),
-      base44.entities.Invoice.list('-date', 200),
-      base44.entities.SATOrder.list('-date', 50),
       base44.entities.CompanySettings.list(),
-      base44.entities.MaintenanceSheet.list('-date', 100),
-      base44.entities.Supplier.list(),
-      base44.entities.SupplierPrice.list('-created_date', 500),
-      base44.entities.ClientMachine.list(),
-      base44.entities.StockItem.list('-updated_date', 100),
+      base44.entities.SATOrder.list('-date', 20),
+      base44.entities.Invoice.list('-date', 50),
+    ]);
+
+    // Datos secundarios en paralelo después
+    const [contacts, suppliers, machines, stock, prices] = await Promise.all([
+      base44.entities.Contact.list('-created_date', 100),
+      base44.entities.Supplier.list('-created_date', 50),
+      base44.entities.ClientMachine.list('-created_date', 50),
+      base44.entities.StockItem.list('-updated_date', 50),
+      base44.entities.SupplierPrice.list('-created_date', 100),
     ]);
     {
       setAppointments(appts);

@@ -18,8 +18,9 @@ import AIChat from './components/AIChat';
 const MAIN_TABS = [
   { name: 'Inicio', page: 'Home', icon: Home },
   { name: 'SAT', page: 'SAT', icon: Wrench },
+  { name: 'Asist. IA', page: 'AIAssistant', icon: Bot },
   { name: 'Agenda', page: 'Agenda', icon: Calendar },
-  { name: 'Inventario', page: 'Inventory', icon: Package },
+  { name: 'Más', page: null, icon: MoreHorizontal, isMore: true },
 ];
 
 function MobileBottomBar({ currentPageName }) {
@@ -35,6 +36,15 @@ function MobileBottomBar({ currentPageName }) {
         <div className="flex w-full">
           {MAIN_TABS.map((item) => {
             const Icon = item.icon;
+            if (item.isMore) {
+              return (
+                <button key="more" onClick={() => setMoreOpen(true)}
+                  className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${moreOpen ? 'text-[var(--accent)]' : 'text-gray-400'}`}>
+                  <Icon className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">{item.name}</span>
+                </button>
+              );
+            }
             const isActive = currentPageName === item.page || location.pathname === `/${item.page}`;
             return (
               <Link key={item.page} to={createPageUrl(item.page)}
@@ -44,13 +54,6 @@ function MobileBottomBar({ currentPageName }) {
               </Link>
             );
           })}
-          {/* More button */}
-          <button
-            onClick={() => setMoreOpen(true)}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${moreOpen ? 'text-[var(--accent)]' : 'text-gray-400'}`}>
-            <MoreHorizontal className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Más</span>
-          </button>
         </div>
       </nav>
 
