@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
+import InvoicePreviewDialog from '../components/InvoicePreviewDialog';
 
 function ChangeHistoryTab({ contactId }) {
   const [logs, setLogs] = React.useState([]);
@@ -94,6 +95,7 @@ export default function ContactDetail() {
   const [editDocForm, setEditDocForm] = useState({ title: '', doc_type: 'otro', description: '' });
   const [satDialog, setSatDialog] = useState(null); // { order, mode }
   const [satDialogMode, setSatDialogMode] = useState('view');
+  const [invoiceDialog, setInvoiceDialog] = useState(null); // doc to open inline
   const [photoUploading, setPhotoUploading] = useState(false);
   const [aiReportLoading, setAiReportLoading] = useState(false);
   const [aiReport, setAiReport] = useState('');
@@ -330,7 +332,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
   };
 
   const DocCard = ({ doc, type, onDelete }) => (
-    <Card className="hover:shadow-sm">
+    <Card className="hover:shadow-sm cursor-pointer" onClick={() => setInvoiceDialog(doc)}>
       <CardContent className="p-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -339,32 +341,13 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
             <Badge variant="outline" className="text-[10px] mt-1">{doc.status || doc.doc_type || type}</Badge>
           </div>
         </div>
-        <div className="flex gap-1 mt-2 flex-wrap">
-          {doc.file_url && (
-            <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
-              <Eye className="w-3 h-3" /> Ver
-            </a>
-          )}
-          <Link to={createPageUrl(`Documents?edit=${doc.id}`)}>
-            <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-50 text-gray-700 hover:bg-gray-100 cursor-pointer">
-              <Edit className="w-3 h-3" /> Editar
-            </span>
-          </Link>
-          <button onClick={() => printDoc(doc)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-slate-50 text-slate-700 hover:bg-slate-100">
-            <Printer className="w-3 h-3" /> Imprimir
+        <div className="flex gap-1 mt-2 flex-wrap" onClick={e => e.stopPropagation()}>
+          <button onClick={() => setInvoiceDialog(doc)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+            <Eye className="w-3 h-3" /> Ver
           </button>
-          <button
-            onClick={() => sendWhatsApp(`Le enviamos el ${type} ${doc.doc_number || ''} del ${fmtDate(doc.date)}. Total: ${doc.total?.toFixed(2) || '-'} €`)}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
-            <MessageCircle className="w-3 h-3" /> WA
+          <button onClick={() => setInvoiceDialog({ ...doc, _openEdit: true })} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-50 text-gray-700 hover:bg-gray-100">
+            <Edit className="w-3 h-3" /> Editar
           </button>
-          {contact.email && (
-            <button
-              onClick={() => sendEmail(`${type} ${doc.doc_number || ''}`, `Estimado/a ${contact.name},\n\nAdjuntamos ${type} ${doc.doc_number || ''} de fecha ${fmtDate(doc.date)}.\n\nTotal: ${doc.total?.toFixed(2) || '-'} €\n\nAtentamente`)}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
-              <Send className="w-3 h-3" /> Email
-            </button>
-          )}
           {onDelete && (
             <button onClick={() => { if(confirm('¿Eliminar?')) onDelete(doc.id); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
               <Trash2 className="w-3 h-3" /> Eliminar
@@ -1117,6 +1100,22 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
         </TabsContent>
 
         </Tabs>
+
+      {/* INVOICE INLINE DIALOG */}
+      {invoiceDialog && (
+        <InvoicePreviewDialog
+          doc={invoiceDialog}
+          open={!!invoiceDialog}
+          onClose={() => setInvoiceDialog(null)}
+          onSaved={(updated) => {
+            setInvoices(prev => prev.map(i => i.id === updated.id ? { ...i, ...updated } : i));
+            setInvoiceDialog(updated);
+          }}
+          contacts={[contact]}
+          allDocs={invoices}
+          initialMode={invoiceDialog._openEdit ? 'edit' : 'view'}
+        />
+      )}
         </div>
         );
         }

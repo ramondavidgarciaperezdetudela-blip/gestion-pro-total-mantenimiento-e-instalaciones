@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Plus, Search, FileText, Trash2, Edit, Eye, ShoppingCart, Copy,
   ChevronDown, ChevronUp, Save, Phone, Mail, BarChart3, TrendingUp,
-  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer } from
+  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer, FileDown } from
 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import { format, startOfMonth } from 'date-fns';
@@ -72,6 +72,7 @@ export default function Documents() {
   const urlParams = new URLSearchParams(window.location.search);
   const preContactId = urlParams.get('contact_id');
   const preType = urlParams.get('type');
+  const preEditId = urlParams.get('edit');
 
   const [docs, setDocs] = useState([]);
   const [contacts, setContacts] = useState([]);
@@ -104,6 +105,14 @@ export default function Documents() {
         if (contact) {
           const tpl = t.find((tp) => tp.doc_type === preType && tp.is_default);
           openNew(preType, contact, tpl);
+        }
+      } else if (preEditId) {
+        const docToEdit = d.find(doc => doc.id === preEditId);
+        if (docToEdit) {
+          const items = (docToEdit.items?.length ? docToEdit.items : [newItem()]).map((it, idx) => ({ _id: idx, ...it }));
+          setEditing(docToEdit);
+          setForm({ ...EMPTY_FORM, ...docToEdit, items });
+          setDialogOpen(true);
         }
       }
     });
@@ -233,6 +242,60 @@ export default function Documents() {
     const subject = encodeURIComponent(`${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}`);
     const body = encodeURIComponent(`Estimado/a ${doc.contact_name},\n\nAdjunto ${doc.doc_type} Nº${doc.doc_number} de fecha ${doc.date}.\nTotal: ${doc.total?.toFixed(2)} €\n\nQuedamos a su disposición.`);
     window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+  };
+
+  const exportPDF = async (doc) => {
+    const csArr = await base44.entities.CompanySettings.list();
+    const cs = csArr?.[0] || {};
+    const hasDiscount = doc.items?.some(i => i.discount > 0);
+    const itemsHtml = (doc.items || []).map((item, i) => `
+      <tr style="background:${i % 2 === 0 ? '#f9fafb' : '#fff'}">
+        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${item.description || ''}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center">${item.quantity}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right">${(item.unit_price||0).toFixed(2)} €</td>
+        ${hasDiscount ? `<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;color:#d97706">${item.discount > 0 ? item.discount + '%' : '-'}</td>` : ''}
+        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600">${(item.total||0).toFixed(2)} €</td>
+      </tr>`).join('');
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${doc.doc_type?.toUpperCase()} ${doc.doc_number||''}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10px;color:#111;padding:20px;max-width:800px;margin:0 auto}
+    .header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid #1e3a5f;padding-bottom:12px;margin-bottom:16px}
+    .company-name{font-size:14px;font-weight:700;color:#1e3a5f}.doc-title{font-size:20px;font-weight:800;text-transform:uppercase;color:#1e3a5f}
+    .client-box{background:#f0f4ff;border-left:4px solid #1e3a5f;padding:10px 14px;margin:12px 0;border-radius:4px}
+    table{width:100%;border-collapse:collapse;margin:12px 0;font-size:9px}th{background:#1e3a5f;color:white;padding:7px 8px;text-align:left}
+    th.right{text-align:right}th.center{text-align:center}
+    .totals{text-align:right;padding:8px 0;border-top:2px solid #e5e7eb;margin-top:8px}
+    .footer{margin-top:20px;border-top:1px solid #e5e7eb;padding-top:8px;font-size:8px;color:#aaa;text-align:center}
+    .logo{max-height:50px;max-width:120px;object-fit:contain}
+    @media print{body{padding:10px}@page{margin:10mm;size:A4}}</style></head><body>
+    <div class="header">
+      <div>${cs.logo_url ? `<img src="${cs.logo_url}" class="logo" alt="Logo" /><br/>` : ''}
+        <span class="company-name">${cs.company_name||''}</span>
+        <div style="font-size:9px;color:#555;line-height:1.6">${cs.nif?`NIF: ${cs.nif}<br/>`:''}${cs.address?`${cs.address}${cs.city?', '+cs.city:''}${cs.postal_code?' '+cs.postal_code:''}<br/>`:''}${cs.phone?`Tel: ${cs.phone}`:''} ${cs.email?'· '+cs.email:''}</div></div>
+      <div style="text-align:right"><div class="doc-title">${doc.doc_type?.toUpperCase()||''}</div>
+        <div style="font-size:9px;color:#666">Nº: <strong>${doc.doc_number||'-'}</strong></div>
+        <div style="font-size:9px;color:#666">Fecha: <strong>${doc.date||'-'}</strong></div>
+        ${doc.due_date?`<div style="font-size:9px;color:#666">Vencimiento: ${doc.due_date}</div>`:''}
+      </div>
+    </div>
+    <div class="client-box"><div style="font-size:12px;font-weight:700">${doc.contact_name||'Sin cliente'}</div>
+      ${doc.contact_nif?`<div style="font-size:9px;color:#555">NIF: ${doc.contact_nif}</div>`:''}
+      ${doc.contact_address?`<div style="font-size:9px;color:#555">${doc.contact_address}</div>`:''}
+    </div>
+    <table><thead><tr><th>Descripción</th><th class="center">Cant.</th><th class="right">P.Unit.</th>${hasDiscount?'<th class="right">Dto%</th>':''}<th class="right">Total</th></tr></thead>
+    <tbody>${itemsHtml}</tbody></table>
+    <div class="totals">
+      <div style="display:flex;justify-content:flex-end;gap:20px;font-size:9px;color:#555"><span>Subtotal:</span><span><strong>${(doc.subtotal||0).toFixed(2)} €</strong></span></div>
+      <div style="display:flex;justify-content:flex-end;gap:20px;font-size:9px;color:#555"><span>IVA (${doc.iva_rate||21}%):</span><span><strong>${(doc.iva_amount||0).toFixed(2)} €</strong></span></div>
+      <div style="display:flex;justify-content:flex-end;gap:20px;font-size:14px;font-weight:800;color:#1e3a5f"><span>TOTAL:</span><span>${(doc.total||0).toFixed(2)} €</span></div>
+    </div>
+    ${doc.observations?`<div style="background:#f9fafb;border-radius:4px;padding:8px 12px;font-size:8px;color:#555;white-space:pre-wrap;margin-top:10px"><strong>Observaciones:</strong>\n${doc.observations}</div>`:''}
+    ${doc.payment_terms?`<div style="background:#f9fafb;border-radius:4px;padding:8px 12px;font-size:8px;color:#555;white-space:pre-wrap;margin-top:6px">${doc.payment_terms}</div>`:''}
+    <div class="footer">Documento generado · ${cs.company_name||''} · ${cs.phone||''} · ${cs.email||''}</div>
+    </body></html>`;
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 400);
   };
 
   // Filtrado
@@ -532,7 +595,9 @@ export default function Documents() {
                 </div>
               </div>
               <div className="flex gap-2 mt-3 pt-3 border-t flex-wrap no-print">
-                <PrintButton contentRef={printRef} title={`${previewDoc?.doc_type}_${previewDoc?.doc_number}`} />
+                <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white font-semibold" onClick={() => exportPDF(previewDoc)}>
+                  <FileDown className="w-4 h-4 mr-1" />Exportar PDF
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => {setPreviewDoc(null);handleEdit(previewDoc);}}>
                   <Edit className="w-4 h-4 mr-1" />Editar
                 </Button>
