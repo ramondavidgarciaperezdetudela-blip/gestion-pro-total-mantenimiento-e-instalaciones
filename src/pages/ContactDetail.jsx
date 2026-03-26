@@ -106,29 +106,34 @@ export default function ContactDetail() {
 
   useEffect(() => {
     if (!contactId) return;
-    Promise.all([
-      base44.entities.Contact.list().then(cs => cs.find(c => c.id === contactId)),
-      base44.entities.Invoice.filter({ contact_id: contactId }),
-      base44.entities.SATOrder.filter({ contact_id: contactId }),
-      base44.entities.MaintenanceSheet.filter({ contact_id: contactId }),
-      base44.entities.ClientDocument.filter({ contact_id: contactId }),
-      base44.entities.ClientNote.filter({ contact_id: contactId }),
-      base44.entities.Appointment.filter({ contact_id: contactId }),
-      base44.entities.ThermalCalculation.filter({ contact_id: contactId }),
-    ]).then(([c, inv, sat, maint, docs, nts, apts, calcs]) => {
+    const load = async () => {
+      // Primera tanda: datos principales
+      const [c, inv, sat, maint] = await Promise.all([
+        base44.entities.Contact.list().then(cs => cs.find(c => c.id === contactId)),
+        base44.entities.Invoice.filter({ contact_id: contactId }),
+        base44.entities.SATOrder.filter({ contact_id: contactId }),
+        base44.entities.MaintenanceSheet.filter({ contact_id: contactId }),
+      ]);
       setContact(c);
       setContactForm(c || {});
       setInvoices(inv);
       setSatOrders(sat);
       setMaintenance(maint);
+
+      // Segunda tanda: datos secundarios
+      const [docs, nts, apts, calcs] = await Promise.all([
+        base44.entities.ClientDocument.filter({ contact_id: contactId }),
+        base44.entities.ClientNote.filter({ contact_id: contactId }),
+        base44.entities.Appointment.filter({ contact_id: contactId }),
+        base44.entities.ThermalCalculation.filter({ contact_id: contactId }),
+      ]);
       setDocuments(docs);
       setNotes(nts);
       setAppointments(apts);
       setCalculations(calcs);
-      // Cargar fotos de equipos instalados
-      const equipPhotos = docs.filter(d => d.doc_type === 'foto_equipo') || [];
-      setEquipmentPhotos(equipPhotos);
-    });
+      setEquipmentPhotos(docs.filter(d => d.doc_type === 'foto_equipo'));
+    };
+    load();
   }, [contactId]);
 
   const saveNote = async () => {
