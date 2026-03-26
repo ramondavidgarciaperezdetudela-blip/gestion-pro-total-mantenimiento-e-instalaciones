@@ -66,7 +66,6 @@ export default function AIAssistant() {
 
     const response = await base44.integrations.Core.InvokeLLM({
       prompt: `${systemContext}\n\nConsulta del técnico: ${msg}`,
-      add_context_from_internet: queryType === 'precios' || queryType === 'normativa',
     });
 
     const assistantMsg = { role: 'assistant', content: response };
