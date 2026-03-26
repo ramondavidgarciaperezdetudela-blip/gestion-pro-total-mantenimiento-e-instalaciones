@@ -33,9 +33,12 @@ function SignatureCanvas({ label, name, value, onSave }) {
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const src = e.touches ? e.touches[0] : e;
+    // Usar pageX/pageY para evitar desplazamiento incorrecto al hacer scroll
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     return {
-      x: (src.clientX - rect.left) * scaleX,
-      y: (src.clientY - rect.top) * scaleY,
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
     };
   };
 
@@ -96,10 +99,10 @@ function SignatureCanvas({ label, name, value, onSave }) {
           <div className="border-2 border-dashed border-blue-300 rounded-lg overflow-hidden bg-white touch-none">
             <canvas
               ref={canvasRef}
-              width={600}
-              height={180}
+              width={900}
+              height={300}
               className="w-full cursor-crosshair touch-none block"
-              style={{ touchAction: 'none' }}
+              style={{ touchAction: 'none', minHeight: '150px' }}
               onMouseDown={startDraw}
               onMouseMove={draw}
               onMouseUp={stopDraw}

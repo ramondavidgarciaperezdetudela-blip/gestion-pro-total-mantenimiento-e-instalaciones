@@ -14,6 +14,7 @@ import { fetchCompanyLogo } from '../components/LogoFetcher';
 import { fetchSupplierDataFromAPI, mapCategoryFromSector } from '../components/SupplierDataFetcher';
 import SupplierCatalogManager from '../components/SupplierCatalogManager';
 import SupplierPriceManager from '../components/SupplierPriceManager';
+import CityAutocomplete from '../components/CityAutocomplete';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
@@ -75,7 +76,7 @@ const EMPTY_FORM = {
   phone: '', email: '', contact_person: '', notes: '', is_active: true,
   api_key: '', api_url: '', client_code: '', password_hint: '',
   commercials: [], logo_url: '', last_order_date: '', reorder_frequency_days: 30,
-  enable_notifications: true, province: '', city: ''
+  enable_notifications: false, province: '', city: ''
 };
 
 const EMPTY_COMMERCIAL = { name: '', phone: '', whatsapp: '', email: '', notes: '' };
@@ -466,12 +467,15 @@ export default function Suppliers() {
 
                    <Input placeholder="URL tienda / pedidos online" value={form.login_url} onChange={(e) => setForm({ ...form, login_url: e.target.value })} />
                 
-                <div className="grid grid-cols-2 gap-2">
-                  <Select value={form.province} onValueChange={(v) => setForm({ ...form, province: v })}>
-                    <SelectTrigger><SelectValue placeholder="Provincia" /></SelectTrigger>
-                    <SelectContent className="max-h-60">{SPANISH_PROVINCES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <Input placeholder="Ciudad / Población" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                <div className="grid grid-cols-3 gap-2">
+                  <CityAutocomplete
+                    city={form.city}
+                    province={form.province}
+                    postal_code={form.postal_code || ''}
+                    onChange={({ city, province, postal_code }) => setForm(prev => ({ ...prev, city, province, postal_code: postal_code || prev.postal_code || '' }))}
+                  />
+                  <Input placeholder="Provincia" value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })} />
+                  <Input placeholder="C.P." value={form.postal_code || ''} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">

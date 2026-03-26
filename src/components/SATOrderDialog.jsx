@@ -101,12 +101,28 @@ function SATPreview({ order, onEdit, onClose, contact, onUpdate }) {
           <p className="text-lg font-bold text-orange-700">TOTAL: {order.total?.toFixed(2)} €</p>
         </div>
 
+        {/* Fotos antes */}
         {order.photos_before?.length > 0 && (
           <div><p className="text-xs text-gray-500 font-medium mb-1">Fotos antes:</p><div className="flex flex-wrap gap-2">{order.photos_before.map((p, i) => <img key={i} src={p} alt="" className="w-24 h-24 object-cover rounded border" />)}</div></div>
         )}
-        {order.photos_after?.length > 0 && (
-          <div><p className="text-xs text-gray-500 font-medium mb-1">Fotos después:</p><div className="flex flex-wrap gap-2">{order.photos_after.map((p, i) => <img key={i} src={p} alt="" className="w-24 h-24 object-cover rounded border" />)}</div></div>
-        )}
+
+        {/* Fotos después — con galería para añadir desde vista previa */}
+        <div>
+          <p className="text-xs text-gray-500 font-medium mb-1">Fotos después de reparación:</p>
+          {order.photos_after?.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">{order.photos_after.map((p, i) => <img key={i} src={p} alt="" className="w-24 h-24 object-cover rounded border" />)}</div>
+          )}
+          <PhotoGallery
+            photos={order.photos_after || []}
+            onChange={async (newPhotos) => {
+              await base44.entities.SATOrder.update(order.id, { photos_after: newPhotos });
+              if (onUpdate) onUpdate({ ...order, photos_after: newPhotos });
+            }}
+            label=""
+            maxPhotos={30}
+          />
+        </div>
+
         {order.notes && <div className="bg-amber-50 rounded p-3 text-sm"><p className="text-xs font-medium text-amber-600 mb-1">Notas</p>{order.notes}</div>}
 
         {/* Firmas digitales */}

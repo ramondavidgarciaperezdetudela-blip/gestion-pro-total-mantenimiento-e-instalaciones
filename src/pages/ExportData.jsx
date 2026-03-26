@@ -7,7 +7,7 @@ import { Download, FileSpreadsheet, FileText, Users, Wrench, ClipboardList, File
 
 const EXPORTS = [
   { key: 'contacts', label: 'Contactos / Clientes', icon: Users, color: 'blue', entity: 'Contact', fields: ['name', 'surname', 'company_name', 'type', 'category', 'nif', 'phone', 'phone2', 'email', 'address', 'city', 'province', 'postal_code', 'country', 'payment_profile', 'pending_amount', 'notes', 'is_active', 'created_date'] },
-  { key: 'invoices', label: 'Facturas / Presupuestos', icon: FileText, color: 'green', entity: 'Invoice', fields: ['doc_type', 'doc_number', 'contact_name', 'contact_nif', 'contact_address', 'date', 'due_date', 'status', 'work_type', 'subtotal', 'iva_rate', 'iva_amount', 'total', 'observations', 'payment_terms', 'created_date'] },
+  { key: 'invoices', label: 'Facturas / Presupuestos', icon: FileText, color: 'green', entity: 'Invoice', fields: ['doc_type', 'doc_number', 'contact_name', 'contact_nif', 'contact_address', 'date', 'due_date', 'status', 'work_type', 'subtotal', 'iva_rate', 'iva_amount', 'total', 'observations', 'payment_terms', 'created_date'], expandLines: true },
   { key: 'sat', label: 'Órdenes SAT', icon: Wrench, color: 'orange', entity: 'SATOrder', fields: ['order_number', 'contact_name', 'date', 'type', 'equipment_type', 'description', 'diagnosis', 'solution', 'status', 'technician', 'labor_hours', 'labor_rate', 'total', 'notes', 'created_date'] },
   { key: 'maintenance', label: 'Fichas de Mantenimiento', icon: ClipboardList, color: 'purple', entity: 'MaintenanceSheet', fields: ['sheet_number', 'contact_name', 'date', 'type', 'equipment_brand', 'equipment_model', 'serial_number', 'location', 'technician_name', 'status', 'observations', 'recommendations', 'created_date'] },
   { key: 'stock', label: 'Inventario / Stock', icon: Package, color: 'teal', entity: 'StockItem', fields: ['name', 'reference', 'category', 'supplier_name', 'quantity', 'unit', 'min_stock', 'unit_price', 'location', 'notes', 'created_date'] },
@@ -29,28 +29,66 @@ const ICON_COLOR = {
   yellow: 'text-yellow-500', pink: 'text-pink-500',
 };
 
-function toCSV(rows, fields) {
+function toCSV(rows, fields, expandLines = false) {
   const escape = v => {
     if (v === null || v === undefined) return '';
     const s = Array.isArray(v) ? v.join('; ') : typeof v === 'object' ? JSON.stringify(v) : String(v);
     return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  return [[...fields].join(','), ...rows.map(r => fields.map(f => escape(r[f])).join(','))].join('\n');
+  if (!expandLines) {
+    return [[...fields].join(','), ...rows.map(r => fields.map(f => escape(r[f])).join(','))].join('\n');
+  }
+  // Para facturas/presupuestos: expandir líneas de items
+  const lineFields = ['linea_descripcion', 'linea_cantidad', 'linea_precio_unit', 'linea_descuento', 'linea_total'];
+  const allFields = [...fields, ...lineFields];
+  const csvRows = [allFields.join(',')];
+  for (const r of rows) {
+    const base = fields.map(f => escape(r[f]));
+    const items = r.items && r.items.length > 0 ? r.items : [{}];
+    items.forEach((item, idx) => {
+      const lineData = [
+        escape(item.description || ''),
+        escape(item.quantity || ''),
+        escape(item.unit_price || ''),
+        escape(item.discount || ''),
+        escape(item.total || ''),
+      ];
+      // Solo repetir datos del doc en la primera línea
+      const docData = idx === 0 ? base : fields.map(() => '');
+      csvRows.push([...docData, ...lineData].join(','));
+    });
+  }
+  return csvRows.join('\n');
 }
 
 // Convert array of objects to XLSX using a simple approach (CSV with xlsx extension for Excel compatibility)
 function toExcelBlob(sheetsData) {
-  // Build a simple HTML table export that Excel can open natively
+  const esc = s => s == null ? '' : String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
   let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"/></head><body>';
-  for (const [sheetName, { rows, fields }] of Object.entries(sheetsData)) {
-    html += `<table><tr><td colspan="${fields.length}" style="font-weight:bold;font-size:14px;background:#1e3a5f;color:white;">${sheetName}</td></tr>`;
-    html += '<tr>' + fields.map(f => `<th style="background:#e2e8f0;font-weight:bold;">${f}</th>`).join('') + '</tr>';
+  for (const [sheetName, { rows, fields, expandLines }] of Object.entries(sheetsData)) {
+    const lineFields = expandLines ? ['Línea descripción', 'Cantidad', 'Precio unit.', 'Descuento%', 'Total línea'] : [];
+    const allFields = [...fields, ...lineFields];
+    html += `<table><tr><td colspan="${allFields.length}" style="font-weight:bold;font-size:14px;background:#1e3a5f;color:white;">${sheetName}</td></tr>`;
+    html += '<tr>' + allFields.map(f => `<th style="background:#e2e8f0;font-weight:bold;">${esc(f)}</th>`).join('') + '</tr>';
     rows.forEach(r => {
-      html += '<tr>' + fields.map(f => {
-        const v = r[f];
-        const s = v === null || v === undefined ? '' : Array.isArray(v) ? v.join('; ') : typeof v === 'object' ? JSON.stringify(v) : String(v);
-        return `<td>${s.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>`;
-      }).join('') + '</tr>';
+      if (expandLines && r.items && r.items.length > 0) {
+        r.items.forEach((item, idx) => {
+          html += '<tr>';
+          fields.forEach(f => {
+            const v = idx === 0 ? r[f] : '';
+            const s = v === null || v === undefined ? '' : Array.isArray(v) ? v.join('; ') : typeof v === 'object' ? JSON.stringify(v) : String(v);
+            html += `<td>${esc(s)}</td>`;
+          });
+          html += `<td>${esc(item.description || '')}</td><td>${esc(item.quantity || '')}</td><td>${esc(item.unit_price || '')}</td><td>${esc(item.discount || '')}</td><td>${esc(item.total || '')}</td>`;
+          html += '</tr>';
+        });
+      } else {
+        html += '<tr>' + fields.map(f => {
+          const v = r[f];
+          const s = v === null || v === undefined ? '' : Array.isArray(v) ? v.join('; ') : typeof v === 'object' ? JSON.stringify(v) : String(v);
+          return `<td>${esc(s)}</td>`;
+        }).join('') + (expandLines ? lineFields.map(() => '<td></td>').join('') : '') + '</tr>';
+      }
     });
     html += '</table><br/>';
   }
@@ -75,7 +113,7 @@ export default function ExportData() {
   const exportCSV = async (exp) => {
     setLoading(l => ({ ...l, [exp.key + '_csv']: true }));
     const data = await base44.entities[exp.entity].list('-created_date', 2000);
-    const csv = toCSV(data, exp.fields);
+    const csv = toCSV(data, exp.fields, exp.expandLines);
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -87,7 +125,7 @@ export default function ExportData() {
   const exportExcel = async (exp) => {
     setLoading(l => ({ ...l, [exp.key + '_xls']: true }));
     const data = await base44.entities[exp.entity].list('-created_date', 2000);
-    const blob = toExcelBlob({ [exp.label]: { rows: data, fields: exp.fields } });
+    const blob = toExcelBlob({ [exp.label]: { rows: data, fields: exp.fields, expandLines: exp.expandLines } });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${exp.key}_${new Date().toISOString().slice(0, 10)}.xls`; a.click();
@@ -98,7 +136,7 @@ export default function ExportData() {
     setLoading(l => ({ ...l, allxls: true }));
     const results = await Promise.all(EXPORTS.map(e => base44.entities[e.entity].list('-created_date', 2000)));
     const sheetsData = {};
-    EXPORTS.forEach((e, i) => { sheetsData[e.label] = { rows: results[i], fields: e.fields }; });
+    EXPORTS.forEach((e, i) => { sheetsData[e.label] = { rows: results[i], fields: e.fields, expandLines: e.expandLines }; });
     const blob = toExcelBlob(sheetsData);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
