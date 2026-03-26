@@ -205,11 +205,20 @@ export default function InvoicePreviewDialog({ doc, open, onClose, onSaved, cont
     setTimeout(() => { w.focus(); w.print(); }, 400);
   };
 
+  const getSignLink = () => {
+    const base = window.location.origin;
+    return `${base}/presupuesto-publico?id=${doc.id}`;
+  };
+
   const sendWhatsApp = () => {
     const c = contacts.find(x => x.id === doc.contact_id);
     const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
     const d = mode === 'edit' ? form : doc;
-    const msg = encodeURIComponent(`*${d.doc_type?.toUpperCase()} Nº${d.doc_number}*\nCliente: ${d.contact_name}\nFecha: ${d.date}\nTotal: ${d.total?.toFixed(2)} €\nEstado: ${d.status}`);
+    const link = getSignLink();
+    const isPresupuesto = d.doc_type === 'presupuesto';
+    const base = `*${d.doc_type?.toUpperCase()} Nº${d.doc_number}*\nCliente: ${d.contact_name}\nFecha: ${d.date}\nTotal: ${d.total?.toFixed(2)} €`;
+    const signPart = isPresupuesto ? `\n\n👆 *Puede ACEPTAR o RECHAZAR el presupuesto y firmarlo digitalmente aquí:*\n${link}` : '';
+    const msg = encodeURIComponent(base + signPart);
     window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
   };
 
@@ -217,9 +226,16 @@ export default function InvoicePreviewDialog({ doc, open, onClose, onSaved, cont
     const c = contacts.find(x => x.id === doc.contact_id);
     const email = c?.email || '';
     const d = mode === 'edit' ? form : doc;
-    const subject = encodeURIComponent(`${d.doc_type?.toUpperCase()} Nº${d.doc_number}`);
-    const body = encodeURIComponent(`Estimado/a ${d.contact_name},\n\nAdjunto ${d.doc_type} Nº${d.doc_number} de fecha ${d.date}.\nTotal: ${d.total?.toFixed(2)} €\n\nQuedamos a su disposición.`);
+    const link = getSignLink();
+    const isPresupuesto = d.doc_type === 'presupuesto';
+    const subject = encodeURIComponent(`${d.doc_type?.toUpperCase()} Nº${d.doc_number} - ${d.contact_name}`);
+    const signPart = isPresupuesto ? `\n\nPuede ACEPTAR o RECHAZAR el presupuesto y firmarlo digitalmente en el siguiente enlace:\n${link}` : '';
+    const body = encodeURIComponent(`Estimado/a ${d.contact_name},\n\nAdjunto ${d.doc_type} Nº${d.doc_number} de fecha ${d.date}.\nTotal: ${d.total?.toFixed(2)} €${signPart}\n\nQuedamos a su disposición.`);
     window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+  };
+
+  const copySignLink = () => {
+    navigator.clipboard.writeText(getSignLink());
   };
 
   if (!doc || !form) return null;
@@ -316,6 +332,11 @@ export default function InvoicePreviewDialog({ doc, open, onClose, onSaved, cont
               <Button variant="outline" size="sm" className="text-blue-700" onClick={sendEmail}>
                 <Mail className="w-3.5 h-3.5 mr-1" />Email
               </Button>
+              {doc.doc_type === 'presupuesto' && (
+                <Button variant="outline" size="sm" className="text-purple-700 border-purple-200" onClick={copySignLink} title="Copiar enlace para que el cliente acepte y firme">
+                  <Copy className="w-3.5 h-3.5 mr-1" />Copiar enlace firma
+                </Button>
+              )}
             </div>
           </div>
         )}

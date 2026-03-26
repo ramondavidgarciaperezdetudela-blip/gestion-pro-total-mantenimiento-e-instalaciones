@@ -1,0 +1,97 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+
+Deno.serve(async (req) => {
+  try {
+    const base44 = createClientFromRequest(req);
+    const body = await req.json();
+    const { doc_id, action, signature } = body;
+
+    if (!doc_id || !action) {
+      return Response.json({ error: 'Parámetros requeridos: doc_id, action' }, { status: 400 });
+    }
+
+    // Get document
+    const docs = await base44.asServiceRole.entities.Invoice.filter({ id: doc_id });
+    const doc = docs?.[0];
+
+    if (!doc) {
+      return Response.json({ error: 'Documento no encontrado' }, { status: 404 });
+    }
+
+    const now = new Date().toISOString();
+
+    if (action === 'rechazar') {
+      await base44.asServiceRole.entities.Invoice.update(doc_id, {
+        status: 'cancelado',
+      });
+
+      // Archivar en ClientDocument como rechazado
+      if (doc.contact_id) {
+        await base44.asServiceRole.entities.ClientDocument.create({
+          contact_id: doc.contact_id,
+          contact_name: doc.contact_name,
+          title: `RECHAZADO - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''} - ${doc.contact_name}`,
+          doc_type: 'presupuesto',
+          description: `Presupuesto rechazado por el cliente el ${now.split('T')[0]}. Total: ${doc.total?.toFixed(2)} €`,
+          date: now.split('T')[0],
+        });
+      }
+
+      return Response.json({ ok: true, action: 'rechazado' });
+    }
+
+    if (action === 'aceptar') {
+      if (!signature) {
+        return Response.json({ error: 'Se requiere firma para aceptar' }, { status: 400 });
+      }
+
+      // Actualizar factura con firma y estado enviado/aceptado
+      await base44.asServiceRole.entities.Invoice.update(doc_id, {
+        status: 'enviado',
+        signature_client: signature,
+      });
+
+      // Archivar en ClientDocument como aceptado y firmado
+      if (doc.contact_id) {
+        await base44.asServiceRole.entities.ClientDocument.create({
+          contact_id: doc.contact_id,
+          contact_name: doc.contact_name,
+          title: `ACEPTADO Y FIRMADO - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''} - ${doc.contact_name}`,
+          doc_type: 'presupuesto',
+          description: `Presupuesto aceptado y firmado digitalmente por el cliente el ${now.split('T')[0]}. Total: ${(doc.total || 0).toFixed(2)} €`,
+          date: now.split('T')[0],
+        });
+      }
+
+      // Notificar por email al admin si hay empresa configurada
+      try {
+        const companies = await base44.asServiceRole.entities.CompanySettings.list();
+        const company = companies?.[0];
+        if (company?.email) {
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: company.email,
+            subject: `✅ Presupuesto aceptado y firmado - ${doc.contact_name}`,
+            body: `
+<h2>Presupuesto aceptado</h2>
+<p><strong>Cliente:</strong> ${doc.contact_name}</p>
+<p><strong>Documento:</strong> ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</p>
+<p><strong>Importe:</strong> ${(doc.total || 0).toFixed(2)} €</p>
+<p><strong>Fecha aceptación:</strong> ${now.split('T')[0]}</p>
+<br/>
+<p>El cliente ha firmado digitalmente el presupuesto. El documento ha sido archivado en su ficha de cliente.</p>
+<img src="${signature}" alt="Firma cliente" style="max-width:300px;border:1px solid #ddd;border-radius:8px;margin-top:12px"/>
+            `.trim()
+          });
+        }
+      } catch (_emailErr) {
+        // No fallar si el email no se envía
+      }
+
+      return Response.json({ ok: true, action: 'aceptado' });
+    }
+
+    return Response.json({ error: 'Acción no válida' }, { status: 400 });
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+});
