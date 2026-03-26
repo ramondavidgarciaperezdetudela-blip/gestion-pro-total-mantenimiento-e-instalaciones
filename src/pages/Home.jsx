@@ -90,22 +90,28 @@ export default function Home() {
     const today = format(new Date(), 'yyyy-MM-dd');
     const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
 
-    // Carga prioritaria: datos críticos primero
-    const [appts, comp, sat, invoices] = await Promise.all([
+    // Grupo 1: datos críticos
+    const [appts, comp, invoices] = await Promise.all([
       base44.entities.Appointment.filter({ date: today }),
       base44.entities.CompanySettings.list(),
-      base44.entities.SATOrder.list('-date', 20),
       base44.entities.Invoice.list('-date', 50),
     ]);
 
-    // Datos secundarios en paralelo después
-    const [contacts, suppliers, machines, stock, prices] = await Promise.all([
+    // Grupo 2: datos operativos
+    const [sat, contacts] = await Promise.all([
+      base44.entities.SATOrder.list('-date', 20),
       base44.entities.Contact.list('-created_date', 100),
-      base44.entities.Supplier.list('-created_date', 50),
-      base44.entities.ClientMachine.list('-created_date', 50),
-      base44.entities.StockItem.list('-updated_date', 50),
-      base44.entities.SupplierPrice.list('-created_date', 100),
     ]);
+
+    // Grupo 3: datos secundarios
+    const [suppliers, machines, stock] = await Promise.all([
+      base44.entities.Supplier.list('-created_date', 50),
+      base44.entities.ClientMachine.list('-created_date', 30),
+      base44.entities.StockItem.list('-updated_date', 30),
+    ]);
+
+    // Grupo 4: precios (menos crítico)
+    const prices = await base44.entities.SupplierPrice.list('-created_date', 50);
     {
       setAppointments(appts);
       if (comp.length > 0) setCompany(comp[0]);
