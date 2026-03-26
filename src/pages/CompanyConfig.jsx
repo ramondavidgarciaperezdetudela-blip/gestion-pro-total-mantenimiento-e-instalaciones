@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, Layout } from 'lucide-react';
+import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, Layout, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 function TechnicianManager({ technicians, onChange }) {
   const [newTech, setNewTech] = useState({ name: '', fgas_carnet: '', rite_certificate: '' });
@@ -199,6 +200,7 @@ export default function CompanyConfig() {
           <TabsTrigger value="usuarios" className="flex-1 text-xs">Usuarios</TabsTrigger>
           <TabsTrigger value="red" className="flex-1 text-xs">Red / Acceso</TabsTrigger>
           <TabsTrigger value="ia" className="flex-1 text-xs">IA Cálculos</TabsTrigger>
+          <TabsTrigger value="cuenta" className="flex-1 text-xs text-red-600">Cuenta</TabsTrigger>
         </TabsList>
 
         <TabsContent value="empresa">
@@ -628,6 +630,18 @@ export default function CompanyConfig() {
           </Card>
         </TabsContent>
 
+        {/* ─── ELIMINAR CUENTA ────────────────────────────────────────────── */}
+        <TabsContent value="cuenta">
+          <Card className="border-red-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-700"><AlertTriangle className="w-5 h-5" />Zona de peligro</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DeleteAccountSection />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ─── IA CÁLCULOS ────────────────────────────────────────────────── */}
         <TabsContent value="ia">
           <Card>
@@ -801,6 +815,75 @@ function NetworkAccessInfo() {
         <p className="font-medium mb-1">💡 Para añadir usuarios nuevos</p>
         <p>Ve a la pestaña <strong>Usuarios</strong> e invita al nuevo usuario por email. Recibirá un correo con las instrucciones de acceso.</p>
       </div>
+    </div>
+  );
+}
+
+// ─── COMPONENTE: ELIMINAR CUENTA ──────────────────────────────────────────────
+function DeleteAccountSection() {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (confirmText !== 'ELIMINAR') return;
+    setDeleting(true);
+    try {
+      const me = await base44.auth.me();
+      if (me?.id) {
+        await base44.entities.User.delete(me.id);
+      }
+      base44.auth.logout('/');
+    } catch (e) {
+      alert('Error al eliminar la cuenta. Contacta con soporte.');
+    }
+    setDeleting(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+        <p className="font-bold mb-1">⚠️ Advertencia</p>
+        <p>Eliminar tu cuenta borrará permanentemente tu perfil de usuario. Esta acción no se puede deshacer. Los datos de la empresa (clientes, facturas, etc.) permanecerán en la base de datos.</p>
+      </div>
+      <Button
+        variant="outline"
+        className="border-red-300 text-red-600 hover:bg-red-50 gap-2"
+        onClick={() => setConfirmOpen(true)}
+      >
+        <Trash2 className="w-4 h-4" /> Eliminar mi cuenta
+      </Button>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-red-700 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5" /> Confirmar eliminación
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">Esta acción eliminará permanentemente tu cuenta de usuario. Para confirmar, escribe <strong>ELIMINAR</strong> en el campo de abajo.</p>
+            <input
+              className="w-full border border-red-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-red-400"
+              placeholder="Escribe ELIMINAR para confirmar"
+              value={confirmText}
+              onChange={e => setConfirmText(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setConfirmOpen(false); setConfirmText(''); }}>
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                disabled={confirmText !== 'ELIMINAR' || deleting}
+                onClick={handleDelete}
+              >
+                {deleting ? 'Eliminando...' : 'Eliminar cuenta'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

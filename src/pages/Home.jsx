@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
+import PullToRefresh from '../components/PullToRefresh';
 import { createPageUrl } from '../utils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -85,22 +86,23 @@ export default function Home() {
   const [maintenanceMachines, setMaintenanceMachines] = useState([]);
   const [stockItems, setStockItems] = useState([]);
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     const today = format(new Date(), 'yyyy-MM-dd');
     const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
 
-    Promise.all([
-    base44.entities.Appointment.filter({ date: today }),
-    base44.entities.Contact.list(),
-    base44.entities.Invoice.list('-date', 200),
-    base44.entities.SATOrder.list('-date', 50),
-    base44.entities.CompanySettings.list(),
-    base44.entities.MaintenanceSheet.list('-date', 100),
-    base44.entities.Supplier.list(),
-    base44.entities.SupplierPrice.list('-created_date', 500),
-    base44.entities.ClientMachine.list(),
-    base44.entities.StockItem.list('-updated_date', 100)]
-    ).then(([appts, contacts, invoices, sat, comp, maintenance, suppliers, prices, machines, stock]) => {
+    const [appts, contacts, invoices, sat, comp, maintenance, suppliers, prices, machines, stock] = await Promise.all([
+      base44.entities.Appointment.filter({ date: today }),
+      base44.entities.Contact.list(),
+      base44.entities.Invoice.list('-date', 200),
+      base44.entities.SATOrder.list('-date', 50),
+      base44.entities.CompanySettings.list(),
+      base44.entities.MaintenanceSheet.list('-date', 100),
+      base44.entities.Supplier.list(),
+      base44.entities.SupplierPrice.list('-created_date', 500),
+      base44.entities.ClientMachine.list(),
+      base44.entities.StockItem.list('-updated_date', 100),
+    ]);
+    {
       setAppointments(appts);
       if (comp.length > 0) setCompany(comp[0]);
 
@@ -184,13 +186,16 @@ export default function Home() {
       if (maintenanceDue > 0) newAlerts.push({ type: 'warning', text: `${maintenanceDue} equipo(s) con mantenimiento próximo`, page: 'Maintenance' });
       reorder.forEach((r) => newAlerts.push({ type: 'warning', text: `Revisar pedido a ${r.name} (${r.daysLeft <= 0 ? 'HOY' : `en ${r.daysLeft} días`})`, page: 'Suppliers' }));
       setAlerts(newAlerts);
-    });
+    }
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const STATUS_COLORS = { borrador: 'bg-gray-100 text-gray-600', enviado: 'bg-blue-100 text-blue-700', pagado: 'bg-green-100 text-green-700', vencido: 'bg-red-100 text-red-700', cancelado: 'bg-orange-100 text-orange-700' };
   const SAT_STATUS = { pendiente: 'bg-amber-100 text-amber-700', en_curso: 'bg-blue-100 text-blue-700', completada: 'bg-green-100 text-green-700' };
 
   return (
+    <PullToRefresh onRefresh={loadData}>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -552,6 +557,8 @@ export default function Home() {
       </div>
 
 
-    </div>);
+    </div>
+    </PullToRefresh>
+  );
 
 }

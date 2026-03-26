@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import { base44 } from '@/api/base44Client';
 import {
@@ -7,11 +7,88 @@ import {
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette,
-  CreditCard, Download, Bell, History, Search, FileBarChart, Droplets, AlertCircle } from
+  CreditCard, Download, Bell, History, Search, FileBarChart, Droplets, AlertCircle,
+  MoreHorizontal, ChevronRight } from
 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 import GlobalSearch from './components/GlobalSearch';
 import AIChat from './components/AIChat';
+
+// ─── Mobile Bottom Bar ────────────────────────────────────────────────────────
+const MAIN_TABS = [
+  { name: 'Inicio', page: 'Home', icon: Home },
+  { name: 'SAT', page: 'SAT', icon: Wrench },
+  { name: 'Agenda', page: 'Agenda', icon: Calendar },
+  { name: 'Inventario', page: 'Inventory', icon: Package },
+];
+
+function MobileBottomBar({ currentPageName }) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const location = useLocation();
+
+  const moreItems = navItems.filter(n => !MAIN_TABS.some(t => t.page === n.page));
+
+  return (
+    <>
+      <nav className="flex sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg print:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="flex w-full">
+          {MAIN_TABS.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentPageName === item.page || location.pathname === `/${item.page}`;
+            return (
+              <Link key={item.page} to={createPageUrl(item.page)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${isActive ? 'text-[var(--accent)]' : 'text-gray-400'}`}>
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] font-medium">{item.name}</span>
+              </Link>
+            );
+          })}
+          {/* More button */}
+          <button
+            onClick={() => setMoreOpen(true)}
+            className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${moreOpen ? 'text-[var(--accent)]' : 'text-gray-400'}`}>
+            <MoreHorizontal className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Más</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* More Drawer backdrop */}
+      {moreOpen && (
+        <div className="sm:hidden fixed inset-0 z-50 bg-black/40" onClick={() => setMoreOpen(false)} />
+      )}
+
+      {/* More Drawer */}
+      <div className={`sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 ${moreOpen ? 'translate-y-0' : 'translate-y-full'}`}
+        style={{ maxHeight: '75vh', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+        </div>
+        <div className="px-4 py-2 flex items-center justify-between border-b">
+          <span className="font-semibold text-gray-800">Todos los módulos</span>
+          <button onClick={() => setMoreOpen(false)} className="p-1 text-gray-400"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="overflow-y-auto" style={{ maxHeight: 'calc(75vh - 80px)' }}>
+          <div className="grid grid-cols-3 gap-1 p-3">
+            {moreItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentPageName === item.page;
+              return (
+                <Link key={item.page} to={createPageUrl(item.page)}
+                  onClick={() => setMoreOpen(false)}
+                  className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors ${isActive ? 'bg-[var(--accent)]/10 text-[var(--accent)]' : 'hover:bg-gray-50 text-gray-600'}`}>
+                  <Icon className="w-5 h-5" />
+                  <span className="text-[10px] font-medium text-center leading-tight">{item.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
 
 const navItems = [
 { name: 'Inicio', page: 'Home', icon: Home },
@@ -282,27 +359,8 @@ export default function Layout({ children, currentPageName }) {
           {children}
         </main>
 
-        {/* Mobile bottom tab bar - solo en móvil real */}
-        <nav className="flex sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg print:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <div className="flex overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-            {mobileTabItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPageName === item.page;
-              return (
-                <Link
-                  key={item.page}
-                  to={createPageUrl(item.page)}
-                  className={`flex-shrink-0 flex flex-col items-center gap-0.5 py-2 px-3 transition-colors min-w-[56px] ${
-                  isActive ? 'text-[var(--accent)]' : 'text-gray-400'}`
-                  }>
-                  
-                  <Icon className="w-5 h-5" />
-                  <span className="text-[9px] font-medium whitespace-nowrap">{item.name}</span>
-                </Link>);
-
-            })}
-          </div>
-        </nav>
+        {/* Mobile bottom tab bar - 5 items fijos + More drawer */}
+        <MobileBottomBar currentPageName={currentPageName} />
       </div>
     </div>);
 

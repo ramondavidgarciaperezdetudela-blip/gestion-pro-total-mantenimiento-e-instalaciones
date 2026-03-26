@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import PullToRefresh from '../components/PullToRefresh';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -239,6 +240,7 @@ export default function SAT() {
   return (
     <>
     <AIChat />
+    <PullToRefresh onRefresh={loadAll}>
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -648,6 +650,7 @@ export default function SAT() {
                 </DialogContent>
                 </Dialog>
                 </div>
+                </PullToRefresh>
                 </>
                 );
                 }
