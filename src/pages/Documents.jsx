@@ -787,6 +787,9 @@ export default function Documents() {
                 <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white font-semibold" onClick={() => exportPDF(previewDoc)}>
                   <FileDown className="w-4 h-4 mr-1" />Exportar PDF
                 </Button>
+                <Button size="sm" variant="outline" onClick={() => window.print()}>
+                  <Printer className="w-4 h-4 mr-1" />Imprimir
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => {setPreviewDoc(null);handleEdit(previewDoc);}}>
                   <Edit className="w-4 h-4 mr-1" />Editar
                 </Button>
