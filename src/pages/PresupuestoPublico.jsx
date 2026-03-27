@@ -201,7 +201,8 @@ export default function PresupuestoPublico() {
         doc_id: docId,
         doc_number: doc.doc_number,
         contact_name: doc.contact_name,
-        total: doc.total
+        total: doc.total,
+        contact_phone: doc.contact_phone
       });
       if (res?.data?.ok) {
         alert('✅ Se ha enviado tu solicitud. El equipo se pondrá en contacto contigo pronto para enviar el enlace actualizado.');

@@ -337,6 +337,18 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
     w.print();
   };
 
+  const handleResendChangeOpinionLink = async (doc) => {
+    const presupuestoUrl = `https://app.base44.io/presupuesto-publico?id=${doc.id}`;
+    const msg = `📄 *PRESUPUESTO - Opción de cambio de opinión*\n\nHola ${doc.contact_name},\n\nTienes la opción de cambiar tu decisión anterior sobre el presupuesto Nº${doc.doc_number} por ${(doc.total || 0).toFixed(2)} €.\n\nAccede aquí para revisar y actualizar tu respuesta:\n${presupuestoUrl}\n\nGracias`;
+    
+    const phone = contact.phone?.replace(/\D/g, '');
+    if (phone) {
+      window.open(`https://wa.me/34${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    } else {
+      alert('El cliente no tiene teléfono registrado. Copia este enlace manualmente:\n\n' + presupuestoUrl);
+    }
+  };
+
   const DocCard = ({ doc, type, onDelete }) => (
     <div className="space-y-2">
       <Card className="hover:shadow-sm cursor-pointer" onClick={() => setInvoiceDialog(doc)}>
@@ -355,6 +367,11 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
             <Link to={createPageUrl(`Documents?edit=${doc.id}`)} onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-50 text-gray-700 hover:bg-gray-100">
               <Edit className="w-3 h-3" /> Editar
             </Link>
+            {doc.signature_history && doc.signature_history.length > 0 && (
+              <button onClick={() => handleResendChangeOpinionLink(doc)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-yellow-50 text-yellow-700 hover:bg-yellow-100">
+                <MessageCircle className="w-3 h-3" /> Cambio de opinión
+              </button>
+            )}
             {onDelete && (
               <button onClick={() => { if(confirm('¿Eliminar?')) onDelete(doc.id); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
                 <Trash2 className="w-3 h-3" /> Eliminar
@@ -364,7 +381,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
         </CardContent>
       </Card>
       {doc.signature_history && doc.signature_history.length > 0 && (
-        <SignatureHistoryViewer signatureHistory={doc.signature_history} />
+        <SignatureHistoryViewer signatureHistory={doc.signature_history} onResendLink={() => handleResendChangeOpinionLink(doc)} />
       )}
     </div>
   );

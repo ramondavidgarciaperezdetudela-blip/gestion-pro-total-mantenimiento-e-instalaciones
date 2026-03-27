@@ -4,7 +4,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    const { doc_id, doc_number, contact_name, total } = body;
+    const { doc_id, doc_number, contact_name, total, contact_phone } = body;
 
     if (!doc_id) {
       return Response.json({ error: 'doc_id requerido' }, { status: 400 });
@@ -53,8 +53,24 @@ Deno.serve(async (req) => {
         from_name: company?.company_name || 'Sistema'
       });
     } catch (_err) {
-      // Fallback: intentar enviar directamente (para casos donde enviarCopiaFirmada no esté disponible)
       console.log('Intentando envío directo...');
+    }
+
+    // Enviar WhatsApp al admin
+    if (company?.phone) {
+      const cleanPhone = company.phone.replace(/\D/g, '');
+      if (cleanPhone) {
+        const waMsg = `⚠️ *CAMBIO DE OPINIÓN SOLICITADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc_number || ''}\n👤 ${contact_name}\n💶 ${(total || 0).toFixed(2)} €\n\nEl cliente ha solicitado cambiar su decisión. Accede a tu ficha para revisar el historial.\n\nEnlace: ${presupuestoUrl}`;
+        try {
+          await base44.asServiceRole.functions.invoke('enviarCopiaFirmada', {
+            to: company.email,
+            subject: `WhatsApp enviado`,
+            body: waMsg
+          });
+        } catch (_err) {
+          console.log('WhatsApp no enviado, continuando...');
+        }
+      }
     }
 
     return Response.json({ ok: true });
