@@ -151,6 +151,7 @@ function PresupuestoPublico() {
   const [error, setError] = useState(null);
   const [step, setStep] = useState('decision'); // 'decision' | 'sign' | 'sign-reject' | 'done' | 'rejected'
   const [saving, setSaving] = useState(false);
+  const [isChangingOpinion, setIsChangingOpinion] = useState(false);
   const signRef = useRef(null);
 
   useEffect(() => {
@@ -204,12 +205,13 @@ function PresupuestoPublico() {
     } finally {
       setSaving(false);
     }
-    // Si viene por email o whatsapp, mostrar confirmación. Si no, volver a decision
-    if (method === 'email' || method === 'whatsapp') {
+    // Si viene por email o whatsapp O está en modo cambio, mostrar confirmación. Si no, volver a decision
+    if (method === 'email' || method === 'whatsapp' || isChangingOpinion) {
       setStep('done');
     } else {
       setStep('decision');
     }
+    setIsChangingOpinion(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -252,12 +254,13 @@ function PresupuestoPublico() {
     } finally {
       setSaving(false);
     }
-    // Si viene por email o whatsapp, mostrar confirmación. Si no, volver a decision
-    if (method === 'email' || method === 'whatsapp') {
+    // Si viene por email o whatsapp O está en modo cambio, mostrar confirmación. Si no, volver a decision
+    if (method === 'email' || method === 'whatsapp' || isChangingOpinion) {
       setStep('rejected');
     } else {
       setStep('decision');
     }
+    setIsChangingOpinion(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -297,9 +300,9 @@ function PresupuestoPublico() {
   };
 
   const handleRequestChangeOpinion = async () => {
-    // Lleva directamente a la zona de firma para cambiar de opinión
-    setStep('sign');
-    scrollToSign();
+    // Entra en modo cambio de opinión - muestra opciones de aceptar o rechazar
+    setIsChangingOpinion(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -402,11 +405,11 @@ function PresupuestoPublico() {
             </div>
           )}
 
-          {/* Botones según tipo de documento - mostrar si es cambio de opinión O si no tiene firma */}
-          {(isChangeOpinion || (!yaFirmado && !rechazadoYFirmado && !tieneUltimaFirma)) && step === 'decision' && (
+          {/* Botones según tipo de documento - mostrar si es cambio de opinión O si no tiene firma O si está en modo cambio */}
+          {(isChangeOpinion || isChangingOpinion || (!yaFirmado && !rechazadoYFirmado && !tieneUltimaFirma)) && step === 'decision' && (
             <div className="border-t pt-4 space-y-3">
-              {/* Si es cambio de opinión, mostrar decisión anterior */}
-              {isChangeOpinion && tieneUltimaFirma && (
+              {/* Si es cambio de opinión o está en modo cambio, mostrar decisión anterior */}
+              {(isChangeOpinion || isChangingOpinion) && tieneUltimaFirma && (
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                   <p className="text-sm font-semibold text-blue-700 text-center mb-3">
                     📋 Decisión anterior • Puede cambiar de opinión
@@ -428,20 +431,20 @@ function PresupuestoPublico() {
 
               {isPresupuesto && (
                 <>
-                  <p className="text-center text-sm font-semibold text-slate-700">{isChangeOpinion ? '¿Desea cambiar su decisión?' : '¿Acepta este presupuesto?'}</p>
+                  <p className="text-center text-sm font-semibold text-slate-700">{isChangeOpinion || isChangingOpinion ? '¿Desea cambiar su decisión?' : '¿Acepta este presupuesto?'}</p>
                   <div className="flex gap-3">
                     <Button
                       onClick={() => { setStep('sign-reject'); scrollToSign(); }}
                       variant="outline"
                       className="flex-1 border-red-200 text-red-600 hover:bg-red-50 h-12 text-base"
                     >
-                      <X className="w-4 h-4 mr-2" /> {isChangeOpinion ? 'Rechazar' : 'No acepto'}
+                      <X className="w-4 h-4 mr-2" /> {isChangeOpinion || isChangingOpinion ? 'Rechazar' : 'No acepto'}
                     </Button>
                     <Button
                       onClick={() => { setStep('sign'); scrollToSign(); }}
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
                     >
-                      <Check className="w-4 h-4 mr-2" /> {isChangeOpinion ? 'Aceptar' : 'Acepto y firmo'}
+                      <Check className="w-4 h-4 mr-2" /> {isChangeOpinion || isChangingOpinion ? 'Aceptar' : 'Acepto y firmo'}
                     </Button>
                   </div>
                 </>
@@ -509,13 +512,13 @@ function PresupuestoPublico() {
                 </div>
               </div>
               
-              {isPresupuesto && !isChangeOpinion && (
+              {isPresupuesto && !isChangeOpinion && !isChangingOpinion && (
                 <Button
                   onClick={handleRequestChangeOpinion}
                   disabled={saving}
                   className="w-full bg-yellow-500 hover:bg-yellow-600 text-white h-10"
                 >
-                  <MessageCircle className="w-4 h-4 mr-2" /> Solicitar cambio de opinión
+                  <MessageCircle className="w-4 h-4 mr-2" /> Cambiar de opinión
                 </Button>
               )}
             </div>
@@ -536,13 +539,13 @@ function PresupuestoPublico() {
                   {doc.signature_method === 'email' ? '📧 Firma cliente por email' : doc.signature_method === 'whatsapp' ? '📱 Firma cliente por WhatsApp' : '🌐 Firma cliente por web'}
                 </p>
               )}
-              {isPresupuesto && !isChangeOpinion && (
+              {isPresupuesto && !isChangeOpinion && !isChangingOpinion && (
                 <Button
                   onClick={handleRequestChangeOpinion}
                   disabled={saving}
                   className="w-full bg-yellow-500 hover:bg-yellow-600 text-white h-10 text-sm"
                 >
-                  <MessageCircle className="w-4 h-4 mr-2" /> Solicitar cambio de opinión
+                  <MessageCircle className="w-4 h-4 mr-2" /> Cambiar de opinión
                 </Button>
               )}
             </div>
@@ -638,7 +641,7 @@ function PresupuestoPublico() {
           )}
 
           {/* Confirmación de cambio de opinión */}
-          {(step === 'done' || step === 'rejected') && isChangeOpinion && (
+          {(step === 'done' || step === 'rejected') && (isChangeOpinion || isChangingOpinion) && (
             <div className={`rounded-2xl shadow-sm border p-6 space-y-4 ${
               step === 'done' 
                 ? 'bg-green-50 border-green-200' 
