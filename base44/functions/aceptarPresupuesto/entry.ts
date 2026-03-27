@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Agregar al historial de decisiones
+      // Nueva entrada de decisión
       const newHistoryEntry = {
         action: 'rechazar',
         signature_url: signatureUrl,
@@ -92,7 +92,16 @@ Deno.serve(async (req) => {
         method: method,
         change_opinion_token: change_opinion_token || undefined
       };
-      const updatedHistory = [...(doc.signature_history || []), newHistoryEntry];
+
+      // Si es cambio de opinión, reemplazar último registro; si no, agregar al historial
+      let updatedHistory;
+      if (change_opinion_token && doc.signature_history && doc.signature_history.length > 0) {
+        // Reemplazar el último entrada del historial
+        updatedHistory = [...doc.signature_history.slice(0, -1), newHistoryEntry];
+      } else {
+        // Agregar como nuevo registro
+        updatedHistory = [...(doc.signature_history || []), newHistoryEntry];
+      }
 
       const updateData = { 
         status: 'cancelado', 
@@ -227,7 +236,7 @@ Deno.serve(async (req) => {
         // Si falla el upload, seguimos con el base64 (puede fallar en entidad si es grande)
       }
 
-      // Agregar al historial de decisiones
+      // Nueva entrada de decisión
       const newHistoryEntry = {
         action: 'aceptar',
         signature_url: signatureUrl,
@@ -235,7 +244,16 @@ Deno.serve(async (req) => {
         method: method,
         change_opinion_token: change_opinion_token || undefined
       };
-      const updatedHistory = [...(doc.signature_history || []), newHistoryEntry];
+
+      // Si es cambio de opinión, reemplazar último registro; si no, agregar al historial
+      let updatedHistory;
+      if (change_opinion_token && doc.signature_history && doc.signature_history.length > 0) {
+        // Reemplazar el último entrada del historial
+        updatedHistory = [...doc.signature_history.slice(0, -1), newHistoryEntry];
+      } else {
+        // Agregar como nuevo registro
+        updatedHistory = [...(doc.signature_history || []), newHistoryEntry];
+      }
 
       // Actualizar factura con firma y estado enviado/aceptado
       await base44.asServiceRole.entities.Invoice.update(doc_id, {
