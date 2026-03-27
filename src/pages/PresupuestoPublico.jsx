@@ -428,30 +428,50 @@ function PresupuestoPublico() {
             </div>
           )}
 
-          {/* Mostrar última firma si existe */}
+          {/* Mostrar última firma si existe - siempre en recuadro coloreado */}
           {tieneUltimaFirma && step === 'decision' && (
-            <div className="border-t pt-4 text-center space-y-3">
-              {ultimaFirma.action === 'aceptar' ? (
-                <>
-                  <CheckCircle className="w-10 h-10 text-green-500 mx-auto" />
-                  <p className="font-semibold text-green-700">Presupuesto aceptado y firmado</p>
-                </>
-              ) : (
-                <>
-                  <XCircle className="w-10 h-10 text-red-400 mx-auto" />
-                  <p className="font-semibold text-red-700">Presupuesto rechazado y firmado</p>
-                </>
-              )}
-              {ultimaFirma.datetime && <p className="text-xs text-gray-400 font-mono">🕐 {ultimaFirma.datetime}</p>}
-              {ultimaFirma.method && (
-                <p className={`text-xs inline-block px-2 py-1 rounded ${
-                  ultimaFirma.method === 'email' ? 'bg-blue-100 text-blue-700' : 
-                  ultimaFirma.method === 'whatsapp' ? 'bg-green-100 text-green-700' : 
-                  'bg-gray-100 text-gray-700'
-                }`}>
-                  {ultimaFirma.method === 'email' ? '📧 Firma por email' : ultimaFirma.method === 'whatsapp' ? '📱 Firma por WhatsApp' : '🌐 Firma por web'}
-                </p>
-              )}
+            <div className={`border-t pt-4 rounded-lg p-4 ${
+              ultimaFirma.action === 'aceptar' 
+                ? 'bg-green-50 border border-green-200' 
+                : 'bg-red-50 border border-red-200'
+            }`}>
+              <div className="text-center space-y-3">
+                {ultimaFirma.action === 'aceptar' ? (
+                  <>
+                    <div className="flex items-center justify-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="font-bold text-green-700">✅ ACEPTADO</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-center gap-2">
+                      <XCircle className="w-5 h-5 text-red-600" />
+                      <span className="font-bold text-red-700">❌ RECHAZADO</span>
+                    </div>
+                  </>
+                )}
+                
+                {ultimaFirma.signature_url && (
+                  <div className="mt-3">
+                    <img src={ultimaFirma.signature_url} alt="Firma" className="max-h-24 mx-auto border rounded bg-white p-2" />
+                  </div>
+                )}
+                
+                <div className={`text-sm font-semibold ${ultimaFirma.action === 'aceptar' ? 'text-green-700' : 'text-red-700'}`}>
+                  {ultimaFirma.datetime && <p>🕐 {ultimaFirma.datetime}</p>}
+                </div>
+                
+                {ultimaFirma.method && (
+                  <p className={`text-xs inline-block px-2.5 py-1 rounded font-medium ${
+                    ultimaFirma.method === 'email' ? 'bg-blue-100 text-blue-700' : 
+                    ultimaFirma.method === 'whatsapp' ? 'bg-green-100 text-green-700' : 
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {ultimaFirma.method === 'email' ? '📧 Firma por email' : ultimaFirma.method === 'whatsapp' ? '📱 Firma por WhatsApp' : '🌐 Firma por web'}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
