@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import PullToRefresh from '../components/PullToRefresh';
+import MobileKPIView from '../components/MobileKPIView';
 import { createPageUrl } from '../utils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -209,6 +210,16 @@ export default function Home() {
           </h1>
           <p className="text-gray-500 text-base font-black capitalize">{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
         </div>
+      </div>
+
+      {/* Vista resumen móvil — solo visible en móvil */}
+      <div className="sm:hidden">
+        <MobileKPIView
+          kpis={kpis}
+          appointments={appointments}
+          recentSat={recentSat}
+          alerts={alerts}
+        />
       </div>
 
       {/* Acceso directo rápido - Arriba de todo */}

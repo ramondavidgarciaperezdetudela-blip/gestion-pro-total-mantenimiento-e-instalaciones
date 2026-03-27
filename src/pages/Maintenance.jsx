@@ -523,10 +523,6 @@ export default function Maintenance() {
                 </div>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
                   <Badge className={typeColor[s.type] || 'bg-gray-100 text-gray-700'}>{s.type}</Badge>
-                  <div className="flex gap-1 text-[10px]">
-                    {s.signature_technician && <span title="Firmado técnico">✍️</span>}
-                    {s.signature_client && <span title="Firmado cliente">👤</span>}
-                  </div>
                 </div>
               </div>
               <div className="flex gap-1 mt-2 border-t pt-2 flex-wrap">
