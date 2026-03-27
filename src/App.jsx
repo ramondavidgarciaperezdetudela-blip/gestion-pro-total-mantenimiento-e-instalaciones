@@ -9,6 +9,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PresupuestoPublico from './pages/PresupuestoPublico';
+import SATPublico from './pages/SATPublico';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -88,6 +89,7 @@ const AuthenticatedApp = () => {
           />
         ))}
         <Route path="/presupuesto-publico" element={<PresupuestoPublico />} />
+        <Route path="/sat-publico" element={<SATPublico />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </AnimatedRoutes>

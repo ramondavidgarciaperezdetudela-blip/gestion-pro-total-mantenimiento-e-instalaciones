@@ -65,6 +65,7 @@ export default function SAT() {
   const [form, setForm] = useState({ ...EMPTY_FORM, ...(preContactId ? { contact_id: preContactId } : {}) });
   const [activeTab, setActiveTab] = useState('lista');
   const [autoGenerateInvoice, setAutoGenerateInvoice] = useState(false);
+  const [filterSignatureStatus, setFilterSignatureStatus] = useState('all'); // all, aceptadas, rechazadas
   const printRef = useRef(null);
 
   useEffect(() => { loadAll(); }, []);
@@ -220,7 +221,16 @@ export default function SAT() {
     const matchSearch = `${o.order_number} ${o.contact_name} ${o.description} ${o.technician}`.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || o.status === filterStatus;
     const matchPriority = filterPriority === 'all' || o.priority === filterPriority;
-    return matchSearch && matchStatus && matchPriority;
+    
+    // Filtro de estado de firma
+    let matchSignatureStatus = true;
+    if (filterSignatureStatus === 'aceptadas') {
+      matchSignatureStatus = o.status === 'en_curso' && o.signature_client;
+    } else if (filterSignatureStatus === 'rechazadas') {
+      matchSignatureStatus = o.status === 'cancelada' && o.signature_client;
+    }
+    
+    return matchSearch && matchStatus && matchPriority && matchSignatureStatus;
   });
 
   // Stats
@@ -229,6 +239,8 @@ export default function SAT() {
     pendiente: orders.filter(o => o.status === 'pendiente').length,
     en_curso: orders.filter(o => o.status === 'en_curso').length,
     urgentes: orders.filter(o => o.priority === 'urgente' && o.status !== 'completada').length,
+    aceptadas: orders.filter(o => o.status === 'en_curso' && o.signature_client).length,
+    rechazadas: orders.filter(o => o.status === 'cancelada' && o.signature_client).length,
   };
 
   // Planificación (ordenar por fecha programada)
@@ -255,8 +267,8 @@ export default function SAT() {
         {[
           { label: 'Total', value: stats.total, icon: BarChart3, color: 'text-gray-700', bg: 'bg-gray-50' },
           { label: 'Pendientes', value: stats.pendiente, icon: Clock, color: 'text-yellow-700', bg: 'bg-yellow-50' },
-          { label: 'En curso', value: stats.en_curso, icon: Wrench, color: 'text-blue-700', bg: 'bg-blue-50' },
-          { label: 'Urgentes', value: stats.urgentes, icon: AlertTriangle, color: 'text-red-700', bg: 'bg-red-50' },
+          { label: 'Aceptadas', value: stats.aceptadas, icon: CheckCircle2, color: 'text-green-700', bg: 'bg-green-50' },
+          { label: 'Rechazadas', value: stats.rechazadas, icon: AlertTriangle, color: 'text-red-700', bg: 'bg-red-50' },
         ].map((s, i) => {
           const Icon = s.icon;
           return (
@@ -293,11 +305,21 @@ export default function SAT() {
             {PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={filterSignatureStatus} onValueChange={setFilterSignatureStatus}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las firmas</SelectItem>
+            <SelectItem value="aceptadas">✅ Aceptadas</SelectItem>
+            <SelectItem value="rechazadas">❌ Rechazadas</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="lista">Lista ({filtered.length})</TabsTrigger>
+          <TabsTrigger value="aceptadas">✅ Aceptadas ({stats.aceptadas})</TabsTrigger>
+          <TabsTrigger value="rechazadas">❌ Rechazadas ({stats.rechazadas})</TabsTrigger>
           <TabsTrigger value="planificacion">📅 Planificación ({scheduled.length})</TabsTrigger>
         </TabsList>
 
@@ -350,6 +372,94 @@ export default function SAT() {
                   </button>
                   <button onClick={() => handleDelete(order.id)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
                     <Trash2 className="w-3 h-3" />Eliminar
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+
+        {/* ===== ACEPTADAS ===== */}
+        <TabsContent value="aceptadas" className="space-y-2 pt-2">
+          {stats.aceptadas === 0 && (
+            <div className="text-center py-12 text-gray-400">
+              <CheckCircle2 className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p>No hay órdenes aceptadas y firmadas</p>
+            </div>
+          )}
+          {orders
+            .filter(o => o.status === 'en_curso' && o.signature_client)
+            .map(order => (
+            <Card key={order.id} className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
+              <CardContent className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm truncate">#{order.order_number || 'S/N'} — {order.contact_name}</p>
+                      <p className="text-xs text-gray-500">{order.date} | ✅ Aceptada el {order.sign_datetime_client}</p>
+                      {order.description && <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">{order.description}</p>}
+                      {order.technician && <p className="text-xs text-blue-600">👷 {order.technician}</p>}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <Badge className="bg-green-100 text-green-700 border-green-300">{order.status}</Badge>
+                    {order.total > 0 && <span className="text-xs font-semibold text-gray-700">{order.total?.toFixed(2)} €</span>}
+                  </div>
+                </div>
+                <div className="flex gap-1 mt-2 pt-2 border-t flex-wrap">
+                  <button onClick={() => setPreviewOrder(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+                    <Eye className="w-3 h-3" />Ver
+                  </button>
+                  <button onClick={() => handleEdit(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                    <Edit className="w-3 h-3" />Editar
+                  </button>
+                  <button onClick={() => sendWhatsApp(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+                    <Phone className="w-3 h-3" />WA
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+
+        {/* ===== RECHAZADAS ===== */}
+        <TabsContent value="rechazadas" className="space-y-2 pt-2">
+          {stats.rechazadas === 0 && (
+            <div className="text-center py-12 text-gray-400">
+              <AlertTriangle className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p>No hay órdenes rechazadas y firmadas</p>
+            </div>
+          )}
+          {orders
+            .filter(o => o.status === 'cancelada' && o.signature_client)
+            .map(order => (
+            <Card key={order.id} className="border-l-4 border-l-red-500 hover:shadow-md transition-shadow">
+              <CardContent className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                    <X className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm truncate">#{order.order_number || 'S/N'} — {order.contact_name}</p>
+                      <p className="text-xs text-gray-500">{order.date} | ❌ Rechazada el {order.sign_datetime_client}</p>
+                      {order.description && <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">{order.description}</p>}
+                      {order.technician && <p className="text-xs text-blue-600">👷 {order.technician}</p>}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <Badge className="bg-red-100 text-red-700 border-red-300">{order.status}</Badge>
+                    {order.total > 0 && <span className="text-xs font-semibold text-gray-700">{order.total?.toFixed(2)} €</span>}
+                  </div>
+                </div>
+                <div className="flex gap-1 mt-2 pt-2 border-t flex-wrap">
+                  <button onClick={() => setPreviewOrder(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100">
+                    <Eye className="w-3 h-3" />Ver
+                  </button>
+                  <button onClick={() => handleEdit(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+                    <Edit className="w-3 h-3" />Editar
+                  </button>
+                  <button onClick={() => sendWhatsApp(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+                    <Phone className="w-3 h-3" />WA
                   </button>
                 </div>
               </CardContent>
@@ -626,6 +736,19 @@ export default function SAT() {
                     </Button>
                   </Link>
                 )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-purple-700 border-purple-300"
+                  onClick={() => {
+                    const satPublicoUrl = `${window.location.origin}/sat-publico?id=${previewOrder.id}`;
+                    const msg = encodeURIComponent(`Hola ${previewOrder.contact_name},\n\nLE PRESENTAMOS LA ORDEN SAT Nº${previewOrder.order_number}:\n\n🔧 Tipo: ${previewOrder.type?.replace(/_/g, ' ')}\n💶 Importe: ${previewOrder.total?.toFixed(2)} €\n\n➡️ Enlace para aceptar o rechazar:\n${satPublicoUrl}\n\nGracias por confiar en nosotros.`);
+                    window.open(`https://wa.me/${previewOrder.contact_id}?text=${msg}`, '_blank');
+                  }}
+                  title="Enviar SAT público por WhatsApp"
+                >
+                  🔗 Enviar SAT
+                </Button>
                 </div>
                 </>
                 )}
