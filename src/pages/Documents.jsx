@@ -173,9 +173,9 @@ export default function Documents() {
       baseForm.contact_nif = contact.nif || '';
       baseForm.contact_address = `${contact.address || ''}, ${contact.city || ''} ${contact.postal_code || ''} ${contact.province || ''}`.trim();
     }
-    // Auto-numerar: coger todos los doc_number del mismo tipo
-    const sametype = docs.filter((d) => d.doc_type === docType).map((d) => d.doc_number || '');
-    baseForm.doc_number = getNextAvailableNumber(sametype);
+    // Auto-numerar por tipo: cada tipo tiene su propia secuencia
+    const sameType = docs.filter((d) => d.doc_type === docType).map((d) => d.doc_number || '');
+    baseForm.doc_number = getNextAvailableNumber(sameType);
     // Comprobar si hay borrador para nuevo doc del mismo tipo
     const draft = restoreDraft();
     if (draft && !draft.editing && draft.form?.doc_type === docType) {
@@ -589,7 +589,15 @@ export default function Documents() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-2">
-              <Select value={form.doc_type} onValueChange={(v) => setForm((p) => ({ ...p, doc_type: v }))}>
+              <Select value={form.doc_type} onValueChange={(v) => {
+                // Al cambiar tipo, recalcular número automáticamente solo si es documento nuevo
+                if (!editing) {
+                  const sameType = docs.filter((d) => d.doc_type === v).map((d) => d.doc_number || '');
+                  setForm((p) => ({ ...p, doc_type: v, doc_number: getNextAvailableNumber(sameType) }));
+                } else {
+                  setForm((p) => ({ ...p, doc_type: v }));
+                }
+              }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{DOC_TYPES.map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
               </Select>
