@@ -359,10 +359,14 @@ function PresupuestoPublico() {
                   const icon = isAccepted ? '✅' : '❌';
                   const actionText = isAccepted ? 'ACEPTADO' : 'RECHAZADO';
                   const color = isAccepted ? 'text-green-700' : 'text-red-700';
+                  const methodLabel = item.method === 'email' ? '📧 Email' : item.method === 'whatsapp' ? '📱 WhatsApp' : '🌐 Web';
                   return (
                     <div key={idx} className="border-b border-blue-100 pb-2 last:border-b-0 last:pb-0">
                       <p className={`font-bold text-sm ${color}`}>{icon} {actionText}</p>
-                      <p className="text-xs text-gray-600 mt-1">📅 {item.datetime}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-gray-600">📅 {item.datetime}</p>
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{methodLabel}</span>
+                      </div>
                       {item.signature_url && (
                         <div className="mt-2">
                           <img src={item.signature_url} alt="Firma" className="max-w-[150px] border border-blue-200 rounded bg-white p-1" />
@@ -422,6 +426,11 @@ function PresupuestoPublico() {
                 {isPresupuesto ? 'Este presupuesto ya fue aceptado y firmado.' : `Este ${doc.doc_type} ya fue ${isFactura ? 'recibido' : 'firmado'}.`}
               </p>
               {doc.sign_datetime && <p className="text-xs text-gray-400 font-mono">🕐 {doc.sign_datetime}</p>}
+              {doc.signature_method && (
+                <p className="text-xs bg-green-100 text-green-700 inline-block px-2 py-1 rounded">
+                  {doc.signature_method === 'email' ? '📧 Firma cliente por email' : doc.signature_method === 'whatsapp' ? '📱 Firma cliente por WhatsApp' : '🌐 Firma cliente por web'}
+                </p>
+              )}
               {isPresupuesto && (
                 <Button
                   onClick={handleRequestChangeOpinion}
@@ -440,6 +449,11 @@ function PresupuestoPublico() {
               <XCircle className="w-10 h-10 text-red-400 mx-auto" />
               <p className="font-semibold text-gray-700">Este presupuesto fue rechazado y firmado.</p>
               {doc.sign_datetime && <p className="text-xs text-gray-400 font-mono">🕐 {doc.sign_datetime}</p>}
+              {doc.signature_method && (
+                <p className="text-xs bg-red-100 text-red-700 inline-block px-2 py-1 rounded">
+                  {doc.signature_method === 'email' ? '📧 Firma cliente por email' : doc.signature_method === 'whatsapp' ? '📱 Firma cliente por WhatsApp' : '🌐 Firma cliente por web'}
+                </p>
+              )}
               <p className="text-sm text-gray-500">¿Ha cambiado de opinión?</p>
               <div className="flex gap-2">
                 <Button

@@ -131,6 +131,16 @@
       "type": "string",
       "description": "Fecha y hora exacta de la firma del cliente (DD/MM/YYYY HH:MM:SS)"
     },
+    "signature_method": {
+      "type": "string",
+      "enum": [
+        "web",
+        "email",
+        "whatsapp"
+      ],
+      "default": "web",
+      "description": "M\u00e9todo por el cual se recibi\u00f3 la firma"
+    },
     "signature_history": {
       "type": "array",
       "description": "Historial de decisiones (aceptar/rechazar) con firmas y fechas",
@@ -152,6 +162,15 @@
           "datetime": {
             "type": "string",
             "description": "Fecha y hora (DD/MM/YYYY HH:MM:SS)"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "web",
+              "email",
+              "whatsapp"
+            ],
+            "description": "M\u00e9todo de firma"
           }
         }
       }
