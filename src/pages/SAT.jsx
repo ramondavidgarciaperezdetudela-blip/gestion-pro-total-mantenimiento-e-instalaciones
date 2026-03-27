@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, Printer, FileText, Link2 } from 'lucide-react';
 import TechnicianSelect from '../components/TechnicianSelect';
 import SATSignaturePanel from '../components/SATSignaturePanel';
+import SATSharePanel from '../components/SATSharePanel';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -66,17 +67,20 @@ export default function SAT() {
   const [activeTab, setActiveTab] = useState('lista');
   const [autoGenerateInvoice, setAutoGenerateInvoice] = useState(false);
   const [filterSignatureStatus, setFilterSignatureStatus] = useState('all'); // all, aceptadas, rechazadas
+  const [company, setCompany] = useState(null);
   const printRef = useRef(null);
 
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    const [o, c] = await Promise.all([
+    const [o, c, comp] = await Promise.all([
       base44.entities.SATOrder.list('-date', 500),
       base44.entities.Contact.list('name', 500),
+      base44.entities.CompanySettings.list().then(x => x[0]),
     ]);
     setOrders(o);
     setContacts(c);
+    setCompany(comp);
 
     // Abrir orden desde URL params
     if (preViewId) {
@@ -190,6 +194,18 @@ export default function SAT() {
     setForm({ ...EMPTY_FORM, ...order, materials_used: order.materials_used || [], photos_before: order.photos_before || [], photos_after: order.photos_after || [] });
     setDialogOpen(true);
   };
+
+  useEffect(() => {
+    if (!previewOrder) return;
+    const unsubscribe = base44.entities.SATOrder.subscribe((event) => {
+      if (event.id === previewOrder.id) {
+        base44.entities.SATOrder.filter({ id: previewOrder.id }).then(updated => {
+          if (updated[0]) setPreviewOrder(updated[0]);
+        });
+      }
+    });
+    return unsubscribe;
+  }, [previewOrder?.id]);
 
   const handleDelete = async (id) => {
     if (!confirm('¿Eliminar esta orden SAT?')) return;
@@ -706,10 +722,16 @@ export default function SAT() {
 
                 {/* Firmas digitales interactivas */}
                 <SATSignaturePanel
-                  order={previewOrder}
-                  onUpdate={(updated) => setPreviewOrder(updated)}
-                  contactEmail={contacts.find(c => c.id === previewOrder.contact_id)?.email || null}
-                />
+                    order={previewOrder}
+                    onUpdate={(updated) => setPreviewOrder(updated)}
+                    contactEmail={contacts.find(c => c.id === previewOrder.contact_id)?.email || null}
+                  />
+
+                  {/* Panel de compartir SAT */}
+                  <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                    <p className="text-xs font-medium text-blue-900 mb-2">📤 Compartir con cliente</p>
+                    <SATSharePanel sat={previewOrder} company={company} />
+                  </div>
               </div>
               <div className="flex gap-2 mt-3 flex-wrap no-print">
                 <PrintButton contentRef={printRef} title={`SAT_${previewOrder.order_number || 'orden'}`} />

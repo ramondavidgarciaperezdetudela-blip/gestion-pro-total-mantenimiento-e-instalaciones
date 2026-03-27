@@ -7,6 +7,7 @@ import ChangeOpinionAlerts from '../components/ChangeOpinionAlerts';
 import PendingTasksPanel from '../components/PendingTasksPanel';
 import AutomationStatus from '../components/AutomationStatus';
 import DocumentsStatusPanel from '../components/DocumentsStatusPanel';
+import MissingSATSignatures from '../components/MissingSATSignatures';
 import { createPageUrl } from '../utils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -267,6 +268,7 @@ export default function Home() {
 
       {/* Estado de Documentos - Presupuestos y SAT */}
       <DocumentsStatusPanel />
+      <MissingSATSignatures />
 
       {/* Cambios de opinión solicitados */}
       <ChangeOpinionAlerts />
