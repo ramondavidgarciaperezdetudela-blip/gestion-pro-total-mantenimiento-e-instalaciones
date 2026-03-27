@@ -56,20 +56,25 @@ Deno.serve(async (req) => {
       console.log('Intentando envío directo...');
     }
 
-    // Enviar WhatsApp al admin
-    if (company?.phone) {
-      const cleanPhone = company.phone.replace(/\D/g, '');
-      if (cleanPhone) {
-        const waMsg = `⚠️ *CAMBIO DE OPINIÓN SOLICITADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc_number || ''}\n👤 ${contact_name}\n💶 ${(total || 0).toFixed(2)} €\n\nEl cliente ha solicitado cambiar su decisión. Accede a tu ficha para revisar el historial.\n\nEnlace: ${presupuestoUrl}`;
-        try {
-          await base44.asServiceRole.functions.invoke('enviarCopiaFirmada', {
-            to: company.email,
-            subject: `WhatsApp enviado`,
-            body: waMsg
-          });
-        } catch (_err) {
-          console.log('WhatsApp no enviado, continuando...');
-        }
+    // Generar enlace de WhatsApp para contactar al cliente
+    const clientPhone = contact_phone?.replace(/\D/g, '') || '';
+    if (company?.phone && clientPhone) {
+      const adminPhone = company.phone.replace(/\D/g, '');
+      const clientPhoneLink = clientPhone.startsWith('34') ? clientPhone : `34${clientPhone}`;
+      
+      // Mensaje pre-formateado para el admin con enlace de WhatsApp al cliente
+      const waLinkToClient = `https://wa.me/${clientPhoneLink}?text=${encodeURIComponent(`Hola ${contact_name},\n\nVi que solicitaste cambiar tu decisión sobre el presupuesto Nº${doc_number} por ${(total || 0).toFixed(2)} €.\n\nTe reenvío el enlace para que puedas aceptarlo o rechazarlo de nuevo:\n\n${presupuestoUrl}\n\nQuedamos a tu disposición.`)}`;
+      
+      const adminWaMsg = `⚠️ *CAMBIO DE OPINIÓN SOLICITADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc_number || ''}\n👤 ${contact_name}\n💶 ${(total || 0).toFixed(2)} €\n\n${contact_phone ? `📱 ${contact_phone}\n` : ''}\nEl cliente ha solicitado cambiar su decisión.\n\n🔗 Contactar al cliente:\n${waLinkToClient}`;
+      
+      try {
+        await base44.asServiceRole.integrations.Core.SendEmail({
+          to: company.email,
+          subject: `📱 WhatsApp - Cambio de opinión solicitado (${contact_name} - ${doc_number})`,
+          body: `<div style="font-family:Arial,sans-serif;max-width:600px"><div style="background:#f5a623;color:white;padding:16px;border-radius:8px 8px 0 0"><h2 style="margin:0">⚠️ Solicitud de cambio de opinión</h2></div><div style="border:1px solid #fcd34d;border-top:none;padding:20px;background:#fff"><p>${contact_name} ha solicitado cambiar su decisión.</p><p style="margin:12px 0"><strong>${doc.doc_type?.toUpperCase()} Nº${doc_number}</strong> | ${(total || 0).toFixed(2)} €</p><p style="margin:12px 0"><a href="${waLinkToClient}" style="display:inline-block;padding:12px 20px;background:#25d366;color:white;text-decoration:none;border-radius:6px;font-weight:bold;font-size:14px">📱 Enviar por WhatsApp</a></p></div></div>`
+        });
+      } catch (_err) {
+        console.log('Email de notificación no enviado, continuando...');
       }
     }
 
