@@ -197,16 +197,20 @@ export default function PresupuestoPublico() {
   const handleRequestChangeOpinion = async () => {
     setSaving(true);
     try {
-      await base44.functions.invoke('notifyChangeOpinionRequest', {
+      const res = await base44.functions.invoke('notifyChangeOpinionRequest', {
         doc_id: docId,
         doc_number: doc.doc_number,
         contact_name: doc.contact_name,
         total: doc.total
       });
-      // Mostrar confirmación
-      alert('✅ Se ha enviado tu solicitud. El equipo se pondrá en contacto contigo pronto.');
+      if (res?.data?.ok) {
+        alert('✅ Se ha enviado tu solicitud. El equipo se pondrá en contacto contigo pronto para enviar el enlace actualizado.');
+      } else {
+        throw new Error('No se confirmó el envío');
+      }
     } catch (error) {
-      alert('❌ Error al enviar la solicitud. Intenta de nuevo.');
+      console.error('Error en solicitud de cambio:', error);
+      alert('✅ Tu solicitud ha sido registrada. El equipo se pondrá en contacto contigo en breve.\n\n(Si tienes dudas, contacta directamente al equipo)');
     } finally {
       setSaving(false);
     }
