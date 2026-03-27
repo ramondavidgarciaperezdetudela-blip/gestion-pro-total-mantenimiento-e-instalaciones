@@ -1,5 +1,16 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
+async function sendWhatsApp(phone, message) {
+  if (!phone) return;
+  const cleanPhone = phone.replace(/\D/g, '');
+  if (!cleanPhone) return;
+  // Usar la API de WhatsApp web con un enlace de texto (no requiere integración)
+  // Esto genera un mensaje preformateado que se abre en WhatsApp del cliente
+  // Para envío automático real se necesitaría Twilio/WhatsApp Business API
+  // Por ahora guardamos el mensaje para mostrarlo
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -19,6 +30,13 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date().toISOString();
+
+    // Buscar teléfono del contacto para WhatsApp
+    let contactPhone = null;
+    if (doc.contact_id) {
+      const contacts = await base44.asServiceRole.entities.Contact.filter({ id: doc.contact_id });
+      contactPhone = contacts?.[0]?.phone || contacts?.[0]?.phone2 || null;
+    }
 
     if (action === 'rechazar') {
       const updateData = { status: 'cancelado' };
@@ -58,6 +76,11 @@ ${signature ? `<img src="${signature}" alt="Firma cliente" style="max-width:300p
             `.trim()
           });
         }
+
+        // Generar enlace WhatsApp para el cliente con resumen del rechazo
+        const waMsg = `❌ *PRESUPUESTO RECHAZADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}\n👤 ${doc.contact_name}\n💶 ${(doc.total || 0).toFixed(2)} €\n📅 Fecha: ${now.split('T')[0]}\n\nHemos recibido su firma de rechazo. Si desea revisarlo o tiene alguna consulta, contáctenos.\n\n— ${company?.company_name || ''}`;
+        const waUrl = await sendWhatsApp(contactPhone, waMsg);
+        return Response.json({ ok: true, action: 'rechazado', whatsapp_url: waUrl });
       } catch (_emailErr) {
         // No fallar si el email no se envía
       }
@@ -108,6 +131,11 @@ ${signature ? `<img src="${signature}" alt="Firma cliente" style="max-width:300p
             `.trim()
           });
         }
+
+        // Generar enlace WhatsApp para el cliente con resumen de aceptación
+        const waMsg = `✅ *PRESUPUESTO ACEPTADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}\n👤 ${doc.contact_name}\n💶 ${(doc.total || 0).toFixed(2)} €\n📅 Fecha: ${now.split('T')[0]}\n\nHemos recibido su firma de aceptación. Nos pondremos en contacto con usted en breve para coordinar los trabajos.\n\nGracias por confiar en nosotros.\n\n— ${company?.company_name || ''}`;
+        const waUrl = await sendWhatsApp(contactPhone, waMsg);
+        return Response.json({ ok: true, action: 'aceptado', whatsapp_url: waUrl });
       } catch (_emailErr) {
         // No fallar si el email no se envía
       }
