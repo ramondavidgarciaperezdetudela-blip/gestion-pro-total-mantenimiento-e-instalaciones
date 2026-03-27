@@ -9,10 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   Plus, FolderOpen, Trash2, Edit, ChevronDown, ChevronUp,
   Users, Calendar, CheckCircle2, Circle, Clock, AlertTriangle,
-  BarChart3, Target, Zap, ListTodo
+  BarChart3, Target, Zap, ListTodo, GripVertical
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
@@ -303,25 +304,73 @@ export default function Projects() {
         </TabsContent>
 
         <TabsContent value="kanban" className="pt-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-            {STATUSES.map(status => (
-              <div key={status} className="space-y-2">
-                <div className={`text-xs font-semibold px-2 py-1 rounded-full text-center ${STATUS_COLORS[status]}`}>
-                  {status.replace(/_/g, ' ')} ({filtered.filter(p => p.status === status).length})
-                </div>
-                {filtered.filter(p => p.status === status).map(p => (
-                  <Card key={p.id} className="hover:shadow-md cursor-pointer" onClick={() => handleEdit(p)}>
-                    <CardContent className="p-3">
-                      <p className="font-medium text-sm truncate">{p.name}</p>
-                      {p.contact_name && <p className="text-xs text-gray-400 truncate">👤 {p.contact_name}</p>}
-                      <Progress value={p.progress || 0} className="h-1.5 mt-2" />
-                      <p className="text-xs text-gray-400 mt-1">{p.progress || 0}%</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ))}
-          </div>
+          <DragDropContext onDragEnd={async (result) => {
+            if (!result.destination) return;
+            const { draggableId, destination } = result;
+            const newStatus = destination.droppableId;
+            if (newStatus === result.source.droppableId) return;
+            await handleStatusChange(draggableId, newStatus);
+          }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 items-start">
+              {STATUSES.map(status => {
+                const colProjects = filtered.filter(p => p.status === status);
+                return (
+                  <div key={status} className="flex flex-col min-h-[200px]">
+                    <div className={`text-xs font-semibold px-2 py-1.5 rounded-lg text-center mb-2 border ${STATUS_COLORS[status]}`}>
+                      {status.replace(/_/g, ' ')} <span className="opacity-60">({colProjects.length})</span>
+                    </div>
+                    <Droppable droppableId={status}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={`flex-1 space-y-2 rounded-lg p-1 min-h-[80px] transition-colors ${snapshot.isDraggingOver ? 'bg-blue-50 border-2 border-dashed border-blue-300' : ''}`}
+                        >
+                          {colProjects.map((p, index) => (
+                            <Draggable key={p.id} draggableId={p.id} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                >
+                                  <Card className={`hover:shadow-md transition-shadow ${snapshot.isDragging ? 'shadow-lg rotate-1 opacity-90' : ''}`}>
+                                    <CardContent className="p-3">
+                                      <div className="flex items-start gap-1.5">
+                                        <div {...provided.dragHandleProps} className="mt-0.5 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 flex-shrink-0">
+                                          <GripVertical className="w-4 h-4" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-start justify-between gap-1">
+                                            <p className="font-medium text-sm truncate">{p.name}</p>
+                                            <button onClick={() => handleEdit(p)} className="text-gray-300 hover:text-blue-500 flex-shrink-0 ml-1">
+                                              <Edit className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+                                          {p.contact_name && <p className="text-xs text-gray-400 truncate mt-0.5">👤 {p.contact_name}</p>}
+                                          {p.budget > 0 && <p className="text-xs text-green-700 font-medium mt-0.5">💰 {p.budget?.toLocaleString('es-ES')} €</p>}
+                                          <div className={`w-2 h-2 rounded-full mt-1.5 ${TYPE_COLORS[p.type] || 'bg-gray-400'}`} />
+                                          <Progress value={p.progress || 0} className="h-1.5 mt-1.5" />
+                                          <p className="text-xs text-gray-400 mt-0.5">{p.progress || 0}%</p>
+                                        </div>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                          {colProjects.length === 0 && !snapshot.isDraggingOver && (
+                            <p className="text-xs text-gray-300 text-center py-6">Sin proyectos</p>
+                          )}
+                        </div>
+                      )}
+                    </Droppable>
+                  </div>
+                );
+              })}
+            </div>
+          </DragDropContext>
         </TabsContent>
       </Tabs>
 
