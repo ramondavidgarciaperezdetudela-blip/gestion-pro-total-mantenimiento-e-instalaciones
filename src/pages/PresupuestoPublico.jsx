@@ -187,6 +187,10 @@ export default function PresupuestoPublico() {
 
   const cs = company || {};
   // Aceptado: tiene firma y status es enviado, pagado o vencido (no borrador, no cancelado)
+  const isPresupuesto = doc?.doc_type === 'presupuesto';
+  const isFactura = doc?.doc_type === 'factura';
+  const isRecibo = doc?.doc_type === 'recibo';
+  
   const yaFirmado = doc && doc.signature_client && ['enviado', 'pagado', 'vencido'].includes(doc.status);
   const rechazadoYFirmado = doc && doc.status === 'cancelado' && doc.signature_client;
 
@@ -310,46 +314,67 @@ export default function PresupuestoPublico() {
             </div>
           )}
 
-          {/* Botones de acción dentro del documento — siempre visibles */}
+          {/* Botones según tipo de documento */}
           {!yaFirmado && !rechazadoYFirmado && step === 'decision' && (
             <div className="border-t pt-4 space-y-3">
-              <p className="text-center text-sm font-semibold text-slate-700">¿Acepta este presupuesto?</p>
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => { setStep('sign-reject'); scrollToSign(); }}
-                  variant="outline"
-                  className="flex-1 border-red-200 text-red-600 hover:bg-red-50 h-12 text-base"
-                >
-                  <X className="w-4 h-4 mr-2" /> No acepto
-                </Button>
-                <Button
-                  onClick={() => { setStep('sign'); scrollToSign(); }}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
-                >
-                  <Check className="w-4 h-4 mr-2" /> Acepto y firmo
-                </Button>
-              </div>
+              {isPresupuesto && (
+                <>
+                  <p className="text-center text-sm font-semibold text-slate-700">¿Acepta este presupuesto?</p>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => { setStep('sign-reject'); scrollToSign(); }}
+                      variant="outline"
+                      className="flex-1 border-red-200 text-red-600 hover:bg-red-50 h-12 text-base"
+                    >
+                      <X className="w-4 h-4 mr-2" /> No acepto
+                    </Button>
+                    <Button
+                      onClick={() => { setStep('sign'); scrollToSign(); }}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
+                    >
+                      <Check className="w-4 h-4 mr-2" /> Acepto y firmo
+                    </Button>
+                  </div>
+                </>
+              )}
+              {(isFactura || isRecibo) && (
+                <>
+                  <p className="text-center text-sm font-semibold text-slate-700">
+                    {isFactura ? 'Confirme recepción de la factura' : 'Firme para confirmar recepción'}
+                  </p>
+                  <Button
+                    onClick={() => { setStep('sign'); scrollToSign(); }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-base font-semibold"
+                  >
+                    <Check className="w-4 h-4 mr-2" /> {isFactura ? 'Confirmar y firmar' : 'Firmar'}
+                  </Button>
+                </>
+              )}
             </div>
           )}
 
-          {/* Ya aceptado */}
+          {/* Ya firmado */}
           {yaFirmado && (
             <div className="border-t pt-4 text-center space-y-3">
               <CheckCircle className="w-10 h-10 text-green-500 mx-auto" />
-              <p className="font-semibold text-green-700">Este presupuesto ya fue aceptado y firmado.</p>
+              <p className="font-semibold text-green-700">
+                {isPresupuesto ? 'Este presupuesto ya fue aceptado y firmado.' : `Este ${doc.doc_type} ya fue ${isFactura ? 'recibido' : 'firmado'}.`}
+              </p>
               {doc.sign_datetime && <p className="text-xs text-gray-400 font-mono">🕐 {doc.sign_datetime}</p>}
-              <Button
-                onClick={handleRequestChangeOpinion}
-                disabled={saving}
-                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white h-10 text-sm"
-              >
-                <MessageCircle className="w-4 h-4 mr-2" /> Solicitar cambio de opinión
-              </Button>
+              {isPresupuesto && (
+                <Button
+                  onClick={handleRequestChangeOpinion}
+                  disabled={saving}
+                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-white h-10 text-sm"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" /> Solicitar cambio de opinión
+                </Button>
+              )}
             </div>
           )}
 
-          {/* Rechazado — opción de cambiar de opinión */}
-          {rechazadoYFirmado && step === 'decision' && (
+          {/* Rechazado — opción de cambiar de opinión (solo presupuestos) */}
+          {rechazadoYFirmado && step === 'decision' && isPresupuesto && (
             <div className="border-t pt-4 text-center space-y-3">
               <XCircle className="w-10 h-10 text-red-400 mx-auto" />
               <p className="font-semibold text-gray-700">Este presupuesto fue rechazado y firmado.</p>
@@ -379,10 +404,17 @@ export default function PresupuestoPublico() {
           {step === 'sign' && (
             <div className="bg-white rounded-2xl shadow-sm border border-green-200 p-5 space-y-4">
               <h3 className="text-base font-bold text-green-700 text-center flex items-center justify-center gap-2">
-                <PenLine className="w-5 h-5" /> Firma de aceptación
+                <PenLine className="w-5 h-5" /> 
+                {isPresupuesto ? 'Firma de aceptación' : isFactura ? 'Firma de recepción' : 'Firma de conformidad'}
               </h3>
               <p className="text-sm text-gray-500 text-center">
-                Al firmar confirma la aceptación del presupuesto <strong>Nº {doc.doc_number}</strong> por importe de <strong>{(doc.total || 0).toFixed(2)} €</strong>
+                {isPresupuesto ? (
+                  <>Al firmar confirma la aceptación del presupuesto <strong>Nº {doc.doc_number}</strong> por importe de <strong>{(doc.total || 0).toFixed(2)} €</strong></>
+                ) : isFactura ? (
+                  <>Al firmar confirma la recepción de la factura <strong>Nº {doc.doc_number}</strong> por importe de <strong>{(doc.total || 0).toFixed(2)} €</strong></>
+                ) : (
+                  <>Al firmar confirma la recepción del recibo <strong>Nº {doc.doc_number}</strong> por importe de <strong>{(doc.total || 0).toFixed(2)} €</strong></>
+                )}
               </p>
               {saving ? (
                 <div className="flex flex-col items-center justify-center py-10 gap-3">
@@ -399,7 +431,7 @@ export default function PresupuestoPublico() {
             </div>
           )}
 
-          {step === 'sign-reject' && (
+          {step === 'sign-reject' && isPresupuesto && (
             <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-5 space-y-4">
               <h3 className="text-base font-bold text-red-700 text-center flex items-center justify-center gap-2">
                 <XCircle className="w-5 h-5" /> Firma de rechazo
