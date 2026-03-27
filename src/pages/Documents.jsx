@@ -291,7 +291,7 @@ export default function Documents() {
     setDocs(docs.map((d) => d.id === doc.id ? { ...d, status: newStatus } : d));
   };
 
-  const getSignLink = (doc) => `${window.location.origin}/presupuesto-publico?id=${doc.id}`;
+  const getSignLink = (doc, method = 'web') => `${window.location.origin}/presupuesto-publico?id=${doc.id}&method=${method}`;
 
   const sendWhatsApp = (doc) => {
     const c = contacts.find((x) => x.id === doc.contact_id);
@@ -321,7 +321,7 @@ export default function Documents() {
 
   const sendSignLink = (doc, via) => {
     const c = contacts.find((x) => x.id === doc.contact_id);
-    const link = getSignLink(doc);
+    const link = getSignLink(doc, via);
     const isAlreadySent = !!doc.signature_client || doc.status === 'enviado';
     const avisoReenvio = isAlreadySent
       ? `\n\n⚠️ *AVISO: Este presupuesto ya fue enviado anteriormente. Este enlace es únicamente para aceptarlo o rechazarlo digitalmente y dejar constancia firmada.*`
@@ -348,8 +348,7 @@ export default function Documents() {
 
   const sendChangeOpinionLink = (doc, via) => {
     const c = contacts.find((x) => x.id === doc.contact_id);
-    const link = getSignLink(doc);
-    const presupuestoUrl = `${window.location.origin}/presupuesto-publico?id=${doc.id}`;
+    const presupuestoUrl = `${window.location.origin}/presupuesto-publico?id=${doc.id}&method=${via}`;
 
     if (via === 'whatsapp') {
       const phone = c?.phone?.replace(/[^0-9]/g, '') || '';

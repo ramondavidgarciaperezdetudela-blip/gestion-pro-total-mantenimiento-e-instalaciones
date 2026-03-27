@@ -141,6 +141,7 @@ function SignaturePad({ onSave }) {
 function PresupuestoPublico() {
   const params = new URLSearchParams(window.location.search);
   const docId = params.get('id');
+  const method = params.get('method') || 'web'; // Detecta si vino por email, whatsapp o web
 
   const [doc, setDoc] = useState(null);
   const [company, setCompany] = useState(null);
@@ -168,7 +169,8 @@ function PresupuestoPublico() {
       const res = await base44.functions.invoke('aceptarPresupuesto', {
         doc_id: docId,
         signature: signatureDataUrl,
-        action: 'aceptar'
+        action: 'aceptar',
+        method: method
       });
       const dt = res?.data?.sign_datetime || null;
       const updatedDoc = { ...doc, status: 'enviado', signature_client: signatureDataUrl, sign_datetime: dt };
@@ -199,7 +201,8 @@ function PresupuestoPublico() {
       const res = await base44.functions.invoke('aceptarPresupuesto', {
         doc_id: docId,
         signature: signatureDataUrl,
-        action: 'rechazar'
+        action: 'rechazar',
+        method: method
       });
       const dt = res?.data?.sign_datetime || null;
       const updatedDoc = { ...doc, status: 'cancelado', signature_client: signatureDataUrl, sign_datetime: dt };

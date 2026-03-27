@@ -40,8 +40,9 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true });
     }
 
-    // Generar enlace al presupuesto
-    const presupuestoUrl = `https://app.base44.io/presupuesto-publico?id=${doc_id}`;
+    // Generar enlaces al presupuesto con método de acceso
+    const presupuestoUrlEmail = `https://app.base44.io/presupuesto-publico?id=${doc_id}&method=email`;
+    const presupuestoUrlWhatsapp = `https://app.base44.io/presupuesto-publico?id=${doc_id}&method=whatsapp`;
 
     // Enviar email al admin
     const emailBodyAdmin = `
@@ -57,7 +58,7 @@ Deno.serve(async (req) => {
           <tr style="background:#f9fafb"><td style="padding:8px;color:#666"><strong>Importe:</strong></td><td style="padding:8px;font-weight:bold">${(total || 0).toFixed(2)} €</td></tr>
         </table>
         <p style="color:#555;font-size:13px;margin:12px 0">Puedes enviar el enlace de nuevo al cliente para que actualice su decisión:</p>
-        <p style="margin:12px 0"><a href="${presupuestoUrl}" style="display:inline-block;padding:10px 16px;background:#0ea5e9;color:white;text-decoration:none;border-radius:6px;font-weight:bold">📄 Abrir presupuesto</a></p>
+        <p style="margin:12px 0"><a href="${presupuestoUrlEmail}" style="display:inline-block;padding:10px 16px;background:#0ea5e9;color:white;text-decoration:none;border-radius:6px;font-weight:bold">📄 Abrir presupuesto</a></p>
         <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb"/>
         <p style="font-size:12px;color:#999">${company?.company_name || ''} · ${company?.email || ''} · ${company?.phone || ''}</p>
       </div>
@@ -83,7 +84,7 @@ Deno.serve(async (req) => {
       const clientPhoneLink = clientPhone.startsWith('34') ? clientPhone : `34${clientPhone}`;
       
       // Mensaje pre-formateado para el admin con enlace de WhatsApp al cliente
-      const waLinkToClient = `https://wa.me/${clientPhoneLink}?text=${encodeURIComponent(`Hola ${contact_name},\n\nVi que solicitaste cambiar tu decisión sobre el presupuesto Nº${doc_number} por ${(total || 0).toFixed(2)} €.\n\nTe reenvío el enlace para que puedas aceptarlo o rechazarlo de nuevo:\n\n${presupuestoUrl}\n\nQuedamos a tu disposición.`)}`;
+      const waLinkToClient = `https://wa.me/${clientPhoneLink}?text=${encodeURIComponent(`Hola ${contact_name},\n\nVi que solicitaste cambiar tu decisión sobre el presupuesto Nº${doc_number} por ${(total || 0).toFixed(2)} €.\n\nTe reenvío el enlace para que puedas aceptarlo o rechazarlo de nuevo:\n\n${presupuestoUrlWhatsapp}\n\nQuedamos a tu disposición.`)}`;
       
       const adminWaMsg = `⚠️ *CAMBIO DE OPINIÓN SOLICITADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc_number || ''}\n👤 ${contact_name}\n💶 ${(total || 0).toFixed(2)} €\n\n${contact_phone ? `📱 ${contact_phone}\n` : ''}\nEl cliente ha solicitado cambiar su decisión.\n\n🔗 Contactar al cliente:\n${waLinkToClient}`;
       
