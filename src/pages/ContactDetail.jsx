@@ -20,6 +20,7 @@ import { es } from 'date-fns/locale';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import InvoicePreviewDialog from '../components/InvoicePreviewDialog';
+import SignatureHistoryViewer from '../components/SignatureHistoryViewer';
 
 function ChangeHistoryTab({ contactId }) {
   const [logs, setLogs] = React.useState([]);
@@ -337,30 +338,35 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
   };
 
   const DocCard = ({ doc, type, onDelete }) => (
-    <Card className="hover:shadow-sm cursor-pointer" onClick={() => setInvoiceDialog(doc)}>
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm truncate">{doc.doc_number || doc.title || doc.order_number || `${type} sin nº`}</p>
-            <p className="text-xs text-gray-500">{fmtDate(doc.date)} {doc.total != null ? `| ${doc.total?.toFixed(2)} €` : ''}</p>
-            <Badge variant="outline" className="text-[10px] mt-1">{doc.status || doc.doc_type || type}</Badge>
+    <div className="space-y-2">
+      <Card className="hover:shadow-sm cursor-pointer" onClick={() => setInvoiceDialog(doc)}>
+        <CardContent className="p-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm truncate">{doc.doc_number || doc.title || doc.order_number || `${type} sin nº`}</p>
+              <p className="text-xs text-gray-500">{fmtDate(doc.date)} {doc.total != null ? `| ${doc.total?.toFixed(2)} €` : ''}</p>
+              <Badge variant="outline" className="text-[10px] mt-1">{doc.status || doc.doc_type || type}</Badge>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-1 mt-2 flex-wrap" onClick={e => e.stopPropagation()}>
-          <button onClick={() => setInvoiceDialog(doc)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
-            <Eye className="w-3 h-3" /> Ver
-          </button>
-          <Link to={createPageUrl(`Documents?edit=${doc.id}`)} onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-50 text-gray-700 hover:bg-gray-100">
-            <Edit className="w-3 h-3" /> Editar
-          </Link>
-          {onDelete && (
-            <button onClick={() => { if(confirm('¿Eliminar?')) onDelete(doc.id); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
-              <Trash2 className="w-3 h-3" /> Eliminar
+          <div className="flex gap-1 mt-2 flex-wrap" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setInvoiceDialog(doc)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+              <Eye className="w-3 h-3" /> Ver
             </button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            <Link to={createPageUrl(`Documents?edit=${doc.id}`)} onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-50 text-gray-700 hover:bg-gray-100">
+              <Edit className="w-3 h-3" /> Editar
+            </Link>
+            {onDelete && (
+              <button onClick={() => { if(confirm('¿Eliminar?')) onDelete(doc.id); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
+                <Trash2 className="w-3 h-3" /> Eliminar
+              </button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      {doc.signature_history && doc.signature_history.length > 0 && (
+        <SignatureHistoryViewer signatureHistory={doc.signature_history} />
+      )}
+    </div>
   );
 
   return (
