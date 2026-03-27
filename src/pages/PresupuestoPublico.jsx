@@ -164,30 +164,62 @@ function PresupuestoPublico() {
 
   const handleSign = async (signatureDataUrl) => {
     setSaving(true);
-    const res = await base44.functions.invoke('aceptarPresupuesto', {
-      doc_id: docId,
-      signature: signatureDataUrl,
-      action: 'aceptar'
-    });
-    const dt = res?.data?.sign_datetime || null;
-    setSaving(false);
-    // Actualizar doc local para mostrar estado firmado
-    setDoc(prev => ({ ...prev, status: 'enviado', signature_client: signatureDataUrl, sign_datetime: dt }));
+    try {
+      const res = await base44.functions.invoke('aceptarPresupuesto', {
+        doc_id: docId,
+        signature: signatureDataUrl,
+        action: 'aceptar'
+      });
+      const dt = res?.data?.sign_datetime || null;
+      const updatedDoc = { ...doc, status: 'enviado', signature_client: signatureDataUrl, sign_datetime: dt };
+      setDoc(updatedDoc);
+      
+      // Si hay signature_history, es cambio de opinión — enviar copia firmada
+      if (doc.signature_history && doc.signature_history.length > 0) {
+        try {
+          await base44.functions.invoke('enviarCopiaFirmada', {
+            doc_id: docId,
+            action: 'aceptar',
+            is_change_opinion: true
+          });
+        } catch (e) {
+          console.error('Error enviando copia:', e);
+        }
+      }
+    } finally {
+      setSaving(false);
+    }
     setStep('decision');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleRejectWithSign = async (signatureDataUrl) => {
     setSaving(true);
-    const res = await base44.functions.invoke('aceptarPresupuesto', {
-      doc_id: docId,
-      signature: signatureDataUrl,
-      action: 'rechazar'
-    });
-    const dt = res?.data?.sign_datetime || null;
-    setSaving(false);
-    // Actualizar doc local para mostrar estado rechazado
-    setDoc(prev => ({ ...prev, status: 'cancelado', signature_client: signatureDataUrl, sign_datetime: dt }));
+    try {
+      const res = await base44.functions.invoke('aceptarPresupuesto', {
+        doc_id: docId,
+        signature: signatureDataUrl,
+        action: 'rechazar'
+      });
+      const dt = res?.data?.sign_datetime || null;
+      const updatedDoc = { ...doc, status: 'cancelado', signature_client: signatureDataUrl, sign_datetime: dt };
+      setDoc(updatedDoc);
+      
+      // Si hay signature_history, es cambio de opinión — enviar copia firmada
+      if (doc.signature_history && doc.signature_history.length > 0) {
+        try {
+          await base44.functions.invoke('enviarCopiaFirmada', {
+            doc_id: docId,
+            action: 'rechazar',
+            is_change_opinion: true
+          });
+        } catch (e) {
+          console.error('Error enviando copia:', e);
+        }
+      }
+    } finally {
+      setSaving(false);
+    }
     setStep('decision');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
