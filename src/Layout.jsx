@@ -18,7 +18,7 @@ import AIChat from './components/AIChat';
 const MAIN_TABS = [
   { name: 'Inicio', page: 'Home', icon: Home },
   { name: 'SAT', page: 'SAT', icon: Wrench },
-  { name: 'IA', page: 'AIAssistant', icon: Bot },
+  { name: 'Inventario', page: 'Inventory', icon: Package },
   { name: 'Agenda', page: 'Agenda', icon: Calendar },
   { name: 'Más', page: null, icon: MoreHorizontal, isMore: true },
 ];

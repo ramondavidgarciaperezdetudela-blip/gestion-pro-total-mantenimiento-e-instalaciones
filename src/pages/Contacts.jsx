@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
+import PullToRefresh from '../components/PullToRefresh';
 import { createPageUrl } from '../utils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -171,10 +172,10 @@ export default function Contacts() {
 
   useEffect(() => { loadContacts(); }, []);
 
-  const loadContacts = async () => {
+  const loadContacts = useCallback(async () => {
     const data = await base44.entities.Contact.list('-created_date', 500);
     setContacts(data);
-  };
+  }, []);
 
   const handleSave = async () => {
     if (editing) await base44.entities.Contact.update(editing.id, form);
@@ -235,6 +236,7 @@ export default function Contacts() {
   const clientCount = contacts.filter(c => c.type === 'cliente').length;
 
   return (
+    <PullToRefresh onRefresh={loadContacts}>
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -399,5 +401,6 @@ export default function Contacts() {
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }
