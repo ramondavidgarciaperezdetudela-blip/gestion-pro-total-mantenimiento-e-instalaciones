@@ -421,7 +421,8 @@ export default function Maintenance() {
                 <PhotoGallery photos={form.photos_condenser_plate} onChange={p => setForm({ ...form, photos_condenser_plate: p })} label="Placa condensadora" maxPhotos={5} />
               </>}
 
-              {/* Signatures */}
+              {/* Signatures — solo aparece cuando hay datos suficientes en la hoja */}
+              {(form.contact_name || form.equipment_brand || form.equipment_model || form.observations || form.technician_name) && (
               <div className="border rounded-lg p-3 space-y-2">
                 <p className="font-medium text-sm">Firmas</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -453,6 +454,7 @@ export default function Maintenance() {
                   </div>
                 </div>
               </div>
+              )}
 
               <Button onClick={handleSave} className="w-full bg-cyan-600">{editing ? 'Actualizar' : 'Guardar ficha'}</Button>
             </div>
