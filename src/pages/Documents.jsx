@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Plus, Search, FileText, Trash2, Edit, Eye, ShoppingCart, Copy,
   ChevronDown, ChevronUp, Save, Phone, Mail, BarChart3, TrendingUp,
-  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer, FileDown, Bell, X } from
+  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer, FileDown, Bell, X, Link, Send } from
 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import { format, startOfMonth } from 'date-fns';
@@ -317,6 +317,33 @@ export default function Documents() {
       `Estimado/a *${doc.contact_name}*,\n\nLe recordamos que tiene pendiente de respuesta nuestro *PRESUPUESTO Nº${doc.doc_number}* de fecha ${doc.date} por importe de *${doc.total?.toFixed(2)} €*.\n\nHace ${diasPendiente} días que está pendiente de confirmación.\n\nPuede *ACEPTAR o RECHAZAR* el presupuesto y firmarlo digitalmente aquí:\n${link}\n\nQuedamos a su disposición para cualquier consulta.`
     );
     window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+  };
+
+  const sendSignLink = (doc, via) => {
+    const c = contacts.find((x) => x.id === doc.contact_id);
+    const link = getSignLink(doc);
+    const isAlreadySent = !!doc.signature_client || doc.status === 'enviado';
+    const avisoReenvio = isAlreadySent
+      ? `\n\n⚠️ *AVISO: Este presupuesto ya fue enviado anteriormente. Este enlace es únicamente para aceptarlo o rechazarlo digitalmente y dejar constancia firmada.*`
+      : '';
+
+    if (via === 'whatsapp') {
+      const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
+      const msg = encodeURIComponent(
+        `Estimado/a *${doc.contact_name}*,\n\nLe enviamos el enlace para *ACEPTAR o RECHAZAR* el presupuesto con su firma digital:\n\n📄 *${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}*\n💶 Total: *${doc.total?.toFixed(2)} €*\n📅 Fecha: ${doc.date}\n\n🔗 *Firmar aquí:*\n${link}${avisoReenvio}`
+      );
+      window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+    } else {
+      const email = c?.email || '';
+      const subject = encodeURIComponent(`Solicitud de firma - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}`);
+      const avisoEmail = isAlreadySent
+        ? `\n\n⚠️ AVISO: Este presupuesto ya fue enviado anteriormente. Este enlace es únicamente para aceptarlo o rechazarlo digitalmente y dejar constancia firmada.`
+        : '';
+      const body = encodeURIComponent(
+        `Estimado/a ${doc.contact_name},\n\nLe enviamos el enlace para ACEPTAR o RECHAZAR el presupuesto con su firma digital:\n\n${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}\nTotal: ${doc.total?.toFixed(2)} €\nFecha: ${doc.date}\n\nFirmar aquí:\n${link}${avisoEmail}\n\nQuedamos a su disposición.`
+      );
+      window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+    }
   };
 
   const sendReminderEmail = (doc) => {
@@ -816,6 +843,31 @@ export default function Documents() {
                   </div>
                 </div>
               </div>
+              {/* Bloque enviar enlace de firma para presupuestos */}
+              {previewDoc?.doc_type === 'presupuesto' && (
+                <div className="mt-3 pt-3 border-t no-print">
+                  {(previewDoc.signature_client || previewDoc.status === 'enviado') && (
+                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+                      <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-amber-700">
+                        <strong>Aviso:</strong> Este presupuesto ya fue enviado anteriormente. El enlace es únicamente para que el cliente lo <strong>acepte o rechace digitalmente</strong> y quede constancia firmada con fecha y hora.
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => sendSignLink(previewDoc, 'whatsapp')}>
+                      <Send className="w-3.5 h-3.5 mr-1" />Enviar enlace firma (WhatsApp)
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-blue-700 border-blue-200 hover:bg-blue-50" onClick={() => sendSignLink(previewDoc, 'email')}>
+                      <Mail className="w-3.5 h-3.5 mr-1" />Enviar enlace firma (Email)
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-gray-500" onClick={() => { navigator.clipboard.writeText(getSignLink(previewDoc)); }}>
+                      <Link className="w-3.5 h-3.5 mr-1" />Copiar enlace
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-2 mt-3 pt-3 border-t flex-wrap no-print">
                 <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white font-semibold" onClick={() => exportPDF(previewDoc)}>
                   <FileDown className="w-4 h-4 mr-1" />Exportar PDF
@@ -880,6 +932,9 @@ export default function Documents() {
                       {STATUSES.map((s) => <SelectItem key={s} value={s} className="text-xs capitalize">{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {isPresupuesto && isRechazado && (
+                    <button onClick={(e) => { e.stopPropagation(); sendSignLink(doc, 'whatsapp'); }} className="text-green-500 hover:text-green-700 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Reenviar enlace de firma"><Send className="w-3.5 h-3.5" /></button>
+                  )}
                   <button onClick={(e) => { e.stopPropagation(); handleEdit(doc); }} className="text-gray-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
                   <button onClick={() => handleDuplicate(doc)} className="text-gray-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Duplicar"><Copy className="w-3.5 h-3.5" /></button>
                   <button onClick={() => handleDelete(doc.id)} className="text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3.5 h-3.5" /></button>
