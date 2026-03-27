@@ -4,18 +4,19 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Obtener todas las facturas enviadas hace 2-3 días sin firma
-    const facturas = await base44.asServiceRole.entities.Invoice.filter({ doc_type: 'factura', status: 'enviado' });
+    // Obtener todas las facturas y recibos enviados hace 2-3 días sin firma
+    const facturas = await base44.asServiceRole.entities.Invoice.filter({ status: 'enviado' });
+    const documentosSinFirma = (facturas || []).filter(f => ['factura', 'recibo'].includes(f.doc_type));
     
-    if (!facturas || facturas.length === 0) {
+    if (!documentosSinFirma || documentosSinFirma.length === 0) {
       return Response.json({ ok: true, processed: 0 });
     }
 
     const now = new Date();
     const diasSinFirma = [];
     
-    // Verificar facturas sin firma que fueron enviadas hace 2-3 días
-    for (const factura of facturas) {
+    // Verificar documentos sin firma que fueron enviados hace 2-3 días
+    for (const factura of documentosSinFirma) {
       if (factura.signature_client) continue; // Ya tiene firma
       
       const enviadaDate = new Date(factura.created_date);
@@ -50,16 +51,16 @@ Deno.serve(async (req) => {
         const emailBody = `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
           <div style="background:#f59e0b;color:white;padding:16px 20px;border-radius:8px 8px 0 0">
-            <h2 style="margin:0;font-size:20px">⏰ Facturas pendientes de firma del cliente</h2>
+            <h2 style="margin:0;font-size:20px">⏰ Documentos pendientes de firma del cliente</h2>
           </div>
           <div style="border:1px solid #fcd34d;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
             <p style="color:#555;font-size:14px;margin:0 0 16px 0">
-              Las siguientes facturas no han sido firmadas por el cliente después de 2-3 días de envío:
+              Los siguientes documentos (facturas/recibos) no han sido firmados por el cliente después de 2-3 días de envío:
             </p>
             <table style="width:100%;border-collapse:collapse;font-size:13px">
               <thead>
                 <tr style="background:#f3f4f6">
-                  <th style="padding:12px;text-align:left;color:#666;font-weight:600">Factura</th>
+                  <th style="padding:12px;text-align:left;color:#666;font-weight:600">Documento</th>
                   <th style="padding:12px;text-align:left;color:#666;font-weight:600">Cliente</th>
                   <th style="padding:12px;text-align:right;color:#666;font-weight:600">Importe</th>
                   <th style="padding:12px;text-align:left;color:#666;font-weight:600">Estado</th>
@@ -79,7 +80,7 @@ Deno.serve(async (req) => {
         try {
           await base44.asServiceRole.integrations.Core.SendEmail({
             to: company.email,
-            subject: `⏰ Alerta: ${diasSinFirma.length} factura(s) sin firma del cliente`,
+            subject: `⏰ Alerta: ${diasSinFirma.length} documento(s) sin firma del cliente (${diasSinFirma.map(d => d.doc_type).join('/')})`,
             body: emailBody
           });
         } catch (_err) {
