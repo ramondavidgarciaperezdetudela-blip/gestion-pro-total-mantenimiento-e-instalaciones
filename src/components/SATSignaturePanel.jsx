@@ -12,20 +12,29 @@ export default function SATSignaturePanel({ order, onUpdate, contactEmail = null
   const [techDatetime, setTechDatetime] = useState(order.sign_datetime_technician || null);
   const [clientDatetime, setClientDatetime] = useState(order.sign_datetime_client || null);
 
+  const uploadSignature = async (dataUrl) => {
+    // Convertir dataUrl a File y subir
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const file = new File([blob], 'firma.jpg', { type: 'image/jpeg' });
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    return file_url;
+  };
+
   const handleSaveTechSignature = async (dataUrl, signDt) => {
     const dt = signDt || getNowDatetime();
     setTechDatetime(dt);
-    const updateData = { signature_technician: dataUrl, sign_datetime_technician: dt };
+    const signUrl = await uploadSignature(dataUrl);
+    const updateData = { signature_technician: signUrl, sign_datetime_technician: dt };
     await base44.entities.SATOrder.update(order.id, updateData);
     onUpdate({ ...order, ...updateData });
-    // Enviar copia firmada al admin/técnico
     base44.functions.invoke('enviarCopiaFirmada', {
-      contact_email: null, // técnico interno, solo admin
+      contact_email: null,
       contact_name: order.technician || order.contact_name,
       doc_title: `Orden SAT Nº${order.order_number || order.id?.slice(-6)}`,
       doc_type: 'orden_sat',
       sign_datetime: dt,
-      signature_url: dataUrl,
+      signature_url: signUrl,
       signer_role: 'tecnico',
       extra_info: `Cliente: ${order.contact_name} | Tipo: ${order.type || ''}`
     }).catch(() => {});
@@ -34,17 +43,17 @@ export default function SATSignaturePanel({ order, onUpdate, contactEmail = null
   const handleSaveClientSignature = async (dataUrl, signDt) => {
     const dt = signDt || getNowDatetime();
     setClientDatetime(dt);
-    const updateData = { signature_client: dataUrl, sign_datetime_client: dt };
+    const signUrl = await uploadSignature(dataUrl);
+    const updateData = { signature_client: signUrl, sign_datetime_client: dt };
     await base44.entities.SATOrder.update(order.id, updateData);
     onUpdate({ ...order, ...updateData });
-    // Enviar copia firmada al cliente
     base44.functions.invoke('enviarCopiaFirmada', {
       contact_email: contactEmail || null,
       contact_name: order.contact_name,
       doc_title: `Orden SAT Nº${order.order_number || order.id?.slice(-6)}`,
       doc_type: 'orden_sat',
       sign_datetime: dt,
-      signature_url: dataUrl,
+      signature_url: signUrl,
       signer_role: 'cliente',
       extra_info: `Tipo servicio: ${order.type || ''} | ${order.description || ''}`
     }).catch(() => {});

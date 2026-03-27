@@ -837,25 +837,27 @@ export default function Documents() {
                         value={previewDoc.signature_client}
                         existingDatetime={previewDoc.sign_datetime || null}
                         onSave={async (dataUrl, signDt) => {
-                          const updateData = { signature_client: dataUrl, sign_datetime: signDt };
+                          // Subir firma como archivo para evitar límite de tamaño
+                          const blob = await fetch(dataUrl).then(r => r.blob());
+                          const file = new File([blob], 'firma.jpg', { type: 'image/jpeg' });
+                          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                          const updateData = { signature_client: file_url, sign_datetime: signDt };
                           await base44.entities.Invoice.update(previewDoc.id, updateData);
                           const updated = { ...previewDoc, ...updateData };
                           setPreviewDoc(updated);
                           setDocs(prev => prev.map(d => d.id === previewDoc.id ? updated : d));
                           // Enviar copia firmada al cliente
                           const c = contacts.find(x => x.id === previewDoc.contact_id);
-                          if (c?.email || true) {
-                            base44.functions.invoke('enviarCopiaFirmada', {
-                              contact_email: c?.email || null,
-                              contact_name: previewDoc.contact_name,
-                              doc_title: `${previewDoc.doc_type?.toUpperCase()} Nº${previewDoc.doc_number}`,
-                              doc_type: previewDoc.doc_type,
-                              sign_datetime: signDt,
-                              signature_url: dataUrl,
-                              signer_role: 'cliente',
-                              extra_info: `Total: ${previewDoc.total?.toFixed(2)} € | Fecha doc: ${previewDoc.date}`
-                            }).catch(() => {});
-                          }
+                          base44.functions.invoke('enviarCopiaFirmada', {
+                            contact_email: c?.email || null,
+                            contact_name: previewDoc.contact_name,
+                            doc_title: `${previewDoc.doc_type?.toUpperCase()} Nº${previewDoc.doc_number}`,
+                            doc_type: previewDoc.doc_type,
+                            sign_datetime: signDt,
+                            signature_url: file_url,
+                            signer_role: 'cliente',
+                            extra_info: `Total: ${previewDoc.total?.toFixed(2)} € | Fecha doc: ${previewDoc.date}`
+                          }).catch(() => {});
                         }}
                       />
                     )}

@@ -90,15 +90,15 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
 
   const save = () => {
     const canvas = canvasRef.current;
-    // Guardar en resolución razonable
+    // Exportar en tamaño pequeño como JPEG para minimizar el peso
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = 600;
-    tempCanvas.height = 200;
+    tempCanvas.width = 400;
+    tempCanvas.height = 130;
     const ctx = tempCanvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 600, 200);
-    ctx.drawImage(canvas, 0, 0, 600, 200);
-    const dataUrl = tempCanvas.toDataURL('image/png');
+    ctx.fillRect(0, 0, 400, 130);
+    ctx.drawImage(canvas, 0, 0, 400, 130);
+    const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.7);
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const dt = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;

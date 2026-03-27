@@ -44,8 +44,20 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'rechazar') {
-      const updateData = { status: 'cancelado' };
-      if (signature) updateData.signature_client = signature;
+      const updateData = { status: 'cancelado', sign_datetime: signDatetime };
+      if (signature) {
+        try {
+          const base64Data = signature.replace(/^data:image\/\w+;base64,/, '');
+          const binaryStr = atob(base64Data);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+          const blob = new Blob([bytes], { type: 'image/jpeg' });
+          const uploadResult = await base44.asServiceRole.integrations.Core.UploadFile({ file: blob });
+          updateData.signature_client = uploadResult.file_url;
+        } catch (_) {
+          updateData.signature_client = signature;
+        }
+      }
 
       await base44.asServiceRole.entities.Invoice.update(doc_id, updateData);
 
@@ -145,10 +157,25 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Se requiere firma para aceptar' }, { status: 400 });
       }
 
+      // Subir firma como archivo para evitar el límite de tamaño de entidad
+      let signatureUrl = signature;
+      try {
+        const base64Data = signature.replace(/^data:image\/\w+;base64,/, '');
+        const binaryStr = atob(base64Data);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'image/jpeg' });
+        const uploadResult = await base44.asServiceRole.integrations.Core.UploadFile({ file: blob });
+        signatureUrl = uploadResult.file_url;
+      } catch (_uploadErr) {
+        // Si falla el upload, seguimos con el base64 (puede fallar en entidad si es grande)
+      }
+
       // Actualizar factura con firma y estado enviado/aceptado
       await base44.asServiceRole.entities.Invoice.update(doc_id, {
         status: 'enviado',
-        signature_client: signature,
+        signature_client: signatureUrl,
+        sign_datetime: signDatetime,
       });
 
       // Archivar en ClientDocument como aceptado y firmado
