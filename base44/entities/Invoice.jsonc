@@ -126,6 +126,10 @@
     "signature_client": {
       "type": "string",
       "description": "Firma digital del cliente (base64 PNG)"
+    },
+    "sign_datetime": {
+      "type": "string",
+      "description": "Fecha y hora exacta de la firma del cliente (DD/MM/YYYY HH:MM:SS)"
     }
   },
   "required": [

@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Save, Check, Calendar, Maximize2, Minimize2 } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
-export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign, docContent, setDocContent, technicians = [], contactName = '', contacts = [], technicianName: initialTechnicianName = '' }) {
+export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign, docContent, setDocContent, technicians = [], contactName = '', contacts = [], technicianName: initialTechnicianName = '', docTitle = 'Documento Legal', contactEmail = null }) {
   const technicianCanvasRef = useRef(null);
   const clientCanvasRef = useRef(null);
   const [isDrawingTechnician, setIsDrawingTechnician] = useState(false);
@@ -119,10 +120,30 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
       setClientSigned(true);
       setClientSignDatetime(dt);
       onClientSign({ name, signature: signatureDataUrl, sign_datetime: dt });
+      // Enviar copia firmada al cliente
+      base44.functions.invoke('enviarCopiaFirmada', {
+        contact_email: contactEmail || null,
+        contact_name: name,
+        doc_title: docTitle,
+        doc_type: 'documento_legal',
+        sign_datetime: dt,
+        signature_url: signatureDataUrl,
+        signer_role: 'cliente',
+      }).catch(() => {});
     } else {
       setTechnicianSigned(true);
       setTechSignDatetime(dt);
       onTechnicianSign({ name, signature: signatureDataUrl, date: technicianDate, sign_datetime: dt });
+      // Enviar copia firmada (técnico — solo al admin)
+      base44.functions.invoke('enviarCopiaFirmada', {
+        contact_email: null,
+        contact_name: name,
+        doc_title: docTitle,
+        doc_type: 'documento_legal',
+        sign_datetime: dt,
+        signature_url: signatureDataUrl,
+        signer_role: 'tecnico',
+      }).catch(() => {});
     }
   };
 

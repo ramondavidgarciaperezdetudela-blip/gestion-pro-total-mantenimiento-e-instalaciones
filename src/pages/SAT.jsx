@@ -598,6 +598,7 @@ export default function SAT() {
                 <SATSignaturePanel
                   order={previewOrder}
                   onUpdate={(updated) => setPreviewOrder(updated)}
+                  contactEmail={contacts.find(c => c.id === previewOrder.contact_id)?.email || null}
                 />
               </div>
               <div className="flex gap-2 mt-3 flex-wrap no-print">

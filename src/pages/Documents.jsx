@@ -416,7 +416,7 @@ export default function Documents() {
     <div style="margin-top:20px;padding-top:12px;border-top:1px solid #e5e7eb">
       <p style="font-size:9px;font-weight:600;color:#555;margin-bottom:6px">Conformidad del cliente:</p>
       <img src="${doc.signature_client}" style="max-height:60px;border:1px solid #e5e7eb;border-radius:4px;background:#fff" alt="Firma" />
-      <p style="font-size:8px;color:#999;margin-top:2px">${doc.contact_name} · ${doc.date}</p>
+      <p style="font-size:8px;color:#555;margin-top:3px">${doc.contact_name}${doc.sign_datetime ? ` · 🕐 ${doc.sign_datetime}` : ` · ${doc.date}`}</p>
     </div>` : ''}
     <div class="footer">Documento generado · ${cs.company_name||''} · ${cs.phone||''} · ${cs.email||''}</div>
     </body></html>`;
@@ -825,6 +825,9 @@ export default function Documents() {
                         </div>
                         <div className="border border-green-200 rounded-lg bg-green-50 p-3">
                           <img src={previewDoc.signature_client} alt="Firma cliente" className="max-h-20 rounded border border-gray-200 bg-white" />
+                          {previewDoc.sign_datetime && (
+                            <p className="text-[10px] text-gray-500 font-mono mt-1 text-center">🕐 Firmado: {previewDoc.sign_datetime}</p>
+                          )}
                         </div>
                         <p className="text-xs text-gray-400">Esta firma puede imprimirse con el documento exportando el PDF.</p>
                       </div>
@@ -832,11 +835,27 @@ export default function Documents() {
                       <SignatureCanvas
                         label="✍️ Conformidad del cliente"
                         value={previewDoc.signature_client}
-                        onSave={async (dataUrl) => {
-                          await base44.entities.Invoice.update(previewDoc.id, { signature_client: dataUrl });
-                          const updated = { ...previewDoc, signature_client: dataUrl };
+                        existingDatetime={previewDoc.sign_datetime || null}
+                        onSave={async (dataUrl, signDt) => {
+                          const updateData = { signature_client: dataUrl, sign_datetime: signDt };
+                          await base44.entities.Invoice.update(previewDoc.id, updateData);
+                          const updated = { ...previewDoc, ...updateData };
                           setPreviewDoc(updated);
                           setDocs(prev => prev.map(d => d.id === previewDoc.id ? updated : d));
+                          // Enviar copia firmada al cliente
+                          const c = contacts.find(x => x.id === previewDoc.contact_id);
+                          if (c?.email || true) {
+                            base44.functions.invoke('enviarCopiaFirmada', {
+                              contact_email: c?.email || null,
+                              contact_name: previewDoc.contact_name,
+                              doc_title: `${previewDoc.doc_type?.toUpperCase()} Nº${previewDoc.doc_number}`,
+                              doc_type: previewDoc.doc_type,
+                              sign_datetime: signDt,
+                              signature_url: dataUrl,
+                              signer_role: 'cliente',
+                              extra_info: `Total: ${previewDoc.total?.toFixed(2)} € | Fecha doc: ${previewDoc.date}`
+                            }).catch(() => {});
+                          }
                         }}
                       />
                     )}

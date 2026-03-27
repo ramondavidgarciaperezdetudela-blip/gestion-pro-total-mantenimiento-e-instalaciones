@@ -8,35 +8,58 @@ const getNowDatetime = () => {
   return `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 };
 
-export default function SATSignaturePanel({ order, onUpdate }) {
-  const [techDatetime, setTechDatetime] = useState(null);
-  const [clientDatetime, setClientDatetime] = useState(null);
+export default function SATSignaturePanel({ order, onUpdate, contactEmail = null }) {
+  const [techDatetime, setTechDatetime] = useState(order.sign_datetime_technician || null);
+  const [clientDatetime, setClientDatetime] = useState(order.sign_datetime_client || null);
 
-  const handleSaveTechSignature = async (dataUrl) => {
-    const dt = getNowDatetime();
+  const handleSaveTechSignature = async (dataUrl, signDt) => {
+    const dt = signDt || getNowDatetime();
     setTechDatetime(dt);
-    const updated = { ...order, signature_technician: dataUrl };
-    await base44.entities.SATOrder.update(order.id, { signature_technician: dataUrl });
-    onUpdate(updated);
+    const updateData = { signature_technician: dataUrl, sign_datetime_technician: dt };
+    await base44.entities.SATOrder.update(order.id, updateData);
+    onUpdate({ ...order, ...updateData });
+    // Enviar copia firmada al admin/técnico
+    base44.functions.invoke('enviarCopiaFirmada', {
+      contact_email: null, // técnico interno, solo admin
+      contact_name: order.technician || order.contact_name,
+      doc_title: `Orden SAT Nº${order.order_number || order.id?.slice(-6)}`,
+      doc_type: 'orden_sat',
+      sign_datetime: dt,
+      signature_url: dataUrl,
+      signer_role: 'tecnico',
+      extra_info: `Cliente: ${order.contact_name} | Tipo: ${order.type || ''}`
+    }).catch(() => {});
   };
 
-  const handleSaveClientSignature = async (dataUrl) => {
-    const dt = getNowDatetime();
+  const handleSaveClientSignature = async (dataUrl, signDt) => {
+    const dt = signDt || getNowDatetime();
     setClientDatetime(dt);
-    const updated = { ...order, signature_client: dataUrl };
-    await base44.entities.SATOrder.update(order.id, { signature_client: dataUrl });
-    onUpdate(updated);
+    const updateData = { signature_client: dataUrl, sign_datetime_client: dt };
+    await base44.entities.SATOrder.update(order.id, updateData);
+    onUpdate({ ...order, ...updateData });
+    // Enviar copia firmada al cliente
+    base44.functions.invoke('enviarCopiaFirmada', {
+      contact_email: contactEmail || null,
+      contact_name: order.contact_name,
+      doc_title: `Orden SAT Nº${order.order_number || order.id?.slice(-6)}`,
+      doc_type: 'orden_sat',
+      sign_datetime: dt,
+      signature_url: dataUrl,
+      signer_role: 'cliente',
+      extra_info: `Tipo servicio: ${order.type || ''} | ${order.description || ''}`
+    }).catch(() => {});
   };
 
   return (
     <div className="space-y-3 mt-2">
       <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide border-t pt-3">✍️ Firmas de conformidad</p>
-      <p className="text-xs text-gray-500">Las firmas se guardan automáticamente y aparecen en el PDF.</p>
+      <p className="text-xs text-gray-500">Las firmas se guardan automáticamente. El cliente recibirá una copia por email.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <SignatureCanvas
             label="Firma del Técnico"
             value={order.signature_technician}
+            existingDatetime={techDatetime}
             onSave={handleSaveTechSignature}
           />
           {techDatetime && <p className="text-[10px] text-gray-400 font-mono text-center mt-1">🕐 Firmado: {techDatetime}</p>}
@@ -45,6 +68,7 @@ export default function SATSignaturePanel({ order, onUpdate }) {
           <SignatureCanvas
             label="Conformidad del Cliente"
             value={order.signature_client}
+            existingDatetime={clientDatetime}
             onSave={handleSaveClientSignature}
           />
           {clientDatetime && <p className="text-[10px] text-gray-400 font-mono text-center mt-1">🕐 Firmado: {clientDatetime}</p>}

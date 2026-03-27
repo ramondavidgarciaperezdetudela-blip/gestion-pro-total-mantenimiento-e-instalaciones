@@ -110,6 +110,14 @@
     "signature_client": {
       "type": "string",
       "description": "Firma digital de conformidad del cliente (base64 PNG)"
+    },
+    "sign_datetime_technician": {
+      "type": "string",
+      "description": "Fecha y hora exacta de la firma del t\u00e9cnico (DD/MM/YYYY HH:MM:SS)"
+    },
+    "sign_datetime_client": {
+      "type": "string",
+      "description": "Fecha y hora exacta de la firma del cliente (DD/MM/YYYY HH:MM:SS)"
     }
   },
   "required": [

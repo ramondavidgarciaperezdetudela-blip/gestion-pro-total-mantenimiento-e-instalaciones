@@ -7,13 +7,13 @@ import { RotateCcw, Check, PenLine } from 'lucide-react';
  * Funciona correctamente en móvil, tablet y ordenador.
  * El trazo sigue exactamente donde se toca/hace clic.
  */
-export default function SignatureCanvas({ label, value, onSave, onCancel, showCancelIfSigned = true }) {
+export default function SignatureCanvas({ label, value, onSave, onCancel, showCancelIfSigned = true, existingDatetime = null }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
   const [showCanvas, setShowCanvas] = useState(!value);
-  const [signDatetime, setSignDatetime] = useState(null);
+  const [signDatetime, setSignDatetime] = useState(existingDatetime);
   const lastPos = useRef(null);
 
   const initCanvas = useCallback(() => {
@@ -103,7 +103,7 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
     const pad = (n) => String(n).padStart(2, '0');
     const dt = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     setSignDatetime(dt);
-    onSave(dataUrl);
+    onSave(dataUrl, dt);
     setShowCanvas(false);
   };
 
