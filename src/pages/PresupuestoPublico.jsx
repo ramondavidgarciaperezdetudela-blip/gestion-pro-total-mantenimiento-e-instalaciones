@@ -194,7 +194,12 @@ function PresupuestoPublico() {
     } finally {
       setSaving(false);
     }
-    setStep('decision');
+    // Si viene por email o whatsapp, mostrar confirmación. Si no, volver a decision
+    if (method === 'email' || method === 'whatsapp') {
+      setStep('done');
+    } else {
+      setStep('decision');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -227,7 +232,12 @@ function PresupuestoPublico() {
     } finally {
       setSaving(false);
     }
-    setStep('decision');
+    // Si viene por email o whatsapp, mostrar confirmación. Si no, volver a decision
+    if (method === 'email' || method === 'whatsapp') {
+      setStep('rejected');
+    } else {
+      setStep('decision');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -625,8 +635,44 @@ function PresupuestoPublico() {
               </Button>
             </div>
           )}
-        </div>
-        )}
+
+          {/* Confirmación de aceptación — cuando viene por email/whatsapp */}
+          {step === 'done' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-green-200 p-6 space-y-4 text-center">
+              <div className="flex justify-center mb-4">
+                <CheckCircle className="w-12 h-12 text-green-600" />
+              </div>
+              <h3 className="text-lg font-bold text-green-700">¡Gracias! Presupuesto firmado</h3>
+              <p className="text-gray-600 text-sm">
+                Hemos registrado su aceptación del presupuesto <strong>Nº {doc.doc_number}</strong>
+              </p>
+              <p className="text-xs text-gray-500">Se ha enviado una copia firmada a su correo electrónico</p>
+              <div className="bg-green-50 p-3 rounded border border-green-200">
+                <p className="text-sm font-semibold text-green-700">✅ ACEPTADO</p>
+                {doc.sign_datetime && <p className="text-xs text-gray-600 mt-1">🕐 {doc.sign_datetime}</p>}
+              </div>
+            </div>
+          )}
+
+          {/* Confirmación de rechazo — cuando viene por email/whatsapp */}
+          {step === 'rejected' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-6 space-y-4 text-center">
+              <div className="flex justify-center mb-4">
+                <XCircle className="w-12 h-12 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-red-700">Rechazo registrado</h3>
+              <p className="text-gray-600 text-sm">
+                Hemos registrado su rechazo del presupuesto <strong>Nº {doc.doc_number}</strong>
+              </p>
+              <p className="text-xs text-gray-500">Se ha enviado una copia firmada a su correo electrónico</p>
+              <div className="bg-red-50 p-3 rounded border border-red-200">
+                <p className="text-sm font-semibold text-red-700">❌ RECHAZADO</p>
+                {doc.sign_datetime && <p className="text-xs text-gray-600 mt-1">🕐 {doc.sign_datetime}</p>}
+              </div>
+            </div>
+          )}
+          </div>
+          )}
 
         {doc && (
           <p className="text-center text-xs text-gray-400 pb-6">
