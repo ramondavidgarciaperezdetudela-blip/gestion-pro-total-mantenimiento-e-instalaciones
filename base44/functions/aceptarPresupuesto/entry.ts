@@ -30,6 +30,11 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date().toISOString();
+    // Formato legible para España: DD/MM/YYYY HH:MM:SS
+    const nowDate = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const signDatetime = `${pad(nowDate.getDate())}/${pad(nowDate.getMonth()+1)}/${nowDate.getFullYear()} ${pad(nowDate.getHours())}:${pad(nowDate.getMinutes())}:${pad(nowDate.getSeconds())}`;
+    const signDateOnly = now.split('T')[0];
 
     // Buscar teléfono del contacto para WhatsApp
     let contactPhone = null;
@@ -51,8 +56,8 @@ Deno.serve(async (req) => {
           contact_name: doc.contact_name,
           title: `RECHAZADO Y FIRMADO - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''} - ${doc.contact_name}`,
           doc_type: 'presupuesto',
-          description: `Presupuesto rechazado y firmado digitalmente por el cliente el ${now.split('T')[0]}. Total: ${doc.total?.toFixed(2)} €`,
-          date: now.split('T')[0],
+          description: `Presupuesto rechazado y firmado digitalmente por el cliente el ${signDatetime}. Total: ${doc.total?.toFixed(2)} €`,
+          date: signDateOnly,
         });
       }
 
@@ -69,7 +74,7 @@ Deno.serve(async (req) => {
 <p><strong>Cliente:</strong> ${doc.contact_name}</p>
 <p><strong>Documento:</strong> ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</p>
 <p><strong>Importe:</strong> ${(doc.total || 0).toFixed(2)} €</p>
-<p><strong>Fecha rechazo:</strong> ${now.split('T')[0]}</p>
+<p><strong>Fecha y hora de firma:</strong> ${signDatetime}</p>
 <br/>
 <p>El cliente ha firmado digitalmente el rechazo del presupuesto.</p>
 ${signature ? `<img src="${signature}" alt="Firma cliente" style="max-width:300px;border:1px solid #ddd;border-radius:8px;margin-top:12px"/>` : ''}
@@ -78,14 +83,14 @@ ${signature ? `<img src="${signature}" alt="Firma cliente" style="max-width:300p
         }
 
         // Generar enlace WhatsApp para el cliente con resumen del rechazo
-        const waMsg = `❌ *PRESUPUESTO RECHAZADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}\n👤 ${doc.contact_name}\n💶 ${(doc.total || 0).toFixed(2)} €\n📅 Fecha: ${now.split('T')[0]}\n\nHemos recibido su firma de rechazo. Si desea revisarlo o tiene alguna consulta, contáctenos.\n\n— ${company?.company_name || ''}`;
+        const waMsg = `❌ *PRESUPUESTO RECHAZADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}\n👤 ${doc.contact_name}\n💶 ${(doc.total || 0).toFixed(2)} €\n🕐 Firmado el: ${signDatetime}\n\nHemos recibido su firma de rechazo. Si desea revisarlo o tiene alguna consulta, contáctenos.\n\n— ${company?.company_name || ''}`;
         const waUrl = await sendWhatsApp(contactPhone, waMsg);
-        return Response.json({ ok: true, action: 'rechazado', whatsapp_url: waUrl });
+        return Response.json({ ok: true, action: 'rechazado', whatsapp_url: waUrl, sign_datetime: signDatetime });
       } catch (_emailErr) {
         // No fallar si el email no se envía
       }
 
-      return Response.json({ ok: true, action: 'rechazado' });
+      return Response.json({ ok: true, action: 'rechazado', sign_datetime: signDatetime });
     }
 
     if (action === 'aceptar') {
@@ -106,8 +111,8 @@ ${signature ? `<img src="${signature}" alt="Firma cliente" style="max-width:300p
           contact_name: doc.contact_name,
           title: `ACEPTADO Y FIRMADO - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''} - ${doc.contact_name}`,
           doc_type: 'presupuesto',
-          description: `Presupuesto aceptado y firmado digitalmente por el cliente el ${now.split('T')[0]}. Total: ${(doc.total || 0).toFixed(2)} €`,
-          date: now.split('T')[0],
+          description: `Presupuesto aceptado y firmado digitalmente por el cliente el ${signDatetime}. Total: ${(doc.total || 0).toFixed(2)} €`,
+          date: signDateOnly,
         });
       }
 
@@ -124,7 +129,7 @@ ${signature ? `<img src="${signature}" alt="Firma cliente" style="max-width:300p
 <p><strong>Cliente:</strong> ${doc.contact_name}</p>
 <p><strong>Documento:</strong> ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</p>
 <p><strong>Importe:</strong> ${(doc.total || 0).toFixed(2)} €</p>
-<p><strong>Fecha aceptación:</strong> ${now.split('T')[0]}</p>
+<p><strong>Fecha y hora de firma:</strong> ${signDatetime}</p>
 <br/>
 <p>El cliente ha firmado digitalmente el presupuesto. El documento ha sido archivado en su ficha de cliente.</p>
 <img src="${signature}" alt="Firma cliente" style="max-width:300px;border:1px solid #ddd;border-radius:8px;margin-top:12px"/>
@@ -133,14 +138,14 @@ ${signature ? `<img src="${signature}" alt="Firma cliente" style="max-width:300p
         }
 
         // Generar enlace WhatsApp para el cliente con resumen de aceptación
-        const waMsg = `✅ *PRESUPUESTO ACEPTADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}\n👤 ${doc.contact_name}\n💶 ${(doc.total || 0).toFixed(2)} €\n📅 Fecha: ${now.split('T')[0]}\n\nHemos recibido su firma de aceptación. Nos pondremos en contacto con usted en breve para coordinar los trabajos.\n\nGracias por confiar en nosotros.\n\n— ${company?.company_name || ''}`;
+        const waMsg = `✅ *PRESUPUESTO ACEPTADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}\n👤 ${doc.contact_name}\n💶 ${(doc.total || 0).toFixed(2)} €\n🕐 Firmado el: ${signDatetime}\n\nHemos recibido su firma de aceptación. Nos pondremos en contacto con usted en breve para coordinar los trabajos.\n\nGracias por confiar en nosotros.\n\n— ${company?.company_name || ''}`;
         const waUrl = await sendWhatsApp(contactPhone, waMsg);
-        return Response.json({ ok: true, action: 'aceptado', whatsapp_url: waUrl });
+        return Response.json({ ok: true, action: 'aceptado', whatsapp_url: waUrl, sign_datetime: signDatetime });
       } catch (_emailErr) {
         // No fallar si el email no se envía
       }
 
-      return Response.json({ ok: true, action: 'aceptado' });
+      return Response.json({ ok: true, action: 'aceptado', sign_datetime: signDatetime });
     }
 
     return Response.json({ error: 'Acción no válida' }, { status: 400 });

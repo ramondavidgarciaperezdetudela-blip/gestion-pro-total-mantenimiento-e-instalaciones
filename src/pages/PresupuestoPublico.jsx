@@ -126,6 +126,7 @@ export default function PresupuestoPublico() {
   const [error, setError] = useState(null);
   const [step, setStep] = useState('decision'); // 'decision' | 'sign' | 'sign-reject' | 'rejected' | 'done'
   const [saving, setSaving] = useState(false);
+  const [signDatetime, setSignDatetime] = useState(null);
 
   useEffect(() => {
     if (!docId) { setError('Enlace inválido'); setLoading(false); return; }
@@ -147,7 +148,7 @@ export default function PresupuestoPublico() {
       action: 'aceptar'
     });
     setSaving(false);
-    // Abrir WhatsApp del cliente con el resumen
+    setSignDatetime(res?.data?.sign_datetime || null);
     if (res?.data?.whatsapp_url) {
       setTimeout(() => window.open(res.data.whatsapp_url, '_blank'), 500);
     }
@@ -162,7 +163,7 @@ export default function PresupuestoPublico() {
       action: 'rechazar'
     });
     setSaving(false);
-    // Abrir WhatsApp del cliente con el resumen
+    setSignDatetime(res?.data?.sign_datetime || null);
     if (res?.data?.whatsapp_url) {
       setTimeout(() => window.open(res.data.whatsapp_url, '_blank'), 500);
     }
@@ -190,7 +191,13 @@ export default function PresupuestoPublico() {
         <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
         <h2 className="text-2xl font-bold text-green-700 mb-2">¡Presupuesto aceptado!</h2>
         <p className="text-gray-600">Gracias por su confirmación. Hemos recibido su firma y nos pondremos en contacto con usted en breve.</p>
-        <p className="text-sm text-gray-400 mt-6">Le hemos enviado una copia a su WhatsApp.</p>
+        {signDatetime && (
+          <div className="mt-5 bg-white border border-green-200 rounded-xl px-4 py-3 inline-block shadow-sm">
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Firma digital registrada</p>
+            <p className="text-base font-bold text-green-700">✅ {signDatetime}</p>
+          </div>
+        )}
+        <p className="text-sm text-gray-400 mt-5">Le hemos enviado una copia a su WhatsApp.</p>
         <p className="text-sm text-gray-400 mt-1">{company?.company_name}</p>
       </div>
     </div>
@@ -202,7 +209,13 @@ export default function PresupuestoPublico() {
         <XCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
         <h2 className="text-2xl font-bold text-red-600 mb-2">Presupuesto rechazado</h2>
         <p className="text-gray-600">Hemos registrado su rechazo firmado. Le hemos enviado una copia a su WhatsApp.</p>
-        <p className="text-sm text-gray-500 mt-4">Si desea revisarlo o tiene alguna duda, contacte con nosotros de nuevo.</p>
+        {signDatetime && (
+          <div className="mt-5 bg-white border border-red-200 rounded-xl px-4 py-3 inline-block shadow-sm">
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Firma digital registrada</p>
+            <p className="text-base font-bold text-red-600">❌ {signDatetime}</p>
+          </div>
+        )}
+        <p className="text-sm text-gray-500 mt-5">Si desea revisarlo o tiene alguna duda, contacte con nosotros de nuevo.</p>
         <p className="text-sm text-gray-400 mt-2">{company?.company_name} · {company?.phone}</p>
       </div>
     </div>
