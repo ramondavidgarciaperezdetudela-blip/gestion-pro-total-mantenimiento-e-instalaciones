@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Wrench, ChevronDown, ChevronUp, Trash2, Edit, FileSpreadsheet, Search } from 'lucide-react';
+import TechnicianSelect from '../components/TechnicianSelect';
 import { toast } from 'sonner';
 import PhotoGallery from '../components/PhotoGallery';
 import CompanyHeader from '../components/CompanyHeader';
@@ -346,7 +347,11 @@ export default function EquipmentDiaryPage() {
                 <SelectContent>{ENTRY_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <Input placeholder="Técnico" value={entryForm.technician} onChange={e => setEntryForm({...entryForm, technician: e.target.value})} />
+            <TechnicianSelect
+              value={entryForm.technician}
+              onChange={v => setEntryForm({...entryForm, technician: v})}
+              placeholder="Seleccionar técnico"
+            />
             <Textarea placeholder="Descripción del trabajo / avería *" value={entryForm.description} onChange={e => setEntryForm({...entryForm, description: e.target.value})} rows={3} />
             <Textarea placeholder="Solución aplicada" value={entryForm.solution} onChange={e => setEntryForm({...entryForm, solution: e.target.value})} rows={2} />
             <Textarea placeholder="Piezas / materiales utilizados" value={entryForm.parts_used} onChange={e => setEntryForm({...entryForm, parts_used: e.target.value})} rows={2} />

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, Printer, FileText, Link2 } from 'lucide-react';
+import TechnicianSelect from '../components/TechnicianSelect';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -53,7 +54,6 @@ export default function SAT() {
 
   const [orders, setOrders] = useState([]);
   const [contacts, setContacts] = useState([]);
-  const [technicians, setTechnicians] = useState([]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
@@ -69,14 +69,12 @@ export default function SAT() {
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    const [o, c, settings] = await Promise.all([
+    const [o, c] = await Promise.all([
       base44.entities.SATOrder.list('-date', 500),
       base44.entities.Contact.list('name', 500),
-      base44.entities.CompanySettings.list(),
     ]);
     setOrders(o);
     setContacts(c);
-    if (settings[0]?.technicians) setTechnicians(settings[0].technicians);
 
     // Abrir orden desde URL params
     if (preViewId) {
@@ -474,21 +472,11 @@ export default function SAT() {
             </div>
 
             {/* Técnico */}
-            {technicians.length > 0 ? (
-              <Select value={form.technician} onValueChange={v => setForm({ ...form, technician: v })}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar técnico" /></SelectTrigger>
-                <SelectContent>
-                  {technicians.map((t, i) => {
-                    const name = typeof t === 'object' ? t.name : t;
-                    return name ? <SelectItem key={i} value={name}>{name}</SelectItem> : null;
-                  })}
-                  <SelectItem value="__otro__">Otro (escribir)</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : null}
-            {(form.technician === '__otro__' || technicians.length === 0) && (
-              <Input placeholder="Nombre del técnico" value={form.technician === '__otro__' ? '' : form.technician} onChange={e => setForm({ ...form, technician: e.target.value })} />
-            )}
+            <TechnicianSelect
+              value={form.technician}
+              onChange={v => setForm({ ...form, technician: v })}
+              placeholder="Seleccionar técnico"
+            />
 
             <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Descripción del problema *" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} />
             <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Diagnóstico" value={form.diagnosis} onChange={e => setForm({ ...form, diagnosis: e.target.value })} rows={2} />

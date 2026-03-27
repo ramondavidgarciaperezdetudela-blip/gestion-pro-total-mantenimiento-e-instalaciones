@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, ClipboardList, Trash2, Edit, PenLine, Eye, Phone, Send, FileDown } from 'lucide-react';
+import TechnicianSelect from '../components/TechnicianSelect';
 import { format } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
 import PrintButton from '../components/PrintButton';
@@ -40,7 +41,6 @@ const EMPTY_FORM = {
 export default function Maintenance() {
   const [sheets, setSheets] = useState([]);
   const [contacts, setContacts] = useState([]);
-  const [technicians, setTechnicians] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -53,11 +53,9 @@ export default function Maintenance() {
     Promise.all([
       base44.entities.MaintenanceSheet.list('-date', 500),
       base44.entities.Contact.list(),
-      base44.entities.CompanySettings.list(),
-    ]).then(([s, c, settings]) => {
+    ]).then(([s, c]) => {
       setSheets(s);
       setContacts(c);
-      if (settings[0]?.technicians) setTechnicians(settings[0].technicians);
       // Pre-calcular número para nueva ficha
       setForm(f => ({ ...f, sheet_number: getNextAvailableNumber(s.map(x => x.sheet_number || '')) }));
     });
@@ -305,23 +303,11 @@ export default function Maintenance() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Input placeholder="Ubicación" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} />
-                {technicians.length > 0 ? (
-                  <div>
-                    <Select value={form.technician_name} onValueChange={v => setForm({ ...form, technician_name: v === '__manual__' ? '' : v })}>
-                      <SelectTrigger><SelectValue placeholder="Técnico" /></SelectTrigger>
-                      <SelectContent>
-                        {technicians.map((t, i) => {
-                          const name = typeof t === 'object' ? t.name : t;
-                          return name ? <SelectItem key={i} value={name}>{name}</SelectItem> : null;
-                        })}
-                        <SelectItem value="__manual__">Escribir manualmente...</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {form.technician_name === '' && <Input className="mt-1" placeholder="Nombre técnico" onChange={e => setForm({ ...form, technician_name: e.target.value })} />}
-                  </div>
-                ) : (
-                  <Input placeholder="Nombre técnico" value={form.technician_name} onChange={e => setForm({ ...form, technician_name: e.target.value })} />
-                )}
+                <TechnicianSelect
+                  value={form.technician_name}
+                  onChange={v => setForm({ ...form, technician_name: v })}
+                  placeholder="Seleccionar técnico"
+                />
               </div>
 
               {/* Climate readings */}
