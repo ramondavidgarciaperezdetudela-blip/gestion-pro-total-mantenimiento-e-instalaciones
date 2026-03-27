@@ -1,7 +1,29 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Check, X, PenLine, RotateCcw, CheckCircle, XCircle, Loader2, AlertTriangle, Phone, MessageCircle } from 'lucide-react';
+
+// Skeleton loader
+const DocumentSkeleton = () => (
+  <div className="bg-white rounded-2xl shadow-sm border p-5 space-y-4 animate-pulse">
+    <div className="flex justify-between items-start border-b pb-3">
+      <div className="space-y-2">
+        <div className="h-4 w-20 bg-gray-200 rounded"></div>
+        <div className="h-6 w-32 bg-gray-200 rounded"></div>
+        <div className="h-3 w-24 bg-gray-100 rounded"></div>
+      </div>
+      <div className="space-y-2 text-right">
+        <div className="h-7 w-20 bg-gray-200 rounded"></div>
+        <div className="h-3 w-32 bg-gray-100 rounded"></div>
+      </div>
+    </div>
+    <div className="h-20 bg-gray-100 rounded"></div>
+    <div className="space-y-2">
+      <div className="h-4 w-full bg-gray-100 rounded"></div>
+      <div className="h-4 w-5/6 bg-gray-100 rounded"></div>
+    </div>
+  </div>
+);
 
 // Mini SignaturePad inline para esta página pública
 function SignaturePad({ onSave }) {
@@ -116,7 +138,7 @@ function SignaturePad({ onSave }) {
   );
 }
 
-export default function PresupuestoPublico() {
+function PresupuestoPublico() {
   const params = new URLSearchParams(window.location.search);
   const docId = params.get('id');
 
@@ -170,7 +192,7 @@ export default function PresupuestoPublico() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (loading) return (
+  if (!company && loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
     </div>
@@ -225,16 +247,19 @@ export default function PresupuestoPublico() {
     <div className="min-h-screen bg-slate-50 py-6 px-4">
       <div className="max-w-2xl mx-auto space-y-4">
 
-        {/* Header empresa */}
+        {/* Header empresa — aparece inmediatamente */}
         <div className="bg-white rounded-2xl shadow-sm border p-4 flex items-center gap-4">
-          {cs.logo_url && <img src={cs.logo_url} alt="Logo" className="h-12 w-12 rounded-lg object-contain border" />}
+          {cs.logo_url && <img src={cs.logo_url} alt="Logo" className="h-12 w-12 rounded-lg object-contain border" loading="eager" />}
           <div>
             <h1 className="font-bold text-lg text-slate-800">{cs.company_name || 'Presupuesto'}</h1>
             <p className="text-sm text-gray-400">{cs.phone} {cs.email ? `· ${cs.email}` : ''}</p>
           </div>
         </div>
 
-        {/* Documento completo */}
+        {/* Documento completo o skeleton mientras carga */}
+        {!doc ? (
+          <DocumentSkeleton />
+        ) : (
         <div className="bg-white rounded-2xl shadow-sm border p-5 space-y-4">
           <div className="flex justify-between items-start border-b pb-3">
             <div>
@@ -398,8 +423,10 @@ export default function PresupuestoPublico() {
             </div>
           )}
         </div>
+        )}
 
         {/* Zona de firma — aparece debajo del documento */}
+        {doc && (
         <div ref={signRef}>
           {step === 'sign' && (
             <div className="bg-white rounded-2xl shadow-sm border border-green-200 p-5 space-y-4">
@@ -453,11 +480,16 @@ export default function PresupuestoPublico() {
             </div>
           )}
         </div>
+        )}
 
-        <p className="text-center text-xs text-gray-400 pb-6">
-          Documento seguro · No requiere instalación · {cs.company_name} {cs.nif ? `· NIF ${cs.nif}` : ''}
-        </p>
+        {doc && (
+          <p className="text-center text-xs text-gray-400 pb-6">
+            Documento seguro · No requiere instalación · {cs.company_name} {cs.nif ? `· NIF ${cs.nif}` : ''}
+          </p>
+        )}
       </div>
     </div>
   );
 }
+
+export default memo(PresupuestoPublico);
