@@ -248,8 +248,11 @@ function PresupuestoPublico() {
   const isFactura = doc?.doc_type === 'factura';
   const isRecibo = doc?.doc_type === 'recibo';
   
-  const yaFirmado = doc && doc.signature_client && ['enviado', 'pagado', 'vencido'].includes(doc.status);
-  const rechazadoYFirmado = doc && doc.status === 'cancelado' && doc.signature_client;
+  // Detectar si es cambio de opinión (hay más de un registro en signature_history)
+  const esChangioDeOpinion = doc && doc.signature_history && doc.signature_history.length > 0;
+  
+  const yaFirmado = doc && doc.signature_client && ['enviado', 'pagado', 'vencido'].includes(doc.status) && !esChangioDeOpinion;
+  const rechazadoYFirmado = doc && doc.status === 'cancelado' && doc.signature_client && !esChangioDeOpinion;
 
   const scrollToSign = () => {
     setTimeout(() => signRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
