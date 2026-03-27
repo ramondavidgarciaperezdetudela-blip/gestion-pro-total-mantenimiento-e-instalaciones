@@ -530,7 +530,7 @@ function PresupuestoPublico() {
                 </div>
               </div>
               
-              {isPresupuesto && (
+              {isPresupuesto && !isChangeOpinion && (
                 <Button
                   onClick={handleRequestChangeOpinion}
                   disabled={saving}
@@ -557,7 +557,7 @@ function PresupuestoPublico() {
                   {doc.signature_method === 'email' ? '📧 Firma cliente por email' : doc.signature_method === 'whatsapp' ? '📱 Firma cliente por WhatsApp' : '🌐 Firma cliente por web'}
                 </p>
               )}
-              {isPresupuesto && (
+              {isPresupuesto && !isChangeOpinion && (
                 <Button
                   onClick={handleRequestChangeOpinion}
                   disabled={saving}
@@ -588,13 +588,15 @@ function PresupuestoPublico() {
                 >
                   <Check className="w-4 h-4 mr-2" /> Sí, aceptar
                 </Button>
-                <Button
-                  onClick={handleRequestChangeOpinion}
-                  disabled={saving}
-                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white h-12 text-base font-semibold"
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" /> Solicitar
-                </Button>
+                {!isChangeOpinion && (
+                  <Button
+                    onClick={handleRequestChangeOpinion}
+                    disabled={saving}
+                    className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white h-12 text-base font-semibold"
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" /> Solicitar
+                  </Button>
+                )}
               </div>
             </div>
           )}
