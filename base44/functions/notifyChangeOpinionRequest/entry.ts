@@ -40,9 +40,9 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true });
     }
 
-    // Generar enlaces al presupuesto con método de acceso
-    const presupuestoUrlEmail = `https://app.base44.io/presupuesto-publico?id=${doc_id}&method=email`;
-    const presupuestoUrlWhatsapp = `https://app.base44.io/presupuesto-publico?id=${doc_id}&method=whatsapp`;
+    // Generar enlaces al presupuesto con método de acceso (indicando que es cambio de opinión)
+    const presupuestoUrlEmail = `https://app.base44.io/presupuesto-publico?id=${doc_id}&method=email&change_opinion=1`;
+    const presupuestoUrlWhatsapp = `https://app.base44.io/presupuesto-publico?id=${doc_id}&method=whatsapp&change_opinion=1`;
 
     // Enviar email al admin
     const emailBodyAdmin = `
@@ -95,6 +95,65 @@ Deno.serve(async (req) => {
         });
       } catch (_err) {
         console.log('Email de notificación no enviado, continuando...');
+      }
+    }
+
+    // Enviar enlace de cambio de opinión al cliente (si tiene email o teléfono)
+    if (contact_phone || doc?.contact_email) {
+      const clientPhoneSanitized = contact_phone?.replace(/\D/g, '') || '';
+      const clientPhoneLink = clientPhoneSanitized && !clientPhoneSanitized.startsWith('34') ? `34${clientPhoneSanitized}` : clientPhoneSanitized;
+      
+      // Email al cliente con enlace
+      if (doc?.contact_email) {
+        const clientEmailBody = `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+  <div style="background:#0ea5e9;color:white;padding:16px 20px;border-radius:8px 8px 0 0">
+    <h2 style="margin:0;font-size:20px">📝 Reconsideración de presupuesto</h2>
+  </div>
+  <div style="border:1px solid #bfdbfe;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
+    <p style="color:#555;font-size:14px">Hola <strong>${contact_name}</strong>,</p>
+    <p style="color:#555;font-size:14px">Recibimos tu solicitud para reconsiderar tu decisión sobre el presupuesto. Te reenviamos el enlace para que puedas aceptarlo o rechazarlo:</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0">
+      <tr style="background:#f0f9ff"><td style="padding:8px;color:#666"><strong>Presupuesto:</strong></td><td style="padding:8px">Nº ${doc_number || ''}</td></tr>
+      <tr><td style="padding:8px;color:#666"><strong>Importe:</strong></td><td style="padding:8px;font-weight:bold">${(total || 0).toFixed(2)} €</td></tr>
+    </table>
+    <div style="margin:20px 0">
+      <p style="color:#555;font-size:13px;margin:0 0 12px">Haz clic en el botón para aceptar o rechazar:</p>
+      <a href="${presupuestoUrlEmail}" style="display:inline-block;padding:12px 24px;background:#0ea5e9;color:white;text-decoration:none;border-radius:6px;font-weight:bold;font-size:14px">📄 Revisar presupuesto</a>
+    </div>
+    <p style="color:#777;font-size:12px;margin-top:20px">Si prefieres, también puedes contactarnos directamente para resolver cualquier duda.</p>
+    <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb"/>
+    <p style="font-size:12px;color:#999">${company?.company_name || ''} · ${company?.email || ''} · ${company?.phone || ''}</p>
+  </div>
+</div>`.trim();
+        
+        try {
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: doc.contact_email,
+            subject: `📋 Presupuesto Nº${doc_number} - Enlace para reconsideración`,
+            body: clientEmailBody,
+            from_name: company?.company_name || 'Sistema'
+          });
+        } catch (_err) {
+          console.log('Error enviando email al cliente:', _err);
+        }
+      }
+
+      // Link de WhatsApp al cliente
+      if (clientPhoneLink) {
+        const waMsg = `Hola ${contact_name},\n\nRecibimos que deseas reconsiderar el presupuesto Nº${doc_number} por ${(total || 0).toFixed(2)} €.\n\nAquí está el enlace para que puedas aceptarlo o rechazarlo:\n\n${presupuestoUrlWhatsapp}\n\nQuedamos a tu disposición.`;
+        const waLink = `https://wa.me/${clientPhoneLink}?text=${encodeURIComponent(waMsg)}`;
+        
+        // Enviar al admin el enlace de WhatsApp para contactar
+        try {
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: company.email,
+            subject: `📱 Enlace para cliente - Cambio de opinión (${contact_name})`,
+            body: `<div style="font-family:Arial,sans-serif;max-width:600px"><div style="background:#25d366;color:white;padding:16px"><h3 style="margin:0">📱 Enviar por WhatsApp</h3></div><div style="border:1px solid #c6e9c9;border-top:none;padding:20px;background:#fff"><p style="color:#555">Enlace para enviar al cliente por WhatsApp:</p><p><a href="${waLink}" style="display:inline-block;padding:12px 20px;background:#25d366;color:white;text-decoration:none;border-radius:6px;font-weight:bold">📱 Abrir WhatsApp</a></p></div></div>`
+          });
+        } catch (_err) {
+          console.log('Error enviando enlace WhatsApp:', _err);
+        }
       }
     }
 

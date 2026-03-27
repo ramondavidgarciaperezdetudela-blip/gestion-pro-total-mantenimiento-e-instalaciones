@@ -142,6 +142,7 @@ function PresupuestoPublico() {
   const params = new URLSearchParams(window.location.search);
   const docId = params.get('id');
   const method = params.get('method') || 'web'; // Detecta si vino por email, whatsapp o web
+  const isChangeOpinion = params.get('change_opinion') === '1'; // Detecta si es un cambio de opinión
 
   const [doc, setDoc] = useState(null);
   const [company, setCompany] = useState(null);
@@ -248,8 +249,8 @@ function PresupuestoPublico() {
   const isFactura = doc?.doc_type === 'factura';
   const isRecibo = doc?.doc_type === 'recibo';
   
-  // Detectar si es cambio de opinión (hay más de un registro en signature_history)
-  const esChangioDeOpinion = doc && doc.signature_history && doc.signature_history.length > 0;
+  // Detectar si es cambio de opinión (por parámetro URL o por historial múltiple)
+  const esChangioDeOpinion = isChangeOpinion || (doc && doc.signature_history && doc.signature_history.length > 0);
   
   // Detectar si hay una firma reciente (última en el historial)
   const ultimaFirma = doc?.signature_history?.[doc.signature_history.length - 1];
