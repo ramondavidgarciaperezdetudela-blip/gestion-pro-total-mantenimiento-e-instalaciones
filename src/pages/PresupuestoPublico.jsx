@@ -206,7 +206,7 @@ function PresupuestoPublico() {
       setSaving(false);
     }
     // Si viene por email o whatsapp O está en modo cambio, mostrar confirmación. Si no, volver a decision
-    if (method === 'email' || method === 'whatsapp' || isChangingOpinion) {
+    if (method === 'email' || method === 'whatsapp' || isChangingOpinion || isChangeOpinion) {
       setStep('done');
     } else {
       setStep('decision');
@@ -255,7 +255,7 @@ function PresupuestoPublico() {
       setSaving(false);
     }
     // Si viene por email o whatsapp O está en modo cambio, mostrar confirmación. Si no, volver a decision
-    if (method === 'email' || method === 'whatsapp' || isChangingOpinion) {
+    if (method === 'email' || method === 'whatsapp' || isChangingOpinion || isChangeOpinion) {
       setStep('rejected');
     } else {
       setStep('decision');
