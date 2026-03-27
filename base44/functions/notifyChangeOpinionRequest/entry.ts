@@ -70,17 +70,20 @@ Deno.serve(async (req) => {
     const emailBodyAdmin = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
       <div style="background:#f59e0b;color:white;padding:16px 20px;border-radius:8px 8px 0 0">
-        <h2 style="margin:0;font-size:20px">⚠️ Solicitud de cambio de opinión</h2>
+        <h2 style="margin:0;font-size:20px">📋 Cambio de opinión solicitado</h2>
       </div>
       <div style="border:1px solid #fcd34d;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
-        <p style="color:#555;font-size:14px;margin:0">El cliente ha solicitado cambiar su decisión sobre el siguiente presupuesto:</p>
-        <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0">
-          <tr style="background:#f9fafb"><td style="padding:8px;color:#666"><strong>Cliente:</strong></td><td style="padding:8px">${contact_name}</td></tr>
-          <tr><td style="padding:8px;color:#666"><strong>Documento:</strong></td><td style="padding:8px;font-weight:bold">Nº ${doc_number || ''}</td></tr>
-          <tr style="background:#f9fafb"><td style="padding:8px;color:#666"><strong>Importe:</strong></td><td style="padding:8px;font-weight:bold">${(total || 0).toFixed(2)} €</td></tr>
+        <p style="color:#555;font-size:14px;margin:0;margin-bottom:12px"><strong>${contact_name}</strong> ha solicitado cambiar su decisión sobre el presupuesto:</p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden">
+          <tr><td style="padding:10px 12px;color:#666;border-bottom:1px solid #e5e7eb"><strong>Presupuesto:</strong></td><td style="padding:10px 12px;font-weight:bold;color:#1e3a5f">Nº ${doc_number || ''}</td></tr>
+          <tr><td style="padding:10px 12px;color:#666;border-bottom:1px solid #e5e7eb"><strong>Cliente:</strong></td><td style="padding:10px 12px">${contact_name}</td></tr>
+          <tr><td style="padding:10px 12px;color:#666;border-bottom:1px solid #e5e7eb"><strong>Importe:</strong></td><td style="padding:10px 12px;font-weight:bold;color:#16a34a">${(total || 0).toFixed(2)} €</td></tr>
+          <tr><td style="padding:10px 12px;color:#666"><strong>Decisión anterior:</strong></td><td style="padding:10px 12px;font-weight:bold;color:#${previous_decision === 'aceptado' ? '16a34a' : 'dc2626'}">${previous_decision === 'aceptado' ? '✅ Aceptado' : '❌ Rechazado'}</td></tr>
         </table>
-        <p style="color:#555;font-size:13px;margin:12px 0">Puedes enviar el enlace de nuevo al cliente para que actualice su decisión:</p>
-        <p style="margin:12px 0"><a href="${presupuestoUrlEmail}" style="display:inline-block;padding:10px 16px;background:#0ea5e9;color:white;text-decoration:none;border-radius:6px;font-weight:bold">📄 Abrir presupuesto</a></p>
+        <div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:12px;margin:16px 0;border-radius:4px">
+          <p style="margin:0;color:#92400e;font-size:13px"><strong>ℹ️</strong> El cliente puede aceptar o rechazar el presupuesto nuevamente. Envía el enlace para que actualice su decisión.</p>
+        </div>
+        <p style="margin:16px 0 0 0"><a href="${presupuestoUrlEmail}" style="display:inline-block;padding:12px 24px;background:#0ea5e9;color:white;text-decoration:none;border-radius:6px;font-weight:bold;font-size:14px">📄 Enviar enlace al cliente</a></p>
         <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb"/>
         <p style="font-size:12px;color:#999">${company?.company_name || ''} · ${company?.email || ''} · ${company?.phone || ''}</p>
       </div>
@@ -129,23 +132,31 @@ Deno.serve(async (req) => {
       if (doc?.contact_email) {
         const clientEmailBody = `
 <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
-  <div style="background:#0ea5e9;color:white;padding:16px 20px;border-radius:8px 8px 0 0">
-    <h2 style="margin:0;font-size:20px">📝 Reconsideración de presupuesto</h2>
+  <div style="background:#1e3a5f;color:white;padding:16px 20px;border-radius:8px 8px 0 0">
+    <h2 style="margin:0;font-size:18px">${company?.company_name || 'Presupuesto'}</h2>
+    <p style="margin:4px 0 0 0;font-size:13px;opacity:0.9">Oportunidad de reconsideración</p>
   </div>
-  <div style="border:1px solid #bfdbfe;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
-    <p style="color:#555;font-size:14px">Hola <strong>${contact_name}</strong>,</p>
-    <p style="color:#555;font-size:14px">Recibimos tu solicitud para reconsiderar tu decisión sobre el presupuesto. Te reenviamos el enlace para que puedas aceptarlo o rechazarlo:</p>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0">
-      <tr style="background:#f0f9ff"><td style="padding:8px;color:#666"><strong>Presupuesto:</strong></td><td style="padding:8px">Nº ${doc_number || ''}</td></tr>
-      <tr><td style="padding:8px;color:#666"><strong>Importe:</strong></td><td style="padding:8px;font-weight:bold">${(total || 0).toFixed(2)} €</td></tr>
-    </table>
-    <div style="margin:20px 0">
-      <p style="color:#555;font-size:13px;margin:0 0 12px">Haz clic en el botón para aceptar o rechazar:</p>
-      <a href="${presupuestoUrlEmail}" style="display:inline-block;padding:12px 24px;background:#0ea5e9;color:white;text-decoration:none;border-radius:6px;font-weight:bold;font-size:14px">📄 Revisar presupuesto</a>
+  <div style="border:1px solid #e5e7eb;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
+    <p style="color:#555;font-size:14px;margin:0 0 16px 0">Hola <strong>${contact_name}</strong>,</p>
+    <p style="color:#555;font-size:14px;margin:0 0 16px 0">Nos alegra que solicites reconsiderar tu decisión sobre nuestro presupuesto. Te reenviamos el enlace para que puedas <strong>aceptarlo o rechazarlo nuevamente</strong>:</p>
+    
+    <div style="background:#f9fafb;border-left:4px solid #0ea5e9;padding:16px;margin:16px 0;border-radius:6px">
+      <p style="margin:0 0 8px 0;color:#1e3a5f;font-weight:bold">📋 Detalles del presupuesto</p>
+      <table style="width:100%;font-size:13px">
+        <tr><td style="padding:4px 0;color:#666">Número:</td><td style="padding:4px 0;font-weight:bold">Nº ${doc_number || ''}</td></tr>
+        <tr><td style="padding:4px 0;color:#666">Importe:</td><td style="padding:4px 0;font-weight:bold;color:#16a34a">${(total || 0).toFixed(2)} €</td></tr>
+      </table>
     </div>
-    <p style="color:#777;font-size:12px;margin-top:20px">Si prefieres, también puedes contactarnos directamente para resolver cualquier duda.</p>
+    
+    <div style="margin:20px 0;text-align:center;padding:16px;background:#f0f9ff;border-radius:6px">
+      <p style="color:#555;font-size:13px;margin:0 0 12px 0"><strong>¿Aceptas o rechazas el presupuesto?</strong></p>
+      <p style="margin:0"><a href="${presupuestoUrlEmail}" style="display:inline-block;padding:14px 28px;background:#0ea5e9;color:white;text-decoration:none;border-radius:6px;font-weight:bold;font-size:14px">✅ Abrir y decidir</a></p>
+      <p style="color:#666;font-size:11px;margin:12px 0 0 0">Te llevará a una página segura para confirmar tu decisión</p>
+    </div>
+    
+    <p style="color:#777;font-size:12px;margin:16px 0 0 0">Si tienes cualquier pregunta o necesitas ayuda, no dudes en contactarnos directamente al <strong>${company?.phone || company?.email || ''}</strong>.</p>
     <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb"/>
-    <p style="font-size:12px;color:#999">${company?.company_name || ''} · ${company?.email || ''} · ${company?.phone || ''}</p>
+    <p style="font-size:11px;color:#999;margin:0">${company?.company_name || ''} · ${company?.email || ''} · ${company?.phone || ''}</p>
   </div>
 </div>`.trim();
         
@@ -163,7 +174,7 @@ Deno.serve(async (req) => {
 
       // Link de WhatsApp al cliente
       if (clientPhoneLink) {
-        const waMsg = `Hola ${contact_name},\n\nRecibimos que deseas reconsiderar el presupuesto Nº${doc_number} por ${(total || 0).toFixed(2)} €.\n\nAquí está el enlace para que puedas aceptarlo o rechazarlo:\n\n${presupuestoUrlWhatsapp}\n\nQuedamos a tu disposición.`;
+        const waMsg = `Hola ${contact_name} 👋\n\nVimos que deseas *reconsiderar* tu decisión sobre el presupuesto.\n\n📋 *${doc_number} • ${(total || 0).toFixed(2)} €*\n\nTe reenviamos el enlace para que puedas *aceptarlo o rechazarlo* nuevamente:\n\n${presupuestoUrlWhatsapp}\n\n✅ *Aceptar* o ❌ *Rechazar* — tú decides\n\nQuedamos a tu disposición.\n\n— ${company?.company_name || ''}`;
         const waLink = `https://wa.me/${clientPhoneLink}?text=${encodeURIComponent(waMsg)}`;
         
         // Enviar al admin el enlace de WhatsApp para contactar
