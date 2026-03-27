@@ -43,6 +43,10 @@
       "type": "string",
       "description": "Fecha y hora de la solicitud"
     },
+    "change_opinion_token": {
+      "type": "string",
+      "description": "Token \u00fanico para este cambio de opini\u00f3n (para auditor\u00eda)"
+    },
     "status": {
       "type": "string",
       "enum": [

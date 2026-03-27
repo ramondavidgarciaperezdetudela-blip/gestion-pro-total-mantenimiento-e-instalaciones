@@ -10,6 +10,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'doc_id requerido' }, { status: 400 });
     }
 
+    // Generar token único para este cambio de opinión
+    const changeOpinionToken = `co_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
     // Crear registro de solicitud de cambio de opinión
     try {
       const now = new Date();
@@ -24,10 +27,29 @@ Deno.serve(async (req) => {
         total,
         previous_decision,
         request_datetime: requestDateTime,
-        status: 'pendiente'
+        status: 'pendiente',
+        change_opinion_token: changeOpinionToken
       });
     } catch (createError) {
       console.error('Error creando registro:', createError);
+    }
+    
+    // Registrar en el documento que se solicitó cambio de opinión
+    try {
+      if (doc) {
+        const changeOpinionLog = doc.change_opinion_requests || [];
+        changeOpinionLog.push({
+          token: changeOpinionToken,
+          requested_at: new Date().toLocaleString('es-ES'),
+          previous_decision: previous_decision,
+          status: 'pendiente'
+        });
+        await base44.asServiceRole.entities.Invoice.update(doc_id, {
+          change_opinion_requests: changeOpinionLog
+        });
+      }
+    } catch (updateError) {
+      console.error('Error registrando cambio de opinión en documento:', updateError);
     }
 
     // Obtener documento y configuración
@@ -40,9 +62,9 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true });
     }
 
-    // Generar enlaces al presupuesto con método de acceso (indicando que es cambio de opinión)
-    const presupuestoUrlEmail = `https://app.base44.io/presupuesto-publico?id=${doc_id}&method=email&change_opinion=1`;
-    const presupuestoUrlWhatsapp = `https://app.base44.io/presupuesto-publico?id=${doc_id}&method=whatsapp&change_opinion=1`;
+    // Generar enlaces únicos para este cambio de opinión con token
+    const presupuestoUrlEmail = `https://app.base44.io/presupuesto-publico?id=${doc_id}&method=email&token=${changeOpinionToken}`;
+    const presupuestoUrlWhatsapp = `https://app.base44.io/presupuesto-publico?id=${doc_id}&method=whatsapp&token=${changeOpinionToken}`;
 
     // Enviar email al admin
     const emailBodyAdmin = `

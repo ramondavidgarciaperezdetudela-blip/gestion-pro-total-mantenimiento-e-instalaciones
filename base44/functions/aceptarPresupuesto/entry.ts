@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    const { doc_id, action, signature, method = 'web' } = body;
+    const { doc_id, action, signature, method = 'web', change_opinion_token } = body;
 
     if (!doc_id || !action) {
       return Response.json({ error: 'Parámetros requeridos: doc_id, action' }, { status: 400 });
@@ -89,7 +89,8 @@ Deno.serve(async (req) => {
         action: 'rechazar',
         signature_url: signatureUrl,
         datetime: signDatetime,
-        method: method
+        method: method,
+        change_opinion_token: change_opinion_token || undefined
       };
       const updatedHistory = [...(doc.signature_history || []), newHistoryEntry];
 
@@ -231,7 +232,8 @@ Deno.serve(async (req) => {
         action: 'aceptar',
         signature_url: signatureUrl,
         datetime: signDatetime,
-        method: method
+        method: method,
+        change_opinion_token: change_opinion_token || undefined
       };
       const updatedHistory = [...(doc.signature_history || []), newHistoryEntry];
 

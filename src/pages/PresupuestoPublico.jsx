@@ -142,7 +142,8 @@ function PresupuestoPublico() {
   const params = new URLSearchParams(window.location.search);
   const docId = params.get('id');
   const method = params.get('method') || 'web'; // Detecta si vino por email, whatsapp o web
-  const isChangeOpinion = params.get('change_opinion') === '1'; // Detecta si es un cambio de opinión
+  const changeOpinionToken = params.get('token'); // Token único del cambio de opinión
+  const isChangeOpinion = !!changeOpinionToken; // Es cambio de opinión si hay token
 
   const [doc, setDoc] = useState(null);
   const [company, setCompany] = useState(null);
@@ -171,7 +172,8 @@ function PresupuestoPublico() {
         doc_id: docId,
         signature: signatureDataUrl,
         action: 'aceptar',
-        method: method
+        method: method,
+        change_opinion_token: changeOpinionToken
       });
       const dt = res?.data?.sign_datetime || null;
       const updatedDoc = { ...doc, status: 'enviado', signature_client: signatureDataUrl, sign_datetime: dt };
@@ -203,7 +205,8 @@ function PresupuestoPublico() {
         doc_id: docId,
         signature: signatureDataUrl,
         action: 'rechazar',
-        method: method
+        method: method,
+        change_opinion_token: changeOpinionToken
       });
       const dt = res?.data?.sign_datetime || null;
       const updatedDoc = { ...doc, status: 'cancelado', signature_client: signatureDataUrl, sign_datetime: dt };
