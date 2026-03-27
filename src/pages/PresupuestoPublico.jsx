@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Check, X, PenLine, RotateCcw, CheckCircle, XCircle, Loader2, AlertTriangle, Phone } from 'lucide-react';
+import { Check, X, PenLine, RotateCcw, CheckCircle, XCircle, Loader2, AlertTriangle, Phone, MessageCircle } from 'lucide-react';
 
 // Mini SignaturePad inline para esta página pública
 function SignaturePad({ onSave }) {
@@ -194,6 +194,24 @@ export default function PresupuestoPublico() {
     setTimeout(() => signRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   };
 
+  const handleRequestChangeOpinion = async () => {
+    setSaving(true);
+    try {
+      await base44.functions.invoke('notifyChangeOpinionRequest', {
+        doc_id: docId,
+        doc_number: doc.doc_number,
+        contact_name: doc.contact_name,
+        total: doc.total
+      });
+      // Mostrar confirmación
+      alert('✅ Se ha enviado tu solicitud. El equipo se pondrá en contacto contigo pronto.');
+    } catch (error) {
+      alert('❌ Error al enviar la solicitud. Intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 py-6 px-4">
       <div className="max-w-2xl mx-auto space-y-4">
@@ -311,10 +329,17 @@ export default function PresupuestoPublico() {
 
           {/* Ya aceptado */}
           {yaFirmado && (
-            <div className="border-t pt-4 text-center space-y-2">
+            <div className="border-t pt-4 text-center space-y-3">
               <CheckCircle className="w-10 h-10 text-green-500 mx-auto" />
               <p className="font-semibold text-green-700">Este presupuesto ya fue aceptado y firmado.</p>
               {doc.sign_datetime && <p className="text-xs text-gray-400 font-mono">🕐 {doc.sign_datetime}</p>}
+              <Button
+                onClick={handleRequestChangeOpinion}
+                disabled={saving}
+                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white h-10 text-sm"
+              >
+                <MessageCircle className="w-4 h-4 mr-2" /> Solicitar cambio de opinión
+              </Button>
             </div>
           )}
 
@@ -325,12 +350,21 @@ export default function PresupuestoPublico() {
               <p className="font-semibold text-gray-700">Este presupuesto fue rechazado y firmado.</p>
               {doc.sign_datetime && <p className="text-xs text-gray-400 font-mono">🕐 {doc.sign_datetime}</p>}
               <p className="text-sm text-gray-500">¿Ha cambiado de opinión?</p>
-              <Button
-                onClick={() => { setStep('sign'); scrollToSign(); }}
-                className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
-              >
-                <Check className="w-4 h-4 mr-2" /> Cambiar de opinión y aceptar
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => { setStep('sign'); scrollToSign(); }}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
+                >
+                  <Check className="w-4 h-4 mr-2" /> Sí, aceptar
+                </Button>
+                <Button
+                  onClick={handleRequestChangeOpinion}
+                  disabled={saving}
+                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white h-12 text-base font-semibold"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" /> Solicitar
+                </Button>
+              </div>
             </div>
           )}
         </div>
