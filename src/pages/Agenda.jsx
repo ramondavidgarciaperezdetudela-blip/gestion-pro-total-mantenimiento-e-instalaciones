@@ -24,7 +24,7 @@ export default function Agenda() {
   const [showContactSearch, setShowContactSearch] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [viewMode, setViewMode] = useState('week'); // 'week' | 'month'
+  const [viewMode, setViewMode] = useState('month'); // 'week' | 'month'
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAppt, setEditingAppt] = useState(null);
   const [form, setForm] = useState({ title: '', description: '', contact_name: '', contact_id: '', date: format(new Date(), 'yyyy-MM-dd'), time_start: '09:00', time_end: '10:00', address: '', type: 'otro', status: 'pendiente', priority: 'media', notes: '' });

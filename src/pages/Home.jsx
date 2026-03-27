@@ -302,47 +302,9 @@ export default function Home() {
         <StatCard label="Facturas vencidas" value={kpis.invoicesOverdue} icon={XCircle} color="border-red-400" linkPage="Documents" />
       </div>
 
-      {/* KPIs Avanzados */}
-      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border-2 border-indigo-200 rounded-xl p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-gray-800 text-4xl font-bold flex items-center gap-2">Panel de KPIs Avanzados
-
-          </h2>
-          <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border">ℹ️ KPI = Indicador de Rendimiento Clave</div>
-        </div>
-        <p className="bg-opacity-60 text-gray-600 p-2.5 text-base leading-relaxed rounded-lg">¿Qué son los KPIs? Son métricas que miden el rendimiento de tu negocio. Estos indicadores te ayudan a: Salud Financiera: Facturación, cobros, pendientes y margen de beneficio Gestión Operativa: Órdenes SAT, mantenimientos y utilización de técnicos Relación Cliente: Clientes activos, valor de compra y rentabilidad por cliente Logística: Stock, rotación de inventario y necesidades de reposición Control Temporal: Proyectos retrasados, mantenimiento vencido, cobros vencidos
 
 
 
-
-
-
-
-
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-          <div className="bg-white rounded-lg p-2 border-l-4 border-violet-400 text-center">
-            <p className="text-2xl font-bold text-violet-600">{kpis.contacts}</p>
-            <p className="text-gray-500 text-lg">Total Contactos</p>
-          </div>
-          <div className="bg-white rounded-lg p-2 border-l-4 border-green-400 text-center">
-            <p className="text-2xl font-bold text-green-600">{kpis.invoicesPaid}</p>
-            <p className="text-gray-500 text-lg">Facturas Pagadas</p>
-          </div>
-          <div className="bg-white rounded-lg p-2 border-l-4 border-orange-400 text-center">
-            <p className="text-2xl font-bold text-orange-600">{kpis.satPending}</p>
-            <p className="text-gray-500 text-base">SAT Pendientes</p>
-          </div>
-          <div className="bg-white rounded-lg p-2 border-l-4 border-cyan-400 text-center">
-            <p className="text-2xl font-bold text-cyan-600">{kpis.maintenanceDue}</p>
-            <p className="text-gray-500 text-xl">Mant. Próximo</p>
-          </div>
-          <div className="bg-white rounded-lg p-2 border-l-4 border-red-400 text-center">
-            <p className="text-2xl font-bold text-red-600">{kpis.invoicesOverdue}</p>
-            <p className="text-gray-500 text-xl">Vencidas</p>
-          </div>
-        </div>
-      </div>
 
       {/* Gráficos proveedores */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
