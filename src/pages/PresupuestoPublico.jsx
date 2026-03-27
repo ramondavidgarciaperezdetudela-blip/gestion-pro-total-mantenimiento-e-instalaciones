@@ -297,30 +297,9 @@ function PresupuestoPublico() {
   };
 
   const handleRequestChangeOpinion = async () => {
-    setSaving(true);
-    try {
-      const previousDecision = yaFirmado ? 'aceptado' : (rechazadoYFirmado ? 'rechazado' : '');
-      const res = await base44.functions.invoke('notifyChangeOpinionRequest', {
-        doc_id: docId,
-        doc_number: doc.doc_number,
-        doc_type: doc.doc_type,
-        contact_name: doc.contact_name,
-        contact_id: doc.contact_id,
-        contact_phone: doc.contact_phone,
-        total: doc.total,
-        previous_decision: previousDecision
-      });
-      if (res?.data?.ok) {
-        alert('✅ Se ha enviado tu solicitud. El equipo se pondrá en contacto contigo pronto para enviar el enlace actualizado.');
-      } else {
-        throw new Error('No se confirmó el envío');
-      }
-    } catch (error) {
-      console.error('Error en solicitud de cambio:', error);
-      alert('✅ Tu solicitud ha sido registrada. El equipo se pondrá en contacto contigo en breve.\n\n(Si tienes dudas, contacta directamente al equipo)');
-    } finally {
-      setSaving(false);
-    }
+    // Lleva directamente a la zona de firma para cambiar de opinión
+    setStep('sign');
+    scrollToSign();
   };
 
   return (
