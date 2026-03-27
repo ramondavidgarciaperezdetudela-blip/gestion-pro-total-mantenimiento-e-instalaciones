@@ -255,12 +255,16 @@ function PresupuestoPublico() {
   const handleRequestChangeOpinion = async () => {
     setSaving(true);
     try {
+      const previousDecision = yaFirmado ? 'aceptado' : (rechazadoYFirmado ? 'rechazado' : '');
       const res = await base44.functions.invoke('notifyChangeOpinionRequest', {
         doc_id: docId,
         doc_number: doc.doc_number,
+        doc_type: doc.doc_type,
         contact_name: doc.contact_name,
+        contact_id: doc.contact_id,
+        contact_phone: doc.contact_phone,
         total: doc.total,
-        contact_phone: doc.contact_phone
+        previous_decision: previousDecision
       });
       if (res?.data?.ok) {
         alert('✅ Se ha enviado tu solicitud. El equipo se pondrá en contacto contigo pronto para enviar el enlace actualizado.');

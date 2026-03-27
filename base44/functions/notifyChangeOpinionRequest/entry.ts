@@ -4,10 +4,30 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    const { doc_id, doc_number, contact_name, total, contact_phone } = body;
+    const { doc_id, doc_number, contact_name, total, contact_phone, doc_type = 'presupuesto', contact_id = '', previous_decision = '' } = body;
 
     if (!doc_id) {
       return Response.json({ error: 'doc_id requerido' }, { status: 400 });
+    }
+
+    // Crear registro de solicitud de cambio de opinión
+    try {
+      const now = new Date();
+      const requestDateTime = now.toLocaleString('es-ES');
+      await base44.asServiceRole.entities.ChangeOpinionRequest.create({
+        doc_id,
+        doc_number,
+        doc_type,
+        contact_name,
+        contact_id,
+        contact_phone,
+        total,
+        previous_decision,
+        request_datetime: requestDateTime,
+        status: 'pendiente'
+      });
+    } catch (createError) {
+      console.error('Error creando registro:', createError);
     }
 
     // Obtener documento y configuración
