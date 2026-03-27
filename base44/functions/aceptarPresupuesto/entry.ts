@@ -61,24 +61,71 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Notificar por email al admin
       try {
         const companies = await base44.asServiceRole.entities.CompanySettings.list();
         const company = companies?.[0];
+
+        // Buscar email del contacto
+        let contactEmail = null;
+        if (doc.contact_id) {
+          const contacts = await base44.asServiceRole.entities.Contact.filter({ id: doc.contact_id });
+          contactEmail = contacts?.[0]?.email || null;
+        }
+
+        const emailBodyRechazoAdmin = `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+  <div style="background:#ef4444;color:white;padding:16px 20px;border-radius:8px 8px 0 0">
+    <h2 style="margin:0;font-size:20px">❌ Presupuesto RECHAZADO y firmado</h2>
+  </div>
+  <div style="border:1px solid #fca5a5;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      <tr><td style="padding:8px 0;color:#666;width:40%"><strong>Cliente:</strong></td><td style="padding:8px 0">${doc.contact_name}</td></tr>
+      <tr style="background:#fef2f2"><td style="padding:8px 0;color:#666"><strong>Documento:</strong></td><td style="padding:8px 0">${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</td></tr>
+      <tr><td style="padding:8px 0;color:#666"><strong>Importe:</strong></td><td style="padding:8px 0;font-weight:bold;color:#1e3a5f">${(doc.total || 0).toFixed(2)} €</td></tr>
+      <tr style="background:#fef2f2"><td style="padding:8px 0;color:#666"><strong>🕐 Fecha y hora firma:</strong></td><td style="padding:8px 0;font-weight:bold;color:#dc2626">${signDatetime}</td></tr>
+    </table>
+    <p style="margin-top:16px;color:#555;font-size:13px">El cliente ha firmado digitalmente el rechazo del presupuesto.</p>
+    ${signature ? `<div style="margin-top:16px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Firma digital del cliente:</strong></p><img src="${signature}" alt="Firma" style="max-width:280px;border:1px solid #fca5a5;border-radius:6px;background:#fff;padding:4px"/></div>` : ''}
+    <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb"/>
+    <p style="font-size:12px;color:#999">${company?.company_name || ''} · ${company?.email || ''} · ${company?.phone || ''}</p>
+  </div>
+</div>`.trim();
+
+        const emailBodyRechazoCliente = `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+  <div style="background:#1e3a5f;color:white;padding:16px 20px;border-radius:8px 8px 0 0">
+    <h2 style="margin:0;font-size:18px">${company?.company_name || ''}</h2>
+  </div>
+  <div style="border:1px solid #e5e7eb;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
+    <h3 style="color:#dc2626">❌ Confirmación de rechazo del presupuesto</h3>
+    <p style="color:#555;font-size:14px">Estimado/a <strong>${doc.contact_name}</strong>,</p>
+    <p style="color:#555;font-size:14px">Le confirmamos que hemos registrado su <strong>rechazo firmado</strong> del siguiente presupuesto:</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0">
+      <tr style="background:#f9fafb"><td style="padding:8px;color:#666"><strong>Documento:</strong></td><td style="padding:8px">${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</td></tr>
+      <tr><td style="padding:8px;color:#666"><strong>Importe:</strong></td><td style="padding:8px;font-weight:bold">${(doc.total || 0).toFixed(2)} €</td></tr>
+      <tr style="background:#f9fafb"><td style="padding:8px;color:#666"><strong>🕐 Firmado el:</strong></td><td style="padding:8px;font-weight:bold;color:#dc2626">${signDatetime}</td></tr>
+    </table>
+    ${signature ? `<div style="margin-top:12px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Su firma digital registrada:</strong></p><img src="${signature}" alt="Firma" style="max-width:250px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;padding:4px"/></div>` : ''}
+    <p style="color:#555;font-size:13px;margin-top:16px">Si ha cambiado de opinión o desea más información, no dude en contactarnos.</p>
+    <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb"/>
+    <p style="font-size:12px;color:#999">${company?.company_name || ''} · ${company?.phone || ''} · ${company?.email || ''}</p>
+  </div>
+</div>`.trim();
+
+        // Email al admin
         if (company?.email) {
           await base44.asServiceRole.integrations.Core.SendEmail({
             to: company.email,
-            subject: `❌ Presupuesto rechazado y firmado - ${doc.contact_name}`,
-            body: `
-<h2>Presupuesto rechazado</h2>
-<p><strong>Cliente:</strong> ${doc.contact_name}</p>
-<p><strong>Documento:</strong> ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</p>
-<p><strong>Importe:</strong> ${(doc.total || 0).toFixed(2)} €</p>
-<p><strong>Fecha y hora de firma:</strong> ${signDatetime}</p>
-<br/>
-<p>El cliente ha firmado digitalmente el rechazo del presupuesto.</p>
-${signature ? `<img src="${signature}" alt="Firma cliente" style="max-width:300px;border:1px solid #ddd;border-radius:8px;margin-top:12px"/>` : ''}
-            `.trim()
+            subject: `❌ Presupuesto rechazado y firmado - ${doc.contact_name} (${signDatetime})`,
+            body: emailBodyRechazoAdmin
+          });
+        }
+        // Email al cliente
+        if (contactEmail) {
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: contactEmail,
+            subject: `Confirmación de rechazo - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''} - ${company?.company_name || ''}`,
+            body: emailBodyRechazoCliente
           });
         }
 
@@ -116,24 +163,71 @@ ${signature ? `<img src="${signature}" alt="Firma cliente" style="max-width:300p
         });
       }
 
-      // Notificar por email al admin si hay empresa configurada
       try {
         const companies = await base44.asServiceRole.entities.CompanySettings.list();
         const company = companies?.[0];
+
+        // Buscar email del contacto
+        let contactEmail = null;
+        if (doc.contact_id) {
+          const contacts = await base44.asServiceRole.entities.Contact.filter({ id: doc.contact_id });
+          contactEmail = contacts?.[0]?.email || null;
+        }
+
+        const emailBodyAceptadoAdmin = `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+  <div style="background:#16a34a;color:white;padding:16px 20px;border-radius:8px 8px 0 0">
+    <h2 style="margin:0;font-size:20px">✅ Presupuesto ACEPTADO y firmado</h2>
+  </div>
+  <div style="border:1px solid #86efac;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      <tr><td style="padding:8px 0;color:#666;width:40%"><strong>Cliente:</strong></td><td style="padding:8px 0">${doc.contact_name}</td></tr>
+      <tr style="background:#f0fdf4"><td style="padding:8px 0;color:#666"><strong>Documento:</strong></td><td style="padding:8px 0">${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</td></tr>
+      <tr><td style="padding:8px 0;color:#666"><strong>Importe:</strong></td><td style="padding:8px 0;font-weight:bold;color:#1e3a5f">${(doc.total || 0).toFixed(2)} €</td></tr>
+      <tr style="background:#f0fdf4"><td style="padding:8px 0;color:#666"><strong>🕐 Fecha y hora firma:</strong></td><td style="padding:8px 0;font-weight:bold;color:#16a34a">${signDatetime}</td></tr>
+    </table>
+    <p style="margin-top:16px;color:#555;font-size:13px">El cliente ha firmado digitalmente el presupuesto. El documento ha sido archivado en su ficha de cliente.</p>
+    <div style="margin-top:16px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Firma digital del cliente:</strong></p><img src="${signature}" alt="Firma" style="max-width:280px;border:1px solid #86efac;border-radius:6px;background:#fff;padding:4px"/></div>
+    <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb"/>
+    <p style="font-size:12px;color:#999">${company?.company_name || ''} · ${company?.email || ''} · ${company?.phone || ''}</p>
+  </div>
+</div>`.trim();
+
+        const emailBodyAceptadoCliente = `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+  <div style="background:#1e3a5f;color:white;padding:16px 20px;border-radius:8px 8px 0 0">
+    <h2 style="margin:0;font-size:18px">${company?.company_name || ''}</h2>
+  </div>
+  <div style="border:1px solid #e5e7eb;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
+    <h3 style="color:#16a34a">✅ Confirmación de aceptación del presupuesto</h3>
+    <p style="color:#555;font-size:14px">Estimado/a <strong>${doc.contact_name}</strong>,</p>
+    <p style="color:#555;font-size:14px">Le confirmamos que hemos registrado su <strong>aceptación firmada</strong> del siguiente presupuesto:</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0">
+      <tr style="background:#f9fafb"><td style="padding:8px;color:#666"><strong>Documento:</strong></td><td style="padding:8px">${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</td></tr>
+      <tr><td style="padding:8px;color:#666"><strong>Importe:</strong></td><td style="padding:8px;font-weight:bold">${(doc.total || 0).toFixed(2)} €</td></tr>
+      <tr style="background:#f9fafb"><td style="padding:8px;color:#666"><strong>🕐 Firmado el:</strong></td><td style="padding:8px;font-weight:bold;color:#16a34a">${signDatetime}</td></tr>
+    </table>
+    <div style="margin-top:12px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Su firma digital registrada:</strong></p><img src="${signature}" alt="Firma" style="max-width:250px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;padding:4px"/></div>
+    <p style="color:#555;font-size:13px;margin-top:16px">Nos pondremos en contacto con usted en breve para coordinar los trabajos. ¡Gracias por confiar en nosotros!</p>
+    <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb"/>
+    <p style="font-size:12px;color:#999">${company?.company_name || ''} · ${company?.phone || ''} · ${company?.email || ''}</p>
+  </div>
+</div>`.trim();
+
+        // Email al admin
         if (company?.email) {
           await base44.asServiceRole.integrations.Core.SendEmail({
             to: company.email,
-            subject: `✅ Presupuesto aceptado y firmado - ${doc.contact_name}`,
-            body: `
-<h2>Presupuesto aceptado</h2>
-<p><strong>Cliente:</strong> ${doc.contact_name}</p>
-<p><strong>Documento:</strong> ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</p>
-<p><strong>Importe:</strong> ${(doc.total || 0).toFixed(2)} €</p>
-<p><strong>Fecha y hora de firma:</strong> ${signDatetime}</p>
-<br/>
-<p>El cliente ha firmado digitalmente el presupuesto. El documento ha sido archivado en su ficha de cliente.</p>
-<img src="${signature}" alt="Firma cliente" style="max-width:300px;border:1px solid #ddd;border-radius:8px;margin-top:12px"/>
-            `.trim()
+            subject: `✅ Presupuesto aceptado y firmado - ${doc.contact_name} (${signDatetime})`,
+            body: emailBodyAceptadoAdmin
+          });
+        }
+        // Email al cliente
+        if (contactEmail) {
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: contactEmail,
+            subject: `Confirmación de aceptación - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''} - ${company?.company_name || ''}`,
+            body: emailBodyAceptadoCliente
           });
         }
 
