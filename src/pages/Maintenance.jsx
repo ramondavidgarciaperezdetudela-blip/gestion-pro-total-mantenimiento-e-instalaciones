@@ -457,13 +457,13 @@ export default function Maintenance() {
               )}
 
               <Button onClick={handleSave} className="w-full bg-cyan-600">{editing ? 'Actualizar' : 'Guardar ficha'}</Button>
+
+              {/* Signature modals — solo dentro del diálogo abierto */}
+              <SignaturePad open={sigTechOpen} onClose={() => setSigTechOpen(false)} title="Firma del técnico" onSave={sig => setForm({ ...form, signature_technician: sig })} />
+              <SignaturePad open={sigClientOpen} onClose={() => setSigClientOpen(false)} title="Firma del cliente" onSave={sig => setForm({ ...form, signature_client: sig })} />
             </div>
         </DialogContent>
       </Dialog>
-
-      {/* Signature modals */}
-      <SignaturePad open={sigTechOpen} onClose={() => setSigTechOpen(false)} title="Firma del técnico" onSave={sig => setForm({ ...form, signature_technician: sig })} />
-      <SignaturePad open={sigClientOpen} onClose={() => setSigClientOpen(false)} title="Firma del cliente" onSave={sig => setForm({ ...form, signature_client: sig })} />
 
       {/* Preview */}
       <Dialog open={!!preview} onOpenChange={() => setPreview(null)}>
