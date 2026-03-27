@@ -393,8 +393,8 @@ function PresupuestoPublico() {
             </div>
           )}
 
-          {/* Botones según tipo de documento - solo si no tiene última firma registrada */}
-          {!yaFirmado && !rechazadoYFirmado && !tieneUltimaFirma && step === 'decision' && (
+          {/* Botones según tipo de documento - mostrar si es cambio de opinión O si no tiene firma */}
+          {(isChangeOpinion || (!yaFirmado && !rechazadoYFirmado && !tieneUltimaFirma)) && step === 'decision' && (
             <div className="border-t pt-4 space-y-3">
               {isPresupuesto && (
                 <>
@@ -535,8 +535,8 @@ function PresupuestoPublico() {
             </div>
           )}
 
-          {/* Ya firmado */}
-          {yaFirmado && (
+          {/* Ya firmado - pero NO si es cambio de opinión */}
+          {yaFirmado && !isChangeOpinion && (
             <div className="border-t pt-4 text-center space-y-3">
               <CheckCircle className="w-10 h-10 text-green-500 mx-auto" />
               <p className="font-semibold text-green-700">
@@ -560,8 +560,8 @@ function PresupuestoPublico() {
             </div>
           )}
 
-          {/* Rechazado — opción de cambiar de opinión (solo presupuestos) */}
-          {rechazadoYFirmado && step === 'decision' && isPresupuesto && (
+          {/* Rechazado — opción de cambiar de opinión (solo presupuestos) - pero NO si ya hay token */}
+          {rechazadoYFirmado && step === 'decision' && isPresupuesto && !isChangeOpinion && (
             <div className="border-t pt-4 text-center space-y-3">
               <XCircle className="w-10 h-10 text-red-400 mx-auto" />
               <p className="font-semibold text-gray-700">Este presupuesto fue rechazado y firmado.</p>
