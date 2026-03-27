@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Check, X, PenLine, RotateCcw, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { Check, X, PenLine, RotateCcw, CheckCircle, XCircle, Loader2, AlertTriangle, Phone } from 'lucide-react';
 
 // Mini SignaturePad inline para esta página pública
 function SignaturePad({ onSave }) {
@@ -71,13 +71,13 @@ function SignaturePad({ onSave }) {
   const save = () => {
     const canvas = canvasRef.current;
     const temp = document.createElement('canvas');
-    temp.width = 600;
-    temp.height = 200;
+    temp.width = 400;
+    temp.height = 130;
     const ctx = temp.getContext('2d');
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 600, 200);
-    ctx.drawImage(canvas, 0, 0, 600, 200);
-    onSave(temp.toDataURL('image/png'));
+    ctx.fillRect(0, 0, 400, 130);
+    ctx.drawImage(canvas, 0, 0, 400, 130);
+    onSave(temp.toDataURL('image/jpeg', 0.7));
   };
 
   return (
@@ -124,20 +124,20 @@ export default function PresupuestoPublico() {
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [step, setStep] = useState('decision'); // 'decision' | 'sign' | 'sign-reject' | 'rejected' | 'done'
+  const [step, setStep] = useState('decision'); // 'decision' | 'sign' | 'sign-reject' | 'done' | 'rejected'
   const [saving, setSaving] = useState(false);
-  const [signDatetime, setSignDatetime] = useState(null);
+  const signRef = useRef(null);
 
   useEffect(() => {
     if (!docId) { setError('Enlace inválido'); setLoading(false); return; }
-    Promise.all([
-      base44.functions.invoke('getPresupuestoPublico', { doc_id: docId }),
-      base44.functions.invoke('getPresupuestoPublico', { doc_id: docId, company_only: true })
-    ]).then(([res]) => {
-      if (res?.data?.doc) setDoc(res.data.doc);
-      if (res?.data?.company) setCompany(res.data.company);
-      if (!res?.data?.doc) setError('Presupuesto no encontrado');
-    }).catch(() => setError('No se pudo cargar el presupuesto')).finally(() => setLoading(false));
+    base44.functions.invoke('getPresupuestoPublico', { doc_id: docId })
+      .then((res) => {
+        if (res?.data?.doc) setDoc(res.data.doc);
+        if (res?.data?.company) setCompany(res.data.company);
+        if (!res?.data?.doc) setError('Presupuesto no encontrado');
+      })
+      .catch(() => setError('No se pudo cargar el presupuesto'))
+      .finally(() => setLoading(false));
   }, [docId]);
 
   const handleSign = async (signatureDataUrl) => {
@@ -147,12 +147,12 @@ export default function PresupuestoPublico() {
       signature: signatureDataUrl,
       action: 'aceptar'
     });
+    const dt = res?.data?.sign_datetime || null;
     setSaving(false);
-    setSignDatetime(res?.data?.sign_datetime || null);
-    if (res?.data?.whatsapp_url) {
-      setTimeout(() => window.open(res.data.whatsapp_url, '_blank'), 500);
-    }
-    setStep('done');
+    // Actualizar doc local para mostrar estado firmado
+    setDoc(prev => ({ ...prev, status: 'enviado', signature_client: signatureDataUrl, sign_datetime: dt }));
+    setStep('decision');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleRejectWithSign = async (signatureDataUrl) => {
@@ -162,12 +162,12 @@ export default function PresupuestoPublico() {
       signature: signatureDataUrl,
       action: 'rechazar'
     });
+    const dt = res?.data?.sign_datetime || null;
     setSaving(false);
-    setSignDatetime(res?.data?.sign_datetime || null);
-    if (res?.data?.whatsapp_url) {
-      setTimeout(() => window.open(res.data.whatsapp_url, '_blank'), 500);
-    }
-    setStep('rejected');
+    // Actualizar doc local para mostrar estado rechazado
+    setDoc(prev => ({ ...prev, status: 'cancelado', signature_client: signatureDataUrl, sign_datetime: dt }));
+    setStep('decision');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (loading) return (
@@ -185,64 +185,29 @@ export default function PresupuestoPublico() {
     </div>
   );
 
-  if (step === 'done') return (
-    <div className="min-h-screen flex items-center justify-center bg-green-50 px-4">
-      <div className="text-center max-w-sm">
-        <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-green-700 mb-2">¡Presupuesto aceptado!</h2>
-        <p className="text-gray-600">Gracias por su confirmación. Hemos recibido su firma y nos pondremos en contacto con usted en breve.</p>
-        {signDatetime && (
-          <div className="mt-5 bg-white border border-green-200 rounded-xl px-4 py-3 inline-block shadow-sm">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Firma digital registrada</p>
-            <p className="text-base font-bold text-green-700">✅ {signDatetime}</p>
-          </div>
-        )}
-        <p className="text-sm text-gray-400 mt-5">Le hemos enviado una copia a su WhatsApp.</p>
-        <p className="text-sm text-gray-400 mt-1">{company?.company_name}</p>
-      </div>
-    </div>
-  );
-
-  if (step === 'rejected') return (
-    <div className="min-h-screen flex items-center justify-center bg-red-50 px-4">
-      <div className="text-center max-w-sm">
-        <XCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-red-600 mb-2">Presupuesto rechazado</h2>
-        <p className="text-gray-600">Hemos registrado su rechazo firmado. Le hemos enviado una copia a su WhatsApp.</p>
-        {signDatetime && (
-          <div className="mt-5 bg-white border border-red-200 rounded-xl px-4 py-3 inline-block shadow-sm">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Firma digital registrada</p>
-            <p className="text-base font-bold text-red-600">❌ {signDatetime}</p>
-          </div>
-        )}
-        <p className="text-sm text-gray-500 mt-5">¿Ha cambiado de opinión?</p>
-        <Button
-          onClick={() => { setStep('sign'); setSignDatetime(null); }}
-          className="mt-3 bg-green-600 hover:bg-green-700 text-white w-full h-12 text-base font-semibold"
-        >
-          <Check className="w-4 h-4 mr-2" /> Cambiar de opinión y aceptar
-        </Button>
-        <p className="text-sm text-gray-400 mt-4">{company?.company_name} · {company?.phone}</p>
-      </div>
-    </div>
-  );
-
   const cs = company || {};
+  const yaFirmado = doc && (doc.signature_client && doc.status !== 'cancelado' && doc.status !== 'borrador' && doc.status !== 'enviado');
+  const rechazadoYFirmado = doc && doc.status === 'cancelado' && doc.signature_client;
+
+  const scrollToSign = () => {
+    setTimeout(() => signRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 py-6 px-4">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto space-y-4">
+
         {/* Header empresa */}
-        <div className="bg-white rounded-2xl shadow-sm border p-5 mb-4 flex items-center gap-4">
+        <div className="bg-white rounded-2xl shadow-sm border p-4 flex items-center gap-4">
           {cs.logo_url && <img src={cs.logo_url} alt="Logo" className="h-12 w-12 rounded-lg object-contain border" />}
           <div>
             <h1 className="font-bold text-lg text-slate-800">{cs.company_name || 'Presupuesto'}</h1>
-            <p className="text-sm text-gray-400">{cs.phone} · {cs.email}</p>
+            <p className="text-sm text-gray-400">{cs.phone} {cs.email ? `· ${cs.email}` : ''}</p>
           </div>
         </div>
 
-        {/* Documento */}
-        <div className="bg-white rounded-2xl shadow-sm border p-5 mb-4 space-y-4">
+        {/* Documento completo */}
+        <div className="bg-white rounded-2xl shadow-sm border p-5 space-y-4">
           <div className="flex justify-between items-start border-b pb-3">
             <div>
               <span className="text-xs uppercase font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{doc.doc_type}</span>
@@ -261,13 +226,12 @@ export default function PresupuestoPublico() {
             {doc.contact_address && <p className="text-xs text-gray-500">{doc.contact_address}</p>}
           </div>
 
-          {/* Líneas */}
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
                 <th className="text-left py-2 text-xs text-gray-500 font-medium">Descripción</th>
-                <th className="text-center py-2 text-xs text-gray-500 font-medium">Cant.</th>
-                <th className="text-right py-2 text-xs text-gray-500 font-medium">Total</th>
+                <th className="text-center py-2 text-xs text-gray-500 font-medium w-12">Cant.</th>
+                <th className="text-right py-2 text-xs text-gray-500 font-medium w-20">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -295,115 +259,105 @@ export default function PresupuestoPublico() {
           {doc.payment_terms && (
             <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 whitespace-pre-wrap">{doc.payment_terms}</div>
           )}
+
+          {/* Botones de acción dentro del documento — siempre visibles */}
+          {!yaFirmado && !rechazadoYFirmado && step === 'decision' && (
+            <div className="border-t pt-4 space-y-3">
+              <p className="text-center text-sm font-semibold text-slate-700">¿Acepta este presupuesto?</p>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => { setStep('sign-reject'); scrollToSign(); }}
+                  variant="outline"
+                  className="flex-1 border-red-200 text-red-600 hover:bg-red-50 h-12 text-base"
+                >
+                  <X className="w-4 h-4 mr-2" /> No acepto
+                </Button>
+                <Button
+                  onClick={() => { setStep('sign'); scrollToSign(); }}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
+                >
+                  <Check className="w-4 h-4 mr-2" /> Acepto y firmo
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Ya aceptado */}
+          {yaFirmado && (
+            <div className="border-t pt-4 text-center space-y-2">
+              <CheckCircle className="w-10 h-10 text-green-500 mx-auto" />
+              <p className="font-semibold text-green-700">Este presupuesto ya fue aceptado y firmado.</p>
+              {doc.sign_datetime && <p className="text-xs text-gray-400 font-mono">🕐 {doc.sign_datetime}</p>}
+            </div>
+          )}
+
+          {/* Rechazado — opción de cambiar de opinión */}
+          {rechazadoYFirmado && step === 'decision' && (
+            <div className="border-t pt-4 text-center space-y-3">
+              <XCircle className="w-10 h-10 text-red-400 mx-auto" />
+              <p className="font-semibold text-gray-700">Este presupuesto fue rechazado y firmado.</p>
+              {doc.sign_datetime && <p className="text-xs text-gray-400 font-mono">🕐 {doc.sign_datetime}</p>}
+              <p className="text-sm text-gray-500">¿Ha cambiado de opinión?</p>
+              <Button
+                onClick={() => { setStep('sign'); scrollToSign(); }}
+                className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
+              >
+                <Check className="w-4 h-4 mr-2" /> Cambiar de opinión y aceptar
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Acciones */}
-        {step === 'decision' && (
-          <div className="bg-white rounded-2xl shadow-sm border p-5 space-y-4">
-            {(doc.status === 'pagado' || (doc.status === 'cancelado' && doc.signature_client) || (doc.signature_client && doc.status !== 'cancelado' && doc.status !== 'enviado' && doc.status !== 'borrador')) ? (
-              <div className="text-center py-6 space-y-3">
-                <div className={`w-14 h-14 rounded-full mx-auto flex items-center justify-center ${doc.status === 'cancelado' ? 'bg-red-100' : 'bg-green-100'}`}>
-                  {doc.status === 'cancelado'
-                    ? <XCircle className="w-8 h-8 text-red-500" />
-                    : <CheckCircle className="w-8 h-8 text-green-500" />}
+        {/* Zona de firma — aparece debajo del documento */}
+        <div ref={signRef}>
+          {step === 'sign' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-green-200 p-5 space-y-4">
+              <h3 className="text-base font-bold text-green-700 text-center flex items-center justify-center gap-2">
+                <PenLine className="w-5 h-5" /> Firma de aceptación
+              </h3>
+              <p className="text-sm text-gray-500 text-center">
+                Al firmar confirma la aceptación del presupuesto <strong>Nº {doc.doc_number}</strong> por importe de <strong>{(doc.total || 0).toFixed(2)} €</strong>
+              </p>
+              {saving ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                  <span className="text-gray-500 font-medium">Guardando su firma...</span>
+                  <p className="text-xs text-gray-400">Espere un momento, se está registrando su conformidad</p>
                 </div>
-                <p className="font-semibold text-gray-700">
-                  {doc.status === 'cancelado' ? 'Este presupuesto fue rechazado y firmado.' : 'Este presupuesto ya fue aceptado y firmado.'}
-                </p>
-                {doc.status === 'cancelado' ? (
-                  <>
-                    <p className="text-sm text-gray-500">¿Ha cambiado de opinión? Puede aceptarlo firmando de nuevo.</p>
-                    <Button
-                      onClick={() => setStep('sign')}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
-                    >
-                      <Check className="w-4 h-4 mr-2" /> Cambiar de opinión y aceptar
-                    </Button>
-                  </>
-                ) : (
-                  <p className="text-sm text-gray-400">Este enlace ya no está disponible. Si desea modificar su respuesta, contacte con nosotros directamente.</p>
-                )}
-                {company?.phone && (
-                  <a href={`https://wa.me/${company.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                    Contactar por WhatsApp
-                  </a>
-                )}
-              </div>
-            ) : (
-              <>
-                <h3 className="text-base font-bold text-slate-800 text-center">¿Acepta este presupuesto?</h3>
-                <p className="text-sm text-gray-500 text-center">Al aceptar, se le solicitará su firma digital como conformidad.</p>
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setStep('sign-reject')}
-                    disabled={saving}
-                    variant="outline"
-                    className="flex-1 border-red-200 text-red-600 hover:bg-red-50 h-12"
-                  >
-                    <X className="w-4 h-4 mr-2" /> Rechazar y firmar
-                  </Button>
-                  <Button
-                    onClick={() => setStep('sign')}
-                    disabled={saving}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12"
-                  >
-                    <Check className="w-4 h-4 mr-2" /> Aceptar y firmar
-                  </Button>
+              ) : (
+                <SignaturePad onSave={handleSign} />
+              )}
+              <Button variant="ghost" size="sm" className="w-full text-gray-400" onClick={() => setStep('decision')}>
+                Cancelar
+              </Button>
+            </div>
+          )}
+
+          {step === 'sign-reject' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-5 space-y-4">
+              <h3 className="text-base font-bold text-red-700 text-center flex items-center justify-center gap-2">
+                <XCircle className="w-5 h-5" /> Firma de rechazo
+              </h3>
+              <p className="text-sm text-gray-500 text-center">
+                Firme para dejar constancia de que rechaza el presupuesto <strong>Nº {doc.doc_number}</strong>
+              </p>
+              {saving ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+                  <span className="text-gray-500 font-medium">Registrando su respuesta...</span>
                 </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {step === 'sign' && (
-          <div className="bg-white rounded-2xl shadow-sm border p-5 space-y-4">
-            <h3 className="text-base font-bold text-slate-800 text-center">Firma de conformidad</h3>
-            <p className="text-sm text-gray-500 text-center">
-              Al firmar confirma la aceptación del presupuesto <strong>Nº {doc.doc_number}</strong> por importe de <strong>{(doc.total || 0).toFixed(2)} €</strong>
-            </p>
-            {saving ? (
-              <div className="flex items-center justify-center py-8 gap-3">
-                <Loader2 className="w-6 h-6 animate-spin text-green-600" />
-                <span className="text-gray-500">Guardando su firma...</span>
-              </div>
-            ) : (
-              <SignaturePad onSave={handleSign} />
-            )}
-            <Button variant="ghost" size="sm" className="w-full text-gray-400" onClick={() => setStep('decision')}>
-              Volver
-            </Button>
-          </div>
-        )}
-
-        {step === 'sign-reject' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-5 space-y-4">
-            <h3 className="text-base font-bold text-red-700 text-center flex items-center justify-center gap-2">
-              <XCircle className="w-5 h-5" /> Firma de rechazo
-            </h3>
-            <p className="text-sm text-gray-500 text-center">
-              Para dejar constancia del rechazo del presupuesto <strong>Nº {doc.doc_number}</strong>, le solicitamos su firma.
-            </p>
-            {saving ? (
-              <div className="flex items-center justify-center py-8 gap-3">
-                <Loader2 className="w-6 h-6 animate-spin text-red-500" />
-                <span className="text-gray-500">Registrando su respuesta...</span>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-500 text-center">Firme aquí con su dedo o ratón:</p>
+              ) : (
                 <SignaturePad onSave={handleRejectWithSign} />
-              </div>
-            )}
-            <Button variant="ghost" size="sm" className="w-full text-gray-400" onClick={() => setStep('decision')}>
-              Volver
-            </Button>
-          </div>
-        )}
+              )}
+              <Button variant="ghost" size="sm" className="w-full text-gray-400" onClick={() => setStep('decision')}>
+                Cancelar
+              </Button>
+            </div>
+          )}
+        </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
-          Documento seguro · {cs.company_name} · {cs.nif}
+        <p className="text-center text-xs text-gray-400 pb-6">
+          Documento seguro · No requiere instalación · {cs.company_name} {cs.nif ? `· NIF ${cs.nif}` : ''}
         </p>
       </div>
     </div>
