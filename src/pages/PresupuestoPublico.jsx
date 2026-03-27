@@ -215,8 +215,14 @@ export default function PresupuestoPublico() {
             <p className="text-base font-bold text-red-600">❌ {signDatetime}</p>
           </div>
         )}
-        <p className="text-sm text-gray-500 mt-5">Si desea revisarlo o tiene alguna duda, contacte con nosotros de nuevo.</p>
-        <p className="text-sm text-gray-400 mt-2">{company?.company_name} · {company?.phone}</p>
+        <p className="text-sm text-gray-500 mt-5">¿Ha cambiado de opinión?</p>
+        <Button
+          onClick={() => { setStep('sign'); setSignDatetime(null); }}
+          className="mt-3 bg-green-600 hover:bg-green-700 text-white w-full h-12 text-base font-semibold"
+        >
+          <Check className="w-4 h-4 mr-2" /> Cambiar de opinión y aceptar
+        </Button>
+        <p className="text-sm text-gray-400 mt-4">{company?.company_name} · {company?.phone}</p>
       </div>
     </div>
   );
@@ -294,7 +300,7 @@ export default function PresupuestoPublico() {
         {/* Acciones */}
         {step === 'decision' && (
           <div className="bg-white rounded-2xl shadow-sm border p-5 space-y-4">
-            {(doc.status === 'pagado' || doc.status === 'cancelado' || doc.signature_client) ? (
+            {(doc.status === 'pagado' || (doc.status === 'cancelado' && doc.signature_client) || (doc.signature_client && doc.status !== 'cancelado' && doc.status !== 'enviado' && doc.status !== 'borrador')) ? (
               <div className="text-center py-6 space-y-3">
                 <div className={`w-14 h-14 rounded-full mx-auto flex items-center justify-center ${doc.status === 'cancelado' ? 'bg-red-100' : 'bg-green-100'}`}>
                   {doc.status === 'cancelado'
@@ -302,9 +308,21 @@ export default function PresupuestoPublico() {
                     : <CheckCircle className="w-8 h-8 text-green-500" />}
                 </div>
                 <p className="font-semibold text-gray-700">
-                  {doc.status === 'cancelado' ? 'Este presupuesto ya fue rechazado y firmado.' : 'Este presupuesto ya fue aceptado y firmado.'}
+                  {doc.status === 'cancelado' ? 'Este presupuesto fue rechazado y firmado.' : 'Este presupuesto ya fue aceptado y firmado.'}
                 </p>
-                <p className="text-sm text-gray-400">Este enlace ya no está disponible. Si desea modificar su respuesta, contacte con nosotros directamente.</p>
+                {doc.status === 'cancelado' ? (
+                  <>
+                    <p className="text-sm text-gray-500">¿Ha cambiado de opinión? Puede aceptarlo firmando de nuevo.</p>
+                    <Button
+                      onClick={() => setStep('sign')}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
+                    >
+                      <Check className="w-4 h-4 mr-2" /> Cambiar de opinión y aceptar
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400">Este enlace ya no está disponible. Si desea modificar su respuesta, contacte con nosotros directamente.</p>
+                )}
                 {company?.phone && (
                   <a href={`https://wa.me/${company.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">

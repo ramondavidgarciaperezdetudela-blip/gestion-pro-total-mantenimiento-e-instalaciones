@@ -851,15 +851,22 @@ export default function Documents() {
         }
         {filtered.map((doc) => {
           const StatusIcon = STATUS_ICONS[doc.status] || FileText;
+          const isPresupuesto = doc.doc_type === 'presupuesto';
+          const isAceptado = isPresupuesto && doc.signature_client && doc.status !== 'cancelado';
+          const isRechazado = isPresupuesto && doc.status === 'cancelado' && doc.signature_client;
           return (
-            <Card key={doc.id} className="hover:shadow-md transition-shadow cursor-pointer group" onClick={() => setPreviewDoc(doc)}>
+            <Card key={doc.id} className={`hover:shadow-md transition-shadow cursor-pointer group ${isAceptado ? 'border-green-300 bg-green-50/30' : isRechazado ? 'border-red-300 bg-red-50/30' : ''}`} onClick={() => setPreviewDoc(doc)}>
               <CardContent className="p-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className={`p-2 rounded-lg flex-shrink-0 ${doc.doc_type === 'factura' ? 'bg-violet-100' : doc.doc_type === 'presupuesto' ? 'bg-blue-100' : 'bg-green-100'}`}>
-                    <FileText className={`w-4 h-4 ${doc.doc_type === 'factura' ? 'text-violet-600' : doc.doc_type === 'presupuesto' ? 'text-blue-600' : 'text-green-600'}`} />
+                  <div className={`p-2 rounded-lg flex-shrink-0 ${isAceptado ? 'bg-green-100' : isRechazado ? 'bg-red-100' : doc.doc_type === 'factura' ? 'bg-violet-100' : doc.doc_type === 'presupuesto' ? 'bg-blue-100' : 'bg-green-100'}`}>
+                    <FileText className={`w-4 h-4 ${isAceptado ? 'text-green-600' : isRechazado ? 'text-red-500' : doc.doc_type === 'factura' ? 'text-violet-600' : doc.doc_type === 'presupuesto' ? 'text-blue-600' : 'text-green-600'}`} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-lg font-extrabold capitalize truncate">{doc.doc_type} {doc.doc_number}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-lg font-extrabold capitalize truncate">{doc.doc_type} {doc.doc_number}</p>
+                      {isAceptado && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200 flex-shrink-0">✅ ACEPTADO</span>}
+                      {isRechazado && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200 flex-shrink-0">❌ RECHAZADO</span>}
+                    </div>
                     <p className="text-gray-500 text-sm truncate">{doc.contact_name || 'Sin cliente'} · {doc.date} {doc.work_type && doc.work_type !== 'otro' ? `· ${doc.work_type}` : ''}</p>
                   </div>
                 </div>
