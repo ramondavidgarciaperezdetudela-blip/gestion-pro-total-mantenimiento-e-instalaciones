@@ -660,12 +660,12 @@ function PresupuestoPublico() {
 
           {/* Confirmación de cambio de opinión */}
           {(step === 'done' || step === 'rejected') && isChangeOpinion && (
-            <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-6 space-y-4">
-              <div className={`text-center space-y-3 rounded-lg p-4 ${
-                step === 'done' 
-                  ? 'bg-green-50 border border-green-200' 
-                  : 'bg-red-50 border border-red-200'
-              }`}>
+            <div className={`rounded-2xl shadow-sm border p-6 space-y-4 ${
+              step === 'done' 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-red-50 border-red-200'
+            }`}>
+              <div className="text-center space-y-3">
                 <div className="flex justify-center">
                   {step === 'done' ? (
                     <CheckCircle className="w-12 h-12 text-green-600" />
@@ -676,43 +676,19 @@ function PresupuestoPublico() {
                 <h3 className={`text-lg font-bold ${step === 'done' ? 'text-green-700' : 'text-red-700'}`}>
                   {step === 'done' ? '✅ ACEPTADO' : '❌ RECHAZADO'}
                 </h3>
-                <p className={`text-sm font-semibold ${step === 'done' ? 'text-green-600' : 'text-red-600'}`}>
-                  Cambio de opinión registrado
-                </p>
-              </div>
-
-              {/* Historial de cambio de opinión */}
-              {doc.signature_history && doc.signature_history.length > 0 && (
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <h4 className="font-bold text-sm text-blue-800 mb-3">📋 Historial completo de decisiones</h4>
-                  <div className="space-y-3">
-                    {doc.signature_history.map((item, idx) => {
-                      const isAccepted = item.action === 'aceptar';
-                      const icon = isAccepted ? '✅' : '❌';
-                      const actionText = isAccepted ? 'ACEPTADO' : 'RECHAZADO';
-                      const color = isAccepted ? 'text-green-700' : 'text-red-700';
-                      const methodLabel = item.method === 'email' ? '📧 Email' : item.method === 'whatsapp' ? '📱 WhatsApp' : '🌐 Web';
-                      const isLatest = idx === doc.signature_history.length - 1;
-                      return (
-                        <div key={idx} className={`border-b border-blue-100 pb-2 last:border-b-0 last:pb-0 ${isLatest ? 'bg-white p-2 rounded border border-yellow-200' : ''}`}>
-                          <p className={`font-bold text-sm ${color}`}>{icon} {actionText}</p>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <p className="text-xs text-gray-600">📅 {item.datetime}</p>
-                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{methodLabel}</span>
-                            {isLatest && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-semibold">Última decisión</span>}
-                          </div>
-                          {item.signature_url && (
-                            <div className="mt-2">
-                              <img src={item.signature_url} alt="Firma" className="max-w-[150px] border border-blue-200 rounded bg-white p-1" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                {doc.sign_datetime && (
+                  <p className={`text-sm font-mono ${step === 'done' ? 'text-green-600' : 'text-red-600'}`}>
+                    🕐 {doc.sign_datetime}
+                  </p>
+                )}
+                {doc.signature_client && (
+                  <div className="mt-4">
+                    <img src={doc.signature_client} alt="Firma" className={`max-w-[200px] mx-auto border rounded bg-white p-2 ${
+                      step === 'done' ? 'border-green-300' : 'border-red-300'
+                    }`} />
                   </div>
-                </div>
-              )}
-
+                )}
+              </div>
               <p className="text-xs text-gray-500 text-center">Se ha enviado una copia firmada a su correo electrónico</p>
             </div>
           )}
