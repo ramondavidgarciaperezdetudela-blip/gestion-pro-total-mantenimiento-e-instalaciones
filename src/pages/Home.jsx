@@ -6,6 +6,7 @@ import MobileKPIView from '../components/MobileKPIView';
 import ChangeOpinionAlerts from '../components/ChangeOpinionAlerts';
 import PendingTasksPanel from '../components/PendingTasksPanel';
 import AutomationStatus from '../components/AutomationStatus';
+import DocumentsStatusPanel from '../components/DocumentsStatusPanel';
 import { createPageUrl } from '../utils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -263,6 +264,9 @@ export default function Home() {
 
       {/* Estado de automatizaciones */}
       <AutomationStatus />
+
+      {/* Estado de Documentos - Presupuestos y SAT */}
+      <DocumentsStatusPanel />
 
       {/* Cambios de opinión solicitados */}
       <ChangeOpinionAlerts />
