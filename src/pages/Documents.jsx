@@ -94,6 +94,17 @@ export default function Documents() {
   const [activeTab, setActiveTab] = useState('all'); // all | facturas | presupuestos
   const printRef = useRef(null);
 
+  // Suscripción en tiempo real: si el cliente firma, actualiza automáticamente
+  useEffect(() => {
+    const unsubscribe = base44.entities.Invoice.subscribe((event) => {
+      if (event.type === 'update' && event.data?.signature_client) {
+        setDocs(prev => prev.map(d => d.id === event.id ? { ...d, ...event.data } : d));
+        setPreviewDoc(prev => prev && prev.id === event.id ? { ...prev, ...event.data } : prev);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   useEffect(() => {
     Promise.all([
     base44.entities.Invoice.list('-date', 500),
@@ -770,16 +781,30 @@ export default function Documents() {
 
                   {/* Firma digital del cliente */}
                   <div className="mt-4 pt-4 border-t">
-                    <SignatureCanvas
-                      label="✍️ Conformidad del cliente"
-                      value={previewDoc.signature_client}
-                      onSave={async (dataUrl) => {
-                        await base44.entities.Invoice.update(previewDoc.id, { signature_client: dataUrl });
-                        const updated = { ...previewDoc, signature_client: dataUrl };
-                        setPreviewDoc(updated);
-                        setDocs(prev => prev.map(d => d.id === previewDoc.id ? updated : d));
-                      }}
-                    />
+                    {previewDoc.signature_client ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                          <span className="text-sm font-semibold text-green-700">Firmado por el cliente</span>
+                          <span className="text-xs text-gray-400">· {previewDoc.contact_name}</span>
+                        </div>
+                        <div className="border border-green-200 rounded-lg bg-green-50 p-3">
+                          <img src={previewDoc.signature_client} alt="Firma cliente" className="max-h-20 rounded border border-gray-200 bg-white" />
+                        </div>
+                        <p className="text-xs text-gray-400">Esta firma puede imprimirse con el documento exportando el PDF.</p>
+                      </div>
+                    ) : (
+                      <SignatureCanvas
+                        label="✍️ Conformidad del cliente"
+                        value={previewDoc.signature_client}
+                        onSave={async (dataUrl) => {
+                          await base44.entities.Invoice.update(previewDoc.id, { signature_client: dataUrl });
+                          const updated = { ...previewDoc, signature_client: dataUrl };
+                          setPreviewDoc(updated);
+                          setDocs(prev => prev.map(d => d.id === previewDoc.id ? updated : d));
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
