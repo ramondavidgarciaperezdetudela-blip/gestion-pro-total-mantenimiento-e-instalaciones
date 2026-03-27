@@ -244,15 +244,24 @@ export default function CompanyConfig() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Ciudad</label>
-                  <Input value={form.city} onChange={e => setForm({...form, city: e.target.value})} placeholder="Madrid" className="mt-1" />
+                  <PostalCodeSearch
+                    type="city"
+                    onSelect={(result) => setForm({...form, postal_code: result.postal_code, city: result.city, province: result.province})}
+                  />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Provincia</label>
-                  <Input value={form.province} onChange={e => setForm({...form, province: e.target.value})} placeholder="Madrid" className="mt-1" />
+                  <PostalCodeSearch
+                    type="province"
+                    onSelect={(result) => setForm({...form, postal_code: result.postal_code, city: result.city, province: result.province})}
+                  />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Código Postal</label>
-                  <Input value={form.postal_code} onChange={e => setForm({...form, postal_code: e.target.value})} placeholder="28001" className="mt-1" />
+                  <PostalCodeSearch
+                    type="postal_code"
+                    onSelect={(result) => setForm({...form, postal_code: result.postal_code, city: result.city, province: result.province})}
+                  />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Email</label>

@@ -18,6 +18,7 @@ import {
  } from 'lucide-react';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
 import CityAutocomplete from '../components/CityAutocomplete';
+import PostalCodeSearch from '../components/PostalCodeSearch';
 
 const PAYMENT_PROFILES = {
   buen_pagador: { label: 'Buen pagador', color: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
@@ -299,14 +300,39 @@ export default function Contacts() {
               <Input placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
               <Input placeholder="Dirección" value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
               <div className="grid grid-cols-3 gap-2">
-                <CityAutocomplete
-                  city={form.city}
-                  province={form.province}
-                  postal_code={form.postal_code}
-                  onChange={({ city, province, postal_code }) => setForm(prev => ({ ...prev, city, province, postal_code }))}
+                <PostalCodeSearch
+                  type="city"
+                  onSelect={(result) => {
+                    setForm(prev => ({
+                      ...prev,
+                      postal_code: result.postal_code,
+                      city: result.city,
+                      province: result.province
+                    }));
+                  }}
                 />
-                <Input placeholder="Provincia" value={form.province} onChange={e => setForm({...form, province: e.target.value})} />
-                <Input placeholder="C.P." value={form.postal_code} onChange={e => setForm({...form, postal_code: e.target.value})} />
+                <PostalCodeSearch
+                  type="province"
+                  onSelect={(result) => {
+                    setForm(prev => ({
+                      ...prev,
+                      postal_code: result.postal_code,
+                      city: result.city,
+                      province: result.province
+                    }));
+                  }}
+                />
+                <PostalCodeSearch
+                  type="postal_code"
+                  onSelect={(result) => {
+                    setForm(prev => ({
+                      ...prev,
+                      postal_code: result.postal_code,
+                      city: result.city,
+                      province: result.province
+                    }));
+                  }}
+                />
               </div>
               <Textarea placeholder="Notas" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} />
               <div className="grid grid-cols-2 gap-2">
