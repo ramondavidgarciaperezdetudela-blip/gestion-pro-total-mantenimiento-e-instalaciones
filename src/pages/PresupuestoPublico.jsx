@@ -186,7 +186,8 @@ export default function PresupuestoPublico() {
   );
 
   const cs = company || {};
-  const yaFirmado = doc && (doc.signature_client && doc.status !== 'cancelado' && doc.status !== 'borrador' && doc.status !== 'enviado');
+  // Aceptado: tiene firma y status es enviado, pagado o vencido (no borrador, no cancelado)
+  const yaFirmado = doc && doc.signature_client && ['enviado', 'pagado', 'vencido'].includes(doc.status);
   const rechazadoYFirmado = doc && doc.status === 'cancelado' && doc.signature_client;
 
   const scrollToSign = () => {
