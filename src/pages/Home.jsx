@@ -245,6 +245,9 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Todo lo siguiente solo en desktop */}
+      <div className="hidden sm:block space-y-6">
+
       {/* Alertas */}
       {alerts.length > 0 &&
       <div className="space-y-2">
@@ -568,6 +571,7 @@ export default function Home() {
         </Card>
       </div>
 
+      </div>{/* fin hidden sm:block */}
 
     </div>
     </PullToRefresh>

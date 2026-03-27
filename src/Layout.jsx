@@ -137,45 +137,6 @@ const navItems = [
 { name: 'Campo', page: 'TechnicianFieldWork', icon: Wrench }];
 
 
-// Bottom tabs for mobile
-const mobileTabItems = [
-{ name: 'Inicio', page: 'Home', icon: Home },
-{ name: 'Agenda', page: 'Agenda', icon: Calendar },
-{ name: 'Asist. IA', page: 'AIAssistant', icon: Bot },
-{ name: 'Búsq. IA', page: 'AISearch', icon: Search },
-{ name: 'Cám. Frío', page: 'ColdRoomCalc?tab=camara', icon: Thermometer },
-{ name: 'Cám+Humedad', page: 'ColdRoomCalc?tab=combinado', icon: Droplets },
-{ name: 'HR Relativa', page: 'ColdRoomCalc?tab=humedad', icon: Droplets },
-{ name: 'C. Térmico', page: 'ThermalCalc', icon: Thermometer },
-{ name: 'Config.', page: 'CompanyConfig', icon: Settings },
-{ name: 'Clientes', page: 'Contacts', icon: Users },
-{ name: 'Docs', page: 'Documents', icon: FileText },
-{ name: 'Docs Legal.', page: 'LegalDocs', icon: FileText },
-{ name: 'Eléctrico', page: 'ElectricalCalc', icon: Zap },
-{ name: 'Exportar', page: 'ExportData', icon: Download },
-{ name: 'Historial', page: 'AuditLog', icon: History },
-{ name: 'Informes', page: 'Reports', icon: BarChart3 },
-{ name: 'Informes IA', page: 'AIReports', icon: FileBarChart },
-{ name: 'Inventario', page: 'Inventory', icon: Package },
-{ name: 'Averías', page: 'EquipmentFailureHistory', icon: AlertCircle },
-{ name: 'Manten.', page: 'Maintenance', icon: ClipboardList },
-{ name: 'Notas', page: 'Notes', icon: StickyNote },
-{ name: 'Plan. IA', page: 'AIPlanning', icon: ClipboardList },
-{ name: 'Plantillas', page: 'DocumentTemplates', icon: Palette },
-{ name: 'Portal', page: 'ClientPortal', icon: Users },
-{ name: 'Pres. IA', page: 'AIBudget', icon: Bot },
-{ name: 'Presupuest.', page: 'Documents?type=presupuesto', icon: FileText },
-{ name: 'Proyectos', page: 'Projects', icon: FolderOpen },
-{ name: 'Timeline', page: 'ProjectTimeline', icon: Calendar },
-{ name: 'Rutas', page: 'TecniciansRoutes', icon: Wrench },
-{ name: 'Proveedores', page: 'Suppliers', icon: Building2 },
-{ name: 'Recorda. IA', page: 'SmartReminders', icon: Bell },
-{ name: 'Recordat.', page: 'Automations', icon: Bell },
-{ name: 'Repuestos', page: 'SparePartsManager', icon: Package },
-{ name: 'SAT', page: 'SAT', icon: Wrench },
-{ name: 'Solar+Bat.', page: 'SolarBatteryCalc', icon: Sun },
-{ name: 'T.Visita', page: 'BusinessCards', icon: CreditCard },
-{ name: 'Camp.', page: 'TechnicianFieldWork', icon: Wrench }];
 
 
 export default function Layout({ children, currentPageName }) {
