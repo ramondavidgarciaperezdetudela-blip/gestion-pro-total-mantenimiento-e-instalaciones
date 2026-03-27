@@ -251,6 +251,10 @@ function PresupuestoPublico() {
   // Detectar si es cambio de opinión (hay más de un registro en signature_history)
   const esChangioDeOpinion = doc && doc.signature_history && doc.signature_history.length > 0;
   
+  // Detectar si hay una firma reciente (última en el historial)
+  const ultimaFirma = doc?.signature_history?.[doc.signature_history.length - 1];
+  const tieneUltimaFirma = !!ultimaFirma;
+  
   const yaFirmado = doc && doc.signature_client && ['enviado', 'pagado', 'vencido'].includes(doc.status) && !esChangioDeOpinion;
   const rechazadoYFirmado = doc && doc.status === 'cancelado' && doc.signature_client && !esChangioDeOpinion;
 
@@ -385,8 +389,8 @@ function PresupuestoPublico() {
             </div>
           )}
 
-          {/* Botones según tipo de documento */}
-          {!yaFirmado && !rechazadoYFirmado && step === 'decision' && (
+          {/* Botones según tipo de documento - solo si no tiene última firma registrada */}
+          {!yaFirmado && !rechazadoYFirmado && !tieneUltimaFirma && step === 'decision' && (
             <div className="border-t pt-4 space-y-3">
               {isPresupuesto && (
                 <>
@@ -420,6 +424,33 @@ function PresupuestoPublico() {
                     <Check className="w-4 h-4 mr-2" /> {isFactura ? 'Confirmar y firmar' : 'Firmar'}
                   </Button>
                 </>
+              )}
+            </div>
+          )}
+
+          {/* Mostrar última firma si existe */}
+          {tieneUltimaFirma && step === 'decision' && (
+            <div className="border-t pt-4 text-center space-y-3">
+              {ultimaFirma.action === 'aceptar' ? (
+                <>
+                  <CheckCircle className="w-10 h-10 text-green-500 mx-auto" />
+                  <p className="font-semibold text-green-700">Presupuesto aceptado y firmado</p>
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-10 h-10 text-red-400 mx-auto" />
+                  <p className="font-semibold text-red-700">Presupuesto rechazado y firmado</p>
+                </>
+              )}
+              {ultimaFirma.datetime && <p className="text-xs text-gray-400 font-mono">🕐 {ultimaFirma.datetime}</p>}
+              {ultimaFirma.method && (
+                <p className={`text-xs inline-block px-2 py-1 rounded ${
+                  ultimaFirma.method === 'email' ? 'bg-blue-100 text-blue-700' : 
+                  ultimaFirma.method === 'whatsapp' ? 'bg-green-100 text-green-700' : 
+                  'bg-gray-100 text-gray-700'
+                }`}>
+                  {ultimaFirma.method === 'email' ? '📧 Firma por email' : ultimaFirma.method === 'whatsapp' ? '📱 Firma por WhatsApp' : '🌐 Firma por web'}
+                </p>
               )}
             </div>
           )}
