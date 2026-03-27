@@ -26,6 +26,7 @@ const CITY_MAP = {
   'granada': { province: 'Granada', postal_code: '18001' },
   'tarragona': { province: 'Tarragona', postal_code: '43001' },
   'reus': { province: 'Tarragona', postal_code: '43201' },
+  'perafort': { province: 'Tarragona', postal_code: '43152' },
   'lleida': { province: 'Lérida', postal_code: '25001' },
   'lérida': { province: 'Lérida', postal_code: '25001' },
   'girona': { province: 'Girona', postal_code: '17001' },
