@@ -63,7 +63,7 @@ function MobileBottomBar({ currentPageName }) {
       )}
 
       {/* More Drawer */}
-      <div className={`sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 ${moreOpen ? 'translate-y-0' : 'translate-y-full'}`}
+      <div className={`sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 ${moreOpen ? 'translate-y-0' : 'translate-y-full pointer-events-none'}`}
         style={{ maxHeight: '75vh', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex justify-center pt-3 pb-2">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
