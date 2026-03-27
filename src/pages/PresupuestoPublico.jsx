@@ -396,22 +396,43 @@ function PresupuestoPublico() {
           {/* Botones según tipo de documento - mostrar si es cambio de opinión O si no tiene firma */}
           {(isChangeOpinion || (!yaFirmado && !rechazadoYFirmado && !tieneUltimaFirma)) && step === 'decision' && (
             <div className="border-t pt-4 space-y-3">
+              {/* Si es cambio de opinión, mostrar decisión anterior */}
+              {isChangeOpinion && tieneUltimaFirma && (
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <p className="text-sm font-semibold text-blue-700 text-center mb-3">
+                    📋 Decisión anterior • Puede cambiar de opinión
+                  </p>
+                  <div className={`rounded-lg p-3 ${
+                    ultimaFirma.action === 'aceptar' 
+                      ? 'bg-green-50 border border-green-200' 
+                      : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <div className="text-center space-y-2">
+                      <p className={`font-bold text-sm ${ultimaFirma.action === 'aceptar' ? 'text-green-700' : 'text-red-700'}`}>
+                        {ultimaFirma.action === 'aceptar' ? '✅ Fue ACEPTADO' : '❌ Fue RECHAZADO'}
+                      </p>
+                      {ultimaFirma.datetime && <p className="text-xs text-gray-600">🕐 {ultimaFirma.datetime}</p>}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {isPresupuesto && (
                 <>
-                  <p className="text-center text-sm font-semibold text-slate-700">¿Acepta este presupuesto?</p>
+                  <p className="text-center text-sm font-semibold text-slate-700">{isChangeOpinion ? '¿Desea cambiar su decisión?' : '¿Acepta este presupuesto?'}</p>
                   <div className="flex gap-3">
                     <Button
                       onClick={() => { setStep('sign-reject'); scrollToSign(); }}
                       variant="outline"
                       className="flex-1 border-red-200 text-red-600 hover:bg-red-50 h-12 text-base"
                     >
-                      <X className="w-4 h-4 mr-2" /> No acepto
+                      <X className="w-4 h-4 mr-2" /> {isChangeOpinion ? 'Rechazar' : 'No acepto'}
                     </Button>
                     <Button
                       onClick={() => { setStep('sign'); scrollToSign(); }}
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
                     >
-                      <Check className="w-4 h-4 mr-2" /> Acepto y firmo
+                      <Check className="w-4 h-4 mr-2" /> {isChangeOpinion ? 'Aceptar' : 'Acepto y firmo'}
                     </Button>
                   </div>
                 </>
@@ -491,49 +512,7 @@ function PresupuestoPublico() {
             </div>
           )}
 
-          {/* Si hay token de cambio de opinión, mostrar historial pero permitir firmar de nuevo */}
-          {tieneUltimaFirma && step === 'decision' && isChangeOpinion && (
-            <div className="border-t pt-4 space-y-3">
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <p className="text-sm font-semibold text-blue-700 text-center mb-3">
-                  📋 Decisión anterior • Puede cambiar de opinión
-                </p>
-                <div className={`rounded-lg p-3 ${
-                  ultimaFirma.action === 'aceptar' 
-                    ? 'bg-green-50 border border-green-200' 
-                    : 'bg-red-50 border border-red-200'
-                }`}>
-                  <div className="text-center space-y-2">
-                    <p className={`font-bold text-sm ${ultimaFirma.action === 'aceptar' ? 'text-green-700' : 'text-red-700'}`}>
-                      {ultimaFirma.action === 'aceptar' ? '✅ Fue ACEPTADO' : '❌ Fue RECHAZADO'}
-                    </p>
-                    {ultimaFirma.datetime && <p className="text-xs text-gray-600">🕐 {ultimaFirma.datetime}</p>}
-                  </div>
-                </div>
-              </div>
 
-              {isPresupuesto && (
-                <>
-                  <p className="text-center text-sm font-semibold text-slate-700">¿Desea cambiar su decisión?</p>
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={() => { setStep('sign-reject'); scrollToSign(); }}
-                      variant="outline"
-                      className="flex-1 border-red-200 text-red-600 hover:bg-red-50 h-12 text-base"
-                    >
-                      <X className="w-4 h-4 mr-2" /> Rechazar
-                    </Button>
-                    <Button
-                      onClick={() => { setStep('sign'); scrollToSign(); }}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
-                    >
-                      <Check className="w-4 h-4 mr-2" /> Aceptar
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
 
           {/* Ya firmado - pero NO si es cambio de opinión */}
           {yaFirmado && !isChangeOpinion && (
