@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Plus, Search, FileText, Trash2, Edit, Eye, ShoppingCart, Copy,
   ChevronDown, ChevronUp, Save, Phone, Mail, BarChart3, TrendingUp,
-  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer, FileDown, Bell, X, Link, Send } from
+  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle } from
 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import { format, startOfMonth } from 'date-fns';
@@ -341,6 +341,27 @@ export default function Documents() {
         : '';
       const body = encodeURIComponent(
         `Estimado/a ${doc.contact_name},\n\nLe enviamos el enlace para ACEPTAR o RECHAZAR el presupuesto con su firma digital:\n\n${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}\nTotal: ${doc.total?.toFixed(2)} €\nFecha: ${doc.date}\n\nFirmar aquí:\n${link}${avisoEmail}\n\nQuedamos a su disposición.`
+      );
+      window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+    }
+  };
+
+  const sendChangeOpinionLink = (doc, via) => {
+    const c = contacts.find((x) => x.id === doc.contact_id);
+    const link = getSignLink(doc);
+    const presupuestoUrl = `${window.location.origin}/presupuesto-publico?id=${doc.id}`;
+
+    if (via === 'whatsapp') {
+      const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
+      const msg = encodeURIComponent(
+        `📄 *PRESUPUESTO - Opción de cambio de opinión*\n\nHola *${doc.contact_name}*,\n\nTienes la opción de cambiar tu decisión anterior sobre el presupuesto *Nº${doc.doc_number}* por *${(doc.total || 0).toFixed(2)} €*.\n\nAccede aquí para revisar y actualizar tu respuesta:\n${presupuestoUrl}\n\nGracias`
+      );
+      window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+    } else {
+      const email = c?.email || '';
+      const subject = encodeURIComponent(`Opción de cambio de opinión - Presupuesto Nº${doc.doc_number}`);
+      const body = encodeURIComponent(
+        `Estimado/a ${doc.contact_name},\n\nTienes la opción de cambiar tu decisión anterior sobre el presupuesto Nº${doc.doc_number} por ${(doc.total || 0).toFixed(2)} €.\n\nAccede aquí para revisar y actualizar tu respuesta:\n${presupuestoUrl}\n\nGracias`
       );
       window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
     }
@@ -816,6 +837,34 @@ export default function Documents() {
 
                   {/* Firma digital del cliente */}
                   <div className="mt-4 pt-4 border-t">
+                    {previewDoc.signature_history && previewDoc.signature_history.length > 0 && (
+                      <div className="mb-4 space-y-2">
+                        <h4 className="font-bold text-sm text-gray-700 flex items-center gap-2">
+                          📋 Historial de firmas ({previewDoc.signature_history.length})
+                        </h4>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {previewDoc.signature_history.map((item, idx) => {
+                            const isChangeOfOpinion = idx > 0;
+                            const isAccepted = item.action === 'aceptar';
+                            const bgColor = isChangeOfOpinion ? 'bg-orange-50 border-l-4 border-l-orange-500' : isAccepted ? 'bg-green-50 border-l-4 border-l-green-500' : 'bg-red-50 border-l-4 border-l-red-500';
+                            const textColor = isChangeOfOpinion ? 'text-orange-700' : isAccepted ? 'text-green-700' : 'text-red-700';
+                            const label = isChangeOfOpinion ? (isAccepted ? 'CAMBIO → ACEPTADO' : 'CAMBIO → RECHAZADO') : (isAccepted ? 'ACEPTADO' : 'RECHAZADO');
+                            return (
+                              <div key={idx} className={`${bgColor} rounded p-3`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                  {isAccepted ? <CheckCircle className="w-4 h-4 text-green-600" /> : <XCircle className="w-4 h-4 text-red-600" />}
+                                  <span className={`font-bold text-sm ${textColor}`}>{label}</span>
+                                  <span className="text-xs text-gray-500 ml-auto">🕐 {item.datetime}</span>
+                                </div>
+                                {item.signature_url && (
+                                  <img src={item.signature_url} alt={`Firma ${label}`} className="max-h-16 rounded border border-gray-300 bg-white p-1" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     {previewDoc.signature_client ? (
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
@@ -866,9 +915,9 @@ export default function Documents() {
               </div>
               {/* Bloque enviar enlace de firma para presupuestos */}
               {previewDoc?.doc_type === 'presupuesto' && (
-                <div className="mt-3 pt-3 border-t no-print">
+                <div className="mt-3 pt-3 border-t no-print space-y-3">
                   {(previewDoc.signature_client || previewDoc.status === 'enviado') && (
-                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                       <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                       <p className="text-xs text-amber-700">
                         <strong>Aviso:</strong> Este presupuesto ya fue enviado anteriormente. El enlace es únicamente para que el cliente lo <strong>acepte o rechace digitalmente</strong> y quede constancia firmada con fecha y hora.
@@ -886,6 +935,17 @@ export default function Documents() {
                       <Link className="w-3.5 h-3.5 mr-1" />Copiar enlace
                     </Button>
                   </div>
+
+                  {previewDoc.signature_history && previewDoc.signature_history.length > 0 && (
+                    <div className="flex gap-2 flex-wrap pt-2 border-t">
+                      <Button size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-white" onClick={() => sendChangeOpinionLink(previewDoc, 'whatsapp')}>
+                        <MessageCircle className="w-3.5 h-3.5 mr-1" />Cambio de opinión (WhatsApp)
+                      </Button>
+                      <Button size="sm" variant="outline" className="text-yellow-700 border-yellow-200 hover:bg-yellow-50" onClick={() => sendChangeOpinionLink(previewDoc, 'email')}>
+                        <Mail className="w-3.5 h-3.5 mr-1" />Cambio de opinión (Email)
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 
