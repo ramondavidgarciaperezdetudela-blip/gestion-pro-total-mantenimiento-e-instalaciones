@@ -150,6 +150,8 @@ function SATPublico() {
   const [step, setStep] = useState('decision');
   const [saving, setSaving] = useState(false);
   const [isChangingOpinion, setIsChangingOpinion] = useState(false);
+  const [tempSignature, setTempSignature] = useState(null);
+  const [signAction, setSignAction] = useState(null);
   const signRef = useRef(null);
 
   useEffect(() => {
@@ -164,55 +166,36 @@ function SATPublico() {
       .finally(() => setLoading(false));
   }, [orderId]);
 
-  const handleSign = async (signatureDataUrl) => {
-    setSaving(true);
-    try {
-      const res = await base44.functions.invoke('aceptarSAT', {
-        order_id: orderId,
-        signature: signatureDataUrl,
-        action: 'aceptar',
-        method: method,
-        change_opinion_token: changeOpinionToken
-      });
-      const dt = res?.data?.sign_datetime || null;
-      const updatedOrder = { ...order, status: 'en_curso', signature_client: signatureDataUrl, sign_datetime_client: dt };
-      setOrder(updatedOrder);
-      
-      if (isChangeOpinion) {
-        try {
-          const reloadRes = await base44.functions.invoke('getSATPublico', { order_id: orderId });
-          if (reloadRes?.data?.order) setOrder(reloadRes.data.order);
-        } catch (e) {
-          console.error('Error recargando orden:', e);
-        }
-      }
-    } finally {
-      setSaving(false);
-    }
-    if (method === 'email' || method === 'whatsapp' || isChangingOpinion || isChangeOpinion) {
-      setStep('done');
-    } else {
-      setStep('decision');
-    }
-    setIsChangingOpinion(false);
+  const handleSign = (signatureDataUrl) => {
+    setTempSignature(signatureDataUrl);
+    setSignAction('aceptar');
+    setStep('save');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleRejectWithSign = async (signatureDataUrl) => {
+  const handleRejectWithSign = (signatureDataUrl) => {
+    setTempSignature(signatureDataUrl);
+    setSignAction('rechazar');
+    setStep('save');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSaveDocument = async () => {
     setSaving(true);
     try {
       const res = await base44.functions.invoke('aceptarSAT', {
         order_id: orderId,
-        signature: signatureDataUrl,
-        action: 'rechazar',
+        signature: tempSignature,
+        action: signAction,
         method: method,
         change_opinion_token: changeOpinionToken
       });
       const dt = res?.data?.sign_datetime || null;
-      const updatedOrder = { ...order, status: 'cancelada', signature_client: signatureDataUrl, sign_datetime_client: dt };
+      const newStatus = signAction === 'aceptar' ? 'en_curso' : 'cancelada';
+      const updatedOrder = { ...order, status: newStatus, signature_client: tempSignature, sign_datetime_client: dt };
       setOrder(updatedOrder);
       
-      if (isChangeOpinion) {
+      if (isChangeOpinion || isChangingOpinion) {
         try {
           const reloadRes = await base44.functions.invoke('getSATPublico', { order_id: orderId });
           if (reloadRes?.data?.order) setOrder(reloadRes.data.order);
@@ -220,15 +203,18 @@ function SATPublico() {
           console.error('Error recargando orden:', e);
         }
       }
+      
+      setTempSignature(null);
+      setSignAction(null);
+      if (method === 'email' || method === 'whatsapp' || isChangingOpinion || isChangeOpinion) {
+        setStep(signAction === 'aceptar' ? 'done' : 'rejected');
+      } else {
+        setStep('decision');
+      }
+      setIsChangingOpinion(false);
     } finally {
       setSaving(false);
     }
-    if (method === 'email' || method === 'whatsapp' || isChangingOpinion || isChangeOpinion) {
-      setStep('rejected');
-    } else {
-      setStep('decision');
-    }
-    setIsChangingOpinion(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -529,6 +515,41 @@ function SATPublico() {
               <Button variant="ghost" size="sm" className="w-full text-gray-400" onClick={() => setStep('decision')}>
                 Cancelar
               </Button>
+            </div>
+          )}
+
+          {step === 'save' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-5 space-y-4">
+              <h3 className="text-base font-bold text-blue-700 text-center">📋 Revisar y guardar documento</h3>
+              <div className="bg-blue-50 rounded-lg p-4 space-y-3">
+                <p className="text-sm text-gray-700">
+                  <strong>Resumen de firmas:</strong>
+                </p>
+                <div className="space-y-2 text-sm">
+                  {tempSignature && (
+                    <div className="flex items-center justify-between bg-white p-2 rounded border border-blue-200">
+                      <span className="text-gray-700">Firma capturada</span>
+                      <span className="text-green-600 font-bold">✓</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Al guardar, la firma se almacenará permanentemente en el documento.</p>
+              </div>
+              {saving ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <span className="text-gray-500 font-medium">Guardando documento...</span>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep(signAction === 'aceptar' ? 'sign' : 'sign-reject')}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSaveDocument} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
+                    <Check className="w-4 h-4 mr-2" /> Guardar documento
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
