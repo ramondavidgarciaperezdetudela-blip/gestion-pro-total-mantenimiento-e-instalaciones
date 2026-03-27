@@ -17,6 +17,7 @@ import { format, startOfMonth } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
+import SignatureCanvas from '../components/SignaturePad';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo'];
 const STATUSES = ['borrador', 'enviado', 'pagado', 'vencido', 'cancelado'];
@@ -373,6 +374,12 @@ export default function Documents() {
     </div>
     ${doc.observations?`<div style="background:#f9fafb;border-radius:4px;padding:8px 12px;font-size:8px;color:#555;white-space:pre-wrap;margin-top:10px"><strong>Observaciones:</strong>\n${doc.observations}</div>`:''}
     ${doc.payment_terms?`<div style="background:#f9fafb;border-radius:4px;padding:8px 12px;font-size:8px;color:#555;white-space:pre-wrap;margin-top:6px">${doc.payment_terms}</div>`:''}
+    ${doc.signature_client ? `
+    <div style="margin-top:20px;padding-top:12px;border-top:1px solid #e5e7eb">
+      <p style="font-size:9px;font-weight:600;color:#555;margin-bottom:6px">Conformidad del cliente:</p>
+      <img src="${doc.signature_client}" style="max-height:60px;border:1px solid #e5e7eb;border-radius:4px;background:#fff" alt="Firma" />
+      <p style="font-size:8px;color:#999;margin-top:2px">${doc.contact_name} · ${doc.date}</p>
+    </div>` : ''}
     <div class="footer">Documento generado · ${cs.company_name||''} · ${cs.phone||''} · ${cs.email||''}</div>
     </body></html>`;
     const w = window.open('', '_blank');
@@ -760,6 +767,20 @@ export default function Documents() {
                   {previewDoc.observations && <div className="bg-gray-50 p-3 rounded text-xs text-gray-600 whitespace-pre-wrap"><strong>Observaciones:</strong> {previewDoc.observations}</div>}
                   {previewDoc.payment_terms && <p className="text-xs text-gray-500 whitespace-pre-wrap border-t pt-2">{previewDoc.payment_terms}</p>}
                   {previewDoc.normative_references && <p className="text-xs text-blue-600 border-t pt-2">Normativa: {previewDoc.normative_references}</p>}
+
+                  {/* Firma digital del cliente */}
+                  <div className="mt-4 pt-4 border-t">
+                    <SignatureCanvas
+                      label="✍️ Conformidad del cliente"
+                      value={previewDoc.signature_client}
+                      onSave={async (dataUrl) => {
+                        await base44.entities.Invoice.update(previewDoc.id, { signature_client: dataUrl });
+                        const updated = { ...previewDoc, signature_client: dataUrl };
+                        setPreviewDoc(updated);
+                        setDocs(prev => prev.map(d => d.id === previewDoc.id ? updated : d));
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2 mt-3 pt-3 border-t flex-wrap no-print">

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, Printer, FileText, Link2 } from 'lucide-react';
 import TechnicianSelect from '../components/TechnicianSelect';
+import SATSignaturePanel from '../components/SATSignaturePanel';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -593,19 +594,11 @@ export default function SAT() {
                 )}
                 {previewOrder.notes && <div className="bg-amber-50 rounded p-3 text-sm"><p className="text-xs font-medium text-amber-600 mb-1">Notas</p>{previewOrder.notes}</div>}
 
-                {/* Firma / conformidad */}
-                <div className="grid grid-cols-2 gap-6 mt-6 pt-4 border-t">
-                  <div className="text-center">
-                    <div className="border-b border-gray-400 h-16 mb-1"></div>
-                    <p className="text-xs text-gray-500">Firma del Técnico</p>
-                    {previewOrder.technician && <p className="text-xs font-medium">{previewOrder.technician}</p>}
-                  </div>
-                  <div className="text-center">
-                    <div className="border-b border-gray-400 h-16 mb-1"></div>
-                    <p className="text-xs text-gray-500">Conformidad del Cliente</p>
-                    <p className="text-xs font-medium">{previewOrder.contact_name}</p>
-                  </div>
-                </div>
+                {/* Firmas digitales interactivas */}
+                <SATSignaturePanel
+                  order={previewOrder}
+                  onUpdate={(updated) => setPreviewOrder(updated)}
+                />
               </div>
               <div className="flex gap-2 mt-3 flex-wrap no-print">
                 <PrintButton contentRef={printRef} title={`SAT_${previewOrder.order_number || 'orden'}`} />
