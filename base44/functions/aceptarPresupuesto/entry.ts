@@ -21,20 +21,45 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
 
     if (action === 'rechazar') {
-      await base44.asServiceRole.entities.Invoice.update(doc_id, {
-        status: 'cancelado',
-      });
+      const updateData = { status: 'cancelado' };
+      if (signature) updateData.signature_client = signature;
+
+      await base44.asServiceRole.entities.Invoice.update(doc_id, updateData);
 
       // Archivar en ClientDocument como rechazado
       if (doc.contact_id) {
         await base44.asServiceRole.entities.ClientDocument.create({
           contact_id: doc.contact_id,
           contact_name: doc.contact_name,
-          title: `RECHAZADO - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''} - ${doc.contact_name}`,
+          title: `RECHAZADO Y FIRMADO - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''} - ${doc.contact_name}`,
           doc_type: 'presupuesto',
-          description: `Presupuesto rechazado por el cliente el ${now.split('T')[0]}. Total: ${doc.total?.toFixed(2)} €`,
+          description: `Presupuesto rechazado y firmado digitalmente por el cliente el ${now.split('T')[0]}. Total: ${doc.total?.toFixed(2)} €`,
           date: now.split('T')[0],
         });
+      }
+
+      // Notificar por email al admin
+      try {
+        const companies = await base44.asServiceRole.entities.CompanySettings.list();
+        const company = companies?.[0];
+        if (company?.email) {
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: company.email,
+            subject: `❌ Presupuesto rechazado y firmado - ${doc.contact_name}`,
+            body: `
+<h2>Presupuesto rechazado</h2>
+<p><strong>Cliente:</strong> ${doc.contact_name}</p>
+<p><strong>Documento:</strong> ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</p>
+<p><strong>Importe:</strong> ${(doc.total || 0).toFixed(2)} €</p>
+<p><strong>Fecha rechazo:</strong> ${now.split('T')[0]}</p>
+<br/>
+<p>El cliente ha firmado digitalmente el rechazo del presupuesto.</p>
+${signature ? `<img src="${signature}" alt="Firma cliente" style="max-width:300px;border:1px solid #ddd;border-radius:8px;margin-top:12px"/>` : ''}
+            `.trim()
+          });
+        }
+      } catch (_emailErr) {
+        // No fallar si el email no se envía
       }
 
       return Response.json({ ok: true, action: 'rechazado' });

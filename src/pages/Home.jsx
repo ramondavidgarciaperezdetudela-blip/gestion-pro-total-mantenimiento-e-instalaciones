@@ -134,10 +134,10 @@ export default function Home() {
       setRecentSat(sat.filter((s) => s.status === 'pendiente').slice(0, 4));
       setRecentContacts(contacts.filter((c) => c.type === 'cliente').slice(0, 5));
 
-      // Presupuestos con respuesta del cliente (firma = aceptado, cancelado = rechazado)
+      // Presupuestos con respuesta del cliente firmada
       const presupuestos = invoices.filter(d => d.doc_type === 'presupuesto');
-      setPresupuestosAceptados(presupuestos.filter(d => d.signature_client).slice(0, 10));
-      setPresupuestosRechazados(presupuestos.filter(d => d.status === 'cancelado').slice(0, 10));
+      setPresupuestosAceptados(presupuestos.filter(d => d.signature_client && d.status !== 'cancelado').slice(0, 10));
+      setPresupuestosRechazados(presupuestos.filter(d => d.status === 'cancelado' && d.signature_client).slice(0, 10));
 
       // Gastos por proveedor (basado en precios)
       const spendMap = {};

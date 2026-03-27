@@ -124,7 +124,7 @@ export default function PresupuestoPublico() {
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [step, setStep] = useState('decision'); // 'decision' | 'sign' | 'rejected' | 'done'
+  const [step, setStep] = useState('decision'); // 'decision' | 'sign' | 'sign-reject' | 'rejected' | 'done'
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -150,10 +150,11 @@ export default function PresupuestoPublico() {
     setStep('done');
   };
 
-  const handleReject = async () => {
+  const handleRejectWithSign = async (signatureDataUrl) => {
     setSaving(true);
     await base44.functions.invoke('aceptarPresupuesto', {
       doc_id: docId,
+      signature: signatureDataUrl,
       action: 'rechazar'
     });
     setSaving(false);
@@ -278,12 +279,12 @@ export default function PresupuestoPublico() {
                 <p className="text-sm text-gray-500 text-center">Al aceptar, se le solicitará su firma digital como conformidad.</p>
                 <div className="flex gap-3">
                   <Button
-                    onClick={handleReject}
+                    onClick={() => setStep('sign-reject')}
                     disabled={saving}
                     variant="outline"
                     className="flex-1 border-red-200 text-red-600 hover:bg-red-50 h-12"
                   >
-                    <X className="w-4 h-4 mr-2" /> Rechazar
+                    <X className="w-4 h-4 mr-2" /> Rechazar y firmar
                   </Button>
                   <Button
                     onClick={() => setStep('sign')}
@@ -311,6 +312,31 @@ export default function PresupuestoPublico() {
               </div>
             ) : (
               <SignaturePad onSave={handleSign} />
+            )}
+            <Button variant="ghost" size="sm" className="w-full text-gray-400" onClick={() => setStep('decision')}>
+              Volver
+            </Button>
+          </div>
+        )}
+
+        {step === 'sign-reject' && (
+          <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-5 space-y-4">
+            <h3 className="text-base font-bold text-red-700 text-center flex items-center justify-center gap-2">
+              <XCircle className="w-5 h-5" /> Firma de rechazo
+            </h3>
+            <p className="text-sm text-gray-500 text-center">
+              Para dejar constancia del rechazo del presupuesto <strong>Nº {doc.doc_number}</strong>, le solicitamos su firma.
+            </p>
+            {saving ? (
+              <div className="flex items-center justify-center py-8 gap-3">
+                <Loader2 className="w-6 h-6 animate-spin text-red-500" />
+                <span className="text-gray-500">Registrando su respuesta...</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-500 text-center">Firme aquí con su dedo o ratón:</p>
+                <SignaturePad onSave={handleRejectWithSign} />
+              </div>
             )}
             <Button variant="ghost" size="sm" className="w-full text-gray-400" onClick={() => setStep('decision')}>
               Volver
