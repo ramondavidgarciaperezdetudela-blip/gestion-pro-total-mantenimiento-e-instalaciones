@@ -64,17 +64,16 @@ Deno.serve(async (req) => {
       </div>
     </div>`.trim();
 
-    // Enviar email usando la función que ya existe (enviarCopiaFirmada style)
+    // Enviar email al admin
     try {
-      const res = await base44.asServiceRole.functions.invoke('enviarCopiaFirmada', {
+      await base44.asServiceRole.integrations.Core.SendEmail({
         to: company.email,
         subject: `⚠️ Solicitud de cambio de opinión - ${contact_name} (${doc_number})`,
         body: emailBodyAdmin,
-        doc_title: `Solicitud cambio opinión - ${doc_number}`,
         from_name: company?.company_name || 'Sistema'
       });
     } catch (_err) {
-      console.log('Intentando envío directo...');
+      console.log('Error enviando email al admin:', _err);
     }
 
     // Generar enlace de WhatsApp para contactar al cliente
