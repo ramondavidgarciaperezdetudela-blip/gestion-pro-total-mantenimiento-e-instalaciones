@@ -130,6 +130,31 @@
     "sign_datetime": {
       "type": "string",
       "description": "Fecha y hora exacta de la firma del cliente (DD/MM/YYYY HH:MM:SS)"
+    },
+    "signature_history": {
+      "type": "array",
+      "description": "Historial de decisiones (aceptar/rechazar) con firmas y fechas",
+      "items": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "aceptar",
+              "rechazar"
+            ],
+            "description": "Tipo de decisi\u00f3n"
+          },
+          "signature_url": {
+            "type": "string",
+            "description": "URL de la firma digital"
+          },
+          "datetime": {
+            "type": "string",
+            "description": "Fecha y hora (DD/MM/YYYY HH:MM:SS)"
+          }
+        }
+      }
     }
   },
   "required": [

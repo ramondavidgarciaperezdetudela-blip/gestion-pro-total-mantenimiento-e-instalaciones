@@ -261,6 +261,32 @@ export default function PresupuestoPublico() {
             <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 whitespace-pre-wrap">{doc.payment_terms}</div>
           )}
 
+          {/* Historial de decisiones */}
+          {doc.signature_history && doc.signature_history.length > 0 && (
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <h4 className="font-bold text-sm text-blue-800 mb-3">📋 Historial de decisiones</h4>
+              <div className="space-y-3">
+                {doc.signature_history.map((item, idx) => {
+                  const isAccepted = item.action === 'aceptar';
+                  const icon = isAccepted ? '✅' : '❌';
+                  const actionText = isAccepted ? 'ACEPTADO' : 'RECHAZADO';
+                  const color = isAccepted ? 'text-green-700' : 'text-red-700';
+                  return (
+                    <div key={idx} className="border-b border-blue-100 pb-2 last:border-b-0 last:pb-0">
+                      <p className={`font-bold text-sm ${color}`}>{icon} {actionText}</p>
+                      <p className="text-xs text-gray-600 mt-1">📅 {item.datetime}</p>
+                      {item.signature_url && (
+                        <div className="mt-2">
+                          <img src={item.signature_url} alt="Firma" className="max-w-[150px] border border-blue-200 rounded bg-white p-1" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Botones de acción dentro del documento — siempre visibles */}
           {!yaFirmado && !rechazadoYFirmado && step === 'decision' && (
             <div className="border-t pt-4 space-y-3">
