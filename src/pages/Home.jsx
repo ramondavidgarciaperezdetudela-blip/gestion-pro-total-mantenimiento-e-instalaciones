@@ -86,6 +86,8 @@ export default function Home() {
   const [reorderAlerts, setReorderAlerts] = useState([]);
   const [maintenanceMachines, setMaintenanceMachines] = useState([]);
   const [stockItems, setStockItems] = useState([]);
+  const [presupuestosAceptados, setPresupuestosAceptados] = useState([]);
+  const [presupuestosRechazados, setPresupuestosRechazados] = useState([]);
 
   const loadData = useCallback(async () => {
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -131,6 +133,11 @@ export default function Home() {
       setRecentDocs(invoices.slice(0, 5));
       setRecentSat(sat.filter((s) => s.status === 'pendiente').slice(0, 4));
       setRecentContacts(contacts.filter((c) => c.type === 'cliente').slice(0, 5));
+
+      // Presupuestos con respuesta del cliente (firma = aceptado, cancelado = rechazado)
+      const presupuestos = invoices.filter(d => d.doc_type === 'presupuesto');
+      setPresupuestosAceptados(presupuestos.filter(d => d.signature_client).slice(0, 10));
+      setPresupuestosRechazados(presupuestos.filter(d => d.status === 'cancelado').slice(0, 10));
 
       // Gastos por proveedor (basado en precios)
       const spendMap = {};
@@ -451,6 +458,64 @@ export default function Home() {
            </CardContent>
          </Card>
        </div>
+
+      {/* Presupuestos con respuesta del cliente */}
+      {(presupuestosAceptados.length > 0 || presupuestosRechazados.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Aceptados */}
+          <Card className="border-green-200">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-green-700">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Presupuestos aceptados y firmados
+                <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">{presupuestosAceptados.length}</span>
+              </CardTitle>
+              <Link to={createPageUrl('Documents?type=presupuesto')} className="text-green-600 text-xs font-bold hover:underline">Ver todos</Link>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {presupuestosAceptados.length === 0 ? (
+                <p className="text-xs text-gray-400 py-3 text-center">Sin presupuestos aceptados aún</p>
+              ) : presupuestosAceptados.map(doc => (
+                <div key={doc.id} className="flex items-center justify-between gap-2 p-2.5 bg-green-50 rounded-lg border border-green-100">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <img src={doc.signature_client} alt="Firma" className="w-8 h-8 rounded border border-green-200 bg-white object-contain flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-green-800 truncate">Presupuesto Nº{doc.doc_number}</p>
+                      <p className="text-[10px] text-green-600 truncate">{doc.contact_name} · {doc.date}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-green-700 flex-shrink-0">{(doc.total || 0).toFixed(0)} €</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Rechazados */}
+          <Card className="border-red-200">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-red-700">
+                <XCircle className="w-4 h-4 text-red-500" />
+                Presupuestos rechazados
+                <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">{presupuestosRechazados.length}</span>
+              </CardTitle>
+              <Link to={createPageUrl('Documents?type=presupuesto')} className="text-red-500 text-xs font-bold hover:underline">Ver todos</Link>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {presupuestosRechazados.length === 0 ? (
+                <p className="text-xs text-gray-400 py-3 text-center">Sin presupuestos rechazados</p>
+              ) : presupuestosRechazados.map(doc => (
+                <div key={doc.id} className="flex items-center justify-between gap-2 p-2.5 bg-red-50 rounded-lg border border-red-100">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-red-800 truncate">Presupuesto Nº{doc.doc_number}</p>
+                    <p className="text-[10px] text-red-500 truncate">{doc.contact_name} · {doc.date}</p>
+                  </div>
+                  <span className="text-xs font-bold text-red-600 flex-shrink-0">{(doc.total || 0).toFixed(0)} €</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Citas hoy */}
