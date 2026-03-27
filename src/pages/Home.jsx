@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import PullToRefresh from '../components/PullToRefresh';
 import MobileKPIView from '../components/MobileKPIView';
 import ChangeOpinionAlerts from '../components/ChangeOpinionAlerts';
+import PendingTasksPanel from '../components/PendingTasksPanel';
+import AutomationStatus from '../components/AutomationStatus';
 import { createPageUrl } from '../utils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -255,6 +257,12 @@ export default function Home() {
 
       {/* Todo lo siguiente solo en desktop */}
       <div className="hidden sm:block space-y-6">
+
+      {/* Panel de tareas pendientes */}
+      <PendingTasksPanel />
+
+      {/* Estado de automatizaciones */}
+      <AutomationStatus />
 
       {/* Cambios de opinión solicitados */}
       <ChangeOpinionAlerts />
