@@ -18,6 +18,14 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
   const [technicianSigned, setTechnicianSigned] = useState(false);
   const [clientSigned, setClientSigned] = useState(false);
   const [expandedCanvas, setExpandedCanvas] = useState(null);
+  const [techSignDatetime, setTechSignDatetime] = useState(null);
+  const [clientSignDatetime, setClientSignDatetime] = useState(null);
+
+  const getNowDatetime = () => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  };
 
   const getPointerPosition = (e) => {
     const canvas = e.currentTarget;
@@ -106,12 +114,15 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
     ctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
     const signatureDataUrl = tempCanvas.toDataURL('image/png');
 
+    const dt = getNowDatetime();
     if (isClient) {
       setClientSigned(true);
-      onClientSign({ name, signature: signatureDataUrl });
+      setClientSignDatetime(dt);
+      onClientSign({ name, signature: signatureDataUrl, sign_datetime: dt });
     } else {
       setTechnicianSigned(true);
-      onTechnicianSign({ name, signature: signatureDataUrl, date: technicianDate });
+      setTechSignDatetime(dt);
+      onTechnicianSign({ name, signature: signatureDataUrl, date: technicianDate, sign_datetime: dt });
     }
   };
 
@@ -163,9 +174,10 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
         {/* Firma Técnico */}
         <Card className="border-blue-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
+            <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
               📝 Firma Técnico Frigorista
               {technicianSigned && <Check className="w-4 h-4 text-green-600" />}
+              {techSignDatetime && <span className="text-[10px] font-mono text-gray-400 font-normal">🕐 {techSignDatetime}</span>}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -257,9 +269,10 @@ export default function LegalDocSignaturePanel({ onTechnicianSign, onClientSign,
         {/* Firma Cliente */}
         <Card className="border-green-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
+            <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
               📝 Firma Cliente
               {clientSigned && <Check className="w-4 h-4 text-green-600" />}
+              {clientSignDatetime && <span className="text-[10px] font-mono text-gray-400 font-normal">🕐 {clientSignDatetime}</span>}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">

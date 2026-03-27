@@ -13,6 +13,7 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
   const [showCanvas, setShowCanvas] = useState(!value);
+  const [signDatetime, setSignDatetime] = useState(null);
   const lastPos = useRef(null);
 
   const initCanvas = useCallback(() => {
@@ -98,6 +99,10 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
     ctx.fillRect(0, 0, 600, 200);
     ctx.drawImage(canvas, 0, 0, 600, 200);
     const dataUrl = tempCanvas.toDataURL('image/png');
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const dt = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    setSignDatetime(dt);
     onSave(dataUrl);
     setShowCanvas(false);
   };
@@ -107,8 +112,13 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
       <div className="border rounded-xl p-3 bg-gray-50 space-y-2">
         {label && <p className="text-xs font-semibold text-gray-700">{label}</p>}
         <img src={value} alt="Firma" className="w-full max-h-24 object-contain border rounded bg-white" />
-        <p className="text-[10px] text-green-600 text-center">✓ Firmado correctamente</p>
-        <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => setShowCanvas(true)}>
+        <div className="text-center">
+          <p className="text-[10px] text-green-600">✓ Firmado correctamente</p>
+          {signDatetime && (
+            <p className="text-[10px] text-gray-500 font-mono mt-0.5">🕐 {signDatetime}</p>
+          )}
+        </div>
+        <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => { setShowCanvas(true); setSignDatetime(null); }}>
           <PenLine className="w-3 h-3 mr-1" />Volver a firmar
         </Button>
       </div>
