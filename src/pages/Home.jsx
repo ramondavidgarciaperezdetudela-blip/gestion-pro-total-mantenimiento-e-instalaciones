@@ -222,8 +222,8 @@ export default function Home() {
         />
       </div>
 
-      {/* Acceso directo rápido - Arriba de todo */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+      {/* Acceso directo rápido - Solo en desktop */}
+      <div className="hidden sm:block bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
         <h2 className="text-gray-800 mb-3 text-3xl font-extrabold flex items-center gap-2">Acceso rápido a módulos
 
 
