@@ -89,7 +89,7 @@ export default function SAT() {
     }
     if (preEditId) {
       const found = o.find(ord => ord.id === preEditId);
-      if (found) { setEditing(found); setForm({ ...EMPTY_FORM, ...found, materials_used: found.materials_used || [], photos_before: found.photos_before || [], photos_after: found.photos_after || [] }); setDialogOpen(true); }
+      if (found) { setEditing(found); setForm({ ...EMPTY_FORM, ...found, materials_used: (found.materials_used || []).filter(m => m.material?.trim()), photos_before: found.photos_before || [], photos_after: found.photos_after || [] }); setDialogOpen(true); }
     }
     if (preContactId && !preEditId && !preViewId) {
       const ct = c.find(co => co.id === preContactId);
@@ -107,7 +107,7 @@ export default function SAT() {
   const handleSave = async () => {
     setSaving(true);
     const total = calcTotal(form);
-    const data = { ...form, total };
+    const data = { ...form, total, materials_used: (form.materials_used || []).filter(m => m.material?.trim()) };
     let savedOrder = null;
 
     if (editing) {
@@ -182,6 +182,10 @@ export default function SAT() {
     setEditing(null);
     setAutoGenerateInvoice(false);
     await loadAll();
+    // Al guardar, abrir la vista previa para que firmen técnico y cliente
+    if (savedOrder) {
+      setPreviewOrder(savedOrder);
+    }
   };
 
   const getNextSATNumber = (currentOrders) => {
@@ -191,7 +195,7 @@ export default function SAT() {
 
   const handleEdit = (order) => {
     setEditing(order);
-    setForm({ ...EMPTY_FORM, ...order, materials_used: order.materials_used || [], photos_before: order.photos_before || [], photos_after: order.photos_after || [] });
+    setForm({ ...EMPTY_FORM, ...order, materials_used: (order.materials_used || []).filter(m => m.material?.trim()), photos_before: order.photos_before || [], photos_after: order.photos_after || [] });
     setDialogOpen(true);
   };
 
