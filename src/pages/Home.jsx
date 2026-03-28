@@ -98,109 +98,69 @@ export default function Home() {
     const today = format(new Date(), 'yyyy-MM-dd');
     const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
 
-    // Una sola carga con límites mínimos
-    const [appts, comp, invoices, sat, contacts, suppliers, stock] = await Promise.all([
+    // Carga prioritaria: solo lo esencial para la vista inicial
+    const [appts, comp, invoices, sat] = await Promise.all([
       base44.entities.Appointment.filter({ date: today }),
       base44.entities.CompanySettings.list(),
-      base44.entities.Invoice.list('-date', 30),
-      base44.entities.SATOrder.list('-date', 15),
-      base44.entities.Contact.list('-created_date', 50),
-      base44.entities.Supplier.list('-created_date', 30),
-      base44.entities.StockItem.list('-updated_date', 20),
+      base44.entities.Invoice.list('-date', 20),
+      base44.entities.SATOrder.list('-date', 10),
     ]);
 
-    const machines = [];
-    const prices = [];
-    {
-      setAppointments(appts);
-      if (comp.length > 0) setCompany(comp[0]);
+    // Procesar y mostrar datos críticos inmediatamente
+    if (comp.length > 0) setCompany(comp[0]);
+    // KPIs financieros inmediatos
+    const facturas = invoices.filter((d) => d.doc_type === 'factura');
+    const totalInvoiced = facturas.reduce((s, d) => s + (d.total || 0), 0);
+    const pendingAmount = facturas.filter((d) => ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0);
+    const paidThisMonth = facturas.filter((d) => d.status === 'pagado' && d.date >= monthStart).reduce((s, d) => s + (d.total || 0), 0);
+    const overdueInvoices = facturas.filter((d) => d.status === 'vencido').length;
+    const invoicesPaid = facturas.filter((d) => d.status === 'pagado').length;
+    const invoicesPending = facturas.filter((d) => d.status === 'enviado').length;
+    const satPending = sat.filter((s) => s.status === 'pendiente').length;
+    setAppointments(appts);
+    setRecentDocs(invoices.slice(0, 5));
+    setRecentSat(sat.filter((s) => s.status === 'pendiente').slice(0, 4));
+    const presupuestos = invoices.filter(d => d.doc_type === 'presupuesto');
+    setPresupuestosAceptados(presupuestos.filter(d => d.signature_client && d.status !== 'cancelado').slice(0, 10));
+    setPresupuestosRechazados(presupuestos.filter(d => d.status === 'cancelado' && d.signature_client).slice(0, 10));
 
-      // KPIs financieros
-      const facturas = invoices.filter((d) => d.doc_type === 'factura');
-      const totalInvoiced = facturas.reduce((s, d) => s + (d.total || 0), 0);
-      const pendingAmount = facturas.filter((d) => ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0);
-      const paidThisMonth = facturas.filter((d) => d.status === 'pagado' && d.date >= monthStart).reduce((s, d) => s + (d.total || 0), 0);
-      const overdueInvoices = facturas.filter((d) => d.status === 'vencido').length;
-      const invoicesPaid = facturas.filter((d) => d.status === 'pagado').length;
-      const invoicesPending = facturas.filter((d) => d.status === 'enviado').length;
-      const satPending = sat.filter((s) => s.status === 'pendiente').length;
-      const unpaidContacts = contacts.filter((c) => (c.pending_amount || 0) > 0).length;
+    // Alertas generales inmediatas
+    const newAlerts = [];
+    if (overdueInvoices > 0) newAlerts.push({ type: 'danger', text: `${overdueInvoices} factura(s) vencidas sin cobrar`, page: 'Documents' });
+    if (pendingAmount > 500) newAlerts.push({ type: 'warning', text: `${pendingAmount.toFixed(0)}€ pendientes de cobro`, page: 'Documents' });
+    if (satPending > 3) newAlerts.push({ type: 'warning', text: `${satPending} órdenes SAT pendientes`, page: 'SAT' });
+    setAlerts(newAlerts);
 
-      // Alertas de mantenimiento inteligente
-      const maintenanceDue = machines.filter((m) => {
-        if (!m.next_maintenance_date || m.status !== 'operativo') return false;
-        const nextDate = new Date(m.next_maintenance_date);
-        const daysUntil = Math.ceil((nextDate - new Date()) / 86400000);
-        return daysUntil <= 30 && daysUntil > 0;
-      }).length;
+    // Carga secundaria: datos menos urgentes
+    const [contacts, suppliers, stock] = await Promise.all([
+      base44.entities.Contact.list('-created_date', 30),
+      base44.entities.Supplier.list('-created_date', 20),
+      base44.entities.StockItem.list('-updated_date', 15),
+    ]);
 
-      setKpis({ contacts: contacts.length, totalInvoiced, pendingAmount, satPending, overdueInvoices, paidThisMonth, unpaidContacts, maintenanceDue, totalSuppliers: suppliers.filter((s) => s.is_active !== false).length, invoicesPaid, invoicesPending, invoicesOverdue: overdueInvoices });
-      setRecentDocs(invoices.slice(0, 5));
-      setRecentSat(sat.filter((s) => s.status === 'pendiente').slice(0, 4));
-      setRecentContacts(contacts.filter((c) => c.type === 'cliente').slice(0, 5));
+    const unpaidContacts = contacts.filter((c) => (c.pending_amount || 0) > 0).length;
+    setKpis({ contacts: contacts.length, totalInvoiced, pendingAmount, satPending, overdueInvoices, paidThisMonth, unpaidContacts, maintenanceDue: 0, totalSuppliers: suppliers.filter((s) => s.is_active !== false).length, invoicesPaid, invoicesPending, invoicesOverdue: overdueInvoices });
+    setRecentContacts(contacts.filter((c) => c.type === 'cliente').slice(0, 5));
 
-      // Presupuestos con respuesta del cliente firmada
-      const presupuestos = invoices.filter(d => d.doc_type === 'presupuesto');
-      setPresupuestosAceptados(presupuestos.filter(d => d.signature_client && d.status !== 'cancelado').slice(0, 10));
-      setPresupuestosRechazados(presupuestos.filter(d => d.status === 'cancelado' && d.signature_client).slice(0, 10));
+    // Alertas de pedidos próximos
+    const reorder = suppliers.filter((s) => {
+      if (!s.last_order_date || !s.enable_notifications || s.is_active === false) return false;
+      const last = new Date(s.last_order_date);
+      const nextDate = new Date(last.getTime() + (s.reorder_frequency_days || 30) * 86400000);
+      const daysLeft = Math.ceil((nextDate - new Date()) / 86400000);
+      return daysLeft <= 7;
+    }).map((s) => {
+      const last = new Date(s.last_order_date);
+      const nextDate = new Date(last.getTime() + (s.reorder_frequency_days || 30) * 86400000);
+      const daysLeft = Math.ceil((nextDate - new Date()) / 86400000);
+      return { name: s.name, daysLeft };
+    });
+    setReorderAlerts(reorder);
+    reorder.forEach((r) => newAlerts.push({ type: 'warning', text: `Revisar pedido a ${r.name} (${r.daysLeft <= 0 ? 'HOY' : `en ${r.daysLeft} días`})`, page: 'Suppliers' }));
+    setAlerts([...newAlerts]);
 
-      // Gastos por proveedor (basado en precios)
-      const spendMap = {};
-      prices.forEach((p) => {
-        if (!spendMap[p.supplier_name]) spendMap[p.supplier_name] = 0;
-        spendMap[p.supplier_name] += (p.cost_price || 0) * (p.quantity || 1);
-      });
-      const spendData = Object.entries(spendMap).
-      map(([name, total]) => ({ name: name.length > 14 ? name.slice(0, 14) + '…' : name, total: Math.round(total) })).
-      sort((a, b) => b.total - a.total).
-      slice(0, 6);
-      setSupplierSpending(spendData);
-
-      // Top proveedores por nº de precios registrados (proxy de pedidos)
-      const orderMap = {};
-      prices.forEach((p) => {
-        if (!orderMap[p.supplier_name]) orderMap[p.supplier_name] = { name: p.supplier_name, count: 0 };
-        orderMap[p.supplier_name].count++;
-      });
-      setTopSuppliers(Object.values(orderMap).sort((a, b) => b.count - a.count).slice(0, 5));
-
-      // Alertas de pedido próximos
-      const reorder = suppliers.filter((s) => {
-        if (!s.last_order_date || !s.enable_notifications || s.is_active === false) return false;
-        const last = new Date(s.last_order_date);
-        const nextDate = new Date(last.getTime() + (s.reorder_frequency_days || 30) * 86400000);
-        const daysLeft = Math.ceil((nextDate - new Date()) / 86400000);
-        return daysLeft <= 7;
-      }).map((s) => {
-        const last = new Date(s.last_order_date);
-        const nextDate = new Date(last.getTime() + (s.reorder_frequency_days || 30) * 86400000);
-        const daysLeft = Math.ceil((nextDate - new Date()) / 86400000);
-        return { name: s.name, daysLeft };
-      });
-      setReorderAlerts(reorder);
-
-      // Máquinas con mantenimiento próximo
-      const machinesWithMaint = machines.filter((m) => {
-        if (!m.next_maintenance_date || m.status !== 'operativo') return false;
-        const nextDate = new Date(m.next_maintenance_date);
-        const daysUntil = Math.ceil((nextDate - new Date()) / 86400000);
-        return daysUntil <= 30 && daysUntil > 0;
-      }).slice(0, 5);
-      setMaintenanceMachines(machinesWithMaint);
-
-      // Stock bajo
-      const lowStock = stock.filter((s) => (s.quantity || 0) <= (s.min_stock || 0)).slice(0, 6);
-      setStockItems(lowStock);
-
-      // Alertas generales
-      const newAlerts = [];
-      if (overdueInvoices > 0) newAlerts.push({ type: 'danger', text: `${overdueInvoices} factura(s) vencidas sin cobrar`, page: 'Documents' });
-      if (pendingAmount > 500) newAlerts.push({ type: 'warning', text: `${pendingAmount.toFixed(0)}€ pendientes de cobro`, page: 'Documents' });
-      if (satPending > 3) newAlerts.push({ type: 'warning', text: `${satPending} órdenes SAT pendientes`, page: 'SAT' });
-      if (maintenanceDue > 0) newAlerts.push({ type: 'warning', text: `${maintenanceDue} equipo(s) con mantenimiento próximo`, page: 'Maintenance' });
-      reorder.forEach((r) => newAlerts.push({ type: 'warning', text: `Revisar pedido a ${r.name} (${r.daysLeft <= 0 ? 'HOY' : `en ${r.daysLeft} días`})`, page: 'Suppliers' }));
-      setAlerts(newAlerts);
-    }
+    // Stock bajo
+    setStockItems(stock.filter((s) => (s.quantity || 0) <= (s.min_stock || 0)).slice(0, 6));
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
