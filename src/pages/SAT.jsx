@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, Printer, FileText, Link2 } from 'lucide-react';
+import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, Printer, FileText, Link2, ClipboardList } from 'lucide-react';
+import SATTechReport from '../components/SATTechReport';
 import TechnicianSelect from '../components/TechnicianSelect';
 import SATSignaturePanel from '../components/SATSignaturePanel';
 import SATSharePanel from '../components/SATSharePanel';
@@ -68,6 +69,7 @@ export default function SAT() {
   const [autoGenerateInvoice, setAutoGenerateInvoice] = useState(false);
   const [filterSignatureStatus, setFilterSignatureStatus] = useState('all'); // all, aceptadas, rechazadas
   const [company, setCompany] = useState(null);
+  const [techReportOrder, setTechReportOrder] = useState(null);
   const printRef = useRef(null);
 
   useEffect(() => { loadAll(); }, []);
@@ -742,6 +744,13 @@ export default function SAT() {
               </div>
               <div className="flex gap-2 mt-3 flex-wrap no-print">
                 <PrintButton contentRef={printRef} title={`SAT_${previewOrder.order_number || 'orden'}`} />
+                <Button
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={() => { setTechReportOrder(previewOrder); }}
+                >
+                  <ClipboardList className="w-4 h-4 mr-1" />Informe Técnico
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => { handleEdit(previewOrder); setPreviewOrder(null); }}>
                   <Edit className="w-4 h-4 mr-1" />Editar
                 </Button>
@@ -783,6 +792,16 @@ export default function SAT() {
                 )}
                 </DialogContent>
                 </Dialog>
+
+      {/* ===== INFORME TÉCNICO POST-VISITA ===== */}
+      {techReportOrder && (
+        <SATTechReport
+          order={techReportOrder}
+          open={!!techReportOrder}
+          onClose={() => setTechReportOrder(null)}
+        />
+      )}
+
                 </div>
                 </PullToRefresh>
                 </>
