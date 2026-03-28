@@ -92,7 +92,7 @@ export default function ColdRoomCalc() {
     const condPressure = (parseFloat(form.exterior_temp || 25) > 35 ? (baseCondPressure * 1.15) : baseCondPressure).toFixed(2);
 
     // Panel frigorífico necesario (m²)
-    const panelArea = 2 * (form.length * form.width + form.length * form.height + form.width * f.height);
+    const panelArea = 2 * (form.length * form.width + form.length * form.height + form.width * form.height);
 
     // Carga de refrigerante base
     const refCharge = (equip.power_kw * 0.35 + actualDist * (EXTRA_REF_G_PER_M[form.refrigerant_type] || 18) / 1000).toFixed(2);
