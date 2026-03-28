@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Search, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 export default function PostalCodeSearch({ onSelect, type = 'postal_code' }) {
   const [searchValue, setSearchValue] = useState('');
@@ -10,12 +9,11 @@ export default function PostalCodeSearch({ onSelect, type = 'postal_code' }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showResults, setShowResults] = useState(false);
+  const debounceRef = useRef(null);
 
-  const handleSearch = async (value) => {
-    setSearchValue(value);
+  const doSearch = useCallback(async (value) => {
     setError('');
-
-    if (!value || value.length < 2) {
+    if (!value || value.length < 3) {
       setResults([]);
       setShowResults(false);
       return;
@@ -32,15 +30,21 @@ export default function PostalCodeSearch({ onSelect, type = 'postal_code' }) {
         setResults(response.data.results);
         setShowResults(true);
       } else {
-        setError(response.data?.error || 'No se encontraron resultados');
         setResults([]);
+        setShowResults(true);
       }
     } catch (err) {
-      setError('Error al buscar códigos postales: ' + err.message);
+      setError('Error al buscar: ' + err.message);
       setResults([]);
     } finally {
       setLoading(false);
     }
+  }, [type]);
+
+  const handleSearch = (value) => {
+    setSearchValue(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doSearch(value), 600);
   };
 
   const handleSelect = (result) => {
