@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Wrench, ChevronDown, ChevronUp, Trash2, Edit, Download, FileSpreadsheet, Camera, FolderOpen, X } from 'lucide-react';
 import { toast } from 'sonner';
 import PhotoGallery from './PhotoGallery';
+import PhotosWithNames from './PhotosWithNames';
 
 const MACHINE_TYPES = ['aire_acondicionado','bomba_calor','camara_frigorifica','ventilacion','caldera','aerotermia','solar_fotovoltaico','solar_termico','electrico_cuadro','grupo_frio','otro'];
 const ENTRY_TYPES = ['reparacion','mantenimiento','revision','instalacion','averia','otro'];
@@ -30,7 +31,7 @@ const EMPTY_DIARY = {
 const EMPTY_ENTRY = {
   date: new Date().toISOString().split('T')[0],
   type: 'reparacion', technician: '', description: '', solution: '',
-  parts_used: '', cost: 0, hours: 0, photos: [], next_action: '', next_action_date: ''
+  parts_used: '', cost: 0, hours: 0, photos: [], photo_names: [], next_action: '', next_action_date: ''
 };
 
 export default function EquipmentDiaryTab({ contactId, contactName }) {
@@ -222,11 +223,15 @@ export default function EquipmentDiaryTab({ contactId, contactName }) {
                         {entry.parts_used && <p className="text-xs text-blue-600 mt-1">🔩 {entry.parts_used}</p>}
                         {entry.next_action && <p className="text-xs text-amber-600 mt-1">→ {entry.next_action}{entry.next_action_date ? ` (${entry.next_action_date})` : ''}</p>}
                         {entry.photos?.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {entry.photos.map((p, pi) => (
-                              <img key={pi} src={p} alt="" className="w-14 h-14 object-cover rounded border" />
-                            ))}
-                          </div>
+                          <PhotosWithNames
+                            photos={entry.photos}
+                            photoNames={entry.photo_names || []}
+                            onNamesChange={async (newNames) => {
+                              const entries = diary.entries.map((e, ei) => ei === idx ? { ...e, photo_names: newNames } : e);
+                              await base44.entities.EquipmentDiary.update(diary.id, { ...diary, entries });
+                              loadDiaries();
+                            }}
+                          />
                         )}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
@@ -305,6 +310,8 @@ export default function EquipmentDiaryTab({ contactId, contactName }) {
             <PhotoGallery
               photos={entryForm.photos || []}
               onChange={p => setEntryForm({...entryForm, photos: p})}
+              photoNames={entryForm.photo_names || []}
+              onNamesChange={n => setEntryForm({...entryForm, photo_names: n})}
               label="Fotos de la reparación"
               maxPhotos={20}
             />
