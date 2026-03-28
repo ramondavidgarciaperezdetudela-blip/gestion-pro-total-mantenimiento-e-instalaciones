@@ -277,7 +277,10 @@ export default function SAT() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Wrench className="w-6 h-6 text-orange-600" /> Órdenes SAT
         </h1>
-        <Button className="bg-orange-600 hover:bg-orange-700" onClick={() => { setEditing(null); setForm({ ...EMPTY_FORM, order_number: getNextSATNumber(orders) }); setDialogOpen(true); }}>
+        <Button className="bg-orange-600 hover:bg-orange-700" onClick={() => {
+          if (dialogOpen && (form.description || form.contact_id) && !confirm('¿Descartar los cambios y crear una nueva orden?')) return;
+          setEditing(null); setForm({ ...EMPTY_FORM, order_number: getNextSATNumber(orders) }); setDialogOpen(true);
+        }}>
           <Plus className="w-4 h-4 mr-1" />Nueva orden
         </Button>
       </div>
@@ -546,7 +549,7 @@ export default function SAT() {
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{editing ? `Editar Orden SAT #${editing.order_number || editing.id.slice(-6)}` : 'Nueva Orden SAT'}</DialogTitle>
-              <Button size="sm" variant="ghost" onClick={() => { setDialogOpen(false); setEditing(null); setForm(EMPTY_FORM); }} className="text-gray-400 hover:text-gray-600">✕</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setDialogOpen(false); }} className="text-gray-400 hover:text-gray-600">✕</Button>
             </div>
           </DialogHeader>
           <div className="space-y-3">
