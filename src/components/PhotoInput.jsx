@@ -41,13 +41,29 @@ export default function PhotoInput({ onPhotoUrl, label = 'Foto', multiple = fals
     }
   };
 
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files || []);
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        uploadPhoto(file);
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+    if (!files.length) return;
+
+    setUploading(true);
+    setError('');
+    try {
+      const results = await Promise.all(
+        files.map(file => base44.integrations.Core.UploadFile({ file }))
+      );
+      const newPhotos = results.map(r => ({ url: r.file_url, id: Date.now() + Math.random() }));
+      const updatedPhotos = multiple ? [...photos, ...newPhotos] : [newPhotos[0]];
+      setPhotos(updatedPhotos);
+      if (multiple) {
+        onPhotoUrl(updatedPhotos.map(p => p.url));
+      } else {
+        onPhotoUrl(updatedPhotos[0].url);
       }
-    });
+    } catch (err) {
+      setError('Error al subir fotos');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const removePhoto = (id) => {
@@ -127,7 +143,7 @@ export default function PhotoInput({ onPhotoUrl, label = 'Foto', multiple = fals
       {uploading && (
         <div className="p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700 flex items-center gap-2">
           <Loader className="w-4 h-4 animate-spin" />
-          Subiendo foto...
+          Subiendo fotos...
         </div>
       )}
 
