@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import PullToRefresh from '../components/PullToRefresh';
 import MobileKPIView from '../components/MobileKPIView';
@@ -21,7 +20,7 @@ import {
   ArrowRight, Phone, MapPin, ChevronRight, ShoppingCart, Search, Navigation } from
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { format, isAfter, isBefore, parseISO, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 // Monta el hijo solo después de `delay` ms — evita bloquear el render inicial
@@ -104,19 +103,13 @@ export default function Home() {
   const [presupuestosAceptados, setPresupuestosAceptados] = useState([]);
   const [presupuestosRechazados, setPresupuestosRechazados] = useState([]);
 
-  const loadData = useCallback(async () => {
-    const today = format(new Date(), 'yyyy-MM-dd');
+  const loadData = useCallback(async (forceRefresh = false) => {
+    const { getHomeData } = await import('@/lib/homeDataCache');
     const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
 
-    // FASE 1: Carga crítica — renderiza la pantalla inmediatamente (mínimo indispensable)
-    const [appts, comp, invoices, sat] = await Promise.all([
-      base44.entities.Appointment.filter({ date: today }),
-      base44.entities.CompanySettings.list(),
-      base44.entities.Invoice.list('-date', 12),
-      base44.entities.SATOrder.filter({ status: 'pendiente' }, '-date', 8),
-    ]);
+    const { invoices, satOrders, contacts, appointments, companySettings, suppliers, stockItems } = await getHomeData(forceRefresh);
 
-    if (comp.length > 0) setCompany(comp[0]);
+    if (companySettings.length > 0) setCompany(companySettings[0]);
 
     const facturas = invoices.filter((d) => d.doc_type === 'factura');
     const totalInvoiced = facturas.reduce((s, d) => s + (d.total || 0), 0);
@@ -125,68 +118,59 @@ export default function Home() {
     const overdueInvoices = facturas.filter((d) => d.status === 'vencido').length;
     const invoicesPaid = facturas.filter((d) => d.status === 'pagado').length;
     const invoicesPending = facturas.filter((d) => d.status === 'enviado').length;
-    const satPending = sat.filter((s) => s.status === 'pendiente').length;
+    const satPending = satOrders.filter((s) => s.status === 'pendiente').length;
 
-    setAppointments(appts);
+    setAppointments(appointments);
     setRecentDocs(invoices.slice(0, 5));
-    setRecentSat(sat.filter((s) => s.status === 'pendiente').slice(0, 4));
+    setRecentSat(satOrders.filter((s) => s.status === 'pendiente').slice(0, 4));
 
     const presupuestos = invoices.filter(d => d.doc_type === 'presupuesto');
     setPresupuestosAceptados(presupuestos.filter(d => d.signature_client && d.status !== 'cancelado').slice(0, 10));
     setPresupuestosRechazados(presupuestos.filter(d => d.status === 'cancelado' && d.signature_client).slice(0, 10));
+    setRecentContacts(contacts.filter((c) => c.type === 'cliente').slice(0, 5));
+
+    const reorder = suppliers.filter((s) => {
+      if (!s.last_order_date || !s.enable_notifications || s.is_active === false) return false;
+      const last = new Date(s.last_order_date);
+      const nextDate = new Date(last.getTime() + (s.reorder_frequency_days || 30) * 86400000);
+      return Math.ceil((nextDate - new Date()) / 86400000) <= 7;
+    }).map((s) => {
+      const last = new Date(s.last_order_date);
+      const nextDate = new Date(last.getTime() + (s.reorder_frequency_days || 30) * 86400000);
+      return { name: s.name, daysLeft: Math.ceil((nextDate - new Date()) / 86400000) };
+    });
+    setReorderAlerts(reorder);
+    setStockItems(stockItems.filter((s) => (s.quantity || 0) <= (s.min_stock || 0)).slice(0, 6));
 
     const newAlerts = [];
     if (overdueInvoices > 0) newAlerts.push({ type: 'danger', text: `${overdueInvoices} factura(s) vencidas sin cobrar`, page: 'Documents' });
     if (pendingAmount > 500) newAlerts.push({ type: 'warning', text: `${pendingAmount.toFixed(0)}€ pendientes de cobro`, page: 'Documents' });
     if (satPending > 3) newAlerts.push({ type: 'warning', text: `${satPending} órdenes SAT pendientes`, page: 'SAT' });
+    reorder.forEach((r) => newAlerts.push({ type: 'warning', text: `Revisar pedido a ${r.name} (${r.daysLeft <= 0 ? 'HOY' : `en ${r.daysLeft} días`})`, page: 'Suppliers' }));
     setAlerts(newAlerts);
 
-    // KPIs parciales ya disponibles
-    setKpis(prev => ({ ...prev, totalInvoiced, pendingAmount, satPending, overdueInvoices, paidThisMonth, invoicesPaid, invoicesPending, invoicesOverdue: overdueInvoices }));
-
-    // FASE 2: Carga secundaria diferida — no bloquea el render inicial
-    setTimeout(async () => {
-      const [contacts, suppliers, stock] = await Promise.all([
-        base44.entities.Contact.list('-created_date', 20),
-        base44.entities.Supplier.list('-created_date', 10),
-        base44.entities.StockItem.list('-updated_date', 10),
-      ]);
-
-      setKpis(prev => ({
-        ...prev,
-        contacts: contacts.length,
-        unpaidContacts: contacts.filter((c) => (c.pending_amount || 0) > 0).length,
-        totalSuppliers: suppliers.filter((s) => s.is_active !== false).length,
-      }));
-      setRecentContacts(contacts.filter((c) => c.type === 'cliente').slice(0, 5));
-
-      const reorder = suppliers.filter((s) => {
-        if (!s.last_order_date || !s.enable_notifications || s.is_active === false) return false;
-        const last = new Date(s.last_order_date);
-        const nextDate = new Date(last.getTime() + (s.reorder_frequency_days || 30) * 86400000);
-        return Math.ceil((nextDate - new Date()) / 86400000) <= 7;
-      }).map((s) => {
-        const last = new Date(s.last_order_date);
-        const nextDate = new Date(last.getTime() + (s.reorder_frequency_days || 30) * 86400000);
-        return { name: s.name, daysLeft: Math.ceil((nextDate - new Date()) / 86400000) };
-      });
-      setReorderAlerts(reorder);
-
-      const updatedAlerts = [...newAlerts];
-      reorder.forEach((r) => updatedAlerts.push({ type: 'warning', text: `Revisar pedido a ${r.name} (${r.daysLeft <= 0 ? 'HOY' : `en ${r.daysLeft} días`})`, page: 'Suppliers' }));
-      setAlerts(updatedAlerts);
-
-      setStockItems(stock.filter((s) => (s.quantity || 0) <= (s.min_stock || 0)).slice(0, 6));
-    }, 100);
+    setKpis(prev => ({
+      ...prev, totalInvoiced, pendingAmount, satPending, overdueInvoices, paidThisMonth,
+      invoicesPaid, invoicesPending, invoicesOverdue: overdueInvoices,
+      contacts: contacts.length,
+      unpaidContacts: contacts.filter((c) => (c.pending_amount || 0) > 0).length,
+      totalSuppliers: suppliers.filter((s) => s.is_active !== false).length,
+    }));
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const handleRefresh = useCallback(async () => {
+    const { invalidateHomeCache } = await import('@/lib/homeDataCache');
+    invalidateHomeCache();
+    await loadData(true);
+  }, [loadData]);
 
   const STATUS_COLORS = { borrador: 'bg-gray-100 text-gray-600', enviado: 'bg-blue-100 text-blue-700', pagado: 'bg-green-100 text-green-700', vencido: 'bg-red-100 text-red-700', cancelado: 'bg-orange-100 text-orange-700' };
   const SAT_STATUS = { pendiente: 'bg-amber-100 text-amber-700', en_curso: 'bg-blue-100 text-blue-700', completada: 'bg-green-100 text-green-700' };
 
   return (
-    <PullToRefresh onRefresh={loadData}>
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -238,11 +222,11 @@ export default function Home() {
       <div className="hidden sm:block space-y-6">
 
       {/* Paneles secundarios — montados con retraso para no bloquear el render inicial */}
-      <LazyPanel delay={300}><PendingTasksPanel /></LazyPanel>
+      <LazyPanel delay={150}><PendingTasksPanel /></LazyPanel>
       <AutomationStatus />
-      <LazyPanel delay={600}><DocumentsStatusPanel /></LazyPanel>
-      <LazyPanel delay={700}><MissingSATSignatures /></LazyPanel>
-      <LazyPanel delay={400}><ChangeOpinionAlerts /></LazyPanel>
+      <LazyPanel delay={200}><DocumentsStatusPanel /></LazyPanel>
+      <LazyPanel delay={250}><MissingSATSignatures /></LazyPanel>
+      <LazyPanel delay={300}><ChangeOpinionAlerts /></LazyPanel>
 
       {/* Alertas */}
       {alerts.length > 0 &&
