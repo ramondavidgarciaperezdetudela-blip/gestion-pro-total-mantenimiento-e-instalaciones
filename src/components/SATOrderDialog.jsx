@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import TechnicianSelect from './TechnicianSelect';
 import { Eye, Edit, Save, RefreshCw, Phone, Mail, Printer, Trash2, Plus, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
 import CompanyHeader from './CompanyHeader';
@@ -281,7 +282,7 @@ function SATForm({ order, contact, onSave, onCancel }) {
         </Select>
       </div>
 
-      <Input placeholder="Técnico responsable" value={form.technician || ''} onChange={e => setForm({ ...form, technician: e.target.value })} />
+      <TechnicianSelect value={form.technician || ''} onChange={v => setForm({ ...form, technician: v })} placeholder="Seleccionar técnico" />
 
       <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Descripción del problema" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} />
       <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Diagnóstico" value={form.diagnosis} onChange={e => setForm({ ...form, diagnosis: e.target.value })} rows={2} />

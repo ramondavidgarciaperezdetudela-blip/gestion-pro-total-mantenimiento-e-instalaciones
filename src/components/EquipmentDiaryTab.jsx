@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import TechnicianSelect from './TechnicianSelect';
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -291,7 +292,7 @@ export default function EquipmentDiaryTab({ contactId, contactName }) {
                 <SelectContent>{ENTRY_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <Input placeholder="Técnico" value={entryForm.technician} onChange={e => setEntryForm({...entryForm, technician: e.target.value})} />
+            <TechnicianSelect value={entryForm.technician} onChange={v => setEntryForm({...entryForm, technician: v})} placeholder="Seleccionar técnico" />
             <Textarea placeholder="Descripción del trabajo / avería *" value={entryForm.description} onChange={e => setEntryForm({...entryForm, description: e.target.value})} rows={3} />
             <Textarea placeholder="Solución aplicada" value={entryForm.solution} onChange={e => setEntryForm({...entryForm, solution: e.target.value})} rows={2} />
             <Textarea placeholder="Piezas / materiales utilizados" value={entryForm.parts_used} onChange={e => setEntryForm({...entryForm, parts_used: e.target.value})} rows={2} />
