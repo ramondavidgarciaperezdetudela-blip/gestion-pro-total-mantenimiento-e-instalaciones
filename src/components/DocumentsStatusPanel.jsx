@@ -11,8 +11,10 @@ export default function DocumentsStatusPanel() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const invoices = await base44.entities.Invoice.list();
-        const sats = await base44.entities.SATOrder.list();
+        const [invoices, sats] = await Promise.all([
+          base44.entities.Invoice.list('-date', 100),
+          base44.entities.SATOrder.list('-date', 100),
+        ]);
 
         const acceptedInvoices = invoices.filter((doc) =>
         ['enviado', 'pagado', 'vencido'].includes(doc.status) && doc.signature_client
@@ -38,26 +40,6 @@ export default function DocumentsStatusPanel() {
     };
 
     fetchData();
-
-    // Suscribirse a cambios en tiempo real
-    const unsubscribeInvoices = base44.entities.Invoice.subscribe((event) => {
-      fetchData();
-      if (event.type === 'update') {
-        base44.analytics.track({ eventName: 'document_status_changed', properties: { type: 'invoice', action: event.type } });
-      }
-    });
-
-    const unsubscribeSATs = base44.entities.SATOrder.subscribe((event) => {
-      fetchData();
-      if (event.type === 'update') {
-        base44.analytics.track({ eventName: 'sat_status_changed', properties: { type: 'sat', action: event.type } });
-      }
-    });
-
-    return () => {
-      unsubscribeInvoices();
-      unsubscribeSATs();
-    };
   }, []);
 
   const statusCards = [

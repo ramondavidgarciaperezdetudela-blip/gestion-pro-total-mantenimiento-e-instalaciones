@@ -9,7 +9,7 @@ export default function MissingSATSignatures() {
 
   const fetchMissingSATs = async () => {
     try {
-      const sats = await base44.entities.SATOrder.list();
+      const sats = await base44.entities.SATOrder.list('-date', 50);
       const missing = sats.filter(sat => {
         const hasTechnicianSig = !!sat.signature_technician;
         const hasClientSig = !!sat.signature_client;
@@ -24,8 +24,6 @@ export default function MissingSATSignatures() {
 
   useEffect(() => {
     fetchMissingSATs();
-    const unsubscribe = base44.entities.SATOrder.subscribe(() => fetchMissingSATs());
-    return unsubscribe;
   }, []);
 
   if (loading) {

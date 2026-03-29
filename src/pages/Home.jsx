@@ -24,6 +24,16 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { format, isAfter, isBefore, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+// Monta el hijo solo después de `delay` ms — evita bloquear el render inicial
+function LazyPanel({ children, delay = 200 }) {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShow(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+  return show ? children : null;
+}
+
 const quickLinks = [
 { name: 'Agenda', page: 'Agenda', icon: Calendar, color: 'bg-blue-500' },
 { name: 'Asistente IA', page: 'AIAssistant', icon: Bot, color: 'bg-green-500' },
@@ -227,18 +237,12 @@ export default function Home() {
       {/* Todo lo siguiente solo en desktop */}
       <div className="hidden sm:block space-y-6">
 
-      {/* Panel de tareas pendientes */}
-      <PendingTasksPanel />
-
-      {/* Estado de automatizaciones */}
+      {/* Paneles secundarios — montados con retraso para no bloquear el render inicial */}
+      <LazyPanel delay={300}><PendingTasksPanel /></LazyPanel>
       <AutomationStatus />
-
-      {/* Estado de Documentos - Presupuestos y SAT */}
-      <DocumentsStatusPanel />
-      <MissingSATSignatures />
-
-      {/* Cambios de opinión solicitados */}
-      <ChangeOpinionAlerts />
+      <LazyPanel delay={600}><DocumentsStatusPanel /></LazyPanel>
+      <LazyPanel delay={700}><MissingSATSignatures /></LazyPanel>
+      <LazyPanel delay={400}><ChangeOpinionAlerts /></LazyPanel>
 
       {/* Alertas */}
       {alerts.length > 0 &&

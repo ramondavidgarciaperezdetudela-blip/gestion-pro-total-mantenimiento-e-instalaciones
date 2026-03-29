@@ -16,17 +16,15 @@ export default function PendingTasksPanel() {
 
   useEffect(() => {
     loadPendingTasks();
-    const interval = setInterval(loadPendingTasks, 300000); // Actualizar cada 5 minutos
-    return () => clearInterval(interval);
   }, []);
 
   const loadPendingTasks = async () => {
     try {
       const [invoices, satOrders, maintenance, contacts] = await Promise.all([
-        base44.entities.Invoice.list('-date', 500),
-        base44.entities.SATOrder.list('-date', 500),
-        base44.entities.MaintenanceSheet.list('-date', 500),
-        base44.entities.Contact.list('name', 500)
+        base44.entities.Invoice.list('-date', 50),
+        base44.entities.SATOrder.filter({ status: 'pendiente' }, '-date', 30),
+        base44.entities.MaintenanceSheet.list('-date', 30),
+        base44.entities.Contact.list('name', 100)
       ]);
 
       const today = new Date();

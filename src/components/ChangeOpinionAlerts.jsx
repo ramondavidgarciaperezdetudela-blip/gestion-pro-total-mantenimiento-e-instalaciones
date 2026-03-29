@@ -10,19 +10,6 @@ export default function ChangeOpinionAlerts() {
 
   useEffect(() => {
     fetchRequests();
-    // Recargar cada 30 segundos para detectar nuevas solicitudes
-    const interval = setInterval(fetchRequests, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Suscribirse a cambios en tiempo real
-  useEffect(() => {
-    const unsubscribe = base44.entities.ChangeOpinionRequest.subscribe((event) => {
-      if (event.type === 'create' || event.type === 'update') {
-        fetchRequests();
-      }
-    });
-    return unsubscribe;
   }, []);
 
   const fetchRequests = async () => {

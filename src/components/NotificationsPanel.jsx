@@ -86,14 +86,18 @@ export default function NotificationsPanel() {
   });
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.Invoice.filter({ status: 'enviado' }, '-due_date', 50),
-      base44.entities.SATOrder.filter({ status: 'pendiente' }, '-date', 20),
-      base44.entities.Appointment.filter({ date: format(new Date(), 'yyyy-MM-dd') }),
-      base44.entities.Project.list('-end_date', 50),
-    ]).then(([invoices, sat, apts, projects]) => {
-      setNotifications(buildNotifications(invoices, sat, apts, projects));
-    });
+    // Carga diferida para no competir con la carga inicial de la página
+    const t = setTimeout(() => {
+      Promise.all([
+        base44.entities.Invoice.filter({ status: 'enviado' }, '-due_date', 30),
+        base44.entities.SATOrder.filter({ status: 'pendiente' }, '-date', 15),
+        base44.entities.Appointment.filter({ date: format(new Date(), 'yyyy-MM-dd') }),
+        base44.entities.Project.list('-end_date', 20),
+      ]).then(([invoices, sat, apts, projects]) => {
+        setNotifications(buildNotifications(invoices, sat, apts, projects));
+      });
+    }, 1500);
+    return () => clearTimeout(t);
   }, []);
 
   const visible = notifications.filter(n => !dismissed.includes(n.id));
