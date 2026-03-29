@@ -39,9 +39,12 @@ function MobileBottomBar({ currentPageName }) {
             if (item.isMore) {
               return (
                 <button key="more" onClick={() => setMoreOpen(true)}
-                  className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${moreOpen ? 'text-[var(--accent)]' : 'text-gray-400'}`}>
-                  <Icon className="w-5 h-5" />
-                  <span className="text-[9px] font-medium leading-tight">{item.name}</span>
+                  className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 transition-colors ${moreOpen ? 'text-[var(--accent)]' : 'text-gray-500'}`}>
+                  <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${moreOpen ? 'bg-[var(--accent)]/10' : 'bg-gray-100'}`}>
+                    <Icon className="w-4 h-4" />
+                    <span className="text-[11px] font-semibold">Ver todo</span>
+                  </div>
+                  <span className="text-[8px] font-medium leading-tight opacity-60">módulos</span>
                 </button>
               );
             }
