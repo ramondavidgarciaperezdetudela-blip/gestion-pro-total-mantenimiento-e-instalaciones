@@ -108,31 +108,36 @@ export default function ContactDetail() {
   useEffect(() => {
     if (!contactId) return;
     const load = async () => {
-      // Primera tanda: datos principales
-      const [c, inv, sat, maint] = await Promise.all([
-      base44.entities.Contact.list().then((cs) => cs.find((c) => c.id === contactId)),
-      base44.entities.Invoice.filter({ contact_id: contactId }),
-      base44.entities.SATOrder.filter({ contact_id: contactId }),
-      base44.entities.MaintenanceSheet.filter({ contact_id: contactId })]
-      );
+      // Primera tanda: contacto + docs principales (máx 3 en paralelo)
+      const [contacts, inv, sat] = await Promise.all([
+        base44.entities.Contact.filter({ id: contactId }),
+        base44.entities.Invoice.filter({ contact_id: contactId }),
+        base44.entities.SATOrder.filter({ contact_id: contactId }),
+      ]);
+      const c = contacts[0] || null;
       setContact(c);
       setContactForm(c || {});
       setInvoices(inv);
       setSatOrders(sat);
-      setMaintenance(maint);
 
-      // Segunda tanda: datos secundarios
-      const [docs, nts, apts, calcs] = await Promise.all([
-      base44.entities.ClientDocument.filter({ contact_id: contactId }),
-      base44.entities.ClientNote.filter({ contact_id: contactId }),
-      base44.entities.Appointment.filter({ contact_id: contactId }),
-      base44.entities.ThermalCalculation.filter({ contact_id: contactId })]
-      );
+      // Segunda tanda: datos adicionales
+      const [maint, docs] = await Promise.all([
+        base44.entities.MaintenanceSheet.filter({ contact_id: contactId }),
+        base44.entities.ClientDocument.filter({ contact_id: contactId }),
+      ]);
+      setMaintenance(maint);
       setDocuments(docs);
+      setEquipmentPhotos(docs.filter((d) => d.doc_type === 'foto_equipo'));
+
+      // Tercera tanda: datos secundarios
+      const [nts, apts, calcs] = await Promise.all([
+        base44.entities.ClientNote.filter({ contact_id: contactId }),
+        base44.entities.Appointment.filter({ contact_id: contactId }),
+        base44.entities.ThermalCalculation.filter({ contact_id: contactId }),
+      ]);
       setNotes(nts);
       setAppointments(apts);
       setCalculations(calcs);
-      setEquipmentPhotos(docs.filter((d) => d.doc_type === 'foto_equipo'));
     };
     load();
   }, [contactId]);
