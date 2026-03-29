@@ -108,33 +108,27 @@ export default function ContactDetail() {
   useEffect(() => {
     if (!contactId) return;
     const load = async () => {
-      // Primera tanda: contacto + docs principales (máx 3 en paralelo)
-      const [contacts, inv, sat] = await Promise.all([
-        base44.entities.Contact.filter({ id: contactId }),
-        base44.entities.Invoice.filter({ contact_id: contactId }),
-        base44.entities.SATOrder.filter({ contact_id: contactId }),
-      ]);
+      // Cargar contacto primero para mostrar UI al instante
+      const contacts = await base44.entities.Contact.filter({ id: contactId });
       const c = contacts[0] || null;
       setContact(c);
       setContactForm(c || {});
-      setInvoices(inv);
-      setSatOrders(sat);
 
-      // Segunda tanda: datos adicionales
-      const [maint, docs] = await Promise.all([
+      // Resto en paralelo completo — sin tandas que añaden latencia
+      const [inv, sat, maint, docs, nts, apts, calcs] = await Promise.all([
+        base44.entities.Invoice.filter({ contact_id: contactId }),
+        base44.entities.SATOrder.filter({ contact_id: contactId }),
         base44.entities.MaintenanceSheet.filter({ contact_id: contactId }),
         base44.entities.ClientDocument.filter({ contact_id: contactId }),
-      ]);
-      setMaintenance(maint);
-      setDocuments(docs);
-      setEquipmentPhotos(docs.filter((d) => d.doc_type === 'foto_equipo'));
-
-      // Tercera tanda: datos secundarios
-      const [nts, apts, calcs] = await Promise.all([
         base44.entities.ClientNote.filter({ contact_id: contactId }),
         base44.entities.Appointment.filter({ contact_id: contactId }),
         base44.entities.ThermalCalculation.filter({ contact_id: contactId }),
       ]);
+      setInvoices(inv);
+      setSatOrders(sat);
+      setMaintenance(maint);
+      setDocuments(docs);
+      setEquipmentPhotos(docs.filter((d) => d.doc_type === 'foto_equipo'));
       setNotes(nts);
       setAppointments(apts);
       setCalculations(calcs);

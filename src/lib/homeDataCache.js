@@ -1,49 +1,63 @@
 /**
  * Cache compartido para datos del Home y paneles secundarios.
- * Evita que cada componente haga sus propias peticiones duplicadas.
- * TTL: 2 minutos.
+ * TTL: 10 minutos. Soporte de cache parcial por clave.
  */
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
-let cache = null;
-let cacheTime = 0;
-let pendingPromise = null;
+// Cache por clave individual para evitar re-fetch total
+const cacheStore = {};
+const cacheTimes = {};
+const pendingPromises = {};
 
-export async function getHomeData(forceRefresh = false) {
+async function fetchOne(key, fetcher) {
   const now = Date.now();
-  if (!forceRefresh && cache && (now - cacheTime) < CACHE_TTL_MS) {
-    return cache;
+  if (cacheStore[key] && (now - (cacheTimes[key] || 0)) < CACHE_TTL_MS) {
+    return cacheStore[key];
   }
+  if (pendingPromises[key]) return pendingPromises[key];
 
-  // Evitar peticiones paralelas duplicadas
-  if (pendingPromise) return pendingPromise;
-
-  const { base44 } = await import('@/api/base44Client');
-
-  pendingPromise = Promise.all([
-    base44.entities.Invoice.list('-date', 60),
-    base44.entities.SATOrder.list('-date', 50),
-    base44.entities.MaintenanceSheet.list('-date', 30),
-    base44.entities.Contact.list('name', 80),
-    base44.entities.Appointment.filter({ date: new Date().toISOString().slice(0, 10) }),
-    base44.entities.CompanySettings.list(),
-    base44.entities.Supplier.list('-created_date', 15),
-    base44.entities.StockItem.list('-updated_date', 15),
-  ]).then(([invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems]) => {
-    cache = { invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems };
-    cacheTime = Date.now();
-    pendingPromise = null;
-    return cache;
+  pendingPromises[key] = fetcher().then(data => {
+    cacheStore[key] = data;
+    cacheTimes[key] = Date.now();
+    delete pendingPromises[key];
+    return data;
   }).catch(err => {
-    pendingPromise = null;
+    delete pendingPromises[key];
     throw err;
   });
 
-  return pendingPromise;
+  return pendingPromises[key];
 }
 
+export async function getHomeData(forceRefresh = false) {
+  if (forceRefresh) invalidateHomeCache();
+
+  const { base44 } = await import('@/api/base44Client');
+
+  // Peticiones en paralelo, cada una con su propio cache
+  const [invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems] =
+    await Promise.all([
+      fetchOne('invoices',          () => base44.entities.Invoice.list('-date', 60)),
+      fetchOne('satOrders',         () => base44.entities.SATOrder.list('-date', 50)),
+      fetchOne('maintenanceSheets', () => base44.entities.MaintenanceSheet.list('-date', 30)),
+      fetchOne('contacts',          () => base44.entities.Contact.list('name', 80)),
+      fetchOne('appointments',      () => base44.entities.Appointment.filter({ date: new Date().toISOString().slice(0, 10) })),
+      fetchOne('companySettings',   () => base44.entities.CompanySettings.list()),
+      fetchOne('suppliers',         () => base44.entities.Supplier.list('-created_date', 15)),
+      fetchOne('stockItems',        () => base44.entities.StockItem.list('-updated_date', 15)),
+    ]);
+
+  return { invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems };
+}
+
+// Invalidar todo el cache
 export function invalidateHomeCache() {
-  cache = null;
-  cacheTime = 0;
+  Object.keys(cacheStore).forEach(k => { delete cacheStore[k]; delete cacheTimes[k]; });
+}
+
+// Invalidar solo una clave (e.g. tras guardar una factura)
+export function invalidateCacheKey(key) {
+  delete cacheStore[key];
+  delete cacheTimes[key];
 }

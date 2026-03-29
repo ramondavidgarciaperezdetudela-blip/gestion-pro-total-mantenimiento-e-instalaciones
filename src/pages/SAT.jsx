@@ -76,8 +76,8 @@ export default function SAT() {
 
   const loadAll = async () => {
     const [o, c, comp] = await Promise.all([
-      base44.entities.SATOrder.list('-date', 500),
-      base44.entities.Contact.list('name', 500),
+      base44.entities.SATOrder.list('-date', 200),
+      base44.entities.Contact.list('name', 200),
       base44.entities.CompanySettings.list().then(x => x[0]),
     ]);
     setOrders(o);
@@ -129,7 +129,7 @@ export default function SAT() {
       }
     } else {
       // Recalcular número justo antes de guardar por si hubo concurrencia
-      const latest = await base44.entities.SATOrder.list('-date', 500);
+      const latest = await base44.entities.SATOrder.list('-date', 200);
       if (!data.order_number) {
         data.order_number = getNextAvailableNumber(latest.map(x => x.order_number || ''));
       }
@@ -183,11 +183,13 @@ export default function SAT() {
     setDialogOpen(false);
     setEditing(null);
     setAutoGenerateInvoice(false);
-    await loadAll();
-    // Al guardar, abrir la vista previa para que firmen técnico y cliente
-    if (savedOrder) {
-      setPreviewOrder(savedOrder);
+    // Actualizar estado local sin recargar todo
+    if (editing) {
+      setOrders(prev => prev.map(o => o.id === savedOrder.id ? { ...o, ...savedOrder } : o));
+    } else {
+      setOrders(prev => [savedOrder, ...prev]);
     }
+    if (savedOrder) setPreviewOrder(savedOrder);
   };
 
   const getNextSATNumber = (currentOrders) => {
