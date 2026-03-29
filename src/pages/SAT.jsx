@@ -549,7 +549,7 @@ export default function SAT() {
 
       {/* ===== DIALOG EDITAR/CREAR ===== */}
       <Dialog open={dialogOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()} onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{editing ? `Editar Orden SAT #${editing.order_number || editing.id.slice(-6)}` : 'Nueva Orden SAT'}</DialogTitle>
@@ -680,12 +680,15 @@ export default function SAT() {
       </Dialog>
 
       {/* ===== PREVIEW / IMPRIMIR ===== */}
-      <Dialog open={!!previewOrder} onOpenChange={() => setPreviewOrder(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={!!previewOrder} onOpenChange={() => {}}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           {previewOrder && (
             <>
               <DialogHeader>
-                <DialogTitle>Orden SAT #{previewOrder.order_number || 'S/N'}</DialogTitle>
+                <div className="flex items-center justify-between">
+                  <DialogTitle>Orden SAT #{previewOrder.order_number || 'S/N'}</DialogTitle>
+                  <button className="text-gray-400 hover:text-gray-700 p-1 rounded" onClick={() => setPreviewOrder(null)}>✕</button>
+                </div>
               </DialogHeader>
               <div ref={printRef} className="space-y-3">
                 <CompanyHeader />

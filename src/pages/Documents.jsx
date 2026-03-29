@@ -778,10 +778,13 @@ export default function Documents() {
       <SupplierProductSearch open={supplierSearchOpen} onClose={() => setSupplierSearchOpen(false)} onAddItem={addItemFromSupplier} />
 
       {/* ===== PREVIEW ===== */}
-      <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={!!previewDoc} onOpenChange={() => {}}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle className="capitalize">{previewDoc?.doc_type} {previewDoc?.doc_number}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="capitalize">{previewDoc?.doc_type} {previewDoc?.doc_number}</DialogTitle>
+              <button className="text-gray-400 hover:text-gray-700 p-1 rounded" onClick={() => setPreviewDoc(null)}>✕</button>
+            </div>
           </DialogHeader>
           {previewDoc &&
           <>

@@ -273,7 +273,7 @@ export default function Maintenance() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <DialogTitle>{editing ? 'Editar' : 'Nueva'} ficha de mantenimiento</DialogTitle>
@@ -452,8 +452,14 @@ export default function Maintenance() {
       </Dialog>
 
       {/* Preview */}
-      <Dialog open={!!preview} onOpenChange={() => setPreview(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={!!preview} onOpenChange={() => {}}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Vista previa</DialogTitle>
+              <button className="text-gray-400 hover:text-gray-700 p-1 rounded" onClick={() => setPreview(null)}>✕</button>
+            </div>
+          </DialogHeader>
           {preview && (
             <div ref={printRef}>
               <CompanyHeader className="mb-3" />

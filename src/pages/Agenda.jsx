@@ -117,12 +117,17 @@ export default function Agenda() {
         <h1 className="text-2xl font-bold text-gray-900">Agenda</h1>
         <div className="flex gap-2">
           <PrintButton contentRef={printRef} title="Agenda" />
-          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditingAppt(null); }}>
+          <Dialog open={dialogOpen} onOpenChange={() => {}}>
             <DialogTrigger asChild>
               <Button className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-2" />Nueva cita</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>{editingAppt ? 'Editar cita' : 'Nueva cita'}</DialogTitle></DialogHeader>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+              <DialogHeader>
+                <div className="flex items-center justify-between">
+                  <DialogTitle>{editingAppt ? 'Editar cita' : 'Nueva cita'}</DialogTitle>
+                  <button className="text-gray-400 hover:text-gray-700 p-1 rounded" onClick={() => { setDialogOpen(false); setEditingAppt(null); }}>✕</button>
+                </div>
+              </DialogHeader>
               <div className="space-y-3">
                 <Input placeholder="Título *" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
                 {/* Búsqueda de cliente */}

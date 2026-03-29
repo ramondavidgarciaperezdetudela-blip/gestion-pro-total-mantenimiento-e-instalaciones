@@ -247,7 +247,7 @@ export default function Contacts() {
           <DialogTrigger asChild>
             <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => { setEditing(null); setForm(EMPTY_FORM); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <DialogTitle>{editing ? 'Editar contacto' : 'Nuevo contacto'}</DialogTitle>
