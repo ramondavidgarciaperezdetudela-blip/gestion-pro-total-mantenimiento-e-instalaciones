@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Wrench, ChevronDown, ChevronUp, Trash2, Edit, Download, FileSpreadsheet, Camera, FolderOpen, X } from 'lucide-react';
+import { Plus, Wrench, ChevronDown, ChevronUp, Trash2, Edit, Download, FileSpreadsheet, Camera, FolderOpen, X, Printer, MessageCircle, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import PhotoGallery from './PhotoGallery';
 import PhotosWithNames from './PhotosWithNames';
@@ -35,7 +35,7 @@ const EMPTY_ENTRY = {
   parts_used: '', cost: 0, hours: 0, photos: [], photo_names: [], next_action: '', next_action_date: ''
 };
 
-export default function EquipmentDiaryTab({ contactId, contactName }) {
+export default function EquipmentDiaryTab({ contactId, contactName, contactPhone, contactEmail }) {
   const [diaries, setDiaries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [diaryDialogOpen, setDiaryDialogOpen] = useState(false);
@@ -113,6 +113,78 @@ export default function EquipmentDiaryTab({ contactId, contactName }) {
     const entries = diary.entries.filter((_, i) => i !== entryIndex);
     await base44.entities.EquipmentDiary.update(diary.id, { ...diary, entries });
     loadDiaries();
+  };
+
+  // Imprimir / PDF ficha de una entrada
+  const printEntry = (diary, entry) => {
+    const w = window.open('', '_blank');
+    const photosHtml = (entry.photos || []).length > 0
+      ? `<div style="margin-top:16px"><strong>Fotografías:</strong><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${entry.photos.map((url, i) => `<img src="${url}" style="width:160px;height:120px;object-fit:cover;border:1px solid #ccc;border-radius:4px" alt="foto ${i+1}"/>`).join('')}</div></div>`
+      : '';
+    w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+      <title>Ficha Reparación - ${diary.machine_name}</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:24px;max-width:800px;margin:0 auto;font-size:11px;color:#1f2937}
+        h1{font-size:16px;font-weight:700;color:#1e3a5f;margin:0 0 4px}
+        h2{font-size:13px;font-weight:600;color:#374151;margin:16px 0 6px;border-bottom:1px solid #e5e7eb;padding-bottom:4px}
+        .header{display:flex;justify-content:space-between;border-bottom:2px solid #0ea5e9;padding-bottom:12px;margin-bottom:16px}
+        .company{text-align:right;color:#6b7280;font-size:10px}
+        table{width:100%;border-collapse:collapse;margin:8px 0}
+        td,th{border:1px solid #d1d5db;padding:5px 8px;vertical-align:top}
+        th{background:#f3f4f6;font-weight:600;width:30%}
+        .badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600;background:#fed7aa;color:#c2410c}
+        .footer{margin-top:24px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:9px;color:#9ca3af;text-align:center}
+        .firma{display:flex;justify-content:space-between;margin-top:32px}
+        .firma-box{border-top:1px solid #374151;padding-top:4px;width:45%;text-align:center;font-size:10px;color:#6b7280}
+        @media print{body{padding:10px}}
+      </style></head><body>
+      <div class="header">
+        <div><h1>FICHA DE REPARACIÓN</h1><span style="color:#6b7280;font-size:10px">Diario de equipo</span></div>
+        <div class="company"><strong>${company?.company_name || ''}</strong><br/>${company?.nif ? `NIF: ${company.nif}` : ''}<br/>${company?.phone || ''}<br/>${company?.email || ''}</div>
+      </div>
+      <h2>Datos del equipo</h2>
+      <table>
+        <tr><th>Equipo</th><td><strong>${diary.machine_name}</strong></td></tr>
+        <tr><th>Tipo</th><td>${diary.machine_type?.replace(/_/g,' ') || '-'}</td></tr>
+        <tr><th>Marca / Modelo</th><td>${[diary.equipment_brand, diary.equipment_model].filter(Boolean).join(' ') || '-'}</td></tr>
+        <tr><th>Nº de serie</th><td>${diary.serial_number || '-'}</td></tr>
+        <tr><th>Ubicación</th><td>${diary.location || '-'}</td></tr>
+        <tr><th>Cliente</th><td>${contactName}</td></tr>
+      </table>
+      <h2>Detalle de la intervención</h2>
+      <table>
+        <tr><th>Fecha</th><td>${entry.date || '-'}</td></tr>
+        <tr><th>Tipo</th><td><span class="badge">${entry.type || '-'}</span></td></tr>
+        <tr><th>Técnico</th><td>${entry.technician || '-'}</td></tr>
+        <tr><th>Horas / Coste</th><td>${entry.hours > 0 ? entry.hours + ' h' : '-'} ${entry.cost > 0 ? '· ' + entry.cost + ' €' : ''}</td></tr>
+        <tr><th>Descripción del trabajo</th><td>${entry.description || '-'}</td></tr>
+        <tr><th>Solución aplicada</th><td>${entry.solution || '-'}</td></tr>
+        <tr><th>Materiales / Piezas</th><td>${entry.parts_used || '-'}</td></tr>
+        <tr><th>Próxima acción</th><td>${entry.next_action || '-'}${entry.next_action_date ? ' (' + entry.next_action_date + ')' : ''}</td></tr>
+      </table>
+      ${photosHtml}
+      <div class="firma">
+        <div class="firma-box">Firma del técnico</div>
+        <div class="firma-box">Conformidad del cliente</div>
+      </div>
+      <div class="footer">Documento generado por ${company?.company_name || 'sistema'} — ${new Date().toLocaleDateString('es-ES')}</div>
+      </body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 300);
+  };
+
+  const sendEntryWhatsApp = (phone, diary, entry) => {
+    const p = phone?.replace(/\D/g, '');
+    const msg = `🔧 *FICHA DE REPARACIÓN*\n\n*Equipo:* ${diary.machine_name}\n*Fecha:* ${entry.date}\n*Tipo:* ${entry.type}\n*Técnico:* ${entry.technician || '-'}\n\n*Descripción:* ${entry.description}\n${entry.solution ? `*Solución:* ${entry.solution}\n` : ''}${entry.parts_used ? `*Materiales:* ${entry.parts_used}\n` : ''}${entry.next_action ? `*Próxima acción:* ${entry.next_action}` : ''}\n\n${company?.company_name || ''}`;
+    const url = p ? `https://wa.me/34${p}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  };
+
+  const sendEntryEmail = (email, diary, entry) => {
+    const subject = `Ficha reparación - ${diary.machine_name} - ${entry.date}`;
+    const body = `Estimado/a cliente,\n\nAdjuntamos el resumen de la intervención realizada:\n\nEquipo: ${diary.machine_name}\nFecha: ${entry.date}\nTipo: ${entry.type}\nTécnico: ${entry.technician || '-'}\n\nDescripción: ${entry.description}\n${entry.solution ? `Solución: ${entry.solution}\n` : ''}${entry.parts_used ? `Materiales: ${entry.parts_used}\n` : ''}${entry.next_action ? `Próxima acción recomendada: ${entry.next_action}${entry.next_action_date ? ' (' + entry.next_action_date + ')' : ''}` : ''}\n\nAtentamente,\n${company?.company_name || ''}`;
+    window.open(`mailto:${email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
   };
 
   // Exportar a Excel (CSV compatible con Excel)
@@ -235,7 +307,16 @@ export default function EquipmentDiaryTab({ contactId, contactName }) {
                           />
                         )}
                       </div>
-                      <div className="flex gap-1 flex-shrink-0">
+                      <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
+                        <button onClick={() => printEntry(diary, entry)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-slate-100 text-slate-700 hover:bg-slate-200" title="Imprimir / PDF">
+                          <Printer className="w-3 h-3" /><span className="hidden sm:inline">PDF</span>
+                        </button>
+                        <button onClick={() => sendEntryWhatsApp(contactPhone, diary, entry)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100" title="Enviar por WhatsApp">
+                          <MessageCircle className="w-3 h-3" /><span className="hidden sm:inline">WA</span>
+                        </button>
+                        <button onClick={() => sendEntryEmail(contactEmail, diary, entry)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100" title="Enviar por email">
+                          <Send className="w-3 h-3" /><span className="hidden sm:inline">Email</span>
+                        </button>
                         <button onClick={() => openEditEntry(diary, idx)} className="p-1 text-gray-400 hover:text-blue-600"><Edit className="w-3.5 h-3.5" /></button>
                         <button onClick={() => deleteEntry(diary, idx)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>

@@ -1128,7 +1128,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
         {/* DIARIO DE REPARACIONES */}
         <TabsContent value="diario">
           <div className="mt-2">
-            <EquipmentDiaryTab contactId={contactId} contactName={`${contact.name} ${contact.surname || ''}`.trim()} />
+            <EquipmentDiaryTab contactId={contactId} contactName={`${contact.name} ${contact.surname || ''}`.trim()} contactPhone={contact.phone} contactEmail={contact.email} />
           </div>
         </TabsContent>
 
