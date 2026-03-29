@@ -128,44 +128,68 @@ export default function NotificationsPanel() {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-10 w-80 bg-white border rounded-xl shadow-xl z-50 max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-3 border-b bg-gray-50">
-              <p className="font-semibold text-sm flex items-center gap-2">
-                <Bell className="w-4 h-4" /> Notificaciones
-                {count > 0 && <Badge className="bg-red-100 text-red-700 text-xs">{count}</Badge>}
-              </p>
-              <div className="flex gap-1">
-                {count > 0 && <button onClick={dismissAll} className="text-xs text-gray-400 hover:text-gray-600">Limpiar</button>}
-                <button onClick={() => setOpen(false)} className="ml-2 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
-              </div>
-            </div>
+          {/* Backdrop oscuro */}
+          <div className="fixed inset-0 z-50 bg-black/50" onClick={() => setOpen(false)} />
 
-            <div className="overflow-y-auto flex-1">
-              {visible.length === 0 ? (
-                <div className="text-center p-8 text-gray-400">
-                  <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-400" />
-                  <p className="text-sm">Sin notificaciones pendientes</p>
+          {/* Modal centrado */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <div className="pointer-events-auto w-full max-w-lg bg-white rounded-2xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b bg-gray-50 rounded-t-2xl">
+                <p className="font-bold text-base flex items-center gap-2 text-gray-800">
+                  <Bell className="w-5 h-5 text-orange-500" />
+                  Alertas y Notificaciones
+                  {count > 0 && (
+                    <Badge className="bg-red-100 text-red-700 text-sm px-2">{count}</Badge>
+                  )}
+                </p>
+                <div className="flex items-center gap-2">
+                  {count > 0 && (
+                    <button onClick={dismissAll} className="text-xs text-gray-400 hover:text-red-500 font-medium transition-colors">
+                      Limpiar todo
+                    </button>
+                  )}
+                  <button onClick={() => setOpen(false)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
-              ) : (
-                visible.map(n => {
-                  const Icon = n.icon;
-                  return (
-                    <div key={n.id} className={`border-l-4 p-3 flex items-start gap-2 hover:opacity-90 ${TYPE_STYLES[n.type]}`}>
-                      <Icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${ICON_COLORS[n.type]}`} />
-                      <div className="flex-1 min-w-0">
-                        <Link to={createPageUrl(n.page)} onClick={() => setOpen(false)}>
-                          <p className="text-xs font-semibold text-gray-800 truncate hover:underline">{n.title}</p>
-                          <p className="text-xs text-gray-500 truncate">{n.text}</p>
-                        </Link>
+              </div>
+
+              {/* Lista */}
+              <div className="overflow-y-auto flex-1">
+                {visible.length === 0 ? (
+                  <div className="text-center py-16 text-gray-400">
+                    <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-400" />
+                    <p className="text-base font-medium">Sin notificaciones pendientes</p>
+                    <p className="text-sm mt-1">Todo está al día 👍</p>
+                  </div>
+                ) : (
+                  visible.map(n => {
+                    const Icon = n.icon;
+                    return (
+                      <div key={n.id} className={`border-l-4 px-4 py-3 flex items-start gap-3 hover:opacity-90 border-b border-gray-100 ${TYPE_STYLES[n.type]}`}>
+                        <Icon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${ICON_COLORS[n.type]}`} />
+                        <div className="flex-1 min-w-0">
+                          <Link to={createPageUrl(n.page)} onClick={() => setOpen(false)}>
+                            <p className="text-sm font-semibold text-gray-800 hover:underline">{n.title}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{n.text}</p>
+                          </Link>
+                        </div>
+                        <button onClick={() => dismiss(n.id)} className="text-gray-300 hover:text-gray-500 flex-shrink-0 p-1">
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
-                      <button onClick={() => dismiss(n.id)} className="text-gray-300 hover:text-gray-500 flex-shrink-0">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  );
-                })
-              )}
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-3 border-t bg-gray-50 rounded-b-2xl">
+                <button onClick={() => setOpen(false)} className="w-full py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </>
