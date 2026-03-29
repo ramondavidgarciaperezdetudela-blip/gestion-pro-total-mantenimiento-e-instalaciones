@@ -93,13 +93,11 @@ export default function Home() {
   const [stockItems, setStockItems] = useState([]);
   const [presupuestosAceptados, setPresupuestosAceptados] = useState([]);
   const [presupuestosRechazados, setPresupuestosRechazados] = useState([]);
+  // Paneles secundarios diferidos — no se montan hasta que el render principal está listo
+  const [showSecondaryPanels, setShowSecondaryPanels] = useState(false);
 
-  const loadData = useCallback(async (forceRefresh = false) => {
-    const { getHomeData } = await import('@/lib/homeDataCache');
+  const processData = useCallback((invoices, satOrders, contacts, appointments, companySettings, suppliers, stockItems) => {
     const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
-
-    const { invoices, satOrders, contacts, appointments, companySettings, suppliers, stockItems } = await getHomeData(forceRefresh);
-
     if (companySettings.length > 0) setCompany(companySettings[0]);
 
     const facturas = invoices.filter((d) => d.doc_type === 'factura');
@@ -149,7 +147,18 @@ export default function Home() {
     }));
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  const loadData = useCallback(async (forceRefresh = false) => {
+    const { getHomeData } = await import('@/lib/homeDataCache');
+    const { invoices, satOrders, contacts, appointments, companySettings, suppliers, stockItems } = await getHomeData(forceRefresh);
+    processData(invoices, satOrders, contacts, appointments, companySettings, suppliers, stockItems);
+  }, [processData]);
+
+  useEffect(() => {
+    loadData();
+    // Montar paneles secundarios después del primer paint — no bloquean el render principal
+    const t = setTimeout(() => setShowSecondaryPanels(true), 100);
+    return () => clearTimeout(t);
+  }, [loadData]);
 
   const handleRefresh = useCallback(async () => {
     const { invalidateHomeCache } = await import('@/lib/homeDataCache');
@@ -212,12 +221,14 @@ export default function Home() {
       {/* Todo lo siguiente solo en desktop */}
       <div className="hidden sm:block space-y-6">
 
-      {/* Paneles secundarios — montados con retraso para no bloquear el render inicial */}
-      <PendingTasksPanel />
-      <AutomationStatus />
-      <DocumentsStatusPanel />
-      <MissingSATSignatures />
-      <ChangeOpinionAlerts />
+      {/* Paneles secundarios — montados después del primer paint */}
+      {showSecondaryPanels && <>
+        <PendingTasksPanel />
+        <AutomationStatus />
+        <DocumentsStatusPanel />
+        <MissingSATSignatures />
+        <ChangeOpinionAlerts />
+      </>}
 
       {/* Alertas */}
       {alerts.length > 0 &&

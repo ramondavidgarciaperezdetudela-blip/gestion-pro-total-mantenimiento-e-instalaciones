@@ -158,6 +158,11 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   useEffect(() => {
+    // Precalentar cache global en cuanto carga el layout — sin esperar al Home
+    import('@/lib/homeDataCache').then(({ getHomeData }) => getHomeData());
+  }, []);
+
+  useEffect(() => {
     base44.entities.CompanySettings.list().then((data) => {
       if (data.length > 0) setCompany(data[0]);
     });
