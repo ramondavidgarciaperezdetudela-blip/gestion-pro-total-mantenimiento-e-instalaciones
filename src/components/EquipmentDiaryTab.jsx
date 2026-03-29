@@ -254,22 +254,29 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
                 {diary.location && <p className="text-xs text-gray-500 mt-0.5">📍 {diary.location} {diary.serial_number && `• SN: ${diary.serial_number}`}</p>}
                 <p className="text-xs text-gray-500 mt-0.5">{(diary.entries || []).length} entrada(s) registrada(s)</p>
               </div>
-              <div className="flex gap-1 flex-shrink-0">
+              <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end items-center">
                 <Button size="sm" variant="outline" className="h-7 text-xs text-green-700" onClick={() => exportToExcel(diary)}>
                   <FileSpreadsheet className="w-3 h-3 mr-1" />Excel
                 </Button>
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setEditingDiary(diary); setDiaryForm({ ...EMPTY_DIARY, ...diary }); setDiaryDialogOpen(true); }}>
-                  <Edit className="w-3 h-3" />
+                  <Edit className="w-3 h-3 mr-1" />Editar
                 </Button>
                 <Button size="sm" variant="outline" className="h-7 text-xs text-blue-700" onClick={() => openNewEntry(diary.id)}>
                   <Plus className="w-3 h-3 mr-1" />Añadir
                 </Button>
-                <button onClick={() => setExpandedDiary(expandedDiary === diary.id ? null : diary.id)} className="p-1 text-gray-400 hover:text-gray-600">
-                  {expandedDiary === diary.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-                <button onClick={() => deleteDiary(diary.id)} className="p-1 text-red-400 hover:text-red-600">
+                {/* Botón grande para desplegar — separado visualmente del borrar */}
+                <Button
+                  size="sm"
+                  variant={expandedDiary === diary.id ? "default" : "outline"}
+                  className={`h-8 text-xs font-semibold px-3 ${expandedDiary === diary.id ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'text-orange-700 border-orange-300 hover:bg-orange-50'}`}
+                  onClick={() => setExpandedDiary(expandedDiary === diary.id ? null : diary.id)}
+                >
+                  {expandedDiary === diary.id ? <><ChevronUp className="w-3.5 h-3.5 mr-1" />Cerrar diario</> : <><FolderOpen className="w-3.5 h-3.5 mr-1" />Ver diario</>}
+                </Button>
+                {/* Borrar separado con margen y color más discreto */}
+                <Button size="sm" variant="ghost" className="h-7 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 ml-1" onClick={() => deleteDiary(diary.id)}>
                   <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </div>
             </div>
 
