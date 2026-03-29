@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Wrench, ChevronDown, ChevronUp, Trash2, Edit, Download, FileSpreadsheet, Camera, FolderOpen, X, Printer, MessageCircle, Send } from 'lucide-react';
+import SignatureCanvas from './SignaturePad';
 import { toast } from 'sonner';
 import PhotoGallery from './PhotoGallery';
 import PhotosWithNames from './PhotosWithNames';
@@ -32,7 +33,9 @@ const EMPTY_DIARY = {
 const EMPTY_ENTRY = {
   date: new Date().toISOString().split('T')[0],
   type: 'reparacion', technician: '', description: '', solution: '',
-  parts_used: '', cost: 0, hours: 0, photos: [], photo_names: [], next_action: '', next_action_date: ''
+  parts_used: '', cost: 0, hours: 0, photos: [], photo_names: [], next_action: '', next_action_date: '',
+  signature_technician: '', sign_datetime_technician: '',
+  signature_client: '', sign_datetime_client: ''
 };
 
 export default function EquipmentDiaryTab({ contactId, contactName, contactPhone, contactEmail }) {
@@ -121,6 +124,15 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
     const photosHtml = (entry.photos || []).length > 0
       ? `<div style="margin-top:16px"><strong>Fotografías:</strong><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${entry.photos.map((url, i) => `<img src="${url}" style="width:160px;height:120px;object-fit:cover;border:1px solid #ccc;border-radius:4px" alt="foto ${i+1}"/>`).join('')}</div></div>`
       : '';
+    const firmaTecnico = entry.signature_technician
+      ? `<img src="${entry.signature_technician}" style="width:180px;height:60px;object-fit:contain;border:1px solid #d1d5db;border-radius:4px;background:#fff;display:block;margin:4px auto"/>
+         ${entry.sign_datetime_technician ? `<p style="font-size:9px;color:#6b7280;text-align:center;margin:2px 0">🕐 ${entry.sign_datetime_technician}</p>` : ''}`
+      : `<div style="height:60px;border:1px solid #9ca3af;border-radius:4px;margin:4px 0"></div>`;
+    const firmaCliente = entry.signature_client
+      ? `<img src="${entry.signature_client}" style="width:180px;height:60px;object-fit:contain;border:1px solid #d1d5db;border-radius:4px;background:#fff;display:block;margin:4px auto"/>
+         ${entry.sign_datetime_client ? `<p style="font-size:9px;color:#6b7280;text-align:center;margin:2px 0">🕐 ${entry.sign_datetime_client}</p>` : ''}`
+      : `<div style="height:60px;border:1px solid #9ca3af;border-radius:4px;margin:4px 0"></div>`;
+
     w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
       <title>Ficha Reparación - ${diary.machine_name}</title>
       <style>
@@ -134,8 +146,9 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
         th{background:#f3f4f6;font-weight:600;width:30%}
         .badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600;background:#fed7aa;color:#c2410c}
         .footer{margin-top:24px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:9px;color:#9ca3af;text-align:center}
-        .firma{display:flex;justify-content:space-between;margin-top:32px}
-        .firma-box{border-top:1px solid #374151;padding-top:4px;width:45%;text-align:center;font-size:10px;color:#6b7280}
+        .firmas{display:flex;justify-content:space-between;margin-top:24px;gap:16px}
+        .firma-box{flex:1;text-align:center;font-size:10px;color:#6b7280;border:1px solid #e5e7eb;border-radius:8px;padding:10px}
+        .firma-box strong{display:block;margin-bottom:6px;color:#374151}
         @media print{body{padding:10px}}
       </style></head><body>
       <div class="header">
@@ -163,9 +176,10 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
         <tr><th>Próxima acción</th><td>${entry.next_action || '-'}${entry.next_action_date ? ' (' + entry.next_action_date + ')' : ''}</td></tr>
       </table>
       ${photosHtml}
-      <div class="firma">
-        <div class="firma-box">Firma del técnico</div>
-        <div class="firma-box">Conformidad del cliente</div>
+      <h2>Firmas de conformidad</h2>
+      <div class="firmas">
+        <div class="firma-box"><strong>Firma del técnico</strong>${firmaTecnico}</div>
+        <div class="firma-box"><strong>Conformidad del cliente</strong>${firmaCliente}</div>
       </div>
       <div class="footer">Documento generado por ${company?.company_name || 'sistema'} — ${new Date().toLocaleDateString('es-ES')}</div>
       </body></html>`);
@@ -302,6 +316,15 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
                         {entry.solution && <p className="text-xs text-green-700 mt-1">✓ {entry.solution}</p>}
                         {entry.parts_used && <p className="text-xs text-blue-600 mt-1">🔩 {entry.parts_used}</p>}
                         {entry.next_action && <p className="text-xs text-amber-600 mt-1">→ {entry.next_action}{entry.next_action_date ? ` (${entry.next_action_date})` : ''}</p>}
+                        {/* Indicadores de firma */}
+                        <div className="flex gap-2 mt-1.5 flex-wrap">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${entry.signature_technician ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                            {entry.signature_technician ? '✓ Técnico firmado' : '— Técnico sin firma'}
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${entry.signature_client ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-600'}`}>
+                            {entry.signature_client ? '✓ Cliente firmado' : '⚠ Cliente sin firma'}
+                          </span>
+                        </div>
                         {entry.photos?.length > 0 && (
                           <PhotosWithNames
                             photos={entry.photos}
@@ -404,6 +427,24 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
               label="Fotos de la reparación"
               maxPhotos={20}
             />
+
+            {/* Firmas */}
+            <div className="border-t pt-3 space-y-3">
+              <p className="text-xs font-semibold text-gray-700 flex items-center gap-1">✍️ Firmas de conformidad</p>
+              <SignatureCanvas
+                label="Firma del técnico"
+                value={entryForm.signature_technician}
+                existingDatetime={entryForm.sign_datetime_technician}
+                onSave={(sig, dt) => setEntryForm({ ...entryForm, signature_technician: sig, sign_datetime_technician: dt })}
+              />
+              <SignatureCanvas
+                label="Firma del cliente (conformidad)"
+                value={entryForm.signature_client}
+                existingDatetime={entryForm.sign_datetime_client}
+                onSave={(sig, dt) => setEntryForm({ ...entryForm, signature_client: sig, sign_datetime_client: dt })}
+              />
+            </div>
+
             <Button onClick={saveEntry} className="w-full bg-orange-600 hover:bg-orange-700">
               {editingEntry?.entryIndex !== null ? 'Actualizar entrada' : 'Guardar entrada'}
             </Button>
