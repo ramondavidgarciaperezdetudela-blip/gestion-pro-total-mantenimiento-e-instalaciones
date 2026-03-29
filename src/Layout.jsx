@@ -8,7 +8,7 @@ import {
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette,
   CreditCard, Download, Bell, History, Search, FileBarChart, Droplets, AlertCircle,
-  MoreHorizontal, ChevronRight } from
+  MoreHorizontal, MessageSquare } from
 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 import GlobalSearch from './components/GlobalSearch';
@@ -18,7 +18,7 @@ import AIChat from './components/AIChat';
 const MAIN_TABS = [
   { name: 'Inicio', page: 'Home', icon: Home },
   { name: 'SAT', page: 'SAT', icon: Wrench },
-  { name: 'Inventario', page: 'Inventory', icon: Package },
+  { name: 'Chat', page: 'SATChat', icon: MessageSquare },
   { name: 'Agenda', page: 'Agenda', icon: Calendar },
   { name: 'Más', page: null, icon: MoreHorizontal, isMore: true },
 ];
@@ -96,6 +96,7 @@ function MobileBottomBar({ currentPageName }) {
 const navItems = [
 { name: 'Inicio', page: 'Home', icon: Home },
 { name: 'Agenda', page: 'Agenda', icon: Calendar },
+{ name: 'Chat SAT', page: 'SATChat', icon: MessageSquare },
 { name: 'Asistente IA', page: 'AIAssistant', icon: Bot },
 { name: 'Búsqueda IA', page: 'AISearch', icon: Search },
 { name: 'Cám. Frigorífica', page: 'ColdRoomCalc?tab=camara', icon: Thermometer },
@@ -137,12 +138,9 @@ const navItems = [
 { name: 'Campo', page: 'TechnicianFieldWork', icon: Wrench }];
 
 
-
-
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [company, setCompany] = useState(null);
-  const [mobileBarVisible, setMobileBarVisible] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
@@ -191,7 +189,6 @@ export default function Layout({ children, currentPageName }) {
         <div className="p-4 border-b border-white/10 flex items-center gap-3">
           {company?.logo_url ?
           <img src={company.logo_url} alt="Logo" className="h-10 w-10 rounded-lg object-cover bg-white p-0.5" /> :
-
           <div className="h-10 w-10 rounded-lg bg-[var(--accent)] flex items-center justify-center font-bold text-lg">
               {company?.company_name?.[0] || 'S'}
             </div>
@@ -208,17 +205,16 @@ export default function Layout({ children, currentPageName }) {
             return (
               <Link
                 key={item.page}
-                to={createPageUrl(item.page)} className="bg-white/15 text-white px-5 py-4 text-sm font-extrabold flex items-center gap-3 transition-all border-r-3 border-[var(--accent)]">
-
-
-
-
-
-                
+                to={createPageUrl(item.page)}
+                className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-all ${
+                  isActive
+                    ? 'bg-white/20 text-white font-bold border-r-2 border-[var(--accent)]'
+                    : 'text-blue-100 hover:bg-white/10 font-medium'
+                }`}>
                 <Icon className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-extrabold truncate">{item.name}</span>
-              </Link>);
-
+                <span className="truncate">{item.name}</span>
+              </Link>
+            );
           })}
         </nav>
         <div className="p-3 border-t border-white/10 space-y-2">
@@ -245,13 +241,11 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Sidebar mobile */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[var(--primary)] text-white transform transition-transform lg:hidden ${
-      sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
-      }>
+      sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-4 flex items-center justify-between border-b border-white/10">
           <div className="flex items-center gap-3">
             {company?.logo_url ?
             <img src={company.logo_url} alt="Logo" className="h-8 w-8 rounded-lg object-cover bg-white p-0.5" /> :
-
             <div className="h-8 w-8 rounded-lg bg-[var(--accent)] flex items-center justify-center font-bold">
                 {company?.company_name?.[0] || 'S'}
               </div>
@@ -272,13 +266,11 @@ export default function Layout({ children, currentPageName }) {
                 to={createPageUrl(item.page)}
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 text-sm ${
-                isActive ? 'bg-white/15 text-white' : 'text-blue-100 hover:bg-white/10'}`
-                }>
-                
+                isActive ? 'bg-white/15 text-white font-bold' : 'text-blue-100 hover:bg-white/10'}`}>
                 <Icon className="w-4 h-4" />
                 <span>{item.name}</span>
-              </Link>);
-
+              </Link>
+            );
           })}
         </nav>
       </aside>
@@ -295,7 +287,6 @@ export default function Layout({ children, currentPageName }) {
             opacity: 0.04,
             width: '60vw', maxWidth: 500
           }}>
-          
             <img src={company.logo_url} alt="" style={{ width: '100%', filter: 'grayscale(1)' }} />
           </div>
         }
@@ -323,9 +314,9 @@ export default function Layout({ children, currentPageName }) {
           {children}
         </main>
 
-        {/* Mobile bottom tab bar - 5 items fijos + More drawer */}
+        {/* Mobile bottom tab bar */}
         <MobileBottomBar currentPageName={currentPageName} />
       </div>
-    </div>);
-
+    </div>
+  );
 }

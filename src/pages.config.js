@@ -90,6 +90,7 @@ import TecniciansRoutes from './pages/TecniciansRoutes';
 import ThermalCalc from './pages/ThermalCalc';
 import CompanyConfig from './pages/CompanyConfig';
 import EquipmentDiaryPage from './pages/EquipmentDiaryPage';
+import SATChat from './pages/SATChat';
 import __Layout from './Layout.jsx';
 
 
@@ -137,6 +138,7 @@ export const PAGES = {
     "ThermalCalc": ThermalCalc,
     "CompanyConfig": CompanyConfig,
     "EquipmentDiaryPage": EquipmentDiaryPage,
+    "SATChat": SATChat,
 }
 
 export const pagesConfig = {
