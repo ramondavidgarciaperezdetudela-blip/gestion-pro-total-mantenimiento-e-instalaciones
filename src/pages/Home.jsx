@@ -23,15 +23,6 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { format, startOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-// Monta el hijo solo después de `delay` ms — evita bloquear el render inicial
-function LazyPanel({ children, delay = 200 }) {
-  const [show, setShow] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setShow(true), delay);
-    return () => clearTimeout(t);
-  }, [delay]);
-  return show ? children : null;
-}
 
 const quickLinks = [
 { name: 'Agenda', page: 'Agenda', icon: Calendar, color: 'bg-blue-500' },
@@ -222,11 +213,11 @@ export default function Home() {
       <div className="hidden sm:block space-y-6">
 
       {/* Paneles secundarios — montados con retraso para no bloquear el render inicial */}
-      <LazyPanel delay={150}><PendingTasksPanel /></LazyPanel>
+      <PendingTasksPanel />
       <AutomationStatus />
-      <LazyPanel delay={200}><DocumentsStatusPanel /></LazyPanel>
-      <LazyPanel delay={250}><MissingSATSignatures /></LazyPanel>
-      <LazyPanel delay={300}><ChangeOpinionAlerts /></LazyPanel>
+      <DocumentsStatusPanel />
+      <MissingSATSignatures />
+      <ChangeOpinionAlerts />
 
       {/* Alertas */}
       {alerts.length > 0 &&

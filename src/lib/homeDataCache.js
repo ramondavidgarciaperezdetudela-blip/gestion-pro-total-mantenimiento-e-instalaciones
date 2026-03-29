@@ -4,7 +4,7 @@
  * TTL: 2 minutos.
  */
 
-const CACHE_TTL_MS = 2 * 60 * 1000;
+const CACHE_TTL_MS = 10 * 60 * 1000;
 
 let cache = null;
 let cacheTime = 0;

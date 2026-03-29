@@ -3,8 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -26,30 +25,8 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
   : <>{children}</>;
 
-const pageVariants = {
-  initial: { opacity: 0, x: 20 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -20 },
-};
-const pageTransition = { duration: 0.18, ease: 'easeOut' };
-
 function AnimatedRoutes({ children }) {
-  const location = useLocation();
-  return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={location.pathname + location.search}
-        variants={pageVariants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        transition={pageTransition}
-        style={{ willChange: 'opacity, transform' }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  );
+  return <>{children}</>;
 }
 
 const AuthenticatedApp = () => {
