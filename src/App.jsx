@@ -5,11 +5,18 @@ import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Suspense, lazy } from 'react';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import PresupuestoPublico from './pages/PresupuestoPublico';
-import SATPublico from './pages/SATPublico';
+const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
+const SATPublico = lazy(() => import('./pages/SATPublico'));
+
+const PageLoader = () => (
+  <div className="fixed inset-0 flex items-center justify-center">
+    <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+  </div>
+);
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -70,29 +77,31 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
-    <AnimatedRoutes>
-      <Routes>
-        <Route path="/" element={
-          <LayoutWrapper currentPageName={mainPageKey}>
-            <MainPage />
-          </LayoutWrapper>
-        } />
-        {Object.entries(Pages).map(([path, Page]) => (
-          <Route
-            key={path}
-            path={`/${path}`}
-            element={
-              <LayoutWrapper currentPageName={path}>
-                <Page />
-              </LayoutWrapper>
-            }
-          />
-        ))}
-        <Route path="/presupuesto-publico" element={<PresupuestoPublico />} />
-        <Route path="/sat-publico" element={<SATPublico />} />
-        <Route path="*" element={<PageNotFound />} />
-      </Routes>
-    </AnimatedRoutes>
+    <Suspense fallback={<PageLoader />}>
+      <AnimatedRoutes>
+        <Routes>
+          <Route path="/" element={
+            <LayoutWrapper currentPageName={mainPageKey}>
+              <MainPage />
+            </LayoutWrapper>
+          } />
+          {Object.entries(Pages).map(([path, Page]) => (
+            <Route
+              key={path}
+              path={`/${path}`}
+              element={
+                <LayoutWrapper currentPageName={path}>
+                  <Page />
+                </LayoutWrapper>
+              }
+            />
+          ))}
+          <Route path="/presupuesto-publico" element={<PresupuestoPublico />} />
+          <Route path="/sat-publico" element={<SATPublico />} />
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+      </AnimatedRoutes>
+    </Suspense>
   );
 };
 

@@ -108,12 +108,12 @@ export default function Home() {
     const today = format(new Date(), 'yyyy-MM-dd');
     const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
 
-    // FASE 1: Carga crítica — renderiza la pantalla inmediatamente
+    // FASE 1: Carga crítica — renderiza la pantalla inmediatamente (mínimo indispensable)
     const [appts, comp, invoices, sat] = await Promise.all([
       base44.entities.Appointment.filter({ date: today }),
       base44.entities.CompanySettings.list(),
-      base44.entities.Invoice.list('-date', 20),
-      base44.entities.SATOrder.list('-date', 10),
+      base44.entities.Invoice.list('-date', 12),
+      base44.entities.SATOrder.filter({ status: 'pendiente' }, '-date', 8),
     ]);
 
     if (comp.length > 0) setCompany(comp[0]);
@@ -147,9 +147,9 @@ export default function Home() {
     // FASE 2: Carga secundaria diferida — no bloquea el render inicial
     setTimeout(async () => {
       const [contacts, suppliers, stock] = await Promise.all([
-        base44.entities.Contact.list('-created_date', 30),
-        base44.entities.Supplier.list('-created_date', 20),
-        base44.entities.StockItem.list('-updated_date', 15),
+        base44.entities.Contact.list('-created_date', 20),
+        base44.entities.Supplier.list('-created_date', 10),
+        base44.entities.StockItem.list('-updated_date', 10),
       ]);
 
       setKpis(prev => ({
