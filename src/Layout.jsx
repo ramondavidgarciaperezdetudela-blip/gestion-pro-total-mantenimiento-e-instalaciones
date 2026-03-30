@@ -158,8 +158,8 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   useEffect(() => {
-    // Precalentar cache global en cuanto carga el layout — sin esperar al Home
-    import('@/lib/homeDataCache').then(({ getHomeData }) => getHomeData());
+    // Precalentar cache y precargar páginas frecuentes en background
+    import('@/lib/prefetch').then(({ prefetchPages }) => prefetchPages());
   }, []);
 
   useEffect(() => {

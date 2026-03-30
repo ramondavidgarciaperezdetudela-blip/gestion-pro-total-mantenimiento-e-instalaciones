@@ -12,8 +12,8 @@ const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
 const SATPublico = lazy(() => import('./pages/SATPublico'));
 
 const PageLoader = () => (
-  <div className="fixed inset-0 flex items-center justify-center">
-    <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+  <div className="flex items-center justify-center h-32">
+    <div className="w-6 h-6 border-3 border-slate-200 border-t-slate-600 rounded-full animate-spin opacity-50"></div>
   </div>
 );
 
