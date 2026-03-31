@@ -549,7 +549,7 @@ export default function SAT() {
 
       {/* ===== DIALOG EDITAR/CREAR ===== */}
       <Dialog open={dialogOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()} onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] h-[95vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()} onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{editing ? `Editar Orden SAT #${editing.order_number || editing.id.slice(-6)}` : 'Nueva Orden SAT'}</DialogTitle>
@@ -681,7 +681,7 @@ export default function SAT() {
 
       {/* ===== PREVIEW / IMPRIMIR ===== */}
       <Dialog open={!!previewOrder} onOpenChange={() => {}}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] h-[95vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           {previewOrder && (
             <>
               <DialogHeader>
