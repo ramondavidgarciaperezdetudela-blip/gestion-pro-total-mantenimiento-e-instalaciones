@@ -10,19 +10,28 @@ export function prefetchPages() {
   if (prefetchDone) return;
   prefetchDone = true;
 
-  // Delay corto para no competir con el render inicial
-  setTimeout(() => {
-    // Precargar chunks de las páginas más usadas
-    import('../pages/SAT');
-    import('../pages/Contacts');
-    import('../pages/Agenda');
-    import('../pages/Documents');
-    import('../pages/Maintenance');
-    import('../pages/ContactDetail');
-  }, 800);
+  // Precargar datos en caché inmediatamente (mayor prioridad)
+  import('./homeDataCache').then(({ getHomeData }) => getHomeData());
 
-  // Precargar datos en cache
-  setTimeout(() => {
-    import('./homeDataCache').then(({ getHomeData }) => getHomeData());
-  }, 200);
+  // Precargar chunks de las páginas más usadas tras el render inicial
+  const pagesToPrefetch = [
+    '../pages/SAT',
+    '../pages/Contacts',
+    '../pages/Agenda',
+    '../pages/Documents',
+    '../pages/Maintenance',
+    '../pages/ContactDetail',
+    '../pages/SATChat',
+  ];
+
+  // Cargar de 2 en 2 para no saturar la red
+  let i = 0;
+  function loadNext() {
+    if (i >= pagesToPrefetch.length) return;
+    const batch = pagesToPrefetch.slice(i, i + 2);
+    batch.forEach(p => import(/* @vite-ignore */ p));
+    i += 2;
+    setTimeout(loadNext, 600);
+  }
+  setTimeout(loadNext, 500);
 }

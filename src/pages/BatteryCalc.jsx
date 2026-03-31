@@ -227,7 +227,7 @@ Responde en formato JSON con esta estructura:
                   <SelectContent>
                     <SelectItem value="12">12V (pequeñas instalaciones)</SelectItem>
                     <SelectItem value="24">24V (instalaciones medias)</SelectItem>
-                    <SelectItem value="48">48V (recomendado para > 3kWh)</SelectItem>
+                    <SelectItem value="48">{"48V (recomendado para > 3kWh)"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

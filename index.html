@@ -18,6 +18,11 @@
     <meta property="og:description" content="Gestión SAT Profesional - Climatización, Electricidad, Refrigeración y Solar" />
     <meta property="og:type" content="website" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- Preconnect para acelerar peticiones API -->
+    <link rel="preconnect" href="https://api.base44.com" />
+    <link rel="dns-prefetch" href="https://api.base44.com" />
+    <link rel="preconnect" href="https://storage.googleapis.com" />
+    <link rel="dns-prefetch" href="https://storage.googleapis.com" />
     <title>SAT Gestión Profesional</title>
     <style>
       /* Splash screen mientras carga */
@@ -72,7 +77,7 @@
             splash.classList.add('hidden');
             setTimeout(() => splash.remove(), 500);
           }
-        }, 800);
+        }, 300); // reducido de 800ms a 300ms
       });
 
       // Registrar Service Worker para PWA

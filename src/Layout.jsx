@@ -158,8 +158,11 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   useEffect(() => {
-    // Precalentar cache y precargar páginas frecuentes en background
-    import('@/lib/prefetch').then(({ prefetchPages }) => prefetchPages());
+    // Precalentar cache y precargar páginas frecuentes después del primer render
+    const t = setTimeout(() => {
+      import('@/lib/prefetch').then(({ prefetchPages }) => prefetchPages());
+    }, 100);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {

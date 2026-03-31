@@ -214,7 +214,7 @@ export default function Agenda() {
       )}
 
       {/* Calendar */}
-      <div ref={printRef} className="grid grid-cols-1 md:grid-cols-7 gap-2">
+      {viewMode === 'week' && <div ref={printRef} className="grid grid-cols-1 md:grid-cols-7 gap-2">
         {days.map(day => {
           const dayAppts = appointments.filter(a => a.date && isSameDay(new Date(a.date), day));
           const isToday = isSameDay(day, new Date());
@@ -268,6 +268,7 @@ export default function Agenda() {
       </div>}
 
       {/* Month view */}
+
       {viewMode === 'month' && (() => {
         const firstDay = startOfMonth(currentMonth);
         const daysInMonth = getDaysInMonth(currentMonth);

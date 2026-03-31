@@ -156,7 +156,7 @@ export default function Home() {
   useEffect(() => {
     loadData();
     // Montar paneles secundarios después del primer paint — no bloquean el render principal
-    const t = setTimeout(() => setShowSecondaryPanels(true), 100);
+    const t = setTimeout(() => setShowSecondaryPanels(true), 400);
     return () => clearTimeout(t);
   }, [loadData]);
 

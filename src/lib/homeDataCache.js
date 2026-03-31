@@ -3,7 +3,7 @@
  * TTL: 10 minutos. Soporte de cache parcial por clave.
  */
 
-const CACHE_TTL_MS = 20 * 60 * 1000;
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora
 
 // Cache por clave individual para evitar re-fetch total
 const cacheStore = {};

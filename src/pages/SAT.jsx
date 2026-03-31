@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, Printer, FileText, Link2, ClipboardList } from 'lucide-react';
+import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, Printer, FileText, Link2, ClipboardList, X } from 'lucide-react';
 import SATTechReport from '../components/SATTechReport';
 import TechnicianSelect from '../components/TechnicianSelect';
 import SATSignaturePanel from '../components/SATSignaturePanel';
