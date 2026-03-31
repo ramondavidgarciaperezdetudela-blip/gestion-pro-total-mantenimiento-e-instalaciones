@@ -614,7 +614,7 @@ export default function Documents() {
         if (!o) { setEditing(null); setShowAdvanced(false); }
       }}>
         <DialogContent
-          className="max-w-4xl w-[95vw] max-h-[95vh] h-[95vh] overflow-y-auto"
+          className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto"
           onOpenAutoFocus={(e) => e.preventDefault()}
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
@@ -784,7 +784,7 @@ export default function Documents() {
 
       {/* ===== PREVIEW ===== */}
       <Dialog open={!!previewDoc} onOpenChange={() => {}}>
-        <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] h-[95vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="capitalize">{previewDoc?.doc_type} {previewDoc?.doc_number}</DialogTitle>
