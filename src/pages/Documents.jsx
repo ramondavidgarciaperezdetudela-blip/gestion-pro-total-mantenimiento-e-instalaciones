@@ -55,7 +55,7 @@ const newItem = () => ({ _id: ++_itemId, description: '', quantity: 1, unit_pric
 const EMPTY_FORM = {
   doc_type: 'presupuesto', doc_number: '', contact_id: '', contact_name: '', contact_nif: '', contact_address: '',
   date: format(new Date(), 'yyyy-MM-dd'), due_date: '', status: 'borrador', work_type: 'otro',
-  items: [newItem()],
+  items: [],
   subtotal: 0, iva_rate: 21, iva_amount: 0, total: 0, observations: '', payment_terms: PAYMENT_TERMS, normative_references: ''
 };
 
@@ -748,13 +748,18 @@ export default function Documents() {
               <div className="flex justify-between font-bold text-lg text-blue-800"><span>TOTAL:</span><span>{form.total?.toFixed(2)} €</span></div>
             </div>
 
+            {/* Observaciones - siempre visible */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Observaciones del documento</label>
+              <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Añade aquí cualquier aclaración o nota sobre este documento..." value={form.observations || ''} onChange={(e) => {const v = e.target.value;setForm((p) => ({ ...p, observations: v }));}} rows={3} />
+            </div>
+
             <button className="text-xs text-gray-500 flex items-center gap-1" onClick={() => setShowAdvanced((v) => !v)}>
               {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              Observaciones y condiciones de pago
+              Condiciones de pago y normativa
             </button>
             {showAdvanced &&
             <div className="space-y-2">
-                <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Observaciones" value={form.observations || ''} onChange={(e) => {const v = e.target.value;setForm((p) => ({ ...p, observations: v }));}} rows={3} />
                 <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Condiciones de pago" value={form.payment_terms || ''} onChange={(e) => {const v = e.target.value;setForm((p) => ({ ...p, payment_terms: v }));}} rows={4} />
                 {form.normative_references &&
               <div className="bg-blue-50 p-3 rounded-lg text-xs">
