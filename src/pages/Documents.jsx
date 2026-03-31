@@ -770,7 +770,7 @@ export default function Documents() {
               </div>
             }
 
-            <div className="sticky bottom-0 pt-2 bg-white border-t mt-2">
+            <div className="pt-2 border-t mt-2">
               <Button onClick={handleSave} disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 gap-2 h-11 text-base font-semibold">
                 <Save className="w-4 h-4" />
                 {saving ? 'Guardando...' : editing ? '💾 Actualizar documento' : '💾 Guardar documento'}
