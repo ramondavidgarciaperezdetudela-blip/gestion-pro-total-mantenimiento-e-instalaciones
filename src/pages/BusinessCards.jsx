@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreditCard, Plus, Printer, Download, Trash2, Edit, QrCode, Share2 } from 'lucide-react';
+import { CreditCard, Plus, Printer, Download, Trash2, Edit, QrCode, Layers } from 'lucide-react';
 
 const EMPTY = {
   name: '', role: '', phone: '', email: '', website: '',
@@ -159,6 +159,60 @@ export default function BusinessCards() {
     a.click();
   };
 
+  const handlePrintMultiple = (card, copies = 10) => {
+    const s = SCHEMES[card.color_scheme] || SCHEMES.dark_blue;
+    const companyName = card.company_name_override || company?.company_name || 'Mi Empresa S.L.';
+    const phone = card.use_company_phone ? company?.phone : card.phone;
+    const email = card.use_company_email ? company?.email : card.email;
+    const web = card.website || company?.website || '';
+    const vcard = buildVCardString(card, company);
+    const qrUrl = `https://chart.googleapis.com/chart?cht=qr&chs=60x60&chl=${encodeURIComponent(vcard)}&choe=UTF-8`;
+    const logoHtml = card.show_logo && company?.logo_url
+      ? `<img src="${company.logo_url}" style="height:22px;object-fit:contain;background:white;border-radius:3px;padding:1px 3px;" />`
+      : `<div style="width:22px;height:22px;background:${s.accent};border-radius:3px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;color:${s.bg}">${companyName[0] || 'E'}</div>`;
+
+    const cardHtml = `
+      <div class="card">
+        <div class="c1"></div><div class="c2"></div>
+        <div class="top">
+          <div class="top-left">${logoHtml}<span class="co">${companyName}</span></div>
+          ${card.show_qr ? `<img src="${qrUrl}" width="44" height="44" style="border-radius:3px;background:white;padding:2px;" />` : ''}
+        </div>
+        <div>
+          <p class="name">${card.name}</p>
+          <p class="role">${card.role || ''}</p>
+          ${card.show_nif && card.nif ? `<p style="font-size:7px;color:${s.sub};margin-top:1px">NIF: ${card.nif}</p>` : ''}
+        </div>
+        <div class="contact">
+          ${phone ? `<span>📞 ${phone}</span>` : ''}
+          ${email ? `<span>✉️ ${email}</span>` : ''}
+          ${web ? `<span>🌐 ${web}</span>` : ''}
+          ${card.show_address && (card.address || company?.address) ? `<span>📍 ${card.address || company?.address}${company?.city ? ', ' + company.city : ''}</span>` : ''}
+        </div>
+      </div>`;
+
+    const allCards = Array(copies).fill(cardHtml).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+      @page { size: A4; margin: 8mm; }
+      body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+      .page { display: flex; flex-wrap: wrap; gap: 4mm; align-content: flex-start; }
+      .card { width: 85mm; height: 54mm; background: ${s.bg}; color: ${s.text}; padding: 8px 10px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; border-radius: 5px; }
+      .c1 { position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; border-radius: 50%; background: ${s.accent}; opacity: 0.15; }
+      .c2 { position: absolute; bottom: -15px; left: 30px; width: 50px; height: 50px; border-radius: 50%; background: ${s.accent}; opacity: 0.1; }
+      .top { display: flex; align-items: center; justify-content: space-between; }
+      .top-left { display: flex; align-items: center; gap: 5px; }
+      .co { font-size: 8px; font-weight: bold; color: ${s.accent}; letter-spacing: 0.5px; text-transform: uppercase; }
+      .name { font-size: 13px; font-weight: bold; color: ${s.text}; margin-bottom: 2px; }
+      .role { font-size: 8px; color: ${s.sub}; text-transform: uppercase; letter-spacing: 0.8px; }
+      .contact { font-size: 7px; color: ${s.sub}; display: flex; flex-direction: column; gap: 2px; }
+    </style></head><body>
+    <div class="page">${allCards}</div>
+    <script>window.onload=()=>{window.print();}</script></body></html>`;
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
+  };
+
   const handlePrint = (card) => {
     const s = SCHEMES[card.color_scheme] || SCHEMES.dark_blue;
     const companyName = card.company_name_override || company?.company_name || 'Mi Empresa S.L.';
@@ -247,7 +301,10 @@ export default function BusinessCards() {
                 <Edit className="w-3 h-3" /> Editar
               </Button>
               <Button size="sm" variant="outline" className="flex-1 text-xs gap-1 min-w-0" onClick={() => handlePrint(card)}>
-                <Printer className="w-3 h-3" /> Imprimir
+                <Printer className="w-3 h-3" /> 1 tarjeta
+              </Button>
+              <Button size="sm" variant="outline" className="flex-1 text-xs gap-1 min-w-0 text-blue-700" onClick={() => handlePrintMultiple(card, 10)}>
+                <Layers className="w-3 h-3" /> Hoja A4 (10)
               </Button>
               <Button size="sm" variant="outline" className="flex-1 text-xs gap-1 min-w-0" onClick={() => downloadVCard(card)}>
                 <Download className="w-3 h-3" /> vCard

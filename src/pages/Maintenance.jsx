@@ -518,11 +518,8 @@ export default function Maintenance() {
                 </div>
               </div>
               <div className="flex gap-1 mt-2 border-t pt-2 flex-wrap">
-                <button onClick={() => setPreview(s)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-cyan-50 text-cyan-700 hover:bg-cyan-100">
-                  <Eye className="w-3 h-3" /> Ver
-                </button>
-                <button onClick={() => handleEdit(s)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
-                  <Edit className="w-3 h-3" /> Editar
+                <button onClick={() => handleEdit(s)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-cyan-50 text-cyan-700 hover:bg-cyan-100">
+                  <Eye className="w-3 h-3" /> Ver/Editar
                 </button>
                 <button onClick={() => generatePDF(s)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
                   <FileDown className="w-3 h-3" /> PDF

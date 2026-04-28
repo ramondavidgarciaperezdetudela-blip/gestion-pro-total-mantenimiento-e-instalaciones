@@ -321,7 +321,7 @@ export default function Layout({ children, currentPageName }) {
             <NotificationsPanel />
           </div>
         </header>
-        <main className="p-4 md:p-6 max-w-7xl mx-auto relative z-10 pb-24 lg:pb-6">
+        <main className="p-3 md:p-6 max-w-7xl mx-auto relative z-10 pb-28 lg:pb-6 overflow-x-hidden">
           {children}
         </main>
 
