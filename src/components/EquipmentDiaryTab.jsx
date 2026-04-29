@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Wrench, ChevronDown, ChevronUp, Trash2, Edit, Download, FileSpreadsheet, Camera, FolderOpen, X, Printer, MessageCircle, Send } from 'lucide-react';
+import { Plus, Wrench, ChevronDown, ChevronUp, Trash2, Edit, Download, FileSpreadsheet, Camera, FolderOpen, X, Printer, MessageCircle, Send, Image } from 'lucide-react';
 import SignatureCanvas from './SignaturePad';
 import { toast } from 'sonner';
 import PhotoGallery from './PhotoGallery';
@@ -27,7 +27,9 @@ const ENTRY_TYPE_COLORS = {
 
 const EMPTY_DIARY = {
   machine_name: '', machine_type: 'otro', equipment_brand: '', equipment_model: '',
-  serial_number: '', location: '', entries: [], notes: ''
+  serial_number: '', location: '', entries: [], notes: '',
+  equipment_power_kw: '', equipment_year: '', equipment_refrigerant: '',
+  equipment_photo_url: '', warranty_expires: '',
 };
 
 const EMPTY_ENTRY = {
@@ -258,15 +260,27 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
         <Card key={diary.id} className="overflow-hidden">
           <CardContent className="p-0">
             {/* Cabecera del equipo */}
-            <div className="p-3 bg-orange-50 border-b flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold text-orange-800">{diary.machine_name}</p>
-                  <Badge className="text-[10px] bg-orange-100 text-orange-700">{diary.machine_type?.replace(/_/g,' ')}</Badge>
-                  {diary.equipment_brand && <span className="text-xs text-gray-500">{diary.equipment_brand} {diary.equipment_model}</span>}
+            <div className="p-3 bg-orange-50 border-b flex items-start justify-between gap-2 flex-wrap">
+              <div className="flex gap-3 flex-1 min-w-0">
+                {diary.equipment_photo_url && (
+                  <img src={diary.equipment_photo_url} alt="equipo" className="w-16 h-16 object-cover rounded-lg border flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-orange-800">{diary.machine_name}</p>
+                    <Badge className="text-[10px] bg-orange-100 text-orange-700">{diary.machine_type?.replace(/_/g,' ')}</Badge>
+                    {diary.equipment_brand && <span className="text-xs text-gray-500">{diary.equipment_brand} {diary.equipment_model}</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                    {diary.serial_number && <p className="text-xs text-gray-500">🔢 SN: {diary.serial_number}</p>}
+                    {diary.equipment_power_kw && <p className="text-xs text-gray-500">⚡ {diary.equipment_power_kw} kW</p>}
+                    {diary.equipment_refrigerant && <p className="text-xs text-gray-500">❄️ {diary.equipment_refrigerant}</p>}
+                    {diary.equipment_year && <p className="text-xs text-gray-500">📅 Inst. {diary.equipment_year}</p>}
+                    {diary.warranty_expires && <p className="text-xs text-gray-500">🛡️ Garantía: {diary.warranty_expires}</p>}
+                    {diary.location && <p className="text-xs text-gray-500">📍 {diary.location}</p>}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">{(diary.entries || []).length} entrada(s) registrada(s)</p>
                 </div>
-                {diary.location && <p className="text-xs text-gray-500 mt-0.5">📍 {diary.location} {diary.serial_number && `• SN: ${diary.serial_number}`}</p>}
-                <p className="text-xs text-gray-500 mt-0.5">{(diary.entries || []).length} entrada(s) registrada(s)</p>
               </div>
               <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end items-center">
                 <Button size="sm" variant="outline" className="h-7 text-xs text-green-700" onClick={() => exportToExcel(diary)}>
@@ -301,7 +315,7 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
                   <p className="text-sm text-gray-400 text-center py-4">Sin entradas. Pulsa "Añadir" para registrar una reparación.</p>
                 )}
                 {(diary.entries || []).map((entry, idx) => (
-                  <div key={idx} className="p-3 hover:bg-gray-50">
+                  <div key={idx} className="p-3 hover:bg-orange-50 cursor-pointer transition-colors border-b last:border-b-0" onClick={() => openEditEntry(diary, idx)}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -311,6 +325,7 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
                           {(entry.hours > 0 || entry.cost > 0) && (
                             <span className="text-xs text-gray-500">{entry.hours > 0 ? `${entry.hours}h` : ''}{entry.cost > 0 ? ` · ${entry.cost}€` : ''}</span>
                           )}
+                          <span className="text-[10px] text-orange-500 ml-auto">✎ clic para editar</span>
                         </div>
                         <p className="text-sm text-gray-800">{entry.description}</p>
                         {entry.solution && <p className="text-xs text-green-700 mt-1">✓ {entry.solution}</p>}
@@ -369,6 +384,28 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
             </div>
           </DialogHeader>
           <div className="space-y-3">
+            {/* Foto del equipo */}
+            {diaryForm.equipment_photo_url && (
+              <div className="relative w-full h-36 rounded-lg overflow-hidden border bg-gray-100">
+                <img src={diaryForm.equipment_photo_url} alt="Equipo" className="w-full h-full object-contain" />
+                <button onClick={() => setDiaryForm({...diaryForm, equipment_photo_url: ''})} className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow text-red-500"><X className="w-3.5 h-3.5" /></button>
+              </div>
+            )}
+            <div>
+              <label className="text-xs text-gray-500 flex items-center gap-1"><Image className="w-3 h-3" />Foto del equipo (URL o subir)</label>
+              <div className="flex gap-2 mt-1">
+                <Input placeholder="URL de la foto" value={diaryForm.equipment_photo_url||''} onChange={e => setDiaryForm({...diaryForm, equipment_photo_url: e.target.value})} className="flex-1" />
+                <label className="cursor-pointer px-3 py-1.5 text-xs border rounded-md bg-gray-50 hover:bg-gray-100 flex items-center gap-1 text-gray-600">
+                  <Camera className="w-3 h-3" />Subir
+                  <input type="file" accept="image/*" className="hidden" onChange={async e => {
+                    const f = e.target.files[0]; if (!f) return;
+                    const { file_url } = await base44.integrations.Core.UploadFile({ file: f });
+                    setDiaryForm({...diaryForm, equipment_photo_url: file_url});
+                  }} />
+                </label>
+              </div>
+            </div>
+
             <Input placeholder="Nombre del equipo *" value={diaryForm.machine_name} onChange={e => setDiaryForm({...diaryForm, machine_name: e.target.value})} />
             <Select value={diaryForm.machine_type} onValueChange={v => setDiaryForm({...diaryForm, machine_type: v})}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -378,9 +415,20 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
               <Input placeholder="Marca" value={diaryForm.equipment_brand} onChange={e => setDiaryForm({...diaryForm, equipment_brand: e.target.value})} />
               <Input placeholder="Modelo" value={diaryForm.equipment_model} onChange={e => setDiaryForm({...diaryForm, equipment_model: e.target.value})} />
             </div>
-            <Input placeholder="Nº serie" value={diaryForm.serial_number} onChange={e => setDiaryForm({...diaryForm, serial_number: e.target.value})} />
+            <div className="grid grid-cols-2 gap-2">
+              <Input placeholder="Nº serie actual" value={diaryForm.serial_number} onChange={e => setDiaryForm({...diaryForm, serial_number: e.target.value})} />
+              <Input placeholder="Nº serie anterior" value={diaryForm.serial_number_old||''} onChange={e => setDiaryForm({...diaryForm, serial_number_old: e.target.value})} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-xs text-gray-500">Potencia (kW)</label><Input type="number" step="0.1" placeholder="3.5" value={diaryForm.equipment_power_kw||''} onChange={e => setDiaryForm({...diaryForm, equipment_power_kw: e.target.value})} /></div>
+              <div><label className="text-xs text-gray-500">Año instalación</label><Input type="number" placeholder="2020" value={diaryForm.equipment_year||''} onChange={e => setDiaryForm({...diaryForm, equipment_year: e.target.value})} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Input placeholder="Gas refrigerante (ej: R-32)" value={diaryForm.equipment_refrigerant||''} onChange={e => setDiaryForm({...diaryForm, equipment_refrigerant: e.target.value})} />
+              <div><label className="text-xs text-gray-500">Garantía hasta</label><Input type="date" value={diaryForm.warranty_expires||''} onChange={e => setDiaryForm({...diaryForm, warranty_expires: e.target.value})} /></div>
+            </div>
             <Input placeholder="Ubicación (ej: planta 1, sala técnica)" value={diaryForm.location} onChange={e => setDiaryForm({...diaryForm, location: e.target.value})} />
-            <Textarea placeholder="Notas" value={diaryForm.notes} onChange={e => setDiaryForm({...diaryForm, notes: e.target.value})} rows={2} />
+            <Textarea placeholder="Notas del equipo" value={diaryForm.notes} onChange={e => setDiaryForm({...diaryForm, notes: e.target.value})} rows={2} />
             <Button onClick={saveDiary} className="w-full bg-orange-600 hover:bg-orange-700">{editingDiary ? 'Actualizar' : 'Crear diario'}</Button>
           </div>
         </DialogContent>

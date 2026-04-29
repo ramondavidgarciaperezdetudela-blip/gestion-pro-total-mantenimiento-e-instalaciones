@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, Plus, Trash2, Edit, Check, Clock, AlertTriangle, Calendar, Wrench, FileText, Users, Zap } from 'lucide-react';
+import { Bell, Plus, Trash2, Edit, Check, Clock, AlertTriangle, Calendar, Wrench, FileText, Users, Zap, MessageCircle } from 'lucide-react';
 import { format, addDays, parseISO, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -32,7 +32,7 @@ const RECURRENCE = [
 
 const EMPTY = {
   title: '', description: '', type: 'otro', due_date: '', due_time: '',
-  contact_name: '', recurrence: 'none', is_done: false, priority: 'media',
+  contact_name: '', contact_phone: '', recurrence: 'none', is_done: false, priority: 'media',
   notify_days_before: 1,
 };
 
@@ -44,6 +44,18 @@ function ReminderCard({ r, onEdit, onDelete, onToggle }) {
   const daysLeft = r.due_date ? differenceInDays(parseISO(r.due_date), new Date()) : null;
   const isOverdue = daysLeft !== null && daysLeft < 0 && !r.is_done;
   const isUrgent = daysLeft !== null && daysLeft <= 2 && !r.is_done;
+
+  const sendWhatsApp = () => {
+    const typeLabel = REMINDER_TYPES.find(t => t.value === r.type)?.label || r.type;
+    let msg = `📅 *Recordatorio — ${typeLabel}*\n\n`;
+    msg += `*${r.title}*\n`;
+    if (r.due_date) msg += `📆 Fecha: ${format(parseISO(r.due_date), 'dd/MM/yyyy')}${r.due_time ? ` a las ${r.due_time}` : ''}\n`;
+    if (r.description) msg += `\n${r.description}\n`;
+    msg += `\nPor favor, confirme su disponibilidad. Gracias.`;
+    const phone = r.contact_phone?.replace(/\D/g,'');
+    const url = phone ? `https://wa.me/34${phone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  };
 
   return (
     <Card className={`border-l-4 ${r.is_done ? 'opacity-50 border-l-gray-300' : isOverdue ? 'border-l-red-500' : isUrgent ? 'border-l-orange-400' : 'border-l-blue-400'}`}>
@@ -73,7 +85,10 @@ function ReminderCard({ r, onEdit, onDelete, onToggle }) {
             <span className="flex items-center gap-1"><Icon className="w-3 h-3" />{typeInfo.label}</span>
           </div>
         </div>
-        <div className="flex gap-1 flex-shrink-0">
+        <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
+          <button onClick={sendWhatsApp} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100" title="Enviar aviso por WhatsApp">
+            <MessageCircle className="w-3 h-3" /><span className="hidden sm:inline">WA</span>
+          </button>
           <button onClick={() => onEdit(r)} className="p-1 text-gray-300 hover:text-blue-500 rounded"><Edit className="w-3.5 h-3.5" /></button>
           <button onClick={() => onDelete(r.id)} className="p-1 text-gray-300 hover:text-red-500 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
@@ -281,7 +296,7 @@ export default function Automations() {
                   <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto">
                     {filteredContacts.map(c => (
                       <button key={c.id} className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm"
-                        onClick={() => { setForm({ ...form, contact_name: `${c.name} ${c.surname || ''}`.trim() }); setContactSearch(''); setShowContactSearch(false); }}>
+                        onClick={() => { setForm({ ...form, contact_name: `${c.name} ${c.surname || ''}`.trim(), contact_phone: c.phone || '' }); setContactSearch(''); setShowContactSearch(false); }}>
                         {c.name} {c.surname} {c.company_name && <span className="text-gray-400">· {c.company_name}</span>}
                       </button>
                     ))}
@@ -290,6 +305,10 @@ export default function Automations() {
               </div>
             </div>
 
+            <div>
+              <label className="text-xs text-gray-500">Teléfono WhatsApp del cliente</label>
+              <Input className="mt-1" placeholder="600 000 000" value={form.contact_phone || ''} onChange={e => setForm({ ...form, contact_phone: e.target.value })} />
+            </div>
             <Textarea placeholder="Descripción / notas..." rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
 
             <Button onClick={handleSave} disabled={!form.title} className="w-full bg-amber-500 hover:bg-amber-600">
