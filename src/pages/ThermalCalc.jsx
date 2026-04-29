@@ -58,6 +58,8 @@ function buildResult(form, breakdown) {
 
   const suitable = CLIMATE_CATALOG.filter(e => e.power_kw * 1000 >= totalW * 0.9);
   const equip = suitable.length > 0 ? suitable[0] : CLIMATE_CATALOG[CLIMATE_CATALOG.length - 1];
+  // Top 3 alternatives
+  const alternatives = suitable.slice(0, 3).length > 0 ? suitable.slice(0, 3) : CLIMATE_CATALOG.slice(-3);
 
   const actualDist = parseFloat(form.pipe_distance) || 5;
   const maxDist = equip.max_pipe_m;
@@ -85,7 +87,7 @@ function buildResult(form, breakdown) {
   const equipScore = Math.round((equip.power_kw * 1000 / totalW) * 50);
 
   return {
-    loadW: totalW, loadFrigorias, loadKW, equip, extraGrams, pr, materials, maxDist, actualDist,
+    loadW: totalW, loadFrigorias, loadKW, equip, alternatives, extraGrams, pr, materials, maxDist, actualDist,
     efficiencyScores: {
       insulation: insulScore,
       piping: Math.max(0, Math.min(100, pipingScore)),
@@ -186,7 +188,7 @@ export default function ThermalCalc() {
         condensation_temp: 40,
         evaporation_temp: 0,
       },
-      notes: `Desglose: paredes/techo ${Math.round(bd.wallLoad)}W, ventanas ${Math.round(bd.windowLoad)}W, personas ${Math.round(bd.peopleLoad)}W, equipos ${Math.round(bd.equipLoad)}W`,
+      notes: `Desglose: paredes/techo ${Math.round(bd.wallLoad)}W, ventanas ${Math.round(bd.windowLoad)}W, personas ${Math.round(bd.peopleLoad)}W, equipos ${Math.round(bd.equipLoad)}W. Alternativas: ${result.alternatives.map(e => `${e.brand} ${e.model} ${e.power_kw}kW`).join(' | ')}`,
     };
 
     if (existingCalcId) {
@@ -278,15 +280,20 @@ export default function ThermalCalc() {
       </div>
 
       <div class="section" style="margin-top:14px">
-        <div class="section-title">Equipo sugerido</div>
-        <div class="grid2">
-          <div>Marca: <b>${result.equip.brand}</b></div>
-          <div>Modelo: <b>${result.equip.model}</b></div>
-          <div>Potencia: ${result.equip.power_kw} kW</div>
-          <div>Gas: ${result.equip.gas}</div>
-          <div>Tipo: ${result.equip.type}</div>
-          <div>Dist. máx. tubería: ${result.equip.max_pipe_m} m</div>
-        </div>
+        <div class="section-title">Equipos recomendados</div>
+        ${result.alternatives.map((eq, idx) => `
+          <div style="background:${idx===0?'#f0fdf4':'#f9fafb'};border:1px solid ${idx===0?'#86efac':'#e5e7eb'};border-radius:6px;padding:8px;margin-bottom:6px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:10px;font-weight:700;color:${idx===0?'#16a34a':'#6b7280'}">${idx===0?'⭐ Opción principal':'Opción '+(idx+1)}</span>
+              <span style="font-weight:700;color:#16a34a">${eq.power_kw} kW</span>
+            </div>
+            <div class="grid2">
+              <div>Marca: <b>${eq.brand}</b></div>
+              <div>Modelo: <b>${eq.model}</b></div>
+              <div>Gas: ${eq.gas}</div><div>Tipo: ${eq.type}</div>
+              <div>Dist. máx.: ${eq.max_pipe_m} m</div><div>Alt. máx.: ${eq.max_height_m} m</div>
+            </div>
+          </div>`).join('')}
         ${result.extraGrams > 0 ? `<p style="margin-top:6px;background:#fef9c3;padding:4px 6px;border-radius:4px">⚠️ Añadir <b>${result.extraGrams}g</b> de ${form.refrigerant_type} extra por distancia</p>` : ''}
       </div>
 
@@ -321,7 +328,7 @@ export default function ThermalCalc() {
 
       <Card>
         <CardContent className="p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Select value={form.contact_id} onValueChange={v => {
               const c = contacts.find(co => co.id === v);
               setForm({...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : ''});
@@ -345,11 +352,11 @@ export default function ThermalCalc() {
           <div className="bg-blue-50 p-3 rounded-lg space-y-2">
             <p className="text-sm font-medium text-blue-700">Dimensiones del local</p>
             <div className="grid grid-cols-3 gap-2">
-              <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="number" value={form.length} onChange={e => setForm({...form, length: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="number" value={form.width} onChange={e => setForm({...form, width: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="number" value={form.height} onChange={e => setForm({...form, height: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="number" inputMode="decimal" value={form.length} onChange={e => setForm({...form, length: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="number" inputMode="decimal" value={form.width} onChange={e => setForm({...form, width: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="number" inputMode="decimal" value={form.height} onChange={e => setForm({...form, height: parseFloat(e.target.value)||0})} /></div>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
                 <label className="text-[10px] text-gray-500">Orientación</label>
                 <Select value={form.orientation} onValueChange={v => setForm({...form, orientation: v})}>
@@ -375,13 +382,13 @@ export default function ThermalCalc() {
               </div>
               <div><label className="text-[10px] text-gray-500">Sup. ventanas (m²)</label><Input type="number" value={form.window_area} onChange={e => setForm({...form, window_area: parseFloat(e.target.value)||0})} /></div>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div><label className="text-[10px] text-gray-500">Nº personas</label><Input type="number" value={form.num_people} onChange={e => setForm({...form, num_people: parseInt(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Calor equipos (W)</label><Input type="number" value={form.equipment_heat} onChange={e => setForm({...form, equipment_heat: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="number" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)||0})} /></div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div><label className="text-[10px] text-gray-500">Nº personas</label><Input type="number" inputMode="numeric" value={form.num_people} onChange={e => setForm({...form, num_people: parseInt(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Calor equipos (W)</label><Input type="number" inputMode="decimal" value={form.equipment_heat} onChange={e => setForm({...form, equipment_heat: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="number" inputMode="decimal" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)||0})} /></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[10px] text-gray-500">T. objetivo interior (°C)</label><Input type="number" value={form.target_temp} onChange={e => setForm({...form, target_temp: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">T. objetivo interior (°C)</label><Input type="number" inputMode="decimal" value={form.target_temp} onChange={e => setForm({...form, target_temp: parseFloat(e.target.value)||0})} /></div>
             </div>
           </div>
 
@@ -431,20 +438,30 @@ export default function ThermalCalc() {
 
           <PressureChart pressureData={result.pr} refrigerant={form.refrigerant_type} />
 
-          {/* Equipo sugerido */}
+          {/* Equipos recomendados - 3 opciones */}
           <Card className="border-green-200">
             <CardHeader className="bg-green-50 py-3">
-              <CardTitle className="text-green-700 text-base">Equipo sugerido (catálogo)</CardTitle>
+              <CardTitle className="text-green-700 text-base">Equipos recomendados ({result.alternatives.length} opciones)</CardTitle>
             </CardHeader>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                <p><span className="text-gray-500">Marca:</span> <strong>{result.equip.brand}</strong></p>
-                <p><span className="text-gray-500">Modelo:</span> <strong>{result.equip.model}</strong></p>
-                <p><span className="text-gray-500">Potencia:</span> {result.equip.power_kw} kW</p>
-                <p><span className="text-gray-500">Gas:</span> {result.equip.gas}</p>
-                <p><span className="text-gray-500">Tipo:</span> {result.equip.type}</p>
-                <p><span className="text-gray-500">Dist. máx.:</span> {result.equip.max_pipe_m} m</p>
-              </div>
+            <CardContent className="p-4 space-y-3">
+              {result.alternatives.map((eq, idx) => (
+                <div key={idx} className={`rounded-lg border p-3 ${idx === 0 ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${idx === 0 ? 'bg-green-600 text-white' : 'bg-gray-400 text-white'}`}>
+                      {idx === 0 ? '⭐ Opción principal' : `Opción ${idx + 1}`}
+                    </span>
+                    <span className="font-bold text-green-700">{eq.power_kw} kW</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-1 text-sm">
+                    <p><span className="text-gray-500">Marca:</span> <strong>{eq.brand}</strong></p>
+                    <p><span className="text-gray-500">Modelo:</span> <strong>{eq.model}</strong></p>
+                    <p><span className="text-gray-500">Gas:</span> {eq.gas}</p>
+                    <p><span className="text-gray-500">Tipo:</span> {eq.type}</p>
+                    <p><span className="text-gray-500">Dist. máx.:</span> {eq.max_pipe_m} m</p>
+                    <p><span className="text-gray-500">Alt. máx.:</span> {eq.max_height_m} m</p>
+                  </div>
+                </div>
+              ))}
               {result.extraGrams > 0 && (
                 <div className="mt-2 p-2 bg-yellow-100 rounded text-yellow-800 text-sm">
                   ⚠️ Distancia ({result.actualDist}m) supera máximo ({result.maxDist}m). Añadir <strong>{result.extraGrams}g</strong> de {form.refrigerant_type} extra.

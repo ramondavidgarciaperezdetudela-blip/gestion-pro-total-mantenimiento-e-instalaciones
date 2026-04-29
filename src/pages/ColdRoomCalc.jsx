@@ -54,7 +54,9 @@ function buildResult(form, breakdown) {
   const { transmissionLoad, productLoad, ventLoad } = breakdown;
   const totalLoad = Math.round((transmissionLoad + productLoad + ventLoad) * 1.25);
 
-  const equip = COLD_CATALOG.filter(e => e.power_kw * 1000 >= totalLoad * 0.9)[0] || COLD_CATALOG[COLD_CATALOG.length - 1];
+  const suitableCold = COLD_CATALOG.filter(e => e.power_kw * 1000 >= totalLoad * 0.9);
+  const equip = suitableCold[0] || COLD_CATALOG[COLD_CATALOG.length - 1];
+  const alternatives = suitableCold.slice(0, 3).length > 0 ? suitableCold.slice(0, 3) : COLD_CATALOG.slice(-3);
   const actualDist = parseFloat(form.pipe_distance) || 8;
   const maxDist = equip.max_pipe_m;
   const extraGrams = actualDist > maxDist ? Math.round((actualDist - maxDist) * (EXTRA_REF_G_PER_M[form.refrigerant_type] || 18)) : 0;
@@ -94,7 +96,7 @@ function buildResult(form, breakdown) {
   const equipScore = Math.min(100, Math.round((equip.power_kw * 1000 / totalLoad) * 50));
 
   return {
-    loadW: totalLoad, equip, extraGrams, evapPressure, condPressure, refCharge,
+    loadW: totalLoad, equip, alternatives, extraGrams, evapPressure, condPressure, refCharge,
     panelArea: panelArea.toFixed(1), materials, maxDist, actualDist, pr,
     efficiencyScores: {
       insulation: Math.max(0, Math.min(100, panelScore)),
@@ -193,7 +195,7 @@ export default function ColdRoomCalc() {
         condensation_temp: form.exterior_temp + 15,
         evaporation_temp: form.cold_room_temp - 8,
       },
-      notes: `Panel: ${form.panel_thickness}, Área panel: ${result.panelArea}m². Desglose: transmisión ${Math.round(bd.transmissionLoad)}W, producto ${Math.round(bd.productLoad)}W, ventilación ${Math.round(bd.ventLoad)}W. ${titleSuffix}`,
+      notes: `Panel: ${form.panel_thickness}, Área panel: ${result.panelArea}m². Desglose: transmisión ${Math.round(bd.transmissionLoad)}W, producto ${Math.round(bd.productLoad)}W, ventilación ${Math.round(bd.ventLoad)}W. Alternativas: ${result.alternatives.map(e => `${e.brand} ${e.model} ${e.power_kw}kW`).join(' | ')}. ${titleSuffix}`,
     };
 
     if (existingCalcId) {
@@ -272,15 +274,20 @@ export default function ColdRoomCalc() {
         <div class="kpi"><div class="kpi-val" style="color:#16a34a">${result.equip.power_kw} kW</div><div style="font-size:9px;color:#6b7280">Equipo sugerido</div></div>
       </div>
       <div class="section" style="margin-top:14px">
-        <div class="section-title">Equipo sugerido</div>
-        <div class="grid2">
-          <div>Marca: <b>${result.equip.brand}</b></div>
-          <div>Modelo: <b>${result.equip.model}</b></div>
-          <div>Potencia: ${result.equip.power_kw} kW</div>
-          <div>Gas: ${result.equip.gas}</div>
-          <div>Rango temp.: ${result.equip.temp_range}</div>
-          <div>Tipo: ${result.equip.type}</div>
-        </div>
+        <div class="section-title">Equipos recomendados</div>
+        ${result.alternatives.map((eq, idx) => `
+          <div style="background:${idx===0?'#eff6ff':'#f9fafb'};border:1px solid ${idx===0?'#93c5fd':'#e5e7eb'};border-radius:6px;padding:8px;margin-bottom:6px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:10px;font-weight:700;color:${idx===0?'#2563eb':'#6b7280'}">${idx===0?'⭐ Opción principal':'Opción '+(idx+1)}</span>
+              <span style="font-weight:700;color:#2563eb">${eq.power_kw} kW</span>
+            </div>
+            <div class="grid2">
+              <div>Marca: <b>${eq.brand}</b></div>
+              <div>Modelo: <b>${eq.model}</b></div>
+              <div>Gas: ${eq.gas}</div><div>Rango: ${eq.temp_range}</div>
+              <div>Tipo: ${eq.type}</div><div>Dist. máx.: ${eq.max_pipe_m} m</div>
+            </div>
+          </div>`).join('')}
         ${result.extraGrams > 0 ? `<p style="margin-top:6px;background:#fef9c3;padding:4px 6px;border-radius:4px">⚠️ Añadir <b>${result.extraGrams}g</b> extra de ${form.refrigerant_type}</p>` : ''}
       </div>
       <div class="section" style="border-left-color:#2563eb">
@@ -424,20 +431,30 @@ export default function ColdRoomCalc() {
 
       <PressureChart pressureData={result.pr} refrigerant={form.refrigerant_type} />
 
-      {/* Equipo */}
+      {/* Equipos recomendados - 3 opciones */}
       <Card className="border-blue-200">
         <CardHeader className="bg-blue-50 py-3">
-          <CardTitle className="text-blue-700 text-base">Equipo sugerido</CardTitle>
+          <CardTitle className="text-blue-700 text-base">Equipos recomendados ({result.alternatives.length} opciones)</CardTitle>
         </CardHeader>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-            <p><span className="text-gray-500">Marca:</span> <strong>{result.equip.brand}</strong></p>
-            <p><span className="text-gray-500">Modelo:</span> <strong>{result.equip.model}</strong></p>
-            <p><span className="text-gray-500">Potencia:</span> {result.equip.power_kw} kW</p>
-            <p><span className="text-gray-500">Gas:</span> {result.equip.gas}</p>
-            <p><span className="text-gray-500">Rango:</span> {result.equip.temp_range}</p>
-            <p><span className="text-gray-500">Tipo:</span> {result.equip.type}</p>
-          </div>
+        <CardContent className="p-4 space-y-3">
+          {result.alternatives.map((eq, idx) => (
+            <div key={idx} className={`rounded-lg border p-3 ${idx === 0 ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${idx === 0 ? 'bg-blue-600 text-white' : 'bg-gray-400 text-white'}`}>
+                  {idx === 0 ? '⭐ Opción principal' : `Opción ${idx + 1}`}
+                </span>
+                <span className="font-bold text-blue-700">{eq.power_kw} kW</span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-1 text-sm">
+                <p><span className="text-gray-500">Marca:</span> <strong>{eq.brand}</strong></p>
+                <p><span className="text-gray-500">Modelo:</span> <strong>{eq.model}</strong></p>
+                <p><span className="text-gray-500">Gas:</span> {eq.gas}</p>
+                <p><span className="text-gray-500">Rango:</span> {eq.temp_range}</p>
+                <p><span className="text-gray-500">Tipo:</span> {eq.type}</p>
+                <p><span className="text-gray-500">Dist. máx.:</span> {eq.max_pipe_m} m</p>
+              </div>
+            </div>
+          ))}
           {result.extraGrams > 0 && (
             <div className="mt-2 p-2 bg-yellow-100 rounded text-yellow-800 text-sm">
               ⚠️ Distancia ({result.actualDist}m) supera máximo ({result.maxDist}m). Añadir <strong>{result.extraGrams}g</strong> de {form.refrigerant_type} extra.

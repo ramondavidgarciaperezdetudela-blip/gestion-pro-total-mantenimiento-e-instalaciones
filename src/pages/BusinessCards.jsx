@@ -166,22 +166,23 @@ export default function BusinessCards() {
     const email = card.use_company_email ? company?.email : card.email;
     const web = card.website || company?.website || '';
     const vcard = buildVCardString(card, company);
-    const qrUrl = `https://chart.googleapis.com/chart?cht=qr&chs=60x60&chl=${encodeURIComponent(vcard)}&choe=UTF-8`;
+    const qrUrl = `https://chart.googleapis.com/chart?cht=qr&chs=80x80&chl=${encodeURIComponent(vcard)}&choe=UTF-8`;
     const logoHtml = card.show_logo && company?.logo_url
-      ? `<img src="${company.logo_url}" style="height:22px;object-fit:contain;background:white;border-radius:3px;padding:1px 3px;" />`
-      : `<div style="width:22px;height:22px;background:${s.accent};border-radius:3px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;color:${s.bg}">${companyName[0] || 'E'}</div>`;
+      ? `<img src="${company.logo_url}" style="height:26px;object-fit:contain;background:white;border-radius:4px;padding:2px 4px;" />`
+      : `<div style="width:26px;height:26px;background:${s.accent};border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;color:${s.bg};line-height:1">${companyName[0] || 'E'}</div>`;
 
     const cardHtml = `
       <div class="card">
         <div class="c1"></div><div class="c2"></div>
+        <div class="stripe"></div>
         <div class="top">
           <div class="top-left">${logoHtml}<span class="co">${companyName}</span></div>
-          ${card.show_qr ? `<img src="${qrUrl}" width="44" height="44" style="border-radius:3px;background:white;padding:2px;" />` : ''}
+          ${card.show_qr ? `<img src="${qrUrl}" width="54" height="54" style="border-radius:4px;background:white;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,0.2);" />` : ''}
         </div>
-        <div>
+        <div class="mid">
           <p class="name">${card.name}</p>
           <p class="role">${card.role || ''}</p>
-          ${card.show_nif && card.nif ? `<p style="font-size:7px;color:${s.sub};margin-top:1px">NIF: ${card.nif}</p>` : ''}
+          ${card.show_nif && card.nif ? `<p style="font-size:8px;color:${s.sub};margin-top:2px">NIF: ${card.nif}</p>` : ''}
         </div>
         <div class="contact">
           ${phone ? `<span>📞 ${phone}</span>` : ''}
@@ -194,21 +195,48 @@ export default function BusinessCards() {
     const allCards = Array(copies).fill(cardHtml).join('');
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-      @page { size: A4; margin: 8mm; }
-      body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-      .page { display: flex; flex-wrap: wrap; gap: 4mm; align-content: flex-start; }
-      .card { width: 85mm; height: 54mm; background: ${s.bg}; color: ${s.text}; padding: 8px 10px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; border-radius: 5px; }
-      .c1 { position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; border-radius: 50%; background: ${s.accent}; opacity: 0.15; }
-      .c2 { position: absolute; bottom: -15px; left: 30px; width: 50px; height: 50px; border-radius: 50%; background: ${s.accent}; opacity: 0.1; }
-      .top { display: flex; align-items: center; justify-content: space-between; }
-      .top-left { display: flex; align-items: center; gap: 5px; }
-      .co { font-size: 8px; font-weight: bold; color: ${s.accent}; letter-spacing: 0.5px; text-transform: uppercase; }
-      .name { font-size: 13px; font-weight: bold; color: ${s.text}; margin-bottom: 2px; }
-      .role { font-size: 8px; color: ${s.sub}; text-transform: uppercase; letter-spacing: 0.8px; }
-      .contact { font-size: 7px; color: ${s.sub}; display: flex; flex-direction: column; gap: 2px; }
+      @page { size: A4 portrait; margin: 6mm; }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background: #f0f0f0; }
+      .page { 
+        display: grid; 
+        grid-template-columns: 85mm 85mm; 
+        grid-template-rows: repeat(5, 54mm);
+        gap: 4mm;
+        width: 178mm;
+        margin: 0 auto;
+      }
+      .card { 
+        width: 85mm; height: 54mm; 
+        background: ${s.bg} !important; 
+        color: ${s.text} !important; 
+        padding: 10px 12px; 
+        display: flex; flex-direction: column; justify-content: space-between; 
+        position: relative; overflow: hidden; 
+        border-radius: 6px;
+        border: 1px solid rgba(255,255,255,0.1);
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      .stripe {
+        position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        background: ${s.accent}; opacity: 0.9;
+      }
+      .c1 { position: absolute; top: -25px; right: -25px; width: 90px; height: 90px; border-radius: 50%; background: ${s.accent}; opacity: 0.18; }
+      .c2 { position: absolute; bottom: -18px; left: 20px; width: 60px; height: 60px; border-radius: 50%; background: ${s.accent}; opacity: 0.12; }
+      .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+      .top-left { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+      .co { font-size: 9px; font-weight: bold; color: ${s.accent} !important; letter-spacing: 0.6px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .mid { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 2px 0; }
+      .name { font-size: 15px; font-weight: bold; color: ${s.text} !important; margin: 0 0 3px 0; line-height: 1.2; }
+      .role { font-size: 9px; color: ${s.sub} !important; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
+      .contact { font-size: 8px; color: ${s.sub} !important; display: flex; flex-direction: column; gap: 2px; }
+      .contact span { display: block; }
     </style></head><body>
     <div class="page">${allCards}</div>
-    <script>window.onload=()=>{window.print();}</script></body></html>`;
+    <script>window.onload=()=>{ setTimeout(()=>window.print(), 500); }</script>
+    </body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
   };
