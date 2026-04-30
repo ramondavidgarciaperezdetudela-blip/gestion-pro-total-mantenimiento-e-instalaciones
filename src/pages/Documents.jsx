@@ -187,12 +187,40 @@ export default function Documents() {
     setEditing(null);setDialogOpen(true);setShowAdvanced(false);
   };
 
+  // localItemValues guarda los strings crudos mientras el usuario escribe (para no bloquear la edición)
+  const [localItemValues, setLocalItemValues] = useState({});
+
   const handleItemChange = useCallback((index, field, value) => {
     setForm((prev) => {
       const newItems = prev.items.map((item, i) => i === index ? { ...item, [field]: value } : item);
       return { ...prev, ...recalculate(newItems, prev.iva_rate) };
     });
   }, []);
+
+  // Mientras escribe: solo guarda el string local sin parsear
+  const handleItemLocalChange = useCallback((index, field, strValue) => {
+    setLocalItemValues(prev => ({ ...prev, [`${index}_${field}`]: strValue }));
+  }, []);
+
+  // Al salir del campo: parsea y actualiza el form real
+  const handleItemBlur = useCallback((index, field) => {
+    const key = `${index}_${field}`;
+    setLocalItemValues(prev => {
+      if (!(key in prev)) return prev;
+      const strVal = prev[key];
+      const parsed = parseFloat(strVal.replace(',', '.')) || 0;
+      handleItemChange(index, field, parsed);
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, [handleItemChange]);
+
+  // Obtiene el valor a mostrar: string local si está escribiendo, o el valor del form
+  const getItemDisplayValue = useCallback((index, field, formValue) => {
+    const key = `${index}_${field}`;
+    return key in localItemValues ? localItemValues[key] : (formValue ?? '');
+  }, [localItemValues]);
 
   const addItem = useCallback(() => {
     setForm((prev) => ({ ...prev, items: [...prev.items, newItem()] }));
@@ -727,9 +755,24 @@ export default function Documents() {
                   value={item.description}
                   onChange={(e) => handleItemChange(i, 'description', e.target.value)} />
                 
-                   <input className="col-span-2 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" type="number" placeholder="Cant." value={item.quantity} onChange={(e) => handleItemChange(i, 'quantity', parseFloat(e.target.value) || 0)} />
-                   <input className="col-span-2 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" type="number" placeholder="Precio" value={item.unit_price} onChange={(e) => handleItemChange(i, 'unit_price', parseFloat(e.target.value) || 0)} />
-                   <input className="col-span-1 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" type="number" placeholder="Dto" value={item.discount || 0} onChange={(e) => handleItemChange(i, 'discount', parseFloat(e.target.value) || 0)} />
+                   <input
+                  className="col-span-2 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
+                  inputMode="decimal" placeholder="Cant."
+                  value={getItemDisplayValue(i, 'quantity', item.quantity)}
+                  onChange={(e) => handleItemLocalChange(i, 'quantity', e.target.value)}
+                  onBlur={() => handleItemBlur(i, 'quantity')} />
+                   <input
+                  className="col-span-2 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
+                  inputMode="decimal" placeholder="Precio"
+                  value={getItemDisplayValue(i, 'unit_price', item.unit_price)}
+                  onChange={(e) => handleItemLocalChange(i, 'unit_price', e.target.value)}
+                  onBlur={() => handleItemBlur(i, 'unit_price')} />
+                   <input
+                  className="col-span-1 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
+                  inputMode="decimal" placeholder="Dto%"
+                  value={getItemDisplayValue(i, 'discount', item.discount || 0)}
+                  onChange={(e) => handleItemLocalChange(i, 'discount', e.target.value)}
+                  onBlur={() => handleItemBlur(i, 'discount')} />
                    <span className="col-span-1 text-xs text-right font-medium text-green-700">{item.total?.toFixed(2)}</span>
                    <button className="col-span-1 text-red-400 hover:text-red-600 text-lg leading-none text-center" onClick={() => removeItem(i)}>×</button>
                  </div>
