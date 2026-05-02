@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import { ThermalLoadBreakdown, PressureChart, EfficiencyRadar } from '../components/ThermalCharts';
+import EquipmentSelector, { CLIMATE_CATALOG } from '../components/EquipmentSelector';
 
 const REFRIGERANTS = ['R-32', 'R-410A', 'R-290', 'R-407C', 'R-134a', 'R-449A', 'R-452A', 'R-448A'];
 
@@ -24,17 +25,7 @@ const REFRIGERANT_PRESSURES = {
   'R-448A': { '0°C': 6.5, '5°C': 7.5, '10°C': 8.7,  '15°C': 10.1, '20°C': 11.7, '25°C': 13.5, '30°C': 15.6 },
 };
 
-const CLIMATE_CATALOG = [
-  { brand: 'Fujitsu', model: 'ASY-G12LFCA', power_kw: 3.5, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 20, max_height_m: 12 },
-  { brand: 'Fujitsu', model: 'ASY-G18LFCA', power_kw: 5.0, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 25, max_height_m: 15 },
-  { brand: 'Daikin', model: 'FTXC35C', power_kw: 3.5, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 20, max_height_m: 10 },
-  { brand: 'Daikin', model: 'FTXC50C', power_kw: 5.0, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 25, max_height_m: 12 },
-  { brand: 'Mitsubishi', model: 'MSZ-HR25VF', power_kw: 2.5, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 15, max_height_m: 8 },
-  { brand: 'Mitsubishi', model: 'MSZ-HR35VF', power_kw: 3.5, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 20, max_height_m: 10 },
-  { brand: 'Mitsubishi', model: 'MSZ-HR50VF', power_kw: 5.0, type: 'Split 1x1', gas: 'R-32', max_pipe_m: 25, max_height_m: 12 },
-  { brand: 'Intarcon', model: 'UNIDAD-7K', power_kw: 7.0, type: 'Cassette', gas: 'R-32', max_pipe_m: 30, max_height_m: 15 },
-  { brand: 'Intarcon', model: 'UNIDAD-10K', power_kw: 10.0, type: 'Cassette', gas: 'R-32', max_pipe_m: 30, max_height_m: 15 },
-];
+// CLIMATE_CATALOG now imported from EquipmentSelector
 
 const EXTRA_REFRIGERANT_G_PER_M = { 'R-32': 15, 'R-410A': 20, 'R-290': 10, 'R-407C': 18, 'R-134a': 12, 'R-449A': 17, 'R-452A': 18, 'R-448A': 16 };
 
@@ -461,32 +452,19 @@ export default function ThermalCalc() {
 
           <PressureChart pressureData={result.pr} refrigerant={form.refrigerant_type} />
 
-          {/* Equipos recomendados - 3 opciones */}
+          {/* Selector multi-marca con normativa RITE+FGAS */}
           <Card className="border-green-200">
             <CardHeader className="bg-green-50 py-3">
-              <CardTitle className="text-green-700 text-base">Equipos recomendados ({result.alternatives.length} opciones)</CardTitle>
+              <CardTitle className="text-green-700 text-base">Selección de equipo — RITE 2026 + F-GAS 2026</CardTitle>
             </CardHeader>
-            <CardContent className="p-4 space-y-3">
-              {result.alternatives.map((eq, idx) => (
-                <div key={idx} className={`rounded-lg border p-3 ${idx === 0 ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${idx === 0 ? 'bg-green-600 text-white' : 'bg-gray-400 text-white'}`}>
-                      {idx === 0 ? '⭐ Opción principal' : `Opción ${idx + 1}`}
-                    </span>
-                    <span className="font-bold text-green-700">{eq.power_kw} kW</span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-1 text-sm">
-                    <p><span className="text-gray-500">Marca:</span> <strong>{eq.brand}</strong></p>
-                    <p><span className="text-gray-500">Modelo:</span> <strong>{eq.model}</strong></p>
-                    <p><span className="text-gray-500">Gas:</span> {eq.gas}</p>
-                    <p><span className="text-gray-500">Tipo:</span> {eq.type}</p>
-                    <p><span className="text-gray-500">Dist. máx.:</span> {eq.max_pipe_m} m</p>
-                    <p><span className="text-gray-500">Alt. máx.:</span> {eq.max_height_m} m</p>
-                  </div>
-                </div>
-              ))}
+            <CardContent className="p-4">
+              <EquipmentSelector
+                mode="clima"
+                loadKW={result.loadW / 1000}
+                onSelect={(eq) => setResult(prev => ({ ...prev, equip: eq, alternatives: [eq, ...prev.alternatives.filter(a => a.model !== eq.model)].slice(0, 3) }))}
+              />
               {result.extraGrams > 0 && (
-                <div className="mt-2 p-2 bg-yellow-100 rounded text-yellow-800 text-sm">
+                <div className="mt-3 p-2 bg-yellow-100 rounded text-yellow-800 text-sm">
                   ⚠️ Distancia ({result.actualDist}m) supera máximo ({result.maxDist}m). Añadir <strong>{result.extraGrams}g</strong> de {form.refrigerant_type} extra.
                 </div>
               )}

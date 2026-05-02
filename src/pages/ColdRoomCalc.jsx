@@ -13,6 +13,7 @@ import ColdRoomHumidityCalc from '../components/ColdRoomHumidityCalc';
 import RefrigerantSelector from '../components/RefrigerantSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ColdRoomBreakdown, PressureChart, EfficiencyRadar } from '../components/ThermalCharts';
+import EquipmentSelector, { COLD_ROOM_CATALOG } from '../components/EquipmentSelector';
 
 import { REFRIGERANT_DATABASE } from '../components/refrigerantData';
 const REFRIGERANTS = REFRIGERANT_DATABASE.map(r => r.code);
@@ -28,16 +29,8 @@ const REF_PRESSURES = {
 
 const EXTRA_REF_G_PER_M = { 'R-404A': 22, 'R-448A': 18, 'R-449A': 18, 'R-452A': 19, 'R-134a': 14, 'R-290': 11 };
 
-const COLD_CATALOG = [
-  { brand: 'Intarcon', model: 'CHCU 1.5 R-449A', power_kw: 1.5, gas: 'R-449A', temp_range: '0/+10°C', max_pipe_m: 15, max_height_m: 5, type: 'Monobloc' },
-  { brand: 'Intarcon', model: 'CHCU 3.0 R-449A', power_kw: 3.0, gas: 'R-449A', temp_range: '-5/+10°C', max_pipe_m: 20, max_height_m: 8, type: 'Split' },
-  { brand: 'Intarcon', model: 'CHCU 5.0 R-449A', power_kw: 5.0, gas: 'R-449A', temp_range: '-10/+5°C', max_pipe_m: 25, max_height_m: 10, type: 'Split' },
-  { brand: 'Intarcon', model: 'CHCU 8.0 R-449A', power_kw: 8.0, gas: 'R-449A', temp_range: '-15/0°C', max_pipe_m: 30, max_height_m: 12, type: 'Split' },
-  { brand: 'Intarcon', model: 'CHCU 12.0 R-448A', power_kw: 12.0, gas: 'R-448A', temp_range: '-25/-5°C', max_pipe_m: 35, max_height_m: 12, type: 'Split' },
-  { brand: 'Zanotti', model: 'SAP 106', power_kw: 3.0, gas: 'R-452A', temp_range: '0/+10°C', max_pipe_m: 20, max_height_m: 8, type: 'Split' },
-  { brand: 'Zanotti', model: 'SAP 212', power_kw: 6.0, gas: 'R-452A', temp_range: '-10/+5°C', max_pipe_m: 25, max_height_m: 10, type: 'Split' },
-  { brand: 'Zanotti', model: 'SAP 320', power_kw: 10.0, gas: 'R-452A', temp_range: '-15/0°C', max_pipe_m: 30, max_height_m: 12, type: 'Split' },
-];
+// COLD_CATALOG now imported from EquipmentSelector as COLD_ROOM_CATALOG
+const COLD_CATALOG = COLD_ROOM_CATALOG;
 
 function calcBreakdown(f) {
   const insul = { '60mm': 0.35, '80mm': 0.27, '100mm': 0.22, '120mm': 0.18 }[f.panel_thickness] || 0.27;
@@ -458,32 +451,19 @@ export default function ColdRoomCalc() {
 
       <PressureChart pressureData={result.pr} refrigerant={form.refrigerant_type} />
 
-      {/* Equipos recomendados - 3 opciones */}
+      {/* Selector multi-marca con normativa RITE+FGAS */}
       <Card className="border-blue-200">
         <CardHeader className="bg-blue-50 py-3">
-          <CardTitle className="text-blue-700 text-base">Equipos recomendados ({result.alternatives.length} opciones)</CardTitle>
+          <CardTitle className="text-blue-700 text-base">Selección de equipo — RITE 2026 + F-GAS 2026</CardTitle>
         </CardHeader>
-        <CardContent className="p-4 space-y-3">
-          {result.alternatives.map((eq, idx) => (
-            <div key={idx} className={`rounded-lg border p-3 ${idx === 0 ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${idx === 0 ? 'bg-blue-600 text-white' : 'bg-gray-400 text-white'}`}>
-                  {idx === 0 ? '⭐ Opción principal' : `Opción ${idx + 1}`}
-                </span>
-                <span className="font-bold text-blue-700">{eq.power_kw} kW</span>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-1 text-sm">
-                <p><span className="text-gray-500">Marca:</span> <strong>{eq.brand}</strong></p>
-                <p><span className="text-gray-500">Modelo:</span> <strong>{eq.model}</strong></p>
-                <p><span className="text-gray-500">Gas:</span> {eq.gas}</p>
-                <p><span className="text-gray-500">Rango:</span> {eq.temp_range}</p>
-                <p><span className="text-gray-500">Tipo:</span> {eq.type}</p>
-                <p><span className="text-gray-500">Dist. máx.:</span> {eq.max_pipe_m} m</p>
-              </div>
-            </div>
-          ))}
+        <CardContent className="p-4">
+          <EquipmentSelector
+            mode="camara"
+            loadKW={result.loadW / 1000}
+            onSelect={(eq) => setResult(prev => ({ ...prev, equip: eq, alternatives: [eq, ...prev.alternatives.filter(a => a.model !== eq.model)].slice(0, 3) }))}
+          />
           {result.extraGrams > 0 && (
-            <div className="mt-2 p-2 bg-yellow-100 rounded text-yellow-800 text-sm">
+            <div className="mt-3 p-2 bg-yellow-100 rounded text-yellow-800 text-sm">
               ⚠️ Distancia ({result.actualDist}m) supera máximo ({result.maxDist}m). Añadir <strong>{result.extraGrams}g</strong> de {form.refrigerant_type} extra.
             </div>
           )}
