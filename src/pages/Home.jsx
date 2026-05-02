@@ -168,8 +168,40 @@ export default function Home() {
     await loadData(true);
   }, [loadData]);
 
+  // Colores de badge por estado de documento
   const STATUS_COLORS = { borrador: 'bg-gray-100 text-gray-600', enviado: 'bg-blue-100 text-blue-700', pagado: 'bg-green-100 text-green-700', vencido: 'bg-red-100 text-red-700', cancelado: 'bg-orange-100 text-orange-700' };
   const SAT_STATUS = { pendiente: 'bg-amber-100 text-amber-700', en_curso: 'bg-blue-100 text-blue-700', completada: 'bg-green-100 text-green-700' };
+
+  // Colores de fila completa según estado/urgencia del documento
+  const DOC_ROW_BG = {
+    vencido:   'bg-red-50 border-l-4 border-l-red-400',
+    enviado:   'bg-blue-50 border-l-4 border-l-blue-300',
+    pagado:    'bg-green-50 border-l-4 border-l-green-400',
+    borrador:  'bg-gray-50 border-l-4 border-l-gray-300',
+    cancelado: 'bg-orange-50 border-l-4 border-l-orange-300',
+  };
+
+  // Colores de fila SAT según prioridad
+  const SAT_PRIORITY_BG = {
+    urgente: 'bg-red-50 border-l-4 border-l-red-500',
+    alta:    'bg-orange-50 border-l-4 border-l-orange-400',
+    normal:  'bg-amber-50 border-l-4 border-l-amber-300',
+    baja:    'bg-gray-50 border-l-4 border-l-gray-300',
+  };
+  const SAT_PRIORITY_BADGE = {
+    urgente: 'bg-red-100 text-red-700',
+    alta:    'bg-orange-100 text-orange-700',
+    normal:  'bg-amber-100 text-amber-700',
+    baja:    'bg-gray-100 text-gray-600',
+  };
+
+  // Colores citas por prioridad
+  const APT_PRIORITY_BG = {
+    urgente: 'bg-red-50 border border-red-200',
+    alta:    'bg-orange-50 border border-orange-200',
+    media:   'bg-blue-50 border border-blue-100',
+    baja:    'bg-gray-50 border border-gray-100',
+  };
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
@@ -222,13 +254,18 @@ export default function Home() {
                   <CheckCircle className="w-4 h-4" /><span>Sin SAT pendientes</span>
                 </div>
               ) : recentSat.map(sat => (
-                <Link key={sat.id} to={createPageUrl('SAT')} className="flex items-center justify-between gap-2 p-3 hover:bg-orange-50">
+                <Link key={sat.id} to={createPageUrl('SAT')} className={`flex items-center justify-between gap-2 p-3 ${SAT_PRIORITY_BG[sat.priority] || 'bg-amber-50 border-l-4 border-l-amber-300'}`}>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-gray-800 truncate">#{sat.order_number || 'S/N'} — {sat.contact_name}</p>
+                    <div className="flex items-center gap-1">
+                      {sat.priority === 'urgente' && <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0" />}
+                      <p className="text-xs font-semibold text-gray-800 truncate">#{sat.order_number || 'S/N'} — {sat.contact_name}</p>
+                    </div>
                     <p className="text-[10px] text-gray-500">{sat.type} · {sat.date}</p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <Badge className="text-[10px] bg-amber-100 text-amber-700">{sat.status}</Badge>
+                    {sat.priority && sat.priority !== 'normal' && (
+                      <Badge className={`text-[9px] ${SAT_PRIORITY_BADGE[sat.priority] || ''}`}>{sat.priority}</Badge>
+                    )}
                     <ChevronRight className="w-3 h-3 text-gray-300" />
                   </div>
                 </Link>
@@ -260,9 +297,12 @@ export default function Home() {
               {recentDocs.length === 0 ? (
                 <p className="p-3 text-xs text-gray-400 text-center">Sin documentos</p>
               ) : recentDocs.map(doc => (
-                <Link key={doc.id} to={createPageUrl('Documents')} className="flex items-center justify-between gap-2 p-3 hover:bg-violet-50">
+                <Link key={doc.id} to={createPageUrl('Documents')} className={`flex items-center justify-between gap-2 p-3 ${DOC_ROW_BG[doc.status] || 'bg-gray-50'}`}>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold capitalize truncate">{doc.doc_type} Nº{doc.doc_number}</p>
+                    <div className="flex items-center gap-1">
+                      {doc.status === 'vencido' && <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0" />}
+                      <p className="text-xs font-semibold capitalize truncate">{doc.doc_type} Nº{doc.doc_number}</p>
+                    </div>
                     <p className="text-[10px] text-gray-500 truncate">{doc.contact_name} · {doc.date}</p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
@@ -574,13 +614,16 @@ export default function Home() {
             {appointments.length === 0 ?
             <p className="text-xs text-gray-400 py-3 text-center">Sin citas hoy</p> :
             appointments.map((apt) =>
-            <div key={apt.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+            <div key={apt.id} className={`flex items-center gap-2 p-2 rounded-lg ${APT_PRIORITY_BG[apt.priority] || 'bg-gray-50 border border-gray-100'}`}>
                 <span className="text-xs font-bold text-blue-600 min-w-[40px]">{apt.time_start || '--'}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate">{apt.title}</p>
                   <p className="text-[10px] text-gray-500 truncate">{apt.contact_name}</p>
                 </div>
-                <Badge variant="outline" className="text-[10px]">{apt.type}</Badge>
+                <div className="flex items-center gap-1">
+                  {apt.priority === 'urgente' && <AlertCircle className="w-3 h-3 text-red-500" />}
+                  <Badge variant="outline" className="text-[10px]">{apt.type}</Badge>
+                </div>
               </div>
             )}
           </CardContent>
@@ -592,18 +635,19 @@ export default function Home() {
             <CardTitle className="text-sm font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-violet-500" />Últimos documentos</CardTitle>
             <Link to={createPageUrl('Documents')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todos</Link>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1.5">
             {recentDocs.length === 0 ?
             <p className="text-xs text-gray-400 py-3 text-center">Sin documentos</p> :
             recentDocs.map((doc) =>
-            <div key={doc.id} className="flex items-center justify-between gap-2">
+            <div key={doc.id} className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 ${DOC_ROW_BG[doc.status] || 'bg-gray-50'}`}>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-extrabold capitalize truncate">{doc.doc_type} {doc.doc_number}</p>
-                  <p className="text-gray-500 text-base truncate">{doc.contact_name}</p>
+                  <p className="text-gray-500 text-[11px] truncate">{doc.contact_name}</p>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   <span className="text-xs font-bold">{doc.total?.toFixed(0)}€</span>
                   <Badge className={`text-[10px] ${STATUS_COLORS[doc.status] || ''}`}>{doc.status}</Badge>
+                  {doc.status === 'vencido' && <AlertCircle className="w-3 h-3 text-red-500" />}
                 </div>
               </div>
             )}
@@ -616,12 +660,17 @@ export default function Home() {
             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Wrench className="w-4 h-4 text-orange-500" />SAT pendientes</CardTitle>
             <Link to={createPageUrl('SAT')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todos</Link>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1.5">
             {recentSat.length === 0 ?
             <p className="text-xs text-gray-400 py-3 text-center">Sin órdenes pendientes</p> :
             recentSat.map((sat) =>
-            <div key={sat.id} className="p-2 bg-orange-50 rounded-lg">
-                <p className="text-xs font-medium truncate">{sat.contact_name}</p>
+            <div key={sat.id} className={`p-2 rounded-lg ${SAT_PRIORITY_BG[sat.priority] || 'bg-amber-50 border-l-4 border-l-amber-300'}`}>
+                <div className="flex items-center justify-between gap-1">
+                  <p className="text-xs font-semibold truncate flex-1">{sat.contact_name}</p>
+                  {sat.priority && sat.priority !== 'normal' && (
+                    <Badge className={`text-[9px] flex-shrink-0 ${SAT_PRIORITY_BADGE[sat.priority] || ''}`}>{sat.priority}</Badge>
+                  )}
+                </div>
                 <div className="flex justify-between items-center mt-0.5">
                   <p className="text-[10px] text-gray-500">{sat.type} · {sat.date}</p>
                   <Badge className={`text-[10px] ${SAT_STATUS[sat.status] || ''}`}>{sat.status}</Badge>

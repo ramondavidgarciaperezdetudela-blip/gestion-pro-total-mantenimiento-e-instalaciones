@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle, Wrench, MessageCircle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Wrench, MessageCircle, RefreshCw, AlertCircle } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getHomeData, invalidateHomeCache } from '@/lib/homeDataCache';
 import { base44 } from '@/api/base44Client';
@@ -95,52 +95,79 @@ export default function PendingTasksPanel() {
             {tasks.presupuestos.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-orange-700">📋 PRESUPUESTOS SIN RESPUESTA ({tasks.presupuestos.length})</p>
-                {tasks.presupuestos.map(p => (
-                  <div key={p.id} className="flex items-start justify-between gap-2 p-2 rounded bg-white border border-orange-100 text-xs">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-800 truncate">{p.contact_name} — Nº{p.doc_number}</p>
-                      <p className="text-gray-500 text-[10px]">{p.total?.toFixed(2)} € · Hace {p.daysOld} días</p>
+                {tasks.presupuestos.map(p => {
+                  const urgent = p.daysOld > 21;
+                  const warning = p.daysOld > 14;
+                  const rowBg = urgent ? 'bg-red-50 border-l-4 border-l-red-400 border-red-100' : warning ? 'bg-orange-50 border-l-4 border-l-orange-400 border-orange-100' : 'bg-white border border-orange-100';
+                  const badgeCls = urgent ? 'bg-red-100 text-red-700' : warning ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700';
+                  return (
+                    <div key={p.id} className={`flex items-start justify-between gap-2 p-2 rounded text-xs ${rowBg}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          {urgent && <AlertTriangle className="w-3 h-3 text-red-500 flex-shrink-0" />}
+                          <p className="font-medium text-gray-800 truncate">{p.contact_name} — Nº{p.doc_number}</p>
+                        </div>
+                        <p className="text-gray-500 text-[10px]">{p.total?.toFixed(2)} € · Hace {p.daysOld} días</p>
+                      </div>
+                      <Badge className={`text-[10px] whitespace-nowrap flex-shrink-0 ${badgeCls}`}>{p.daysOld}d</Badge>
+                      <button onClick={() => sendReminder(p, 'presupuesto')} className="p-1 text-green-600 hover:bg-green-50 rounded flex-shrink-0" title="Recordatorio WhatsApp">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <Badge className="bg-orange-100 text-orange-700 text-[10px] whitespace-nowrap">{p.daysOld}+ días</Badge>
-                    <button onClick={() => sendReminder(p, 'presupuesto')} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Recordatorio WhatsApp">
-                      <MessageCircle className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             {tasks.satOrders.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-red-700">🔧 SAT PENDIENTES &gt;5 DÍAS ({tasks.satOrders.length})</p>
-                {tasks.satOrders.map(s => (
-                  <div key={s.id} className="flex items-start justify-between gap-2 p-2 rounded bg-white border border-red-100 text-xs">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-800 truncate">#{s.order_number || 'S/N'} — {s.contact_name}</p>
-                      <p className="text-gray-500 text-[10px]">{s.type} · Hace {s.daysOld} días</p>
+                {tasks.satOrders.map(s => {
+                  const urgent = s.daysOld > 14 || s.priority === 'urgente';
+                  const warning = s.daysOld > 7 || s.priority === 'alta';
+                  const rowBg = urgent ? 'bg-red-50 border-l-4 border-l-red-500 border-red-100' : warning ? 'bg-orange-50 border-l-4 border-l-orange-400 border-orange-100' : 'bg-white border border-red-100';
+                  const badgeCls = urgent ? 'bg-red-100 text-red-700' : warning ? 'bg-orange-100 text-orange-700' : 'bg-amber-100 text-amber-700';
+                  return (
+                    <div key={s.id} className={`flex items-start justify-between gap-2 p-2 rounded text-xs ${rowBg}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          {urgent && <AlertTriangle className="w-3 h-3 text-red-500 flex-shrink-0" />}
+                          <p className="font-medium text-gray-800 truncate">#{s.order_number || 'S/N'} — {s.contact_name}</p>
+                        </div>
+                        <p className="text-gray-500 text-[10px]">{s.type} · Hace {s.daysOld} días{s.priority && s.priority !== 'normal' ? ` · ${s.priority}` : ''}</p>
+                      </div>
+                      <Badge className={`text-[10px] whitespace-nowrap flex-shrink-0 ${badgeCls}`}>{s.daysOld}d</Badge>
+                      <button onClick={() => sendReminder(s, 'sat')} className="p-1 text-green-600 hover:bg-green-50 rounded flex-shrink-0" title="Recordatorio WhatsApp">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <Badge className="bg-red-100 text-red-700 text-[10px] whitespace-nowrap">{s.daysOld}+ días</Badge>
-                    <button onClick={() => sendReminder(s, 'sat')} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Recordatorio WhatsApp">
-                      <MessageCircle className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             {tasks.maintenance.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-amber-700">⚙️ MANTENIMIENTOS PENDIENTES ({tasks.maintenance.length})</p>
-                {tasks.maintenance.map(m => (
-                  <div key={m.id} className="flex items-start justify-between gap-2 p-2 rounded bg-white border border-amber-100 text-xs">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-800 truncate">{m.contact_name} — {m.equipment_brand} {m.equipment_model}</p>
-                      <p className="text-gray-500 text-[10px]">{m.type} · Hace {m.daysSinceLastMaint} días</p>
+                {tasks.maintenance.map(m => {
+                  const urgent = m.daysSinceLastMaint > 180;
+                  const warning = m.daysSinceLastMaint > 90;
+                  const rowBg = urgent ? 'bg-red-50 border-l-4 border-l-red-400 border-red-100' : warning ? 'bg-amber-50 border-l-4 border-l-amber-400 border-amber-100' : 'bg-white border border-amber-100';
+                  const badgeCls = urgent ? 'bg-red-100 text-red-700' : warning ? 'bg-amber-100 text-amber-700' : 'bg-yellow-100 text-yellow-700';
+                  return (
+                    <div key={m.id} className={`flex items-start justify-between gap-2 p-2 rounded text-xs ${rowBg}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          {urgent && <AlertTriangle className="w-3 h-3 text-red-500 flex-shrink-0" />}
+                          <p className="font-medium text-gray-800 truncate">{m.contact_name} — {m.equipment_brand} {m.equipment_model}</p>
+                        </div>
+                        <p className="text-gray-500 text-[10px]">{m.type} · Hace {m.daysSinceLastMaint} días</p>
+                      </div>
+                      <Badge className={`text-[10px] whitespace-nowrap flex-shrink-0 ${badgeCls}`}>{m.daysSinceLastMaint}d</Badge>
+                      <button onClick={() => sendReminder(m, 'maintenance')} className="p-1 text-green-600 hover:bg-green-50 rounded flex-shrink-0" title="Recordatorio WhatsApp">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <Badge className="bg-amber-100 text-amber-700 text-[10px] whitespace-nowrap">{m.daysSinceLastMaint}d</Badge>
-                    <button onClick={() => sendReminder(m, 'maintenance')} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Recordatorio WhatsApp">
-                      <MessageCircle className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
