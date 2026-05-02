@@ -16,6 +16,14 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
   const [signDatetime, setSignDatetime] = useState(existingDatetime);
   const lastPos = useRef(null);
 
+  // Bloquear scroll del body mientras el canvas de firma está visible
+  useEffect(() => {
+    if (!showCanvas || value) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [showCanvas, value]);
+
   const initCanvas = useCallback(() => {
     requestAnimationFrame(() => {
       const canvas = canvasRef.current;

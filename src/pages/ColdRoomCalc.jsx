@@ -126,7 +126,8 @@ export default function ColdRoomCalc() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [existingCalcId, setExistingCalcId] = useState(null);
-  const printRef = useRef(null);
+  const printRefCamara = useRef(null);
+  const printRefCombinado = useRef(null);
   const humidityPrintRef = useRef(null);
 
   useEffect(() => { base44.entities.Contact.list().then(setContacts); }, []);
@@ -390,7 +391,7 @@ export default function ColdRoomCalc() {
   );
 
   const ResultSection = ({ withHumidity = false }) => result && breakdown ? (
-    <div ref={printRef} className="space-y-4 mt-4">
+    <div ref={withHumidity ? printRefCombinado : printRefCamara} className="space-y-4 mt-4">
       <CompanyHeader className="mb-4" />
 
       {withHumidity && (
@@ -517,7 +518,7 @@ export default function ColdRoomCalc() {
 
       {/* Acciones */}
       <div className="flex gap-2 flex-wrap">
-        <PrintButton contentRef={printRef} title={withHumidity ? "Cálculo Cámara + Humedad" : "Cálculo Cámara Frigorífica"} />
+        <PrintButton contentRef={withHumidity ? printRefCombinado : printRefCamara} title={withHumidity ? "Cálculo Cámara + Humedad" : "Cálculo Cámara Frigorífica"} />
         <Button onClick={generatePDF} variant="outline" className="gap-2">
           <FileDown className="w-4 h-4" /> PDF completo
         </Button>

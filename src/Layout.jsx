@@ -287,7 +287,7 @@ export default function Layout({ children, currentPageName }) {
       </aside>
 
       {/* Main */}
-      <div className="flex-1 lg:ml-64 min-h-screen relative">
+      <div className="flex-1 lg:ml-64 min-h-screen relative overflow-x-hidden min-w-0">
         {/* Background watermark logo */}
         {company?.logo_url &&
         <div
@@ -321,7 +321,7 @@ export default function Layout({ children, currentPageName }) {
             <NotificationsPanel />
           </div>
         </header>
-        <main className="p-3 md:p-6 max-w-7xl mx-auto relative z-10 pb-28 lg:pb-6 overflow-x-hidden">
+        <main className="p-3 md:p-6 max-w-7xl mx-auto relative z-10 pb-28 lg:pb-6 overflow-x-hidden min-w-0 w-full">
           {children}
         </main>
 
