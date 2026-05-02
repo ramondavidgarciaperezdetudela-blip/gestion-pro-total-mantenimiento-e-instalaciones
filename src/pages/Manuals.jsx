@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { BookOpen, ExternalLink, Search, Download, Sun, Battery, Zap, Copy, Printer, RefreshCw, Globe, ChevronDown, ChevronUp } from 'lucide-react';
+import { BookOpen, ExternalLink, Search, Download, Sun, Battery, Zap, Copy, Printer, RefreshCw, Globe, ChevronDown, ChevronUp, WifiOff, CloudOff } from 'lucide-react';
+import { saveToCache, loadFromCache, formatCacheDate } from '@/lib/offlineCache';
 
 // ─── SOLAR / ENERGÍAS ────────────────────────────────────────────────────────
 const SOLAR_MANUALS = [
@@ -291,20 +292,51 @@ function ManualSection({ sections, search }) {
 
 export default function Manuals() {
   const [search, setSearch] = useState('');
+  const [isOffline, setIsOffline] = useState(false);
+  const [cacheDate, setCacheDate] = useState('');
+
+  useEffect(() => {
+    // Guardar índice de manuales en caché (sólo metadatos, sin URLs externas que requieren red)
+    const allData = { solar: SOLAR_MANUALS, others: OTHER_MANUALS };
+    saveToCache('manuals_index', allData);
+    setCacheDate(formatCacheDate(Date.now()));
+
+    const handleOffline = () => setIsOffline(true);
+    const handleOnline = () => setIsOffline(false);
+    setIsOffline(!navigator.onLine);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
 
   const solarCount = SOLAR_MANUALS.reduce((a, c) => a + c.items.length, 0);
   const otherCount = OTHER_MANUALS.reduce((a, c) => a + c.items.length, 0);
 
   return (
     <div className="space-y-4">
+      {isOffline && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+          <WifiOff className="w-4 h-4 flex-shrink-0" />
+          <span>Sin conexión — los nombres y referencias están disponibles, pero los enlaces externos requieren internet</span>
+        </div>
+      )}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <BookOpen className="w-6 h-6 text-teal-600" />Manuales Técnicos
         </h1>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs flex items-center gap-1">
-            <Globe className="w-3 h-3" /> Online · Auto-actualizados
-          </Badge>
+          {!isOffline ? (
+            <Badge variant="outline" className="text-xs flex items-center gap-1">
+              <Globe className="w-3 h-3" /> Online · Auto-actualizados
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs flex items-center gap-1 border-amber-300 text-amber-700">
+              <CloudOff className="w-3 h-3" /> Modo sin conexión
+            </Badge>
+          )}
         </div>
       </div>
 

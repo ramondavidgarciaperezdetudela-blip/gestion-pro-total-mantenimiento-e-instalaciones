@@ -14,8 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
    Plus, Search, Phone, Mail, Building2, User, Navigation, Trash2, Edit,
    Camera, Users, AlertTriangle, Euro, LayoutGrid, List, Star, MapPin,
-   ChevronRight, TrendingUp, FileText, Wrench, Download
+   ChevronRight, TrendingUp, FileText, Wrench, Download, WifiOff, RefreshCw
  } from 'lucide-react';
+import { saveToCache, loadFromCache, formatCacheDate } from '@/lib/offlineCache';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
 import CityAutocomplete from '../components/CityAutocomplete';
 import PostalCodeSearch from '../components/PostalCodeSearch';
@@ -168,14 +169,32 @@ export default function Contacts() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [fetchingLogo, setFetchingLogo] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+  const [cacheDate, setCacheDate] = useState('');
   const photoInputRef = React.useRef(null);
   const cameraInputRef = React.useRef(null);
 
-  useEffect(() => { loadContacts(); }, []);
+  useEffect(() => {
+    // Cargar caché inmediatamente mientras se espera la red
+    const cached = loadFromCache('contacts');
+    if (cached) {
+      setContacts(cached.data);
+      setCacheDate(formatCacheDate(cached.ts));
+    }
+    loadContacts();
+  }, []);
 
   const loadContacts = useCallback(async () => {
-    const data = await base44.entities.Contact.list('-created_date', 500);
-    setContacts(data);
+    try {
+      const data = await base44.entities.Contact.list('-created_date', 500);
+      setContacts(data);
+      saveToCache('contacts', data);
+      setCacheDate(formatCacheDate(Date.now()));
+      setIsOffline(false);
+    } catch {
+      // Sin red: usar caché existente
+      setIsOffline(true);
+    }
   }, []);
 
   const handleSave = async () => {
@@ -239,6 +258,20 @@ export default function Contacts() {
   return (
     <PullToRefresh onRefresh={loadContacts}>
     <div className="space-y-4">
+      {isOffline && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+          <WifiOff className="w-4 h-4 flex-shrink-0" />
+          <span>Sin conexión — mostrando caché{cacheDate ? ` del ${cacheDate}` : ''}</span>
+          <button onClick={loadContacts} className="ml-auto flex items-center gap-1 text-amber-700 hover:text-amber-900">
+            <RefreshCw className="w-3 h-3" />Reintentar
+          </button>
+        </div>
+      )}
+      {!isOffline && cacheDate && (
+        <div className="text-[10px] text-gray-400 text-right -mb-2">
+          Caché actualizada: {cacheDate}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Users className="w-6 h-6 text-emerald-500" />Contactos

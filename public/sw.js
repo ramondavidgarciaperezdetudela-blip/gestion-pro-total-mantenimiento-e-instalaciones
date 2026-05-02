@@ -1,12 +1,14 @@
-// Service Worker - SAT Gestión Profesional
-const CACHE_NAME = 'sat-gestion-v1';
+// Service Worker - Caché offline para SAT Manager
+// Estrategia: Cache-first para assets estáticos, Network-first para API
 
-// Archivos esenciales a cachear para funcionamiento básico offline
+const CACHE_NAME = 'sat-manager-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/manifest.json',
 ];
 
+// Instalación: pre-cachear assets estáticos
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -16,56 +18,64 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
+// Activación: eliminar cachés antiguas
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(
+        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+      )
     )
   );
   self.clients.claim();
 });
 
+// Fetch: estrategia según tipo de recurso
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+  const { request } = event;
+  const url = new URL(request.url);
 
-  // Para peticiones a la API, siempre ir a la red
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/functions/')) {
-    return;
-  }
+  // Solo manejar peticiones GET
+  if (request.method !== 'GET') return;
 
-  // Para navegación (páginas HTML), usar Network-First con fallback a caché
-  if (event.request.mode === 'navigate') {
+  // Ignorar extensiones de Chrome y peticiones de otros orígenes no relevantes
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return;
+
+  // Para assets estáticos (JS, CSS, imágenes): cache-first
+  const isStaticAsset = /\.(js|css|png|jpg|jpeg|svg|ico|woff2?|ttf)$/.test(url.pathname);
+  if (isStaticAsset) {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const cloned = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            const cloned = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
+          }
           return response;
-        })
-        .catch(() => {
-          return caches.match('/') || caches.match('/index.html');
-        })
+        }).catch(() => cached || new Response('', { status: 503 }));
+      })
     );
     return;
   }
 
-  // Para assets estáticos (JS, CSS, imágenes), usar Cache-First
-  if (
-    url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.css') ||
-    url.pathname.endsWith('.svg') ||
-    url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.ico') ||
-    url.pathname.endsWith('.woff2')
-  ) {
+  // Para navegación (HTML/SPA): network-first con fallback a index.html
+  if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match(event.request).then((cached) => {
-        return cached || fetch(event.request).then((response) => {
-          const cloned = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
-          return response;
-        });
-      })
+      fetch(request).catch(() =>
+        caches.match('/index.html').then((cached) => cached || new Response('Offline', { status: 503 }))
+      )
+    );
+    return;
+  }
+
+  // Para peticiones de API de base44: network-first, sin cachear (datos sensibles)
+  if (url.hostname.includes('base44') || url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(request).catch(() => new Response(JSON.stringify({ error: 'offline' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' }
+      }))
     );
     return;
   }
