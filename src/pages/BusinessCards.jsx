@@ -76,20 +76,23 @@ function CardPreview({ card, company, size = 'normal' }) {
 
       {/* Top: logo + company */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {card.show_logo && (
             company?.logo_url
-              ? <img src={company.logo_url} alt="logo" style={{ height: isSmall ? 18 : 26, objectFit: 'contain', background: 'white', borderRadius: 3, padding: '1px 3px' }} />
-              : <div style={{ width: isSmall ? 18 : 26, height: isSmall ? 18 : 26, background: s.accent, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: isSmall ? 10 : 13, color: s.bg }}>
+              ? <img src={company.logo_url} alt="logo" style={{ height: isSmall ? 22 : 36, width: isSmall ? 22 : 36, objectFit: 'contain', background: 'white', borderRadius: 4, padding: '2px', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', flexShrink: 0 }} />
+              : <div style={{ width: isSmall ? 22 : 36, height: isSmall ? 22 : 36, background: s.accent, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: isSmall ? 11 : 16, color: s.bg, flexShrink: 0 }}>
                   {companyName[0] || 'E'}
                 </div>
           )}
-          <span style={{ fontSize: isSmall ? '7px' : '10px', fontWeight: 'bold', color: s.accent, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: isSmall ? '7px' : '10px', fontWeight: 'bold', color: s.accent, letterSpacing: '0.5px', textTransform: 'uppercase', lineHeight: 1.2 }}>
             {companyName}
           </span>
         </div>
         {card.show_qr && !isSmall && (
-          <QRCode value={vcard} size={48} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <QRCode value={vcard} size={56} />
+            <span style={{ fontSize: '6px', color: s.sub, textAlign: 'center', lineHeight: 1 }}>Guardar contacto</span>
+          </div>
         )}
       </div>
 
@@ -168,8 +171,8 @@ export default function BusinessCards() {
     const vcard = buildVCardString(card, company);
     const qrUrl = `https://chart.googleapis.com/chart?cht=qr&chs=80x80&chl=${encodeURIComponent(vcard)}&choe=UTF-8`;
     const logoHtml = card.show_logo && company?.logo_url
-      ? `<img src="${company.logo_url}" style="height:26px;object-fit:contain;background:white;border-radius:4px;padding:2px 4px;" />`
-      : `<div style="width:26px;height:26px;background:${s.accent};border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;color:${s.bg};line-height:1">${companyName[0] || 'E'}</div>`;
+      ? `<img src="${company.logo_url}" style="height:36px;width:36px;object-fit:contain;background:white;border-radius:4px;padding:2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);flex-shrink:0;" />`
+      : `<div style="width:36px;height:36px;background:${s.accent};border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px;color:${s.bg};line-height:1;flex-shrink:0;">${companyName[0] || 'E'}</div>`;
 
     const cardHtml = `
       <div class="card">
@@ -177,7 +180,7 @@ export default function BusinessCards() {
         <div class="stripe"></div>
         <div class="top">
           <div class="top-left">${logoHtml}<span class="co">${companyName}</span></div>
-          ${card.show_qr ? `<img src="${qrUrl}" width="54" height="54" style="border-radius:4px;background:white;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,0.2);" />` : ''}
+          ${card.show_qr ? `<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><img src="${qrUrl}" width="60" height="60" style="border-radius:4px;background:white;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,0.2);" /><span style="font-size:6px;color:${s.sub};text-align:center">Guardar contacto</span></div>` : ''}
         </div>
         <div class="mid">
           <p class="name">${card.name}</p>
@@ -250,8 +253,8 @@ export default function BusinessCards() {
     const vcard = buildVCardString(card, company);
     const qrUrl = `https://chart.googleapis.com/chart?cht=qr&chs=60x60&chl=${encodeURIComponent(vcard)}&choe=UTF-8`;
     const logoHtml = card.show_logo && company?.logo_url
-      ? `<img src="${company.logo_url}" style="height:26px;object-fit:contain;background:white;border-radius:3px;padding:1px 3px;" />`
-      : `<div style="width:26px;height:26px;background:${s.accent};border-radius:3px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;color:${s.bg}">${companyName[0] || 'E'}</div>`;
+      ? `<img src="${company.logo_url}" style="height:36px;width:36px;object-fit:contain;background:white;border-radius:4px;padding:2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);flex-shrink:0;" />`
+      : `<div style="width:36px;height:36px;background:${s.accent};border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px;color:${s.bg};flex-shrink:0;">${companyName[0] || 'E'}</div>`;
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
       @page { size: 85mm 54mm; margin: 0; }
@@ -270,7 +273,7 @@ export default function BusinessCards() {
       <div class="c1"></div><div class="c2"></div>
       <div class="top">
         <div class="top-left">${logoHtml}<span class="co">${companyName}</span></div>
-        ${card.show_qr ? `<img src="${qrUrl}" width="50" height="50" style="border-radius:3px;background:white;padding:2px;" />` : ''}
+        ${card.show_qr ? `<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><img src="${qrUrl}" width="58" height="58" style="border-radius:4px;background:white;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,0.2);" /><span style="font-size:6px;color:${s.sub}">Guardar contacto</span></div>` : ''}
       </div>
       <div>
         <p class="name">${card.name}</p>
