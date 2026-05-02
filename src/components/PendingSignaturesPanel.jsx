@@ -187,7 +187,7 @@ export default function PendingSignaturesPanel() {
             <p className="text-[10px] text-gray-400 mt-1">No hay documentos pendientes de firma ni cobro</p>
           </div>
         ) : (
-          <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+          <div className="space-y-1.5 max-h-72 overflow-y-auto overscroll-contain pr-1">
             {items.map((item, i) => (
               <Link key={`${item.type}-${item.id}-${i}`} to={createPageUrl(item.page)}
                 className={`flex items-center gap-3 p-2.5 rounded-lg hover:shadow-sm transition-shadow ${URGENCY_STYLE[item.urgency] || 'bg-gray-50'}`}>

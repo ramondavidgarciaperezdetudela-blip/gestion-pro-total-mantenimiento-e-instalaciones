@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -102,7 +102,7 @@ export default function AgendaPanel() {
             <p className="text-xs">Sin citas en los próximos 7 días</p>
           </div>
         ) : (
-          <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-72 overflow-y-auto overscroll-contain pr-1">
             {Object.entries(grouped).map(([dateStr, apts]) => {
               const { label, cls } = getDateLabel(dateStr);
               return (

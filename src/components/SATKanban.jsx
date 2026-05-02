@@ -126,7 +126,7 @@ export default function SATKanban() {
                 </div>
 
                 {/* Cards */}
-                <div className="p-2 space-y-2 max-h-80 overflow-y-auto">
+                <div className="p-2 space-y-2 max-h-72 overflow-y-auto overscroll-contain">
                   {colOrders.length === 0 ? (
                     <p className="text-center text-[10px] text-gray-400 py-4">Sin órdenes</p>
                   ) : (

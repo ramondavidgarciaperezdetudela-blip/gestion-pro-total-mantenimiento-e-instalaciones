@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
 
 const THRESHOLD = 72;
@@ -8,6 +8,12 @@ export default function PullToRefresh({ onRefresh, children }) {
   const [refreshing, setRefreshing] = useState(false);
   const startY = useRef(null);
   const containerRef = useRef(null);
+  const pullDistanceRef = useRef(0);
+  const refreshingRef = useRef(false);
+
+  // Sync refs to avoid stale closures in passive listeners
+  useEffect(() => { pullDistanceRef.current = pullDistance; }, [pullDistance]);
+  useEffect(() => { refreshingRef.current = refreshing; }, [refreshing]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -20,34 +26,40 @@ export default function PullToRefresh({ onRefresh, children }) {
     };
 
     const onTouchMove = (e) => {
-      if (startY.current === null || refreshing) return;
+      if (startY.current === null || refreshingRef.current) return;
       const delta = e.touches[0].clientY - startY.current;
       if (delta > 0 && window.scrollY === 0) {
         e.preventDefault();
-        setPullDistance(Math.min(delta * 0.5, THRESHOLD + 20));
+        const newDist = Math.min(delta * 0.5, THRESHOLD + 20);
+        pullDistanceRef.current = newDist;
+        setPullDistance(newDist);
       }
     };
 
     const onTouchEnd = async () => {
-      if (pullDistance >= THRESHOLD && !refreshing) {
+      if (pullDistanceRef.current >= THRESHOLD && !refreshingRef.current) {
+        refreshingRef.current = true;
         setRefreshing(true);
         setPullDistance(THRESHOLD);
         await onRefresh();
         setRefreshing(false);
+        refreshingRef.current = false;
       }
       setPullDistance(0);
+      pullDistanceRef.current = 0;
       startY.current = null;
     };
 
     el.addEventListener('touchstart', onTouchStart, { passive: true });
     el.addEventListener('touchmove', onTouchMove, { passive: false });
-    el.addEventListener('touchend', onTouchEnd);
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
     return () => {
       el.removeEventListener('touchstart', onTouchStart);
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
     };
-  }, [pullDistance, refreshing, onRefresh]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onRefresh]);
 
   const progress = Math.min(pullDistance / THRESHOLD, 1);
   const isReady = pullDistance >= THRESHOLD;

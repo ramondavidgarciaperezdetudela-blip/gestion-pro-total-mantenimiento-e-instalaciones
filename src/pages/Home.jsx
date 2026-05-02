@@ -100,6 +100,7 @@ export default function Home() {
   const [mobileSectionOpen, setMobileSectionOpen] = useState(null); // 'tareas' | 'docs' | 'sat' | null
   // Paneles secundarios diferidos — no se montan hasta que el render principal está listo
   const [showSecondaryPanels, setShowSecondaryPanels] = useState(false);
+  const [showTertiaryPanels, setShowTertiaryPanels] = useState(false);
 
   const processData = useCallback((invoices, satOrders, contacts, appointments, companySettings, suppliers, stockItems) => {
     const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
@@ -160,9 +161,11 @@ export default function Home() {
 
   useEffect(() => {
     loadData();
-    // Montar paneles secundarios después del primer paint — no bloquean el render principal
-    const t = setTimeout(() => setShowSecondaryPanels(true), 400);
-    return () => clearTimeout(t);
+    // Oleada 1: Kanban + Agenda — tras primer paint
+    const t1 = setTimeout(() => setShowSecondaryPanels(true), 600);
+    // Oleada 2: paneles de alertas/tareas — más tarde para no bloquear scroll
+    const t2 = setTimeout(() => setShowTertiaryPanels(true), 1800);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [loadData]);
 
   const handleRefresh = useCallback(async () => {
@@ -374,21 +377,25 @@ export default function Home() {
       <div className="hidden sm:block space-y-6">
 
       {/* Paneles secundarios — montados después del primer paint */}
-      {showSecondaryPanels && <>
-        <SATKanban />
+      {showSecondaryPanels && (
+        <>
+          <SATKanban />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AgendaPanel />
+            <PendingSignaturesPanel />
+          </div>
+        </>
+      )}
 
-        {/* Agenda y Recordatorios — en dos columnas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <AgendaPanel />
-          <PendingSignaturesPanel />
-        </div>
-
-        <PendingTasksPanel />
-        <AutomationStatus />
-        <DocumentsStatusPanel />
-        <MissingSATSignatures />
-        <ChangeOpinionAlerts />
-      </>}
+      {showTertiaryPanels && (
+        <>
+          <PendingTasksPanel />
+          <AutomationStatus />
+          <DocumentsStatusPanel />
+          <MissingSATSignatures />
+          <ChangeOpinionAlerts />
+        </>
+      )}
 
       {/* Alertas */}
       {alerts.length > 0 &&

@@ -176,7 +176,7 @@ export default function Layout({ children, currentPageName }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex select-none overscroll-none" dir="ltr" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div className="min-h-screen bg-slate-50 flex" dir="ltr" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <AIChat />
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <style>{`
@@ -186,7 +186,7 @@ export default function Layout({ children, currentPageName }) {
           --accent: #0ea5e9;
           --accent-light: #38bdf8;
         }
-        html { overscroll-behavior: none; }
+        /* scroll nativo libre */
         .no-print { display: block; }
         @media print {
           .no-print { display: none !important; }
