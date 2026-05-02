@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Plus, Search, FileText, Trash2, Edit, Eye, ShoppingCart, Copy,
   ChevronDown, ChevronUp, Save, Phone, Mail, BarChart3, TrendingUp,
-  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle } from
+  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers } from
 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import { format, startOfMonth } from 'date-fns';
@@ -55,7 +55,7 @@ const newItem = () => ({ _id: ++_itemId, description: '', quantity: 1, unit_pric
 const EMPTY_FORM = {
   doc_type: 'presupuesto', doc_number: '', contact_id: '', contact_name: '', contact_nif: '', contact_address: '',
   date: format(new Date(), 'yyyy-MM-dd'), due_date: '', status: 'borrador', work_type: 'otro',
-  items: [],
+  items: [],  // Sin línea inicial — el usuario las añade manualmente o desde plantilla
   subtotal: 0, iva_rate: 21, iva_amount: 0, total: 0, observations: '', payment_terms: PAYMENT_TERMS, normative_references: ''
 };
 
@@ -78,6 +78,8 @@ export default function Documents() {
   const [docs, setDocs] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [lineTemplates, setLineTemplates] = useState([]);
+  const [showLineTemplates, setShowLineTemplates] = useState(false);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState(preType || 'all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -109,11 +111,13 @@ export default function Documents() {
     Promise.all([
     base44.entities.Invoice.list('-date', 500),
     base44.entities.Contact.list('name', 500),
-    base44.entities.DocumentTemplate.list('name', 50)]
-    ).then(([d, c, t]) => {
+    base44.entities.DocumentTemplate.list('name', 50),
+    base44.entities.LineTemplate.list('name', 100)]
+    ).then(([d, c, t, lt]) => {
       setDocs(d);
       setContacts(c);
       setTemplates(t);
+      setLineTemplates(lt);
       if (preContactId && preType) {
         const contact = c.find((co) => co.id === preContactId);
         if (contact) {
@@ -307,7 +311,8 @@ export default function Documents() {
     if (draft && draft.editing === doc.id) {
       setForm(draft.form);
     } else {
-      const items = (doc.items?.length ? doc.items : [newItem()]).map((it, idx) => ({ _id: idx, ...it }));
+      // Al editar, mantener líneas tal cual están (sin añadir línea vacía)
+      const items = (doc.items || []).map((it, idx) => ({ _id: idx, ...it }));
       setForm({ ...EMPTY_FORM, ...doc, items });
       clearDraft();
     }
@@ -777,8 +782,37 @@ export default function Documents() {
                    <button className="col-span-1 text-red-400 hover:text-red-600 text-lg leading-none text-center" onClick={() => removeItem(i)}>×</button>
                  </div>
               )}
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Línea</Button>
+                {lineTemplates.filter(lt => lt.doc_type === 'todos' || lt.doc_type === form.doc_type).length > 0 && (
+                  <div className="relative">
+                    <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                      onClick={() => setShowLineTemplates(v => !v)}>
+                      <Layers className="w-3 h-3 mr-1" />Cargar plantilla
+                    </Button>
+                    {showLineTemplates && (
+                      <div className="absolute z-50 top-full left-0 mt-1 bg-white border rounded-lg shadow-lg min-w-52 max-h-64 overflow-y-auto">
+                        <p className="text-[10px] text-gray-400 px-3 pt-2 pb-1 font-semibold uppercase">Plantillas disponibles</p>
+                        {lineTemplates
+                          .filter(lt => lt.doc_type === 'todos' || lt.doc_type === form.doc_type)
+                          .map(lt => (
+                          <button key={lt.id} className="w-full text-left px-3 py-2 text-sm hover:bg-purple-50 border-b last:border-0"
+                            onClick={() => {
+                              const newItems = (lt.items || []).map((it, idx) => ({ _id: ++_itemId, ...it }));
+                              setForm(prev => {
+                                const merged = [...prev.items, ...newItems];
+                                return { ...prev, ...recalculate(merged, prev.iva_rate), observations: lt.notes_template ? (prev.observations ? prev.observations + '\n' + lt.notes_template : lt.notes_template) : prev.observations };
+                              });
+                              setShowLineTemplates(false);
+                            }}>
+                            <p className="font-medium text-purple-700">{lt.name}</p>
+                            <p className="text-[10px] text-gray-400">{lt.items?.length || 0} líneas · {lt.doc_type}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => setSupplierSearchOpen(true)}>
                   <ShoppingCart className="w-3 h-3 mr-1" />Buscar en distribuidor
                 </Button>

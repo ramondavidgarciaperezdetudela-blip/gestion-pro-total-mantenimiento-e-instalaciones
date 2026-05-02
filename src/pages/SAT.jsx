@@ -241,6 +241,36 @@ export default function SAT() {
   const updateMaterial = (i, field, val) => setForm(prev => ({ ...prev, materials_used: prev.materials_used.map((m, idx) => idx === i ? { ...m, [field]: val } : m) }));
   const removeMaterial = (i) => setForm(prev => ({ ...prev, materials_used: prev.materials_used.filter((_, idx) => idx !== i) }));
 
+  // Valores locales para campos numéricos de materiales (evita que se borren al escribir dígitos)
+  const [localMatValues, setLocalMatValues] = useState({});
+  const getMatDisplay = (i, field, val) => {
+    const key = `${i}_${field}`;
+    return key in localMatValues ? localMatValues[key] : (val ?? '');
+  };
+  const onMatLocalChange = (i, field, str) => setLocalMatValues(prev => ({ ...prev, [`${i}_${field}`]: str }));
+  const onMatBlur = (i, field) => {
+    const key = `${i}_${field}`;
+    setLocalMatValues(prev => {
+      if (!(key in prev)) return prev;
+      const parsed = parseFloat(prev[key].replace(',', '.')) || 0;
+      updateMaterial(i, field, parsed);
+      const next = { ...prev }; delete next[key]; return next;
+    });
+  };
+
+  // Valores locales para horas/tarifa
+  const [localLaborValues, setLocalLaborValues] = useState({});
+  const getLaborDisplay = (field) => field in localLaborValues ? localLaborValues[field] : (form[field] ?? '');
+  const onLaborLocalChange = (field, str) => setLocalLaborValues(prev => ({ ...prev, [field]: str }));
+  const onLaborBlur = (field) => {
+    setLocalLaborValues(prev => {
+      if (!(field in prev)) return prev;
+      const parsed = parseFloat(prev[field].replace(',', '.')) || 0;
+      setForm(f => ({ ...f, [field]: parsed }));
+      const next = { ...prev }; delete next[field]; return next;
+    });
+  };
+
   const filtered = orders.filter(o => {
     const matchSearch = `${o.order_number} ${o.contact_name} ${o.description} ${o.technician}`.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || o.status === filterStatus;
@@ -629,9 +659,15 @@ export default function SAT() {
               {form.materials_used?.map((m, i) => (
                 <div key={i} className="grid grid-cols-4 gap-1 mb-1">
                   <input className="col-span-2 h-7 text-xs border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Material" value={m.material} onChange={e => updateMaterial(i, 'material', e.target.value)} />
-                  <input type="number" className="h-7 text-xs border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Cant" value={m.quantity} onChange={e => updateMaterial(i, 'quantity', parseFloat(e.target.value) || 0)} />
+                  <input inputMode="decimal" className="h-7 text-xs border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Cant"
+                    value={getMatDisplay(i, 'quantity', m.quantity)}
+                    onChange={e => onMatLocalChange(i, 'quantity', e.target.value)}
+                    onBlur={() => onMatBlur(i, 'quantity')} />
                   <div className="flex gap-1">
-                    <input type="number" className="h-7 text-xs flex-1 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="€/ud" value={m.unit_price} onChange={e => updateMaterial(i, 'unit_price', parseFloat(e.target.value) || 0)} />
+                    <input inputMode="decimal" className="h-7 text-xs flex-1 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="€/ud"
+                      value={getMatDisplay(i, 'unit_price', m.unit_price)}
+                      onChange={e => onMatLocalChange(i, 'unit_price', e.target.value)}
+                      onBlur={() => onMatBlur(i, 'unit_price')} />
                     <button onClick={() => removeMaterial(i)} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
@@ -640,8 +676,14 @@ export default function SAT() {
 
             {/* Horas */}
             <div className="grid grid-cols-2 gap-2">
-              <Input type="number" placeholder="Horas trabajo" value={form.labor_hours} onChange={e => setForm({ ...form, labor_hours: parseFloat(e.target.value) || 0 })} />
-              <Input type="number" placeholder="€/hora" value={form.labor_rate} onChange={e => setForm({ ...form, labor_rate: parseFloat(e.target.value) || 0 })} />
+              <input inputMode="decimal" className="h-9 text-sm border border-input rounded-md px-3 focus:outline-none focus:ring-1 focus:ring-ring w-full" placeholder="Horas trabajo"
+                value={getLaborDisplay('labor_hours')}
+                onChange={e => onLaborLocalChange('labor_hours', e.target.value)}
+                onBlur={() => onLaborBlur('labor_hours')} />
+              <input inputMode="decimal" className="h-9 text-sm border border-input rounded-md px-3 focus:outline-none focus:ring-1 focus:ring-ring w-full" placeholder="€/hora"
+                value={getLaborDisplay('labor_rate')}
+                onChange={e => onLaborLocalChange('labor_rate', e.target.value)}
+                onBlur={() => onLaborBlur('labor_rate')} />
             </div>
             <p className="text-xs text-right text-gray-500">Total estimado: <strong className="text-orange-700">{calcTotal(form).toFixed(2)} €</strong></p>
 

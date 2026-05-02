@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Edit, Trash2, Palette, Save, Star, Eye, Download } from 'lucide-react';
+import LineTemplateManager from '../components/LineTemplateManager';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo', 'sat', 'mantenimiento', 'informe', 'legalización', 'tarjeta_contacto'];
 const FONT_SIZES = { small: '11px', medium: '13px', large: '15px' };
@@ -479,6 +480,11 @@ export default function DocumentTemplates() {
             </div>
             </DialogContent>
             </Dialog>
+
+      {/* ===== PLANTILLAS DE LÍNEAS ===== */}
+      <div className="border-t pt-4 mt-2">
+        <LineTemplateManager />
+      </div>
 
       {/* Preview dialog */}
       <Dialog open={!!previewTpl} onOpenChange={() => setPreviewTpl(null)}>
