@@ -17,7 +17,8 @@ import {
   Building2, FolderOpen, Zap, BarChart3, Clock, AlertCircle,
   StickyNote, Package, Battery, Palette, CreditCard, Bell, Download,
   TrendingUp, TrendingDown, Euro, CheckCircle, XCircle, AlertTriangle,
-  ArrowRight, Phone, MapPin, ChevronRight, ShoppingCart, Search, Navigation } from
+  ArrowRight, Phone, MapPin, ChevronRight, ShoppingCart, Search, Navigation,
+  MessageCircle, RefreshCw, ChevronDown, ChevronUp } from
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { format, startOfMonth } from 'date-fns';
@@ -93,6 +94,7 @@ export default function Home() {
   const [stockItems, setStockItems] = useState([]);
   const [presupuestosAceptados, setPresupuestosAceptados] = useState([]);
   const [presupuestosRechazados, setPresupuestosRechazados] = useState([]);
+  const [mobileSectionOpen, setMobileSectionOpen] = useState(null); // 'tareas' | 'docs' | 'sat' | null
   // Paneles secundarios diferidos — no se montan hasta que el render principal está listo
   const [showSecondaryPanels, setShowSecondaryPanels] = useState(false);
 
@@ -193,6 +195,113 @@ export default function Home() {
           recentSat={recentSat}
           alerts={alerts}
         />
+      </div>
+
+      {/* ── Accesos rápidos móvil ─────────────────────────────────────── */}
+      <div className="sm:hidden space-y-2">
+
+        {/* Tareas pendientes */}
+        <div className="bg-white border border-orange-200 rounded-xl overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between p-3 text-left"
+            onClick={() => setMobileSectionOpen(prev => prev === 'tareas' ? null : 'tareas')}
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-orange-500" />
+              <span className="text-sm font-semibold text-orange-700">Tareas pendientes</span>
+              {(recentSat.length > 0) && (
+                <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{recentSat.length}</span>
+              )}
+            </div>
+            {mobileSectionOpen === 'tareas' ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+          </button>
+          {mobileSectionOpen === 'tareas' && (
+            <div className="border-t border-orange-100 divide-y divide-orange-50">
+              {recentSat.length === 0 ? (
+                <div className="flex items-center gap-2 p-3 text-sm text-green-700">
+                  <CheckCircle className="w-4 h-4" /><span>Sin SAT pendientes</span>
+                </div>
+              ) : recentSat.map(sat => (
+                <Link key={sat.id} to={createPageUrl('SAT')} className="flex items-center justify-between gap-2 p-3 hover:bg-orange-50">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-gray-800 truncate">#{sat.order_number || 'S/N'} — {sat.contact_name}</p>
+                    <p className="text-[10px] text-gray-500">{sat.type} · {sat.date}</p>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Badge className="text-[10px] bg-amber-100 text-amber-700">{sat.status}</Badge>
+                    <ChevronRight className="w-3 h-3 text-gray-300" />
+                  </div>
+                </Link>
+              ))}
+              <Link to={createPageUrl('SAT')} className="flex items-center justify-center gap-1 p-2 text-xs text-orange-600 font-semibold hover:bg-orange-50">
+                Ver todos en SAT <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Documentos recientes */}
+        <div className="bg-white border border-violet-200 rounded-xl overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between p-3 text-left"
+            onClick={() => setMobileSectionOpen(prev => prev === 'docs' ? null : 'docs')}
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-violet-500" />
+              <span className="text-sm font-semibold text-violet-700">Documentos recientes</span>
+              {recentDocs.length > 0 && (
+                <span className="bg-violet-100 text-violet-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{recentDocs.length}</span>
+              )}
+            </div>
+            {mobileSectionOpen === 'docs' ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+          </button>
+          {mobileSectionOpen === 'docs' && (
+            <div className="border-t border-violet-100 divide-y divide-violet-50">
+              {recentDocs.length === 0 ? (
+                <p className="p-3 text-xs text-gray-400 text-center">Sin documentos</p>
+              ) : recentDocs.map(doc => (
+                <Link key={doc.id} to={createPageUrl('Documents')} className="flex items-center justify-between gap-2 p-3 hover:bg-violet-50">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold capitalize truncate">{doc.doc_type} Nº{doc.doc_number}</p>
+                    <p className="text-[10px] text-gray-500 truncate">{doc.contact_name} · {doc.date}</p>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <span className="text-xs font-bold text-gray-700">{doc.total?.toFixed(0)}€</span>
+                    <Badge className={`text-[10px] ${STATUS_COLORS[doc.status] || ''}`}>{doc.status}</Badge>
+                    <ChevronRight className="w-3 h-3 text-gray-300" />
+                  </div>
+                </Link>
+              ))}
+              <div className="grid grid-cols-3 gap-1.5 p-2 border-t border-violet-100">
+                {[
+                  { label: 'Facturas', page: 'Documents?type=factura', color: 'bg-violet-50 text-violet-700' },
+                  { label: 'Presupuestos', page: 'Documents?type=presupuesto', color: 'bg-blue-50 text-blue-700' },
+                  { label: 'Ver todos', page: 'Documents', color: 'bg-gray-50 text-gray-700' },
+                ].map(item => (
+                  <Link key={item.page} to={createPageUrl(item.page)}
+                    className={`text-center text-[10px] font-semibold px-2 py-1.5 rounded-lg ${item.color}`}>
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Alertas */}
+        {alerts.length > 0 && (
+          <div className="space-y-1.5">
+            {alerts.map((a, i) => (
+              <Link key={i} to={createPageUrl(a.page)}>
+                <div className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-medium ${a.type === 'danger' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="flex-1">{a.text}</span>
+                  <ArrowRight className="w-3 h-3 flex-shrink-0" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Acceso directo rápido - Solo en desktop */}
