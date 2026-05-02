@@ -11,6 +11,7 @@ import { Plus, ChevronLeft, ChevronRight, Trash2, Edit, MessageCircle, ExternalL
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, getDaysInMonth, startOfMonth, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PrintButton from '../components/PrintButton';
+import AgendaDayMap from '../components/AgendaDayMap';
 
 const TYPES = ['instalacion', 'reparacion', 'mantenimiento', 'presupuesto', 'revision', 'otro'];
 const STATUSES = ['pendiente', 'confirmada', 'completada', 'cancelada'];
@@ -181,6 +182,9 @@ export default function Agenda() {
           </Dialog>
         </div>
       </div>
+
+      {/* Mapa del día */}
+      <AgendaDayMap appointments={appointments} selectedDate={new Date()} />
 
       {/* View toggle + calendar export */}
       <div className="flex gap-2 flex-wrap items-center">

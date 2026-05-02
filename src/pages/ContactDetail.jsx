@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Phone, Mail, Navigation, Plus, Calendar, Wrench, FileText, ClipboardList, Calculator, AlertCircle, CheckCircle, Clock, XCircle, Upload, Trash2, Edit, Eye, Send, Bot, ArrowLeft, Printer, MessageCircle, Camera, History } from 'lucide-react';
 import ClientMachineTab from '../components/ClientMachineTab';
 import EquipmentDiaryTab from '../components/EquipmentDiaryTab';
+import ClientRepairGallery from '../components/ClientRepairGallery';
 import SATOrderDialog from '../components/SATOrderDialog';
 import { logChange } from '../components/ChangeLogger';
 import { format } from 'date-fns';
@@ -622,6 +623,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           <TabsTrigger value="maquinaria" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Maquinaria</TabsTrigger>
           <TabsTrigger value="historial" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Historial</TabsTrigger>
           <TabsTrigger value="fotos_equipo" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">📸 Equipo ({equipmentPhotos.length})</TabsTrigger>
+          <TabsTrigger value="galeria_fotos" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🖼️ Galería</TabsTrigger>
           <TabsTrigger value="diario" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🔧 Diario</TabsTrigger>
           </TabsList>
 
@@ -1119,6 +1121,11 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
             }
           </div>
         </TabsContent>
+        {/* GALERÍA HISTÓRICO DE FOTOS */}
+        <TabsContent value="galeria_fotos">
+          <ClientRepairGallery contactId={contactId} />
+        </TabsContent>
+
         {/* DIARIO DE REPARACIONES */}
         <TabsContent value="diario">
           <div className="mt-2">
