@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle, Wrench, MessageCircle, RefreshCw, AlertCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Wrench, MessageCircle, RefreshCw, AlertCircle, ExternalLink } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getHomeData, invalidateHomeCache } from '@/lib/homeDataCache';
+import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 
 export default function PendingTasksPanel() {
@@ -110,6 +112,9 @@ export default function PendingTasksPanel() {
                         <p className="text-gray-500 text-[10px]">{p.total?.toFixed(2)} € · Hace {p.daysOld} días</p>
                       </div>
                       <Badge className={`text-[10px] whitespace-nowrap flex-shrink-0 ${badgeCls}`}>{p.daysOld}d</Badge>
+                      <Link to={createPageUrl('Documents?type=presupuesto')} className="p-1 text-blue-600 hover:bg-blue-50 rounded flex-shrink-0" title="Abrir presupuesto">
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
                       <button onClick={() => sendReminder(p, 'presupuesto')} className="p-1 text-green-600 hover:bg-green-50 rounded flex-shrink-0" title="Recordatorio WhatsApp">
                         <MessageCircle className="w-3.5 h-3.5" />
                       </button>
@@ -136,6 +141,9 @@ export default function PendingTasksPanel() {
                         <p className="text-gray-500 text-[10px]">{s.type} · Hace {s.daysOld} días{s.priority && s.priority !== 'normal' ? ` · ${s.priority}` : ''}</p>
                       </div>
                       <Badge className={`text-[10px] whitespace-nowrap flex-shrink-0 ${badgeCls}`}>{s.daysOld}d</Badge>
+                      <Link to={createPageUrl('SAT')} className="p-1 text-blue-600 hover:bg-blue-50 rounded flex-shrink-0" title="Abrir SAT">
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
                       <button onClick={() => sendReminder(s, 'sat')} className="p-1 text-green-600 hover:bg-green-50 rounded flex-shrink-0" title="Recordatorio WhatsApp">
                         <MessageCircle className="w-3.5 h-3.5" />
                       </button>
@@ -162,6 +170,9 @@ export default function PendingTasksPanel() {
                         <p className="text-gray-500 text-[10px]">{m.type} · Hace {m.daysSinceLastMaint} días</p>
                       </div>
                       <Badge className={`text-[10px] whitespace-nowrap flex-shrink-0 ${badgeCls}`}>{m.daysSinceLastMaint}d</Badge>
+                      <Link to={createPageUrl('Maintenance')} className="p-1 text-blue-600 hover:bg-blue-50 rounded flex-shrink-0" title="Abrir mantenimiento">
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
                       <button onClick={() => sendReminder(m, 'maintenance')} className="p-1 text-green-600 hover:bg-green-50 rounded flex-shrink-0" title="Recordatorio WhatsApp">
                         <MessageCircle className="w-3.5 h-3.5" />
                       </button>
