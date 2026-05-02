@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Bot, X, Send, Loader, ChevronDown, Copy, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Bot, X, Send, Loader2, ChevronDown, Copy, ThumbsUp, ThumbsDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 export default function AIChat() {
@@ -162,7 +162,7 @@ Pregunta: ${input}`,
             {loading &&
           <div className="flex justify-start">
                 <div className="bg-gray-100 rounded-lg p-2.5 flex items-center gap-1">
-                  <Loader className="w-3 h-3 animate-spin text-gray-600" />
+                  <Loader2 className="w-3 h-3 animate-spin text-gray-600" />
                   <span className="text-xs text-gray-600">Escribiendo...</span>
                 </div>
               </div>
