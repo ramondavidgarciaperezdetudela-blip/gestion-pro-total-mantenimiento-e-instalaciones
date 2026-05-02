@@ -127,16 +127,21 @@ export default function SATTechReport({ order, open, onClose }) {
     <div class="sig-block">
       <div class="sig-box">
         ${order?.signature_technician
-          ? `<img src="${order.signature_technician}" alt="Firma técnico" />`
-          : `<div class="sig-line"></div>`}
+          ? `<img src="${order.signature_technician}" alt="Firma técnico" style="height:80px;max-width:100%;object-fit:contain;border:1px solid #e5e7eb;border-radius:4px;background:#fff;padding:4px" />`
+          : `<div style="height:80px;border-bottom:1px dashed #aaa;margin:0 10px"></div>`}
         <div class="sig-label">Firma del Técnico</div>
-        <div class="sig-name">${order?.technician || ''}</div>
+        <div class="sig-name">${order?.technician || 'Técnico'}</div>
+        ${order?.sign_datetime_technician ? `<div style="font-size:7px;color:#aaa;margin-top:2px">${order.sign_datetime_technician}</div>` : ''}
       </div>
-      <div class="sig-box">
-        ${sig ? `<img src="${sig}" alt="Firma cliente" />` : `<div class="sig-line"></div>`}
-        <div class="sig-label">Conformidad del Cliente</div>
+      <div class="sig-box" style="${sig ? 'background:#f0fdf4;border:2px solid #16a34a;border-radius:8px;padding:8px' : ''}">
+        ${sig
+          ? `<img src="${sig}" alt="Firma cliente" style="height:80px;max-width:100%;object-fit:contain;background:#fff;border-radius:4px;padding:4px" />`
+          : `<div style="height:80px;border-bottom:2px dashed #dc2626;margin:0 10px;position:relative"><span style="position:absolute;bottom:4px;width:100%;text-align:center;font-size:9px;color:#dc2626">Pendiente de firma</span></div>`}
+        <div class="sig-label" style="${sig ? 'color:#16a34a;font-weight:700' : ''}">
+          ${sig ? '✓ Conformidad del Cliente' : 'Conformidad del Cliente'}
+        </div>
         <div class="sig-name">${form.client_name || order?.contact_name || ''}</div>
-        ${sig ? `<div style="font-size:8px;color:#888;margin-top:2px">${now}</div>` : ''}
+        ${sig ? `<div style="font-size:7px;color:#16a34a;margin-top:2px;font-weight:600">Firmado: ${now}</div>` : ''}
       </div>
     </div>
 
@@ -176,11 +181,11 @@ export default function SATTechReport({ order, open, onClose }) {
 
   return (
     <Dialog open={open} onOpenChange={o => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl w-full max-h-[95vh] overflow-y-auto sm:max-h-[90vh] p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-orange-600" />
-            Informe Técnico de Visita — SAT #{order?.order_number || 'S/N'}
+            <span className="text-sm sm:text-base">Informe Técnico — SAT #{order?.order_number || 'S/N'}</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -260,40 +265,48 @@ export default function SATTechReport({ order, open, onClose }) {
           </div>
         )}
 
-        {/* PASO 2: Firma */}
+        {/* PASO 2: Firma cliente en el móvil */}
         {step === 'signature' && (
           <div className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
-              Solicita al cliente que firme en el recuadro de abajo para dar su conformidad con los trabajos realizados.
+            {/* Aviso para entregar el móvil al cliente */}
+            <div className="bg-amber-50 border-2 border-amber-400 rounded-xl p-4 text-center">
+              <p className="text-lg font-bold text-amber-800">📱 Entrega el móvil al cliente</p>
+              <p className="text-sm text-amber-700 mt-1">El cliente debe firmar abajo para confirmar los trabajos realizados</p>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
-              <p className="font-semibold text-gray-700">Resumen del informe:</p>
-              <p><span className="text-gray-500">Trabajos:</span> {form.work_done}</p>
-              {form.observations && <p><span className="text-gray-500">Observaciones:</span> {form.observations}</p>}
-              {form.photos.length > 0 && <p><span className="text-gray-500">Fotos adjuntas:</span> {form.photos.length}</p>}
-              <p><span className="text-gray-500">Cliente:</span> {form.client_name || order?.contact_name}</p>
-              {order?.total > 0 && <p className="font-bold text-orange-700">Total: {order.total?.toFixed(2)} €</p>}
+            {/* Resumen compacto visible para el cliente */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-2 shadow-sm">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Resumen del servicio</p>
+              <p className="text-sm font-semibold text-gray-800">{order?.contact_name}</p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{form.work_done}</p>
+              {form.observations && <p className="text-xs text-gray-500 italic">{form.observations}</p>}
+              {order?.total > 0 && (
+                <p className="text-base font-bold text-orange-700 pt-1 border-t border-gray-100">
+                  Total: {order.total?.toFixed(2)} €
+                </p>
+              )}
+              <p className="text-xs text-gray-400">Fecha: {order?.date} · Técnico: {order?.technician || '-'}</p>
             </div>
 
+            {/* Canvas de firma grande y táctil */}
             <div>
-              <label className="text-xs font-semibold text-gray-600 uppercase mb-2 block">
-                Firma de conformidad del cliente
-              </label>
+              <p className="text-sm font-bold text-gray-700 mb-2 text-center">
+                ✍️ Firma del cliente: <span className="text-orange-600">{form.client_name || order?.contact_name}</span>
+              </p>
               <SignatureCanvas
                 onSave={(dataUrl) => setSignatureData(dataUrl)}
-                label="Firmar aquí"
+                label={null}
               />
               {signatureData && (
-                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                  <CheckCircle className="w-3.5 h-3.5" /> Firma capturada
+                <p className="text-sm text-green-600 mt-2 flex items-center justify-center gap-1 font-semibold">
+                  <CheckCircle className="w-4 h-4" /> Firma capturada correctamente
                 </p>
               )}
             </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
               <Button
-                className="flex-1 bg-orange-600 hover:bg-orange-700"
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-base py-6 sm:py-2"
                 onClick={handleFinish}
                 disabled={loading || !signatureData}
               >
@@ -302,10 +315,12 @@ export default function SATTechReport({ order, open, onClose }) {
                   : <><FileDown className="w-4 h-4 mr-1" />Generar PDF con firma</>
                 }
               </Button>
-              <Button variant="outline" onClick={handleSkipSignature} disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sin firma → PDF'}
-              </Button>
-              <Button variant="ghost" onClick={() => setStep('form')}>← Atrás</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleSkipSignature} disabled={loading} className="flex-1 sm:flex-none text-xs">
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sin firma'}
+                </Button>
+                <Button variant="ghost" onClick={() => setStep('form')} className="flex-1 sm:flex-none text-xs">← Atrás</Button>
+              </div>
             </div>
           </div>
         )}
