@@ -784,31 +784,62 @@ export default function Documents() {
               )}
               <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Línea</Button>
-                {lineTemplates.filter(lt => lt.doc_type === 'todos' || lt.doc_type === form.doc_type).length > 0 && (
+                {lineTemplates.length > 0 && (
                   <div className="relative">
-                    <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                    <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50 gap-1"
                       onClick={() => setShowLineTemplates(v => !v)}>
-                      <Layers className="w-3 h-3 mr-1" />Cargar plantilla
+                      <Layers className="w-3 h-3" />Plantillas
+                      {lineTemplates.filter(lt => lt.doc_type === 'todos' || lt.doc_type === form.doc_type).length > 0 && (
+                        <span className="bg-purple-600 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                          {lineTemplates.filter(lt => lt.doc_type === 'todos' || lt.doc_type === form.doc_type).length}
+                        </span>
+                      )}
                     </Button>
                     {showLineTemplates && (
-                      <div className="absolute z-50 top-full left-0 mt-1 bg-white border rounded-lg shadow-lg min-w-52 max-h-64 overflow-y-auto">
-                        <p className="text-[10px] text-gray-400 px-3 pt-2 pb-1 font-semibold uppercase">Plantillas disponibles</p>
-                        {lineTemplates
-                          .filter(lt => lt.doc_type === 'todos' || lt.doc_type === form.doc_type)
-                          .map(lt => (
-                          <button key={lt.id} className="w-full text-left px-3 py-2 text-sm hover:bg-purple-50 border-b last:border-0"
-                            onClick={() => {
-                              const newItems = (lt.items || []).map((it, idx) => ({ _id: ++_itemId, ...it }));
-                              setForm(prev => {
-                                const merged = [...prev.items, ...newItems];
-                                return { ...prev, ...recalculate(merged, prev.iva_rate), observations: lt.notes_template ? (prev.observations ? prev.observations + '\n' + lt.notes_template : lt.notes_template) : prev.observations };
-                              });
-                              setShowLineTemplates(false);
-                            }}>
-                            <p className="font-medium text-purple-700">{lt.name}</p>
-                            <p className="text-[10px] text-gray-400">{lt.items?.length || 0} líneas · {lt.doc_type}</p>
+                      <div className="absolute z-50 top-full left-0 mt-1 bg-white border rounded-xl shadow-2xl min-w-64 max-h-80 overflow-y-auto">
+                        <div className="sticky top-0 bg-white border-b px-3 py-2 flex items-center justify-between">
+                          <p className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                            <Layers className="w-3.5 h-3.5 text-purple-500" />
+                            Cargar plantilla de líneas
+                          </p>
+                          <button onClick={() => setShowLineTemplates(false)} className="text-gray-400 hover:text-gray-600">
+                            <X className="w-3.5 h-3.5" />
                           </button>
-                        ))}
+                        </div>
+                        {lineTemplates.filter(lt => lt.doc_type === 'todos' || lt.doc_type === form.doc_type).length === 0 ? (
+                          <p className="text-xs text-gray-400 text-center py-6">No hay plantillas para este tipo de documento</p>
+                        ) : (
+                          lineTemplates
+                            .filter(lt => lt.doc_type === 'todos' || lt.doc_type === form.doc_type)
+                            .map(lt => {
+                              const subtotal = (lt.items || []).reduce((s, it) => s + (it.quantity || 0) * (it.unit_price || 0) * (1 - (it.discount || 0) / 100), 0);
+                              return (
+                                <button key={lt.id} className="w-full text-left px-3 py-2.5 hover:bg-purple-50 border-b last:border-0 group transition-colors"
+                                  onClick={() => {
+                                    const newItems = (lt.items || []).map((it) => ({ _id: ++_itemId, ...it }));
+                                    setForm(prev => {
+                                      const merged = [...prev.items, ...newItems];
+                                      return { ...prev, ...recalculate(merged, prev.iva_rate), observations: lt.notes_template ? (prev.observations ? prev.observations + '\n' + lt.notes_template : lt.notes_template) : prev.observations };
+                                    });
+                                    setShowLineTemplates(false);
+                                  }}>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-semibold text-purple-700 text-sm group-hover:text-purple-800">{lt.name}</p>
+                                      <p className="text-[10px] text-gray-400 mt-0.5">{lt.items?.length || 0} líneas · {lt.doc_type === 'todos' ? 'Todos los tipos' : lt.doc_type}</p>
+                                      {lt.items?.slice(0, 2).map((it, i) => (
+                                        <p key={i} className="text-[10px] text-gray-500 truncate">· {it.description}</p>
+                                      ))}
+                                    </div>
+                                    <span className="text-xs font-bold text-green-700 shrink-0">~{subtotal.toFixed(0)} €</span>
+                                  </div>
+                                </button>
+                              );
+                            })
+                        )}
+                        <div className="sticky bottom-0 bg-gray-50 border-t px-3 py-1.5">
+                          <p className="text-[10px] text-gray-400">Las líneas se añaden al documento actual</p>
+                        </div>
                       </div>
                     )}
                   </div>
