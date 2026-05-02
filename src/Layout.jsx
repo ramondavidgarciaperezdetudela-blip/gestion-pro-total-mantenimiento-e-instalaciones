@@ -288,17 +288,18 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Main */}
       <div className="flex-1 lg:ml-64 min-h-screen relative overflow-x-hidden min-w-0">
-        {/* Background watermark logo */}
+        {/* Background watermark logo — GPU layer aislada para no afectar scroll */}
         {company?.logo_url &&
         <div
           className="fixed pointer-events-none z-0"
           style={{
             top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
+            transform: 'translate(-50%, -50%) translateZ(0)',
             opacity: 0.04,
-            width: '60vw', maxWidth: 500
+            width: '60vw', maxWidth: 500,
+            willChange: 'opacity',
           }}>
-            <img src={company.logo_url} alt="" style={{ width: '100%', filter: 'grayscale(1)' }} />
+            <img src={company.logo_url} alt="" style={{ width: '100%', filter: 'grayscale(1)' }} loading="lazy" decoding="async" />
           </div>
         }
         {/* Top bar mobile */}
@@ -321,7 +322,7 @@ export default function Layout({ children, currentPageName }) {
             <NotificationsPanel />
           </div>
         </header>
-        <main className="p-3 md:p-6 max-w-7xl mx-auto relative z-10 pb-28 lg:pb-6 overflow-x-hidden min-w-0 w-full">
+        <main className="p-3 md:p-6 max-w-7xl mx-auto relative z-10 pb-28 lg:pb-6 overflow-x-hidden min-w-0 w-full" style={{ willChange: 'scroll-position' }}>
           {children}
         </main>
 

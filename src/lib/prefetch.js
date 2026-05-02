@@ -24,14 +24,25 @@ export function prefetchPages() {
     '../pages/SATChat',
   ];
 
-  // Cargar de 2 en 2 para no saturar la red
+  // Cargar de 1 en 1 con idle callback para no bloquear el hilo principal
   let i = 0;
   function loadNext() {
     if (i >= pagesToPrefetch.length) return;
-    const batch = pagesToPrefetch.slice(i, i + 2);
-    batch.forEach(p => import(/* @vite-ignore */ p));
-    i += 2;
-    setTimeout(loadNext, 600);
+    const p = pagesToPrefetch[i];
+    i++;
+    // requestIdleCallback garantiza que no interfiere con el scroll/render
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => {
+        import(/* @vite-ignore */ p);
+        setTimeout(loadNext, 800);
+      }, { timeout: 3000 });
+    } else {
+      setTimeout(() => {
+        import(/* @vite-ignore */ p);
+        loadNext();
+      }, 1000);
+    }
   }
-  setTimeout(loadNext, 500);
+  // Esperar más tiempo antes del primer prefetch
+  setTimeout(loadNext, 2000);
 }
