@@ -8,6 +8,8 @@ import AutomationStatus from '../components/AutomationStatus';
 import DocumentsStatusPanel from '../components/DocumentsStatusPanel';
 import MissingSATSignatures from '../components/MissingSATSignatures';
 import SATKanban from '../components/SATKanban';
+import AgendaPanel from '../components/AgendaPanel';
+import PendingSignaturesPanel from '../components/PendingSignaturesPanel';
 import { createPageUrl } from '../utils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -374,6 +376,13 @@ export default function Home() {
       {/* Paneles secundarios — montados después del primer paint */}
       {showSecondaryPanels && <>
         <SATKanban />
+
+        {/* Agenda y Recordatorios — en dos columnas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <AgendaPanel />
+          <PendingSignaturesPanel />
+        </div>
+
         <PendingTasksPanel />
         <AutomationStatus />
         <DocumentsStatusPanel />
