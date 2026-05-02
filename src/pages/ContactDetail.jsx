@@ -22,6 +22,7 @@ import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import InvoicePreviewDialog from '../components/InvoicePreviewDialog';
 import SignatureHistoryViewer from '../components/SignatureHistoryViewer';
+import ThermalCalcViewer from '../components/ThermalCalcViewer';
 
 function ChangeHistoryTab({ contactId }) {
   const [logs, setLogs] = React.useState([]);
@@ -782,32 +783,52 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
         <TabsContent value="calcs">
           <div className="space-y-2 mt-2">
             <div className="flex gap-2 flex-wrap">
-              <Link to={createPageUrl('ThermalCalc')}><Button size="sm" variant="outline">+ Térmico</Button></Link>
-              <Link to={createPageUrl('ColdRoomCalc')}><Button size="sm" variant="outline">+ Cámara</Button></Link>
+              <Link to={createPageUrl('ThermalCalc')}><Button size="sm" variant="outline" className="bg-red-50 border-red-200 text-red-700">+ Térmico clima</Button></Link>
+              <Link to={createPageUrl('ColdRoomCalc')}><Button size="sm" variant="outline" className="bg-blue-50 border-blue-200 text-blue-700">+ Cámara frig.</Button></Link>
               <Link to={createPageUrl('SolarCalc')}><Button size="sm" variant="outline">+ Solar</Button></Link>
               <Link to={createPageUrl('BatteryCalc')}><Button size="sm" variant="outline">+ Baterías</Button></Link>
               <Link to={createPageUrl('ElectricalCalc')}><Button size="sm" variant="outline">+ Eléctrico</Button></Link>
             </div>
-            {calculations.map((c) =>
-            <Card key={c.id}>
-                <CardContent className="p-3">
-                  <p className="font-medium text-sm">{c.calc_type} — {c.date}</p>
-                  <p className="text-xs text-gray-500">Carga: {c.calculated_load} W | {c.suggested_brand} {c.suggested_model}</p>
-                </CardContent>
-              </Card>
+
+            {calculations.length > 0 && (
+              <p className="text-xs text-gray-500 px-1">
+                {calculations.length} cálculo{calculations.length > 1 ? 's' : ''} guardado{calculations.length > 1 ? 's' : ''} — expande cada uno para ver todos los detalles o descargarlo en PDF
+              </p>
             )}
+
+            {calculations
+              .sort((a, b) => new Date(b.updated_date || b.date) - new Date(a.updated_date || a.date))
+              .map((c) => (
+                <ThermalCalcViewer
+                  key={c.id}
+                  calc={c}
+                  onDelete={async (id) => {
+                    await base44.entities.ThermalCalculation.delete(id);
+                    setCalculations(prev => prev.filter(x => x.id !== id));
+                  }}
+                />
+              ))
+            }
+
             {documents.filter((d) => ['calculo_termico', 'calculo_solar'].includes(d.doc_type)).map((d) =>
-            <Card key={d.id}>
+              <Card key={d.id}>
                 <CardContent className="p-3 flex justify-between items-center">
                   <div>
                     <p className="font-medium text-sm">{d.title}</p>
-                    <p className="text-xs text-gray-500">{d.doc_type} | {d.date}</p>
+                    <p className="text-xs text-gray-500">{d.doc_type?.replace(/_/g, ' ')} | {d.date}</p>
                   </div>
                   {d.file_url && <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs">Ver</a>}
                 </CardContent>
               </Card>
             )}
-            {calculations.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Sin cálculos guardados</p>}
+
+            {calculations.length === 0 && (
+              <div className="text-center py-8 text-gray-400">
+                <Calculator className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Sin cálculos guardados</p>
+                <p className="text-xs mt-1">Usa los botones de arriba para crear un cálculo y vincularlo a este cliente</p>
+              </div>
+            )}
           </div>
         </TabsContent>
 
