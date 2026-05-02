@@ -88,5 +88,24 @@
     overflow-x: hidden;
     max-width: 100vw;
     overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Evitar desbordamiento horizontal en tablas y contenido en móvil */
+  table {
+    max-width: 100%;
+    word-break: break-word;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Aceleración GPU para transiciones fluidas */
+  .sidebar-transition {
+    will-change: transform;
+    transform: translateZ(0);
   }
 }

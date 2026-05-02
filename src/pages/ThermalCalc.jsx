@@ -188,7 +188,30 @@ export default function ThermalCalc() {
         condensation_temp: 40,
         evaporation_temp: 0,
       },
-      notes: `Desglose: paredes/techo ${Math.round(bd.wallLoad)}W, ventanas ${Math.round(bd.windowLoad)}W, personas ${Math.round(bd.peopleLoad)}W, equipos ${Math.round(bd.equipLoad)}W. Alternativas: ${result.alternatives.map(e => `${e.brand} ${e.model} ${e.power_kw}kW`).join(' | ')}`,
+      notes: [
+        `=== CÁLCULO TÉRMICO CLIMATIZACIÓN ===`,
+        `Fecha: ${new Date().toLocaleDateString('es-ES')}`,
+        `--- PARÁMETROS ---`,
+        `Local: ${form.length}×${form.width}×${form.height}m | Vol: ${(form.length*form.width*form.height).toFixed(1)}m³`,
+        `Orientación: ${form.orientation} | Aislamiento: ${form.insulation_type} | Ventanas: ${form.window_area}m²`,
+        `T.exterior: ${form.exterior_temp}°C | T.objetivo: ${form.target_temp}°C | ΔT: ${Math.abs(form.exterior_temp - form.target_temp)}°C`,
+        `Personas: ${form.num_people} | Calor equipos: ${form.equipment_heat}W`,
+        `Gas: ${form.refrigerant_type} | Tubería: ${form.pipe_distance}m | Alt: ${form.pipe_height_diff}m`,
+        `--- DESGLOSE CARGAS ---`,
+        `Paredes/Techo: ${Math.round(bd.wallLoad)}W | Ventanas: ${Math.round(bd.windowLoad)}W | Personas: ${Math.round(bd.peopleLoad)}W | Equipos: ${Math.round(bd.equipLoad)}W`,
+        `Factor seguridad ×1.15 aplicado`,
+        `--- RESULTADOS ---`,
+        `Carga total: ${result.loadW}W | ${result.loadFrigorias} frig/h | ${result.loadKW}kW`,
+        `--- EQUIPOS RECOMENDADOS ---`,
+        result.alternatives.map((e,i) => `${i===0?'★ PRINCIPAL':'Opción '+(i+1)}: ${e.brand} ${e.model} ${e.power_kw}kW | Gas:${e.gas} | Tipo:${e.type} | TubMax:${e.max_pipe_m}m | AltMax:${e.max_height_m}m`).join(' | '),
+        result.extraGrams > 0 ? `⚠ Gas extra: +${result.extraGrams}g de ${form.refrigerant_type} (dist.${result.actualDist}m > máx.${result.maxDist}m)` : '',
+        `--- PRESIONES ${form.refrigerant_type} ---`,
+        Object.entries(result.pr).map(([t,p]) => `${t}: ${p}bar`).join(' | '),
+        `--- MATERIALES ---`,
+        result.materials.map(m => `${m.material}: ${m.quantity} ${m.specification}`).join(' | '),
+        `--- SCORES EFICIENCIA ---`,
+        `Aislamiento:${result.efficiencyScores.insulation}% | Tuberías:${result.efficiencyScores.piping}% | Temperatura:${result.efficiencyScores.temp}% | Carga:${result.efficiencyScores.load}% | Equipo:${result.efficiencyScores.equipment}%`,
+      ].filter(Boolean).join('\n'),
     };
 
     if (existingCalcId) {
@@ -489,7 +512,8 @@ export default function ThermalCalc() {
           <Card>
             <CardContent className="p-4">
               <p className="font-semibold text-sm mb-2">Material necesario para la instalación</p>
-              <table className="w-full text-xs border-collapse">
+              <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-xs border-collapse min-w-[300px]">
                 <thead><tr className="bg-gray-100">
                   <th className="border p-1 text-left">Material</th>
                   <th className="border p-1 text-right">Cantidad</th>
@@ -505,6 +529,7 @@ export default function ThermalCalc() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </CardContent>
           </Card>
 

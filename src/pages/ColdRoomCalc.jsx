@@ -196,7 +196,33 @@ export default function ColdRoomCalc() {
         condensation_temp: form.exterior_temp + 15,
         evaporation_temp: form.cold_room_temp - 8,
       },
-      notes: `Panel: ${form.panel_thickness}, Área panel: ${result.panelArea}m². Desglose: transmisión ${Math.round(bd.transmissionLoad)}W, producto ${Math.round(bd.productLoad)}W, ventilación ${Math.round(bd.ventLoad)}W. Alternativas: ${result.alternatives.map(e => `${e.brand} ${e.model} ${e.power_kw}kW`).join(' | ')}. ${titleSuffix}`,
+      notes: [
+        `=== CÁLCULO CÁMARA FRIGORÍFICA${titleSuffix ? ' + HUMEDAD' : ''} ===`,
+        `Fecha: ${new Date().toLocaleDateString('es-ES')}`,
+        `--- PARÁMETROS ---`,
+        `Dimensiones: ${form.length}×${form.width}×${form.height}m | Vol: ${(form.length*form.width*form.height).toFixed(1)}m³`,
+        `Tipo: ${form.cold_room_type} | T.cámara: ${form.cold_room_temp}°C | T.exterior: ${form.exterior_temp}°C | ΔT: ${Math.abs(form.exterior_temp - form.cold_room_temp)}°C`,
+        `Panel: ${form.panel_thickness} | Área panel: ${result.panelArea}m²`,
+        `Producto: ${form.product_kg}kg | Gas: ${form.refrigerant_type}`,
+        `Tubería: ${form.pipe_distance}m | Dif.altura: ${form.pipe_height_diff}m`,
+        `--- DESGLOSE CARGAS ---`,
+        `Transmisión: ${Math.round(bd.transmissionLoad)}W | Producto: ${Math.round(bd.productLoad)}W | Ventilación: ${Math.round(bd.ventLoad)}W`,
+        `Factor seguridad ×1.25 aplicado`,
+        `--- RESULTADOS ---`,
+        `Carga total: ${result.loadW}W | ${Math.round(result.loadW * 0.86)} frig/h`,
+        `--- EQUIPOS RECOMENDADOS ---`,
+        result.alternatives.map((e,i) => `${i===0?'★ PRINCIPAL':'Opción '+(i+1)}: ${e.brand} ${e.model} ${e.power_kw}kW | Gas:${e.gas} | Rango:${e.temp_range} | Tipo:${e.type} | TubMax:${e.max_pipe_m}m`).join(' | '),
+        result.extraGrams > 0 ? `⚠ Gas extra: +${result.extraGrams}g de ${form.refrigerant_type} (dist.${result.actualDist}m > máx.${result.maxDist}m)` : '',
+        `--- PRESIONES ${form.refrigerant_type} ---`,
+        `P.evap: ${result.evapPressure}bar | P.cond: ${result.condPressure}bar | Carga gas: ${result.refCharge}kg`,
+        `T.evap ≈ ${form.cold_room_temp - 8}°C`,
+        Object.entries(result.pr).map(([t,p]) => `${t}: ${p}bar`).join(' | '),
+        `--- MATERIALES ---`,
+        result.materials.map(m => `${m.material}: ${m.quantity} ${m.unit}`).join(' | '),
+        `--- SCORES EFICIENCIA ---`,
+        `Aislamiento:${result.efficiencyScores.insulation}% | Tuberías:${result.efficiencyScores.piping}% | Temperatura:${result.efficiencyScores.temp}% | Carga:${result.efficiencyScores.load}% | Equipo:${result.efficiencyScores.equipment}%`,
+        titleSuffix ? `--- ${titleSuffix} ---` : '',
+      ].filter(Boolean).join('\n'),
     };
 
     if (existingCalcId) {
@@ -497,7 +523,8 @@ export default function ColdRoomCalc() {
       <Card>
         <CardContent className="p-4">
           <p className="font-semibold text-sm mb-2">Material necesario para el montaje</p>
-          <table className="w-full text-xs border-collapse">
+          <div className="overflow-x-auto -mx-1">
+          <table className="w-full text-xs border-collapse min-w-[300px]">
             <thead><tr className="bg-gray-100">
               <th className="border p-1 text-left">Material</th>
               <th className="border p-1 text-right">Cant.</th>
@@ -513,6 +540,7 @@ export default function ColdRoomCalc() {
               ))}
             </tbody>
           </table>
+          </div>
         </CardContent>
       </Card>
 

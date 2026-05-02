@@ -16,12 +16,28 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
   const [signDatetime, setSignDatetime] = useState(existingDatetime);
   const lastPos = useRef(null);
 
-  // Bloquear scroll del body mientras el canvas de firma está visible
+  // Bloquear scroll completamente mientras el canvas de firma está visible (iOS + Android)
   useEffect(() => {
     if (!showCanvas || value) return;
-    const prev = document.body.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevBodyPosition = document.body.style.position;
+    const prevBodyWidth = document.body.style.width;
+    const prevScrollY = window.scrollY;
+    // Fijar el body para evitar scroll en iOS Safari
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.top = `-${prevScrollY}px`;
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.body.style.position = prevBodyPosition;
+      document.body.style.width = prevBodyWidth;
+      document.body.style.top = '';
+      document.documentElement.style.overflow = '';
+      // Restaurar posición de scroll
+      window.scrollTo(0, prevScrollY);
+    };
   }, [showCanvas, value]);
 
   const initCanvas = useCallback(() => {
