@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import PullToRefresh from '../components/PullToRefresh';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -269,36 +269,29 @@ export default function SAT() {
     });
   };
 
-  const filtered = orders.filter(o => {
-    const matchSearch = `${o.order_number} ${o.contact_name} ${o.description} ${o.technician}`.toLowerCase().includes(search.toLowerCase());
+  const filtered = useMemo(() => orders.filter(o => {
+    const matchSearch = !search || `${o.order_number} ${o.contact_name} ${o.description} ${o.technician}`.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || o.status === filterStatus;
     const matchPriority = filterPriority === 'all' || o.priority === filterPriority;
-    
-    // Filtro de estado de firma
     let matchSignatureStatus = true;
-    if (filterSignatureStatus === 'aceptadas') {
-      matchSignatureStatus = o.status === 'en_curso' && o.signature_client;
-    } else if (filterSignatureStatus === 'rechazadas') {
-      matchSignatureStatus = o.status === 'cancelada' && o.signature_client;
-    }
-    
+    if (filterSignatureStatus === 'aceptadas') matchSignatureStatus = o.status === 'en_curso' && o.signature_client;
+    else if (filterSignatureStatus === 'rechazadas') matchSignatureStatus = o.status === 'cancelada' && o.signature_client;
     return matchSearch && matchStatus && matchPriority && matchSignatureStatus;
-  });
+  }), [orders, search, filterStatus, filterPriority, filterSignatureStatus]);
 
-  // Stats
-  const stats = {
+  const stats = useMemo(() => ({
     total: orders.length,
     pendiente: orders.filter(o => o.status === 'pendiente').length,
     en_curso: orders.filter(o => o.status === 'en_curso').length,
     urgentes: orders.filter(o => o.priority === 'urgente' && o.status !== 'completada').length,
     aceptadas: orders.filter(o => o.status === 'en_curso' && o.signature_client).length,
     rechazadas: orders.filter(o => o.status === 'cancelada' && o.signature_client).length,
-  };
+  }), [orders]);
 
-  // Planificación (ordenar por fecha programada)
-  const scheduled = orders
+  const scheduled = useMemo(() => orders
     .filter(o => o.scheduled_date && o.status !== 'completada' && o.status !== 'cancelada')
-    .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
+    .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))
+  , [orders]);
 
   return (
     <>
