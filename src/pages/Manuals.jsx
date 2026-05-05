@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { BookOpen, ExternalLink, Search, Download, Sun, Battery, Zap, Copy, Printer, RefreshCw, Globe, ChevronDown, ChevronUp, WifiOff, CloudOff } from 'lucide-react';
+import { BookOpen, ExternalLink, Search, Download, Sun, Battery, Zap, Copy, Printer, RefreshCw, Globe, ChevronDown, ChevronUp, WifiOff, CloudOff, Upload, Trash2, Plus, FolderOpen, Eye, Filter } from 'lucide-react';
 import { saveToCache, loadFromCache, formatCacheDate } from '@/lib/offlineCache';
+import { base44 } from '@/api/base44Client';
+import { format } from 'date-fns';
 
 // ─── SOLAR / ENERGÍAS ────────────────────────────────────────────────────────
 const SOLAR_MANUALS = [
@@ -203,6 +207,207 @@ const OTHER_MANUALS = [
   },
 ];
 
+// ─── MANUALES PROPIOS (subidos por el usuario) ─────────────────────────────
+const BRANDS = ['Daikin', 'Mitsubishi', 'Fujitsu', 'Samsung', 'LG', 'Toshiba', 'Panasonic', 'Midea', 'Carrier', 'Lennox', 'York', 'Intarcon', 'Copeland', 'Danfoss', 'Bitzer', 'Embraco', 'Hussmann', 'Rivacold', 'Schneider', 'ABB', 'Siemens', 'Victron', 'SMA', 'Fronius', 'Huawei Solar', 'Growatt', 'Otro'];
+const DOC_CATEGORIES = ['Manual instalación', 'Manual usuario', 'Manual servicio', 'Ficha técnica', 'Esquema eléctrico', 'Catálogo', 'Normativa', 'Otro'];
+
+function MyManualsTab() {
+  const [manuals, setManuals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [uploadDialog, setUploadDialog] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [filterBrand, setFilterBrand] = useState('');
+  const [filterCat, setFilterCat] = useState('');
+  const [searchOwn, setSearchOwn] = useState('');
+  const fileRef = useRef(null);
+  const [form, setForm] = useState({ title: '', brand: '', model: '', category: 'Manual instalación', notes: '' });
+
+  const load = async () => {
+    setLoading(true);
+    const docs = await base44.entities.ClientDocument.filter({ contact_id: 'MANUAL_LIBRARY' });
+    setManuals(docs.sort((a, b) => (b.date || '').localeCompare(a.date || '')));
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    await base44.entities.ClientDocument.create({
+      contact_id: 'MANUAL_LIBRARY',
+      contact_name: form.brand,
+      title: form.title || file.name,
+      doc_type: 'manual',
+      file_url,
+      description: JSON.stringify({ brand: form.brand, model: form.model, category: form.category, notes: form.notes }),
+      date: format(new Date(), 'yyyy-MM-dd'),
+    });
+    setUploading(false);
+    setUploadDialog(false);
+    setForm({ title: '', brand: '', model: '', category: 'Manual instalación', notes: '' });
+    e.target.value = '';
+    load();
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('¿Eliminar este manual?')) return;
+    await base44.entities.ClientDocument.delete(id);
+    setManuals(prev => prev.filter(m => m.id !== id));
+  };
+
+  const parseExtra = (desc) => {
+    try { return JSON.parse(desc || '{}'); } catch { return {}; }
+  };
+
+  const filtered = manuals.filter(m => {
+    const ex = parseExtra(m.description);
+    const matchBrand = !filterBrand || filterBrand === 'todos' || ex.brand === filterBrand;
+    const matchCat = !filterCat || filterCat === 'todos' || ex.category === filterCat;
+    const matchSearch = !searchOwn || m.title?.toLowerCase().includes(searchOwn.toLowerCase()) ||
+      ex.brand?.toLowerCase().includes(searchOwn.toLowerCase()) ||
+      ex.model?.toLowerCase().includes(searchOwn.toLowerCase());
+    return matchBrand && matchCat && matchSearch;
+  });
+
+  // Group by brand
+  const byBrand = {};
+  filtered.forEach(m => {
+    const ex = parseExtra(m.description);
+    const brand = ex.brand || 'Sin marca';
+    if (!byBrand[brand]) byBrand[brand] = [];
+    byBrand[brand].push({ ...m, _extra: ex });
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-sm text-gray-500">Sube y organiza tus propios manuales por marca y modelo para consulta rápida durante reparaciones.</p>
+        <Button className="bg-teal-600 hover:bg-teal-700" size="sm" onClick={() => setUploadDialog(true)}>
+          <Plus className="w-4 h-4 mr-1" /> Subir manual
+        </Button>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[160px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input className="pl-9" placeholder="Buscar..." value={searchOwn} onChange={e => setSearchOwn(e.target.value)} />
+        </div>
+        <Select value={filterBrand} onValueChange={setFilterBrand}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Marca" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todas las marcas</SelectItem>
+            {BRANDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterCat} onValueChange={setFilterCat}>
+          <SelectTrigger className="w-40"><SelectValue placeholder="Categoría" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todas las categorías</SelectItem>
+            {DOC_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {loading && <p className="text-center text-gray-400 py-6 text-sm">Cargando...</p>}
+
+      {!loading && Object.keys(byBrand).length === 0 && (
+        <div className="text-center py-12 text-gray-400">
+          <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">Sin manuales subidos</p>
+          <p className="text-xs mt-1">Usa el botón "Subir manual" para añadir PDFs o imágenes organizados por marca y modelo.</p>
+        </div>
+      )}
+
+      {Object.entries(byBrand).map(([brand, items]) => (
+        <Card key={brand}>
+          <CardHeader className="pb-0 pt-3 px-4">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <span>🏷️</span>
+              <span className="font-bold text-gray-800">{brand}</span>
+              <span className="text-xs text-gray-400 font-normal">({items.length} {items.length === 1 ? 'manual' : 'manuales'})</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 mt-2">
+            <div className="divide-y">
+              {items.map(m => (
+                <div key={m.id} className="p-3 flex items-center justify-between gap-2 flex-wrap hover:bg-gray-50">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{m.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {m._extra.model && <span className="text-xs text-gray-500">Modelo: {m._extra.model}</span>}
+                      {m._extra.category && <Badge variant="outline" className="text-[10px]">{m._extra.category}</Badge>}
+                      {m._extra.notes && <span className="text-xs text-gray-400 italic">{m._extra.notes}</span>}
+                      <span className="text-[10px] text-gray-300">{m.date}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    {m.file_url && (
+                      <a href={m.file_url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs bg-teal-600 text-white px-2 py-1.5 rounded-lg hover:bg-teal-700 transition-colors">
+                        <Eye className="w-3 h-3" /> Abrir
+                      </a>
+                    )}
+                    <button onClick={() => handleDelete(m.id)}
+                      className="flex items-center gap-1 text-xs bg-red-50 text-red-600 px-2 py-1.5 rounded-lg hover:bg-red-100 transition-colors">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+
+      {/* Dialog subir manual */}
+      <Dialog open={uploadDialog} onOpenChange={setUploadDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Subir manual técnico</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-gray-500">Título del manual</label>
+              <Input placeholder="Ej: Manual instalación MSZ-HR" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-gray-500">Marca</label>
+                <Select value={form.brand} onValueChange={v => setForm({...form, brand: v})}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>{BRANDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Modelo</label>
+                <Input placeholder="Ej: MSZ-HR25" value={form.model} onChange={e => setForm({...form, model: e.target.value})} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Categoría</label>
+              <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{DOC_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Notas (opcional)</label>
+              <Input placeholder="Ej: Para modelo de 2022" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} />
+            </div>
+            <Button className="w-full bg-teal-600 hover:bg-teal-700" onClick={() => fileRef.current?.click()} disabled={uploading || !form.brand}>
+              <Upload className="w-4 h-4 mr-2" />{uploading ? 'Subiendo...' : 'Seleccionar archivo (PDF / imagen)'}
+            </Button>
+            {!form.brand && <p className="text-xs text-amber-600 text-center">Selecciona una marca antes de subir</p>}
+            <input ref={fileRef} type="file" accept=".pdf,image/*" className="hidden" onChange={handleFile} />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 function ManualRow({ item }) {
   const [copied, setCopied] = useState(false);
 
@@ -353,15 +558,22 @@ export default function Manuals() {
         </div>
       </div>
 
-      <Tabs defaultValue="solar">
-        <TabsList className="w-full">
-          <TabsTrigger value="solar" className="flex-1 flex items-center gap-1">
-            <Sun className="w-4 h-4" /> Energía Solar <Badge className="ml-1 text-[10px] bg-amber-100 text-amber-800">{solarCount}</Badge>
+      <Tabs defaultValue="mis_manuales">
+        <TabsList className="w-full flex flex-wrap h-auto gap-1">
+          <TabsTrigger value="mis_manuales" className="flex-1 flex items-center gap-1 min-w-[120px]">
+            <FolderOpen className="w-4 h-4" /> Mis Manuales
           </TabsTrigger>
-          <TabsTrigger value="otros" className="flex-1 flex items-center gap-1">
-            <Zap className="w-4 h-4" /> Clima · Refrigeración · Eléctrico <Badge className="ml-1 text-[10px]">{otherCount}</Badge>
+          <TabsTrigger value="solar" className="flex-1 flex items-center gap-1 min-w-[120px]">
+            <Sun className="w-4 h-4" /> Solar <Badge className="ml-1 text-[10px] bg-amber-100 text-amber-800">{solarCount}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="otros" className="flex-1 flex items-center gap-1 min-w-[120px]">
+            <Zap className="w-4 h-4" /> Clima · Refrig. <Badge className="ml-1 text-[10px]">{otherCount}</Badge>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="mis_manuales" className="mt-4">
+          <MyManualsTab />
+        </TabsContent>
 
         <TabsContent value="solar" className="mt-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
