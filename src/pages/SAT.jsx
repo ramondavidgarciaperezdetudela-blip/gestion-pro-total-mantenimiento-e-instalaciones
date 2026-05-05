@@ -236,39 +236,25 @@ export default function SAT() {
     window.open(url, '_blank');
   };
 
-  const addMaterial = () => setForm(prev => ({ ...prev, materials_used: [...(prev.materials_used || []), { material: '', quantity: 1, unit_price: 0 }] }));
+  const addMaterial = () => setForm(prev => ({ ...prev, materials_used: [...(prev.materials_used || []), { material: '', quantity: '', unit_price: '' }] }));
   const updateMaterial = (i, field, val) => setForm(prev => ({ ...prev, materials_used: prev.materials_used.map((m, idx) => idx === i ? { ...m, [field]: val } : m) }));
   const removeMaterial = (i) => setForm(prev => ({ ...prev, materials_used: prev.materials_used.filter((_, idx) => idx !== i) }));
 
-  // Valores locales para campos numéricos de materiales (evita que se borren al escribir dígitos)
-  const [localMatValues, setLocalMatValues] = useState({});
-  const getMatDisplay = (i, field, val) => {
-    const key = `${i}_${field}`;
-    return key in localMatValues ? localMatValues[key] : (val ?? '');
-  };
-  const onMatLocalChange = (i, field, str) => setLocalMatValues(prev => ({ ...prev, [`${i}_${field}`]: str }));
+  // Helpers de display — simplificados: muestran el valor tal cual (string o número)
+  const getMatDisplay = (i, field, val) => val ?? '';
+  const onMatLocalChange = (i, field, str) => updateMaterial(i, field, str);
   const onMatBlur = (i, field) => {
-    const key = `${i}_${field}`;
-    setLocalMatValues(prev => {
-      if (!(key in prev)) return prev;
-      const parsed = parseFloat(prev[key].replace(',', '.')) || 0;
-      updateMaterial(i, field, parsed);
-      const next = { ...prev }; delete next[key]; return next;
-    });
+    setForm(prev => ({
+      ...prev,
+      materials_used: prev.materials_used.map((m, idx) =>
+        idx === i ? { ...m, [field]: parseFloat(String(m[field]).replace(',', '.')) || 0 } : m
+      )
+    }));
   };
 
-  // Valores locales para horas/tarifa
-  const [localLaborValues, setLocalLaborValues] = useState({});
-  const getLaborDisplay = (field) => field in localLaborValues ? localLaborValues[field] : (form[field] ?? '');
-  const onLaborLocalChange = (field, str) => setLocalLaborValues(prev => ({ ...prev, [field]: str }));
-  const onLaborBlur = (field) => {
-    setLocalLaborValues(prev => {
-      if (!(field in prev)) return prev;
-      const parsed = parseFloat(prev[field].replace(',', '.')) || 0;
-      setForm(f => ({ ...f, [field]: parsed }));
-      const next = { ...prev }; delete next[field]; return next;
-    });
-  };
+  const getLaborDisplay = (field) => form[field] ?? '';
+  const onLaborLocalChange = (field, str) => setForm(f => ({ ...f, [field]: str }));
+  const onLaborBlur = (field) => setForm(f => ({ ...f, [field]: parseFloat(String(f[field]).replace(',', '.')) || 0 }));
 
   const filtered = useMemo(() => orders.filter(o => {
     const matchSearch = !search || `${o.order_number} ${o.contact_name} ${o.description} ${o.technician}`.toLowerCase().includes(search.toLowerCase());

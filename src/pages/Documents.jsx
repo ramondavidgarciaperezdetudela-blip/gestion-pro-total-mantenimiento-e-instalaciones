@@ -192,9 +192,7 @@ export default function Documents() {
     setEditing(null);setDialogOpen(true);setShowAdvanced(false);
   };
 
-  // localItemValues guarda los strings crudos mientras el usuario escribe (para no bloquear la edición)
-  const [localItemValues, setLocalItemValues] = useState({});
-
+  // Cambio directo de campo de item (string mientras escribe, parseo al blur)
   const handleItemChange = useCallback((index, field, value) => {
     setForm((prev) => {
       const newItems = prev.items.map((item, i) => i === index ? { ...item, [field]: value } : item);
@@ -202,30 +200,27 @@ export default function Documents() {
     });
   }, []);
 
-  // Mientras escribe: solo guarda el string local sin parsear
   const handleItemLocalChange = useCallback((index, field, strValue) => {
-    setLocalItemValues(prev => ({ ...prev, [`${index}_${field}`]: strValue }));
+    // Guarda el string tal cual para que el input no bloquee
+    setForm((prev) => {
+      const newItems = prev.items.map((item, i) => i === index ? { ...item, [field]: strValue } : item);
+      // No recalcular mientras escribe para no interrumpir
+      return { ...prev, items: newItems };
+    });
   }, []);
 
-  // Al salir del campo: parsea y actualiza el form real
   const handleItemBlur = useCallback((index, field) => {
-    const key = `${index}_${field}`;
-    setLocalItemValues(prev => {
-      if (!(key in prev)) return prev;
-      const strVal = prev[key];
-      const parsed = parseFloat(strVal.replace(',', '.')) || 0;
-      handleItemChange(index, field, parsed);
-      const next = { ...prev };
-      delete next[key];
-      return next;
+    setForm((prev) => {
+      const newItems = prev.items.map((item, i) => {
+        if (i !== index) return item;
+        const parsed = parseFloat(String(item[field]).replace(',', '.')) || 0;
+        return { ...item, [field]: parsed };
+      });
+      return { ...prev, ...recalculate(newItems, prev.iva_rate) };
     });
-  }, [handleItemChange]);
+  }, []);
 
-  // Obtiene el valor a mostrar: string local si está escribiendo, o el valor del form
-  const getItemDisplayValue = useCallback((index, field, formValue) => {
-    const key = `${index}_${field}`;
-    return key in localItemValues ? localItemValues[key] : (formValue ?? '');
-  }, [localItemValues]);
+  const getItemDisplayValue = useCallback((index, field, formValue) => formValue ?? '', []);
 
   const addItem = useCallback(() => {
     setForm((prev) => ({ ...prev, items: [...prev.items, newItem()] }));
