@@ -13,6 +13,7 @@ import {
   Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers } from
 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
+import PriceItemSelector from '../components/PriceItemSelector';
 import { format, startOfMonth } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
 import PrintButton from '../components/PrintButton';
@@ -784,6 +785,12 @@ export default function Documents() {
               )}
               <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Línea</Button>
+                <PriceItemSelector onSelect={(item) => {
+                  setForm((prev) => {
+                    const newItems = [...prev.items, { _id: ++_itemId, description: item.description, quantity: item.quantity || 1, unit_price: item.unit_price, discount: 0, total: item.unit_price }];
+                    return { ...prev, ...recalculate(newItems, prev.iva_rate) };
+                  });
+                }} />
                 {lineTemplates.length > 0 && (
                   <div className="relative">
                     <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50 gap-1"

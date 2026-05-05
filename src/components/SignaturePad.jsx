@@ -4,41 +4,14 @@ import { RotateCcw, Check, PenLine } from 'lucide-react';
 
 /**
  * SignatureCanvas — Componente de firma digital táctil/ratón
- * Funciona correctamente en móvil, tablet y ordenador.
- * El trazo sigue exactamente donde se toca/hace clic.
+ * El canvas de firma se muestra como overlay fijo para evitar que la pantalla se mueva al firmar.
  */
 export default function SignatureCanvas({ label, value, onSave, onCancel, showCancelIfSigned = true, existingDatetime = null }) {
   const canvasRef = useRef(null);
-  const containerRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
   const [showCanvas, setShowCanvas] = useState(!value);
   const [signDatetime, setSignDatetime] = useState(existingDatetime);
-  const lastPos = useRef(null);
-
-  // Bloquear scroll completamente mientras el canvas de firma está visible (iOS + Android)
-  useEffect(() => {
-    if (!showCanvas || value) return;
-    const prevBodyOverflow = document.body.style.overflow;
-    const prevBodyPosition = document.body.style.position;
-    const prevBodyWidth = document.body.style.width;
-    const prevScrollY = window.scrollY;
-    // Fijar el body para evitar scroll en iOS Safari
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    document.body.style.top = `-${prevScrollY}px`;
-    document.documentElement.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prevBodyOverflow;
-      document.body.style.position = prevBodyPosition;
-      document.body.style.width = prevBodyWidth;
-      document.body.style.top = '';
-      document.documentElement.style.overflow = '';
-      // Restaurar posición de scroll
-      window.scrollTo(0, prevScrollY);
-    };
-  }, [showCanvas, value]);
 
   const initCanvas = useCallback(() => {
     requestAnimationFrame(() => {
@@ -59,7 +32,6 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
     if (showCanvas) initCanvas();
   }, [showCanvas, initCanvas]);
 
-  // Calcula la posición correcta relativa al canvas, sin importar scroll ni zoom
   const getPos = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -77,7 +49,6 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
     e.preventDefault();
     e.stopPropagation();
     const pos = getPos(e);
-    lastPos.current = pos;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     ctx.beginPath();
@@ -95,13 +66,11 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
     const ctx = canvas.getContext('2d');
     ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
-    lastPos.current = pos;
   }, [isDrawing, getPos]);
 
   const stopDraw = useCallback((e) => {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     setIsDrawing(false);
-    lastPos.current = null;
   }, []);
 
   const clear = () => {
@@ -114,7 +83,6 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
 
   const save = () => {
     const canvas = canvasRef.current;
-    // Exportar en tamaño pequeño como JPEG para minimizar el peso
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = 400;
     tempCanvas.height = 130;
@@ -131,6 +99,7 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
     setShowCanvas(false);
   };
 
+  // Vista de firma ya guardada
   if (!showCanvas && value) {
     return (
       <div className="border rounded-xl p-3 bg-gray-50 space-y-2">
@@ -149,44 +118,68 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
     );
   }
 
+  // Panel de firma inline (sin overlay, con touch-action none para bloquear scroll sólo en el canvas)
+  if (!showCanvas) return null;
+
   return (
-    <div ref={containerRef} className="border rounded-xl p-3 bg-gray-50 space-y-2">
-      {label && <p className="text-xs font-semibold text-gray-700 mb-1">{label}</p>}
-      <p className="text-[11px] text-gray-400 text-center">Firme directamente con el dedo o ratón en el recuadro de abajo</p>
-      <div className="border-2 border-dashed border-blue-300 rounded-lg overflow-hidden bg-white shadow-inner relative">
-        <canvas
-          ref={canvasRef}
-          width={900}
-          height={280}
-          className="w-full cursor-crosshair block"
-          style={{ touchAction: 'none', minHeight: '160px', display: 'block' }}
-          onMouseDown={startDraw}
-          onMouseMove={draw}
-          onMouseUp={stopDraw}
-          onMouseLeave={stopDraw}
-          onTouchStart={startDraw}
-          onTouchMove={draw}
-          onTouchEnd={stopDraw}
-        />
-        {!hasDrawn && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-gray-200 text-sm select-none">← Firme aquí →</span>
+    <>
+      {/* Overlay fijo que cubre toda la pantalla para evitar scroll */}
+      <div
+        className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4"
+        style={{ touchAction: 'none' }}
+      >
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-4 space-y-3" style={{ touchAction: 'auto' }}>
+          {label && <p className="text-sm font-semibold text-gray-800 text-center">{label}</p>}
+          <p className="text-xs text-gray-400 text-center">Firme con el dedo o ratón en el recuadro de abajo</p>
+
+          <div className="border-2 border-dashed border-blue-300 rounded-xl overflow-hidden bg-white relative">
+            <canvas
+              ref={canvasRef}
+              width={900}
+              height={280}
+              className="w-full cursor-crosshair block"
+              style={{ touchAction: 'none', display: 'block', minHeight: 140 }}
+              onMouseDown={startDraw}
+              onMouseMove={draw}
+              onMouseUp={stopDraw}
+              onMouseLeave={stopDraw}
+              onTouchStart={startDraw}
+              onTouchMove={draw}
+              onTouchEnd={stopDraw}
+            />
+            {!hasDrawn && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span className="text-gray-200 text-sm select-none">← Firme aquí →</span>
+              </div>
+            )}
           </div>
-        )}
+
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={clear} className="flex-1 text-xs">
+              <RotateCcw className="w-3 h-3 mr-1" />Borrar
+            </Button>
+            <Button
+              size="sm"
+              onClick={save}
+              disabled={!hasDrawn}
+              className="flex-1 text-xs bg-blue-700 hover:bg-blue-800 text-white"
+            >
+              <Check className="w-3 h-3 mr-1" />Confirmar firma
+            </Button>
+          </div>
+
+          {showCancelIfSigned && value && (
+            <Button size="sm" variant="ghost" className="w-full text-xs text-gray-400" onClick={() => setShowCanvas(false)}>
+              Cancelar
+            </Button>
+          )}
+          {!value && onCancel && (
+            <Button size="sm" variant="ghost" className="w-full text-xs text-gray-400" onClick={() => { setShowCanvas(false); onCancel?.(); }}>
+              Cancelar
+            </Button>
+          )}
+        </div>
       </div>
-      <div className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={clear} className="flex-1 text-xs">
-          <RotateCcw className="w-3 h-3 mr-1" />Borrar
-        </Button>
-        <Button size="sm" onClick={save} disabled={!hasDrawn} className="flex-1 text-xs bg-blue-700 hover:bg-blue-800 text-white">
-          <Check className="w-3 h-3 mr-1" />Confirmar firma
-        </Button>
-      </div>
-      {showCancelIfSigned && value && (
-        <Button size="sm" variant="ghost" className="w-full text-xs text-gray-400" onClick={() => setShowCanvas(false)}>
-          Cancelar
-        </Button>
-      )}
-    </div>
+    </>
   );
 }

@@ -1,0 +1,42 @@
+{
+  "name": "PriceItem",
+  "type": "object",
+  "properties": {
+    "description": {
+      "type": "string",
+      "description": "Descripci\u00f3n del trabajo o material"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "mano_obra",
+        "material",
+        "desplazamiento",
+        "otro"
+      ],
+      "default": "mano_obra",
+      "description": "Categor\u00eda del concepto"
+    },
+    "unit_price": {
+      "type": "number",
+      "description": "Precio unitario en euros"
+    },
+    "unit": {
+      "type": "string",
+      "default": "ud",
+      "description": "Unidad (ud, h, m, m2, kg, etc.)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas o detalles adicionales"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "description",
+    "unit_price"
+  ]
+}

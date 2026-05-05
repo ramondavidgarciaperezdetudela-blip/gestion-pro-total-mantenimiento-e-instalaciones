@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import PullToRefresh from '../components/PullToRefresh';
@@ -18,7 +18,6 @@ import {
  } from 'lucide-react';
 import { saveToCache, loadFromCache, formatCacheDate } from '@/lib/offlineCache';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
-import CityAutocomplete from '../components/CityAutocomplete';
 import PostalCodeSearch from '../components/PostalCodeSearch';
 
 const PAYMENT_PROFILES = {
@@ -169,6 +168,7 @@ export default function Contacts() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [fetchingLogo, setFetchingLogo] = useState(false);
+  const [fetchingCompany, setFetchingCompany] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [cacheDate, setCacheDate] = useState('');
   const photoInputRef = React.useRef(null);
@@ -217,8 +217,7 @@ export default function Contacts() {
 
   const handleAutoFetchLogo = async () => {
     setFetchingLogo(true);
-    // Buscar logo por website si existe, sino por nombre de empresa
-    const logoUrl = form.website 
+    const logoUrl = form.website
       ? await fetchCompanyLogo(form.website, form.company_name)
       : await fetchCompanyLogo(null, form.company_name);
     if (logoUrl) {
@@ -227,8 +226,54 @@ export default function Contacts() {
         await base44.entities.Contact.update(editing.id, { ...form, company_logo_url: logoUrl });
         loadContacts();
       }
+    } else {
+      alert('No se encontró logo para esta empresa. Prueba a añadir la web de la empresa.');
     }
     setFetchingLogo(false);
+  };
+
+  // Buscar datos de empresa por NIF o nombre usando IA con internet
+  const handleFetchCompanyData = async () => {
+    const query = form.nif || form.company_name;
+    if (!query) return alert('Introduce primero el NIF/CIF o nombre de la empresa');
+    setFetchingCompany(true);
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `Busca en internet (web pública, registro mercantil, AEAT, páginas oficiales) los datos de la empresa española con ${form.nif ? `NIF/CIF: ${form.nif}` : `nombre: "${form.company_name}"`}. Devuelve los datos que encuentres: razón social, dirección, código postal, ciudad, provincia, teléfono, email, website. Si no encuentras algún dato, deja el campo vacío.`,
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            company_name: { type: 'string' },
+            address: { type: 'string' },
+            postal_code: { type: 'string' },
+            city: { type: 'string' },
+            province: { type: 'string' },
+            phone: { type: 'string' },
+            email: { type: 'string' },
+            website: { type: 'string' },
+            nif: { type: 'string' },
+          }
+        }
+      });
+      if (result) {
+        setForm(prev => ({
+          ...prev,
+          company_name: result.company_name || prev.company_name,
+          address: result.address || prev.address,
+          postal_code: result.postal_code || prev.postal_code,
+          city: result.city || prev.city,
+          province: result.province || prev.province,
+          phone: result.phone || prev.phone,
+          email: result.email || prev.email,
+          website: result.website || prev.website,
+          nif: result.nif || prev.nif,
+        }));
+      }
+    } catch (e) {
+      alert('Error al buscar datos de empresa: ' + e.message);
+    }
+    setFetchingCompany(false);
   };
 
   const handleEdit = (c) => {
@@ -315,46 +360,40 @@ export default function Contacts() {
                   <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <Input placeholder="Empresa" value={form.company_name} onChange={e => setForm({...form, company_name: e.target.value})} />
-              <Input placeholder="Website de empresa" value={form.website || ''} onChange={e => setForm({...form, website: e.target.value})} />
-              <Button onClick={handleAutoFetchLogo} variant="outline" size="sm" className="w-full" disabled={fetchingLogo || (!form.company_name && !form.website)}>
-                <Download className="w-3.5 h-3.5 mr-2" />
-                {fetchingLogo ? 'Buscando logo...' : 'Descarga logo empresa'}
-              </Button>
+              <div className="flex gap-2">
+                <Input placeholder="NIF / CIF empresa" value={form.nif} onChange={e => setForm({...form, nif: e.target.value})} className="flex-1" />
+                <Button onClick={handleFetchCompanyData} variant="outline" size="sm" disabled={fetchingCompany || (!form.nif && !form.company_name)} className="whitespace-nowrap gap-1 text-xs">
+                  <Search className="w-3 h-3" />
+                  {fetchingCompany ? 'Buscando...' : 'Buscar empresa'}
+                </Button>
+              </div>
+              <Input placeholder="Empresa / Razón social" value={form.company_name} onChange={e => setForm({...form, company_name: e.target.value})} />
+              <div className="flex gap-2">
+                <Input placeholder="Website de empresa" value={form.website || ''} onChange={e => setForm({...form, website: e.target.value})} className="flex-1" />
+                <Button onClick={handleAutoFetchLogo} variant="outline" size="sm" disabled={fetchingLogo || (!form.company_name && !form.website)} className="whitespace-nowrap gap-1 text-xs">
+                  <Download className="w-3 h-3" />
+                  {fetchingLogo ? 'Buscando...' : 'Logo'}
+                </Button>
+              </div>
+              {form.company_logo_url && (
+                <div className="flex items-center gap-2 bg-gray-50 p-2 rounded border">
+                  <img src={form.company_logo_url} alt="Logo" className="h-10 w-auto max-w-24 object-contain" onError={e => e.target.style.display='none'} />
+                  <button onClick={() => setForm(f => ({...f, company_logo_url: ''}))} className="text-xs text-red-500 hover:text-red-700 ml-auto">✕ Quitar</button>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <Input placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
                 <Input placeholder="Apellidos" value={form.surname} onChange={e => setForm({...form, surname: e.target.value})} />
               </div>
-              <Input placeholder="NIF / CIF" value={form.nif} onChange={e => setForm({...form, nif: e.target.value})} />
               <div className="grid grid-cols-2 gap-2">
                 <Input placeholder="Teléfono" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
                 <Input placeholder="Teléfono 2" value={form.phone2} onChange={e => setForm({...form, phone2: e.target.value})} />
               </div>
               <Input placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
               <Input placeholder="Dirección" value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
-              <div className="grid grid-cols-3 gap-2">
-                <PostalCodeSearch
-                  type="city"
-                  onSelect={(result) => {
-                    setForm(prev => ({
-                      ...prev,
-                      postal_code: result.postal_code,
-                      city: result.city,
-                      province: result.province
-                    }));
-                  }}
-                />
-                <PostalCodeSearch
-                  type="province"
-                  onSelect={(result) => {
-                    setForm(prev => ({
-                      ...prev,
-                      postal_code: result.postal_code,
-                      city: result.city,
-                      province: result.province
-                    }));
-                  }}
-                />
+              {/* Búsqueda por CP — rellena ciudad y provincia automáticamente */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 space-y-2">
+                <p className="text-xs text-blue-700 font-medium">📍 Buscar por código postal (rellena ciudad y provincia automáticamente)</p>
                 <PostalCodeSearch
                   type="postal_code"
                   onSelect={(result) => {
@@ -366,6 +405,12 @@ export default function Contacts() {
                     }));
                   }}
                 />
+              </div>
+              {/* Campos directos editables */}
+              <div className="grid grid-cols-3 gap-2">
+                <Input placeholder="Código postal" value={form.postal_code || ''} onChange={e => setForm({...form, postal_code: e.target.value})} />
+                <Input placeholder="Ciudad / Municipio" value={form.city || ''} onChange={e => setForm({...form, city: e.target.value})} />
+                <Input placeholder="Provincia" value={form.province || ''} onChange={e => setForm({...form, province: e.target.value})} />
               </div>
               <Textarea placeholder="Notas" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} />
               <div className="grid grid-cols-2 gap-2">

@@ -21,6 +21,7 @@ import { getNextAvailableNumber } from '../components/autoNumber';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
+import PriceItemSelector from '../components/PriceItemSelector';
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
 const STATUSES = ['pendiente', 'en_curso', 'completada', 'cancelada'];
@@ -644,7 +645,10 @@ export default function SAT() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-sm font-medium">Materiales utilizados</label>
-                <Button size="sm" variant="outline" onClick={addMaterial}><Plus className="w-3 h-3 mr-1" />Añadir</Button>
+                <div className="flex gap-1">
+                  <PriceItemSelector onSelect={item => setForm(prev => ({ ...prev, materials_used: [...(prev.materials_used || []), { material: item.description, quantity: item.quantity || 1, unit_price: item.unit_price }] }))} />
+                  <Button size="sm" variant="outline" onClick={addMaterial}><Plus className="w-3 h-3 mr-1" />Manual</Button>
+                </div>
               </div>
               {form.materials_used?.map((m, i) => (
                 <div key={i} className="grid grid-cols-4 gap-1 mb-1">
