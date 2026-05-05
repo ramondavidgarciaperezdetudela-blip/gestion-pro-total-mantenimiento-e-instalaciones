@@ -116,19 +116,22 @@ export default function ContactDetail() {
       setContact(c);
       setContactForm(c || {});
 
-      // Resto en paralelo completo — sin tandas que añaden latencia
-      const [inv, sat, maint, docs, nts, apts, calcs] = await Promise.all([
+      // Cargar en dos tandas para no superar el rate limit
+      const [inv, sat, maint] = await Promise.all([
         base44.entities.Invoice.filter({ contact_id: contactId }),
         base44.entities.SATOrder.filter({ contact_id: contactId }),
         base44.entities.MaintenanceSheet.filter({ contact_id: contactId }),
+      ]);
+      setInvoices(inv);
+      setSatOrders(sat);
+      setMaintenance(maint);
+
+      const [docs, nts, apts, calcs] = await Promise.all([
         base44.entities.ClientDocument.filter({ contact_id: contactId }),
         base44.entities.ClientNote.filter({ contact_id: contactId }),
         base44.entities.Appointment.filter({ contact_id: contactId }),
         base44.entities.ThermalCalculation.filter({ contact_id: contactId }),
       ]);
-      setInvoices(inv);
-      setSatOrders(sat);
-      setMaintenance(maint);
       setDocuments(docs);
       setEquipmentPhotos(docs.filter((d) => d.doc_type === 'foto_equipo'));
       setNotes(nts);
