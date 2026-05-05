@@ -198,8 +198,17 @@ export default function Contacts() {
   }, []);
 
   const handleSave = async () => {
-    if (editing) await base44.entities.Contact.update(editing.id, form);
-    else await base44.entities.Contact.create(form);
+    // Si no hay nombre, usar empresa como nombre para que no falle la entidad
+    const dataToSave = { ...form };
+    if (!dataToSave.name?.trim() && dataToSave.company_name?.trim()) {
+      dataToSave.name = dataToSave.company_name;
+    }
+    if (!dataToSave.name?.trim()) {
+      alert('Introduce al menos el nombre o la empresa');
+      return;
+    }
+    if (editing) await base44.entities.Contact.update(editing.id, dataToSave);
+    else await base44.entities.Contact.create(dataToSave);
     setDialogOpen(false);
     setEditing(null);
     setForm(EMPTY_FORM);

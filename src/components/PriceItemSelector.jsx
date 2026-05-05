@@ -60,7 +60,7 @@ export default function PriceItemSelector({ onSelect, trigger }) {
     if (!newForm.description || !newForm.unit_price) return;
     await base44.entities.PriceItem.create({
       ...newForm,
-      unit_price: parseFloat(newForm.unit_price) || 0,
+      unit_price: parseFloat(String(newForm.unit_price).replace(',', '.')) || 0,
       is_active: true,
     });
     setNewForm({ description: '', unit_price: '', unit: 'ud', category: 'mano_obra', notes: '' });
@@ -72,7 +72,7 @@ export default function PriceItemSelector({ onSelect, trigger }) {
     if (!editingItem) return;
     await base44.entities.PriceItem.update(editingItem.id, {
       ...editForm,
-      unit_price: parseFloat(editForm.unit_price) || 0,
+      unit_price: parseFloat(String(editForm.unit_price).replace(',', '.')) || 0,
     });
     setEditingItem(null);
     load();
@@ -134,7 +134,7 @@ export default function PriceItemSelector({ onSelect, trigger }) {
                     <div className="border border-blue-200 rounded-lg p-3 bg-blue-50 space-y-2">
                       <Input value={editForm.description} onChange={e => setEditForm(f => ({...f, description: e.target.value}))} placeholder="Descripción" />
                       <div className="grid grid-cols-3 gap-2">
-                        <Input value={editForm.unit_price} onChange={e => setEditForm(f => ({...f, unit_price: e.target.value}))} placeholder="€ precio" inputMode="decimal" />
+                        <Input value={editForm.unit_price ?? ''} onChange={e => setEditForm(f => ({...f, unit_price: e.target.value}))} placeholder="€ precio" inputMode="decimal" type="text" />
                         <select value={editForm.unit} onChange={e => setEditForm(f => ({...f, unit: e.target.value}))} className="h-9 border border-input rounded-md px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
                           {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                         </select>
@@ -193,7 +193,7 @@ export default function PriceItemSelector({ onSelect, trigger }) {
                 <p className="text-xs font-semibold text-green-800">Nuevo concepto</p>
                 <Input value={newForm.description} onChange={e => setNewForm(f => ({...f, description: e.target.value}))} placeholder="Descripción del trabajo / material *" />
                 <div className="grid grid-cols-3 gap-2">
-                  <Input value={newForm.unit_price} onChange={e => setNewForm(f => ({...f, unit_price: e.target.value}))} placeholder="€ precio *" inputMode="decimal" />
+                  <Input value={newForm.unit_price} onChange={e => setNewForm(f => ({...f, unit_price: e.target.value}))} placeholder="€ precio *" inputMode="decimal" type="text" />
                   <select value={newForm.unit} onChange={e => setNewForm(f => ({...f, unit: e.target.value}))} className="h-9 border border-input rounded-md px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
                     {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
