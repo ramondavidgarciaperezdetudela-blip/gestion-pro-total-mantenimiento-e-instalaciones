@@ -91,7 +91,12 @@ function buildResult(form, breakdown) {
     { material: `Aislamiento tubería Armaflex ${insulThick}`, quantity: actualDist * 2, unit: 'm', precio_ud: 3.8 },
     { material: `${form.refrigerant_type} gas refrigerante`, quantity: refCharge, unit: 'kg', precio_ud: form.refrigerant_type === 'R-290' ? 18 : 28 },
     { material: `Válvula expansión termostática ${vetModel}`, quantity: 1, unit: 'unidad', precio_ud: vetPrecio, nota: `Orificio ${vetOrificio}` },
-    { material: `Filtro deshidratador ${loadKW <= 5 ? 'DML 083' : 'DML 164'}`, quantity: 1, unit: 'unidad', precio_ud: 18 },
+    { material: `Filtro deshidratador ${
+      form.condensadora_tipo === 'bancada'
+        ? (loadKW <= 3 ? 'Danfoss DML 083 (bancada, 3/8" – 10mm)' : loadKW <= 8 ? 'Danfoss DML 164 (bancada, 1/2" – 12mm)' : 'Danfoss DML 305 (bancada, 5/8" – 16mm)')
+        : (loadKW <= 5 ? 'DML 083 (split, 3/8")' : 'DML 164 (split, 1/2")')
+    }`, quantity: 1, unit: 'unidad', precio_ud: form.condensadora_tipo === 'bancada' ? (loadKW <= 3 ? 22 : loadKW <= 8 ? 28 : 38) : 18,
+      nota: form.condensadora_tipo === 'bancada' ? `Bancada: filtro bidireccional bidirec. con tamiz molecular 48bar` : null },
     { material: `Visor de líquido con indicador humedad`, quantity: 1, unit: 'unidad', precio_ud: 14 },
     { material: `Presostato combinado alta/baja presión`, quantity: 1, unit: 'unidad', precio_ud: 42 },
     { material: cuadroDesc, quantity: 1, unit: 'unidad', precio_ud: cuadroPrecio },
@@ -135,6 +140,7 @@ export default function ColdRoomCalc() {
     product_kg: 200, cold_room_type: 'positiva',
     panel_thickness: '80mm', refrigerant_type: 'R-449A',
     pipe_distance: 8, pipe_height_diff: 3,
+    condensadora_tipo: 'split',
     photos_evaporator: [], photos_condenser: [], photos_other: [],
     humidity_evap_pressure: 5.72,
   });
@@ -423,6 +429,22 @@ export default function ColdRoomCalc() {
         </div>
         <div><label className="text-[10px] text-gray-500">Long. tubería (m)</label><Input type="number" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: parseFloat(e.target.value)||0})} /></div>
         <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><Input type="number" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: parseFloat(e.target.value)||0})} /></div>
+      </div>
+
+      <div>
+        <label className="text-[10px] text-gray-500">Tipo de condensadora</label>
+        <Select value={form.condensadora_tipo} onValueChange={v => setForm({...form, condensadora_tipo: v})}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="split">Split (condensadora exterior separada)</SelectItem>
+            <SelectItem value="bancada">Bancada (grupo compacto compresor + condensador)</SelectItem>
+          </SelectContent>
+        </Select>
+        {form.condensadora_tipo === 'bancada' && (
+          <p className="text-[10px] text-blue-600 mt-1 bg-blue-50 px-2 py-1 rounded">
+            ℹ️ Bancada: se calculará filtro deshidratador bidireccional de mayor capacidad (48 bar) con tamiz molecular
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
