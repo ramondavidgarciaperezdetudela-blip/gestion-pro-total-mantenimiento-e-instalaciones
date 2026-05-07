@@ -24,6 +24,7 @@ import {
   MessageCircle, RefreshCw, ChevronDown, ChevronUp } from
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
 import { format, startOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -431,6 +432,9 @@ export default function Home() {
 
 
 
+
+      {/* Panel ingresos + trabajos pendientes + mantenimientos semana */}
+      <MonthlyRevenueChart />
 
       {/* Gráficos proveedores */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

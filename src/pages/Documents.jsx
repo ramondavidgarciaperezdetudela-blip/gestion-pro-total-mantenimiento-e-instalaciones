@@ -14,6 +14,7 @@ import {
 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
+import AdvancedPriceSearch from '../components/AdvancedPriceSearch';
 import { format, startOfMonth } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
 import PrintButton from '../components/PrintButton';
@@ -846,6 +847,12 @@ export default function Documents() {
                     )}
                   </div>
                 )}
+                <AdvancedPriceSearch onSelect={(item) => {
+                  setForm((prev) => {
+                    const newItems = [...prev.items, { _id: ++_itemId, description: item.description, quantity: 1, unit_price: item.unit_price, discount: 0, total: item.unit_price }];
+                    return { ...prev, ...recalculate(newItems, prev.iva_rate) };
+                  });
+                }} triggerLabel="Buscar precio BD" />
                 <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => setSupplierSearchOpen(true)}>
                   <ShoppingCart className="w-3 h-3 mr-1" />Buscar en distribuidor
                 </Button>

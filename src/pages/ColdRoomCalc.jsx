@@ -64,22 +64,45 @@ function buildResult(form, breakdown) {
   const panelArea = 2 * (form.length * form.width + form.length * form.height + form.width * form.height);
   const refCharge = (equip.power_kw * 0.35 + actualDist * (EXTRA_REF_G_PER_M[form.refrigerant_type] || 18) / 1000).toFixed(2);
 
+  // Selección válvula de expansión por potencia y refrigerante
+  const loadKW = totalLoad / 1000;
+  let vetModel, vetOrificio, vetPrecio;
+  if (loadKW <= 1.5) { vetModel = 'Danfoss T2 / TS2'; vetOrificio = '#00 (0.8mm)'; vetPrecio = 45; }
+  else if (loadKW <= 3) { vetModel = 'Danfoss T2 / TS2'; vetOrificio = '#1 (1.1mm)'; vetPrecio = 52; }
+  else if (loadKW <= 6) { vetModel = 'Danfoss TUB/T2'; vetOrificio = '#2 (1.4mm)'; vetPrecio = 68; }
+  else if (loadKW <= 12) { vetModel = 'Danfoss TUA/TUAE'; vetOrificio = '#3 (1.8mm)'; vetPrecio = 85; }
+  else { vetModel = 'Danfoss TUAE / TCAE'; vetOrificio = '#4 (2.2mm)'; vetPrecio = 120; }
+
+  // Tuberías por potencia
+  const liquidDiam = loadKW <= 5 ? '3/8"' : loadKW <= 15 ? '1/2"' : '5/8"';
+  const gasDiam = loadKW <= 3 ? '1/2"' : loadKW <= 8 ? '5/8"' : loadKW <= 15 ? '7/8"' : '1-1/8"';
+  const insulThick = (form.cold_room_temp || 0) < 0 ? '32mm' : '19mm';
+
+  // Cuadro eléctrico y componentes
+  const cuadroPrecio = loadKW <= 5 ? 320 : loadKW <= 15 ? 480 : 680;
+  const cuadroDesc = loadKW <= 5 ? 'Cuadro control monofásico básico' : loadKW <= 15 ? 'Cuadro control trifásico con termostato digital' : 'Cuadro control trifásico industrial con alarmas';
+
   const materials = [
-    { material: `Panel frigorífico ${form.panel_thickness}`, quantity: panelArea.toFixed(1), unit: 'm²' },
-    { material: `Evaporador cámara`, quantity: 1, unit: 'unidad' },
-    { material: `Unidad condensadora ${equip.brand} ${equip.model}`, quantity: 1, unit: 'unidad' },
-    { material: `Tubería líquido 3/8" Cu`, quantity: actualDist, unit: 'm' },
-    { material: `Tubería gas 5/8" Cu`, quantity: actualDist, unit: 'm' },
-    { material: `Aislamiento tubería Armaflex 19mm`, quantity: actualDist * 2, unit: 'm' },
-    { material: `${form.refrigerant_type} gas refrigerante`, quantity: refCharge, unit: 'kg' },
-    { material: `Válvula expansión termostática (VET)`, quantity: 1, unit: 'unidad' },
-    { material: `Filtro deshidratador`, quantity: 1, unit: 'unidad' },
-    { material: `Visor de líquido`, quantity: 1, unit: 'unidad' },
-    { material: `Presostato alta/baja`, quantity: 1, unit: 'unidad' },
-    { material: `Cuadro eléctrico control cámara`, quantity: 1, unit: 'unidad' },
-    { material: `Cableado eléctrico 4x2,5mm²`, quantity: actualDist + 5, unit: 'm' },
-    { material: `Marco puerta frigorífica isotérmica`, quantity: 1, unit: 'unidad' },
+    { material: `Panel frigorífico ${form.panel_thickness}`, quantity: panelArea.toFixed(1), unit: 'm²', precio_ud: 45 },
+    { material: `Evaporador cámara`, quantity: 1, unit: 'unidad', precio_ud: null },
+    { material: `Unidad condensadora ${equip.brand} ${equip.model} ${equip.power_kw}kW`, quantity: 1, unit: 'unidad', precio_ud: null },
+    { material: `Tubería líquido ${liquidDiam} Cu`, quantity: actualDist, unit: 'm', precio_ud: 6.5 },
+    { material: `Tubería gas ${gasDiam} Cu`, quantity: actualDist, unit: 'm', precio_ud: 9 },
+    { material: `Aislamiento tubería Armaflex ${insulThick}`, quantity: actualDist * 2, unit: 'm', precio_ud: 3.8 },
+    { material: `${form.refrigerant_type} gas refrigerante`, quantity: refCharge, unit: 'kg', precio_ud: form.refrigerant_type === 'R-290' ? 18 : 28 },
+    { material: `Válvula expansión termostática ${vetModel}`, quantity: 1, unit: 'unidad', precio_ud: vetPrecio, nota: `Orificio ${vetOrificio}` },
+    { material: `Filtro deshidratador ${loadKW <= 5 ? 'DML 083' : 'DML 164'}`, quantity: 1, unit: 'unidad', precio_ud: 18 },
+    { material: `Visor de líquido con indicador humedad`, quantity: 1, unit: 'unidad', precio_ud: 14 },
+    { material: `Presostato combinado alta/baja presión`, quantity: 1, unit: 'unidad', precio_ud: 42 },
+    { material: cuadroDesc, quantity: 1, unit: 'unidad', precio_ud: cuadroPrecio },
+    { material: `Cableado eléctrico 4×2,5mm² manguera`, quantity: actualDist + 5, unit: 'm', precio_ud: 2.8 },
+    { material: `Marco puerta frigorífica isotérmica`, quantity: 1, unit: 'unidad', precio_ud: null },
+    { material: `Desagüe bandeja evaporador con cable calefactor`, quantity: 1, unit: 'unidad', precio_ud: 35 },
+    { material: `Soporte/consola metálica condensadora`, quantity: 1, unit: 'unidad', precio_ud: 45 },
+    { material: `Racores y latiguillos frigoríficos`, quantity: 1, unit: 'juego', precio_ud: 28 },
+    { material: `Espuma aislante montaje (Armaflex adhesivo)`, quantity: 2, unit: 'ud', precio_ud: 12 },
   ];
+  const totalMateriales = materials.reduce((s, m) => s + (m.precio_ud ? m.precio_ud * parseFloat(m.quantity) : 0), 0);
 
   // Scores eficiencia
   const panelScore = { '60mm': 60, '80mm': 75, '100mm': 88, '120mm': 100 }[form.panel_thickness] || 75;
@@ -91,6 +114,7 @@ function buildResult(form, breakdown) {
   return {
     loadW: totalLoad, equip, alternatives, extraGrams, evapPressure, condPressure, refCharge,
     panelArea: panelArea.toFixed(1), materials, maxDist, actualDist, pr,
+    totalMateriales, vetOrificio,
     efficiencyScores: {
       insulation: Math.max(0, Math.min(100, panelScore)),
       piping: Math.max(0, Math.min(100, pipingScore)),
@@ -499,27 +523,49 @@ export default function ColdRoomCalc() {
         </CardContent>
       </Card>
 
-      {/* Materiales */}
+      {/* Materiales con precios */}
       <Card>
         <CardContent className="p-4">
-          <p className="font-semibold text-sm mb-2">Material necesario para el montaje</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="font-semibold text-sm">Material necesario para el montaje</p>
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-semibold">
+              Total materiales: {result.totalMateriales ? result.totalMateriales.toFixed(0) : '—'} €
+            </span>
+          </div>
           <div className="overflow-x-auto -mx-1">
-          <table className="w-full text-xs border-collapse min-w-[300px]">
+          <table className="w-full text-xs border-collapse min-w-[400px]">
             <thead><tr className="bg-gray-100">
-              <th className="border p-1 text-left">Material</th>
-              <th className="border p-1 text-right">Cant.</th>
-              <th className="border p-1">Ud.</th>
+              <th className="border p-1 text-left">Material / Componente</th>
+              <th className="border p-1 text-right w-12">Cant.</th>
+              <th className="border p-1 w-10">Ud.</th>
+              <th className="border p-1 text-right w-16">P. ud. €</th>
+              <th className="border p-1 text-right w-16">Total €</th>
             </tr></thead>
             <tbody>
               {result.materials.map((m, i) => (
-                <tr key={i} className="border-b">
-                  <td className="border p-1">{m.material}</td>
+                <tr key={i} className={`border-b ${m.nota ? 'bg-blue-50' : ''}`}>
+                  <td className="border p-1">
+                    {m.material}
+                    {m.nota && <span className="ml-1 text-[9px] text-blue-600 font-medium">({m.nota})</span>}
+                  </td>
                   <td className="border p-1 text-right">{m.quantity}</td>
                   <td className="border p-1">{m.unit}</td>
+                  <td className="border p-1 text-right">{m.precio_ud != null ? `${m.precio_ud.toFixed(2)}` : '—'}</td>
+                  <td className="border p-1 text-right font-medium">
+                    {m.precio_ud != null ? `${(m.precio_ud * parseFloat(m.quantity)).toFixed(2)}` : '—'}
+                  </td>
                 </tr>
               ))}
+              <tr className="bg-blue-50 font-bold">
+                <td colSpan="4" className="border p-1 text-right">Total materiales estimado</td>
+                <td className="border p-1 text-right text-blue-700">{result.totalMateriales ? result.totalMateriales.toFixed(2) : '—'} €</td>
+              </tr>
             </tbody>
           </table>
+          </div>
+          <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+            ⚠️ Precios orientativos de mercado. Evaporador, condensadora y puerta frigorífica requieren cotización específica.
+            Orificio válvula de expansión: <strong>{result.vetOrificio || '—'}</strong>
           </div>
         </CardContent>
       </Card>
