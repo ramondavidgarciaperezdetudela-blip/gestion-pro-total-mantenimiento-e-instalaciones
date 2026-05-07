@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Package, ChevronRight } from 'lucide-react';
+import { Package, ChevronRight, Image } from 'lucide-react';
 
 /**
  * Input de descripción con autocompletado desde PriceItem y SupplierPrice.
@@ -59,6 +59,7 @@ export default function MaterialAutocomplete({ value, onChange, onSelectItem, pl
         unit: p.unit || 'ud',
         notes: p.notes,
         category: p.category,
+        image_url: p.image_url || null,
       }));
 
       // Buscar en SupplierPrice
@@ -146,8 +147,18 @@ export default function MaterialAutocomplete({ value, onChange, onSelectItem, pl
         <div className="absolute z-[200] top-full left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-56 overflow-y-auto">
           {suggestions.map((item) => (
             <button key={item.id} type="button"
-              className="w-full text-left flex items-center justify-between gap-2 px-3 py-2 hover:bg-emerald-50 border-b last:border-0 transition-colors"
+              className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 border-b last:border-0 transition-colors"
               onMouseDown={e => { e.preventDefault(); handleSelectSuggestion(item); }}>
+              {/* Miniatura imagen */}
+              <div className="w-8 h-8 flex-shrink-0 rounded border bg-gray-50 flex items-center justify-center overflow-hidden">
+                {item.image_url ? (
+                  <img src={item.image_url} alt="" className="w-full h-full object-contain"
+                    onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+                ) : null}
+                <div className={`w-full h-full items-center justify-center ${item.image_url ? 'hidden' : 'flex'}`}>
+                  <Image className="w-3 h-3 text-gray-300" />
+                </div>
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-gray-800 truncate">{item.description}</p>
                 <div className="flex items-center gap-1.5">

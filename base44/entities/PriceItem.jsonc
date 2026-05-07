@@ -30,6 +30,22 @@
       "type": "string",
       "description": "Notas o detalles adicionales"
     },
+    "supplier_name": {
+      "type": "string",
+      "description": "Nombre del proveedor"
+    },
+    "supplier_ref": {
+      "type": "string",
+      "description": "Referencia del proveedor"
+    },
+    "brand": {
+      "type": "string",
+      "description": "Marca del producto"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "URL de la imagen del producto"
+    },
     "is_active": {
       "type": "boolean",
       "default": true

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { Search, Plus, SlidersHorizontal, X, Image } from 'lucide-react';
 
 const CATEGORIES = [
   { value: 'todos', label: 'Todas las categorías' },
@@ -123,7 +123,17 @@ export default function AdvancedPriceSearch({ onSelect, triggerLabel = 'Buscar p
           )}
           {filtered.map(item => (
             <button key={item.id} onClick={() => handleSelect(item)}
-              className="w-full text-left flex items-center justify-between gap-2 p-2.5 rounded-lg hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-colors group">
+              className="w-full text-left flex items-center gap-2 p-2.5 rounded-lg hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-colors group">
+              {/* Imagen */}
+              <div className="w-10 h-10 flex-shrink-0 rounded-lg border bg-gray-50 flex items-center justify-center overflow-hidden">
+                {item.image_url ? (
+                  <img src={item.image_url} alt="" className="w-full h-full object-contain"
+                    onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+                ) : null}
+                <div className={`w-full h-full items-center justify-center ${item.image_url ? 'hidden' : 'flex'}`}>
+                  <Image className="w-4 h-4 text-gray-300" />
+                </div>
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-800 truncate">{item.description}</p>
                 {item.notes && <p className="text-[10px] text-gray-400 truncate">{item.notes}</p>}

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Search, Plus, Check, BookOpen, X, Pencil, Trash2, Save } from 'lucide-react';
+import { Search, Plus, Check, BookOpen, X, Pencil, Trash2, Save, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import SupplierCatalogImport from './SupplierCatalogImport';
 
 /**
  * PriceItemSelector — Selector de conceptos desde base de precios
@@ -19,7 +20,8 @@ export default function PriceItemSelector({ onSelect, trigger }) {
   const [editingItem, setEditingItem] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [addingNew, setAddingNew] = useState(false);
-  const [newForm, setNewForm] = useState({ description: '', unit_price: '', unit: 'ud', category: 'mano_obra', notes: '' });
+  const [newForm, setNewForm] = useState({ description: '', unit_price: '', unit: 'ud', category: 'mano_obra', notes: '', image_url: '' });
+  const [fetchingImage, setFetchingImage] = useState(false);
 
   const CATEGORIES = {
     mano_obra: { label: 'Mano de obra', color: 'bg-blue-100 text-blue-700' },
@@ -63,9 +65,23 @@ export default function PriceItemSelector({ onSelect, trigger }) {
       unit_price: parseFloat(String(newForm.unit_price).replace(',', '.')) || 0,
       is_active: true,
     });
-    setNewForm({ description: '', unit_price: '', unit: 'ud', category: 'mano_obra', notes: '' });
+    setNewForm({ description: '', unit_price: '', unit: 'ud', category: 'mano_obra', notes: '', image_url: '' });
     setAddingNew(false);
     load();
+  };
+
+  const fetchImageForNew = async () => {
+    if (!newForm.description) return;
+    setFetchingImage(true);
+    try {
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `Busca en internet la imagen oficial del producto: "${newForm.description}". Devuelve solo la URL directa de la imagen (JPG o PNG). Si no encuentras una imagen del producto, devuelve null.`,
+        add_context_from_internet: true,
+        response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
+      });
+      if (res?.image_url) setNewForm(f => ({ ...f, image_url: res.image_url }));
+    } catch {}
+    setFetchingImage(false);
   };
 
   const handleUpdate = async () => {
@@ -99,11 +115,14 @@ export default function PriceItemSelector({ onSelect, trigger }) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <DialogTitle className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-blue-600" />Base de precios
               </DialogTitle>
-              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 p-1">✕</button>
+              <div className="flex items-center gap-2">
+                <SupplierCatalogImport onImported={() => load()} />
+                <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 p-1">✕</button>
+              </div>
             </div>
           </DialogHeader>
 
@@ -153,12 +172,23 @@ export default function PriceItemSelector({ onSelect, trigger }) {
                       className="flex items-center gap-2 p-2.5 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 group cursor-pointer"
                       onClick={() => handleSelect(item)}
                     >
+                      {/* Imagen del producto */}
+                      <div className="w-10 h-10 flex-shrink-0 rounded-lg border bg-gray-50 flex items-center justify-center overflow-hidden">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt="" className="w-full h-full object-contain"
+                            onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+                        ) : null}
+                        <div className={`w-full h-full items-center justify-center ${item.image_url ? 'hidden' : 'flex'}`}>
+                          <Image className="w-4 h-4 text-gray-300" />
+                        </div>
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{item.description}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${CATEGORIES[item.category]?.color || 'bg-gray-100 text-gray-600'}`}>
                             {CATEGORIES[item.category]?.label || item.category}
                           </span>
+                          {item.brand && <span className="text-[10px] text-gray-400">{item.brand}</span>}
                           {item.notes && <span className="text-[10px] text-gray-400 truncate">{item.notes}</span>}
                         </div>
                       </div>
@@ -202,6 +232,20 @@ export default function PriceItemSelector({ onSelect, trigger }) {
                   </select>
                 </div>
                 <Input value={newForm.notes} onChange={e => setNewForm(f => ({...f, notes: e.target.value}))} placeholder="Notas (opcional)" />
+                {/* Imagen */}
+                <div className="flex items-center gap-2">
+                  <div className="w-12 h-12 flex-shrink-0 rounded-lg border bg-gray-50 flex items-center justify-center overflow-hidden">
+                    {newForm.image_url ? (
+                      <img src={newForm.image_url} alt="" className="w-full h-full object-contain" onError={e => { e.target.style.display='none'; }} />
+                    ) : <Image className="w-5 h-5 text-gray-300" />}
+                  </div>
+                  <div className="flex-1">
+                    <Input value={newForm.image_url || ''} onChange={e => setNewForm(f => ({...f, image_url: e.target.value}))} placeholder="URL de imagen (opcional)" className="text-xs mb-1" />
+                    <Button type="button" size="sm" variant="outline" onClick={fetchImageForNew} disabled={fetchingImage || !newForm.description} className="text-xs gap-1 w-full">
+                      {fetchingImage ? <><span className="animate-spin">⏳</span> Buscando...</> : <><Image className="w-3 h-3" />Buscar imagen en internet</>}
+                    </Button>
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleSaveNew} disabled={!newForm.description || !newForm.unit_price} className="flex-1 bg-green-600 hover:bg-green-700 text-xs gap-1">
                     <Save className="w-3 h-3" />Guardar concepto
