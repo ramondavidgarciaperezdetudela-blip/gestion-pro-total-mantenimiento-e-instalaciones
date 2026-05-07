@@ -12,6 +12,8 @@ import CompanyHeader from './CompanyHeader';
 import PrintButton from './PrintButton';
 import PhotoGallery from './PhotoGallery';
 import SATSignaturePanel from './SATSignaturePanel';
+import MaterialAutocomplete from './MaterialAutocomplete';
+import MaterialsExportButton from './MaterialsExportButton';
 
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
@@ -220,6 +222,10 @@ function SATPreview({ order, onEdit, onClose, contact, onUpdate }) {
       </div>
 
       <div className="flex gap-2 mt-3 flex-wrap pt-3 border-t">
+        <MaterialsExportButton
+          items={(order.materials_used || []).map(m => ({ description: m.material, quantity: m.quantity, unit_price: m.unit_price, total: (m.quantity||0)*(m.unit_price||0) }))}
+          title={`Orden SAT #${order.order_number} — ${order.contact_name}`}
+        />
         <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white font-semibold" onClick={exportPDF}>
           <FileDown className="w-3.5 h-3.5 mr-1" />Exportar PDF
         </Button>
@@ -294,11 +300,23 @@ function SATForm({ order, contact, onSave, onCancel }) {
           <Button size="sm" variant="outline" onClick={addMaterial}><Plus className="w-3 h-3 mr-1" />Añadir</Button>
         </div>
         {form.materials_used?.map((m, i) => (
-          <div key={i} className="grid grid-cols-4 gap-1 mb-1">
-            <input className="col-span-2 h-7 text-xs border border-input rounded-md px-2 focus:outline-none" placeholder="Material" value={m.material} onChange={e => updateMaterial(i, 'material', e.target.value)} />
-            <input type="number" className="h-7 text-xs border border-input rounded-md px-2 focus:outline-none" placeholder="Cant" value={m.quantity} onChange={e => updateMaterial(i, 'quantity', parseFloat(e.target.value) || 0)} />
+          <div key={i} className="grid grid-cols-4 gap-1 mb-1 items-center">
+            <div className="col-span-2">
+              <MaterialAutocomplete
+                value={m.material}
+                onChange={v => updateMaterial(i, 'material', v)}
+                onSelectItem={sel => setForm(prev => ({
+                  ...prev,
+                  materials_used: prev.materials_used.map((mat, idx) => idx === i
+                    ? { ...mat, material: sel.description, unit_price: sel.unit_price || mat.unit_price }
+                    : mat)
+                }))}
+                placeholder="Material"
+              />
+            </div>
+            <input type="number" className="h-8 text-xs border border-input rounded-md px-2 focus:outline-none" placeholder="Cant" value={m.quantity} onChange={e => updateMaterial(i, 'quantity', parseFloat(e.target.value) || 0)} />
             <div className="flex gap-1">
-              <input type="number" className="h-7 text-xs flex-1 border border-input rounded-md px-2 focus:outline-none" placeholder="€/ud" value={m.unit_price} onChange={e => updateMaterial(i, 'unit_price', parseFloat(e.target.value) || 0)} />
+              <input type="number" className="h-8 text-xs flex-1 border border-input rounded-md px-2 focus:outline-none" placeholder="€/ud" value={m.unit_price} onChange={e => updateMaterial(i, 'unit_price', parseFloat(e.target.value) || 0)} />
               <button onClick={() => removeMaterial(i)} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
           </div>

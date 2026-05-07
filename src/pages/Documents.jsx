@@ -15,6 +15,8 @@ import {
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
 import AdvancedPriceSearch from '../components/AdvancedPriceSearch';
+import MaterialAutocomplete from '../components/MaterialAutocomplete';
+import MaterialsExportButton from '../components/MaterialsExportButton';
 import { format, startOfMonth } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
 import PrintButton from '../components/PrintButton';
@@ -751,11 +753,20 @@ export default function Documents() {
               </div>
               {form.items.map((item, i) =>
               <div key={item._id ?? i} className="grid grid-cols-12 gap-1 items-center">
-                   <input
-                  className="col-span-5 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
-                  placeholder="Descripción"
-                  value={item.description}
-                  onChange={(e) => handleItemChange(i, 'description', e.target.value)} />
+                   <div className="col-span-5">
+                    <MaterialAutocomplete
+                      value={item.description}
+                      onChange={(v) => handleItemChange(i, 'description', v)}
+                      onSelectItem={(sel) => {
+                        setForm((prev) => {
+                          const newItems = prev.items.map((it, idx) => idx === i
+                            ? { ...it, description: sel.description, unit_price: sel.unit_price || it.unit_price }
+                            : it);
+                          return { ...prev, ...recalculate(newItems, prev.iva_rate) };
+                        });
+                      }}
+                    />
+                  </div>
                 
                    <input
                   className="col-span-2 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
@@ -1074,6 +1085,10 @@ export default function Documents() {
               )}
 
               <div className="flex gap-2 mt-3 pt-3 border-t flex-wrap no-print">
+                <MaterialsExportButton
+                  items={previewDoc.items || []}
+                  title={`${previewDoc.doc_type?.toUpperCase()} ${previewDoc.doc_number} — ${previewDoc.contact_name}`}
+                />
                 <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white font-semibold" onClick={() => exportPDF(previewDoc)}>
                   <FileDown className="w-4 h-4 mr-1" />Exportar PDF
                 </Button>
