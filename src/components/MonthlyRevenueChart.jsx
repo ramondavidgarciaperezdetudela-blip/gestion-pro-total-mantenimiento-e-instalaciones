@@ -19,11 +19,11 @@ export default function MonthlyRevenueChart() {
 
   useEffect(() => {
     const load = async () => {
-      const [invoices, satOrders, maintenance] = await Promise.all([
-        base44.entities.Invoice.filter({ doc_type: 'factura' }),
-        base44.entities.SATOrder.list(),
-        base44.entities.MaintenanceSheet.list(),
-      ]);
+      const invoices = await base44.entities.Invoice.filter({ doc_type: 'factura' });
+      await new Promise(r => setTimeout(r, 150));
+      const satOrders = await base44.entities.SATOrder.list();
+      await new Promise(r => setTimeout(r, 150));
+      const maintenance = await base44.entities.MaintenanceSheet.list();
 
       // Ingresos últimos 12 meses
       const months = [];
