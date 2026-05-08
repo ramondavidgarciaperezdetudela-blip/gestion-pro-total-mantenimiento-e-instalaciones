@@ -392,16 +392,17 @@ ${applyIva ? 'Los precios son netos sin IVA, extráelos tal como aparecen.' : 'E
 
   const handleSave = async () => {
     setStep('saving');
-    const toSave = items.filter((_, i) => selectedItems.has(i));
+    // Usar catalogRef si tiene datos (imágenes actualizadas), si no usar items
+    const source = catalogRef.current.length > 0 ? catalogRef.current : items;
+    const toSave = source.filter((_, i) => selectedItems.has(i));
     let saved = 0;
-    const SAVE_BATCH = 50;
+    const SAVE_BATCH = 500; // bulkCreate admite lotes grandes
     for (let i = 0; i < toSave.length; i += SAVE_BATCH) {
       if (abortRef.current) break;
-      const batch = toSave.slice(i, i + SAVE_BATCH);
-      await Promise.all(batch.map(item => {
+      const batch = toSave.slice(i, i + SAVE_BATCH).map(item => {
         const costPrice = item.cost_price || 0;
         const salePrice = costPrice > 0 ? Math.round(costPrice * (1 + margin / 100) * 100) / 100 : 0;
-        return base44.entities.SupplierPrice.create({
+        return {
           supplier_id:   supplierId,
           supplier_name: selectedSupplier?.name || '',
           product_name:  item.product_name || 'Sin nombre',
@@ -415,13 +416,16 @@ ${applyIva ? 'Los precios son netos sin IVA, extráelos tal como aparecen.' : 'E
           image_url:     item.image_url || '',
           brand:         item.brand || '',
           is_active:     true,
-        });
-      }));
+        };
+      });
+      await base44.entities.SupplierPrice.bulkCreate(batch);
       saved += batch.length;
-      setProgress(`Guardando ${saved}/${toSave.length}...`);
+      setProgress(`Guardando ${saved.toLocaleString()} / ${toSave.length.toLocaleString()}...`);
+      // Pausa entre lotes para no saturar la API
+      if (i + SAVE_BATCH < toSave.length) await new Promise(r => setTimeout(r, 300));
     }
     setStep('done');
-    setProgress(`✅ ${saved} productos guardados en la tarifa de ${selectedSupplier?.name}`);
+    setProgress(`✅ ${saved.toLocaleString()} productos guardados en la tarifa de ${selectedSupplier?.name}`);
     onImported && onImported(saved);
   };
 
