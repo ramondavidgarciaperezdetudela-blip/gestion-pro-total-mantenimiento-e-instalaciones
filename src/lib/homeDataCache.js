@@ -1,14 +1,29 @@
 /**
  * Cache compartido para datos del Home y paneles secundarios.
- * TTL: 10 minutos. Soporte de cache parcial por clave.
+ * TTL: 1 hora. Soporte de cache parcial por clave.
+ * Incluye retry automático en rate limit (429).
  */
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora
 
-// Cache por clave individual para evitar re-fetch total
 const cacheStore = {};
 const cacheTimes = {};
 const pendingPromises = {};
+
+const delay = (ms) => new Promise(res => setTimeout(res, ms));
+
+async function fetchWithRetry(fetcher, retries = 2, waitMs = 1200) {
+  try {
+    return await fetcher();
+  } catch (err) {
+    const isRateLimit = err?.status === 429 || err?.message?.toLowerCase().includes('rate');
+    if (isRateLimit && retries > 0) {
+      await delay(waitMs);
+      return fetchWithRetry(fetcher, retries - 1, waitMs * 1.5);
+    }
+    throw err;
+  }
+}
 
 async function fetchOne(key, fetcher) {
   const now = Date.now();
@@ -17,59 +32,51 @@ async function fetchOne(key, fetcher) {
   }
   if (pendingPromises[key]) return pendingPromises[key];
 
-  pendingPromises[key] = fetcher().then(data => {
+  pendingPromises[key] = fetchWithRetry(fetcher).then(data => {
     cacheStore[key] = data;
     cacheTimes[key] = Date.now();
     delete pendingPromises[key];
     return data;
   }).catch(err => {
     delete pendingPromises[key];
-    throw err;
+    // Si hay datos en caché aunque vencidos, devolverlos como fallback
+    if (cacheStore[key]) return cacheStore[key];
+    return [];
   });
 
   return pendingPromises[key];
 }
 
-const delay = (ms) => new Promise(res => setTimeout(res, ms));
+// Carga secuencial por lotes con delay entre cada uno
+async function batchFetch(tasks, batchSize = 2, batchDelay = 150) {
+  const results = [];
+  for (let i = 0; i < tasks.length; i += batchSize) {
+    const batch = tasks.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(t => fetchOne(t.key, t.fetcher)));
+    results.push(...batchResults);
+    if (i + batchSize < tasks.length) await delay(batchDelay);
+  }
+  return results;
+}
 
 export async function getHomeData(forceRefresh = false) {
   if (forceRefresh) invalidateHomeCache();
 
   const { base44 } = await import('@/api/base44Client');
 
-  // Check how many keys need actual fetching (not cached)
-  const now = Date.now();
-  const keys = ['invoices','satOrders','maintenanceSheets','contacts','appointments','companySettings','suppliers','stockItems'];
-  const needsFetch = keys.some(k => !cacheStore[k] || (now - (cacheTimes[k] || 0)) >= CACHE_TTL_MS);
+  const tasks = [
+    { key: 'invoices',          fetcher: () => base44.entities.Invoice.list('-date', 60) },
+    { key: 'satOrders',         fetcher: () => base44.entities.SATOrder.list('-date', 50) },
+    { key: 'maintenanceSheets', fetcher: () => base44.entities.MaintenanceSheet.list('-date', 30) },
+    { key: 'contacts',          fetcher: () => base44.entities.Contact.list('name', 80) },
+    { key: 'appointments',      fetcher: () => base44.entities.Appointment.filter({ date: new Date().toISOString().slice(0, 10) }) },
+    { key: 'companySettings',   fetcher: () => base44.entities.CompanySettings.list() },
+    { key: 'suppliers',         fetcher: () => base44.entities.Supplier.list('-created_date', 15) },
+    { key: 'stockItems',        fetcher: () => base44.entities.StockItem.list('-updated_date', 15) },
+  ];
 
-  // If all cached, return immediately in parallel
-  if (!needsFetch) {
-    const [invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems] =
-      await Promise.all([
-        fetchOne('invoices',          () => base44.entities.Invoice.list('-date', 60)),
-        fetchOne('satOrders',         () => base44.entities.SATOrder.list('-date', 50)),
-        fetchOne('maintenanceSheets', () => base44.entities.MaintenanceSheet.list('-date', 30)),
-        fetchOne('contacts',          () => base44.entities.Contact.list('name', 80)),
-        fetchOne('appointments',      () => base44.entities.Appointment.filter({ date: new Date().toISOString().slice(0, 10) })),
-        fetchOne('companySettings',   () => base44.entities.CompanySettings.list()),
-        fetchOne('suppliers',         () => base44.entities.Supplier.list('-created_date', 15)),
-        fetchOne('stockItems',        () => base44.entities.StockItem.list('-updated_date', 15)),
-      ]);
-    return { invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems };
-  }
-
-  // Fetch in small batches with delay to avoid rate limit
-  const invoices          = await fetchOne('invoices',          () => base44.entities.Invoice.list('-date', 60));
-  const satOrders         = await fetchOne('satOrders',         () => base44.entities.SATOrder.list('-date', 50));
-  await delay(150);
-  const maintenanceSheets = await fetchOne('maintenanceSheets', () => base44.entities.MaintenanceSheet.list('-date', 30));
-  const contacts          = await fetchOne('contacts',          () => base44.entities.Contact.list('name', 80));
-  await delay(150);
-  const appointments      = await fetchOne('appointments',      () => base44.entities.Appointment.filter({ date: new Date().toISOString().slice(0, 10) }));
-  const companySettings   = await fetchOne('companySettings',   () => base44.entities.CompanySettings.list());
-  await delay(150);
-  const suppliers         = await fetchOne('suppliers',         () => base44.entities.Supplier.list('-created_date', 15));
-  const stockItems        = await fetchOne('stockItems',        () => base44.entities.StockItem.list('-updated_date', 15));
+  const [invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems] =
+    await batchFetch(tasks, 2, 150);
 
   return { invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems };
 }

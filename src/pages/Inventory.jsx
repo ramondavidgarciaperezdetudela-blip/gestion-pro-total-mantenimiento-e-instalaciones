@@ -83,11 +83,27 @@ export default function Inventory() {
 
   useEffect(() => { loadAll(); }, []);
 
-  const loadAll = () => {
-    base44.entities.Equipment.list('name', 500).then(setEquipment);
-    base44.entities.StockItem.list('name', 500).then(setStock);
-    base44.entities.ClientMachine.list('name', 1000).then(setClientMachines);
-    base44.entities.Contact.list('name', 500).then(setContacts);
+  const loadAll = async () => {
+    // Carga secuencial con pequeñas pausas para evitar rate limit
+    try {
+      const eq = await base44.entities.Equipment.list('name', 200);
+      setEquipment(eq);
+    } catch {}
+    await new Promise(r => setTimeout(r, 120));
+    try {
+      const st = await base44.entities.StockItem.list('name', 300);
+      setStock(st);
+    } catch {}
+    await new Promise(r => setTimeout(r, 120));
+    try {
+      const cm = await base44.entities.ClientMachine.list('name', 300);
+      setClientMachines(cm);
+    } catch {}
+    await new Promise(r => setTimeout(r, 120));
+    try {
+      const co = await base44.entities.Contact.list('name', 200);
+      setContacts(co);
+    } catch {}
   };
 
   const handleSaveEq = async () => {

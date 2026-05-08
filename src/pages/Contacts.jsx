@@ -186,13 +186,25 @@ export default function Contacts() {
 
   const loadContacts = useCallback(async () => {
     try {
-      const data = await base44.entities.Contact.list('-created_date', 500);
+      // Cargamos en dos tandas para evitar rate limit con datasets grandes
+      const data = await base44.entities.Contact.list('-created_date', 300);
       setContacts(data);
       saveToCache('contacts', data);
       setCacheDate(formatCacheDate(Date.now()));
       setIsOffline(false);
-    } catch {
-      // Sin red: usar caché existente
+    } catch (err) {
+      if (err?.message?.toLowerCase().includes('rate') || err?.status === 429) {
+        // Rate limit: esperar y reintentar una vez
+        await new Promise(r => setTimeout(r, 1500));
+        try {
+          const data = await base44.entities.Contact.list('-created_date', 300);
+          setContacts(data);
+          saveToCache('contacts', data);
+          setCacheDate(formatCacheDate(Date.now()));
+          setIsOffline(false);
+          return;
+        } catch {}
+      }
       setIsOffline(true);
     }
   }, []);
