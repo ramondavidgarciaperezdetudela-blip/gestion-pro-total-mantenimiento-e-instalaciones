@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -153,8 +153,8 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   const [open, setOpen]               = useState(false);
   const [file, setFile]               = useState(null);
   const [supplierId, setSupplierId]   = useState('');
-  const [step, setStep]               = useState('idle'); // idle|extracting|uploading|preview|images|saving|done
-  const [items, setItems]             = useState([]);     // todos los productos (se actualiza en tiempo real al buscar imágenes)
+  const [step, setStep]               = useState('idle');
+  const [items, setItems]             = useState([]);
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [error, setError]             = useState(null);
   const [progress, setProgress]       = useState('');
@@ -162,19 +162,23 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   const [applyIva, setApplyIva]       = useState(false);
   const [ivaRate, setIvaRate]         = useState(21);
   const [fetchImages, setFetchImages] = useState(true);
-  const [imgDone, setImgDone]         = useState(0);     // imágenes ya procesadas (para barra)
-  const [imgTotal, setImgTotal]       = useState(0);     // total a procesar
+  const [imgDone, setImgDone]         = useState(0);
+  const [imgTotal, setImgTotal]       = useState(0);
+  const [imgErrors, setImgErrors]     = useState(0);
   const [page, setPage]               = useState(0);
   const PAGE_SIZE = 50;
-  const fileRef = useRef(null);
-  const abortRef = useRef(false); // para cancelar descarga de imágenes si se cierra
+  const fileRef   = useRef(null);
+  const abortRef  = useRef(false);
+  // Buffer mutable que vive fuera del ciclo de render para no perder posición
+  const catalogRef = useRef([]);
 
   const reset = () => {
     abortRef.current = true;
+    catalogRef.current = [];
     setFile(null); setStep('idle'); setItems([]); setSelectedItems(new Set());
     setError(null); setProgress(''); setSupplierId(''); setPage(0);
-    setImgDone(0); setImgTotal(0);
-    setTimeout(() => { abortRef.current = false; }, 100);
+    setImgDone(0); setImgTotal(0); setImgErrors(0);
+    setTimeout(() => { abortRef.current = false; }, 200);
   };
 
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
@@ -260,45 +264,84 @@ ${applyIva ? 'Los precios son netos sin IVA, extráelos tal como aparecen.' : 'E
     }
   };
 
-  // Descarga imágenes en segundo plano y va actualizando el array de items
-  const fetchImagesBackground = async (extracted) => {
+  // Descarga imágenes en segundo plano, completamente, sin detenerse
+  const fetchImagesBackground = useCallback(async (extracted) => {
     const total = extracted.length;
+    // Inicializar buffer mutable compartido
+    catalogRef.current = extracted.map(item => ({ ...item, image_url: null }));
     setImgTotal(total);
     setImgDone(0);
+    setImgErrors(0);
 
-    const result = [...extracted]; // copia mutable
-    const BATCH = 5;
+    const BATCH = 5;          // peticiones en paralelo por ronda
+    const DELAY_MS = 250;     // pausa entre rondas para no saturar la API
+    const MAX_RETRIES = 2;    // reintentos por ítem si falla
+
     let done = 0;
+    let errors = 0;
 
-    for (let i = 0; i < total; i += BATCH) {
-      if (abortRef.current) break;
-      const batch = result.slice(i, i + BATCH);
-
-      const batchResults = await Promise.all(batch.map(async (item, bi) => {
+    // Función para buscar imagen de UN producto con retry
+    const fetchOne = async (item, globalIdx) => {
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        if (abortRef.current) return null;
         try {
           const res = await base44.integrations.Core.InvokeLLM({
-            prompt: `Busca la imagen oficial del producto: "${item.product_name}"${item.brand ? ` marca ${item.brand}` : ''}${item.product_code ? ` ref ${item.product_code}` : ''}. Devuelve solo la URL directa JPG/PNG. Si no encuentras nada fiable devuelve null.`,
+            prompt: `Busca la imagen oficial del producto: "${item.product_name}"${item.brand ? ` marca ${item.brand}` : ''}${item.product_code ? ` ref ${item.product_code}` : ''}. Devuelve SOLO la URL directa de la imagen JPG o PNG del producto. Si no encuentras nada fiable devuelve null.`,
             add_context_from_internet: true,
             response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
           });
-          return { idx: i + bi, image_url: res?.image_url || null };
+          return res?.image_url || null;
         } catch {
-          return { idx: i + bi, image_url: null };
+          if (attempt === MAX_RETRIES) return null;
+          await new Promise(r => setTimeout(r, 500 * (attempt + 1))); // backoff
         }
-      }));
+      }
+      return null;
+    };
 
-      // Actualizar las URLs en el array y en el estado
-      batchResults.forEach(({ idx, image_url }) => {
-        if (idx < result.length) result[idx] = { ...result[idx], image_url };
+    // Procesar en lotes hasta el final
+    for (let i = 0; i < total; i += BATCH) {
+      if (abortRef.current) {
+        console.log('[Images] Abortado en índice', i);
+        break;
+      }
+
+      const batchIndices = [];
+      for (let j = i; j < Math.min(i + BATCH, total); j++) batchIndices.push(j);
+
+      const results = await Promise.all(
+        batchIndices.map(async (idx) => {
+          const url = await fetchOne(catalogRef.current[idx], idx);
+          return { idx, url };
+        })
+      );
+
+      // Actualizar buffer mutable
+      results.forEach(({ idx, url }) => {
+        catalogRef.current[idx] = { ...catalogRef.current[idx], image_url: url };
+        if (!url) errors++;
       });
-      done += batchResults.length;
-      setImgDone(done);
-      // Forzar re-render con el array actualizado
-      setItems([...result]);
 
-      if (i + BATCH < total) await new Promise(r => setTimeout(r, 200));
+      done += results.length;
+
+      // Actualizar contadores en estado (barato, solo números)
+      setImgDone(done);
+      setImgErrors(errors);
+
+      // Publicar snapshot del buffer al estado React cada 50 ítems o al final
+      if (done % 50 === 0 || done >= total) {
+        setItems([...catalogRef.current]);
+      }
+
+      if (i + BATCH < total) await new Promise(r => setTimeout(r, DELAY_MS));
     }
-  };
+
+    // Snapshot final garantizado
+    if (!abortRef.current) {
+      setItems([...catalogRef.current]);
+      console.log(`[Images] Completado: ${done}/${total}, errores: ${errors}`);
+    }
+  }, []);
 
   const handleSave = async () => {
     setStep('saving');
@@ -507,18 +550,26 @@ ${applyIva ? 'Los precios son netos sin IVA, extráelos tal como aparecen.' : 'E
 
                 {/* Barra de progreso de imágenes */}
                 {fetchImages && imgTotal > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
-                    <div className="flex items-center justify-between text-xs text-blue-700">
-                      <span>{imagesFetching ? '📷 Descargando imágenes en segundo plano...' : '✅ Imágenes descargadas'}</span>
-                      <span>{imgDone.toLocaleString()} / {imgTotal.toLocaleString()} ({imgPercent}%)</span>
+                  <div className={`border rounded-lg p-3 space-y-2 ${imagesFetching ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={imagesFetching ? 'text-blue-700 flex items-center gap-1.5' : 'text-green-700'}>
+                        {imagesFetching && <Loader2 className="w-3 h-3 animate-spin" />}
+                        {imagesFetching ? 'Descargando imágenes en segundo plano…' : '✅ Imágenes descargadas'}
+                      </span>
+                      <span className={imagesFetching ? 'text-blue-600 font-mono' : 'text-green-600 font-mono'}>
+                        {imgDone.toLocaleString()} / {imgTotal.toLocaleString()} · {imgPercent}%
+                        {imgErrors > 0 && <span className="text-amber-500 ml-1">({imgErrors} sin imagen)</span>}
+                      </span>
                     </div>
-                    <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                        style={{ width: `${imgPercent}%` }} />
+                    <div className="h-2.5 bg-blue-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${imagesFetching ? 'bg-blue-500' : 'bg-green-500'}`}
+                        style={{ width: `${imgPercent}%` }}
+                      />
                     </div>
                     {imagesFetching && (
                       <p className="text-[10px] text-blue-500">
-                        Puedes guardar los productos ya; las imágenes se seguirán descargando.
+                        Puedes guardar ahora — las imágenes seguirán descargándose hasta completar el catálogo.
                       </p>
                     )}
                   </div>
