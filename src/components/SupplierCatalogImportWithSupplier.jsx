@@ -21,10 +21,13 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState('');
   const [margin, setMargin] = useState(30);
+  const [applyIva, setApplyIva] = useState(true);
+  const [ivaRate, setIvaRate] = useState(21);
   const fileRef = useRef(null);
 
   const reset = () => {
     setFile(null); setStep('idle'); setItems([]); setSelectedItems(new Set()); setError(null); setProgress(''); setSupplierId('');
+    setApplyIva(true); setIvaRate(21);
   };
 
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
@@ -40,15 +43,40 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       setProgress('Subiendo archivo...');
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
-      // 2. Extraer con IA
+      // 2. Extraer con IA — siempre usamos Claude para máxima compatibilidad
       setStep('extracting');
       setProgress('Analizando catálogo con IA...');
 
       let extracted = [];
 
+      const ivaNote = applyIva
+        ? `IMPORTANTE: Los precios en el archivo pueden estar SIN IVA (precio neto/base). Extrae el precio tal como aparece en el archivo en el campo cost_price. El IVA se aplicará automáticamente después.`
+        : `Extrae el precio tal como aparece en el archivo en el campo cost_price.`;
+
+      const commonSchema = {
+        type: 'object',
+        properties: {
+          items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                product_name: { type: 'string' },
+                product_code: { type: 'string' },
+                brand: { type: 'string' },
+                cost_price: { type: 'number' },
+                unit: { type: 'string' },
+                category: { type: 'string' },
+                notes: { type: 'string' }
+              }
+            }
+          }
+        }
+      };
+
       if (isExcel(file)) {
-        // Excel/CSV: leer estructura directamente
-        setProgress('Leyendo estructura del Excel...');
+        // Intentar primero con ExtractDataFromUploadedFile (más rápido para tablas bien formadas)
+        setProgress('Leyendo estructura del archivo...');
         const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
           file_url,
           json_schema: {
@@ -59,13 +87,13 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                 items: {
                   type: 'object',
                   properties: {
-                    product_name: { type: 'string', description: 'Nombre del producto o material' },
-                    product_code: { type: 'string', description: 'Código o referencia del proveedor' },
-                    brand: { type: 'string', description: 'Marca del producto' },
-                    cost_price: { type: 'number', description: 'Precio de coste en euros' },
+                    product_name: { type: 'string', description: 'Nombre del producto. Puede llamarse: descripcion, nombre, articulo, producto, denominacion, designacion o similar.' },
+                    product_code: { type: 'string', description: 'Código o referencia. Puede llamarse: ref, referencia, codigo, cod, sku, art o similar.' },
+                    brand: { type: 'string', description: 'Marca o fabricante del producto.' },
+                    cost_price: { type: 'number', description: 'Precio numérico (sin símbolo €). Puede ser precio neto, pvp, precio, tarifa, coste o similar. Extrae siempre el valor numérico.' },
                     unit: { type: 'string', description: 'Unidad de medida: ud, m, m2, kg, l, etc.' },
-                    category: { type: 'string', description: 'clima, refrigeracion, electrico, solar, fontaneria, material, otro' },
-                    notes: { type: 'string', description: 'Notas técnicas del producto' }
+                    category: { type: 'string', description: 'Categoría: clima, refrigeracion, electrico, solar, fontaneria, material, otro' },
+                    notes: { type: 'string', description: 'Descripción técnica adicional si existe.' }
                   }
                 }
               }
@@ -78,72 +106,78 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
           extracted = Array.isArray(raw) ? raw : (raw?.items || []);
         }
 
-        // Fallback: si no funciona, usar IA con claude que puede leer Excel
-        if (extracted.length === 0) {
-          setProgress('Interpretando con IA avanzada...');
+        // Si no extrajo suficiente, usar Claude como fallback robusto
+        if (extracted.length < 2) {
+          setProgress('Usando IA avanzada para interpretar el archivo...');
           const fallback = await base44.integrations.Core.InvokeLLM({
             model: 'claude_sonnet_4_6',
-            prompt: `Lee este archivo Excel/CSV de lista de precios del proveedor "${selectedSupplier?.name || ''}". Extrae TODOS los productos con: product_name (nombre), product_code (referencia), brand (marca), cost_price (precio coste en €), unit (unidad), category (clima/refrigeracion/electrico/solar/fontaneria/material/otro), notes (descripción técnica). Extrae TODAS las filas de productos sin omitir ninguna. Archivo: ${file_url}`,
+            prompt: `Eres un asistente experto en leer tarifas y catálogos de precios de proveedores industriales españoles.
+Lee este archivo Excel/CSV del proveedor "${selectedSupplier?.name || ''}" y extrae TODOS los productos/artículos.
+
+Las columnas pueden tener nombres variados en español como: referencia, ref, código, cod, descripción, nombre, artículo, precio, pvp, tarifa, precio_neto, importe, unidad, marca, etc.
+
+Para CADA fila que represente un producto (ignora cabeceras, totales o filas vacías), extrae:
+- product_name: nombre o descripción del producto (campo más descriptivo disponible)
+- product_code: código, referencia o SKU del producto
+- brand: marca o fabricante si está disponible
+- cost_price: el precio numérico que aparece (sin símbolo €, solo el número). Si hay varios precios, usa el precio base/neto/coste.
+- unit: unidad de medida (ud, m, m2, kg, l, etc.)
+- category: clasifica en (clima/refrigeracion/electrico/solar/fontaneria/material/otro) según el tipo de producto
+- notes: descripción técnica adicional si existe
+
+${ivaNote}
+Extrae ABSOLUTAMENTE TODAS las filas de producto, sin omitir ninguna. Si hay cientos de filas, extráelas todas.`,
             file_urls: [file_url],
-            response_json_schema: {
-              type: 'object',
-              properties: {
-                items: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      product_name: { type: 'string' },
-                      product_code: { type: 'string' },
-                      brand: { type: 'string' },
-                      cost_price: { type: 'number' },
-                      unit: { type: 'string' },
-                      category: { type: 'string' },
-                      notes: { type: 'string' }
-                    }
-                  }
-                }
-              }
-            }
+            response_json_schema: commonSchema
           });
           extracted = fallback?.items || [];
         }
       } else {
-        // PDF: IA con file_urls
+        // PDF
         setProgress('Analizando PDF con IA...');
         const result = await base44.integrations.Core.InvokeLLM({
           model: 'claude_sonnet_4_6',
-          prompt: `Analiza este catálogo PDF del proveedor "${selectedSupplier?.name || ''}". Extrae TODOS los productos: product_name (nombre completo), product_code (referencia), brand (marca), cost_price (precio coste en €), unit (unidad de medida), category (clima/refrigeracion/electrico/solar/fontaneria/material/otro), notes (info técnica, máx 100 chars). Sé exhaustivo.`,
+          prompt: `Eres un experto en leer catálogos PDF de proveedores industriales españoles.
+Analiza este catálogo PDF del proveedor "${selectedSupplier?.name || ''}" y extrae TODOS los productos.
+
+Para cada producto extrae:
+- product_name: nombre completo del producto
+- product_code: referencia o código
+- brand: marca si aparece
+- cost_price: precio numérico (solo el número, sin €)
+- unit: unidad (ud, m, kg, etc.)
+- category: (clima/refrigeracion/electrico/solar/fontaneria/material/otro)
+- notes: descripción técnica relevante (máx 120 caracteres)
+
+${ivaNote}
+Sé exhaustivo y extrae todos los productos del catálogo.`,
           file_urls: [file_url],
-          response_json_schema: {
-            type: 'object',
-            properties: {
-              items: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    product_name: { type: 'string' },
-                    product_code: { type: 'string' },
-                    brand: { type: 'string' },
-                    cost_price: { type: 'number' },
-                    unit: { type: 'string' },
-                    category: { type: 'string' },
-                    notes: { type: 'string' }
-                  }
-                }
-              }
-            }
-          }
+          response_json_schema: commonSchema
         });
         extracted = result?.items || [];
       }
 
-      // Filtrar filas sin nombre de producto
-      extracted = extracted.filter(i => i?.product_name && String(i.product_name).trim().length > 1);
+      // Limpiar: filtrar filas sin nombre y sin precio
+      extracted = extracted.filter(i => {
+        const hasName = i?.product_name && String(i.product_name).trim().length > 1;
+        const isNotHeader = !['descripcion', 'nombre', 'producto', 'articulo', 'referencia', 'ref'].includes(
+          String(i?.product_name || '').toLowerCase().trim()
+        );
+        return hasName && isNotHeader;
+      });
+
+      // Aplicar IVA si corresponde
+      if (applyIva && ivaRate > 0) {
+        extracted = extracted.map(item => ({
+          ...item,
+          cost_price: item.cost_price != null
+            ? Math.round(item.cost_price * (1 + ivaRate / 100) * 100) / 100
+            : null
+        }));
+      }
 
       if (extracted.length === 0) {
-        setError('No se pudieron extraer productos. Comprueba que el archivo tiene filas con nombre de producto y precio.');
+        setError(`No se pudieron extraer productos. El archivo puede tener un formato inesperado o estar vacío. Intenta con otro archivo o contacta soporte.`);
         setStep('idle');
         return;
       }
@@ -281,10 +315,45 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                   </div>
                 </div>
 
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+                  <label className="text-sm font-medium text-amber-800 block">3. ¿Los precios del archivo incluyen IVA?</label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setApplyIva(false)}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${!applyIva ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                    >
+                      ✅ Sí, ya incluyen IVA
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setApplyIva(true)}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${applyIva ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                    >
+                      ❌ No, son precios netos (sin IVA)
+                    </button>
+                  </div>
+                  {applyIva && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-amber-700">Tipo IVA a aplicar:</label>
+                      <select
+                        value={ivaRate}
+                        onChange={e => setIvaRate(parseInt(e.target.value))}
+                        className="text-sm border border-amber-300 rounded px-2 py-1 bg-white"
+                      >
+                        <option value={21}>21% (general)</option>
+                        <option value={10}>10% (reducido)</option>
+                        <option value={4}>4% (superreducido)</option>
+                      </select>
+                      <span className="text-xs text-amber-600">Se sumará al precio extraído</span>
+                    </div>
+                  )}
+                </div>
+
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">3. Margen de venta por defecto: <span className="text-purple-700 font-bold">{margin}%</span></label>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">4. Margen de venta por defecto: <span className="text-purple-700 font-bold">{margin}%</span></label>
                   <Input type="number" min="0" max="200" value={margin} onChange={e => setMargin(parseInt(e.target.value) || 0)} className="w-32" />
-                  <p className="text-xs text-gray-400 mt-1">Precio venta = precio coste × (1 + margen%)</p>
+                  <p className="text-xs text-gray-400 mt-1">Precio venta = precio coste{applyIva ? ` (con IVA ${ivaRate}%)` : ''} × (1 + margen%)</p>
                 </div>
               </div>
             )}
@@ -324,6 +393,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                   <div>
                     <p className="font-semibold text-gray-800">{items.length} productos extraídos</p>
                     <p className="text-xs text-purple-600">{selectedItems.size} seleccionados para guardar</p>
+                    {applyIva && <p className="text-xs text-amber-600">✅ IVA {ivaRate}% ya aplicado a los precios mostrados</p>}
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => setSelectedItems(new Set(items.map((_, i) => i)))}>Todos</Button>
