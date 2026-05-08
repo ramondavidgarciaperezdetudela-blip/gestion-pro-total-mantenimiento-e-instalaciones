@@ -36,10 +36,12 @@ function toNumber(val) {
 }
 
 /**
- * Parser robusto para Excel/CSV:
- * - Lee la hoja como array de arrays (raw:true para mantener números)
- * - Busca la fila de cabecera real entre las primeras 30 filas
- * - Soporta archivos tipo Escoda donde col 0 es código, col 1 descripción, col 2 precio
+ * Parser universal para Excel/CSV.
+ * Estrategia en 3 pasos:
+ *   1. Buscar fila de cabecera por alias conocidos (primeras 40 filas)
+ *   2. Sin cabecera: detectar columnas por tipo en la primera fila de datos real
+ *   3. Último recurso fijo: col0=código, col1=nombre, col2=precio
+ * Acepta precios > 0, cadenas de texto para precios con coma/punto.
  */
 function parseExcel(file) {
   return new Promise((resolve, reject) => {
@@ -48,99 +50,122 @@ function parseExcel(file) {
     reader.onload = (e) => {
       try {
         const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        // raw:true → números como números (no strings)
+        const wsName = wb.SheetNames[0];
+        const ws = wb.Sheets[wsName];
         const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
 
-        console.log('[Parser] Total filas:', raw.length);
-        console.log('[Parser] Primeras 5 filas:', raw.slice(0, 5));
+        console.log('[Parser] Hoja:', wsName, '| Filas totales:', raw.length);
+        console.log('[Parser] Fila 0:', raw[0]);
+        console.log('[Parser] Fila 1:', raw[1]);
+        console.log('[Parser] Fila 2:', raw[2]);
 
-        // Buscar fila de cabecera: primera fila donde alguna celda coincide con alias de nombre o precio
+        // ── Paso 1: buscar cabecera ──────────────────────────────────────────
         let hRow = -1;
-        for (let r = 0; r < Math.min(30, raw.length); r++) {
-          const cells = raw[r].map(c => norm(c));
-          const hasName  = ALIASES_NAME.some(a => cells.some(c => c.includes(norm(a))));
-          const hasPrice = ALIASES_PRICE.some(a => cells.some(c => c.includes(norm(a))));
-          if (hasName || hasPrice) { hRow = r; break; }
-        }
-
         let iCode = -1, iName = -1, iPrice = -1, iBrand = -1, iUnit = -1;
 
-        if (hRow !== -1) {
-          // Cabecera encontrada
-          console.log('[Parser] Cabecera en fila', hRow, ':', raw[hRow]);
-          const headers = raw[hRow].map(c => String(c));
-          iCode  = findColInRow(headers, ALIASES_CODE);
-          iName  = findColInRow(headers, ALIASES_NAME);
-          iPrice = findColInRow(headers, ALIASES_PRICE);
-          iBrand = findColInRow(headers, ALIASES_BRAND);
-          iUnit  = findColInRow(headers, ALIASES_UNIT);
-          console.log('[Parser] Columnas → código:', iCode, 'nombre:', iName, 'precio:', iPrice);
-        } else {
-          // Sin cabecera reconocida: heurística — buscar la primera fila de datos
-          // con una celda string >3 chars y una celda numérica >0
-          hRow = 0;
-          for (let r = 0; r < Math.min(30, raw.length); r++) {
-            const row = raw[r];
-            const hasStr = row.some(c => typeof c === 'string' && c.trim().length > 3);
-            const hasNum = row.some(c => typeof c === 'number' && c > 0);
-            if (hasStr && hasNum) { hRow = r - 1; break; }
+        for (let r = 0; r < Math.min(40, raw.length); r++) {
+          const row = raw[r];
+          if (!row || row.length === 0) continue;
+          const cells = row.map(c => norm(c));
+          const foundName  = findColInRow(row.map(String), ALIASES_NAME);
+          const foundPrice = findColInRow(row.map(String), ALIASES_PRICE);
+          if (foundName !== -1 || foundPrice !== -1) {
+            hRow   = r;
+            iCode  = findColInRow(row.map(String), ALIASES_CODE);
+            iName  = foundName;
+            iPrice = foundPrice;
+            iBrand = findColInRow(row.map(String), ALIASES_BRAND);
+            iUnit  = findColInRow(row.map(String), ALIASES_UNIT);
+            console.log('[Parser] Cabecera en fila', r, '→ nombre:', iName, 'precio:', iPrice, 'código:', iCode);
+            break;
           }
-          hRow = Math.max(0, hRow);
-          // Detectar columnas por tipo: última columna numérica = precio, primera string = nombre
-          const sampleRow = raw[hRow + 1] || raw[hRow];
-          sampleRow.forEach((cell, idx) => {
-            if (typeof cell === 'number' && cell > 0 && iPrice === -1) iPrice = idx;
+        }
+
+        // ── Paso 2: heurística si no hay cabecera ────────────────────────────
+        if (hRow === -1) {
+          console.log('[Parser] Sin cabecera reconocida. Usando heurística por tipos.');
+          // Encontrar primera fila que tenga algún número válido → primera fila de datos
+          let dataRow = 0;
+          for (let r = 0; r < Math.min(20, raw.length); r++) {
+            if (raw[r].some(c => typeof c === 'number' && c > 0)) { dataRow = r; break; }
+          }
+          const sample = raw[dataRow] || [];
+          console.log('[Parser] Fila muestra (idx', dataRow, '):', sample);
+
+          // Precio: primera columna numérica > 0
+          sample.forEach((c, idx) => {
+            if (iPrice === -1 && typeof c === 'number' && c > 0) iPrice = idx;
           });
-          // Columna nombre: la string más larga
+          // Si no hay número, buscar string parseable como número
+          if (iPrice === -1) {
+            sample.forEach((c, idx) => {
+              if (iPrice === -1 && toNumber(c) !== null && toNumber(c) > 0) iPrice = idx;
+            });
+          }
+          // Nombre: string más larga distinta de la columna precio
           let maxLen = 0;
-          sampleRow.forEach((cell, idx) => {
-            if (typeof cell === 'string' && cell.length > maxLen) { maxLen = cell.length; iName = idx; }
+          sample.forEach((c, idx) => {
+            const s = String(c || '').trim();
+            if (idx !== iPrice && s.length > maxLen) { maxLen = s.length; iName = idx; }
           });
-          // Columna código: primera string corta (<20 chars) antes del nombre
-          sampleRow.forEach((cell, idx) => {
-            if (idx !== iName && typeof cell === 'string' && cell.length <= 20 && iCode === -1) iCode = idx;
+          // Código: primera string corta antes del nombre
+          sample.forEach((c, idx) => {
+            const s = String(c || '').trim();
+            if (iCode === -1 && idx !== iName && idx !== iPrice && s.length > 0 && s.length <= 30) iCode = idx;
           });
-          console.log('[Parser] Heurística → hRow:', hRow, 'nombre:', iName, 'precio:', iPrice, 'código:', iCode);
+          // Los datos empiezan en esa misma fila (hRow queda en -1, dataStart = dataRow)
+          hRow = dataRow - 1; // dataStart = hRow + 1 = dataRow ✓
+          console.log('[Parser] Heurística → dataRow:', dataRow, 'nombre:', iName, 'precio:', iPrice, 'código:', iCode);
         }
 
-        if (iName === -1 && iPrice === -1) {
-          // Último recurso: col 0 = código, col 1 = nombre, col 2 = precio (formato Escoda típico)
+        // ── Paso 3: último recurso fijo ──────────────────────────────────────
+        if (iName === -1 || iPrice === -1) {
+          console.log('[Parser] Usando asignación fija Escoda: col0=código col1=nombre col2=precio');
           iCode = 0; iName = 1; iPrice = 2;
-          hRow = Math.max(0, hRow);
-          console.log('[Parser] Usando asignación fija: col0=código col1=nombre col2=precio');
+          // Buscar primera fila con datos reales
+          for (let r = 0; r < Math.min(10, raw.length); r++) {
+            const row = raw[r];
+            if (row[1] && String(row[1]).trim().length > 2 && toNumber(row[2]) !== null) {
+              hRow = r - 1;
+              break;
+            }
+          }
+          if (hRow < -1) hRow = -1;
         }
 
-        const dataStart = hRow + 1;
+        // ── Extraer productos ────────────────────────────────────────────────
+        const dataStart = Math.max(0, hRow + 1);
         const items = [];
         for (let r = dataStart; r < raw.length; r++) {
           const row = raw[r];
           if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
 
-          const name = iName !== -1 ? String(row[iName] || '').trim() : '';
+          const name = String(row[iName] ?? '').trim();
           if (!name || name.length < 2) continue;
-          // Filtrar filas que parecen subcabeceras
-          if (ALIASES_NAME.some(a => norm(name) === norm(a))) continue;
 
-          const price = iPrice !== -1 ? toNumber(row[iPrice]) : null;
+          // Saltar filas que son subcabeceras (nombre igual a un alias)
+          if (ALIASES_NAME.some(a => norm(name) === norm(a)) ||
+              ALIASES_PRICE.some(a => norm(name) === norm(a))) continue;
+
+          const price = toNumber(row[iPrice]);
           if (price === null || price <= 0) continue;
 
           items.push({
-            product_code: iCode !== -1 ? String(row[iCode] || '').trim() : '',
+            product_code: iCode !== -1 ? String(row[iCode] ?? '').trim() : '',
             product_name: name,
-            cost_price: price,
-            brand: iBrand !== -1 ? String(row[iBrand] || '').trim() : '',
-            unit: iUnit !== -1 ? String(row[iUnit] || '').trim() : 'ud',
-            category: 'material',
-            notes: '',
-            image_url: null,
+            cost_price:   price,
+            brand:        iBrand !== -1 ? String(row[iBrand] ?? '').trim() : '',
+            unit:         iUnit  !== -1 ? String(row[iUnit]  ?? '').trim() : 'ud',
+            category:     'material',
+            notes:        '',
+            image_url:    null,
           });
         }
 
-        console.log('[Parser] Productos extraídos:', items.length, 'primeros 3:', items.slice(0, 3));
+        console.log('[Parser] Productos válidos:', items.length, '| Primeros 3:', items.slice(0, 3));
         resolve(items);
       } catch (err) {
-        console.error('[Parser] Error:', err);
+        console.error('[Parser] Error inesperado:', err);
         reject(err);
       }
     };
@@ -243,7 +268,7 @@ ${applyIva ? 'Los precios son netos sin IVA, extráelos tal como aparecen.' : 'E
       }
 
       if (extracted.length === 0) {
-        setError('No se pudieron extraer productos. Comprueba el archivo o contacta con soporte.');
+        setError('No se encontraron productos con precio válido. Abre la consola del navegador (F12) para ver los logs del parser y comprueba el formato del archivo.');
         setStep('idle');
         return;
       }
