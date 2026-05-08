@@ -29,6 +29,8 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
 
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
 
+  const isExcel = (f) => /\.(xlsx|xls|csv)$/i.test(f?.name || '');
+
   const handleExtract = async () => {
     if (!file || !supplierId) return;
     setError(null);
@@ -41,46 +43,107 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       // 2. Extraer con IA
       setStep('extracting');
       setProgress('Analizando catálogo con IA...');
-      const result = await base44.integrations.Core.InvokeLLM({
-        model: 'claude_sonnet_4_6',
-        prompt: `Analiza este catálogo de proveedor (PDF o Excel) del proveedor "${selectedSupplier?.name || ''}".
-Extrae TODOS los productos/materiales que encuentres. Para cada producto devuelve:
-- product_name: nombre completo del producto
-- product_code: referencia/código del proveedor (null si no hay)
-- brand: marca si aparece (null si no hay)
-- cost_price: precio de coste en euros (número, null si no aparece)
-- unit: unidad de medida (ud, m, m2, kg, l, etc.)
-- category: clasifica como uno de: clima, refrigeracion, electrico, solar, fontaneria, material, otro
-- notes: información técnica relevante (máx 100 chars)
 
-Sé exhaustivo, extrae TODOS los productos del catálogo.
-Archivo: ${file_url}`,
-        file_urls: [file_url],
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            items: {
-              type: 'array',
+      let extracted = [];
+
+      if (isExcel(file)) {
+        // Excel/CSV: leer estructura directamente
+        setProgress('Leyendo estructura del Excel...');
+        const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
+          file_url,
+          json_schema: {
+            type: 'object',
+            properties: {
               items: {
-                type: 'object',
-                properties: {
-                  product_name: { type: 'string' },
-                  product_code: { type: 'string' },
-                  brand: { type: 'string' },
-                  cost_price: { type: 'number' },
-                  unit: { type: 'string' },
-                  category: { type: 'string' },
-                  notes: { type: 'string' }
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    product_name: { type: 'string', description: 'Nombre del producto o material' },
+                    product_code: { type: 'string', description: 'Código o referencia del proveedor' },
+                    brand: { type: 'string', description: 'Marca del producto' },
+                    cost_price: { type: 'number', description: 'Precio de coste en euros' },
+                    unit: { type: 'string', description: 'Unidad de medida: ud, m, m2, kg, l, etc.' },
+                    category: { type: 'string', description: 'clima, refrigeracion, electrico, solar, fontaneria, material, otro' },
+                    notes: { type: 'string', description: 'Notas técnicas del producto' }
+                  }
                 }
               }
             }
           }
-        }
-      });
+        });
 
-      const extracted = result?.items || [];
+        if (extractResult?.status === 'success') {
+          const raw = extractResult.output;
+          extracted = Array.isArray(raw) ? raw : (raw?.items || []);
+        }
+
+        // Fallback: si no funciona, usar IA con claude que puede leer Excel
+        if (extracted.length === 0) {
+          setProgress('Interpretando con IA avanzada...');
+          const fallback = await base44.integrations.Core.InvokeLLM({
+            model: 'claude_sonnet_4_6',
+            prompt: `Lee este archivo Excel/CSV de lista de precios del proveedor "${selectedSupplier?.name || ''}". Extrae TODOS los productos con: product_name (nombre), product_code (referencia), brand (marca), cost_price (precio coste en €), unit (unidad), category (clima/refrigeracion/electrico/solar/fontaneria/material/otro), notes (descripción técnica). Extrae TODAS las filas de productos sin omitir ninguna. Archivo: ${file_url}`,
+            file_urls: [file_url],
+            response_json_schema: {
+              type: 'object',
+              properties: {
+                items: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      product_name: { type: 'string' },
+                      product_code: { type: 'string' },
+                      brand: { type: 'string' },
+                      cost_price: { type: 'number' },
+                      unit: { type: 'string' },
+                      category: { type: 'string' },
+                      notes: { type: 'string' }
+                    }
+                  }
+                }
+              }
+            }
+          });
+          extracted = fallback?.items || [];
+        }
+      } else {
+        // PDF: IA con file_urls
+        setProgress('Analizando PDF con IA...');
+        const result = await base44.integrations.Core.InvokeLLM({
+          model: 'claude_sonnet_4_6',
+          prompt: `Analiza este catálogo PDF del proveedor "${selectedSupplier?.name || ''}". Extrae TODOS los productos: product_name (nombre completo), product_code (referencia), brand (marca), cost_price (precio coste en €), unit (unidad de medida), category (clima/refrigeracion/electrico/solar/fontaneria/material/otro), notes (info técnica, máx 100 chars). Sé exhaustivo.`,
+          file_urls: [file_url],
+          response_json_schema: {
+            type: 'object',
+            properties: {
+              items: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    product_name: { type: 'string' },
+                    product_code: { type: 'string' },
+                    brand: { type: 'string' },
+                    cost_price: { type: 'number' },
+                    unit: { type: 'string' },
+                    category: { type: 'string' },
+                    notes: { type: 'string' }
+                  }
+                }
+              }
+            }
+          }
+        });
+        extracted = result?.items || [];
+      }
+
+      // Filtrar filas sin nombre de producto
+      extracted = extracted.filter(i => i?.product_name && String(i.product_name).trim().length > 1);
+
       if (extracted.length === 0) {
-        setError('No se pudieron extraer productos. Asegúrate de que sea un catálogo con productos y precios.');
+        setError('No se pudieron extraer productos. Comprueba que el archivo tiene filas con nombre de producto y precio.');
         setStep('idle');
         return;
       }
