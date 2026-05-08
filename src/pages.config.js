@@ -93,6 +93,8 @@ const ThermalCalc = lazy(() => import('./pages/ThermalCalc'));
 const CompanyConfig = lazy(() => import('./pages/CompanyConfig'));
 const EquipmentDiaryPage = lazy(() => import('./pages/EquipmentDiaryPage'));
 const SATChat = lazy(() => import('./pages/SATChat'));
+const SATCalendar = lazy(() => import('./pages/SATCalendar'));
+const TechnicianDay = lazy(() => import('./pages/TechnicianDay'));
 import __Layout from './Layout.jsx';
 
 
@@ -141,6 +143,8 @@ export const PAGES = {
     "CompanyConfig": CompanyConfig,
     "EquipmentDiaryPage": EquipmentDiaryPage,
     "SATChat": SATChat,
+    "SATCalendar": SATCalendar,
+    "TechnicianDay": TechnicianDay,
 }
 
 export const pagesConfig = {

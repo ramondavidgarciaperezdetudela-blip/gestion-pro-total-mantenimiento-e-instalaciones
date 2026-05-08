@@ -137,6 +137,8 @@ const navItems = [
 { name: 'Recorda. IA', page: 'SmartReminders', icon: Bell },
 { name: 'Repuestos', page: 'SparePartsManager', icon: Package },
 { name: 'SAT', page: 'SAT', icon: Wrench },
+{ name: 'Cal. SAT', page: 'SATCalendar', icon: Calendar },
+{ name: 'Vista Técnico', page: 'TechnicianDay', icon: Wrench },
 { name: 'Diario Rep.', page: 'EquipmentDiaryPage', icon: ClipboardList },
 { name: 'Solar+Bat.', page: 'SolarBatteryCalc', icon: Sun },
 { name: 'T. Visita', page: 'BusinessCards', icon: CreditCard },
