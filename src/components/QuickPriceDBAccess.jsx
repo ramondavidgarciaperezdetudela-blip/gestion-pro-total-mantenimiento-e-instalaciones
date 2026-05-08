@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   BookOpen, Search, Plus, Pencil, Trash2, Save, X,
-  Loader2, Image as ImageIcon, FileSpreadsheet, Tag
+  Loader2, Image as ImageIcon
 } from 'lucide-react';
 import SupplierCatalogImport from './SupplierCatalogImport';
 import { toast } from 'sonner';
