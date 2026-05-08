@@ -36,12 +36,20 @@ function toNumber(val) {
 }
 
 /**
- * Parser universal para Excel/CSV.
- * Estrategia en 3 pasos:
- *   1. Buscar fila de cabecera por alias conocidos (primeras 40 filas)
- *   2. Sin cabecera: detectar columnas por tipo en la primera fila de datos real
- *   3. Último recurso fijo: col0=código, col1=nombre, col2=precio
- * Acepta precios > 0, cadenas de texto para precios con coma/punto.
+ * Parser específico para el formato Escoda y formatos similares.
+ *
+ * El archivo Escoda tiene esta estructura:
+ *   - Fila 0 (cabecera): la celda A1 es un texto largo multilinea, B1="Descripción", C1="PVP €"
+ *     XLSX lo exporta como: { "texto_largo": "Código", col_1: "Descripción", col_2: "PVP €" }
+ *     Con header:1 (array): [ "texto_largo_en_A1", "Descripción", "PVP €" ]
+ *   - Filas 1..N: datos reales (código, descripción, precio)
+ *
+ * Estrategia:
+ *   1. Leer como array de arrays (header:1)
+ *   2. Buscar entre las primeras 50 filas la que contiene alias de nombre/precio/código
+ *      (buscando también en las CELDAS DE ESA FILA, no solo en las posiciones exactas)
+ *   3. Si la búsqueda exacta falla, usar la primera fila que tenga datos numéricos > 0
+ *      y asignar columnas por tipo: string larga = nombre, número = precio, string corta = código
  */
 function parseExcel(file) {
   return new Promise((resolve, reject) => {
@@ -50,122 +58,143 @@ function parseExcel(file) {
     reader.onload = (e) => {
       try {
         const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
-        const wsName = wb.SheetNames[0];
-        const ws = wb.Sheets[wsName];
+        const ws = wb.Sheets[wb.SheetNames[0]];
+
+        // Leer como array de arrays para control total
         const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
 
-        console.log('[Parser] Hoja:', wsName, '| Filas totales:', raw.length);
-        console.log('[Parser] Fila 0:', raw[0]);
-        console.log('[Parser] Fila 1:', raw[1]);
-        console.log('[Parser] Fila 2:', raw[2]);
+        console.log('[Escoda Parser] Total filas:', raw.length);
+        console.log('[Escoda Parser] Fila 0:', JSON.stringify(raw[0]?.slice(0, 5)));
+        console.log('[Escoda Parser] Fila 1:', JSON.stringify(raw[1]?.slice(0, 5)));
 
-        // ── Paso 1: buscar cabecera ──────────────────────────────────────────
         let hRow = -1;
         let iCode = -1, iName = -1, iPrice = -1, iBrand = -1, iUnit = -1;
 
-        for (let r = 0; r < Math.min(40, raw.length); r++) {
+        // ── PASO 1: Buscar cabecera en primeras 50 filas ─────────────────────
+        // La cabecera de Escoda tiene "Código"/"Descripción"/"PVP €" pero la celda A1
+        // tiene un texto muy largo — el texto "Código" está en esa misma celda larga
+        // o en otras celdas de la misma fila. Buscamos en TODOS los valores de cada celda.
+        for (let r = 0; r < Math.min(50, raw.length); r++) {
           const row = raw[r];
           if (!row || row.length === 0) continue;
-          const cells = row.map(c => norm(c));
-          const foundName  = findColInRow(row.map(String), ALIASES_NAME);
-          const foundPrice = findColInRow(row.map(String), ALIASES_PRICE);
+
+          // Buscar en cada celda si contiene algún alias
+          let foundName = -1, foundPrice = -1, foundCode = -1, foundBrand = -1, foundUnit = -1;
+          row.forEach((cell, idx) => {
+            const n = norm(cell);
+            if (foundName  === -1 && ALIASES_NAME.some(a  => n.includes(norm(a))))  foundName  = idx;
+            if (foundPrice === -1 && ALIASES_PRICE.some(a => n.includes(norm(a)))) foundPrice = idx;
+            if (foundCode  === -1 && ALIASES_CODE.some(a  => n.includes(norm(a))))  foundCode  = idx;
+            if (foundBrand === -1 && ALIASES_BRAND.some(a => n.includes(norm(a)))) foundBrand = idx;
+            if (foundUnit  === -1 && ALIASES_UNIT.some(a  => n.includes(norm(a))))  foundUnit  = idx;
+          });
+
           if (foundName !== -1 || foundPrice !== -1) {
             hRow   = r;
-            iCode  = findColInRow(row.map(String), ALIASES_CODE);
             iName  = foundName;
             iPrice = foundPrice;
-            iBrand = findColInRow(row.map(String), ALIASES_BRAND);
-            iUnit  = findColInRow(row.map(String), ALIASES_UNIT);
-            console.log('[Parser] Cabecera en fila', r, '→ nombre:', iName, 'precio:', iPrice, 'código:', iCode);
+            iCode  = foundCode;
+            iBrand = foundBrand;
+            iUnit  = foundUnit;
+            console.log('[Escoda Parser] Cabecera detectada en fila', r, '→ nombre col:', iName, '| precio col:', iPrice, '| código col:', iCode);
             break;
           }
         }
 
-        // ── Paso 2: heurística si no hay cabecera ────────────────────────────
-        if (hRow === -1) {
-          console.log('[Parser] Sin cabecera reconocida. Usando heurística por tipos.');
-          // Encontrar primera fila que tenga algún número válido → primera fila de datos
+        // ── PASO 2: Heurística por tipos si no hay cabecera ──────────────────
+        if (hRow === -1 || iName === -1 || iPrice === -1) {
+          console.log('[Escoda Parser] Sin cabecera clara. Heurística por tipos de dato.');
+
+          // Primera fila con al menos un número válido > 0
           let dataRow = 0;
-          for (let r = 0; r < Math.min(20, raw.length); r++) {
+          for (let r = 0; r < Math.min(30, raw.length); r++) {
             if (raw[r].some(c => typeof c === 'number' && c > 0)) { dataRow = r; break; }
           }
-          const sample = raw[dataRow] || [];
-          console.log('[Parser] Fila muestra (idx', dataRow, '):', sample);
 
-          // Precio: primera columna numérica > 0
+          const sample = raw[dataRow] || [];
+          console.log('[Escoda Parser] Fila muestra idx', dataRow, ':', JSON.stringify(sample));
+
+          // Precio = primera columna numérica > 0
           sample.forEach((c, idx) => {
             if (iPrice === -1 && typeof c === 'number' && c > 0) iPrice = idx;
           });
-          // Si no hay número, buscar string parseable como número
+          // Si precio sigue sin detectar, buscar string parseable
           if (iPrice === -1) {
             sample.forEach((c, idx) => {
-              if (iPrice === -1 && toNumber(c) !== null && toNumber(c) > 0) iPrice = idx;
+              const n = toNumber(c);
+              if (iPrice === -1 && n !== null && n > 0) iPrice = idx;
             });
           }
-          // Nombre: string más larga distinta de la columna precio
+          // Nombre = string más larga (excluyendo la col de precio)
           let maxLen = 0;
           sample.forEach((c, idx) => {
             const s = String(c || '').trim();
             if (idx !== iPrice && s.length > maxLen) { maxLen = s.length; iName = idx; }
           });
-          // Código: primera string corta antes del nombre
+          // Código = string corta (≤30 chars) distinta de nombre y precio
           sample.forEach((c, idx) => {
             const s = String(c || '').trim();
             if (iCode === -1 && idx !== iName && idx !== iPrice && s.length > 0 && s.length <= 30) iCode = idx;
           });
-          // Los datos empiezan en esa misma fila (hRow queda en -1, dataStart = dataRow)
-          hRow = dataRow - 1; // dataStart = hRow + 1 = dataRow ✓
-          console.log('[Parser] Heurística → dataRow:', dataRow, 'nombre:', iName, 'precio:', iPrice, 'código:', iCode);
+
+          hRow = dataRow - 1; // dataStart = hRow + 1 = dataRow
+          console.log('[Escoda Parser] Heurística → dataRow:', dataRow, '| nombre:', iName, '| precio:', iPrice, '| código:', iCode);
         }
 
-        // ── Paso 3: último recurso fijo ──────────────────────────────────────
+        // ── PASO 3: Fallback fijo Escoda (col0=código, col1=nombre, col2=precio) ─
         if (iName === -1 || iPrice === -1) {
-          console.log('[Parser] Usando asignación fija Escoda: col0=código col1=nombre col2=precio');
+          console.log('[Escoda Parser] Fallback fijo: col0=código, col1=nombre, col2=precio');
           iCode = 0; iName = 1; iPrice = 2;
-          // Buscar primera fila con datos reales
-          for (let r = 0; r < Math.min(10, raw.length); r++) {
+          // Detectar primera fila de datos válida
+          hRow = 0;
+          for (let r = 0; r < Math.min(15, raw.length); r++) {
             const row = raw[r];
-            if (row[1] && String(row[1]).trim().length > 2 && toNumber(row[2]) !== null) {
+            if (row && String(row[1] || '').trim().length > 2 && toNumber(row[2]) !== null && toNumber(row[2]) > 0) {
               hRow = r - 1;
               break;
             }
           }
-          if (hRow < -1) hRow = -1;
         }
 
-        // ── Extraer productos ────────────────────────────────────────────────
+        // ── EXTRAER TODOS LOS PRODUCTOS (sin límite) ─────────────────────────
         const dataStart = Math.max(0, hRow + 1);
         const items = [];
+
         for (let r = dataStart; r < raw.length; r++) {
           const row = raw[r];
-          if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+          // Fila vacía o todo nulo → saltar
+          if (!row || row.length === 0) continue;
+          if (row.every(c => c === '' || c === null || c === undefined)) continue;
 
           const name = String(row[iName] ?? '').trim();
+          // Nombre muy corto → saltar
           if (!name || name.length < 2) continue;
-
-          // Saltar filas que son subcabeceras (nombre igual a un alias)
-          if (ALIASES_NAME.some(a => norm(name) === norm(a)) ||
-              ALIASES_PRICE.some(a => norm(name) === norm(a))) continue;
+          // Saltar filas que son cabeceras repetidas
+          const normName = norm(name);
+          if (ALIASES_NAME.some(a => normName === norm(a))) continue;
+          if (ALIASES_PRICE.some(a => normName === norm(a))) continue;
+          if (ALIASES_CODE.some(a => normName === norm(a))) continue;
 
           const price = toNumber(row[iPrice]);
           if (price === null || price <= 0) continue;
 
           items.push({
-            product_code: iCode !== -1 ? String(row[iCode] ?? '').trim() : '',
+            product_code: iCode >= 0 ? String(row[iCode] ?? '').trim() : '',
             product_name: name,
             cost_price:   price,
-            brand:        iBrand !== -1 ? String(row[iBrand] ?? '').trim() : '',
-            unit:         iUnit  !== -1 ? String(row[iUnit]  ?? '').trim() : 'ud',
+            brand:        iBrand >= 0 ? String(row[iBrand] ?? '').trim() : '',
+            unit:         iUnit  >= 0 ? String(row[iUnit]  ?? '').trim() : 'ud',
             category:     'material',
             notes:        '',
             image_url:    null,
           });
         }
 
-        console.log('[Parser] Productos válidos:', items.length, '| Primeros 3:', items.slice(0, 3));
+        console.log('[Escoda Parser] ✅ Productos válidos extraídos:', items.length);
+        console.log('[Escoda Parser] Primeros 3:', JSON.stringify(items.slice(0, 3)));
         resolve(items);
       } catch (err) {
-        console.error('[Parser] Error inesperado:', err);
+        console.error('[Escoda Parser] ❌ Error:', err);
         reject(err);
       }
     };
@@ -268,7 +297,7 @@ ${applyIva ? 'Los precios son netos sin IVA, extráelos tal como aparecen.' : 'E
       }
 
       if (extracted.length === 0) {
-        setError('No se encontraron productos con precio válido. Abre la consola del navegador (F12) para ver los logs del parser y comprueba el formato del archivo.');
+        setError(`No se encontraron productos con precio válido. El archivo puede tener un formato inesperado. Abre la consola (F12 → Console) y busca logs "[Escoda Parser]" para ver qué detectó el lector.`);
         setStep('idle');
         return;
       }
