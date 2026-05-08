@@ -401,7 +401,18 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
                       </div>
                     )}
                     <input ref={fileRef} type="file" accept=".pdf,.xlsx,.xls,.csv" className="hidden"
-                      onChange={e => { if (e.target.files[0]) { setFile(e.target.files[0]); setError(null); } }} />
+                      onChange={e => {
+                        const f = e.target.files[0];
+                        if (!f) return;
+                        // PDF > 10MB → avisar y sugerir Excel
+                        if (/\.pdf$/i.test(f.name) && f.size > 10 * 1024 * 1024) {
+                          setError(`El PDF pesa ${(f.size / 1024 / 1024).toFixed(1)} MB y supera el límite de 10 MB para PDFs. Usa el archivo Excel (.xlsx) de la misma tarifa — se procesa localmente sin límite de tamaño.`);
+                          setFile(null);
+                          return;
+                        }
+                        setFile(f);
+                        setError(null);
+                      }} />
                   </div>
                 </div>
 
