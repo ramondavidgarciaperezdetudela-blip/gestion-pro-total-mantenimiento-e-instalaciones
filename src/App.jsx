@@ -30,6 +30,7 @@ class ErrorBoundary extends Component {
   }
 }
 const SATPublico = lazy(() => import('./pages/SATPublico'));
+const SupplierTariffs = lazy(() => import('./pages/SupplierTariffs'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-32">
@@ -95,6 +96,7 @@ const AuthenticatedApp = () => {
           ))}
           <Route path="/presupuesto-publico" element={<PresupuestoPublico />} />
           <Route path="/sat-publico" element={<SATPublico />} />
+          <Route path="/SupplierTariffs" element={<LayoutWrapper currentPageName="SupplierTariffs"><SupplierTariffs /></LayoutWrapper>} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </AnimatedRoutes>

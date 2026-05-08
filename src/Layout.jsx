@@ -131,6 +131,7 @@ const navItems = [
 { name: 'Timeline', page: 'ProjectTimeline', icon: Calendar },
 { name: 'Rutas', page: 'TecniciansRoutes', icon: Wrench },
 { name: 'Proveedores', page: 'Suppliers', icon: Building2 },
+{ name: 'Tarifas Prov.', page: 'SupplierTariffs', icon: Package },
 { name: 'Recordatorios', page: 'Automations', icon: Bell },
 { name: 'Recorda. IA', page: 'SmartReminders', icon: Bell },
 { name: 'Repuestos', page: 'SparePartsManager', icon: Package },
