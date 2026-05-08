@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Image as ImageIcon, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 /**
@@ -33,6 +33,26 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
 
   const isExcel = (f) => /\.(xlsx|xls|csv)$/i.test(f?.name || '');
+
+  // Genera y descarga un CSV de ejemplo con la estructura correcta
+  const downloadExample = () => {
+    const headers = ['referencia', 'descripcion', 'marca', 'precio_neto', 'unidad', 'categoria', 'notas'];
+    const rows = [
+      ['CAB-001', 'Cable eléctrico flexible 1.5mm² negro', 'Prysmian', '0.85', 'm', 'electrico', 'Rollo 100m disponible'],
+      ['CLI-204', 'Split mural inverter 2250 frigorías', 'Daikin', '649.00', 'ud', 'clima', 'Modelo FTXC25C'],
+      ['REF-R32', 'Gas refrigerante R-32 10kg', 'Dupont', '72.50', 'bote', 'refrigeracion', 'Cilindro 10kg recargable'],
+      ['TUB-14', 'Tubería cobre 14mm (rollo 50m)', 'Wieland', '88.00', 'rollo', 'clima', 'Recocido, pared 0.8mm'],
+      ['SOL-300', 'Panel solar monocristalino 300W', 'Jinko', '95.00', 'ud', 'solar', 'Garantía 25 años'],
+    ];
+    const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ejemplo_tarifa_proveedor.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleExtract = async () => {
     if (!file || !supplierId) return;
@@ -295,6 +315,46 @@ Sé exhaustivo y extrae todos los productos del catálogo.`,
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Ejemplo de estructura */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-blue-800">📋 ¿Tu archivo no se lee bien?</p>
+                      <p className="text-xs text-blue-600">Descarga este ejemplo CSV con la estructura ideal y compáralo con el tuyo.</p>
+                    </div>
+                    <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100 gap-1.5 text-xs" onClick={downloadExample}>
+                      <Download className="w-3.5 h-3.5" /> Descargar ejemplo
+                    </Button>
+                  </div>
+                  <div className="overflow-x-auto rounded-lg border border-blue-100 bg-white text-[11px]">
+                    <table className="w-full min-w-[520px]">
+                      <thead>
+                        <tr className="bg-blue-600 text-white">
+                          {['referencia', 'descripcion', 'marca', 'precio_neto', 'unidad', 'categoria', 'notas'].map(h => (
+                            <th key={h} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          ['CAB-001', 'Cable eléctrico 1.5mm² negro', 'Prysmian', '0.85', 'm', 'electrico', 'Rollo 100m'],
+                          ['CLI-204', 'Split inverter 2250 frigorías', 'Daikin', '649.00', 'ud', 'clima', 'Modelo FTXC25C'],
+                          ['REF-R32', 'Gas refrigerante R-32 10kg', 'Dupont', '72.50', 'bote', 'refrigeracion', ''],
+                        ].map((row, ri) => (
+                          <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-blue-50/50'}>
+                            {row.map((cell, ci) => (
+                              <td key={ci} className={`px-2 py-1 border-t border-blue-100 whitespace-nowrap ${ci === 3 ? 'font-semibold text-green-700' : 'text-gray-700'}`}>{cell}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[10px] text-blue-500">
+                    💡 La columna de precio debe contener <strong>solo el número</strong> (ej: <code>0.85</code> no <code>0,85 €</code>). Acepta nombres alternativos: <em>precio, pvp, tarifa, coste, importe, cod, ref, articulo…</em>
+                  </p>
                 </div>
 
                 <div>
