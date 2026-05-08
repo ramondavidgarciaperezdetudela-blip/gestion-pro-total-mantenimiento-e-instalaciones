@@ -13,6 +13,7 @@ import {
 import NotificationsPanel from './components/NotificationsPanel';
 import GlobalSearch from './components/GlobalSearch';
 import AIChat from './components/AIChat';
+import QuickPriceDBAccess from './components/QuickPriceDBAccess';
 
 // ─── Mobile Bottom Bar ────────────────────────────────────────────────────────
 const MAIN_TABS = [
@@ -179,6 +180,7 @@ export default function Layout({ children, currentPageName }) {
   return (
     <div className="min-h-screen bg-slate-50 flex" dir="ltr" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <AIChat />
+      <QuickPriceDBAccess />
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <style>{`
         :root {
