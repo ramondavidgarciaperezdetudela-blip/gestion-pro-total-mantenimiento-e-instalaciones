@@ -1,105 +1,172 @@
 import React, { useState, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Image as ImageIcon, Download } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Image as ImageIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import DownloadExcelTemplate from '@/components/DownloadExcelTemplate';
+
+// ── Helpers para detección de columnas ───────────────────────────────────────
+const ALIASES_CODE  = ['código', 'codigo', 'ref', 'referencia', 'sku', 'cod', 'art', 'articulo', 'id'];
+const ALIASES_NAME  = ['descripción', 'descripcion', 'nombre', 'producto', 'articulo', 'denominacion', 'designacion', 'detalle', 'item'];
+const ALIASES_PRICE = ['pvp', 'pvp €', 'precio', 'price', 'tarifa', 'importe', 'coste', 'cost', 'precio_neto', 'precio neto', 'venta', 'eur', '€', 'precio_pvp'];
+const ALIASES_BRAND = ['marca', 'brand', 'fabricante', 'manufacturer'];
+const ALIASES_UNIT  = ['unidad', 'unit', 'ud', 'um', 'medida'];
+
+function normalize(str) {
+  return String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+function findCol(headers, aliases) {
+  for (const alias of aliases) {
+    const idx = headers.findIndex(h => normalize(h).includes(normalize(alias)));
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
 
 /**
- * Importa un PDF/Excel de proveedor, extrae productos con IA,
- * descarga imágenes automáticamente y guarda en SupplierPrice vinculado al proveedor.
+ * Lee un Excel/CSV con SheetJS y devuelve array de {product_code, product_name, cost_price, brand, unit}.
+ * Detecta automáticamente qué fila es la cabecera real (buscando la primera que tenga
+ * al menos una celda que coincida con los alias de nombre o precio).
  */
+function parseExcel(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        // Convertir a array de arrays (raw)
+        const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+
+        // Buscar la fila cabecera: primera fila donde alguna celda coincide con aliases de nombre o precio
+        let headerRowIdx = 0;
+        for (let r = 0; r < Math.min(20, raw.length); r++) {
+          const row = raw[r].map(c => normalize(c));
+          const hasName  = ALIASES_NAME.some(a => row.some(c => c.includes(normalize(a))));
+          const hasPrice = ALIASES_PRICE.some(a => row.some(c => c.includes(normalize(a))));
+          if (hasName || hasPrice) { headerRowIdx = r; break; }
+        }
+
+        const headers = raw[headerRowIdx].map(c => String(c));
+        const iCode  = findCol(headers, ALIASES_CODE);
+        const iName  = findCol(headers, ALIASES_NAME);
+        const iPrice = findCol(headers, ALIASES_PRICE);
+        const iBrand = findCol(headers, ALIASES_BRAND);
+        const iUnit  = findCol(headers, ALIASES_UNIT);
+
+        if (iName === -1 && iPrice === -1) {
+          reject(new Error('No se encontraron columnas de descripción ni precio en el archivo. Comprueba el formato.'));
+          return;
+        }
+
+        const items = [];
+        for (let r = headerRowIdx + 1; r < raw.length; r++) {
+          const row = raw[r];
+          const name = iName !== -1 ? String(row[iName] || '').trim() : '';
+          const priceRaw = iPrice !== -1 ? row[iPrice] : '';
+          // Convertir precio: quitar símbolo € y coma decimal
+          const priceNum = parseFloat(String(priceRaw).replace(/[€\s]/g, '').replace(',', '.'));
+
+          // Saltar filas vacías, cabeceras secundarias o sin precio válido
+          if (!name || name.length < 2) continue;
+          if (isNaN(priceNum) || priceNum <= 0) continue;
+
+          items.push({
+            product_code: iCode  !== -1 ? String(row[iCode]  || '').trim() : '',
+            product_name: name,
+            cost_price:   priceNum,
+            brand:        iBrand !== -1 ? String(row[iBrand] || '').trim() : '',
+            unit:         iUnit  !== -1 ? String(row[iUnit]  || '').trim() : 'ud',
+            category:     'material',
+            notes:        '',
+            image_url:    null,
+          });
+        }
+        resolve(items);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 export default function SupplierCatalogImportWithSupplier({ suppliers = [], onImported }) {
-  const [open, setOpen] = useState(false);
-  const [file, setFile] = useState(null);
+  const [open, setOpen]           = useState(false);
+  const [file, setFile]           = useState(null);
   const [supplierId, setSupplierId] = useState('');
-  const [step, setStep] = useState('idle');
-  const [items, setItems] = useState([]);
+  const [step, setStep]           = useState('idle');
+  const [items, setItems]         = useState([]);
   const [selectedItems, setSelectedItems] = useState(new Set());
-  const [error, setError] = useState(null);
-  const [progress, setProgress] = useState('');
-  const [margin, setMargin] = useState(30);
-  const [applyIva, setApplyIva] = useState(true);
-  const [ivaRate, setIvaRate] = useState(21);
+  const [error, setError]         = useState(null);
+  const [progress, setProgress]   = useState('');
+  const [margin, setMargin]       = useState(30);
+  const [applyIva, setApplyIva]   = useState(false); // Escoda ya incluye PVP con IVA
+  const [ivaRate, setIvaRate]     = useState(21);
+  const [fetchImages, setFetchImages] = useState(false); // opt-in porque son 64K productos
+  const [page, setPage]           = useState(0);
+  const PAGE_SIZE = 50;
   const fileRef = useRef(null);
 
   const reset = () => {
-    setFile(null); setStep('idle'); setItems([]); setSelectedItems(new Set()); setError(null); setProgress(''); setSupplierId('');
-    setApplyIva(true); setIvaRate(21);
+    setFile(null); setStep('idle'); setItems([]); setSelectedItems(new Set());
+    setError(null); setProgress(''); setSupplierId(''); setPage(0);
   };
 
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
-
   const isExcel = (f) => /\.(xlsx|xls|csv)$/i.test(f?.name || '');
-
-  // Genera y descarga un CSV de ejemplo con la estructura correcta
-  const downloadExample = () => {
-    const headers = ['referencia', 'descripcion', 'marca', 'precio_neto', 'unidad', 'categoria', 'notas'];
-    const rows = [
-      ['CAB-001', 'Cable eléctrico flexible 1.5mm² negro', 'Prysmian', '0.85', 'm', 'electrico', 'Rollo 100m disponible'],
-      ['CLI-204', 'Split mural inverter 2250 frigorías', 'Daikin', '649.00', 'ud', 'clima', 'Modelo FTXC25C'],
-      ['REF-R32', 'Gas refrigerante R-32 10kg', 'Dupont', '72.50', 'bote', 'refrigeracion', 'Cilindro 10kg recargable'],
-      ['TUB-14', 'Tubería cobre 14mm (rollo 50m)', 'Wieland', '88.00', 'rollo', 'clima', 'Recocido, pared 0.8mm'],
-      ['SOL-300', 'Panel solar monocristalino 300W', 'Jinko', '95.00', 'ud', 'solar', 'Garantía 25 años'],
-    ];
-    const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'ejemplo_tarifa_proveedor.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const isPdf   = (f) => /\.pdf$/i.test(f?.name || '');
 
   const handleExtract = async () => {
     if (!file || !supplierId) return;
     setError(null);
+    setPage(0);
+
     try {
-      // 1. Subir fichero
-      setStep('uploading');
-      setProgress('Subiendo archivo...');
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-
-      // 2. Extraer con IA — siempre usamos Claude para máxima compatibilidad
-      setStep('extracting');
-      setProgress('Analizando catálogo con IA...');
-
       let extracted = [];
 
-      const ivaNote = applyIva
-        ? `IMPORTANTE: Los precios en el archivo pueden estar SIN IVA (precio neto/base). Extrae el precio tal como aparece en el archivo en el campo cost_price. El IVA se aplicará automáticamente después.`
-        : `Extrae el precio tal como aparece en el archivo en el campo cost_price.`;
-
-      const commonSchema = {
-        type: 'object',
-        properties: {
-          items: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                product_name: { type: 'string' },
-                product_code: { type: 'string' },
-                brand: { type: 'string' },
-                cost_price: { type: 'number' },
-                unit: { type: 'string' },
-                category: { type: 'string' },
-                notes: { type: 'string' }
-              }
-            }
-          }
-        }
-      };
-
       if (isExcel(file)) {
-        // Intentar primero con ExtractDataFromUploadedFile (más rápido para tablas bien formadas)
-        setProgress('Leyendo estructura del archivo...');
-        const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
-          file_url,
-          json_schema: {
+        // ── Excel/CSV: parse directo en el cliente con SheetJS ──────────────
+        setStep('extracting');
+        setProgress('Leyendo archivo localmente...');
+        extracted = await parseExcel(file);
+
+        // Aplicar IVA si el archivo trae precios sin IVA
+        if (applyIva && ivaRate > 0) {
+          extracted = extracted.map(item => ({
+            ...item,
+            cost_price: item.cost_price != null
+              ? Math.round(item.cost_price * (1 + ivaRate / 100) * 100) / 100
+              : null
+          }));
+        }
+      } else if (isPdf(file)) {
+        // ── PDF: subir y extraer con IA ─────────────────────────────────────
+        setStep('uploading');
+        setProgress('Subiendo PDF...');
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+
+        setStep('extracting');
+        setProgress('Analizando PDF con IA...');
+        const ivaNote = applyIva
+          ? `Los precios pueden estar SIN IVA. Extrae el precio tal como aparece.`
+          : `Extrae el precio tal como aparece en el archivo.`;
+
+        const result = await base44.integrations.Core.InvokeLLM({
+          model: 'claude_sonnet_4_6',
+          prompt: `Eres un experto en leer catálogos PDF de proveedores industriales españoles.
+Analiza este catálogo del proveedor "${selectedSupplier?.name || ''}" y extrae TODOS los productos.
+Para cada producto: product_name, product_code, brand, cost_price (número puro sin €), unit, category (clima/refrigeracion/electrico/solar/fontaneria/material/otro), notes.
+${ivaNote}`,
+          file_urls: [file_url],
+          response_json_schema: {
             type: 'object',
             properties: {
               items: {
@@ -107,127 +174,65 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                 items: {
                   type: 'object',
                   properties: {
-                    product_name: { type: 'string', description: 'Nombre del producto. Puede llamarse: descripcion, nombre, articulo, producto, denominacion, designacion o similar.' },
-                    product_code: { type: 'string', description: 'Código o referencia. Puede llamarse: ref, referencia, codigo, cod, sku, art o similar.' },
-                    brand: { type: 'string', description: 'Marca o fabricante del producto.' },
-                    cost_price: { type: 'number', description: 'Precio numérico (sin símbolo €). Puede ser precio neto, pvp, precio, tarifa, coste o similar. Extrae siempre el valor numérico.' },
-                    unit: { type: 'string', description: 'Unidad de medida: ud, m, m2, kg, l, etc.' },
-                    category: { type: 'string', description: 'Categoría: clima, refrigeracion, electrico, solar, fontaneria, material, otro' },
-                    notes: { type: 'string', description: 'Descripción técnica adicional si existe.' }
+                    product_name: { type: 'string' },
+                    product_code: { type: 'string' },
+                    brand: { type: 'string' },
+                    cost_price: { type: 'number' },
+                    unit: { type: 'string' },
+                    category: { type: 'string' },
+                    notes: { type: 'string' }
                   }
                 }
               }
             }
           }
         });
+        extracted = (result?.items || []).filter(i => i?.product_name && i.cost_price > 0);
 
-        if (extractResult?.status === 'success') {
-          const raw = extractResult.output;
-          extracted = Array.isArray(raw) ? raw : (raw?.items || []);
+        if (applyIva && ivaRate > 0) {
+          extracted = extracted.map(item => ({
+            ...item,
+            cost_price: Math.round(item.cost_price * (1 + ivaRate / 100) * 100) / 100
+          }));
         }
-
-        // Si no extrajo suficiente, usar Claude como fallback robusto
-        if (extracted.length < 2) {
-          setProgress('Usando IA avanzada para interpretar el archivo...');
-          const fallback = await base44.integrations.Core.InvokeLLM({
-            model: 'claude_sonnet_4_6',
-            prompt: `Eres un asistente experto en leer tarifas y catálogos de precios de proveedores industriales españoles.
-Lee este archivo Excel/CSV del proveedor "${selectedSupplier?.name || ''}" y extrae TODOS los productos/artículos.
-
-Las columnas pueden tener nombres variados en español como: referencia, ref, código, cod, descripción, nombre, artículo, precio, pvp, tarifa, precio_neto, importe, unidad, marca, etc.
-
-Para CADA fila que represente un producto (ignora cabeceras, totales o filas vacías), extrae:
-- product_name: nombre o descripción del producto (campo más descriptivo disponible)
-- product_code: código, referencia o SKU del producto
-- brand: marca o fabricante si está disponible
-- cost_price: el precio numérico que aparece (sin símbolo €, solo el número). Si hay varios precios, usa el precio base/neto/coste.
-- unit: unidad de medida (ud, m, m2, kg, l, etc.)
-- category: clasifica en (clima/refrigeracion/electrico/solar/fontaneria/material/otro) según el tipo de producto
-- notes: descripción técnica adicional si existe
-
-${ivaNote}
-Extrae ABSOLUTAMENTE TODAS las filas de producto, sin omitir ninguna. Si hay cientos de filas, extráelas todas.`,
-            file_urls: [file_url],
-            response_json_schema: commonSchema
-          });
-          extracted = fallback?.items || [];
-        }
-      } else {
-        // PDF
-        setProgress('Analizando PDF con IA...');
-        const result = await base44.integrations.Core.InvokeLLM({
-          model: 'claude_sonnet_4_6',
-          prompt: `Eres un experto en leer catálogos PDF de proveedores industriales españoles.
-Analiza este catálogo PDF del proveedor "${selectedSupplier?.name || ''}" y extrae TODOS los productos.
-
-Para cada producto extrae:
-- product_name: nombre completo del producto
-- product_code: referencia o código
-- brand: marca si aparece
-- cost_price: precio numérico (solo el número, sin €)
-- unit: unidad (ud, m, kg, etc.)
-- category: (clima/refrigeracion/electrico/solar/fontaneria/material/otro)
-- notes: descripción técnica relevante (máx 120 caracteres)
-
-${ivaNote}
-Sé exhaustivo y extrae todos los productos del catálogo.`,
-          file_urls: [file_url],
-          response_json_schema: commonSchema
-        });
-        extracted = result?.items || [];
-      }
-
-      // Limpiar: filtrar filas sin nombre y sin precio
-      extracted = extracted.filter(i => {
-        const hasName = i?.product_name && String(i.product_name).trim().length > 1;
-        const isNotHeader = !['descripcion', 'nombre', 'producto', 'articulo', 'referencia', 'ref'].includes(
-          String(i?.product_name || '').toLowerCase().trim()
-        );
-        return hasName && isNotHeader;
-      });
-
-      // Aplicar IVA si corresponde
-      if (applyIva && ivaRate > 0) {
-        extracted = extracted.map(item => ({
-          ...item,
-          cost_price: item.cost_price != null
-            ? Math.round(item.cost_price * (1 + ivaRate / 100) * 100) / 100
-            : null
-        }));
       }
 
       if (extracted.length === 0) {
-        setError(`No se pudieron extraer productos. El archivo puede tener un formato inesperado o estar vacío. Intenta con otro archivo o contacta soporte.`);
+        setError('No se pudieron extraer productos. Revisa que el archivo tenga datos válidos.');
         setStep('idle');
         return;
       }
 
-      // 3. Buscar imágenes en lotes de 5 para evitar rate limit
-      setStep('images');
-      const withImages = [];
-      const BATCH = 5;
-      for (let i = 0; i < extracted.length; i += BATCH) {
-        const batch = extracted.slice(i, i + BATCH);
-        setProgress(`Descargando imágenes ${i + 1}–${Math.min(i + BATCH, extracted.length)} de ${extracted.length}...`);
-        const batchResults = await Promise.all(batch.map(async (item) => {
-          try {
-            const imgResult = await base44.integrations.Core.InvokeLLM({
-              prompt: `Busca la imagen oficial del producto: "${item.product_name}"${item.brand ? ` marca ${item.brand}` : ''}${item.product_code ? ` ref ${item.product_code}` : ''}. Devuelve solo la URL directa de imagen JPG/PNG. Si no encuentras una imagen fiable, devuelve null.`,
-              add_context_from_internet: true,
-              response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
-            });
-            return { ...item, image_url: imgResult?.image_url || null };
-          } catch {
-            return { ...item, image_url: null };
-          }
-        }));
-        withImages.push(...batchResults);
-        // Pequeña pausa entre lotes para evitar rate limit
-        if (i + BATCH < extracted.length) await new Promise(r => setTimeout(r, 300));
+      // ── Imágenes (opcional, en lotes de 5) ─────────────────────────────────
+      if (fetchImages && extracted.length <= 500) {
+        setStep('images');
+        const withImages = [];
+        const BATCH = 5;
+        for (let i = 0; i < extracted.length; i += BATCH) {
+          const batch = extracted.slice(i, i + BATCH);
+          setProgress(`Descargando imágenes ${i + 1}–${Math.min(i + BATCH, extracted.length)} de ${extracted.length}...`);
+          const results = await Promise.all(batch.map(async (item) => {
+            try {
+              const res = await base44.integrations.Core.InvokeLLM({
+                prompt: `Busca la imagen oficial del producto: "${item.product_name}"${item.brand ? ` marca ${item.brand}` : ''}${item.product_code ? ` ref ${item.product_code}` : ''}. Devuelve solo la URL directa JPG/PNG o null si no encuentras nada fiable.`,
+                add_context_from_internet: true,
+                response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
+              });
+              return { ...item, image_url: res?.image_url || null };
+            } catch {
+              return { ...item, image_url: null };
+            }
+          }));
+          withImages.push(...results);
+          if (i + BATCH < extracted.length) await new Promise(r => setTimeout(r, 300));
+        }
+        setItems(withImages);
+        setSelectedItems(new Set(withImages.map((_, i) => i)));
+      } else {
+        setItems(extracted);
+        setSelectedItems(new Set(extracted.map((_, i) => i)));
       }
 
-      setItems(withImages);
-      setSelectedItems(new Set(withImages.map((_, i) => i)));
       setStep('preview');
       setProgress('');
     } catch (err) {
@@ -238,28 +243,31 @@ Sé exhaustivo y extrae todos los productos del catálogo.`,
 
   const handleSave = async () => {
     setStep('saving');
-    setProgress('Guardando en base de datos...');
     const toSave = items.filter((_, i) => selectedItems.has(i));
     let saved = 0;
-    for (const item of toSave) {
-      const costPrice = item.cost_price || 0;
-      const salePrice = costPrice > 0 ? Math.round(costPrice * (1 + margin / 100) * 100) / 100 : 0;
-      await base44.entities.SupplierPrice.create({
-        supplier_id: supplierId,
-        supplier_name: selectedSupplier?.name || '',
-        product_name: item.product_name || 'Sin nombre',
-        product_code: item.product_code || '',
-        cost_price: costPrice,
-        sale_price: salePrice,
-        margin: costPrice > 0 ? margin : 0,
-        unit: item.unit || 'ud',
-        category: item.category || 'material',
-        notes: item.notes || '',
-        image_url: item.image_url || '',
-        brand: item.brand || '',
-        is_active: true,
-      });
-      saved++;
+    const SAVE_BATCH = 50;
+    for (let i = 0; i < toSave.length; i += SAVE_BATCH) {
+      const batch = toSave.slice(i, i + SAVE_BATCH);
+      await Promise.all(batch.map(item => {
+        const costPrice = item.cost_price || 0;
+        const salePrice = costPrice > 0 ? Math.round(costPrice * (1 + margin / 100) * 100) / 100 : 0;
+        return base44.entities.SupplierPrice.create({
+          supplier_id:   supplierId,
+          supplier_name: selectedSupplier?.name || '',
+          product_name:  item.product_name || 'Sin nombre',
+          product_code:  item.product_code || '',
+          cost_price:    costPrice,
+          sale_price:    salePrice,
+          margin:        costPrice > 0 ? margin : 0,
+          unit:          item.unit || 'ud',
+          category:      item.category || 'material',
+          notes:         item.notes || '',
+          image_url:     item.image_url || '',
+          brand:         item.brand || '',
+          is_active:     true,
+        });
+      }));
+      saved += batch.length;
       setProgress(`Guardando ${saved}/${toSave.length}...`);
     }
     setStep('done');
@@ -277,6 +285,10 @@ Sé exhaustivo y extrae todos los productos del catálogo.`,
 
   const isProcessing = ['uploading', 'extracting', 'images', 'saving'].includes(step);
 
+  // Paginación en preview
+  const pageItems = items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const totalPages = Math.ceil(items.length / PAGE_SIZE);
+
   return (
     <>
       <Button
@@ -292,14 +304,15 @@ Sé exhaustivo y extrae todos los productos del catálogo.`,
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5 text-purple-600" />
-              Importar tarifa de proveedor (PDF / Excel)
+              Importar tarifa de proveedor
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Paso 1: seleccionar proveedor + archivo */}
-            {(step === 'idle' || step === 'preview') && step !== 'preview' && (
-              <div className="space-y-3">
+            {/* ── Paso 1: Config ── */}
+            {step === 'idle' && (
+              <div className="space-y-4">
+                {/* Proveedor */}
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">1. Selecciona el proveedor</label>
                   <Select value={supplierId} onValueChange={setSupplierId}>
@@ -317,120 +330,105 @@ Sé exhaustivo y extrae todos los productos del catálogo.`,
                   </Select>
                 </div>
 
-                {/* Ejemplo de estructura */}
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-blue-800">📋 ¿Tu archivo no se lee bien?</p>
-                      <p className="text-xs text-blue-600">Descarga este ejemplo CSV con la estructura ideal y compáralo con el tuyo.</p>
-                    </div>
-                    <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100 gap-1.5 text-xs" onClick={downloadExample}>
-                      <Download className="w-3.5 h-3.5" /> Descargar ejemplo
-                    </Button>
+                {/* Info plantilla */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-blue-800">📋 Formatos aceptados</p>
+                    <p className="text-xs text-blue-600 mt-0.5">
+                      Excel (.xlsx, .xls), CSV y PDF. Para Excel, el sistema detecta automáticamente las columnas
+                      aunque la primera fila sea una cabecera larga (como las tarifas de Escoda, Climaver, etc.).
+                    </p>
                   </div>
-                  <div className="overflow-x-auto rounded-lg border border-blue-100 bg-white text-[11px]">
-                    <table className="w-full min-w-[520px]">
-                      <thead>
-                        <tr className="bg-blue-600 text-white">
-                          {['referencia', 'descripcion', 'marca', 'precio_neto', 'unidad', 'categoria', 'notas'].map(h => (
-                            <th key={h} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[
-                          ['CAB-001', 'Cable eléctrico 1.5mm² negro', 'Prysmian', '0.85', 'm', 'electrico', 'Rollo 100m'],
-                          ['CLI-204', 'Split inverter 2250 frigorías', 'Daikin', '649.00', 'ud', 'clima', 'Modelo FTXC25C'],
-                          ['REF-R32', 'Gas refrigerante R-32 10kg', 'Dupont', '72.50', 'bote', 'refrigeracion', ''],
-                        ].map((row, ri) => (
-                          <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-blue-50/50'}>
-                            {row.map((cell, ci) => (
-                              <td key={ci} className={`px-2 py-1 border-t border-blue-100 whitespace-nowrap ${ci === 3 ? 'font-semibold text-green-700' : 'text-gray-700'}`}>{cell}</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="flex-shrink-0">
+                    <DownloadExcelTemplate size="sm" />
                   </div>
-                  <p className="text-[10px] text-blue-500">
-                    💡 La columna de precio debe contener <strong>solo el número</strong> (ej: <code>0.85</code> no <code>0,85 €</code>). Acepta nombres alternativos: <em>precio, pvp, tarifa, coste, importe, cod, ref, articulo…</em>
-                  </p>
                 </div>
 
+                {/* Zona de subida */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">2. Sube el catálogo</label>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">2. Sube el archivo</label>
                   <div
                     className="border-2 border-dashed border-purple-200 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-colors"
                     onClick={() => fileRef.current?.click()}
                   >
                     <Upload className="w-10 h-10 text-purple-400 mx-auto mb-3" />
                     <p className="font-semibold text-gray-700">Arrastra o haz clic para subir</p>
-                    <p className="text-sm text-gray-400 mt-1">PDF, Excel (.xlsx, .xls) o CSV</p>
+                    <p className="text-sm text-gray-400 mt-1">PDF, Excel (.xlsx, .xls) o CSV · cualquier tamaño</p>
                     {file && (
                       <div className="mt-3 inline-flex items-center gap-2 bg-purple-100 text-purple-800 px-3 py-1.5 rounded-lg text-sm font-medium">
                         <FileSpreadsheet className="w-4 h-4" /> {file.name}
+                        {isExcel(file) && <Badge className="bg-green-100 text-green-700 border-0 text-[10px]">parse local</Badge>}
                       </div>
                     )}
-                    <input ref={fileRef} type="file" accept=".pdf,.xlsx,.xls,.csv" className="hidden" onChange={e => { if (e.target.files[0]) { setFile(e.target.files[0]); setStep('idle'); setError(null); } }} />
+                    <input ref={fileRef} type="file" accept=".pdf,.xlsx,.xls,.csv" className="hidden"
+                      onChange={e => { if (e.target.files[0]) { setFile(e.target.files[0]); setError(null); } }} />
                   </div>
                 </div>
 
+                {/* IVA */}
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
                   <label className="text-sm font-medium text-amber-800 block">3. ¿Los precios del archivo incluyen IVA?</label>
                   <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setApplyIva(false)}
-                      className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${!applyIva ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-                    >
-                      ✅ Sí, ya incluyen IVA
+                    <button type="button" onClick={() => setApplyIva(false)}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${!applyIva ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                      ✅ Sí, ya incluyen IVA (PVP)
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setApplyIva(true)}
-                      className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${applyIva ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-                    >
+                    <button type="button" onClick={() => setApplyIva(true)}
+                      className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${applyIva ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
                       ❌ No, son precios netos (sin IVA)
                     </button>
                   </div>
                   {applyIva && (
                     <div className="flex items-center gap-2">
-                      <label className="text-xs text-amber-700">Tipo IVA a aplicar:</label>
-                      <select
-                        value={ivaRate}
-                        onChange={e => setIvaRate(parseInt(e.target.value))}
-                        className="text-sm border border-amber-300 rounded px-2 py-1 bg-white"
-                      >
+                      <label className="text-xs text-amber-700">Tipo IVA:</label>
+                      <select value={ivaRate} onChange={e => setIvaRate(parseInt(e.target.value))}
+                        className="text-sm border border-amber-300 rounded px-2 py-1 bg-white">
                         <option value={21}>21% (general)</option>
                         <option value={10}>10% (reducido)</option>
                         <option value={4}>4% (superreducido)</option>
                       </select>
-                      <span className="text-xs text-amber-600">Se sumará al precio extraído</span>
                     </div>
                   )}
                 </div>
 
+                {/* Margen */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">4. Margen de venta por defecto: <span className="text-purple-700 font-bold">{margin}%</span></label>
-                  <Input type="number" min="0" max="200" value={margin} onChange={e => setMargin(parseInt(e.target.value) || 0)} className="w-32" />
-                  <p className="text-xs text-gray-400 mt-1">Precio venta = precio coste{applyIva ? ` (con IVA ${ivaRate}%)` : ''} × (1 + margen%)</p>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    4. Margen de venta: <span className="text-purple-700 font-bold">{margin}%</span>
+                  </label>
+                  <Input type="number" min="0" max="200" value={margin}
+                    onChange={e => setMargin(parseInt(e.target.value) || 0)} className="w-32" />
+                </div>
+
+                {/* Imágenes automáticas */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" checked={fetchImages} onChange={e => setFetchImages(e.target.checked)}
+                      className="w-4 h-4 accent-purple-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">📷 Descargar imágenes automáticamente (IA)</p>
+                      <p className="text-xs text-gray-400">
+                        Busca imágenes en internet para cada producto. Recomendado solo si importas menos de 500 productos
+                        (tarifa completa de Escoda son 64.000, se añadirán sin imagen y puedes buscarlas una a una después).
+                      </p>
+                    </div>
+                  </label>
                 </div>
               </div>
             )}
 
-            {/* Procesando */}
+            {/* ── Procesando ── */}
             {isProcessing && (
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 text-center space-y-3">
                 <Loader2 className="w-8 h-8 text-purple-600 animate-spin mx-auto" />
                 <p className="font-semibold text-purple-800">
-                  {{ uploading: 'Subiendo archivo...', extracting: 'Extrayendo productos con IA...', images: 'Descargando imágenes...', saving: 'Guardando...' }[step]}
+                  {{ uploading: 'Subiendo archivo...', extracting: 'Extrayendo productos...', images: 'Descargando imágenes...', saving: 'Guardando en base de datos...' }[step]}
                 </p>
                 <p className="text-sm text-purple-600">{progress}</p>
-                {step === 'images' && <p className="text-xs text-purple-400">Las imágenes se descargan en lotes para mayor estabilidad</p>}
               </div>
             )}
 
-            {/* Error */}
+            {/* ── Error ── */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3">
                 <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -438,22 +436,22 @@ Sé exhaustivo y extrae todos los productos del catálogo.`,
               </div>
             )}
 
-            {/* Botón extraer */}
+            {/* ── Botón extraer ── */}
             {step === 'idle' && file && supplierId && !error && (
               <Button onClick={handleExtract} className="w-full bg-purple-600 hover:bg-purple-700 gap-2 text-base">
                 <FileSpreadsheet className="w-4 h-4" />
-                Extraer todos los productos con IA + imágenes
+                {isExcel(file) ? 'Leer archivo e importar productos' : 'Extraer productos con IA'}
               </Button>
             )}
 
-            {/* Preview */}
+            {/* ── Preview ── */}
             {step === 'preview' && items.length > 0 && (
               <>
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    <p className="font-semibold text-gray-800">{items.length} productos extraídos</p>
-                    <p className="text-xs text-purple-600">{selectedItems.size} seleccionados para guardar</p>
-                    {applyIva && <p className="text-xs text-amber-600">✅ IVA {ivaRate}% ya aplicado a los precios mostrados</p>}
+                    <p className="font-semibold text-gray-800">{items.length.toLocaleString()} productos extraídos</p>
+                    <p className="text-xs text-purple-600">{selectedItems.size.toLocaleString()} seleccionados para guardar</p>
+                    {applyIva && <p className="text-xs text-amber-600">IVA {ivaRate}% aplicado</p>}
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => setSelectedItems(new Set(items.map((_, i) => i)))}>Todos</Button>
@@ -461,53 +459,55 @@ Sé exhaustivo y extrae todos los productos del catálogo.`,
                   </div>
                 </div>
 
-                <div className="max-h-[45vh] overflow-y-auto space-y-2 pr-1">
-                  {items.map((item, i) => (
-                    <div
-                      key={i}
-                      onClick={() => toggleItem(i)}
-                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${selectedItems.has(i) ? 'border-purple-300 bg-purple-50' : 'border-gray-200 bg-gray-50 opacity-60'}`}
-                    >
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${selectedItems.has(i) ? 'bg-purple-600 border-purple-600' : 'border-gray-300'}`}>
-                        {selectedItems.has(i) && <CheckCircle className="w-3.5 h-3.5 text-white" />}
-                      </div>
-                      <div className="w-12 h-12 flex-shrink-0 rounded-lg border bg-white flex items-center justify-center overflow-hidden">
-                        {item.image_url
-                          ? <img src={item.image_url} alt="" className="w-full h-full object-contain" onError={e => { e.target.style.display = 'none'; }} />
-                          : <ImageIcon className="w-5 h-5 text-gray-300" />
-                        }
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-gray-900 truncate">{item.product_name}</p>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          {item.brand && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">{item.brand}</span>}
-                          {item.product_code && <span className="text-[10px] text-gray-400 font-mono">Ref: {item.product_code}</span>}
-                          <Badge variant="outline" className="text-[9px] py-0">{item.category || 'material'}</Badge>
-                          {item.image_url && <span className="text-[10px] text-green-600">📷 imagen</span>}
+                {/* Lista paginada */}
+                <div className="space-y-1.5 max-h-[40vh] overflow-y-auto pr-1">
+                  {pageItems.map((item, pi) => {
+                    const realIdx = page * PAGE_SIZE + pi;
+                    return (
+                      <div key={realIdx} onClick={() => toggleItem(realIdx)}
+                        className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-colors ${selectedItems.has(realIdx) ? 'border-purple-300 bg-purple-50' : 'border-gray-200 bg-gray-50 opacity-60'}`}>
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${selectedItems.has(realIdx) ? 'bg-purple-600 border-purple-600' : 'border-gray-300'}`}>
+                          {selectedItems.has(realIdx) && <CheckCircle className="w-3 h-3 text-white" />}
                         </div>
-                        {item.notes && <p className="text-[10px] text-gray-400 truncate">{item.notes}</p>}
+                        <div className="w-10 h-10 flex-shrink-0 rounded-lg border bg-white flex items-center justify-center overflow-hidden">
+                          {item.image_url
+                            ? <img src={item.image_url} alt="" className="w-full h-full object-contain" onError={e => { e.target.style.display = 'none'; }} />
+                            : <ImageIcon className="w-4 h-4 text-gray-300" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-gray-900 truncate">{item.product_name}</p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {item.brand && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">{item.brand}</span>}
+                            {item.product_code && <span className="text-[10px] text-gray-400 font-mono">{item.product_code}</span>}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0 text-right">
+                          <p className="font-bold text-sm text-gray-800">{item.cost_price != null ? `${Number(item.cost_price).toFixed(2)} €` : '—'}</p>
+                          {item.cost_price > 0 && <p className="text-[10px] text-emerald-600">venta: {(item.cost_price * (1 + margin / 100)).toFixed(2)} €</p>}
+                        </div>
                       </div>
-                      <div className="flex-shrink-0 text-right">
-                        <p className="font-bold text-base text-gray-800">{item.cost_price != null ? `${Number(item.cost_price).toFixed(2)} €` : '—'}</p>
-                        {item.cost_price > 0 && <p className="text-[10px] text-emerald-600">venta: {(item.cost_price * (1 + margin / 100)).toFixed(2)} €</p>}
-                        <p className="text-[10px] text-gray-400">/{item.unit || 'ud'}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
-                <Button
-                  onClick={handleSave}
-                  disabled={selectedItems.size === 0}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2 text-base"
-                >
+                {/* Paginación */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>← Anterior</Button>
+                    <span className="text-gray-500">Página {page + 1} / {totalPages} ({items.length.toLocaleString()} productos)</span>
+                    <Button size="sm" variant="outline" onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}>Siguiente →</Button>
+                  </div>
+                )}
+
+                <Button onClick={handleSave} disabled={selectedItems.size === 0}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2 text-base">
                   <CheckCircle className="w-4 h-4" />
-                  Guardar {selectedItems.size} productos en tarifa de {selectedSupplier?.name}
+                  Guardar {selectedItems.size.toLocaleString()} productos en tarifa de {selectedSupplier?.name}
                 </Button>
               </>
             )}
 
-            {/* Done */}
+            {/* ── Done ── */}
             {step === 'done' && (
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center space-y-3">
                 <CheckCircle className="w-10 h-10 text-emerald-600 mx-auto" />
