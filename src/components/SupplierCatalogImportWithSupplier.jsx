@@ -299,7 +299,12 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
       setProgress('');
 
     } catch (err) {
-      setError('Error al procesar el archivo: ' + err.message);
+      const msg = err.message || '';
+      if (msg.includes('600 PDF pages') || msg.includes('maximum of 600')) {
+        setError('Este PDF supera el límite de 600 páginas que acepta la IA. Por favor, usa el archivo Excel (.xlsx) de esta misma tarifa — se procesa localmente sin límite de páginas ni tamaño.');
+      } else {
+        setError('Error al procesar el archivo: ' + msg);
+      }
       setStep('idle');
     }
   };
@@ -433,18 +438,38 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
                       </div>
                     )}
                     <input ref={fileRef} type="file" accept=".pdf,.xlsx,.xls,.csv" className="hidden"
-                      onChange={e => {
-                        const f = e.target.files[0];
-                        if (!f) return;
-                        // PDF > 10MB → avisar y sugerir Excel
-                        if (/\.pdf$/i.test(f.name) && f.size > 10 * 1024 * 1024) {
-                          setError(`El PDF pesa ${(f.size / 1024 / 1024).toFixed(1)} MB y supera el límite de 10 MB para PDFs. Usa el archivo Excel (.xlsx) de la misma tarifa — se procesa localmente sin límite de tamaño.`);
-                          setFile(null);
-                          return;
-                        }
-                        setFile(f);
-                        setError(null);
-                      }} />
+                     onChange={async e => {
+                       const f = e.target.files[0];
+                       if (!f) return;
+
+                       if (/\.pdf$/i.test(f.name)) {
+                         // Límite de tamaño: 10 MB
+                         if (f.size > 10 * 1024 * 1024) {
+                           setError(`El PDF pesa ${(f.size / 1024 / 1024).toFixed(1)} MB y supera el límite de 10 MB para PDFs. Usa el archivo Excel (.xlsx) de la misma tarifa — se procesa localmente sin límite de tamaño.`);
+                           setFile(null);
+                           e.target.value = '';
+                           return;
+                         }
+                         // Límite de páginas: 600 (restricción de Anthropic)
+                         try {
+                           const buf = await f.arrayBuffer();
+                           const text = new TextDecoder('latin1').decode(buf);
+                           const pageMatches = text.match(/\/Type\s*\/Page[^s]/g);
+                           const pageCount = pageMatches ? pageMatches.length : 0;
+                           if (pageCount > 600) {
+                             setError(`Este PDF tiene aproximadamente ${pageCount} páginas y supera el límite de 600 páginas que acepta la IA. Por favor, usa el archivo Excel (.xlsx) de esta misma tarifa — se procesa localmente sin límite de páginas.`);
+                             setFile(null);
+                             e.target.value = '';
+                             return;
+                           }
+                         } catch (_) {
+                           // Si no podemos contar páginas, dejamos pasar y que falle la API con mensaje claro
+                         }
+                       }
+
+                       setFile(f);
+                       setError(null);
+                     }} />
                   </div>
                 </div>
 
