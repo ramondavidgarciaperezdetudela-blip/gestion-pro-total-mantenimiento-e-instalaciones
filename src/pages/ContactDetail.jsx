@@ -24,6 +24,7 @@ import InvoicePreviewDialog from '../components/InvoicePreviewDialog';
 import SignatureHistoryViewer from '../components/SignatureHistoryViewer';
 import ThermalCalcViewer from '../components/ThermalCalcViewer';
 import InstallationHistoryTab from '../components/InstallationHistoryTab';
+import InterventionHistoryTab from '../components/InterventionHistoryTab';
 
 function ChangeHistoryTab({ contactId }) {
   const [logs, setLogs] = React.useState([]);
@@ -631,6 +632,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           <TabsTrigger value="galeria_fotos" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🖼️ Galería</TabsTrigger>
           <TabsTrigger value="diario" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🔧 Diario</TabsTrigger>
           <TabsTrigger value="instalaciones" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🏭 Instalaciones</TabsTrigger>
+          <TabsTrigger value="intervenciones" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">📋 Intervenciones ({satOrders.length + invoices.length + maintenance.length})</TabsTrigger>
           </TabsList>
 
         {/* FACTURAS */}
@@ -1162,6 +1164,16 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
         {/* HISTORIAL INSTALACIONES */}
         <TabsContent value="instalaciones">
           <InstallationHistoryTab contactId={contactId} />
+        </TabsContent>
+
+        {/* HISTORIAL DE INTERVENCIONES — timeline unificado */}
+        <TabsContent value="intervenciones">
+          <InterventionHistoryTab
+            contactId={contactId}
+            invoices={invoices}
+            satOrders={satOrders}
+            maintenance={maintenance}
+          />
         </TabsContent>
 
         </Tabs>

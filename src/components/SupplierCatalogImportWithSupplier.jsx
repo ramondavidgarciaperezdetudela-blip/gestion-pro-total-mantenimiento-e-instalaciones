@@ -209,15 +209,26 @@ function estimatePdfPages(arrayBuffer) {
   return matches ? matches.length : 1;
 }
 
-// ── Hook cronómetro ───────────────────────────────────────────────────────────
-function useTimer(running) {
+// ── Hook temporizador con ETA basado en estimación total ─────────────────────
+/**
+ * running: boolean — si está activo
+ * estimatedTotalSecs: número estimado de segundos totales (calculado antes de empezar)
+ *
+ * Estrategia:
+ *   - Si tenemos estimatedTotalSecs, mostramos cuenta atrás desde esa estimación.
+ *   - Cuando progressPct avanza más rápido de lo esperado, ajustamos el ETA
+ *     al mínimo entre la cuenta atrás fija y la proyección por velocidad real.
+ *   - Nunca muestra tiempo negativo.
+ */
+function useTimer(running, estimatedTotalSecs = 0) {
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef(null);
   const rafRef = useRef(null);
 
   useEffect(() => {
     if (running) {
-      startRef.current = Date.now() - elapsed * 1000;
+      startRef.current = Date.now();
+      setElapsed(0);
       const tick = () => {
         setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
         rafRef.current = requestAnimationFrame(tick);
@@ -231,16 +242,29 @@ function useTimer(running) {
   }, [running]);
 
   const fmt = (s) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+    const sec = Math.max(0, Math.round(s));
+    const m = Math.floor(sec / 60);
+    const rem = sec % 60;
+    return m > 0 ? `${m}m ${rem}s` : `${sec}s`;
   };
 
+  // ETA: combina cuenta atrás fija con proyección por velocidad real
   const eta = (pct) => {
-    if (pct <= 0 || elapsed <= 0) return null;
-    const totalEst = Math.round(elapsed / (pct / 100));
-    const rem = Math.max(0, totalEst - elapsed);
-    return fmt(rem);
+    if (pct <= 0) return estimatedTotalSecs > 0 ? fmt(estimatedTotalSecs) : null;
+
+    // Proyección por velocidad real
+    const bySpeed = elapsed > 2 ? Math.round(elapsed / (pct / 100)) - elapsed : null;
+
+    // Cuenta atrás fija desde la estimación inicial
+    const byEstimate = estimatedTotalSecs > 0 ? Math.max(0, estimatedTotalSecs - elapsed) : null;
+
+    // Tomar el menor de los dos (el más optimista), para que no suba
+    let rem = null;
+    if (bySpeed !== null && byEstimate !== null) rem = Math.min(bySpeed, byEstimate);
+    else if (bySpeed !== null) rem = bySpeed;
+    else if (byEstimate !== null) rem = byEstimate;
+
+    return rem !== null ? fmt(rem) : null;
   };
 
   return { elapsed, fmt: () => fmt(elapsed), eta };
@@ -262,6 +286,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   // Resumen de importación
   const [importSummary, setImportSummary] = useState(null); // { saved, failed: [{index, product_name, product_code, reason}] }
   const [progressPct, setProgressPct] = useState(0);
+  const [estimatedSecs, setEstimatedSecs] = useState(0);
 
   const fileRef    = useRef(null);
   const abortRef   = useRef(false);
@@ -272,7 +297,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     abortRef.current = true;
     parsedRef.current = [];
     setFile(null); setStep('idle'); setParsedCount(0);
-    setError(null); setProgress(''); setSupplierId(''); setImportSummary(null); setProgressPct(0); setFastMode(true);
+    setError(null); setProgress(''); setSupplierId(''); setImportSummary(null); setProgressPct(0); setFastMode(true); setEstimatedSecs(0);
     setTimeout(() => { abortRef.current = false; }, 200);
   };
 
@@ -319,6 +344,10 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
         // Dividir en rangos de páginas para que la IA los procese por tramos
         const PAGES_PER_CHUNK = 80; // ~80 páginas por llamada IA
         const totalChunks = Math.max(1, Math.ceil(totalPages / PAGES_PER_CHUNK));
+
+        // Estimación de tiempo total: ~25s por chunk en modo rápido, ~50s en modo completo
+        const secsPerChunk = fastMode ? 25 : 50;
+        setEstimatedSecs(totalChunks * secsPerChunk);
 
         const responseSchema = {
           type: 'object',
@@ -468,7 +497,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   };
 
   const isLoadingStep = ['extracting', 'saving'].includes(step);
-  const timer = useTimer(isLoadingStep);
+  const timer = useTimer(isLoadingStep, estimatedSecs);
 
   return (
     <>
