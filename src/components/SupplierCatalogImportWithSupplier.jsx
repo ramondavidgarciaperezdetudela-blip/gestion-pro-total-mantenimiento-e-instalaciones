@@ -728,35 +728,38 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
 
             {/* ── Cargando ── */}
             {isLoadingStep && (
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-8 text-center space-y-4">
-                <Loader2 className="w-10 h-10 text-purple-600 animate-spin mx-auto" />
-                <p className="font-semibold text-purple-800 text-lg">
-                  {step === 'extracting' ? 'Leyendo archivo...' : 'Guardando en base de datos...'}
-                </p>
-                {progress && <p className="text-sm text-purple-600">{progress}</p>}
-
-                {/* Cronómetro + tiempo restante */}
-                <div className="flex items-center justify-center gap-4 text-sm">
-                  <div className="flex items-center gap-1.5 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full font-mono font-semibold">
-                    <span className="text-lg">⏱</span>
-                    {timer.fmt()}
-                  </div>
-                  {progressPct > 5 && timer.eta(progressPct) && (
-                    <div className="flex items-center gap-1.5 bg-white border border-purple-200 text-purple-600 px-3 py-1.5 rounded-full font-medium">
-                      <span>Tiempo restante: ~{timer.eta(progressPct)}</span>
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-6 h-6 text-purple-600 animate-spin" />
+                    <div>
+                      <p className="font-semibold text-purple-800 text-sm">
+                        {step === 'extracting' ? 'Analizando archivo...' : 'Procesando productos...'}
+                      </p>
+                      {progress && <p className="text-xs text-purple-600 mt-0.5">{progress}</p>}
                     </div>
-                  )}
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-1.5 bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full font-mono text-sm font-semibold">
+                      <span>⏱</span>
+                      {timer.fmt()}
+                    </div>
+                    {progressPct > 5 && timer.eta(progressPct) && (
+                      <p className="text-xs text-purple-600 mt-1.5 font-medium">Quedan ~{timer.eta(progressPct)}</p>
+                    )}
+                  </div>
                 </div>
 
+                {/* Barra de progreso con contador */}
                 {progressPct > 0 && (
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <div className="flex justify-between text-xs text-purple-600 font-medium">
-                      <span>Progreso</span>
-                      <span>{progressPct}%</span>
+                      <span>Progreso: {progressPct}%</span>
+                      <span>{parsedCount.toLocaleString()} productos analizados</span>
                     </div>
-                    <div className="w-full bg-purple-200 rounded-full h-3 overflow-hidden">
+                    <div className="w-full bg-purple-200 rounded-full h-2.5 overflow-hidden">
                       <div
-                        className="h-3 bg-purple-600 rounded-full transition-all duration-300"
+                        className="h-2.5 bg-purple-600 rounded-full transition-all duration-300"
                         style={{ width: `${progressPct}%` }}
                       />
                     </div>
