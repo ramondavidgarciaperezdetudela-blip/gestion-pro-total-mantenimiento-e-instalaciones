@@ -11,9 +11,9 @@ import { toast } from 'sonner';
 
 // ── Utilidades ────────────────────────────────────────────────────────────────
 
-// Reintento con backoff exponencial — detecta rate limit y espera antes de reintentar
+// Reintento con backoff exponencial muy agresivo para rate limits
 // onRetry(waitSec) se llama cuando va a esperar para que la UI pueda mostrarlo
-async function withRetry(fn, maxRetries = 5, onRetry = null) {
+async function withRetry(fn, maxRetries = 8, onRetry = null) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
@@ -24,8 +24,8 @@ async function withRetry(fn, maxRetries = 5, onRetry = null) {
       const isServerError = msg.includes('500') || msg.includes('502') || msg.includes('503') || msg.includes('timeout');
 
       if ((isRateLimit || isServerError) && attempt < maxRetries) {
-        // Espera exponencial: 3s, 6s, 12s, 24s, 48s
-        const waitMs = Math.min(3000 * Math.pow(2, attempt), 60000);
+        // Backoff muy agresivo: 2s, 5s, 10s, 20s, 40s, 60s, 90s, 120s
+        const waitMs = attempt === 0 ? 2000 : Math.min(2000 * Math.pow(1.8, attempt - 1), 120000);
         onRetry && onRetry(Math.round(waitMs / 1000));
         await new Promise(r => setTimeout(r, waitMs));
         continue;
@@ -146,32 +146,44 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated, onFixed, bgState,
     const totalBatches = Math.ceil(prices.length / batchSize);
     let totalUpdated = 0;
     const allResults = [];
+    const PARALLEL_BATCHES = 2; // 2 lotes en paralelo
 
-    for (let bi = 0; bi < totalBatches; bi++) {
+    for (let bi = 0; bi < totalBatches; bi += PARALLEL_BATCHES) {
       if (stopRef.current) break;
-      const batch = prices.slice(bi * batchSize, (bi + 1) * batchSize);
-      try {
-        const res = await withRetry(
-          () => base44.functions.invoke('updateSupplierPricesOnline', {
-            supplierId:     supplier.id,
-            supplierName:   supplier.name,
-            websiteUrl:     supplier.website || supplier.login_url || '',
-            sampleProducts: batch.map(p => ({ product_code: p.product_code, product_name: p.product_name })),
-            margin,
-          }),
-          5,
-          () => setBgState(s => ({ ...s, pricesRetrying: true }))
-        );
-        setBgState(s => ({ ...s, pricesRetrying: false }));
-        const data = res.data || {};
-        totalUpdated += data.updated || 0;
-        if (data.products) allResults.push(...data.products);
-      } catch (_) {
-        setBgState(s => ({ ...s, pricesRetrying: false }));
-        /* lote fallido tras reintentos — continuar con siguiente */
+      
+      // Procesar PARALLEL_BATCHES lotes en paralelo
+      const parallelBatches = [];
+      for (let pbi = 0; pbi < PARALLEL_BATCHES && bi + pbi < totalBatches; pbi++) {
+        const batch = prices.slice((bi + pbi) * batchSize, (bi + pbi + 1) * batchSize);
+        parallelBatches.push({
+          batch,
+          promise: withRetry(
+            () => base44.functions.invoke('updateSupplierPricesOnline', {
+              supplierId:     supplier.id,
+              supplierName:   supplier.name,
+              websiteUrl:     supplier.website || supplier.login_url || '',
+              sampleProducts: batch.map(p => ({ product_code: p.product_code, product_name: p.product_name })),
+              margin,
+            }),
+            8,
+            () => setBgState(s => ({ ...s, pricesRetrying: true }))
+          )
+        });
       }
 
-      const processed = Math.min((bi + 1) * batchSize, prices.length);
+      // Esperar a que terminen todos
+      const results = await Promise.allSettled(parallelBatches.map(pb => pb.promise));
+      results.forEach((res, idx) => {
+        if (res.status === 'fulfilled') {
+          const data = res.value.data || {};
+          totalUpdated += data.updated || 0;
+          if (data.products) allResults.push(...data.products);
+        }
+      });
+      
+      setBgState(s => ({ ...s, pricesRetrying: false }));
+
+      const processed = Math.min((bi + PARALLEL_BATCHES) * batchSize, prices.length);
       setBgState(s => ({
         ...s,
         pricesProgress: { processed, updated: totalUpdated, total: prices.length },
@@ -331,46 +343,57 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
     setBgState(s => ({ ...s, imagesRunning: true, imagesRetrying: false, imagesResults: initial, imagesFound: 0, imagesProcessed: 0 }));
 
     let foundCount = 0;
-    for (let i = 0; i < withoutImage.length; i++) {
+    const PARALLEL = 3; // 3 búsquedas en paralelo para acelerar
+
+    for (let i = 0; i < withoutImage.length; i += PARALLEL) {
       if (stopRef.current) break;
-      const item = withoutImage[i];
-      const cleanName = normalizeName(item.product_name);
-      const cleanBrand = normalizeName(item.brand || '');
-      const prompt = `Find the official product image URL for: "${cleanName}"${cleanBrand ? ` brand ${cleanBrand}` : ''}${item.product_code ? ` ref ${item.product_code}` : ''}. Return only a direct image URL (jpg/png/webp). If no reliable image exists, return null.`;
+      const batch = withoutImage.slice(i, Math.min(i + PARALLEL, withoutImage.length));
 
-      let imageUrl = null;
-      try {
-        const res = await withRetry(
-          () => base44.integrations.Core.InvokeLLM({
-            prompt,
-            add_context_from_internet: true,
-            response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
-          }),
-          5,
-          () => setBgState(s => ({ ...s, imagesRetrying: true }))
-        );
-        imageUrl = res?.image_url || null;
-        setBgState(s => ({ ...s, imagesRetrying: false }));
-      } catch (_) {
-        imageUrl = null;
-        setBgState(s => ({ ...s, imagesRetrying: false }));
-      }
+      // Procesar en paralelo
+      const batchResults = await Promise.allSettled(
+        batch.map(item => {
+          const cleanName = normalizeName(item.product_name);
+          const cleanBrand = normalizeName(item.brand || '');
+          const prompt = `Find the official product image URL for: "${cleanName}"${cleanBrand ? ` brand ${cleanBrand}` : ''}${item.product_code ? ` ref ${item.product_code}` : ''}. Return only a direct image URL (jpg/png/webp). If no reliable image exists, return null.`;
 
-      if (imageUrl) {
-        try {
-          await base44.entities.SupplierPrice.update(item.id, { image_url: imageUrl });
-          foundCount++;
-        } catch (_) { imageUrl = null; }
-      }
+          return withRetry(
+            () => base44.integrations.Core.InvokeLLM({
+              prompt,
+              add_context_from_internet: true,
+              response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
+            }),
+            8,
+            () => setBgState(s => ({ ...s, imagesRetrying: true }))
+          );
+        })
+      );
 
-      const finalUrl = imageUrl || undefined;
+      // Guardar resultados en paralelo también
+      const saveBatch = await Promise.allSettled(
+        batchResults.map((res, idx) => {
+          const item = batch[idx];
+          const imageUrl = res.status === 'fulfilled' ? res.value?.image_url : null;
+          return imageUrl ? base44.entities.SupplierPrice.update(item.id, { image_url: imageUrl }) : Promise.resolve();
+        })
+      );
+
+      // Contar exitosos
+      batchResults.forEach((res, idx) => {
+        if (res.status === 'fulfilled' && res.value?.image_url) foundCount++;
+      });
+
       setBgState(s => ({
         ...s,
+        imagesRetrying: false,
         imagesFound: foundCount,
-        imagesProcessed: i + 1,
-        imagesResults: s.imagesResults.map(r =>
-          r.item.id === item.id ? { item, image_url: finalUrl, ok: !!finalUrl, pending: false } : r
-        ),
+        imagesProcessed: Math.min(i + PARALLEL, withoutImage.length),
+        imagesResults: s.imagesResults.map(r => {
+          const batchIdx = batch.findIndex(item => item.id === r.item.id);
+          if (batchIdx === -1) return r;
+          const res = batchResults[batchIdx];
+          const imageUrl = res.status === 'fulfilled' ? res.value?.image_url : null;
+          return { item: r.item, image_url: imageUrl, ok: !!imageUrl, pending: false };
+        }),
       }));
     }
 
