@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -207,6 +207,43 @@ function estimatePdfPages(arrayBuffer) {
   // Contar "/Type /Page" que aparece una vez por página en el xref
   const matches = text.match(/\/Type\s*\/Page[^s]/g);
   return matches ? matches.length : 1;
+}
+
+// ── Hook cronómetro ───────────────────────────────────────────────────────────
+function useTimer(running) {
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef(null);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    if (running) {
+      startRef.current = Date.now() - elapsed * 1000;
+      const tick = () => {
+        setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    } else {
+      cancelAnimationFrame(rafRef.current);
+      if (!running) setElapsed(0);
+    }
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [running]);
+
+  const fmt = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+  };
+
+  const eta = (pct) => {
+    if (pct <= 0 || elapsed <= 0) return null;
+    const totalEst = Math.round(elapsed / (pct / 100));
+    const rem = Math.max(0, totalEst - elapsed);
+    return fmt(rem);
+  };
+
+  return { elapsed, fmt: () => fmt(elapsed), eta };
 }
 
 // ── Componente ────────────────────────────────────────────────────────────────
@@ -431,6 +468,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   };
 
   const isLoadingStep = ['extracting', 'saving'].includes(step);
+  const timer = useTimer(isLoadingStep);
 
   return (
     <>
@@ -577,6 +615,20 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                   {step === 'extracting' ? 'Leyendo archivo...' : 'Guardando en base de datos...'}
                 </p>
                 {progress && <p className="text-sm text-purple-600">{progress}</p>}
+
+                {/* Cronómetro + tiempo restante */}
+                <div className="flex items-center justify-center gap-4 text-sm">
+                  <div className="flex items-center gap-1.5 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full font-mono font-semibold">
+                    <span className="text-lg">⏱</span>
+                    {timer.fmt()}
+                  </div>
+                  {progressPct > 5 && timer.eta(progressPct) && (
+                    <div className="flex items-center gap-1.5 bg-white border border-purple-200 text-purple-600 px-3 py-1.5 rounded-full font-medium">
+                      <span>Tiempo restante: ~{timer.eta(progressPct)}</span>
+                    </div>
+                  )}
+                </div>
+
                 {progressPct > 0 && (
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs text-purple-600 font-medium">
