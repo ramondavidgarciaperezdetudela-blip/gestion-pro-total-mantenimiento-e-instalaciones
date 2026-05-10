@@ -287,6 +287,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   const [importSummary, setImportSummary] = useState(null); // { saved, failed: [{index, product_name, product_code, reason}] }
   const [progressPct, setProgressPct] = useState(0);
   const [estimatedSecs, setEstimatedSecs] = useState(0);
+  const [failedToRetry, setFailedToRetry] = useState([]);
 
   const fileRef    = useRef(null);
   const abortRef   = useRef(false);
@@ -297,7 +298,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     abortRef.current = true;
     parsedRef.current = [];
     setFile(null); setStep('idle'); setParsedCount(0);
-    setError(null); setProgress(''); setSupplierId(''); setImportSummary(null); setProgressPct(0); setFastMode(true); setEstimatedSecs(0);
+    setError(null); setProgress(''); setSupplierId(''); setImportSummary(null); setProgressPct(0); setFastMode(true); setEstimatedSecs(0); setFailedToRetry([]);
     setTimeout(() => { abortRef.current = false; }, 200);
   };
 
@@ -582,8 +583,132 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     }
 
     setImportSummary({ saved, updated, failed: failedItems, total: toSave.length });
+    setFailedToRetry(failedItems); // Guardar para reintento
     setStep('done');
     onImported && onImported(saved + updated, false);
+  };
+
+  const handleRetryFailed = async () => {
+    if (!failedToRetry.length) return;
+    setStep('saving');
+    setProgressPct(0);
+    setError(null);
+
+    // Cargar nuevamente existentes para upsert
+    setProgress('Cargando productos existentes...');
+    let existing = [];
+    try {
+      let skip = 0;
+      while (true) {
+        const batch = await base44.entities.SupplierPrice.filter({ supplier_id: supplierId }, null, 500, skip);
+        existing = existing.concat(batch);
+        if (batch.length < 500) break;
+        skip += 500;
+      }
+    } catch (_) { existing = []; }
+
+    const existingByCode = {};
+    existing.forEach(e => {
+      if (e.product_code) existingByCode[e.product_code.trim().toLowerCase()] = e;
+    });
+
+    let saved = 0;
+    let updated = 0;
+    let retryFailed = [];
+
+    // Reconstruir items fallidos desde parsedRef usando índices
+    const toRetry = [];
+    failedToRetry.forEach(f => {
+      const idx = f.index - 1; // Los índices son 1-based en el resumen
+      if (idx >= 0 && idx < parsedRef.current.length) {
+        const item = parsedRef.current[idx];
+        const costPrice = item.cost_price || 0;
+        const salePrice = costPrice > 0 ? Math.round(costPrice * (1 + margin / 100) * 100) / 100 : 0;
+        const codeKey = (item.product_code || '').trim().toLowerCase();
+
+        if (codeKey && existingByCode[codeKey]) {
+          toRetry.push({ ex: existingByCode[codeKey], item, costPrice, salePrice, idx, isUpdate: true });
+        } else {
+          toRetry.push({
+            supplier_id: supplierId,
+            supplier_name: selectedSupplier?.name || '',
+            product_name: item.product_name || 'Sin nombre',
+            product_code: item.product_code || '',
+            cost_price: costPrice,
+            sale_price: salePrice,
+            margin: costPrice > 0 ? margin : 0,
+            unit: item.unit || 'ud',
+            category: item.category || 'material',
+            notes: item.notes || '',
+            image_url: item.image_url || '',
+            brand: item.brand || '',
+            is_active: true,
+            idx,
+            isUpdate: false,
+          });
+        }
+      }
+    });
+
+    // Separar nuevos de actualizaciones
+    const toCreate = toRetry.filter(t => !t.isUpdate);
+    const toUpdate = toRetry.filter(t => t.isUpdate);
+
+    // Guardar nuevos
+    const CREATE_BATCH = 500;
+    for (let i = 0; i < toCreate.length; i += CREATE_BATCH) {
+      if (abortRef.current) break;
+      const batch = toCreate.slice(i, i + CREATE_BATCH);
+      try {
+        await base44.entities.SupplierPrice.bulkCreate(batch);
+        saved += batch.length;
+      } catch (err) {
+        for (const rec of batch) {
+          try {
+            await base44.entities.SupplierPrice.bulkCreate([rec]);
+            saved++;
+          } catch (e2) {
+            retryFailed.push({ index: rec.idx + 1, product_name: rec.product_name, product_code: rec.product_code, reason: e2?.message || 'Error' });
+          }
+        }
+      }
+      const done = saved + updated;
+      setProgressPct(Math.round(done / toRetry.length * 100));
+      setProgress(`Reintentando nuevos: ${saved.toLocaleString()} / ${toCreate.length.toLocaleString()}...`);
+    }
+
+    // Actualizar existentes
+    const UPDATE_CONCURRENCY = 20;
+    for (let i = 0; i < toUpdate.length; i += UPDATE_CONCURRENCY) {
+      if (abortRef.current) break;
+      const batch = toUpdate.slice(i, i + UPDATE_CONCURRENCY);
+      const results = await Promise.allSettled(batch.map(({ ex, item, costPrice, salePrice }) =>
+        base44.entities.SupplierPrice.update(ex.id, {
+          cost_price: costPrice,
+          sale_price: salePrice,
+          margin: costPrice > 0 ? margin : ex.margin,
+          product_name: item.product_name || ex.product_name,
+        })
+      ));
+      results.forEach((r, ri) => {
+        if (r.status === 'fulfilled') updated++;
+        else retryFailed.push({ index: batch[ri].idx + 1, product_name: batch[ri].item.product_name || '—', product_code: batch[ri].item.product_code || '—', reason: r.reason?.message || 'Error' });
+      });
+      const done = saved + updated;
+      setProgressPct(Math.round(done / toRetry.length * 100));
+      setProgress(`Reintentando actualizaciones: ${updated.toLocaleString()} / ${toUpdate.length.toLocaleString()}...`);
+    }
+
+    // Actualizar resumen
+    setImportSummary(prev => ({
+      ...prev,
+      saved: (prev.saved || 0) + saved,
+      updated: (prev.updated || 0) + updated,
+      failed: retryFailed,
+    }));
+    setFailedToRetry(retryFailed);
+    setProgressPct(0);
+    setProgress('');
   };
 
   const isLoadingStep = ['extracting', 'saving'].includes(step);
@@ -866,9 +991,16 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                 )}
 
                 {importSummary.failed.length === 0 && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center text-sm text-emerald-700 font-medium">
-                    ✅ Importación perfecta — sin ningún error
-                  </div>
+                   <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center text-sm text-emerald-700 font-medium">
+                     ✅ Importación perfecta — sin ningún error
+                   </div>
+                 )}
+
+                {importSummary.failed.length > 0 && failedToRetry.length > 0 && (
+                  <Button onClick={handleRetryFailed} className="w-full bg-amber-600 hover:bg-amber-700 gap-2">
+                    <Loader2 className="w-4 h-4" />
+                    Reintentar {failedToRetry.length} productos fallidos
+                  </Button>
                 )}
 
                 <Button onClick={() => { setOpen(false); reset(); }} className="w-full bg-emerald-600 hover:bg-emerald-700">
