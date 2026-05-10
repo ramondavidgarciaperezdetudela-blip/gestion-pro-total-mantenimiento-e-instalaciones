@@ -1,0 +1,9 @@
+{
+  "name": "Gesti\u00f3n Pro Total Mantenimiento e instalaciones",
+  "site": {
+    "installCommand": "npm install",
+    "buildCommand": "npm run build",
+    "serveCommand": "npm run dev",
+    "outputDirectory": "./dist"
+  }
+}
