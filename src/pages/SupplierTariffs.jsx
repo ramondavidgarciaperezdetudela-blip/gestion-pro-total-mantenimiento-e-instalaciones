@@ -16,6 +16,9 @@ import ProductPriceHistoryChart from '../components/ProductPriceHistoryChart';
 import SupplierOnlineUpdate from '../components/SupplierOnlineUpdate';
 import UpdateErrorsTable from '../components/UpdateErrorsTable';
 
+// Cache simple para reducir re-renders
+const imageCache = new Map();
+
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general', 'material', 'mano_obra', 'otro'];
 
 export default function SupplierTariffs() {
@@ -36,7 +39,7 @@ export default function SupplierTariffs() {
 
   const loadData = async () => {
     setLoading(true);
-    const PAGE = 500;
+    const PAGE = 1000; // Aumentar a 1000 para menos requests
 
     // Cargar proveedores y primera página de productos en paralelo
     const [supp, firstBatch] = await Promise.all([
@@ -46,20 +49,40 @@ export default function SupplierTariffs() {
 
     setSuppliers(supp);
     setPrices(firstBatch);
-    setLoading(false); // UI ya usable con los primeros 500
+    setLoading(false); // UI ya usable con los primeros 1000
 
     // Seguir cargando el resto en background sin bloquear la interfaz
+    // Cargar próximas 3 páginas en paralelo para acelerar
     if (firstBatch.length === PAGE) {
       let allPrices = [...firstBatch];
       let skip = PAGE;
-      while (true) {
-        const batch = await base44.entities.SupplierPrice.list('-created_date', PAGE, skip);
-        if (!batch.length) break;
-        allPrices = allPrices.concat(batch);
-        setPrices([...allPrices]); // actualiza contador en tiempo real
-        if (batch.length < PAGE) break;
-        skip += PAGE;
-      }
+      
+      const loadBatchesInParallel = async () => {
+        while (skip < PAGE * 5) { // Cargar máx 5 páginas total
+          const batchRequests = [];
+          for (let i = 0; i < 3 && skip < PAGE * 5; i++) {
+            batchRequests.push(base44.entities.SupplierPrice.list('-created_date', PAGE, skip));
+            skip += PAGE;
+          }
+          
+          const batches = await Promise.all(batchRequests);
+          let hasMore = false;
+          batches.forEach(batch => {
+            if (batch.length > 0) {
+              allPrices = allPrices.concat(batch);
+              if (batch.length === PAGE) hasMore = true;
+            }
+          });
+          
+          if (allPrices.length > prices.length) {
+            setPrices([...allPrices]);
+          }
+          
+          if (!hasMore) break;
+        }
+      };
+      
+      loadBatchesInParallel().catch(() => {});
     }
   };
 
@@ -260,10 +283,17 @@ export default function SupplierTariffs() {
                 onClick={() => toggleSupplier(supplier.id)}
               >
                 <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {supplier.logo_url
-                    ? <img src={supplier.logo_url} alt="" className="w-full h-full object-cover" />
-                    : <Building2 className="w-5 h-5 text-gray-400" />
-                  }
+                  {supplier.logo_url ? (
+                    <img 
+                      src={supplier.logo_url} 
+                      alt="" 
+                      className="w-full h-full object-cover" 
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <Building2 className="w-5 h-5 text-gray-400" />
+                  )}
                 </div>
                 <div className="flex-1 text-left">
                   <p className="font-semibold text-gray-900">{supplier.name}</p>
@@ -298,11 +328,18 @@ export default function SupplierTariffs() {
                           <tr key={item.id} className="bg-white hover:bg-blue-50 transition-colors">
                             <td className="p-2">
                               <div className="w-10 h-10 rounded-lg border bg-gray-50 flex items-center justify-center overflow-hidden">
-                                {item.image_url
-                                  ? <img src={item.image_url} alt="" className="w-full h-full object-contain"
-                                      onError={e => { e.target.style.display = 'none'; }} />
-                                  : <ImageIcon className="w-4 h-4 text-gray-300" />
-                                }
+                                {item.image_url ? (
+                                  <img 
+                                    src={item.image_url} 
+                                    alt="" 
+                                    className="w-full h-full object-contain"
+                                    loading="lazy"
+                                    decoding="async"
+                                    onError={e => { e.target.style.display = 'none'; }} 
+                                  />
+                                ) : (
+                                  <ImageIcon className="w-4 h-4 text-gray-300" />
+                                )}
                               </div>
                             </td>
                             <td className="p-3">
@@ -355,10 +392,17 @@ export default function SupplierTariffs() {
               {/* Imagen */}
               <div className="flex items-center gap-3">
                 <div className="w-16 h-16 rounded-xl border bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {editForm.image_url
-                    ? <img src={editForm.image_url} alt="" className="w-full h-full object-contain" />
-                    : <ImageIcon className="w-6 h-6 text-gray-300" />
-                  }
+                  {editForm.image_url ? (
+                    <img 
+                      src={editForm.image_url} 
+                      alt="" 
+                      className="w-full h-full object-contain"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <ImageIcon className="w-6 h-6 text-gray-300" />
+                  )}
                 </div>
                 <div className="flex-1 space-y-1">
                   <Input
