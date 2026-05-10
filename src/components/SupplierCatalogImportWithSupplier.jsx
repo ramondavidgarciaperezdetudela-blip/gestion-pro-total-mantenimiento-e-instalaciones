@@ -365,8 +365,8 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
           fileUrls = [{ url: file_url, pageFrom: 1, pageTo: totalPages }];
         }
 
-        // ── Dividir cada parte en chunks de 80 páginas para la IA ────────────
-        const PAGES_PER_CHUNK = 80;
+        // ── Dividir cada parte en chunks de 150 páginas para la IA (menos llamadas = más rápido) ────────────
+        const PAGES_PER_CHUNK = 150;
         const allChunks = [];
         for (const part of fileUrls) {
           const partPages = part.pageTo - part.pageFrom + 1;
@@ -382,7 +382,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
         }
 
         const totalChunks = allChunks.length;
-        const secsPerChunk = fastMode ? 25 : 50;
+        const secsPerChunk = fastMode ? 20 : 40;
         setEstimatedSecs(totalChunks * secsPerChunk);
 
         const responseSchema = {
@@ -480,10 +480,16 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     if (!toSave.length) return;
 
     // Cargar existentes de este proveedor para hacer upsert por código de producto
-    setProgress('Cargando productos existentes para detectar actualizaciones...');
+    setProgress('Cargando productos existentes...');
     let existing = [];
     try {
-      existing = await base44.entities.SupplierPrice.filter({ supplier_id: supplierId });
+      let skip = 0;
+      while (true) {
+        const batch = await base44.entities.SupplierPrice.filter({ supplier_id: supplierId }, null, 500, skip);
+        existing = existing.concat(batch);
+        if (batch.length < 500) break;
+        skip += 500;
+      }
     } catch (_) { existing = []; }
 
     // Índice: product_code → registro existente
@@ -495,65 +501,84 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     let saved = 0;
     let updated = 0;
     const failedItems = [];
-    const SAVE_BATCH = 100;
 
-    for (let i = 0; i < toSave.length; i += SAVE_BATCH) {
+    // Separar nuevos de actualizaciones
+    const toCreate = [];
+    const toUpdate = [];
+
+    for (let i = 0; i < toSave.length; i++) {
+      const item = toSave[i];
+      const costPrice = item.cost_price || 0;
+      const salePrice = costPrice > 0 ? Math.round(costPrice * (1 + margin / 100) * 100) / 100 : 0;
+      const codeKey = (item.product_code || '').trim().toLowerCase();
+
+      if (codeKey && existingByCode[codeKey]) {
+        toUpdate.push({ ex: existingByCode[codeKey], item, costPrice, salePrice, idx: i });
+      } else {
+        toCreate.push({
+          supplier_id:   supplierId,
+          supplier_name: selectedSupplier?.name || '',
+          product_name:  item.product_name || 'Sin nombre',
+          product_code:  item.product_code || '',
+          cost_price:    costPrice,
+          sale_price:    salePrice,
+          margin:        costPrice > 0 ? margin : 0,
+          unit:          item.unit || 'ud',
+          category:      item.category || 'material',
+          notes:         item.notes || '',
+          image_url:     item.image_url || '',
+          brand:         item.brand || '',
+          is_active:     true,
+        });
+      }
+    }
+
+    // ── Guardar nuevos en lotes grandes vía bulkCreate ──────────────────────
+    const CREATE_BATCH = 500;
+    for (let i = 0; i < toCreate.length; i += CREATE_BATCH) {
       if (abortRef.current) break;
-
-      const batchItems = toSave.slice(i, i + SAVE_BATCH);
-
-      for (let j = 0; j < batchItems.length; j++) {
-        const item = batchItems[j];
-        const costPrice = item.cost_price || 0;
-        const salePrice = costPrice > 0 ? Math.round(costPrice * (1 + margin / 100) * 100) / 100 : 0;
-        const codeKey = (item.product_code || '').trim().toLowerCase();
-
-        try {
-          if (codeKey && existingByCode[codeKey]) {
-            // ── UPSERT: ya existe, actualizar solo precios ──
-            const ex = existingByCode[codeKey];
-            await base44.entities.SupplierPrice.update(ex.id, {
-              cost_price: costPrice,
-              sale_price: salePrice,
-              margin: costPrice > 0 ? margin : ex.margin,
-              product_name: item.product_name || ex.product_name,
-            });
-            updated++;
-          } else {
-            // ── NUEVO producto ──
-            const record = {
-              supplier_id:   supplierId,
-              supplier_name: selectedSupplier?.name || '',
-              product_name:  item.product_name || 'Sin nombre',
-              product_code:  item.product_code || '',
-              cost_price:    costPrice,
-              sale_price:    salePrice,
-              margin:        costPrice > 0 ? margin : 0,
-              unit:          item.unit || 'ud',
-              category:      item.category || 'material',
-              notes:         item.notes || '',
-              image_url:     item.image_url || '',
-              brand:         item.brand || '',
-              is_active:     true,
-            };
-            await base44.entities.SupplierPrice.bulkCreate([record]);
+      const batch = toCreate.slice(i, i + CREATE_BATCH);
+      try {
+        await base44.entities.SupplierPrice.bulkCreate(batch);
+        saved += batch.length;
+      } catch (err) {
+        // Si falla el lote, intentar uno a uno para identificar el problema
+        for (const rec of batch) {
+          try {
+            await base44.entities.SupplierPrice.bulkCreate([rec]);
             saved++;
+          } catch (e2) {
+            failedItems.push({ index: saved + updated + failedItems.length + 1, product_name: rec.product_name, product_code: rec.product_code, reason: e2?.message || 'Error' });
           }
-        } catch (err) {
-          failedItems.push({
-            index: i + j + 1,
-            product_name: item.product_name || '—',
-            product_code: item.product_code || '—',
-            reason: err?.message || 'Error desconocido',
-          });
         }
       }
-
-      const done = Math.min(i + SAVE_BATCH, toSave.length);
+      const done = saved + updated;
       setProgressPct(Math.round(done / toSave.length * 100));
-      setProgress(`Procesando ${done.toLocaleString()} / ${toSave.length.toLocaleString()} (${updated} actualizados, ${saved} nuevos)...`);
+      setProgress(`Guardando nuevos: ${saved.toLocaleString()} / ${toCreate.length.toLocaleString()}...`);
       onImported && onImported(saved + updated, true);
-      if (i + SAVE_BATCH < toSave.length) await new Promise(r => setTimeout(r, 200));
+    }
+
+    // ── Actualizar existentes en paralelo (lotes de 20 peticiones simultáneas) ──
+    const UPDATE_CONCURRENCY = 20;
+    for (let i = 0; i < toUpdate.length; i += UPDATE_CONCURRENCY) {
+      if (abortRef.current) break;
+      const batch = toUpdate.slice(i, i + UPDATE_CONCURRENCY);
+      const results = await Promise.allSettled(batch.map(({ ex, item, costPrice, salePrice }) =>
+        base44.entities.SupplierPrice.update(ex.id, {
+          cost_price: costPrice,
+          sale_price: salePrice,
+          margin: costPrice > 0 ? margin : ex.margin,
+          product_name: item.product_name || ex.product_name,
+        })
+      ));
+      results.forEach((r, ri) => {
+        if (r.status === 'fulfilled') updated++;
+        else failedItems.push({ index: batch[ri].idx + 1, product_name: batch[ri].item.product_name || '—', product_code: batch[ri].item.product_code || '—', reason: r.reason?.message || 'Error' });
+      });
+      const done = saved + updated;
+      setProgressPct(Math.round(done / toSave.length * 100));
+      setProgress(`Actualizando precios: ${updated.toLocaleString()} / ${toUpdate.length.toLocaleString()}...`);
+      onImported && onImported(saved + updated, true);
     }
 
     setImportSummary({ saved, updated, failed: failedItems, total: toSave.length });

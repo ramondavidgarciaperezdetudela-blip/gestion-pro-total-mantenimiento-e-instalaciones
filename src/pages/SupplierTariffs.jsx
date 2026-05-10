@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Search, Building2, Package, Image as ImageIcon, ChevronDown, ChevronRight,
-  Upload, Trash2, Edit, Plus, Loader2, RefreshCw, X, Check, TrendingDown
+  Upload, Trash2, Edit, Plus, Loader2, RefreshCw, X, Check, TrendingDown, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import SupplierCatalogImportWithSupplier from '../components/SupplierCatalogImportWithSupplier';
 import PriceComparator from '../components/PriceComparator';
 import ProductPriceHistoryChart from '../components/ProductPriceHistoryChart';
 import SupplierOnlineUpdate from '../components/SupplierOnlineUpdate';
+import UpdateErrorsTable from '../components/UpdateErrorsTable';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general', 'material', 'mano_obra', 'otro'];
 
@@ -30,7 +31,7 @@ export default function SupplierTariffs() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [fetchingImage, setFetchingImage] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [activeTab, setActiveTab] = useState('tarifas'); // 'tarifas' | 'comparador'
+  const [activeTab, setActiveTab] = useState('tarifas'); // 'tarifas' | 'comparador' | 'errores'
   const imageFileRef = useRef(null);
 
   const loadData = async () => {
@@ -175,11 +176,28 @@ export default function SupplierTariffs() {
           <TrendingDown className="w-4 h-4" />
           Comparador de precios
         </button>
+        <button
+          onClick={() => setActiveTab('errores')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'errores' ? 'bg-white shadow text-orange-700' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <AlertTriangle className="w-4 h-4 text-orange-500" />
+          Errores de datos
+        </button>
       </div>
 
       {/* Contenido del comparador */}
       {activeTab === 'comparador' && (
         <PriceComparator prices={prices} suppliers={suppliers} />
+      )}
+
+      {/* Errores de datos */}
+      {activeTab === 'errores' && (
+        <UpdateErrorsTable
+          suppliers={suppliers}
+          onFixed={(id, field, value) => {
+            setPrices(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
+          }}
+        />
       )}
 
       {/* Filtros — solo en pestaña tarifas */}
