@@ -211,6 +211,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   const [ivaRate, setIvaRate]         = useState(21);
   // Resumen de importación
   const [importSummary, setImportSummary] = useState(null); // { saved, failed: [{index, product_name, product_code, reason}] }
+  const [progressPct, setProgressPct] = useState(0);
 
   const fileRef    = useRef(null);
   const abortRef   = useRef(false);
@@ -221,7 +222,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     abortRef.current = true;
     parsedRef.current = [];
     setFile(null); setStep('idle'); setParsedCount(0);
-    setError(null); setProgress(''); setSupplierId(''); setImportSummary(null);
+    setError(null); setProgress(''); setSupplierId(''); setImportSummary(null); setProgressPct(0);
     setTimeout(() => { abortRef.current = false; }, 200);
   };
 
@@ -233,6 +234,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     if (!file || !supplierId) return;
     setError(null);
     abortRef.current = false;
+    setProgressPct(0);
 
     try {
       let extracted = [];
@@ -240,7 +242,9 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       if (isExcel(file)) {
         setStep('extracting');
         setProgress('Leyendo archivo Excel...');
+        setProgressPct(10);
         extracted = await parseExcel(file);
+        setProgressPct(80);
 
         if (applyIva && ivaRate > 0) {
           extracted = extracted.map(item => ({
@@ -254,9 +258,11 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       } else if (isPdf(file)) {
         setStep('extracting');
         setProgress('Subiendo PDF...');
+        setProgressPct(15);
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
         setProgress('Analizando PDF con IA...');
+        setProgressPct(40);
         const result = await base44.integrations.Core.InvokeLLM({
           model: 'claude_sonnet_4_6',
           prompt: `Eres un experto en leer catálogos PDF de proveedores industriales españoles.
@@ -281,6 +287,7 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
           },
         });
         extracted = (result?.items || []).filter(i => i?.product_name && i.cost_price > 0);
+        setProgressPct(85);
         if (applyIva && ivaRate > 0) {
           extracted = extracted.map(i => ({ ...i, cost_price: Math.round(i.cost_price * (1 + ivaRate / 100) * 100) / 100 }));
         }
@@ -292,11 +299,13 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
         return;
       }
 
+      setProgressPct(100);
       // Guardar en ref (no en estado) para evitar re-renders con 64K ítems
       parsedRef.current = extracted;
       setParsedCount(extracted.length);
       setStep('preview');
       setProgress('');
+      setProgressPct(0);
 
     } catch (err) {
       const msg = err.message || '';
@@ -311,6 +320,7 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
 
   const handleSave = async () => {
     setStep('saving');
+    setProgressPct(0);
     const toSave = parsedRef.current;
     if (!toSave.length) return;
 
@@ -365,7 +375,9 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
         }
       }
 
-      setProgress(`Guardando ${Math.min(i + SAVE_BATCH, toSave.length).toLocaleString()} / ${toSave.length.toLocaleString()}... (${failedItems.length} errores)`);
+      const done = Math.min(i + SAVE_BATCH, toSave.length);
+      setProgressPct(Math.round(done / toSave.length * 100));
+      setProgress(`Guardando ${done.toLocaleString()} / ${toSave.length.toLocaleString()}...`);
 
       // Pausa entre lotes para respetar el rate limit de la API
       if (i + SAVE_BATCH < toSave.length) await new Promise(r => setTimeout(r, 600));
@@ -510,12 +522,26 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
 
             {/* ── Cargando ── */}
             {isLoadingStep && (
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-8 text-center space-y-3">
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-8 text-center space-y-4">
                 <Loader2 className="w-10 h-10 text-purple-600 animate-spin mx-auto" />
                 <p className="font-semibold text-purple-800 text-lg">
                   {step === 'extracting' ? 'Leyendo archivo...' : 'Guardando en base de datos...'}
                 </p>
-                <p className="text-sm text-purple-600">{progress}</p>
+                {progress && <p className="text-sm text-purple-600">{progress}</p>}
+                {progressPct > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-purple-600 font-medium">
+                      <span>Progreso</span>
+                      <span>{progressPct}%</span>
+                    </div>
+                    <div className="w-full bg-purple-200 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="h-3 bg-purple-600 rounded-full transition-all duration-300"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

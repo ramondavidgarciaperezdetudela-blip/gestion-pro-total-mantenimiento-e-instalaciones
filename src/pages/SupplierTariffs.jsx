@@ -7,10 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Search, Building2, Package, Image as ImageIcon, ChevronDown, ChevronRight,
-  Upload, Trash2, Edit, Plus, Loader2, RefreshCw, X, Check
+  Upload, Trash2, Edit, Plus, Loader2, RefreshCw, X, Check, TrendingDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import SupplierCatalogImportWithSupplier from '../components/SupplierCatalogImportWithSupplier';
+import PriceComparator from '../components/PriceComparator';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general', 'material', 'mano_obra', 'otro'];
 
@@ -26,6 +27,7 @@ export default function SupplierTariffs() {
   const [editForm, setEditForm] = useState({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [fetchingImage, setFetchingImage] = useState(false);
+  const [activeTab, setActiveTab] = useState('tarifas'); // 'tarifas' | 'comparador'
 
   const loadData = async () => {
     setLoading(true);
@@ -122,8 +124,31 @@ export default function SupplierTariffs() {
         <SupplierCatalogImportWithSupplier suppliers={suppliers} onImported={loadData} />
       </div>
 
-      {/* Filtros */}
-      <div className="flex flex-wrap gap-2">
+      {/* Pestañas */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        <button
+          onClick={() => setActiveTab('tarifas')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'tarifas' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <Package className="w-4 h-4" />
+          Tarifas
+        </button>
+        <button
+          onClick={() => setActiveTab('comparador')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'comparador' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <TrendingDown className="w-4 h-4" />
+          Comparador de precios
+        </button>
+      </div>
+
+      {/* Contenido del comparador */}
+      {activeTab === 'comparador' && (
+        <PriceComparator prices={prices} suppliers={suppliers} />
+      )}
+
+      {/* Filtros — solo en pestaña tarifas */}
+      {activeTab === 'tarifas' && <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
@@ -154,15 +179,15 @@ export default function SupplierTariffs() {
         <Button variant="outline" size="icon" onClick={loadData} title="Recargar">
           <RefreshCw className="w-4 h-4" />
         </Button>
-      </div>
+      </div>}
 
-      {loading && (
+      {activeTab === 'tarifas' && loading && (
         <div className="flex items-center justify-center py-20 text-gray-400">
           <Loader2 className="w-6 h-6 animate-spin mr-2" /> Cargando tarifas...
         </div>
       )}
 
-      {!loading && grouped.length === 0 && (
+      {activeTab === 'tarifas' && !loading && grouped.length === 0 && (
         <div className="text-center py-16 text-gray-400">
           <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">No hay productos en las tarifas</p>
@@ -171,7 +196,7 @@ export default function SupplierTariffs() {
       )}
 
       {/* Lista agrupada por proveedor */}
-      <div className="space-y-3">
+      {activeTab === 'tarifas' && <div className="space-y-3">
         {grouped.map(({ supplier, items }) => {
           const isOpen = expandedSuppliers.has(supplier.id);
           return (
@@ -261,7 +286,7 @@ export default function SupplierTariffs() {
             </div>
           );
         })}
-      </div>
+      </div>}
 
       {/* Dialog editar producto */}
       <Dialog open={!!editItem} onOpenChange={o => !o && setEditItem(null)}>
