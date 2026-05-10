@@ -197,35 +197,16 @@ function parseExcel(file) {
   });
 }
 
-// ── Utilidad: dividir PDF por páginas usando offsets internos ─────────────────
 /**
- * Detecta los offsets de inicio de cada página en el PDF binario.
- * Devuelve un array de Blobs, cada uno siendo un sub-PDF válido con PAGES_PER_CHUNK páginas.
- *
- * Estrategia: clonar el PDF completo N veces con distintas anotaciones de rango no es posible
- * sin una librería completa. En cambio, usamos una aproximación práctica:
- * dividimos el ArrayBuffer por tamaño (chunks de bytes), creando Blobs del archivo original
- * segmentados. La IA recibe el chunk y extrae lo que puede ver en esa porción.
- *
- * Para PDFs, la forma correcta y compatible con el browser es dividirlo por tamaño de bytes.
- * Cada chunk se sube como archivo separado y la IA extrae de cada uno.
+ * Estima el número de páginas de un PDF contando ocurrencias de "/Page\n" o "Page\r"
+ * en el binario. Es una heurística rápida sin librería.
  */
-function splitPdfIntoChunks(arrayBuffer, chunkSizeBytes = 5 * 1024 * 1024) {
-  const chunks = [];
-  let offset = 0;
-  const total = arrayBuffer.byteLength;
-  while (offset < total) {
-    const end = Math.min(offset + chunkSizeBytes, total);
-    const slice = arrayBuffer.slice(offset, end);
-    chunks.push(new Blob([slice], { type: 'application/pdf' }));
-    offset = end;
-  }
-  return chunks;
-}
-
-/** Convierte un Blob en File con nombre dado */
-function blobToFile(blob, name) {
-  return new File([blob], name, { type: 'application/pdf' });
+function estimatePdfPages(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  const text = new TextDecoder('latin1').decode(bytes);
+  // Contar "/Type /Page" que aparece una vez por página en el xref
+  const matches = text.match(/\/Type\s*\/Page[^s]/g);
+  return matches ? matches.length : 1;
 }
 
 // ── Componente ────────────────────────────────────────────────────────────────
@@ -290,15 +271,17 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       } else if (isPdf(file)) {
         setStep('extracting');
 
-        // Tamaño del chunk: 5 MB. PDFs <= 5 MB → 1 chunk (sin división)
-        const CHUNK_SIZE = 5 * 1024 * 1024;
+        // Subir el PDF completo una sola vez
+        setProgress('Subiendo PDF...');
+        setProgressPct(10);
         const arrayBuffer = await file.arrayBuffer();
-        const chunks = splitPdfIntoChunks(arrayBuffer, CHUNK_SIZE);
-        const totalChunks = chunks.length;
+        const totalPages = estimatePdfPages(arrayBuffer);
 
-        const fastPrompt = `SOLO extrae filas de tablas de precios de este PDF. Ignora imágenes, logos y texto descriptivo. Para cada fila de tabla devuelve: product_code (referencia/código), product_name (descripción/nombre), cost_price (precio numérico sin €, obligatorio), unit (unidad). Omite filas sin precio. Sé rápido y exhaustivo.`;
-        const fullPrompt = `Extrae TODOS los productos de este catálogo PDF del proveedor "${selectedSupplier?.name || ''}". Para cada producto devuelve: product_name, product_code, brand, cost_price (número sin €), unit, category (clima/refrigeracion/electrico/solar/fontaneria/material/otro). Extrae todos sin omitir ninguno.`;
-        const prompt = fastMode ? fastPrompt : fullPrompt;
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+
+        // Dividir en rangos de páginas para que la IA los procese por tramos
+        const PAGES_PER_CHUNK = 80; // ~80 páginas por llamada IA
+        const totalChunks = Math.max(1, Math.ceil(totalPages / PAGES_PER_CHUNK));
 
         const responseSchema = {
           type: 'object',
@@ -323,15 +306,16 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
         for (let ci = 0; ci < totalChunks; ci++) {
           if (abortRef.current) break;
 
-          const chunkLabel = totalChunks > 1 ? ` (parte ${ci + 1}/${totalChunks})` : '';
-          setProgress(`Subiendo PDF${chunkLabel}...`);
-          setProgressPct(Math.round((ci / totalChunks) * 80) + 5);
+          const pageFrom = ci * PAGES_PER_CHUNK + 1;
+          const pageTo = Math.min((ci + 1) * PAGES_PER_CHUNK, totalPages);
+          const rangeLabel = totalChunks > 1 ? ` (páginas ${pageFrom}–${pageTo} de ~${totalPages})` : '';
 
-          const chunkFile = blobToFile(chunks[ci], `chunk_${ci + 1}_${file.name}`);
-          const { file_url } = await base44.integrations.Core.UploadFile({ file: chunkFile });
+          setProgress(`Analizando con IA${rangeLabel}...`);
+          setProgressPct(Math.round(10 + ((ci / totalChunks) * 80)));
 
-          setProgress(`Analizando con IA${chunkLabel}...`);
-          setProgressPct(Math.round(((ci + 0.5) / totalChunks) * 80) + 5);
+          const fastPrompt = `SOLO extrae filas de tablas de precios de este PDF${totalChunks > 1 ? `, céntrate en las páginas ${pageFrom} a ${pageTo}` : ''}. Ignora imágenes, logos y texto descriptivo. Para cada fila de tabla devuelve: product_code (referencia/código), product_name (descripción/nombre), cost_price (precio numérico sin €, obligatorio), unit (unidad). Omite filas sin precio. Sé exhaustivo y no omitas ningún producto.`;
+          const fullPrompt = `Extrae TODOS los productos del catálogo PDF del proveedor "${selectedSupplier?.name || ''}"${totalChunks > 1 ? `, analizando las páginas ${pageFrom} a ${pageTo}` : ''}. Para cada producto devuelve: product_name, product_code, brand, cost_price (número sin €), unit, category (clima/refrigeracion/electrico/solar/fontaneria/material/otro). No omitas ningún producto.`;
+          const prompt = fastMode ? fastPrompt : fullPrompt;
 
           const result = await base44.integrations.Core.InvokeLLM({
             model: 'gemini_3_flash',
@@ -343,7 +327,9 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
           const chunkItems = (result?.items || []).filter(i => i?.product_name && i.cost_price > 0);
           extracted.push(...chunkItems);
 
-          setProgressPct(Math.round(((ci + 1) / totalChunks) * 80) + 5);
+          // Actualizar contador en tiempo real
+          setParsedCount(extracted.length);
+          setProgressPct(Math.round(10 + ((ci + 1) / totalChunks) * 80));
         }
 
         if (applyIva && ivaRate > 0) {
@@ -432,13 +418,16 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       setProgressPct(Math.round(done / toSave.length * 100));
       setProgress(`Guardando ${done.toLocaleString()} / ${toSave.length.toLocaleString()}...`);
 
+      // Notificar progreso parcial al padre para actualizar contador en tiempo real
+      onImported && onImported(saved, true /* parcial */);
+
       // Pausa entre lotes para respetar el rate limit de la API
-      if (i + SAVE_BATCH < toSave.length) await new Promise(r => setTimeout(r, 600));
+      if (i + SAVE_BATCH < toSave.length) await new Promise(r => setTimeout(r, 400));
     }
 
     setImportSummary({ saved, failed: failedItems, total: toSave.length });
     setStep('done');
-    onImported && onImported(saved);
+    onImported && onImported(saved, false /* final */);
   };
 
   const isLoadingStep = ['extracting', 'saving'].includes(step);

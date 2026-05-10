@@ -32,23 +32,31 @@ export default function SupplierTariffs() {
 
   const loadData = async () => {
     setLoading(true);
-    // Cargar todos los productos sin límite mediante paginación
     const PAGE = 500;
-    let allPrices = [];
-    let skip = 0;
-    let supp;
-    [supp] = await Promise.all([base44.entities.Supplier.list('name', 200)]);
 
-    while (true) {
-      const batch = await base44.entities.SupplierPrice.list('-created_date', PAGE, skip);
-      allPrices = allPrices.concat(batch);
-      if (batch.length < PAGE) break;
-      skip += PAGE;
-    }
+    // Cargar proveedores y primera página de productos en paralelo
+    const [supp, firstBatch] = await Promise.all([
+      base44.entities.Supplier.list('name', 200),
+      base44.entities.SupplierPrice.list('-created_date', PAGE, 0),
+    ]);
 
     setSuppliers(supp);
-    setPrices(allPrices);
-    setLoading(false);
+    setPrices(firstBatch);
+    setLoading(false); // UI ya usable con los primeros 500
+
+    // Seguir cargando el resto en background sin bloquear la interfaz
+    if (firstBatch.length === PAGE) {
+      let allPrices = [...firstBatch];
+      let skip = PAGE;
+      while (true) {
+        const batch = await base44.entities.SupplierPrice.list('-created_date', PAGE, skip);
+        if (!batch.length) break;
+        allPrices = allPrices.concat(batch);
+        setPrices([...allPrices]); // actualiza contador en tiempo real
+        if (batch.length < PAGE) break;
+        skip += PAGE;
+      }
+    }
   };
 
   useEffect(() => { loadData(); }, []);
@@ -132,7 +140,10 @@ export default function SupplierTariffs() {
           <h1 className="text-2xl font-bold text-gray-900">Tarifas por Proveedor</h1>
           <p className="text-sm text-gray-500 mt-0.5">{totalProducts} productos · {totalSuppliers} proveedores</p>
         </div>
-        <SupplierCatalogImportWithSupplier suppliers={suppliers} onImported={loadData} />
+        <SupplierCatalogImportWithSupplier suppliers={suppliers} onImported={(saved, partial) => {
+          // En importación parcial solo recargamos al final para no saturar
+          if (!partial) loadData();
+        }} />
       </div>
 
       {/* Pestañas */}
