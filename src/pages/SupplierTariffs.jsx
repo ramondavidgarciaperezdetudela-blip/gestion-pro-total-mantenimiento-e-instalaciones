@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import SupplierCatalogImportWithSupplier from '../components/SupplierCatalogImportWithSupplier';
 import PriceComparator from '../components/PriceComparator';
 import ProductPriceHistoryChart from '../components/ProductPriceHistoryChart';
+import SupplierOnlineUpdate from '../components/SupplierOnlineUpdate';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general', 'material', 'mano_obra', 'otro'];
 
@@ -28,7 +29,9 @@ export default function SupplierTariffs() {
   const [editForm, setEditForm] = useState({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [fetchingImage, setFetchingImage] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [activeTab, setActiveTab] = useState('tarifas'); // 'tarifas' | 'comparador'
+  const imageFileRef = useRef(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -114,6 +117,16 @@ export default function SupplierTariffs() {
     await base44.entities.SupplierPrice.delete(id);
     setPrices(prev => prev.filter(p => p.id !== id));
     toast.success('Producto eliminado');
+  };
+
+  const handleUploadImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setEditForm(f => ({ ...f, image_url: file_url }));
+    setUploadingImage(false);
+    toast.success('Imagen subida');
   };
 
   const handleFetchImage = async () => {
@@ -236,9 +249,12 @@ export default function SupplierTariffs() {
                 </div>
                 <div className="flex-1 text-left">
                   <p className="font-semibold text-gray-900">{supplier.name}</p>
-                  <p className="text-xs text-gray-500">{items.length} productos en tarifa</p>
+                  <p className="text-xs text-gray-500">{items.length} productos en tarifa · {items.filter(i => !i.image_url).length} sin imagen</p>
                 </div>
-                <Badge variant="outline" className="text-xs">{supplier.category || 'general'}</Badge>
+                <Badge variant="outline" className="text-xs hidden sm:inline-flex">{supplier.category || 'general'}</Badge>
+                <div onClick={e => e.stopPropagation()}>
+                  <SupplierOnlineUpdate supplier={supplier} prices={prices} onUpdated={loadData} />
+                </div>
                 {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
               </button>
 
@@ -335,8 +351,13 @@ export default function SupplierTariffs() {
                   />
                   <Button size="sm" variant="outline" className="text-xs w-full" onClick={handleFetchImage} disabled={fetchingImage}>
                     {fetchingImage ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Search className="w-3 h-3 mr-1" />}
-                    Buscar imagen automáticamente
+                    Buscar imagen en internet
                   </Button>
+                  <Button size="sm" variant="outline" className="text-xs w-full" onClick={() => imageFileRef.current?.click()} disabled={uploadingImage}>
+                    {uploadingImage ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
+                    Subir imagen desde archivo
+                  </Button>
+                  <input ref={imageFileRef} type="file" accept="image/*" className="hidden" onChange={handleUploadImage} />
                 </div>
               </div>
 

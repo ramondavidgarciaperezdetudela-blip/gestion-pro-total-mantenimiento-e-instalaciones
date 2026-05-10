@@ -429,71 +429,86 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     const toSave = parsedRef.current;
     if (!toSave.length) return;
 
+    // Cargar existentes de este proveedor para hacer upsert por código de producto
+    setProgress('Cargando productos existentes para detectar actualizaciones...');
+    let existing = [];
+    try {
+      existing = await base44.entities.SupplierPrice.filter({ supplier_id: supplierId });
+    } catch (_) { existing = []; }
+
+    // Índice: product_code → registro existente
+    const existingByCode = {};
+    existing.forEach(e => {
+      if (e.product_code) existingByCode[e.product_code.trim().toLowerCase()] = e;
+    });
+
     let saved = 0;
-    const failedItems = []; // { index, product_name, product_code, reason }
-    const SAVE_BATCH = 200;
+    let updated = 0;
+    const failedItems = [];
+    const SAVE_BATCH = 100;
 
     for (let i = 0; i < toSave.length; i += SAVE_BATCH) {
       if (abortRef.current) break;
 
       const batchItems = toSave.slice(i, i + SAVE_BATCH);
-      const batch = batchItems.map(item => {
+
+      for (let j = 0; j < batchItems.length; j++) {
+        const item = batchItems[j];
         const costPrice = item.cost_price || 0;
         const salePrice = costPrice > 0 ? Math.round(costPrice * (1 + margin / 100) * 100) / 100 : 0;
-        return {
-          supplier_id:   supplierId,
-          supplier_name: selectedSupplier?.name || '',
-          product_name:  item.product_name || 'Sin nombre',
-          product_code:  item.product_code || '',
-          cost_price:    costPrice,
-          sale_price:    salePrice,
-          margin:        costPrice > 0 ? margin : 0,
-          unit:          item.unit || 'ud',
-          category:      item.category || 'material',
-          notes:         item.notes || '',
-          image_url:     item.image_url || '',
-          brand:         item.brand || '',
-          is_active:     true,
-        };
-      });
+        const codeKey = (item.product_code || '').trim().toLowerCase();
 
-      try {
-        await base44.entities.SupplierPrice.bulkCreate(batch);
-        saved += batch.length;
-      } catch (batchErr) {
-        // El lote falló: intentar uno a uno para rescatar los que funcionen
-        for (let j = 0; j < batch.length; j++) {
-          try {
-            await base44.entities.SupplierPrice.bulkCreate([batch[j]]);
-            saved++;
-          } catch (singleErr) {
-            const originalItem = batchItems[j];
-            failedItems.push({
-              index: i + j + 1, // nº de fila en el archivo (1-based)
-              product_name: originalItem.product_name || '—',
-              product_code: originalItem.product_code || '—',
-              reason: singleErr?.message || 'Error desconocido',
+        try {
+          if (codeKey && existingByCode[codeKey]) {
+            // ── UPSERT: ya existe, actualizar solo precios ──
+            const ex = existingByCode[codeKey];
+            await base44.entities.SupplierPrice.update(ex.id, {
+              cost_price: costPrice,
+              sale_price: salePrice,
+              margin: costPrice > 0 ? margin : ex.margin,
+              product_name: item.product_name || ex.product_name,
             });
+            updated++;
+          } else {
+            // ── NUEVO producto ──
+            const record = {
+              supplier_id:   supplierId,
+              supplier_name: selectedSupplier?.name || '',
+              product_name:  item.product_name || 'Sin nombre',
+              product_code:  item.product_code || '',
+              cost_price:    costPrice,
+              sale_price:    salePrice,
+              margin:        costPrice > 0 ? margin : 0,
+              unit:          item.unit || 'ud',
+              category:      item.category || 'material',
+              notes:         item.notes || '',
+              image_url:     item.image_url || '',
+              brand:         item.brand || '',
+              is_active:     true,
+            };
+            await base44.entities.SupplierPrice.bulkCreate([record]);
+            saved++;
           }
-          // Pequeña pausa tras error para no saturar
-          await new Promise(r => setTimeout(r, 50));
+        } catch (err) {
+          failedItems.push({
+            index: i + j + 1,
+            product_name: item.product_name || '—',
+            product_code: item.product_code || '—',
+            reason: err?.message || 'Error desconocido',
+          });
         }
       }
 
       const done = Math.min(i + SAVE_BATCH, toSave.length);
       setProgressPct(Math.round(done / toSave.length * 100));
-      setProgress(`Guardando ${done.toLocaleString()} / ${toSave.length.toLocaleString()}...`);
-
-      // Notificar progreso parcial al padre para actualizar contador en tiempo real
-      onImported && onImported(saved, true /* parcial */);
-
-      // Pausa entre lotes para respetar el rate limit de la API
-      if (i + SAVE_BATCH < toSave.length) await new Promise(r => setTimeout(r, 400));
+      setProgress(`Procesando ${done.toLocaleString()} / ${toSave.length.toLocaleString()} (${updated} actualizados, ${saved} nuevos)...`);
+      onImported && onImported(saved + updated, true);
+      if (i + SAVE_BATCH < toSave.length) await new Promise(r => setTimeout(r, 200));
     }
 
-    setImportSummary({ saved, failed: failedItems, total: toSave.length });
+    setImportSummary({ saved, updated, failed: failedItems, total: toSave.length });
     setStep('done');
-    onImported && onImported(saved, false /* final */);
+    onImported && onImported(saved + updated, false);
   };
 
   const isLoadingStep = ['extracting', 'saving'].includes(step);
@@ -721,26 +736,30 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                 <div className={`rounded-xl p-5 text-center border ${importSummary.failed.length === 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
                   <CheckCircle className={`w-10 h-10 mx-auto mb-2 ${importSummary.failed.length === 0 ? 'text-emerald-500' : 'text-amber-500'}`} />
                   <p className={`text-2xl font-bold ${importSummary.failed.length === 0 ? 'text-emerald-800' : 'text-amber-800'}`}>
-                    {importSummary.saved.toLocaleString()} / {importSummary.total.toLocaleString()} productos guardados
+                    {(importSummary.saved + (importSummary.updated || 0)).toLocaleString()} / {importSummary.total.toLocaleString()} procesados
                   </p>
                   <p className="text-sm text-gray-600 mt-1">en tarifa de <strong>{selectedSupplier?.name}</strong></p>
                 </div>
 
                 {/* KPIs rápidos */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-4 gap-2">
                   <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
                     <p className="text-xl font-bold text-emerald-700">{importSummary.saved.toLocaleString()}</p>
-                    <p className="text-xs text-emerald-600 font-medium">Guardados ✓</p>
+                    <p className="text-xs text-emerald-600 font-medium">Nuevos ✓</p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-blue-700">{(importSummary.updated || 0).toLocaleString()}</p>
+                    <p className="text-xs text-blue-600 font-medium">Actualizados</p>
                   </div>
                   <div className={`border rounded-lg p-3 text-center ${importSummary.failed.length > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
                     <p className={`text-xl font-bold ${importSummary.failed.length > 0 ? 'text-red-700' : 'text-gray-400'}`}>{importSummary.failed.length.toLocaleString()}</p>
                     <p className={`text-xs font-medium ${importSummary.failed.length > 0 ? 'text-red-600' : 'text-gray-400'}`}>Con error</p>
                   </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                    <p className="text-xl font-bold text-blue-700">
-                      {importSummary.total > 0 ? Math.round(importSummary.saved / importSummary.total * 100) : 0}%
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-purple-700">
+                      {importSummary.total > 0 ? Math.round((importSummary.saved + (importSummary.updated || 0)) / importSummary.total * 100) : 0}%
                     </p>
-                    <p className="text-xs text-blue-600 font-medium">Éxito</p>
+                    <p className="text-xs text-purple-600 font-medium">Éxito</p>
                   </div>
                 </div>
 
