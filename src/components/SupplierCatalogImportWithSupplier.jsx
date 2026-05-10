@@ -209,6 +209,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   const [margin, setMargin]           = useState(30);
   const [applyIva, setApplyIva]       = useState(false);
   const [ivaRate, setIvaRate]         = useState(21);
+  const [fastMode, setFastMode]       = useState(true);
   // Resumen de importación
   const [importSummary, setImportSummary] = useState(null); // { saved, failed: [{index, product_name, product_code, reason}] }
   const [progressPct, setProgressPct] = useState(0);
@@ -222,7 +223,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     abortRef.current = true;
     parsedRef.current = [];
     setFile(null); setStep('idle'); setParsedCount(0);
-    setError(null); setProgress(''); setSupplierId(''); setImportSummary(null); setProgressPct(0);
+    setError(null); setProgress(''); setSupplierId(''); setImportSummary(null); setProgressPct(0); setFastMode(true);
     setTimeout(() => { abortRef.current = false; }, 200);
   };
 
@@ -261,11 +262,15 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
         setProgressPct(15);
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
-        setProgress('Analizando PDF con IA...');
+        setProgress(fastMode ? 'Extrayendo tablas de precios (modo rápido)...' : 'Analizando PDF con IA (modo completo)...');
         setProgressPct(40);
+
+        const fastPrompt = `SOLO extrae filas de tablas de precios de este PDF. Ignora imágenes, logos y texto descriptivo. Para cada fila de tabla devuelve: product_code (referencia/código), product_name (descripción/nombre), cost_price (precio numérico sin €, obligatorio), unit (unidad). Omite filas sin precio. Sé rápido y exhaustivo.`;
+        const fullPrompt = `Extrae TODOS los productos de este catálogo PDF del proveedor "${selectedSupplier?.name || ''}". Para cada producto devuelve: product_name, product_code, brand, cost_price (número sin €), unit, category (clima/refrigeracion/electrico/solar/fontaneria/material/otro). Extrae todos sin omitir ninguno.`;
+
         const result = await base44.integrations.Core.InvokeLLM({
           model: 'gemini_3_flash',
-          prompt: `Extrae TODOS los productos de este catálogo PDF del proveedor "${selectedSupplier?.name || ''}". Para cada producto devuelve: product_name, product_code, brand, cost_price (número sin €), unit, category (clima/refrigeracion/electrico/solar/fontaneria/material/otro). Extrae todos sin omitir ninguno.`,
+          prompt: fastMode ? fastPrompt : fullPrompt,
           file_urls: [file_url],
           response_json_schema: {
             type: 'object',
@@ -511,6 +516,35 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                     </div>
                   )}
                 </div>
+
+                {file && isPdf(file) && (
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="flex">
+                      <button
+                        type="button"
+                        onClick={() => setFastMode(true)}
+                        className={`flex-1 flex flex-col items-center gap-1 px-3 py-3 text-sm font-medium transition-colors border-r ${fastMode ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                      >
+                        <span className="text-lg">⚡</span>
+                        <span className="font-bold">Modo rápido</span>
+                        <span className={`text-[10px] leading-tight text-center ${fastMode ? 'text-blue-100' : 'text-gray-400'}`}>
+                          Solo tablas de precios<br/>~15–30 seg.
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFastMode(false)}
+                        className={`flex-1 flex flex-col items-center gap-1 px-3 py-3 text-sm font-medium transition-colors ${!fastMode ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                      >
+                        <span className="text-lg">🔍</span>
+                        <span className="font-bold">Modo completo</span>
+                        <span className={`text-[10px] leading-tight text-center ${!fastMode ? 'text-purple-100' : 'text-gray-400'}`}>
+                          Incluye marca, categoría<br/>~30–90 seg.
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">
