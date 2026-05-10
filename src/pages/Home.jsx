@@ -57,7 +57,8 @@ const quickLinks = [
 { name: 'Repuestos', page: 'SparePartsManager', icon: Package, color: 'bg-teal-700' },
 { name: 'SAT', page: 'SAT', icon: Wrench, color: 'bg-orange-500' },
 { name: 'Solar+Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-amber-500' },
-{ name: 'Tarifas Prov.', page: 'SupplierTariffs', icon: Package, color: 'bg-purple-600' }];
+{ name: 'Tarifas Prov.', page: 'SupplierTariffs', icon: Package, color: 'bg-purple-600' },
+{ name: 'Copias Seg.', page: 'BackupCenter', icon: Shield, color: 'bg-blue-700' }];
 
 
 function StatCard({ label, value, sub, icon: Icon, color, linkPage }) {
@@ -175,6 +176,12 @@ export default function Home() {
     invalidateHomeCache();
     await loadData(true);
   }, [loadData]);
+
+  // Aviso de backup pendiente
+  const lastBackupStr = localStorage.getItem('backupConfig') ? (() => { try { return JSON.parse(localStorage.getItem('backupConfig')).last_backup; } catch { return null; } })() : null;
+  const daysSinceBackup = lastBackupStr ? Math.floor((new Date() - new Date(lastBackupStr)) / (1000 * 60 * 60 * 24)) : null;
+  const reminderDays = (() => { try { return JSON.parse(localStorage.getItem('backupConfig'))?.reminder_days || 7; } catch { return 7; } })();
+  const showBackupAlert = daysSinceBackup === null || daysSinceBackup >= reminderDays;
 
   // Colores de badge por estado de documento
   const STATUS_COLORS = { borrador: 'bg-gray-100 text-gray-600', enviado: 'bg-blue-100 text-blue-700', pagado: 'bg-green-100 text-green-700', vencido: 'bg-red-100 text-red-700', cancelado: 'bg-orange-100 text-orange-700' };
@@ -351,6 +358,22 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Banner backup */}
+      {showBackupAlert && (
+        <Link to={createPageUrl('BackupCenter')}>
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 hover:bg-amber-100 transition-colors cursor-pointer">
+            <Shield className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-800">
+                {daysSinceBackup === null ? '⚠ Aún no tienes ninguna copia de seguridad guardada' : `⚠ Último backup hace ${daysSinceBackup} días — recomendamos hacer uno`}
+              </p>
+              <p className="text-xs text-amber-600">Haz clic para ir al Centro de Copias de Seguridad</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-amber-500 flex-shrink-0" />
+          </div>
+        </Link>
+      )}
 
       {/* Acceso directo rápido - Solo en desktop */}
       <div className="hidden sm:block bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">

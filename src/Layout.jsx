@@ -114,6 +114,7 @@ const navItems = [
 { name: 'Docs Legal.', page: 'LegalDocs', icon: FileText },
 { name: 'Documentos', page: 'Documents', icon: FileText },
 { name: 'Exportar', page: 'ExportData', icon: Download },
+{ name: 'Copias Seg.', page: 'BackupCenter', icon: Shield },
 { name: 'Historial', page: 'AuditLog', icon: History },
 { name: 'Informes', page: 'Reports', icon: BarChart3 },
 { name: 'Informes IA', page: 'AIReports', icon: FileBarChart },
