@@ -56,19 +56,34 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Recordatorio al propietario (tech)
-      if (companySettings?.phone) {
-        const techPhone = companySettings.phone.replace(/\D/g, '');
-        if (techPhone) {
-          const techMsg = `📅 RECORDATORIO DE CITA MAÑANA\n\n👤 Cliente: ${apt.contact_name}\n📌 Servicio: ${apt.title}\n🕐 Hora: ${apt.time_start || 'Sin hora'}\n📍 Dirección: ${apt.address || '-'}\n📝 Notas: ${apt.notes || '-'}\n\nConfirme que está disponible.`;
-          
-          try {
-            // No hacemos que sea automático; simplemente registramos que se debería enviar
-            // El usuario puede activar esto manualmente desde el panel si lo desea
-            console.log(`Recordatorio para técnico: ${techMsg}`);
-          } catch (err) {
-            console.error('Error enviando recordatorio al técnico:', err);
-          }
+      // Recordatorio al técnico / empresa por email
+      if (companySettings?.email) {
+        try {
+          const emailBody = `
+            <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;background:#f8fafc;border-radius:12px">
+              <div style="background:#1e3a5f;color:white;border-radius:8px;padding:16px 20px;margin-bottom:20px">
+                <h2 style="margin:0;font-size:18px">📅 Cita programada para mañana</h2>
+              </div>
+              <table style="width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
+                <tr><td style="padding:10px 16px;border-bottom:1px solid #eee;color:#555;font-size:13px;width:120px">👤 Cliente</td><td style="padding:10px 16px;border-bottom:1px solid #eee;font-weight:600">${apt.contact_name || '-'}</td></tr>
+                <tr><td style="padding:10px 16px;border-bottom:1px solid #eee;color:#555;font-size:13px">📌 Servicio</td><td style="padding:10px 16px;border-bottom:1px solid #eee;font-weight:600">${apt.title || '-'}</td></tr>
+                <tr><td style="padding:10px 16px;border-bottom:1px solid #eee;color:#555;font-size:13px">🕐 Hora</td><td style="padding:10px 16px;border-bottom:1px solid #eee;font-size:22px;font-weight:800;color:#1e3a5f">${apt.time_start || 'Sin hora definida'}</td></tr>
+                <tr><td style="padding:10px 16px;border-bottom:1px solid #eee;color:#555;font-size:13px">📍 Dirección</td><td style="padding:10px 16px;border-bottom:1px solid #eee">${apt.address || '-'}</td></tr>
+                <tr><td style="padding:10px 16px;border-bottom:1px solid #eee;color:#555;font-size:13px">🔧 Tipo</td><td style="padding:10px 16px;border-bottom:1px solid #eee">${apt.type || '-'}</td></tr>
+                <tr><td style="padding:10px 16px;color:#555;font-size:13px">📝 Notas</td><td style="padding:10px 16px">${apt.notes || apt.description || '-'}</td></tr>
+              </table>
+              ${apt.address ? `<div style="margin-top:16px;text-align:center"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.address)}" style="background:#0ea5e9;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">📍 Ver en Google Maps</a></div>` : ''}
+              <p style="color:#aaa;font-size:11px;text-align:center;margin-top:20px">${companySettings.company_name || ''} · Recordatorio automático</p>
+            </div>`;
+
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: companySettings.email,
+            subject: `⏰ Cita mañana ${format(new Date(tomorrowStr), 'dd/MM')} ${apt.time_start || ''} — ${apt.contact_name || apt.title}`,
+            body: emailBody,
+          });
+          console.log(`Email de recordatorio enviado a ${companySettings.email} para cita: ${apt.title}`);
+        } catch (err) {
+          console.error('Error enviando email al técnico:', err);
         }
       }
     }

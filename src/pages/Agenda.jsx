@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight, Trash2, Edit, MessageCircle, ExternalLink, Download } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Trash2, Edit, MessageCircle, ExternalLink, Download, Wrench, Bell } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks, getDaysInMonth, startOfMonth, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PrintButton from '../components/PrintButton';
@@ -21,8 +21,10 @@ const priorityColors = { baja: 'bg-gray-100 text-gray-700', media: 'bg-blue-100 
 export default function Agenda() {
   const [appointments, setAppointments] = useState([]);
   const [contacts, setContacts] = useState([]);
+  const [satOrders, setSatOrders] = useState([]);
   const [contactSearch, setContactSearch] = useState('');
   const [showContactSearch, setShowContactSearch] = useState(false);
+  const [linkedSAT, setLinkedSAT] = useState(null); // SAT vinculado al crear cita
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState('month'); // 'week' | 'month'
@@ -35,7 +37,12 @@ export default function Agenda() {
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
-  useEffect(() => { loadAppointments(); base44.entities.Contact.list('name', 500).then(setContacts); }, []);
+  useEffect(() => {
+    loadAppointments();
+    base44.entities.Contact.list('name', 500).then(setContacts);
+    base44.entities.SATOrder.filter({ status: 'pendiente' }, '-date', 200).then(setSatOrders)
+      .catch(() => base44.entities.SATOrder.list('-date', 200).then(orders => setSatOrders(orders.filter(o => o.status === 'pendiente' || o.status === 'en_curso'))));
+  }, []);
 
   const loadAppointments = async () => {
     const data = await base44.entities.Appointment.list('-date', 200);
@@ -54,13 +61,33 @@ export default function Agenda() {
       const ok = window.confirm(`Ya hay una cita a las ${form.time_start}h (${timeConflict.title} - ${timeConflict.contact_name}). ¿Deseas guardarla igualmente?\nConsejo: cambia la hora para evitar solapamiento.`);
       if (!ok) return;
     }
+
+    const savedForm = { ...form };
+    // Vincular SAT activo si hay uno seleccionado
+    if (linkedSAT) {
+      savedForm.description = `[SAT #${linkedSAT.order_number || linkedSAT.id.slice(-6)}] ${linkedSAT.description || ''}\n${savedForm.description || ''}`.trim();
+      savedForm.notes = `SAT vinculado: ${linkedSAT.order_number || linkedSAT.id.slice(-6)} · ${linkedSAT.type || ''}\n${savedForm.notes || ''}`.trim();
+    }
+
     if (editingAppt) {
-      await base44.entities.Appointment.update(editingAppt.id, form);
+      await base44.entities.Appointment.update(editingAppt.id, savedForm);
     } else {
-      await base44.entities.Appointment.create(form);
+      await base44.entities.Appointment.create(savedForm);
+      // Actualizar el SAT vinculado marcando visita programada
+      if (linkedSAT) {
+        await base44.entities.SATOrder.update(linkedSAT.id, {
+          scheduled_date: form.date,
+          scheduled_time: form.time_start,
+          status: linkedSAT.status === 'pendiente' ? 'en_curso' : linkedSAT.status,
+        });
+        setSatOrders(prev => prev.map(s => s.id === linkedSAT.id
+          ? { ...s, scheduled_date: form.date, scheduled_time: form.time_start, status: 'en_curso' }
+          : s));
+      }
     }
     setDialogOpen(false);
     setEditingAppt(null);
+    setLinkedSAT(null);
     setForm({ title: '', description: '', contact_name: '', contact_id: '', date: format(new Date(), 'yyyy-MM-dd'), time_start: '09:00', time_end: '10:00', address: '', type: 'otro', status: 'pendiente', priority: 'media', notes: '' });
     setContactSearch('');
     loadAppointments();
@@ -176,6 +203,49 @@ export default function Agenda() {
                 </div>
                 <Textarea placeholder="Descripción" value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
                 <Textarea placeholder="Notas" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} />
+
+                {/* Vincular SAT activo */}
+                {!editingAppt && (() => {
+                  const relevantSATs = form.contact_id
+                    ? satOrders.filter(s => s.contact_id === form.contact_id)
+                    : satOrders;
+                  if (relevantSATs.length === 0) return null;
+                  return (
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Wrench className="w-4 h-4 text-orange-600" />
+                        <p className="text-sm font-semibold text-orange-800">Vincular SAT activo</p>
+                        {linkedSAT && <button onClick={() => setLinkedSAT(null)} className="ml-auto text-xs text-orange-500 underline">Quitar</button>}
+                      </div>
+                      {linkedSAT ? (
+                        <div className="bg-orange-100 rounded-lg px-3 py-2 text-xs text-orange-800 font-medium">
+                          ✓ SAT #{linkedSAT.order_number || linkedSAT.id.slice(-6)} · {linkedSAT.contact_name} · {linkedSAT.type}
+                        </div>
+                      ) : (
+                        <select
+                          className="w-full text-sm border border-orange-200 rounded-lg px-3 py-2 bg-white"
+                          defaultValue=""
+                          onChange={e => {
+                            const sat = relevantSATs.find(s => s.id === e.target.value);
+                            setLinkedSAT(sat || null);
+                            if (sat && !form.contact_id) {
+                              setForm(f => ({ ...f, contact_name: sat.contact_name || f.contact_name, contact_id: sat.contact_id || f.contact_id }));
+                              setContactSearch(sat.contact_name || '');
+                            }
+                          }}
+                        >
+                          <option value="">-- Seleccionar SAT --</option>
+                          {relevantSATs.map(s => (
+                            <option key={s.id} value={s.id}>
+                              #{s.order_number || s.id.slice(-6)} · {s.contact_name} · {s.type} · {s.status}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <Button onClick={handleSave} className="w-full bg-blue-600">{editingAppt ? 'Actualizar' : 'Guardar'}</Button>
               </div>
             </DialogContent>
