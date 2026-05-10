@@ -32,12 +32,22 @@ export default function SupplierTariffs() {
 
   const loadData = async () => {
     setLoading(true);
-    const [supp, priceList] = await Promise.all([
-      base44.entities.Supplier.list('name', 100),
-      base44.entities.SupplierPrice.list('-created_date', 500),
-    ]);
+    // Cargar todos los productos sin límite mediante paginación
+    const PAGE = 500;
+    let allPrices = [];
+    let skip = 0;
+    let supp;
+    [supp] = await Promise.all([base44.entities.Supplier.list('name', 200)]);
+
+    while (true) {
+      const batch = await base44.entities.SupplierPrice.list('-created_date', PAGE, skip);
+      allPrices = allPrices.concat(batch);
+      if (batch.length < PAGE) break;
+      skip += PAGE;
+    }
+
     setSuppliers(supp);
-    setPrices(priceList);
+    setPrices(allPrices);
     setLoading(false);
   };
 
