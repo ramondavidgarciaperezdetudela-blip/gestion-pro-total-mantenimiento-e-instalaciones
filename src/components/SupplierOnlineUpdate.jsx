@@ -10,6 +10,31 @@ import {
 import { toast } from 'sonner';
 
 // ── Utilidades ────────────────────────────────────────────────────────────────
+
+// Reintento con backoff exponencial — detecta rate limit y espera antes de reintentar
+// onRetry(waitSec) se llama cuando va a esperar para que la UI pueda mostrarlo
+async function withRetry(fn, maxRetries = 5, onRetry = null) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const msg = String(err?.message || err || '').toLowerCase();
+      const isRateLimit = msg.includes('rate limit') || msg.includes('rate_limit') ||
+        msg.includes('too many') || msg.includes('429') || msg.includes('exceeded');
+      const isServerError = msg.includes('500') || msg.includes('502') || msg.includes('503') || msg.includes('timeout');
+
+      if ((isRateLimit || isServerError) && attempt < maxRetries) {
+        // Espera exponencial: 3s, 6s, 12s, 24s, 48s
+        const waitMs = Math.min(3000 * Math.pow(2, attempt), 60000);
+        onRetry && onRetry(Math.round(waitMs / 1000));
+        await new Promise(r => setTimeout(r, waitMs));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 function normalizeName(str) {
   return String(str || '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -111,6 +136,7 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated, onFixed, bgState,
   const running = bgState.pricesRunning;
   const progress = bgState.pricesProgress;
   const results = bgState.pricesResults;
+  const retrying = bgState.pricesRetrying;
 
   const handleStart = async () => {
     if (prices.length === 0) { toast.info('No hay productos para actualizar'); return; }
@@ -125,17 +151,25 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated, onFixed, bgState,
       if (stopRef.current) break;
       const batch = prices.slice(bi * batchSize, (bi + 1) * batchSize);
       try {
-        const res = await base44.functions.invoke('updateSupplierPricesOnline', {
-          supplierId:     supplier.id,
-          supplierName:   supplier.name,
-          websiteUrl:     supplier.website || supplier.login_url || '',
-          sampleProducts: batch.map(p => ({ product_code: p.product_code, product_name: p.product_name })),
-          margin,
-        });
+        const res = await withRetry(
+          () => base44.functions.invoke('updateSupplierPricesOnline', {
+            supplierId:     supplier.id,
+            supplierName:   supplier.name,
+            websiteUrl:     supplier.website || supplier.login_url || '',
+            sampleProducts: batch.map(p => ({ product_code: p.product_code, product_name: p.product_name })),
+            margin,
+          }),
+          5,
+          () => setBgState(s => ({ ...s, pricesRetrying: true }))
+        );
+        setBgState(s => ({ ...s, pricesRetrying: false }));
         const data = res.data || {};
         totalUpdated += data.updated || 0;
         if (data.products) allResults.push(...data.products);
-      } catch (_) { /* lote fallido — continuar */ }
+      } catch (_) {
+        setBgState(s => ({ ...s, pricesRetrying: false }));
+        /* lote fallido tras reintentos — continuar con siguiente */
+      }
 
       const processed = Math.min((bi + 1) * batchSize, prices.length);
       setBgState(s => ({
@@ -193,6 +227,11 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated, onFixed, bgState,
               <span>✅ {progress.updated} actualizados</span>
               <span className="text-gray-400 flex items-center gap-1"><MinusCircle className="w-3 h-3" /> Puedes cerrar, sigue en fondo</span>
             </div>
+            {retrying && (
+              <p className="text-[10px] text-orange-500 flex items-center gap-1 font-medium">
+                <Loader2 className="w-3 h-3 animate-spin" /> Rate limit — esperando y reintentando automáticamente...
+              </p>
+            )}
           </div>
           <Button size="sm" variant="outline" onClick={handleStop} className="w-full text-xs border-red-200 text-red-600 hover:bg-red-50">
             Detener búsqueda
@@ -283,12 +322,13 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
   const results = bgState.imagesResults;
   const found = bgState.imagesFound;
   const processed = bgState.imagesProcessed;
+  const retrying = bgState.imagesRetrying;
 
   const handleFetchImages = async () => {
     if (withoutImage.length === 0) { toast.info('Todos los productos ya tienen imagen'); return; }
     stopRef.current = false;
     const initial = withoutImage.map(item => ({ item, ok: false, pending: true }));
-    setBgState(s => ({ ...s, imagesRunning: true, imagesResults: initial, imagesFound: 0, imagesProcessed: 0 }));
+    setBgState(s => ({ ...s, imagesRunning: true, imagesRetrying: false, imagesResults: initial, imagesFound: 0, imagesProcessed: 0 }));
 
     let foundCount = 0;
     for (let i = 0; i < withoutImage.length; i++) {
@@ -300,13 +340,21 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
 
       let imageUrl = null;
       try {
-        const res = await base44.integrations.Core.InvokeLLM({
-          prompt,
-          add_context_from_internet: true,
-          response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
-        });
+        const res = await withRetry(
+          () => base44.integrations.Core.InvokeLLM({
+            prompt,
+            add_context_from_internet: true,
+            response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
+          }),
+          5,
+          () => setBgState(s => ({ ...s, imagesRetrying: true }))
+        );
         imageUrl = res?.image_url || null;
-      } catch (_) { imageUrl = null; }
+        setBgState(s => ({ ...s, imagesRetrying: false }));
+      } catch (_) {
+        imageUrl = null;
+        setBgState(s => ({ ...s, imagesRetrying: false }));
+      }
 
       if (imageUrl) {
         try {
@@ -393,6 +441,11 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
             <div className="flex justify-between text-xs text-amber-700 font-medium">
               <span>✅ {found} encontradas · ❌ {processed - found} sin imagen · ⏳ {pendingCount} pendientes</span>
             </div>
+            {retrying && (
+              <p className="text-[10px] text-orange-500 flex items-center gap-1 font-medium">
+                <Loader2 className="w-3 h-3 animate-spin" /> Rate limit — esperando y reintentando automáticamente...
+              </p>
+            )}
             <p className="text-[10px] text-gray-400 flex items-center gap-1"><MinusCircle className="w-3 h-3" /> Puedes cerrar, sigue en fondo</p>
           </div>
           <Button size="sm" variant="outline" onClick={handleStop} className="w-full text-xs border-red-200 text-red-600 hover:bg-red-50">
@@ -506,9 +559,11 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
 // ── Estado inicial de background ──────────────────────────────────────────────
 const initBgState = () => ({
   pricesRunning: false,
+  pricesRetrying: false,
   pricesProgress: { processed: 0, updated: 0, total: 0 },
   pricesResults: [],
   imagesRunning: false,
+  imagesRetrying: false,
   imagesResults: [],
   imagesFound: 0,
   imagesProcessed: 0,
