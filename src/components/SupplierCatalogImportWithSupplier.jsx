@@ -301,7 +301,7 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
     if (!toSave.length) return;
 
     let saved = 0;
-    const SAVE_BATCH = 500;
+    const SAVE_BATCH = 200;
 
     for (let i = 0; i < toSave.length; i += SAVE_BATCH) {
       if (abortRef.current) break;
@@ -330,8 +330,8 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
       saved += batch.length;
       setProgress(`Guardando ${saved.toLocaleString()} / ${toSave.length.toLocaleString()}...`);
 
-      // Pausa entre lotes para no saturar la API
-      if (i + SAVE_BATCH < toSave.length) await new Promise(r => setTimeout(r, 200));
+      // Pausa entre lotes para respetar el rate limit de la API
+      if (i + SAVE_BATCH < toSave.length) await new Promise(r => setTimeout(r, 600));
     }
 
     setStep('done');
