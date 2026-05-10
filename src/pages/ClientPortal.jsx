@@ -1,443 +1,514 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Users, MessageSquare, Send, Search, Phone, Mail,
-  FileText, Wrench, Plus, Eye, Clock, CheckCircle, AlertCircle,
-  MessageCircle, Star
+  Users, FileText, Wrench, CheckCircle, Clock, AlertCircle,
+  Download, Send, Eye, Search, Phone, Mail, MessageCircle,
+  Euro, TrendingUp, FileCheck, XCircle, Link
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-// Entity: ClientMessage (se crea on-the-fly si no existe)
-const CHANNELS = ['whatsapp', 'email', 'sms', 'portal', 'telefono'];
-const MSG_TYPES = ['consulta', 'incidencia', 'solicitud_presupuesto', 'reclamacion', 'felicitacion', 'otro'];
 const STATUS_COLORS = {
+  borrador: 'bg-gray-100 text-gray-600',
+  enviado: 'bg-blue-100 text-blue-700',
+  pagado: 'bg-green-100 text-green-700',
+  vencido: 'bg-red-100 text-red-700',
+  cancelado: 'bg-gray-100 text-gray-500',
   pendiente: 'bg-yellow-100 text-yellow-700',
-  en_proceso: 'bg-blue-100 text-blue-700',
-  resuelto: 'bg-green-100 text-green-700',
-  cerrado: 'bg-gray-100 text-gray-600',
+  en_curso: 'bg-blue-100 text-blue-700',
+  completada: 'bg-green-100 text-green-700',
+};
+
+const DOC_ICONS = {
+  factura: <Euro className="w-4 h-4" />,
+  presupuesto: <FileText className="w-4 h-4" />,
+  recibo: <FileCheck className="w-4 h-4" />,
 };
 
 export default function ClientPortal() {
   const [contacts, setContacts] = useState([]);
-  const [messages, setMessages] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [satOrders, setSatOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
-  const [contactSearch, setContactSearch] = useState('');
-  const [showContactSearch, setShowContactSearch] = useState(false);
-  const [msgDialog, setMsgDialog] = useState(false);
-  const [viewMsg, setViewMsg] = useState(null);
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterChannel, setFilterChannel] = useState('all');
-  const [saving, setSaving] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [msgForm, setMsgForm] = useState({
-    contact_id: '', contact_name: '', contact_phone: '', contact_email: '',
-    channel: 'whatsapp', type: 'consulta', subject: '', content: '',
-    response: '', status: 'pendiente', priority: 'normal', date: format(new Date(), 'yyyy-MM-dd'),
-    internal_notes: '',
-  });
+  const [showSearch, setShowSearch] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState(null);
+  const [sendingLink, setSendingLink] = useState(null);
+  const [tab, setTab] = useState('resumen');
 
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    const [c, msgs] = await Promise.all([
+    setLoading(true);
+    const [c, inv, sat] = await Promise.all([
       base44.entities.Contact.list('name', 500),
-      base44.entities.ClientNote.list('-created_date', 200),
+      base44.entities.Invoice.list('-date', 500),
+      base44.entities.SATOrder.list('-date', 200),
     ]);
     setContacts(c);
-    // Usamos ClientNote como registro de comunicaciones
-    setMessages(msgs.filter(m => m.title?.startsWith('[PORTAL]')));
+    setInvoices(inv);
+    setSatOrders(sat);
+    setLoading(false);
   };
 
   const filteredContacts = contacts.filter(c =>
-    `${c.name} ${c.surname || ''} ${c.company_name || ''} ${c.phone || ''} ${c.email || ''}`.toLowerCase().includes(contactSearch.toLowerCase())
+    `${c.name} ${c.surname || ''} ${c.company_name || ''} ${c.phone || ''} ${c.email || ''}`.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSelectContact = (c) => {
-    setSelectedContact(c);
-    setMsgForm(prev => ({
-      ...prev,
-      contact_id: c.id,
-      contact_name: `${c.name} ${c.surname || ''}`.trim(),
-      contact_phone: c.phone || '',
-      contact_email: c.email || '',
-    }));
-    setContactSearch('');
-    setShowContactSearch(false);
+  const clientDocs = selectedContact
+    ? invoices.filter(i => i.contact_id === selectedContact.id)
+    : [];
+
+  const clientSATs = selectedContact
+    ? satOrders.filter(s => s.contact_id === selectedContact.id)
+    : [];
+
+  const pendingDocs = clientDocs.filter(d => ['enviado', 'vencido'].includes(d.status));
+  const pendingBudgets = clientDocs.filter(d => d.doc_type === 'presupuesto' && d.status === 'enviado');
+
+  // Generar enlace público para presupuesto
+  const getPresupuestoLink = (doc) => {
+    const base = window.location.origin;
+    return `${base}/presupuesto-publico?id=${doc.id}`;
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    const title = `[PORTAL] ${msgForm.type} — ${msgForm.subject || msgForm.channel}`;
-    const content = JSON.stringify(msgForm);
-    if (msgForm.contact_id) {
-      await base44.entities.ClientNote.create({
-        contact_id: msgForm.contact_id,
-        contact_name: msgForm.contact_name,
-        title,
-        content,
-        date: msgForm.date,
-      });
+  const getSATLink = (sat) => {
+    const base = window.location.origin;
+    return `${base}/sat-publico?id=${sat.id}`;
+  };
+
+  const handleSendDocLink = async (doc) => {
+    setSendingLink(doc.id);
+    const contact = contacts.find(c => c.id === doc.contact_id);
+    const link = doc.doc_type === 'presupuesto' || doc.doc_type === 'factura'
+      ? getPresupuestoLink(doc)
+      : null;
+    if (!link) { setSendingLink(null); return; }
+
+    const docLabel = doc.doc_type === 'presupuesto' ? 'presupuesto' : 'factura';
+    const msg = `Hola ${contact?.name || doc.contact_name},\n\nTe enviamos el enlace para ver y ${doc.doc_type === 'presupuesto' ? 'aceptar' : 'descargar'} tu ${docLabel} nº ${doc.doc_number || ''}:\n\n${link}\n\nCualquier duda, estamos a tu disposición.`;
+
+    if (contact?.phone) {
+      const phone = contact.phone.replace(/[^0-9]/g, '');
+      window.open(`https://wa.me/34${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    } else if (contact?.email) {
+      window.open(`mailto:${contact.email}?subject=Tu ${docLabel}&body=${encodeURIComponent(msg)}`, '_blank');
+    } else {
+      navigator.clipboard.writeText(link);
+      alert('Enlace copiado al portapapeles');
     }
-    setSaving(false);
-    setMsgDialog(false);
-    setMsgForm({ contact_id: '', contact_name: '', contact_phone: '', contact_email: '', channel: 'whatsapp', type: 'consulta', subject: '', content: '', response: '', status: 'pendiente', priority: 'normal', date: format(new Date(), 'yyyy-MM-dd'), internal_notes: '' });
-    setSelectedContact(null);
-    loadAll();
+    setSendingLink(null);
   };
 
-  const generateAIResponse = async (msg) => {
-    setAiLoading(true);
-    const data = typeof msg.content === 'string' ? (()=>{ try { return JSON.parse(msg.content); } catch { return { content: msg.content }; } })() : msg.content;
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Eres el asistente de atención al cliente de una empresa de climatización y electricidad en España.
-El cliente "${data.contact_name || 'Cliente'}" ha enviado la siguiente comunicación:
-Tipo: ${data.type || 'consulta'}
-Asunto: ${data.subject || ''}
-Mensaje: ${data.content || ''}
-
-Redacta una respuesta profesional, cordial y concisa en español. Máximo 3 párrafos.`,
-    });
-    // Actualizar respuesta en el mensaje abierto
-    setViewMsg(prev => ({ ...prev, aiResponse: result }));
-    setAiLoading(false);
+  const handleSendSATLink = async (sat) => {
+    const contact = contacts.find(c => c.id === sat.contact_id);
+    const link = getSATLink(sat);
+    const msg = `Hola ${contact?.name || sat.contact_name},\n\nPuedes ver el estado de tu orden de servicio (SAT):\n\n${link}\n\nGracias por confiar en nosotros.`;
+    if (contact?.phone) {
+      window.open(`https://wa.me/34${contact.phone.replace(/[^0-9]/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
+    } else {
+      navigator.clipboard.writeText(link);
+      alert('Enlace copiado al portapapeles');
+    }
   };
 
-  const sendWhatsAppResponse = (msg, response) => {
-    const data = (() => { try { return JSON.parse(msg.content); } catch { return {}; } })();
-    const phone = data.contact_phone?.replace(/[^0-9]/g, '') || '';
-    const text = encodeURIComponent(response || data.response || '');
-    const url = phone ? `https://wa.me/34${phone}?text=${text}` : `https://wa.me/?text=${text}`;
-    window.open(url, '_blank');
-  };
-
-  const sendEmailResponse = (msg, response) => {
-    const data = (() => { try { return JSON.parse(msg.content); } catch { return {}; } })();
-    if (!data.contact_email) return alert('No hay email del cliente');
-    const subject = encodeURIComponent(`Re: ${data.subject || 'Comunicación'}`);
-    const body = encodeURIComponent(response || data.response || '');
-    window.open(`mailto:${data.contact_email}?subject=${subject}&body=${body}`, '_blank');
-  };
-
-  const parseMsg = (msg) => {
-    try { return JSON.parse(msg.content); } catch { return { content: msg.content, type: 'consulta', channel: 'portal', status: 'pendiente' }; }
-  };
-
-  const filtered = messages.filter(m => {
-    const d = parseMsg(m);
-    const matchSearch = `${m.contact_name} ${d.subject || ''} ${d.content || ''}`.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === 'all' || d.status === filterStatus;
-    const matchChannel = filterChannel === 'all' || d.channel === filterChannel;
-    return matchSearch && matchStatus && matchChannel;
-  });
-
-  // Stats
-  const pendientes = messages.filter(m => { const d = parseMsg(m); return d.status === 'pendiente'; }).length;
-  const resueltos = messages.filter(m => { const d = parseMsg(m); return d.status === 'resuelto'; }).length;
-
-  // Contacts with recent activity
-  const activeContacts = contacts
-    .filter(c => messages.some(m => m.contact_id === c.id))
-    .slice(0, 10);
+  // KPIs globales
+  const totalPending = invoices.filter(i => i.status === 'enviado').length;
+  const totalOverdue = invoices.filter(i => i.status === 'vencido').length;
+  const totalBudgetsPending = invoices.filter(i => i.doc_type === 'presupuesto' && i.status === 'enviado').length;
+  const totalActiveSATs = satOrders.filter(s => ['pendiente','en_curso'].includes(s.status)).length;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Users className="w-6 h-6 text-indigo-600" /> Portal Cliente y Comunicación
+          <Users className="w-6 h-6 text-indigo-600" /> Portal de Cliente
         </h1>
-        <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => { setMsgDialog(true); setSelectedContact(null); }}>
-          <Plus className="w-4 h-4 mr-1" />Nueva comunicación
-        </Button>
+        <p className="text-sm text-gray-500">Gestiona el acceso de tus clientes a sus documentos y pedidos</p>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Card className="bg-indigo-50"><CardContent className="p-3 flex items-center gap-3">
-          <MessageSquare className="w-7 h-7 text-indigo-600 opacity-70" />
-          <div><p className="text-2xl font-bold text-indigo-700">{messages.length}</p><p className="text-xs text-gray-500">Total mensajes</p></div>
-        </CardContent></Card>
-        <Card className="bg-yellow-50"><CardContent className="p-3 flex items-center gap-3">
-          <Clock className="w-7 h-7 text-yellow-600 opacity-70" />
-          <div><p className="text-2xl font-bold text-yellow-700">{pendientes}</p><p className="text-xs text-gray-500">Pendientes</p></div>
-        </CardContent></Card>
-        <Card className="bg-green-50"><CardContent className="p-3 flex items-center gap-3">
-          <CheckCircle className="w-7 h-7 text-green-600 opacity-70" />
-          <div><p className="text-2xl font-bold text-green-700">{resueltos}</p><p className="text-xs text-gray-500">Resueltos</p></div>
-        </CardContent></Card>
-        <Card className="bg-blue-50"><CardContent className="p-3 flex items-center gap-3">
-          <Users className="w-7 h-7 text-blue-600 opacity-70" />
-          <div><p className="text-2xl font-bold text-blue-700">{activeContacts.length}</p><p className="text-xs text-gray-500">Clientes activos</p></div>
-        </CardContent></Card>
+      {/* KPIs globales */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card className="bg-blue-50 border-blue-100">
+          <CardContent className="p-4 flex items-center gap-3">
+            <FileText className="w-8 h-8 text-blue-500 opacity-80" />
+            <div><p className="text-2xl font-bold text-blue-700">{totalPending}</p><p className="text-xs text-gray-500">Facturas enviadas</p></div>
+          </CardContent>
+        </Card>
+        <Card className="bg-red-50 border-red-100">
+          <CardContent className="p-4 flex items-center gap-3">
+            <AlertCircle className="w-8 h-8 text-red-500 opacity-80" />
+            <div><p className="text-2xl font-bold text-red-700">{totalOverdue}</p><p className="text-xs text-gray-500">Facturas vencidas</p></div>
+          </CardContent>
+        </Card>
+        <Card className="bg-yellow-50 border-yellow-100">
+          <CardContent className="p-4 flex items-center gap-3">
+            <Clock className="w-8 h-8 text-yellow-500 opacity-80" />
+            <div><p className="text-2xl font-bold text-yellow-700">{totalBudgetsPending}</p><p className="text-xs text-gray-500">Presupuestos pendientes</p></div>
+          </CardContent>
+        </Card>
+        <Card className="bg-orange-50 border-orange-100">
+          <CardContent className="p-4 flex items-center gap-3">
+            <Wrench className="w-8 h-8 text-orange-500 opacity-80" />
+            <div><p className="text-2xl font-bold text-orange-700">{totalActiveSATs}</p><p className="text-xs text-gray-500">SATs activos</p></div>
+          </CardContent>
+        </Card>
       </div>
 
-      <Tabs defaultValue="mensajes">
-        <TabsList>
-          <TabsTrigger value="mensajes">Comunicaciones ({filtered.length})</TabsTrigger>
-          <TabsTrigger value="clientes">Clientes con actividad</TabsTrigger>
-        </TabsList>
-
-        {/* ===== MENSAJES ===== */}
-        <TabsContent value="mensajes" className="space-y-3 pt-2">
-          <div className="flex flex-wrap gap-2">
-            <div className="relative flex-1 min-w-36">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input className="pl-9" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} />
-            </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="pendiente">Pendiente</SelectItem>
-                <SelectItem value="en_proceso">En proceso</SelectItem>
-                <SelectItem value="resuelto">Resuelto</SelectItem>
-                <SelectItem value="cerrado">Cerrado</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterChannel} onValueChange={setFilterChannel}>
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos canales</SelectItem>
-                {CHANNELS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {filtered.length === 0 && (
-            <div className="text-center py-12 text-gray-400">
-              <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p>No hay comunicaciones registradas</p>
-              <p className="text-xs mt-1">Registra el contacto con un cliente usando el botón de arriba</p>
-            </div>
-          )}
-          <div className="space-y-2">
-            {filtered.map(msg => {
-              const d = parseMsg(msg);
-              return (
-                <Card key={msg.id} className={`border-l-4 ${d.priority === 'urgente' ? 'border-l-red-500' : d.channel === 'whatsapp' ? 'border-l-green-400' : d.channel === 'email' ? 'border-l-blue-400' : 'border-l-gray-300'}`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm">{msg.contact_name}</span>
-                          <Badge className={STATUS_COLORS[d.status] || 'bg-gray-100 text-gray-600'}>{d.status}</Badge>
-                          <Badge variant="outline" className="text-xs">{d.channel}</Badge>
-                          <Badge variant="outline" className="text-xs">{d.type?.replace(/_/g,' ')}</Badge>
-                        </div>
-                        <p className="text-sm text-gray-700 mt-0.5 font-medium">{d.subject || '—'}</p>
-                        <p className="text-xs text-gray-500 line-clamp-1">{d.content}</p>
-                        <p className="text-xs text-gray-400 mt-1">{msg.date}</p>
-                      </div>
-                      <Button size="sm" variant="outline" className="h-7 text-xs flex-shrink-0" onClick={() => setViewMsg({ ...msg, parsed: d })}>
-                        <Eye className="w-3 h-3 mr-1" />Ver
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </TabsContent>
-
-        {/* ===== CLIENTES ===== */}
-        <TabsContent value="clientes" className="pt-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {activeContacts.map(c => {
-              const clientMsgs = messages.filter(m => m.contact_id === c.id);
-              const pending = clientMsgs.filter(m => parseMsg(m).status === 'pendiente').length;
-              return (
-                <Card key={c.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold">{c.name} {c.surname}</p>
-                        {c.company_name && <p className="text-xs text-gray-500">{c.company_name}</p>}
-                        <p className="text-xs text-gray-500 mt-1">{clientMsgs.length} comunicaciones · {pending > 0 && <span className="text-yellow-600 font-medium">{pending} pendientes</span>}</p>
-                      </div>
-                      <div className="flex gap-1">
-                        {c.phone && (
-                          <a href={`tel:${c.phone}`} className="p-1.5 bg-green-50 text-green-700 rounded hover:bg-green-100">
-                            <Phone className="w-4 h-4" />
-                          </a>
-                        )}
-                        {c.email && (
-                          <a href={`mailto:${c.email}`} className="p-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100">
-                            <Mail className="w-4 h-4" />
-                          </a>
-                        )}
-                        {c.phone && (
-                          <a href={`https://wa.me/34${c.phone?.replace(/[^0-9]/g,'')}`} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-emerald-50 text-emerald-700 rounded hover:bg-emerald-100">
-                            <MessageCircle className="w-4 h-4" />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {activeContacts.length === 0 && (
-              <div className="col-span-2 text-center py-10 text-gray-400">
-                <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p>No hay clientes con comunicaciones registradas</p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* ===== DIALOG NUEVA COMUNICACIÓN ===== */}
-      <Dialog open={msgDialog} onOpenChange={o => { setMsgDialog(o); if (!o) setSelectedContact(null); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Registrar comunicación</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            {/* Búsqueda de cliente */}
-            {selectedContact ? (
-              <div className="flex items-center gap-2 bg-indigo-50 p-2 rounded-lg">
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{selectedContact.name} {selectedContact.surname}</p>
-                  <p className="text-xs text-gray-500">{selectedContact.phone} · {selectedContact.email}</p>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => { setSelectedContact(null); setMsgForm(prev => ({ ...prev, contact_id: '', contact_name: '', contact_phone: '', contact_email: '' })); }}>Cambiar</Button>
-              </div>
-            ) : (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Panel izquierdo: lista de clientes */}
+        <div className="lg:col-span-1 space-y-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold text-gray-600 flex items-center gap-2">
+                <Users className="w-4 h-4" /> Seleccionar cliente
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 p-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input className="pl-9" placeholder="Buscar cliente..." value={contactSearch}
-                  onChange={e => { setContactSearch(e.target.value); setShowContactSearch(true); }}
-                  onFocus={() => setShowContactSearch(true)} />
-                {showContactSearch && contactSearch && (
-                  <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                    {filteredContacts.slice(0, 8).map(c => (
-                      <button key={c.id} className="w-full text-left px-3 py-2 hover:bg-indigo-50 text-sm" onClick={() => handleSelectContact(c)}>
-                        <p className="font-medium">{c.name} {c.surname}</p>
-                        <p className="text-xs text-gray-400">{c.phone} {c.company_name && `· ${c.company_name}`}</p>
-                      </button>
-                    ))}
-                    {filteredContacts.length === 0 && <p className="p-3 text-sm text-gray-400">No encontrado</p>}
-                  </div>
+                <Input
+                  className="pl-9 text-sm"
+                  placeholder="Buscar cliente..."
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); setShowSearch(true); }}
+                  onFocus={() => setShowSearch(true)}
+                />
+              </div>
+
+              <div className="max-h-[60vh] overflow-y-auto space-y-1">
+                {filteredContacts.slice(0, 30).map(c => {
+                  const cDocs = invoices.filter(i => i.contact_id === c.id);
+                  const cPending = cDocs.filter(i => ['enviado','vencido'].includes(i.status)).length;
+                  const cSATs = satOrders.filter(s => s.contact_id === c.id && ['pendiente','en_curso'].includes(s.status)).length;
+                  const isSelected = selectedContact?.id === c.id;
+
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => { setSelectedContact(c); setTab('documentos'); }}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl transition-colors flex items-start gap-2 ${isSelected ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-gray-50 border border-transparent'}`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm flex-shrink-0">
+                        {(c.name || '?')[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-gray-900 truncate">{c.name} {c.surname || ''}</p>
+                        {c.company_name && <p className="text-xs text-gray-400 truncate">{c.company_name}</p>}
+                        <div className="flex gap-1.5 mt-0.5">
+                          {cPending > 0 && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 rounded-full font-medium">{cPending} doc.</span>}
+                          {cSATs > 0 && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 rounded-full font-medium">{cSATs} SAT</span>}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+                {filteredContacts.length === 0 && (
+                  <p className="text-center text-sm text-gray-400 py-6">Sin resultados</p>
                 )}
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  <Input placeholder="Nombre cliente (sin buscar)" value={msgForm.contact_name} onChange={e => setMsgForm({ ...msgForm, contact_name: e.target.value })} />
-                  <Input placeholder="Teléfono" value={msgForm.contact_phone} onChange={e => setMsgForm({ ...msgForm, contact_phone: e.target.value })} />
-                </div>
-                <Input className="mt-2" placeholder="Email" value={msgForm.contact_email} onChange={e => setMsgForm({ ...msgForm, contact_email: e.target.value })} />
               </div>
-            )}
+            </CardContent>
+          </Card>
+        </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <Select value={msgForm.channel} onValueChange={v => setMsgForm({ ...msgForm, channel: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{CHANNELS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={msgForm.type} onValueChange={v => setMsgForm({ ...msgForm, type: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{MSG_TYPES.map(t => <SelectItem key={t} value={t}>{t.replace(/_/g,' ')}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={msgForm.priority} onValueChange={v => setMsgForm({ ...msgForm, priority: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="urgente">Urgente</SelectItem>
-                </SelectContent>
-              </Select>
+        {/* Panel derecho: detalle del cliente */}
+        <div className="lg:col-span-2">
+          {!selectedContact ? (
+            <Card className="h-full">
+              <CardContent className="flex flex-col items-center justify-center h-64 text-gray-400">
+                <Users className="w-12 h-12 mb-3 opacity-30" />
+                <p className="font-medium">Selecciona un cliente</p>
+                <p className="text-sm mt-1">para ver sus documentos, facturas y órdenes de servicio</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {/* Ficha del cliente */}
+              <Card>
+                <CardContent className="p-4 flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xl flex-shrink-0">
+                    {(selectedContact.name || '?')[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg font-bold text-gray-900">{selectedContact.name} {selectedContact.surname || ''}</h2>
+                    {selectedContact.company_name && <p className="text-sm text-gray-500">{selectedContact.company_name}</p>}
+                    <div className="flex flex-wrap gap-3 mt-2">
+                      {selectedContact.phone && (
+                        <a href={`tel:${selectedContact.phone}`} className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600">
+                          <Phone className="w-3.5 h-3.5" />{selectedContact.phone}
+                        </a>
+                      )}
+                      {selectedContact.email && (
+                        <a href={`mailto:${selectedContact.email}`} className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600">
+                          <Mail className="w-3.5 h-3.5" />{selectedContact.email}
+                        </a>
+                      )}
+                      {selectedContact.phone && (
+                        <a href={`https://wa.me/34${selectedContact.phone.replace(/[^0-9]/g,'')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-green-600 hover:text-green-700">
+                          <MessageCircle className="w-3.5 h-3.5" />WhatsApp
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xs text-gray-400">{clientDocs.length} docs · {clientSATs.length} SATs</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tabs */}
+              <Tabs value={tab} onValueChange={setTab}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="documentos" className="flex-1">
+                    <FileText className="w-3.5 h-3.5 mr-1" />
+                    Docs ({clientDocs.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="sat" className="flex-1">
+                    <Wrench className="w-3.5 h-3.5 mr-1" />
+                    SATs ({clientSATs.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="enlaces" className="flex-1">
+                    <Link className="w-3.5 h-3.5 mr-1" />
+                    Enviar acceso
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* DOCUMENTOS */}
+                <TabsContent value="documentos" className="space-y-2 pt-2">
+                  {clientDocs.length === 0 ? (
+                    <div className="text-center py-10 text-gray-400">
+                      <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">No hay documentos para este cliente</p>
+                    </div>
+                  ) : (
+                    clientDocs.map(doc => (
+                      <Card key={doc.id} className={`border-l-4 ${doc.status === 'vencido' ? 'border-l-red-400' : doc.status === 'pagado' ? 'border-l-green-400' : doc.doc_type === 'presupuesto' ? 'border-l-yellow-400' : 'border-l-blue-400'}`}>
+                        <CardContent className="p-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${doc.doc_type === 'factura' ? 'bg-blue-50 text-blue-600' : doc.doc_type === 'presupuesto' ? 'bg-yellow-50 text-yellow-600' : 'bg-green-50 text-green-600'}`}>
+                              {DOC_ICONS[doc.doc_type] || <FileText className="w-4 h-4" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-sm capitalize">{doc.doc_type}</span>
+                                <span className="text-xs text-gray-400 font-mono">#{doc.doc_number || '—'}</span>
+                                <Badge className={`text-[10px] ${STATUS_COLORS[doc.status] || 'bg-gray-100 text-gray-600'}`}>{doc.status}</Badge>
+                              </div>
+                              <div className="flex items-center gap-3 mt-0.5">
+                                <span className="text-sm font-bold text-gray-800">{doc.total != null ? `${Number(doc.total).toFixed(2)} €` : '—'}</span>
+                                <span className="text-xs text-gray-400">{doc.date}</span>
+                                {doc.due_date && <span className="text-xs text-gray-400">Vence: {doc.due_date}</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs gap-1"
+                                onClick={() => setPreviewDoc(doc)}
+                              >
+                                <Eye className="w-3 h-3" />Ver
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs gap-1 text-green-700 border-green-200 hover:bg-green-50"
+                                disabled={sendingLink === doc.id}
+                                onClick={() => handleSendDocLink(doc)}
+                              >
+                                <Send className="w-3 h-3" />Enviar
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </TabsContent>
+
+                {/* SATs */}
+                <TabsContent value="sat" className="space-y-2 pt-2">
+                  {clientSATs.length === 0 ? (
+                    <div className="text-center py-10 text-gray-400">
+                      <Wrench className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">No hay órdenes de servicio para este cliente</p>
+                    </div>
+                  ) : (
+                    clientSATs.map(sat => (
+                      <Card key={sat.id} className={`border-l-4 ${sat.status === 'completada' ? 'border-l-green-400' : sat.status === 'en_curso' ? 'border-l-blue-400' : sat.priority === 'urgente' ? 'border-l-red-400' : 'border-l-yellow-400'}`}>
+                        <CardContent className="p-3">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-sm">SAT #{sat.order_number || sat.id?.slice(-6)}</span>
+                                <Badge className={`text-[10px] ${STATUS_COLORS[sat.status] || 'bg-gray-100 text-gray-600'}`}>{sat.status}</Badge>
+                                {sat.priority === 'urgente' && <Badge className="text-[10px] bg-red-100 text-red-700">Urgente</Badge>}
+                              </div>
+                              <p className="text-sm text-gray-700 mt-0.5 line-clamp-1">{sat.description || sat.type}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{sat.date} · {sat.type}</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs gap-1 text-green-700 border-green-200 hover:bg-green-50 flex-shrink-0"
+                              onClick={() => handleSendSATLink(sat)}
+                            >
+                              <Send className="w-3 h-3" />Enviar estado
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </TabsContent>
+
+                {/* ENLACES */}
+                <TabsContent value="enlaces" className="pt-2">
+                  <Card>
+                    <CardContent className="p-4 space-y-4">
+                      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                        <h3 className="font-semibold text-indigo-800 mb-2 flex items-center gap-2">
+                          <Link className="w-4 h-4" />Cómo funciona el acceso sin registro
+                        </h3>
+                        <ul className="text-sm text-indigo-700 space-y-1.5">
+                          <li>✅ El cliente recibe un enlace único por WhatsApp o email</li>
+                          <li>✅ Puede ver, descargar y aceptar/rechazar presupuestos</li>
+                          <li>✅ Puede ver el estado de sus órdenes SAT</li>
+                          <li>✅ No necesita crear cuenta ni contraseña</li>
+                        </ul>
+                      </div>
+
+                      {pendingBudgets.length > 0 && (
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700 mb-2">Presupuestos pendientes de aceptar:</p>
+                          {pendingBudgets.map(doc => (
+                            <div key={doc.id} className="flex items-center justify-between gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mb-2">
+                              <div>
+                                <span className="text-sm font-medium">Presupuesto #{doc.doc_number || '—'}</span>
+                                <span className="text-xs text-gray-500 ml-2">{doc.total != null ? `${Number(doc.total).toFixed(2)} €` : ''}</span>
+                              </div>
+                              <Button
+                                size="sm"
+                                className="h-7 text-xs bg-yellow-600 hover:bg-yellow-700 gap-1"
+                                onClick={() => handleSendDocLink(doc)}
+                              >
+                                <Send className="w-3 h-3" />Enviar enlace
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {pendingDocs.filter(d => d.doc_type === 'factura').length > 0 && (
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700 mb-2">Facturas pendientes de pago:</p>
+                          {pendingDocs.filter(d => d.doc_type === 'factura').map(doc => (
+                            <div key={doc.id} className="flex items-center justify-between gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-2">
+                              <div>
+                                <span className="text-sm font-medium">Factura #{doc.doc_number || '—'}</span>
+                                <span className="text-xs text-gray-500 ml-2">{doc.total != null ? `${Number(doc.total).toFixed(2)} €` : ''}</span>
+                                {doc.status === 'vencido' && <Badge className="ml-2 text-[10px] bg-red-100 text-red-700">Vencida</Badge>}
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs gap-1"
+                                onClick={() => handleSendDocLink(doc)}
+                              >
+                                <Send className="w-3 h-3" />Enviar
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {pendingBudgets.length === 0 && pendingDocs.filter(d => d.doc_type === 'factura').length === 0 && (
+                        <div className="text-center py-6 text-gray-400">
+                          <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm">No hay documentos pendientes de enviar a este cliente</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </div>
+          )}
+        </div>
+      </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-gray-500">Estado</label>
-                <Select value={msgForm.status} onValueChange={v => setMsgForm({ ...msgForm, status: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pendiente">Pendiente</SelectItem>
-                    <SelectItem value="en_proceso">En proceso</SelectItem>
-                    <SelectItem value="resuelto">Resuelto</SelectItem>
-                    <SelectItem value="cerrado">Cerrado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs text-gray-500">Fecha</label>
-                <Input type="date" className="mt-1" value={msgForm.date} onChange={e => setMsgForm({ ...msgForm, date: e.target.value })} />
-              </div>
-            </div>
-
-            <Input placeholder="Asunto" value={msgForm.subject} onChange={e => setMsgForm({ ...msgForm, subject: e.target.value })} />
-            <Textarea placeholder="Contenido del mensaje / comunicación del cliente..." value={msgForm.content} onChange={e => setMsgForm({ ...msgForm, content: e.target.value })} rows={3} />
-            <Textarea placeholder="Respuesta / acción tomada..." value={msgForm.response} onChange={e => setMsgForm({ ...msgForm, response: e.target.value })} rows={3} />
-            <Textarea placeholder="Notas internas (no visibles al cliente)" value={msgForm.internal_notes} onChange={e => setMsgForm({ ...msgForm, internal_notes: e.target.value })} rows={2} />
-
-            <Button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600">
-              {saving ? 'Guardando...' : 'Guardar comunicación'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ===== DIALOG VER MENSAJE ===== */}
-      <Dialog open={!!viewMsg} onOpenChange={() => setViewMsg(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Comunicación</DialogTitle></DialogHeader>
-          {viewMsg && (() => {
-            const d = viewMsg.parsed || parseMsg(viewMsg);
-            return (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold">{viewMsg.contact_name}</span>
-                  <Badge className={STATUS_COLORS[d.status] || ''}>{d.status}</Badge>
-                  <Badge variant="outline">{d.channel}</Badge>
-                  <Badge variant="outline">{d.type?.replace(/_/g,' ')}</Badge>
-                </div>
-                {d.subject && <p className="font-medium text-gray-800">{d.subject}</p>}
+      {/* Dialog preview documento */}
+      <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 capitalize">
+              {previewDoc && DOC_ICONS[previewDoc.doc_type]}
+              {previewDoc?.doc_type} #{previewDoc?.doc_number || '—'}
+            </DialogTitle>
+          </DialogHeader>
+          {previewDoc && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-400 mb-1">Mensaje del cliente</p>
-                  <p className="text-sm whitespace-pre-wrap">{d.content}</p>
+                  <p className="text-xs text-gray-400">Cliente</p>
+                  <p className="font-semibold text-sm">{previewDoc.contact_name}</p>
                 </div>
-                {d.response && (
-                  <div className="bg-blue-50 rounded-lg p-3">
-                    <p className="text-xs text-blue-400 mb-1">Respuesta enviada</p>
-                    <p className="text-sm whitespace-pre-wrap">{d.response}</p>
-                  </div>
-                )}
-                {viewMsg.aiResponse && (
-                  <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
-                    <p className="text-xs text-indigo-500 mb-1">🤖 Respuesta sugerida por IA</p>
-                    <p className="text-sm whitespace-pre-wrap">{viewMsg.aiResponse}</p>
-                  </div>
-                )}
-                {d.internal_notes && (
-                  <div className="bg-amber-50 rounded-lg p-2">
-                    <p className="text-xs text-amber-600 font-medium">Notas internas</p>
-                    <p className="text-xs mt-1">{d.internal_notes}</p>
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-2 pt-1 border-t">
-                  <Button size="sm" variant="outline" className="text-indigo-600 gap-1" onClick={() => generateAIResponse(viewMsg)} disabled={aiLoading}>
-                    {aiLoading ? '⏳ Generando...' : '🤖 Generar respuesta IA'}
-                  </Button>
-                  {d.contact_phone && (
-                    <Button size="sm" variant="outline" className="text-green-700 gap-1" onClick={() => sendWhatsAppResponse(viewMsg, viewMsg.aiResponse || d.response)}>
-                      <Phone className="w-3 h-3" />WhatsApp
-                    </Button>
-                  )}
-                  {d.contact_email && (
-                    <Button size="sm" variant="outline" className="text-blue-700 gap-1" onClick={() => sendEmailResponse(viewMsg, viewMsg.aiResponse || d.response)}>
-                      <Mail className="w-3 h-3" />Email
-                    </Button>
-                  )}
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-400">Fecha</p>
+                  <p className="font-semibold text-sm">{previewDoc.date}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-400">Estado</p>
+                  <Badge className={STATUS_COLORS[previewDoc.status]}>{previewDoc.status}</Badge>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-400">Total</p>
+                  <p className="font-bold text-lg text-emerald-700">{previewDoc.total != null ? `${Number(previewDoc.total).toFixed(2)} €` : '—'}</p>
                 </div>
               </div>
-            );
-          })()}
+
+              {previewDoc.items?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-1">Líneas ({previewDoc.items.length})</p>
+                  <div className="max-h-40 overflow-y-auto border rounded-lg divide-y">
+                    {previewDoc.items.map((item, i) => (
+                      <div key={i} className="flex justify-between px-3 py-1.5 text-xs">
+                        <span className="text-gray-700 flex-1 truncate">{item.description}</span>
+                        <span className="font-semibold text-gray-900 ml-2">{item.total != null ? `${Number(item.total).toFixed(2)} €` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-indigo-50 rounded-lg p-3">
+                <p className="text-xs text-indigo-600 font-semibold mb-1">Enlace para el cliente:</p>
+                <p className="text-xs font-mono text-indigo-800 break-all">{getPresupuestoLink(previewDoc)}</p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 bg-green-600 hover:bg-green-700 gap-2"
+                  onClick={() => { handleSendDocLink(previewDoc); setPreviewDoc(null); }}
+                >
+                  <Send className="w-4 h-4" />Enviar por WhatsApp / Email
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => { navigator.clipboard.writeText(getPresupuestoLink(previewDoc)); }}
+                >
+                  <Link className="w-4 h-4" />Copiar enlace
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

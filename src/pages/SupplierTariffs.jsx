@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import SupplierCatalogImportWithSupplier from '../components/SupplierCatalogImportWithSupplier';
 import PriceComparator from '../components/PriceComparator';
+import ProductPriceHistoryChart from '../components/ProductPriceHistoryChart';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general', 'material', 'mano_obra', 'otro'];
 
@@ -340,6 +341,15 @@ export default function SupplierTariffs() {
               </div>
               <Input placeholder="Unidad (ud, m, kg...)" value={editForm.unit || ''} onChange={e => setEditForm(f => ({ ...f, unit: e.target.value }))} />
               <Input placeholder="Notas adicionales" value={editForm.notes || ''} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} />
+
+              {/* Gráfica de evolución de precio */}
+              <div className="border rounded-xl p-3 bg-gray-50">
+                <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1">
+                  <TrendingDown className="w-3.5 h-3.5" />Evolución de precio entre proveedores
+                </p>
+                <ProductPriceHistoryChart product={editItem} allPrices={prices} />
+              </div>
+
               <Button onClick={handleSaveEdit} disabled={savingEdit} className="w-full bg-blue-700 hover:bg-blue-800">
                 {savingEdit ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}
                 Guardar cambios
