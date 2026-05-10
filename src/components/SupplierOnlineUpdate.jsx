@@ -119,54 +119,86 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated }) {
   );
 }
 
+// Normaliza un nombre para búsqueda: quita acentos, símbolos y normaliza espacios
+function normalizeName(str) {
+  return String(str || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita acentos
+    .replace(/[^\w\s]/g, ' ')                          // quita símbolos
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // ── Panel de imágenes en masa ─────────────────────────────────────────────────
 function BulkImagePanel({ supplier, prices, onUpdated }) {
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState([]);
-  const [manualItem, setManualItem] = useState(null); // item para subida manual
+  const [running, setRunning] = useState(false);
+  const [results, setResults] = useState([]);   // { item, image_url?, ok, pending? }
+  const [found, setFound] = useState(0);
+  const [processed, setProcessed] = useState(0);
+  const [manualItem, setManualItem] = useState(null);
   const [manualUrl, setManualUrl] = useState('');
   const fileRef = useRef(null);
   const [uploadingManual, setUploadingManual] = useState(false);
+  const stopRef = useRef(false);
 
   const withoutImage = prices.filter(p => !p.image_url);
 
   const handleFetchImages = async () => {
     if (withoutImage.length === 0) { toast.info('Todos los productos ya tienen imagen'); return; }
-    setLoading(true);
+    setRunning(true);
+    stopRef.current = false;
     setResults([]);
+    setFound(0);
+    setProcessed(0);
 
-    // Procesar en grupos de 10 para no saturar
-    const BATCH = 10;
-    const newResults = [];
+    // Inicializar todos como pendientes
+    const initial = withoutImage.map(item => ({ item, ok: false, pending: true }));
+    setResults(initial);
 
-    for (let i = 0; i < Math.min(withoutImage.length, 50); i += BATCH) {
-      const batch = withoutImage.slice(i, i + BATCH);
-      const updates = await Promise.allSettled(batch.map(async (item) => {
+    // Procesar uno a uno sin límite de lotes — guarda en BD en cuanto encuentra imagen
+    for (let i = 0; i < withoutImage.length; i++) {
+      if (stopRef.current) break;
+      const item = withoutImage[i];
+
+      // Nombre normalizado para mejor búsqueda (sin acentos ni errores tipográficos)
+      const cleanName = normalizeName(item.product_name);
+      const cleanBrand = normalizeName(item.brand || '');
+      const prompt = `Find the official product image URL for: "${cleanName}"${cleanBrand ? ` brand ${cleanBrand}` : ''}${item.product_code ? ` ref ${item.product_code}` : ''}. Return only a direct image URL (jpg/png/webp). If no reliable image exists, return null.`;
+
+      let imageUrl = null;
+      try {
         const res = await base44.integrations.Core.InvokeLLM({
-          prompt: `Busca en internet la imagen oficial del producto: "${item.product_name}"${item.brand ? ` marca ${item.brand}` : ''}${item.product_code ? ` ref ${item.product_code}` : ''}. Devuelve la URL directa de una imagen del producto (jpg/png/webp). Si no hay imagen fiable, devuelve null.`,
+          prompt,
           add_context_from_internet: true,
           response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
         });
-        if (res?.image_url) {
-          await base44.entities.SupplierPrice.update(item.id, { image_url: res.image_url });
-          return { item, image_url: res.image_url, ok: true };
+        imageUrl = res?.image_url || null;
+      } catch (_) {
+        // Error tipográfico o fallo puntual: ignorar y continuar
+        imageUrl = null;
+      }
+
+      // Guardar en BD inmediatamente si encontró imagen
+      if (imageUrl) {
+        try {
+          await base44.entities.SupplierPrice.update(item.id, { image_url: imageUrl });
+          setFound(prev => prev + 1);
+        } catch (_) {
+          imageUrl = null; // no se pudo guardar, marcar sin imagen
         }
-        return { item, ok: false };
-      }));
+      }
 
-      updates.forEach(r => {
-        if (r.status === 'fulfilled') newResults.push(r.value);
-        else newResults.push({ item: batch[newResults.length % BATCH], ok: false });
-      });
-
-      setResults([...newResults]);
+      // Actualizar resultado de este item en la lista en tiempo real
+      setResults(prev => prev.map(r =>
+        r.item.id === item.id ? { item, image_url: imageUrl || undefined, ok: !!imageUrl, pending: false } : r
+      ));
+      setProcessed(i + 1);
     }
 
+    setRunning(false);
     onUpdated && onUpdated();
-    setLoading(false);
-    const found = newResults.filter(r => r.ok).length;
-    toast.success(`${found} imágenes encontradas automáticamente`);
   };
+
+  const handleStop = () => { stopRef.current = true; };
 
   const handleManualFile = async (e) => {
     const file = e.target.files?.[0];
@@ -174,7 +206,7 @@ function BulkImagePanel({ supplier, prices, onUpdated }) {
     setUploadingManual(true);
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
     await base44.entities.SupplierPrice.update(manualItem.id, { image_url: file_url });
-    setResults(prev => prev.map(r => r.item.id === manualItem.id ? { ...r, image_url: file_url, ok: true } : r));
+    setResults(prev => prev.map(r => r.item.id === manualItem.id ? { ...r, image_url: file_url, ok: true, pending: false } : r));
     setManualItem(null);
     onUpdated && onUpdated();
     setUploadingManual(false);
@@ -184,57 +216,104 @@ function BulkImagePanel({ supplier, prices, onUpdated }) {
   const handleManualUrl = async () => {
     if (!manualUrl || !manualItem) return;
     await base44.entities.SupplierPrice.update(manualItem.id, { image_url: manualUrl });
-    setResults(prev => prev.map(r => r.item.id === manualItem.id ? { ...r, image_url: manualUrl, ok: true } : r));
+    setResults(prev => prev.map(r => r.item.id === manualItem.id ? { ...r, image_url: manualUrl, ok: true, pending: false } : r));
     setManualItem(null);
     setManualUrl('');
     onUpdated && onUpdated();
     toast.success('Imagen guardada');
   };
 
+  const pendingCount = results.filter(r => r.pending).length;
+  const notFoundCount = results.filter(r => !r.pending && !r.ok).length;
+
   return (
     <div className="space-y-3">
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
         <p className="font-semibold mb-0.5">🖼️ Descarga automática de imágenes</p>
         <p className="text-xs text-amber-600">
-          {withoutImage.length} de {prices.length} productos sin imagen. La IA buscará y asignará las imágenes automáticamente (máx. 50 por lote).
+          {withoutImage.length} de {prices.length} productos sin imagen. La IA buscará cada imagen y la guardará al instante — sin necesidad de supervisión.
         </p>
       </div>
 
-      <Button onClick={handleFetchImages} disabled={loading || withoutImage.length === 0} className="w-full bg-amber-600 hover:bg-amber-700 gap-2">
-        {loading
-          ? <><Loader2 className="w-4 h-4 animate-spin" /> Buscando imágenes...</>
-          : <><ImageIcon className="w-4 h-4" /> Buscar imágenes automáticamente ({Math.min(withoutImage.length, 50)})</>
-        }
-      </Button>
+      {!running ? (
+        <Button onClick={handleFetchImages} disabled={withoutImage.length === 0} className="w-full bg-amber-600 hover:bg-amber-700 gap-2">
+          <ImageIcon className="w-4 h-4" /> Buscar imágenes automáticamente ({withoutImage.length})
+        </Button>
+      ) : (
+        <div className="space-y-2">
+          {/* Barra de progreso en tiempo real */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-amber-800 flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Buscando imágenes...
+              </span>
+              <span className="text-amber-600 font-mono text-xs">{processed}/{withoutImage.length}</span>
+            </div>
+            <div className="w-full bg-amber-200 rounded-full h-2 overflow-hidden">
+              <div className="h-2 bg-amber-500 rounded-full transition-all duration-300"
+                style={{ width: `${withoutImage.length > 0 ? Math.round(processed / withoutImage.length * 100) : 0}%` }} />
+            </div>
+            <div className="flex justify-between text-xs text-amber-600">
+              <span>✅ {found} encontradas · ❌ {processed - found} sin imagen</span>
+              <span>{pendingCount} pendientes</span>
+            </div>
+          </div>
+          <Button size="sm" variant="outline" onClick={handleStop} className="w-full text-xs border-red-200 text-red-600 hover:bg-red-50">
+            Detener búsqueda
+          </Button>
+        </div>
+      )}
 
       {results.length > 0 && (
         <div className="max-h-64 overflow-y-auto border rounded-xl divide-y text-xs">
           {results.map((r, i) => (
-            <div key={i} className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-gray-50">
+            <div key={i} className={`flex items-center gap-2 px-3 py-2 ${r.pending ? 'bg-gray-50 opacity-60' : 'bg-white'}`}>
               <div className="w-8 h-8 rounded border bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
                 {r.image_url
-                  ? <img src={r.image_url} alt="" className="w-full h-full object-contain" onError={e => e.target.style.display='none'} />
-                  : <ImageIcon className="w-3 h-3 text-gray-300" />
+                  ? <img src={r.image_url} alt="" className="w-full h-full object-contain" onError={e => { e.target.style.display = 'none'; }} />
+                  : r.pending
+                    ? <Loader2 className="w-3 h-3 text-gray-300 animate-spin" />
+                    : <ImageIcon className="w-3 h-3 text-gray-300" />
                 }
               </div>
               <span className="flex-1 truncate text-gray-700">{r.item.product_name}</span>
-              {r.ok
-                ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                : (
-                  <button
-                    onClick={() => { setManualItem(r.item); setManualUrl(''); }}
-                    className="text-[10px] px-2 py-0.5 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 flex-shrink-0"
-                  >
-                    + Subir manual
-                  </button>
-                )
+              {r.pending
+                ? <span className="text-[10px] text-gray-400">esperando...</span>
+                : r.ok
+                  ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                  : (
+                    <button
+                      onClick={() => { setManualItem(r.item); setManualUrl(''); }}
+                      className="text-[10px] px-2 py-0.5 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 flex-shrink-0"
+                    >
+                      + Subir manual
+                    </button>
+                  )
               }
             </div>
           ))}
         </div>
       )}
 
-      {/* Dialog subida manual */}
+      {/* Resumen cuando termina */}
+      {!running && results.length > 0 && (
+        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2">
+            <p className="font-bold text-emerald-700 text-base">{found}</p>
+            <p className="text-emerald-600">Encontradas</p>
+          </div>
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-2">
+            <p className="font-bold text-orange-700 text-base">{notFoundCount}</p>
+            <p className="text-orange-600">Sin imagen</p>
+          </div>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-2">
+            <p className="font-bold text-gray-600 text-base">{results.length}</p>
+            <p className="text-gray-500">Total</p>
+          </div>
+        </div>
+      )}
+
+      {/* Subida manual inline */}
       {manualItem && (
         <div className="border border-orange-200 bg-orange-50 rounded-xl p-3 space-y-2">
           <p className="text-xs font-semibold text-orange-800">Subir imagen para: {manualItem.product_name}</p>
@@ -246,7 +325,7 @@ function BulkImagePanel({ supplier, prices, onUpdated }) {
               className="text-xs h-8 flex-1"
             />
             <Button size="sm" disabled={!manualUrl} onClick={handleManualUrl} className="h-8 bg-orange-600 hover:bg-orange-700 text-xs">
-              Guardar URL
+              Guardar
             </Button>
           </div>
           <div className="flex items-center gap-2">
