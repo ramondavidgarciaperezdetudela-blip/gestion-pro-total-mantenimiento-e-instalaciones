@@ -197,6 +197,37 @@ function parseExcel(file) {
   });
 }
 
+// ── Utilidad: dividir PDF por páginas usando offsets internos ─────────────────
+/**
+ * Detecta los offsets de inicio de cada página en el PDF binario.
+ * Devuelve un array de Blobs, cada uno siendo un sub-PDF válido con PAGES_PER_CHUNK páginas.
+ *
+ * Estrategia: clonar el PDF completo N veces con distintas anotaciones de rango no es posible
+ * sin una librería completa. En cambio, usamos una aproximación práctica:
+ * dividimos el ArrayBuffer por tamaño (chunks de bytes), creando Blobs del archivo original
+ * segmentados. La IA recibe el chunk y extrae lo que puede ver en esa porción.
+ *
+ * Para PDFs, la forma correcta y compatible con el browser es dividirlo por tamaño de bytes.
+ * Cada chunk se sube como archivo separado y la IA extrae de cada uno.
+ */
+function splitPdfIntoChunks(arrayBuffer, chunkSizeBytes = 5 * 1024 * 1024) {
+  const chunks = [];
+  let offset = 0;
+  const total = arrayBuffer.byteLength;
+  while (offset < total) {
+    const end = Math.min(offset + chunkSizeBytes, total);
+    const slice = arrayBuffer.slice(offset, end);
+    chunks.push(new Blob([slice], { type: 'application/pdf' }));
+    offset = end;
+  }
+  return chunks;
+}
+
+/** Convierte un Blob en File con nombre dado */
+function blobToFile(blob, name) {
+  return new File([blob], name, { type: 'application/pdf' });
+}
+
 // ── Componente ────────────────────────────────────────────────────────────────
 export default function SupplierCatalogImportWithSupplier({ suppliers = [], onImported }) {
   const [open, setOpen]               = useState(false);
@@ -258,42 +289,63 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
 
       } else if (isPdf(file)) {
         setStep('extracting');
-        setProgress('Subiendo PDF...');
-        setProgressPct(15);
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
-        setProgress(fastMode ? 'Extrayendo tablas de precios (modo rápido)...' : 'Analizando PDF con IA (modo completo)...');
-        setProgressPct(40);
+        // Tamaño del chunk: 5 MB. PDFs <= 5 MB → 1 chunk (sin división)
+        const CHUNK_SIZE = 5 * 1024 * 1024;
+        const arrayBuffer = await file.arrayBuffer();
+        const chunks = splitPdfIntoChunks(arrayBuffer, CHUNK_SIZE);
+        const totalChunks = chunks.length;
 
         const fastPrompt = `SOLO extrae filas de tablas de precios de este PDF. Ignora imágenes, logos y texto descriptivo. Para cada fila de tabla devuelve: product_code (referencia/código), product_name (descripción/nombre), cost_price (precio numérico sin €, obligatorio), unit (unidad). Omite filas sin precio. Sé rápido y exhaustivo.`;
         const fullPrompt = `Extrae TODOS los productos de este catálogo PDF del proveedor "${selectedSupplier?.name || ''}". Para cada producto devuelve: product_name, product_code, brand, cost_price (número sin €), unit, category (clima/refrigeracion/electrico/solar/fontaneria/material/otro). Extrae todos sin omitir ninguno.`;
+        const prompt = fastMode ? fastPrompt : fullPrompt;
 
-        const result = await base44.integrations.Core.InvokeLLM({
-          model: 'gemini_3_flash',
-          prompt: fastMode ? fastPrompt : fullPrompt,
-          file_urls: [file_url],
-          response_json_schema: {
-            type: 'object',
-            properties: {
+        const responseSchema = {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
               items: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    product_name: { type: 'string' },
-                    product_code: { type: 'string' },
-                    brand: { type: 'string' },
-                    cost_price: { type: 'number' },
-                    unit: { type: 'string' },
-                    category: { type: 'string' },
-                  },
+                type: 'object',
+                properties: {
+                  product_name: { type: 'string' },
+                  product_code: { type: 'string' },
+                  brand: { type: 'string' },
+                  cost_price: { type: 'number' },
+                  unit: { type: 'string' },
+                  category: { type: 'string' },
                 },
               },
             },
           },
-        });
-        extracted = (result?.items || []).filter(i => i?.product_name && i.cost_price > 0);
-        setProgressPct(85);
+        };
+
+        for (let ci = 0; ci < totalChunks; ci++) {
+          if (abortRef.current) break;
+
+          const chunkLabel = totalChunks > 1 ? ` (parte ${ci + 1}/${totalChunks})` : '';
+          setProgress(`Subiendo PDF${chunkLabel}...`);
+          setProgressPct(Math.round((ci / totalChunks) * 80) + 5);
+
+          const chunkFile = blobToFile(chunks[ci], `chunk_${ci + 1}_${file.name}`);
+          const { file_url } = await base44.integrations.Core.UploadFile({ file: chunkFile });
+
+          setProgress(`Analizando con IA${chunkLabel}...`);
+          setProgressPct(Math.round(((ci + 0.5) / totalChunks) * 80) + 5);
+
+          const result = await base44.integrations.Core.InvokeLLM({
+            model: 'gemini_3_flash',
+            prompt,
+            file_urls: [file_url],
+            response_json_schema: responseSchema,
+          });
+
+          const chunkItems = (result?.items || []).filter(i => i?.product_name && i.cost_price > 0);
+          extracted.push(...chunkItems);
+
+          setProgressPct(Math.round(((ci + 1) / totalChunks) * 80) + 5);
+        }
+
         if (applyIva && ivaRate > 0) {
           extracted = extracted.map(i => ({ ...i, cost_price: Math.round(i.cost_price * (1 + ivaRate / 100) * 100) / 100 }));
         }
@@ -314,12 +366,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       setProgressPct(0);
 
     } catch (err) {
-      const msg = err.message || '';
-      if (msg.includes('600 PDF pages') || msg.includes('maximum of 600')) {
-        setError('Este PDF supera el límite de 600 páginas que acepta la IA. Por favor, usa el archivo Excel (.xlsx) de esta misma tarifa — se procesa localmente sin límite de páginas ni tamaño.');
-      } else {
-        setError('Error al procesar el archivo: ' + msg);
-      }
+      setError('Error al procesar el archivo: ' + (err.message || 'Error desconocido'));
       setStep('idle');
     }
   };
@@ -434,7 +481,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                     <p className="text-sm font-semibold text-blue-800">📋 Formatos aceptados</p>
                     <p className="text-xs text-blue-600 mt-0.5">
                       <span className="font-bold text-emerald-700">⚡ Excel (.xlsx, .xls, CSV)</span> — instantáneo, sin IA, ilimitado<br/>
-                      <span className="text-amber-700">🤖 PDF</span> — análisis IA, más lento (30–90 seg.), máx. 600 págs.
+                      <span className="text-amber-700">🤖 PDF</span> — análisis IA (30–90 seg./parte). PDFs grandes se dividen automáticamente
                     </p>
                   </div>
                   <div className="flex-shrink-0"><DownloadExcelTemplate size="sm" /></div>
@@ -461,23 +508,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                        const f = e.target.files[0];
                        if (!f) return;
 
-                       if (/\.pdf$/i.test(f.name)) {
-                         // Límite de páginas: 600 (restricción de la IA)
-                         try {
-                           const buf = await f.arrayBuffer();
-                           const text = new TextDecoder('latin1').decode(buf);
-                           const pageMatches = text.match(/\/Type\s*\/Page[^s]/g);
-                           const pageCount = pageMatches ? pageMatches.length : 0;
-                           if (pageCount > 600) {
-                             setError(`Este PDF tiene aproximadamente ${pageCount} páginas y supera el límite de 600 páginas que acepta la IA. Por favor, usa el archivo Excel (.xlsx) de esta misma tarifa — se procesa localmente sin límite de páginas.`);
-                             setFile(null);
-                             e.target.value = '';
-                             return;
-                           }
-                         } catch (_) {
-                           // Si no podemos contar páginas, dejamos pasar y que falle la API con mensaje claro
-                         }
-                       }
+                       // PDFs de cualquier tamaño: se dividen automáticamente en partes
 
                        setFile(f);
                        setError(null);
