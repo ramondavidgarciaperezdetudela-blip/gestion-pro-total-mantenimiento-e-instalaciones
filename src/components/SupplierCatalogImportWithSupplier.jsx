@@ -434,7 +434,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                     <p className="text-sm font-semibold text-blue-800">📋 Formatos aceptados</p>
                     <p className="text-xs text-blue-600 mt-0.5">
                       <span className="font-bold text-emerald-700">⚡ Excel (.xlsx, .xls, CSV)</span> — instantáneo, sin IA, ilimitado<br/>
-                      <span className="text-amber-700">🤖 PDF</span> — análisis IA, más lento (30–90 seg.), máx. 600 págs./10 MB
+                      <span className="text-amber-700">🤖 PDF</span> — análisis IA, más lento (30–90 seg.), máx. 600 págs.
                     </p>
                   </div>
                   <div className="flex-shrink-0"><DownloadExcelTemplate size="sm" /></div>
@@ -462,14 +462,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                        if (!f) return;
 
                        if (/\.pdf$/i.test(f.name)) {
-                         // Límite de tamaño: 10 MB
-                         if (f.size > 10 * 1024 * 1024) {
-                           setError(`El PDF pesa ${(f.size / 1024 / 1024).toFixed(1)} MB y supera el límite de 10 MB para PDFs. Usa el archivo Excel (.xlsx) de la misma tarifa — se procesa localmente sin límite de tamaño.`);
-                           setFile(null);
-                           e.target.value = '';
-                           return;
-                         }
-                         // Límite de páginas: 600 (restricción de Anthropic)
+                         // Límite de páginas: 600 (restricción de la IA)
                          try {
                            const buf = await f.arrayBuffer();
                            const text = new TextDecoder('latin1').decode(buf);
