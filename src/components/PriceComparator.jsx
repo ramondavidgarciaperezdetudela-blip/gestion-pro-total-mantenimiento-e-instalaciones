@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, TrendingDown, Building2, Award, AlertCircle, X, Zap } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Search, TrendingDown, Building2, Award, AlertCircle, X, Zap, FileText, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
+import ComparatorToBudgetDialog from './ComparatorToBudgetDialog';
 
 // ── Similitud de nombres ──────────────────────────────────────────────────────
 function similarity(a, b) {
@@ -91,6 +93,9 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
   const [search, setSearch] = useState('');
   const [inputVal, setInputVal] = useState('');
   const [showSugg, setShowSugg] = useState(false);
+  // selectedItems: map de item.id → item (el más barato del grupo seleccionado)
+  const [selectedItems, setSelectedItems] = useState({});
+  const [showBudgetDialog, setShowBudgetDialog] = useState(false);
   const inputRef = useRef(null);
   const suggRef = useRef(null);
 
@@ -129,6 +134,18 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
       )
     );
   }, [comparisons, search]);
+
+  const toggleSelect = (groupBestItem) => {
+    setSelectedItems(prev => {
+      const next = { ...prev };
+      if (next[groupBestItem.id]) delete next[groupBestItem.id];
+      else next[groupBestItem.id] = groupBestItem;
+      return next;
+    });
+  };
+
+  const selectedCount = Object.keys(selectedItems).length;
+  const selectedList = Object.values(selectedItems);
 
   const applySearch = (val) => {
     setSearch(val);
@@ -239,6 +256,29 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
         </div>
       </div>
 
+      {/* ── Banner selección activa ── */}
+      {selectedCount > 0 && (
+        <div className="flex items-center justify-between bg-blue-700 text-white rounded-xl px-4 py-3 shadow-md">
+          <div className="flex items-center gap-2">
+            <CheckSquare className="w-5 h-5" />
+            <span className="font-semibold">{selectedCount} producto{selectedCount > 1 ? 's' : ''} seleccionado{selectedCount > 1 ? 's' : ''}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setSelectedItems({})} className="text-blue-200 hover:text-white text-xs underline">
+              Deseleccionar todo
+            </button>
+            <Button
+              size="sm"
+              className="bg-white text-blue-700 hover:bg-blue-50 gap-1.5 font-bold"
+              onClick={() => setShowBudgetDialog(true)}
+            >
+              <FileText className="w-4 h-4" />
+              Generar presupuesto
+            </Button>
+          </div>
+        </div>
+      )}
+
       {filtered.length === 0 && (
         <div className="text-center py-10 text-gray-400">
           <Search className="w-10 h-10 mx-auto mb-2 opacity-30" />
@@ -253,6 +293,9 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
           <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="bg-gray-50 border-b">
+                <th className="px-3 py-3 w-10 text-center">
+                  <CheckSquare className="w-4 h-4 text-gray-300 mx-auto" />
+                </th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700 w-56 sticky left-0 bg-gray-50 z-10">
                   Producto
                 </th>
@@ -291,6 +334,15 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
                     key={idx}
                     className="hover:bg-blue-50/40 transition-colors group"
                   >
+                    {/* Checkbox selección */}
+                    <td className="px-3 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={!!selectedItems[best.id]}
+                        onChange={() => toggleSelect(best)}
+                        className="w-4 h-4 accent-blue-600 cursor-pointer"
+                      />
+                    </td>
                     {/* Nombre del producto */}
                     <td className="px-4 py-3 sticky left-0 bg-white group-hover:bg-blue-50/40 transition-colors z-10">
                       <p className="font-medium text-gray-900 text-xs leading-tight line-clamp-2">
@@ -371,6 +423,11 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
           </table>
         </div>
       )}
+      <ComparatorToBudgetDialog
+        open={showBudgetDialog}
+        onClose={() => setShowBudgetDialog(false)}
+        selectedItems={selectedList}
+      />
     </div>
   );
 }
