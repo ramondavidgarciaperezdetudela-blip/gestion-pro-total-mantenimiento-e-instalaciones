@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Wrench, CheckCircle2, Clock, MapPin, Phone, User, ChevronRight,
-  Camera, Package, AlertTriangle, RefreshCw, Save, Loader2, Plus, X
+  Camera, Package, AlertTriangle, RefreshCw, Save, Loader2, Plus, X,
+  ImagePlus, TrendingDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -33,15 +34,26 @@ export default function TechnicianDay() {
   const [saving, setSaving] = useState(false);
   const [newMaterial, setNewMaterial] = useState({ material: '', quantity: 1, unit_price: 0 });
   const [showMaterialForm, setShowMaterialForm] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(null); // 'before' | 'after' | null
   const [viewDate, setViewDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [stockItems, setStockItems] = useState([]);
+  const [stockSearch, setStockSearch] = useState('');
+  const [discounting, setDiscounting] = useState(false);
 
   // Recuperar técnico guardado
   useEffect(() => {
     const saved = localStorage.getItem('sat_technician');
     if (saved) { setTechnician(saved); setTechInput(saved); }
     loadTechnicians();
+    loadStock();
   }, []);
+
+  const loadStock = async () => {
+    try {
+      const items = await base44.entities.StockItem.list('name', 300);
+      setStockItems(items);
+    } catch (_) {}
+  };
 
   const loadTechnicians = async () => {
     const [sats, company] = await Promise.all([
@@ -88,21 +100,52 @@ export default function TechnicianDay() {
       solution: order.solution || '',
       notes: order.notes || '',
       materials_used: [...(order.materials_used || [])],
+      photos_before: [...(order.photos_before || [])],
       photos_after: [...(order.photos_after || [])],
       labor_hours: order.labor_hours || 0,
     });
     setShowMaterialForm(false);
+    setStockSearch('');
   };
 
   const handleSaveUpdate = async () => {
     setSaving(true);
+    const wasCompleted = selectedOrder.status === 'completada';
+    const isNowCompleted = updateForm.status === 'completada';
     const total =
       (updateForm.labor_hours || 0) * (selectedOrder.labor_rate || 35) +
       (updateForm.materials_used || []).reduce((s, m) => s + (m.quantity || 0) * (m.unit_price || 0), 0);
     const data = { ...updateForm, total };
     await base44.entities.SATOrder.update(selectedOrder.id, data);
     setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, ...data } : o));
-    toast.success('Orden actualizada correctamente');
+
+    // Descontar materiales del stock al marcar como completada (solo si no estaba ya completada)
+    if (isNowCompleted && !wasCompleted && (updateForm.materials_used || []).length > 0) {
+      setDiscounting(true);
+      try {
+        const res = await base44.functions.invoke('stockDiscount', {
+          materials: updateForm.materials_used,
+          source: 'sat',
+          source_id: selectedOrder.id,
+          source_number: selectedOrder.order_number,
+        });
+        const { discounted = [], not_found = [], low_stock_alerts = [] } = res.data || {};
+        if (discounted.length > 0) {
+          toast.success(`✅ Stock descontado: ${discounted.length} artículo(s)`);
+        }
+        if (not_found.length > 0) {
+          toast.warning(`⚠️ No encontrado en stock: ${not_found.map(m => m.material).join(', ')}`);
+        }
+        if (low_stock_alerts.length > 0) {
+          toast.error(`📦 Stock mínimo alcanzado: ${low_stock_alerts.map(a => a.name).join(', ')} — te hemos enviado un aviso`);
+        }
+        // Recargar stock actualizado
+        loadStock();
+      } catch (_) {}
+      setDiscounting(false);
+    }
+
+    toast.success('Parte de trabajo guardado');
     setSaving(false);
     setSelectedOrder(null);
   };
@@ -110,11 +153,34 @@ export default function TechnicianDay() {
   const handlePhotoUpload = async (e, field) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingPhoto(true);
+    setUploadingPhoto(field);
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
     setUpdateForm(f => ({ ...f, [field]: [...(f[field] || []), file_url] }));
-    setUploadingPhoto(false);
+    setUploadingPhoto(null);
     toast.success('Foto añadida');
+  };
+
+  // Añadir material del stock directamente
+  const addStockMaterial = (item) => {
+    const exists = (updateForm.materials_used || []).find(m => m.material === item.name);
+    if (exists) {
+      setUpdateForm(f => ({
+        ...f,
+        materials_used: f.materials_used.map(m =>
+          m.material === item.name ? { ...m, quantity: (m.quantity || 0) + 1 } : m
+        ),
+      }));
+    } else {
+      setUpdateForm(f => ({
+        ...f,
+        materials_used: [...(f.materials_used || []), {
+          material: item.name,
+          quantity: 1,
+          unit_price: item.unit_price || 0,
+        }],
+      }));
+    }
+    toast.success(`${item.name} añadido`);
   };
 
   const addMaterial = () => {
@@ -227,6 +293,19 @@ export default function TechnicianDay() {
             </div>
           ))}
         </div>
+
+        {/* Alerta stock bajo */}
+        {stockItems.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock).length > 0 && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-orange-800">⚠ Stock bajo en almacén</p>
+              <p className="text-xs text-orange-600 mt-0.5">
+                {stockItems.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock).map(s => `${s.name} (${s.quantity} ${s.unit})`).join(' · ')}
+              </p>
+            </div>
+          </div>
+        )}
 
         {loading && (
           <div className="flex items-center justify-center py-16">
@@ -363,13 +442,47 @@ export default function TechnicianDay() {
                 />
               </div>
 
-              {/* Materiales */}
+              {/* Materiales con búsqueda de stock */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Materiales usados</label>
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowMaterialForm(p => !p)}>
-                    <Plus className="w-3 h-3 mr-1" />Añadir
+                    <Plus className="w-3 h-3 mr-1" />Manual
                   </Button>
+                </div>
+
+                {/* Buscar en almacén */}
+                <div className="mb-2">
+                  <Input
+                    placeholder="🔍 Buscar en almacén..."
+                    value={stockSearch}
+                    onChange={e => setStockSearch(e.target.value)}
+                    className="text-sm h-8"
+                  />
+                  {stockSearch.length >= 2 && (
+                    <div className="border rounded-lg mt-1 bg-white shadow-sm max-h-36 overflow-y-auto divide-y">
+                      {stockItems
+                        .filter(s => s.name.toLowerCase().includes(stockSearch.toLowerCase()) || (s.reference || '').toLowerCase().includes(stockSearch.toLowerCase()))
+                        .slice(0, 8)
+                        .map(item => (
+                          <button key={item.id} type="button"
+                            onClick={() => { addStockMaterial(item); setStockSearch(''); }}
+                            className="w-full flex items-center justify-between px-3 py-2 text-xs text-left hover:bg-blue-50 transition-colors">
+                            <div>
+                              <p className="font-medium text-gray-800">{item.name}</p>
+                              {item.reference && <p className="text-gray-400">Ref: {item.reference}</p>}
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-2">
+                              <p className={`font-bold ${item.min_stock > 0 && item.quantity <= item.min_stock ? 'text-orange-600' : 'text-green-600'}`}>{item.quantity} {item.unit}</p>
+                              {item.unit_price > 0 && <p className="text-gray-400">{item.unit_price}€/ud</p>}
+                            </div>
+                          </button>
+                        ))}
+                      {stockItems.filter(s => s.name.toLowerCase().includes(stockSearch.toLowerCase())).length === 0 &&
+                        <p className="text-center text-gray-400 py-3 text-xs">Sin resultados en almacén</p>
+                      }
+                    </div>
+                  )}
                 </div>
 
                 {showMaterialForm && (
@@ -389,7 +502,17 @@ export default function TechnicianDay() {
                       <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 text-sm">
                         <Package className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                         <span className="flex-1 truncate">{m.material}</span>
-                        <span className="text-gray-500 text-xs">{m.quantity} ud</span>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setUpdateForm(f => ({
+                            ...f, materials_used: f.materials_used.map((mat, idx) =>
+                              idx === i ? { ...mat, quantity: Math.max(0.1, (mat.quantity || 1) - 1) } : mat)
+                          }))} className="text-gray-400 hover:text-gray-600 w-5 h-5 rounded border text-xs flex items-center justify-center">−</button>
+                          <span className="text-gray-600 text-xs w-8 text-center">{m.quantity}</span>
+                          <button onClick={() => setUpdateForm(f => ({
+                            ...f, materials_used: f.materials_used.map((mat, idx) =>
+                              idx === i ? { ...mat, quantity: (mat.quantity || 1) + 1 } : mat)
+                          }))} className="text-gray-400 hover:text-gray-600 w-5 h-5 rounded border text-xs flex items-center justify-center">+</button>
+                        </div>
                         <span className="font-semibold text-gray-700 text-xs">{((m.quantity || 0) * (m.unit_price || 0)).toFixed(2)}€</span>
                         <button onClick={() => removeMaterial(i)} className="text-red-400 hover:text-red-600">
                           <X className="w-3.5 h-3.5" />
@@ -401,11 +524,43 @@ export default function TechnicianDay() {
                     </p>
                   </div>
                 )}
+
+                {/* Aviso descuento automático */}
+                {updateForm.status === 'completada' && (updateForm.materials_used || []).length > 0 && selectedOrder?.status !== 'completada' && (
+                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5 flex items-start gap-2">
+                    <TrendingDown className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-700">Al guardar como <strong>Completada</strong> se descontarán automáticamente {(updateForm.materials_used || []).length} material(es) del almacén.</p>
+                  </div>
+                )}
               </div>
 
-              {/* Fotos */}
+              {/* Fotos ANTES */}
               <div>
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 block">Fotos del trabajo</label>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 block">📷 Fotos ANTES del trabajo</label>
+                {(updateForm.photos_before || []).length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {updateForm.photos_before.map((url, i) => (
+                      <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                        <button onClick={() => setUpdateForm(f => ({ ...f, photos_before: f.photos_before.filter((_, idx) => idx !== i) }))}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5">
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <label className={`flex items-center justify-center gap-2 w-full py-2.5 border-2 border-dashed border-orange-200 rounded-xl cursor-pointer hover:bg-orange-50 text-sm text-orange-500 transition-colors ${uploadingPhoto === 'photos_before' ? 'opacity-60' : ''}`}>
+                  {uploadingPhoto === 'photos_before' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                  {uploadingPhoto === 'photos_before' ? 'Subiendo...' : 'Foto antes / avería'}
+                  <input type="file" accept="image/*" capture="environment" className="hidden" disabled={!!uploadingPhoto}
+                    onChange={e => handlePhotoUpload(e, 'photos_before')} />
+                </label>
+              </div>
+
+              {/* Fotos DESPUÉS */}
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 block">✅ Fotos DESPUÉS del trabajo</label>
                 {(updateForm.photos_after || []).length > 0 && (
                   <div className="grid grid-cols-3 gap-2 mb-2">
                     {updateForm.photos_after.map((url, i) => (
@@ -419,10 +574,10 @@ export default function TechnicianDay() {
                     ))}
                   </div>
                 )}
-                <label className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 text-sm text-gray-500 transition-colors ${uploadingPhoto ? 'opacity-60' : ''}`}>
-                  {uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                  {uploadingPhoto ? 'Subiendo...' : 'Tomar / subir foto'}
-                  <input type="file" accept="image/*" capture="environment" className="hidden" disabled={uploadingPhoto}
+                <label className={`flex items-center justify-center gap-2 w-full py-2.5 border-2 border-dashed border-green-200 rounded-xl cursor-pointer hover:bg-green-50 text-sm text-green-600 transition-colors ${uploadingPhoto === 'photos_after' ? 'opacity-60' : ''}`}>
+                  {uploadingPhoto === 'photos_after' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                  {uploadingPhoto === 'photos_after' ? 'Subiendo...' : 'Foto instalación terminada'}
+                  <input type="file" accept="image/*" capture="environment" className="hidden" disabled={!!uploadingPhoto}
                     onChange={e => handlePhotoUpload(e, 'photos_after')} />
                 </label>
               </div>
@@ -439,9 +594,9 @@ export default function TechnicianDay() {
                 />
               </div>
 
-              <Button onClick={handleSaveUpdate} disabled={saving} className="w-full h-12 text-base bg-orange-600 hover:bg-orange-700 gap-2">
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                {saving ? 'Guardando...' : 'Guardar actualización'}
+              <Button onClick={handleSaveUpdate} disabled={saving || discounting} className="w-full h-12 text-base bg-orange-600 hover:bg-orange-700 gap-2">
+                {(saving || discounting) ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                {discounting ? 'Actualizando almacén...' : saving ? 'Guardando...' : 'Guardar parte de trabajo'}
               </Button>
             </div>
           )}
