@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Upload, X, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CameraCapture from './CameraCapture';
+import { compressImage } from '@/lib/compressImage';
 
 export default function PhotoInput({ onPhotoUrl, label = 'Foto', multiple = false, maxFiles = 10 }) {
   const [photos, setPhotos] = useState([]);
@@ -20,7 +21,8 @@ export default function PhotoInput({ onPhotoUrl, label = 'Foto', multiple = fals
     setError('');
     
     try {
-      const result = await base44.integrations.Core.UploadFile({ file: blob });
+      const compressed = await compressImage(blob);
+      const result = await base44.integrations.Core.UploadFile({ file: compressed });
       const newPhoto = { url: result.file_url, id: Date.now() };
       
       const updatedPhotos = multiple ? [...photos, newPhoto] : [newPhoto];
@@ -48,8 +50,9 @@ export default function PhotoInput({ onPhotoUrl, label = 'Foto', multiple = fals
     setUploading(true);
     setError('');
     try {
+      const compressed = await Promise.all(files.map(f => compressImage(f)));
       const results = await Promise.all(
-        files.map(file => base44.integrations.Core.UploadFile({ file }))
+        compressed.map(file => base44.integrations.Core.UploadFile({ file }))
       );
       const newPhotos = results.map(r => ({ url: r.file_url, id: Date.now() + Math.random() }));
       const updatedPhotos = multiple ? [...photos, ...newPhotos] : [newPhotos[0]];

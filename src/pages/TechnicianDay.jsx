@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
+import { compressImage } from '@/lib/compressImage';
 import { format, parseISO, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import {
   Camera, Package, AlertTriangle, RefreshCw, Save, Loader2, Plus, X,
   ImagePlus, TrendingDown
 } from 'lucide-react';
+import ClientHistorySection from '../components/ClientHistorySection';
 import { toast } from 'sonner';
 
 const STATUS_CONFIG = {
@@ -154,7 +156,8 @@ export default function TechnicianDay() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingPhoto(field);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const compressed = await compressImage(file);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
     setUpdateForm(f => ({ ...f, [field]: [...(f[field] || []), file_url] }));
     setUploadingPhoto(null);
     toast.success('Foto añadida');
@@ -593,6 +596,9 @@ export default function TechnicianDay() {
                   onChange={e => setUpdateForm(f => ({ ...f, notes: e.target.value }))}
                 />
               </div>
+
+              {/* Historial de visitas anteriores a este cliente */}
+              {selectedOrder?.contact_id && <ClientHistorySection contactId={selectedOrder.contact_id} currentOrderId={selectedOrder.id} />}
 
               <Button onClick={handleSaveUpdate} disabled={saving || discounting} className="w-full h-12 text-base bg-orange-600 hover:bg-orange-700 gap-2">
                 {(saving || discounting) ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
