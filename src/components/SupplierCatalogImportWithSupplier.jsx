@@ -264,10 +264,8 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
         setProgress('Analizando PDF con IA...');
         setProgressPct(40);
         const result = await base44.integrations.Core.InvokeLLM({
-          model: 'claude_sonnet_4_6',
-          prompt: `Eres un experto en leer catálogos PDF de proveedores industriales españoles.
-Analiza este catálogo del proveedor "${selectedSupplier?.name || ''}" y extrae TODOS los productos.
-Para cada producto: product_name, product_code, brand, cost_price (número puro sin €), unit, category (clima/refrigeracion/electrico/solar/fontaneria/material/otro), notes.`,
+          model: 'gemini_3_flash',
+          prompt: `Extrae TODOS los productos de este catálogo PDF del proveedor "${selectedSupplier?.name || ''}". Para cada producto devuelve: product_name, product_code, brand, cost_price (número sin €), unit, category (clima/refrigeracion/electrico/solar/fontaneria/material/otro). Extrae todos sin omitir ninguno.`,
           file_urls: [file_url],
           response_json_schema: {
             type: 'object',
@@ -277,9 +275,12 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
                 items: {
                   type: 'object',
                   properties: {
-                    product_name: { type: 'string' }, product_code: { type: 'string' },
-                    brand: { type: 'string' }, cost_price: { type: 'number' },
-                    unit: { type: 'string' }, category: { type: 'string' }, notes: { type: 'string' },
+                    product_name: { type: 'string' },
+                    product_code: { type: 'string' },
+                    brand: { type: 'string' },
+                    cost_price: { type: 'number' },
+                    unit: { type: 'string' },
+                    category: { type: 'string' },
                   },
                 },
               },
@@ -427,7 +428,8 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
                   <div>
                     <p className="text-sm font-semibold text-blue-800">📋 Formatos aceptados</p>
                     <p className="text-xs text-blue-600 mt-0.5">
-                      Excel (.xlsx, .xls), CSV y PDF. Compatible con tarifas Escoda, Climaver y similares.
+                      <span className="font-bold text-emerald-700">⚡ Excel (.xlsx, .xls, CSV)</span> — instantáneo, sin IA, ilimitado<br/>
+                      <span className="text-amber-700">🤖 PDF</span> — análisis IA, más lento (30–90 seg.), máx. 600 págs./10 MB
                     </p>
                   </div>
                   <div className="flex-shrink-0"><DownloadExcelTemplate size="sm" /></div>
