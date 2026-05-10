@@ -203,12 +203,14 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   const [file, setFile]               = useState(null);
   const [supplierId, setSupplierId]   = useState('');
   const [step, setStep]               = useState('idle'); // idle | extracting | preview | saving | done
-  const [parsedCount, setParsedCount] = useState(0);      // total productos parseados
+  const [parsedCount, setParsedCount] = useState(0);
   const [error, setError]             = useState(null);
   const [progress, setProgress]       = useState('');
   const [margin, setMargin]           = useState(30);
   const [applyIva, setApplyIva]       = useState(false);
   const [ivaRate, setIvaRate]         = useState(21);
+  // Resumen de importación
+  const [importSummary, setImportSummary] = useState(null); // { saved, failed: [{index, product_name, product_code, reason}] }
 
   const fileRef    = useRef(null);
   const abortRef   = useRef(false);
@@ -219,7 +221,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     abortRef.current = true;
     parsedRef.current = [];
     setFile(null); setStep('idle'); setParsedCount(0);
-    setError(null); setProgress(''); setSupplierId('');
+    setError(null); setProgress(''); setSupplierId(''); setImportSummary(null);
     setTimeout(() => { abortRef.current = false; }, 200);
   };
 
@@ -308,12 +310,14 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
     if (!toSave.length) return;
 
     let saved = 0;
+    const failedItems = []; // { index, product_name, product_code, reason }
     const SAVE_BATCH = 200;
 
     for (let i = 0; i < toSave.length; i += SAVE_BATCH) {
       if (abortRef.current) break;
 
-      const batch = toSave.slice(i, i + SAVE_BATCH).map(item => {
+      const batchItems = toSave.slice(i, i + SAVE_BATCH);
+      const batch = batchItems.map(item => {
         const costPrice = item.cost_price || 0;
         const salePrice = costPrice > 0 ? Math.round(costPrice * (1 + margin / 100) * 100) / 100 : 0;
         return {
@@ -333,16 +337,37 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
         };
       });
 
-      await base44.entities.SupplierPrice.bulkCreate(batch);
-      saved += batch.length;
-      setProgress(`Guardando ${saved.toLocaleString()} / ${toSave.length.toLocaleString()}...`);
+      try {
+        await base44.entities.SupplierPrice.bulkCreate(batch);
+        saved += batch.length;
+      } catch (batchErr) {
+        // El lote falló: intentar uno a uno para rescatar los que funcionen
+        for (let j = 0; j < batch.length; j++) {
+          try {
+            await base44.entities.SupplierPrice.bulkCreate([batch[j]]);
+            saved++;
+          } catch (singleErr) {
+            const originalItem = batchItems[j];
+            failedItems.push({
+              index: i + j + 1, // nº de fila en el archivo (1-based)
+              product_name: originalItem.product_name || '—',
+              product_code: originalItem.product_code || '—',
+              reason: singleErr?.message || 'Error desconocido',
+            });
+          }
+          // Pequeña pausa tras error para no saturar
+          await new Promise(r => setTimeout(r, 50));
+        }
+      }
+
+      setProgress(`Guardando ${Math.min(i + SAVE_BATCH, toSave.length).toLocaleString()} / ${toSave.length.toLocaleString()}... (${failedItems.length} errores)`);
 
       // Pausa entre lotes para respetar el rate limit de la API
       if (i + SAVE_BATCH < toSave.length) await new Promise(r => setTimeout(r, 600));
     }
 
+    setImportSummary({ saved, failed: failedItems, total: toSave.length });
     setStep('done');
-    setProgress(`✅ ${saved.toLocaleString()} productos guardados en tarifa de ${selectedSupplier?.name}`);
     onImported && onImported(saved);
   };
 
@@ -509,11 +534,66 @@ Para cada producto: product_name, product_code, brand, cost_price (número puro 
             )}
 
             {/* ── Done ── */}
-            {step === 'done' && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-8 text-center space-y-3">
-                <CheckCircle className="w-12 h-12 text-emerald-600 mx-auto" />
-                <p className="font-bold text-emerald-800 text-xl">{progress}</p>
-                <Button onClick={() => { setOpen(false); reset(); }} className="bg-emerald-600 hover:bg-emerald-700">
+            {step === 'done' && importSummary && (
+              <div className="space-y-4">
+                {/* Cabecera resumen */}
+                <div className={`rounded-xl p-5 text-center border ${importSummary.failed.length === 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+                  <CheckCircle className={`w-10 h-10 mx-auto mb-2 ${importSummary.failed.length === 0 ? 'text-emerald-500' : 'text-amber-500'}`} />
+                  <p className={`text-2xl font-bold ${importSummary.failed.length === 0 ? 'text-emerald-800' : 'text-amber-800'}`}>
+                    {importSummary.saved.toLocaleString()} / {importSummary.total.toLocaleString()} productos guardados
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">en tarifa de <strong>{selectedSupplier?.name}</strong></p>
+                </div>
+
+                {/* KPIs rápidos */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-emerald-700">{importSummary.saved.toLocaleString()}</p>
+                    <p className="text-xs text-emerald-600 font-medium">Guardados ✓</p>
+                  </div>
+                  <div className={`border rounded-lg p-3 text-center ${importSummary.failed.length > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
+                    <p className={`text-xl font-bold ${importSummary.failed.length > 0 ? 'text-red-700' : 'text-gray-400'}`}>{importSummary.failed.length.toLocaleString()}</p>
+                    <p className={`text-xs font-medium ${importSummary.failed.length > 0 ? 'text-red-600' : 'text-gray-400'}`}>Con error</p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-blue-700">
+                      {importSummary.total > 0 ? Math.round(importSummary.saved / importSummary.total * 100) : 0}%
+                    </p>
+                    <p className="text-xs text-blue-600 font-medium">Éxito</p>
+                  </div>
+                </div>
+
+                {/* Lista de fallos */}
+                {importSummary.failed.length > 0 && (
+                  <div className="border border-red-200 rounded-xl overflow-hidden">
+                    <div className="bg-red-50 px-4 py-2.5 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-500" />
+                      <p className="text-sm font-semibold text-red-700">{importSummary.failed.length} filas con error — revisa y corrige</p>
+                    </div>
+                    <div className="max-h-52 overflow-y-auto divide-y divide-red-50">
+                      {importSummary.failed.map((f, i) => (
+                        <div key={i} className="px-4 py-2 flex items-start gap-3 text-xs bg-white hover:bg-red-50 transition-colors">
+                          <span className="text-gray-400 font-mono w-10 flex-shrink-0">F{f.index}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-800 truncate">{f.product_name}</p>
+                            {f.product_code && f.product_code !== '—' && (
+                              <p className="text-gray-400">Cód: {f.product_code}</p>
+                            )}
+                          </div>
+                          <span className="text-red-500 text-right flex-shrink-0 max-w-[140px] break-words">{f.reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {importSummary.failed.length === 0 && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center text-sm text-emerald-700 font-medium">
+                    ✅ Importación perfecta — sin ningún error
+                  </div>
+                )}
+
+                <Button onClick={() => { setOpen(false); reset(); }} className="w-full bg-emerald-600 hover:bg-emerald-700">
                   Cerrar
                 </Button>
               </div>
