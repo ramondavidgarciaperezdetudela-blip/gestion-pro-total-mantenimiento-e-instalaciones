@@ -45,11 +45,18 @@ function parseExcel(file) {
     reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
     reader.onload = (e) => {
       try {
-        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
+        const wb = XLSX.read(e.target.result, {
+          type: 'array',
+          cellDates: false,
+          cellStyles: false,
+          cellNF: false,
+          sheetStubs: false,
+          dense: true,
+        });
         const ws = wb.Sheets[wb.SheetNames[0]];
 
         // Leer como array de arrays — sin interpretación de cabeceras
-        const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+        const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true, blankrows: false });
 
         console.log('[Parser] Hoja:', wb.SheetNames[0], '| Filas brutas:', raw.length);
         console.log('[Parser] Fila 0:', JSON.stringify(raw[0]));
