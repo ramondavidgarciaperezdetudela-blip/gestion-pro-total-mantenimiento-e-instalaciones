@@ -56,7 +56,8 @@ const quickLinks = [
 { name: 'Proveedores', page: 'Suppliers', icon: Building2, color: 'bg-slate-500' },
 { name: 'Repuestos', page: 'SparePartsManager', icon: Package, color: 'bg-teal-700' },
 { name: 'SAT', page: 'SAT', icon: Wrench, color: 'bg-orange-500' },
-{ name: 'Solar+Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-amber-500' }];
+{ name: 'Solar+Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-amber-500' },
+{ name: 'Tarifas Prov.', page: 'SupplierTariffs', icon: Package, color: 'bg-purple-600' }];
 
 
 function StatCard({ label, value, sub, icon: Icon, color, linkPage }) {
