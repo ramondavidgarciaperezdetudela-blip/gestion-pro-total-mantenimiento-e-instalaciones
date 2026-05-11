@@ -483,6 +483,175 @@ async function searchImageWithFallback(item, onRetry, rules = null) {
   return null;
 }
 
+// ── Sección: productos sin imagen con reintentos individuales ────────────────
+function MissingImagesSection({ prices, onFixed, onUpdated }) {
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const [retryingId, setRetryingId] = useState(null);
+  const [manualItem, setManualItem] = useState(null);
+  const [manualUrl, setManualUrl] = useState('');
+  const fileRef = useRef(null);
+  const [uploadingManual, setUploadingManual] = useState(false);
+  // estado local de imagen por id para reflejar éxitos sin recargar todo
+  const [localImages, setLocalImages] = useState({});
+
+  const withoutImage = prices.filter(p => !p.image_url && !localImages[p.id]);
+
+  if (withoutImage.length === 0) return (
+    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center text-xs text-emerald-700">
+      ✅ Todos los productos tienen imagen
+    </div>
+  );
+
+  const doRetry = async (item, customName = null) => {
+    setRetryingId(item.id);
+    const searchItem = customName ? { ...item, product_name: customName } : item;
+    if (customName) {
+      // Guardar nombre antes de buscar
+      await base44.entities.SupplierPrice.update(item.id, { product_name: customName });
+      onFixed && onFixed(item.id, customName);
+    }
+    setEditingId(null);
+    const result = await searchImageWithFallback(searchItem, null).catch(() => null);
+    setRetryingId(null);
+    if (result?.image_url) {
+      const updateData = { image_url: result.image_url };
+      if (result.found_by_ref && result.suggested_name) {
+        updateData.product_name = result.suggested_name;
+        onFixed && onFixed(item.id, result.suggested_name);
+      }
+      await base44.entities.SupplierPrice.update(item.id, updateData);
+      setLocalImages(prev => ({ ...prev, [item.id]: result.image_url }));
+      onUpdated && onUpdated();
+      toast.success('¡Imagen encontrada y guardada!');
+    } else {
+      toast.info(`Sin imagen para "${searchItem.product_name}". Prueba a editar el nombre.`);
+    }
+  };
+
+  const handleManualFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !manualItem) return;
+    setUploadingManual(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    await base44.entities.SupplierPrice.update(manualItem.id, { image_url: file_url });
+    setLocalImages(prev => ({ ...prev, [manualItem.id]: file_url }));
+    setManualItem(null);
+    onUpdated && onUpdated();
+    setUploadingManual(false);
+    toast.success('Imagen subida');
+  };
+
+  const handleManualUrl = async () => {
+    if (!manualUrl || !manualItem) return;
+    await base44.entities.SupplierPrice.update(manualItem.id, { image_url: manualUrl });
+    setLocalImages(prev => ({ ...prev, [manualItem.id]: manualUrl }));
+    setManualItem(null);
+    setManualUrl('');
+    onUpdated && onUpdated();
+    toast.success('Imagen guardada');
+  };
+
+  return (
+    <div className="border border-orange-200 rounded-xl overflow-hidden">
+      <div className="bg-orange-50 px-3 py-2 border-b border-orange-100 flex items-center justify-between">
+        <span className="text-xs font-semibold text-orange-700">🖼️ Sin imagen ({withoutImage.length})</span>
+        <span className="text-[10px] text-orange-500">Reintentar · Editar nombre · Subir manual</span>
+      </div>
+      <div className="divide-y max-h-72 overflow-y-auto">
+        {withoutImage.map(p => (
+          <div key={p.id} className="px-3 py-2.5 bg-white space-y-1.5">
+            {/* Nombre + referencia */}
+            {editingId === p.id ? (
+              <div className="flex gap-1.5">
+                <Input
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  className="h-7 text-xs flex-1 px-2"
+                  autoFocus
+                  placeholder="Nuevo nombre para buscar..."
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && editValue.trim()) doRetry(p, editValue.trim());
+                    if (e.key === 'Escape') setEditingId(null);
+                  }}
+                />
+                <button
+                  onClick={() => doRetry(p, editValue.trim())}
+                  disabled={!editValue.trim()}
+                  className="text-[10px] px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 whitespace-nowrap"
+                >Buscar</button>
+                <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 text-[10px] px-0.5">✕</button>
+              </div>
+            ) : (
+              <div className="flex items-start gap-1.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-800 leading-tight break-words">{p.product_name}</p>
+                  {p.product_code && <p className="text-[10px] text-gray-400 font-mono mt-0.5">Ref: {p.product_code}</p>}
+                </div>
+                {retryingId === p.id ? (
+                  <Loader2 className="w-4 h-4 text-blue-400 animate-spin flex-shrink-0 mt-0.5" />
+                ) : (
+                  <button
+                    onClick={() => { setEditingId(p.id); setEditValue(p.product_name || ''); }}
+                    className="flex-shrink-0 p-0.5 text-gray-300 hover:text-blue-500 transition-colors"
+                    title="Editar nombre de búsqueda"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Botones de acción */}
+            {editingId !== p.id && retryingId !== p.id && (
+              <div className="flex gap-1 flex-wrap">
+                <button
+                  onClick={() => doRetry(p)}
+                  className="text-[10px] px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 whitespace-nowrap flex items-center gap-0.5"
+                >
+                  <RefreshCw className="w-2.5 h-2.5" /> Reintentar nombre
+                </button>
+                {p.product_code && (
+                  <button
+                    onClick={() => doRetry({ ...p, product_name: p.product_code })}
+                    className="text-[10px] px-2 py-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 whitespace-nowrap flex items-center gap-0.5"
+                  >
+                    <Search className="w-2.5 h-2.5" /> Por referencia
+                  </button>
+                )}
+                <button
+                  onClick={() => { setManualItem(p); setManualUrl(''); }}
+                  className="text-[10px] px-2 py-1 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 whitespace-nowrap"
+                >
+                  + Subir
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Subida manual inline */}
+      {manualItem && (
+        <div className="border-t border-orange-200 bg-orange-50 p-3 space-y-2">
+          <p className="text-xs font-semibold text-orange-800 break-words">Subir imagen: {manualItem.product_name}</p>
+          <div className="flex gap-2">
+            <Input placeholder="Pega URL de imagen..." value={manualUrl} onChange={e => setManualUrl(e.target.value)} className="text-xs h-8 flex-1" onKeyDown={e => e.key === 'Enter' && handleManualUrl()} />
+            <Button size="sm" disabled={!manualUrl} onClick={handleManualUrl} className="h-8 bg-orange-600 hover:bg-orange-700 text-xs flex-shrink-0">Guardar URL</Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => fileRef.current?.click()} disabled={uploadingManual}>
+              <Upload className="w-3 h-3" /> {uploadingManual ? 'Subiendo...' : 'Subir archivo'}
+            </Button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleManualFile} />
+            <button onClick={() => setManualItem(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancelar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgState }) {
   const [manualItem, setManualItem] = useState(null);
   const [manualUrl, setManualUrl] = useState('');
@@ -643,10 +812,15 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
     <div className="space-y-3">
       <NameIssuesSection prices={prices} onFixed={onFixed} onSearchImage={onUpdated} />
 
+      {/* Lista de pendientes sin imagen con reintentos individuales — siempre visible */}
+      {!running && (
+        <MissingImagesSection prices={prices} onFixed={onFixed} onUpdated={onUpdated} />
+      )}
+
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
-        <p className="font-semibold mb-0.5">🖼️ Descarga automática de imágenes</p>
+        <p className="font-semibold mb-0.5">🖼️ Búsqueda masiva automática</p>
         <p className="text-xs text-amber-600">
-          {withoutImage.length} de {prices.length} productos sin imagen. Busca primero por nombre y luego por referencia. Se guardan al instante.
+          {withoutImage.length} de {prices.length} productos sin imagen. Busca todos en lote (nombre → referencia). Se guardan al instante.
         </p>
       </div>
 
