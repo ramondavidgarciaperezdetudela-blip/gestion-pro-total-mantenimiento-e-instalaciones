@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { loadValidChars } from '@/components/ValidCharsConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -81,6 +82,39 @@ function detectNameIssues(name) {
   if (/[ÃÂ][\u0080-\u00BF]/.test(name) || /â€/.test(name)) return 'Posible codificación incorrecta (mojibake)';
   if (name.length > 300) return 'Nombre excesivamente largo';
   if (/^[A-Z0-9]{1,6}$/.test(name)) return 'Parece un código, no un nombre de producto';
+
+  // Verificar caracteres no estándar contra la lista blanca configurada
+  const validCharsConfig = loadValidChars();
+  const allValidSpecial = [
+    // Letras latinas básicas + dígitos + espacios + puntuación común siempre OK
+  ];
+  // Construir lista de todos los chars válidos configurados
+  const configuredChars = new Set([
+    ...validCharsConfig.activeGroups.flatMap(gid => {
+      const GROUPS = {
+        greek: 'αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ'.split(''),
+        units: ['°','℃','℉','²','³','¹','½','¼','¾','⅓','⅔','µ','Ω','℧','∞','≈','≠','≤','≥','±','×','÷'],
+        accented: 'áéíóúüñçÁÉÍÓÚÜÑÇàèìòùâêîôûäëïöÀÈÌÒÙÂÊÎÔÛÄËÏÖ'.split(''),
+        punctuation: ['-','_','/','.','(',')','[',']','+','#','@','&','%','*','!','?',':',';',"'",'\"','~','|','\\','^','`','<','>'],
+      };
+      return GROUPS[gid] || [];
+    }),
+    ...(validCharsConfig.extraChars || []),
+  ]);
+
+  // Detectar caracteres fuera de rango básico que no estén en la lista blanca
+  for (const char of name) {
+    const code = char.charCodeAt(0);
+    // Rango ASCII básico (32-126) siempre OK
+    if (code >= 32 && code <= 126) continue;
+    // Espacio, tabulador, etc.
+    if (code < 32) continue;
+    // Fuera de ASCII básico: verificar si está en lista blanca
+    if (!configuredChars.has(char)) {
+      return `Carácter no reconocido: "${char}" (configura en Ajustes > Caracteres)`;
+    }
+  }
+
   return null;
 }
 

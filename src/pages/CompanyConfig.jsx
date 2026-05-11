@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, Layout, AlertTriangle } from 'lucide-react';
+import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, Layout, AlertTriangle, Type } from 'lucide-react';
 import PostalCodeSearch from '@/components/PostalCodeSearch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import ValidCharsConfig from '@/components/ValidCharsConfig';
 
 function TechnicianManager({ technicians, onChange }) {
   const [newTech, setNewTech] = useState({ name: '', fgas_carnet: '', rite_certificate: '' });
@@ -201,6 +202,7 @@ export default function CompanyConfig() {
           <TabsTrigger value="usuarios" className="flex-1 text-xs">Usuarios</TabsTrigger>
           <TabsTrigger value="red" className="flex-1 text-xs">Red / Acceso</TabsTrigger>
           <TabsTrigger value="ia" className="flex-1 text-xs">IA Cálculos</TabsTrigger>
+          <TabsTrigger value="caracteres" className="flex-1 text-xs">Caracteres</TabsTrigger>
           <TabsTrigger value="cuenta" className="flex-1 text-xs text-red-600">Cuenta</TabsTrigger>
         </TabsList>
 
@@ -636,6 +638,18 @@ export default function CompanyConfig() {
             </CardHeader>
             <CardContent className="space-y-4">
               <NetworkAccessInfo />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ─── CARACTERES VÁLIDOS ─────────────────────────────────────────── */}
+        <TabsContent value="caracteres">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Type className="w-5 h-5 text-blue-600" />Caracteres válidos en nombres de producto</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ValidCharsConfig />
             </CardContent>
           </Card>
         </TabsContent>
