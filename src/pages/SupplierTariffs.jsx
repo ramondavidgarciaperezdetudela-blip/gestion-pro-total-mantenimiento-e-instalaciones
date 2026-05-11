@@ -16,9 +16,6 @@ import ProductPriceHistoryChart from '../components/ProductPriceHistoryChart';
 import SupplierOnlineUpdate from '../components/SupplierOnlineUpdate';
 import UpdateErrorsTable from '../components/UpdateErrorsTable';
 
-// Cache simple para reducir re-renders
-const imageCache = new Map();
-
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general', 'material', 'mano_obra', 'otro'];
 
 export default function SupplierTariffs() {
@@ -74,9 +71,7 @@ export default function SupplierTariffs() {
             }
           });
           
-          if (allPrices.length > prices.length) {
-            setPrices([...allPrices]);
-          }
+          setPrices([...allPrices]);
           
           if (!hasMore) break;
         }
