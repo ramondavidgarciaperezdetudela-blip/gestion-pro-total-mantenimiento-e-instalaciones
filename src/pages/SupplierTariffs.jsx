@@ -15,6 +15,8 @@ import PriceComparator from '../components/PriceComparator';
 import ProductPriceHistoryChart from '../components/ProductPriceHistoryChart';
 import SupplierOnlineUpdate from '../components/SupplierOnlineUpdate';
 import UpdateErrorsTable from '../components/UpdateErrorsTable';
+import SupplierProductQuery from '../components/SupplierProductQuery';
+import GasSupplierPortal from '../components/GasSupplierPortal';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general', 'material', 'mano_obra', 'otro'];
 
@@ -224,10 +226,13 @@ export default function SupplierTariffs() {
           <h1 className="text-2xl font-bold text-gray-900">Tarifas por Proveedor</h1>
           <p className="text-sm text-gray-500 mt-0.5">{totalProducts} productos · {totalSuppliers} proveedores</p>
         </div>
-        <SupplierCatalogImportWithSupplier suppliers={suppliers} onImported={(saved, partial) => {
-          // En importación parcial solo recargamos al final para no saturar
-          if (!partial) loadData();
-        }} />
+        <div className="flex flex-wrap gap-2 items-center">
+          <SupplierProductQuery suppliers={suppliers} />
+          <GasSupplierPortal />
+          <SupplierCatalogImportWithSupplier suppliers={suppliers} onImported={(saved, partial) => {
+            if (!partial) loadData();
+          }} />
+        </div>
       </div>
 
       {/* Pestañas */}
