@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Search, Building2, Package, Image as ImageIcon, ChevronDown, ChevronRight,
-  Upload, Trash2, Edit, Plus, Loader2, RefreshCw, X, Check, TrendingDown, AlertTriangle
+  Upload, Trash2, Edit, Loader2, RefreshCw, Check, TrendingDown, AlertTriangle, WifiOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import SupplierCatalogImportWithSupplier from '../components/SupplierCatalogImportWithSupplier';
@@ -18,10 +18,31 @@ import UpdateErrorsTable from '../components/UpdateErrorsTable';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general', 'material', 'mano_obra', 'otro'];
 
+// Reintento con backoff exponencial para fallos de conexión
+async function withRetry(fn, maxRetries = 5) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const msg = String(err?.message || err || '').toLowerCase();
+      const isTransient = msg.includes('fetch') || msg.includes('network') ||
+        msg.includes('timeout') || msg.includes('500') || msg.includes('502') ||
+        msg.includes('503') || msg.includes('429') || msg.includes('failed to load');
+      if (isTransient && attempt < maxRetries) {
+        const waitMs = Math.min(1000 * Math.pow(2, attempt), 15000);
+        await new Promise(r => setTimeout(r, waitMs));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 export default function SupplierTariffs() {
   const [suppliers, setSuppliers] = useState([]);
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterSupplier, setFilterSupplier] = useState('all');
@@ -30,38 +51,48 @@ export default function SupplierTariffs() {
   const [editForm, setEditForm] = useState({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [fetchingImage, setFetchingImage] = useState(false);
+  const [autoFetchingImage, setAutoFetchingImage] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [activeTab, setActiveTab] = useState('tarifas'); // 'tarifas' | 'comparador' | 'errores'
+  const [activeTab, setActiveTab] = useState('tarifas');
   const imageFileRef = useRef(null);
+  const autoFetchTimerRef = useRef(null);
+  const lastAutoFetchNameRef = useRef('');
 
   const loadData = async () => {
     setLoading(true);
-    const PAGE = 1000; // Aumentar a 1000 para menos requests
+    setLoadError(false);
+    const PAGE = 1000;
 
-    // Cargar proveedores y primera página de productos en paralelo
-    const [supp, firstBatch] = await Promise.all([
-      base44.entities.Supplier.list('name', 200),
-      base44.entities.SupplierPrice.list('-created_date', PAGE, 0),
-    ]);
+    let supp, firstBatch;
+    try {
+      [supp, firstBatch] = await withRetry(() => Promise.all([
+        base44.entities.Supplier.list('name', 200),
+        base44.entities.SupplierPrice.list('-created_date', PAGE, 0),
+      ]));
+    } catch (err) {
+      setLoading(false);
+      setLoadError(true);
+      toast.error('Error de conexión. Pulsa recargar para reintentar.');
+      return;
+    }
 
     setSuppliers(supp);
     setPrices(firstBatch);
-    setLoading(false); // UI ya usable con los primeros 1000
+    setLoading(false);
 
-    // Seguir cargando el resto en background sin bloquear la interfaz
-    // Cargar próximas 3 páginas en paralelo para acelerar
     if (firstBatch.length === PAGE) {
       let allPrices = [...firstBatch];
       let skip = PAGE;
-      
+
       const loadBatchesInParallel = async () => {
-        while (skip < PAGE * 5) { // Cargar máx 5 páginas total
+        while (skip < PAGE * 5) {
           const batchRequests = [];
           for (let i = 0; i < 3 && skip < PAGE * 5; i++) {
-            batchRequests.push(base44.entities.SupplierPrice.list('-created_date', PAGE, skip));
+            batchRequests.push(
+              withRetry(() => base44.entities.SupplierPrice.list('-created_date', PAGE, skip))
+            );
             skip += PAGE;
           }
-          
           const batches = await Promise.all(batchRequests);
           let hasMore = false;
           batches.forEach(batch => {
@@ -70,16 +101,37 @@ export default function SupplierTariffs() {
               if (batch.length === PAGE) hasMore = true;
             }
           });
-          
           setPrices([...allPrices]);
-          
           if (!hasMore) break;
         }
       };
-      
+
       loadBatchesInParallel().catch(() => {});
     }
   };
+
+  // Auto-búsqueda de imagen con debounce al cambiar el nombre
+  const triggerAutoImageSearch = useCallback((productName, brand, productCode) => {
+    if (!productName || productName.trim().length < 3) return;
+    if (productName === lastAutoFetchNameRef.current) return;
+    clearTimeout(autoFetchTimerRef.current);
+    autoFetchTimerRef.current = setTimeout(async () => {
+      lastAutoFetchNameRef.current = productName;
+      setAutoFetchingImage(true);
+      try {
+        const res = await base44.integrations.Core.InvokeLLM({
+          prompt: `Busca en internet la imagen oficial del producto: "${productName}"${brand ? ` de la marca ${brand}` : ''}${productCode ? `, referencia ${productCode}` : ''}. Devuelve solo la URL directa de la imagen del producto (JPG, PNG o WebP). Si no encuentras una imagen fiable, devuelve null.`,
+          add_context_from_internet: true,
+          response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
+        });
+        if (res?.image_url) {
+          setEditForm(f => ({ ...f, image_url: res.image_url }));
+          toast.success('Imagen encontrada automáticamente');
+        }
+      } catch (_) {}
+      setAutoFetchingImage(false);
+    }, 1200);
+  }, []);
 
   useEffect(() => { loadData(); }, []);
 
@@ -258,6 +310,17 @@ export default function SupplierTariffs() {
         </div>
       )}
 
+      {activeTab === 'tarifas' && loadError && !loading && (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-gray-500">
+          <WifiOff className="w-10 h-10 text-red-400" />
+          <p className="font-medium text-red-600">Error de conexión al cargar las tarifas</p>
+          <p className="text-sm text-gray-400">Comprueba tu conexión e inténtalo de nuevo</p>
+          <Button onClick={loadData} variant="outline" className="gap-2">
+            <RefreshCw className="w-4 h-4" /> Reintentar
+          </Button>
+        </div>
+      )}
+
       {activeTab === 'tarifas' && !loading && grouped.length === 0 && (
         <div className="text-center py-16 text-gray-400">
           <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -418,7 +481,27 @@ export default function SupplierTariffs() {
                 </div>
               </div>
 
-              <Input placeholder="Nombre del producto *" value={editForm.product_name || ''} onChange={e => setEditForm(f => ({ ...f, product_name: e.target.value }))} />
+              <div className="relative">
+                <Input
+                  placeholder="Nombre del producto * (admite α β Ω °C µ etc.)"
+                  value={editForm.product_name || ''}
+                  onChange={e => {
+                    const name = e.target.value;
+                    setEditForm(f => ({ ...f, product_name: name }));
+                    // Auto-buscar imagen solo si aún no hay imagen
+                    if (!editForm.image_url) {
+                      triggerAutoImageSearch(name, editForm.brand, editForm.product_code);
+                    }
+                  }}
+                  inputMode="text"
+                  style={{ unicodeBidi: 'plaintext' }}
+                />
+                {autoFetchingImage && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[10px] text-blue-500">
+                    <Loader2 className="w-3 h-3 animate-spin" /> buscando imagen...
+                  </div>
+                )}
+              </div>
               <Input placeholder="Código / Referencia" value={editForm.product_code || ''} onChange={e => setEditForm(f => ({ ...f, product_code: e.target.value }))} />
               <Select value={editForm.category || 'material'} onValueChange={v => setEditForm(f => ({ ...f, category: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

@@ -35,22 +35,22 @@ async function withRetry(fn, maxRetries = 8, onRetry = null) {
   }
 }
 
+// Normaliza para búsqueda pero preserva letras griegas y símbolos técnicos
 function normalizeName(str) {
   return String(str || '')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\w\s]/g, ' ')
+    .normalize('NFC')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 // Detecta si un nombre de producto tiene problemas: muy corto, solo números/símbolos,
-// caracteres raros que sugieren corrupción de texto, o mojibake
+// o mojibake (caracteres griegos/especiales/unicode válidos NO se marcan como error)
 function detectNameIssues(name) {
   if (!name || name.trim().length < 3) return 'Nombre demasiado corto';
   if (/^[\d\s\-_./,]+$/.test(name)) return 'Solo contiene números o símbolos';
-  if (/[ÃÂÃ¿Ã€â€œâ€]/.test(name)) return 'Posible codificación incorrecta (mojibake)';
-  if (/[^\x00-\x7F\u00C0-\u024F\u0400-\u04FF]/u.test(name)) return 'Caracteres inusuales detectados';
-  if (name.length > 200) return 'Nombre excesivamente largo';
+  // Solo detectar mojibake clásico (secuencias de reemplazo UTF-8 mal decodificadas)
+  if (/[ÃÂ][\u0080-\u00BF]/.test(name) || /â€/.test(name)) return 'Posible codificación incorrecta (mojibake)';
+  if (name.length > 300) return 'Nombre excesivamente largo';
   if (/^[A-Z0-9]{1,6}$/.test(name)) return 'Parece un código, no un nombre de producto';
   return null;
 }
