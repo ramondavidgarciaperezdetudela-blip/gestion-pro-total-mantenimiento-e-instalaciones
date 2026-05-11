@@ -22,6 +22,7 @@ import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
 import PriceItemSelector from '../components/PriceItemSelector';
+import SATTemplateSelector from '../components/SATTemplateSelector';
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
 const STATUSES = ['pendiente', 'en_curso', 'completada', 'cancelada'];
@@ -622,6 +623,27 @@ export default function SAT() {
               onChange={v => setForm({ ...form, technician: v })}
               placeholder="Seleccionar técnico"
             />
+
+            {/* Plantillas de trabajo */}
+            <div className="flex items-center gap-2 py-1 border-t border-b border-dashed border-blue-200">
+              <span className="text-xs text-gray-500">Rellenar desde plantilla:</span>
+              <SATTemplateSelector onApply={(tpl) => {
+                setForm(prev => ({
+                  ...prev,
+                  type: tpl.type || prev.type,
+                  equipment_type: tpl.equipment_type || prev.equipment_type,
+                  description: tpl.description || prev.description,
+                  diagnosis: tpl.diagnosis || prev.diagnosis,
+                  solution: tpl.solution || prev.solution,
+                  materials_used: tpl.materials_used?.length > 0
+                    ? tpl.materials_used
+                    : prev.materials_used,
+                  labor_hours: tpl.labor_hours || prev.labor_hours,
+                  labor_rate: tpl.labor_rate || prev.labor_rate,
+                  notes: tpl.notes || prev.notes,
+                }));
+              }} />
+            </div>
 
             <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Descripción del problema *" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} />
             <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Diagnóstico" value={form.diagnosis} onChange={e => setForm({ ...form, diagnosis: e.target.value })} rows={2} />

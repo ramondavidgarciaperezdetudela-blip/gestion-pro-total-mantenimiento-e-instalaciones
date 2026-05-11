@@ -538,8 +538,8 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       }
     }
 
-    // ── Guardar nuevos en lotes grandes vía bulkCreate ──────────────────────
-    const CREATE_BATCH = 500;
+    // ── Guardar nuevos en lotes — con fallback a lotes más pequeños si falla ─
+    const CREATE_BATCH = 200;
     for (let i = 0; i < toCreate.length; i += CREATE_BATCH) {
       if (abortRef.current) break;
       const batch = toCreate.slice(i, i + CREATE_BATCH);
@@ -547,13 +547,25 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
         await base44.entities.SupplierPrice.bulkCreate(batch);
         saved += batch.length;
       } catch (err) {
-        // Si falla el lote, intentar uno a uno para identificar el problema
-        for (const rec of batch) {
+        // Reintentar en lotes más pequeños (50) antes de ir uno a uno
+        const SMALL_BATCH = 50;
+        let batchSaved = false;
+        for (let si = 0; si < batch.length; si += SMALL_BATCH) {
+          const smallBatch = batch.slice(si, si + SMALL_BATCH);
           try {
-            await base44.entities.SupplierPrice.bulkCreate([rec]);
-            saved++;
+            await base44.entities.SupplierPrice.bulkCreate(smallBatch);
+            saved += smallBatch.length;
+            batchSaved = true;
           } catch (e2) {
-            failedItems.push({ index: saved + updated + failedItems.length + 1, product_name: rec.product_name, product_code: rec.product_code, reason: e2?.message || 'Error' });
+            // Último recurso: uno a uno
+            for (const rec of smallBatch) {
+              try {
+                await base44.entities.SupplierPrice.bulkCreate([rec]);
+                saved++;
+              } catch (e3) {
+                failedItems.push({ index: saved + updated + failedItems.length + 1, product_name: rec.product_name, product_code: rec.product_code, reason: e3?.message || 'Error' });
+              }
+            }
           }
         }
       }
@@ -658,8 +670,8 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     const toCreate = toRetry.filter(t => !t.isUpdate);
     const toUpdate = toRetry.filter(t => t.isUpdate);
 
-    // Guardar nuevos
-    const CREATE_BATCH = 500;
+    // Guardar nuevos — con lotes pequeños para mayor robustez
+    const CREATE_BATCH = 50;
     for (let i = 0; i < toCreate.length; i += CREATE_BATCH) {
       if (abortRef.current) break;
       const batch = toCreate.slice(i, i + CREATE_BATCH);
