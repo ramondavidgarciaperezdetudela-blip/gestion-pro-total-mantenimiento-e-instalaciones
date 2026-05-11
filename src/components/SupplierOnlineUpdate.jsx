@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Globe, RefreshCw, Image as ImageIcon, Loader2, CheckCircle, X,
-  Upload, ExternalLink, MinusCircle, AlertTriangle, Edit2, Save
+  Upload, ExternalLink, MinusCircle, AlertTriangle, Edit2, Save, Search
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -322,12 +322,63 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated, onFixed, bgState,
 }
 
 // ── Panel de imágenes ─────────────────────────────────────────────────────────
+// Busca imagen primero por nombre, si no encuentra intenta por referencia
+// Devuelve { image_url, found_by_ref, suggested_name } o null
+async function searchImageWithFallback(item, onRetry) {
+  const cleanName = normalizeName(item.product_name);
+  const cleanBrand = normalizeName(item.brand || '');
+
+  // 1º intento: por nombre
+  const byName = await withRetry(
+    () => base44.integrations.Core.InvokeLLM({
+      prompt: `Find the official product image URL for: "${cleanName}"${cleanBrand ? ` brand ${cleanBrand}` : ''}${item.product_code ? ` ref ${item.product_code}` : ''}. Return only a direct image URL (jpg/png/webp). If no reliable image exists, return null.`,
+      add_context_from_internet: true,
+      response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
+    }),
+    8, onRetry
+  );
+
+  if (byName?.image_url) return { image_url: byName.image_url, found_by_ref: false, suggested_name: null };
+
+  // 2º intento: por referencia (solo si tiene product_code)
+  if (!item.product_code) return null;
+
+  const byRef = await withRetry(
+    () => base44.integrations.Core.InvokeLLM({
+      prompt: `Search by product reference code "${item.product_code}"${cleanBrand ? ` brand ${cleanBrand}` : ''}. Find: 1) the official product image URL (jpg/png/webp) and 2) the correct product name for this reference. If no image found, return null for image_url.`,
+      add_context_from_internet: true,
+      response_json_schema: {
+        type: 'object',
+        properties: {
+          image_url: { type: 'string' },
+          product_name: { type: 'string' }
+        }
+      }
+    }),
+    8, onRetry
+  );
+
+  if (byRef?.image_url) {
+    return {
+      image_url: byRef.image_url,
+      found_by_ref: true,
+      suggested_name: byRef.product_name || null
+    };
+  }
+
+  return null;
+}
+
 function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgState }) {
   const [manualItem, setManualItem] = useState(null);
   const [manualUrl, setManualUrl] = useState('');
   const fileRef = useRef(null);
   const [uploadingManual, setUploadingManual] = useState(false);
   const stopRef = useRef(false);
+  // Estado de edición de nombre inline en la columna "sin imagen"
+  const [editingRefId, setEditingRefId] = useState(null);
+  const [editingRefValue, setEditingRefValue] = useState('');
+  const [retryingRef, setRetryingRef] = useState(null); // id del que está buscando imagen tras editar nombre
 
   const withoutImage = prices.filter(p => !p.image_url);
   const running = bgState.imagesRunning;
@@ -339,46 +390,39 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
   const handleFetchImages = async () => {
     if (withoutImage.length === 0) { toast.info('Todos los productos ya tienen imagen'); return; }
     stopRef.current = false;
-    const initial = withoutImage.map(item => ({ item, ok: false, pending: true }));
+    const initial = withoutImage.map(item => ({ item, ok: false, pending: true, found_by_ref: false }));
     setBgState(s => ({ ...s, imagesRunning: true, imagesRetrying: false, imagesResults: initial, imagesFound: 0, imagesProcessed: 0 }));
 
     let foundCount = 0;
-    const PARALLEL = 3; // 3 búsquedas en paralelo para acelerar
+    const PARALLEL = 3;
 
     for (let i = 0; i < withoutImage.length; i += PARALLEL) {
       if (stopRef.current) break;
       const batch = withoutImage.slice(i, Math.min(i + PARALLEL, withoutImage.length));
 
-      // Procesar en paralelo
       const batchResults = await Promise.allSettled(
-        batch.map(item => {
-          const cleanName = normalizeName(item.product_name);
-          const cleanBrand = normalizeName(item.brand || '');
-          const prompt = `Find the official product image URL for: "${cleanName}"${cleanBrand ? ` brand ${cleanBrand}` : ''}${item.product_code ? ` ref ${item.product_code}` : ''}. Return only a direct image URL (jpg/png/webp). If no reliable image exists, return null.`;
-
-          return withRetry(
-            () => base44.integrations.Core.InvokeLLM({
-              prompt,
-              add_context_from_internet: true,
-              response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
-            }),
-            8,
-            () => setBgState(s => ({ ...s, imagesRetrying: true }))
-          );
-        })
+        batch.map(item => searchImageWithFallback(item, () => setBgState(s => ({ ...s, imagesRetrying: true }))))
       );
 
-      // Guardar resultados en paralelo también
-      const saveBatch = await Promise.allSettled(
+      // Guardar imagen y nombre (si encontrado por ref) en paralelo
+      await Promise.allSettled(
         batchResults.map((res, idx) => {
           const item = batch[idx];
-          const imageUrl = res.status === 'fulfilled' ? res.value?.image_url : null;
-          return imageUrl ? base44.entities.SupplierPrice.update(item.id, { image_url: imageUrl }) : Promise.resolve();
+          const result = res.status === 'fulfilled' ? res.value : null;
+          if (!result?.image_url) return Promise.resolve();
+          const updateData = { image_url: result.image_url };
+          if (result.found_by_ref && result.suggested_name) {
+            updateData.product_name = result.suggested_name;
+          }
+          return base44.entities.SupplierPrice.update(item.id, updateData).then(() => {
+            if (result.found_by_ref && result.suggested_name) {
+              onFixed && onFixed(item.id, result.suggested_name);
+            }
+          });
         })
       );
 
-      // Contar exitosos
-      batchResults.forEach((res, idx) => {
+      batchResults.forEach((res) => {
         if (res.status === 'fulfilled' && res.value?.image_url) foundCount++;
       });
 
@@ -391,8 +435,11 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
           const batchIdx = batch.findIndex(item => item.id === r.item.id);
           if (batchIdx === -1) return r;
           const res = batchResults[batchIdx];
-          const imageUrl = res.status === 'fulfilled' ? res.value?.image_url : null;
-          return { item: r.item, image_url: imageUrl, ok: !!imageUrl, pending: false };
+          const result = res.status === 'fulfilled' ? res.value : null;
+          const updatedItem = (result?.found_by_ref && result?.suggested_name)
+            ? { ...r.item, product_name: result.suggested_name }
+            : r.item;
+          return { item: updatedItem, image_url: result?.image_url || null, ok: !!result?.image_url, pending: false, found_by_ref: result?.found_by_ref || false };
         }),
       }));
     }
@@ -403,6 +450,46 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
   };
 
   const handleStop = () => { stopRef.current = true; };
+
+  // Buscar imagen de nuevo tras editar nombre en la columna "sin imagen"
+  const handleRetryWithNewName = async (r, newName) => {
+    const newItem = { ...r.item, product_name: newName };
+    // Guardar nombre primero
+    await base44.entities.SupplierPrice.update(r.item.id, { product_name: newName });
+    onFixed && onFixed(r.item.id, newName);
+    setEditingRefId(null);
+    setRetryingRef(r.item.id);
+
+    // Actualizar item localmente
+    setBgState(s => ({
+      ...s,
+      imagesResults: s.imagesResults.map(x => x.item.id === r.item.id ? { ...x, item: newItem } : x),
+    }));
+
+    // Buscar imagen con el nuevo nombre
+    const result = await searchImageWithFallback(newItem, null).catch(() => null);
+    setRetryingRef(null);
+
+    if (result?.image_url) {
+      const updateData = { image_url: result.image_url };
+      if (result.found_by_ref && result.suggested_name) updateData.product_name = result.suggested_name;
+      await base44.entities.SupplierPrice.update(r.item.id, updateData);
+      if (result.found_by_ref && result.suggested_name) onFixed && onFixed(r.item.id, result.suggested_name);
+      setBgState(s => ({
+        ...s,
+        imagesFound: s.imagesFound + 1,
+        imagesResults: s.imagesResults.map(x => x.item.id === r.item.id
+          ? { ...x, image_url: result.image_url, ok: true, found_by_ref: result.found_by_ref,
+              item: result.found_by_ref && result.suggested_name ? { ...x.item, product_name: result.suggested_name } : x.item }
+          : x
+        ),
+      }));
+      onUpdated && onUpdated();
+      toast.success('¡Imagen encontrada!');
+    } else {
+      toast.info('No se encontró imagen con el nuevo nombre');
+    }
+  };
 
   const handleManualFile = async (e) => {
     const file = e.target.files?.[0];
@@ -445,7 +532,7 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
         <p className="font-semibold mb-0.5">🖼️ Descarga automática de imágenes</p>
         <p className="text-xs text-amber-600">
-          {withoutImage.length} de {prices.length} productos sin imagen. Se guardan al instante al encontrarlas.
+          {withoutImage.length} de {prices.length} productos sin imagen. Busca primero por nombre y luego por referencia. Se guardan al instante.
         </p>
       </div>
 
@@ -507,7 +594,7 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
             <div className="bg-emerald-50 px-2 py-1.5 border-b border-emerald-100">
               <p className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wide">✅ Con imagen ({okResults.length})</p>
             </div>
-            <div className="max-h-52 overflow-y-auto divide-y">
+            <div className="max-h-64 overflow-y-auto divide-y">
               {okResults.length === 0 && <p className="text-xs text-gray-400 p-3 text-center">—</p>}
               {okResults.map((r, i) => (
                 <div key={i} className="flex items-center gap-1.5 px-2 py-1.5 bg-white">
@@ -517,10 +604,12 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
                       : <ImageIcon className="w-3 h-3 text-gray-300 m-auto mt-1.5" />
                     }
                   </div>
-                  <p className="text-xs text-gray-700 leading-tight break-words min-w-0">{r.item.product_name}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-700 leading-tight break-words">{r.item.product_name}</p>
+                    {r.found_by_ref && <p className="text-[9px] text-blue-500">📎 encontrado por referencia</p>}
+                  </div>
                 </div>
               ))}
-              {/* Pendientes al fondo */}
               {results.filter(r => r.pending).map((r, i) => (
                 <div key={`p${i}`} className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-50 opacity-50">
                   <Loader2 className="w-3 h-3 text-gray-300 animate-spin flex-shrink-0" />
@@ -530,27 +619,70 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
             </div>
           </div>
 
-          {/* Sin imagen */}
+          {/* Sin imagen — con edición de nombre y referencia */}
           <div className="border rounded-xl overflow-hidden">
             <div className="bg-orange-50 px-2 py-1.5 border-b border-orange-100">
               <p className="text-[10px] font-semibold text-orange-600 uppercase tracking-wide">❌ Sin imagen ({failResults.length})</p>
             </div>
-            <div className="max-h-52 overflow-y-auto divide-y">
+            <div className="max-h-64 overflow-y-auto divide-y">
               {failResults.length === 0 && <p className="text-xs text-gray-400 p-3 text-center">—</p>}
               {failResults.map((r, i) => (
-                <div key={i} className="flex items-center gap-1.5 px-2 py-1.5 bg-white">
-                  <div className="w-7 h-7 rounded border bg-gray-50 flex-shrink-0 flex items-center justify-center">
-                    <ImageIcon className="w-3 h-3 text-gray-300" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-600 leading-tight break-words">{r.item.product_name}</p>
-                  </div>
-                  <button
-                    onClick={() => { setManualItem(r.item); setManualUrl(''); }}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 flex-shrink-0 whitespace-nowrap"
-                  >
-                    + Subir
-                  </button>
+                <div key={i} className="px-2 py-2 bg-white space-y-1.5">
+                  {/* Nombre + referencia */}
+                  {editingRefId === r.item.id ? (
+                    <div className="flex gap-1">
+                      <Input
+                        value={editingRefValue}
+                        onChange={e => setEditingRefValue(e.target.value)}
+                        className="h-6 text-[10px] flex-1 px-1.5"
+                        autoFocus
+                        placeholder="Nuevo nombre..."
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleRetryWithNewName(r, editingRefValue);
+                          if (e.key === 'Escape') setEditingRefId(null);
+                        }}
+                      />
+                      <button
+                        onClick={() => handleRetryWithNewName(r, editingRefValue)}
+                        disabled={!editingRefValue.trim()}
+                        className="text-[9px] px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 whitespace-nowrap"
+                      >
+                        Buscar
+                      </button>
+                      <button onClick={() => setEditingRefId(null)} className="text-gray-400 hover:text-gray-600 text-[10px] px-0.5">✕</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-1">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-gray-700 leading-tight break-words font-medium">{r.item.product_name}</p>
+                        {r.item.product_code && (
+                          <p className="text-[9px] text-gray-400 font-mono mt-0.5">Ref: {r.item.product_code}</p>
+                        )}
+                      </div>
+                      {retryingRef === r.item.id ? (
+                        <Loader2 className="w-3 h-3 text-blue-400 animate-spin flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <button
+                          onClick={() => { setEditingRefId(r.item.id); setEditingRefValue(r.item.product_name || ''); }}
+                          className="flex-shrink-0 p-0.5 text-gray-300 hover:text-blue-500 transition-colors"
+                          title="Editar nombre y buscar imagen"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {/* Acciones */}
+                  {editingRefId !== r.item.id && retryingRef !== r.item.id && (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => { setManualItem(r.item); setManualUrl(''); }}
+                        className="text-[9px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 whitespace-nowrap"
+                      >
+                        + Subir
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
