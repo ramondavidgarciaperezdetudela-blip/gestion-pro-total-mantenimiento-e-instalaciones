@@ -336,20 +336,23 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
 
         const arrayBuffer = await file.arrayBuffer();
         const totalPages = estimatePdfPages(arrayBuffer);
+        const fileSizeMB = (file.size / 1024 / 1024).toFixed(1);
+        const isLarge = file.size > 10 * 1024 * 1024;
 
         // ── Subir el PDF completo UNA SOLA VEZ — nunca cortar el binario ────
-        // Cortar un PDF por bytes produce fragmentos inválidos (sin cabecera xref)
-        // que la IA rechaza con "The document has no pages."
-        setProgress(`Subiendo PDF (${(file.size / 1024 / 1024).toFixed(1)} MB)...`);
-        setProgressPct(5);
+        setProgress(`Subiendo PDF (${fileSizeMB} MB)...`);
+        setProgressPct(3);
         const { file_url: pdfUrl } = await base44.integrations.Core.UploadFile({ file });
+        setProgressPct(8);
 
-        // ── Dividir en chunks lógicos de páginas — todos usan la misma URL ──
-        const PAGES_PER_CHUNK = 100;
+        // ── Crear chunks lógicos de páginas — todos apuntan a la misma URL ──
+        // PDFs grandes usan chunks más pequeños para mayor robustez
+        const PAGES_PER_CHUNK = isLarge ? 50 : 100;
         const numChunks = Math.max(1, Math.ceil(totalPages / PAGES_PER_CHUNK));
         const allChunks = [];
         for (let ci = 0; ci < numChunks; ci++) {
           allChunks.push({
+            index: ci,
             url: pdfUrl,
             pageFrom: ci * PAGES_PER_CHUNK + 1,
             pageTo: Math.min((ci + 1) * PAGES_PER_CHUNK, totalPages),
@@ -359,7 +362,13 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
 
         const totalChunks = allChunks.length;
         const secsPerChunk = fastMode ? 20 : 40;
-        setEstimatedSecs(totalChunks * secsPerChunk);
+        // Para procesamiento paralelo, el tiempo total es aprox totalChunks/CONCURRENCY * secsPerChunk
+        const CONCURRENCY = isLarge ? 3 : 2;
+        setEstimatedSecs(Math.ceil(totalChunks / CONCURRENCY) * secsPerChunk);
+
+        if (isLarge) {
+          setProgress(`PDF grande (${fileSizeMB} MB, ~${totalPages} pág.) — procesando ${totalChunks} fragmentos en paralelo...`);
+        }
 
         const responseSchema = {
           type: 'object',
@@ -381,47 +390,67 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
           },
         };
 
-        let lastItemOfPreviousChunk = null; // para retry si el corte de parte partió un producto
+        // ── Función que analiza un chunk con reintentos automáticos ──────────
+        const analyzeChunk = async (chunk, attempt = 0) => {
+          const rangeLabel = totalChunks > 1 ? `, páginas ${chunk.pageFrom} a ${chunk.pageTo}` : '';
+          const fastPrompt = `SOLO extrae filas de tablas de precios de este PDF${totalChunks > 1 ? `, céntrate en las páginas ${chunk.pageFrom} a ${chunk.pageTo}` : ''}. Ignora imágenes, logos y texto descriptivo. Para cada fila de tabla devuelve: product_code (referencia/código), product_name (descripción/nombre), cost_price (precio numérico sin €, obligatorio), unit (unidad). Omite filas sin precio. Sé exhaustivo.`;
+          const fullPrompt = `Extrae TODOS los productos del catálogo PDF del proveedor "${selectedSupplier?.name || ''}"${totalChunks > 1 ? `, analizando las páginas ${chunk.pageFrom} a ${chunk.pageTo}` : ''}. Para cada producto devuelve: product_name, product_code, brand, cost_price (número sin €), unit, category (clima/refrigeracion/electrico/solar/fontaneria/material/otro). No omitas ningún producto.`;
+          try {
+            const result = await base44.integrations.Core.InvokeLLM({
+              model: 'gemini_3_flash',
+              prompt: fastMode ? fastPrompt : fullPrompt,
+              file_urls: [chunk.url],
+              response_json_schema: responseSchema,
+            });
+            return (result?.items || []).filter(i => i?.product_name && i.cost_price > 0);
+          } catch (err) {
+            if (attempt < 2 && !abortRef.current) {
+              // Esperar antes de reintentar: 3s en primer reintento, 8s en segundo
+              await new Promise(r => setTimeout(r, attempt === 0 ? 3000 : 8000));
+              return analyzeChunk(chunk, attempt + 1);
+            }
+            console.warn(`[PDF] Chunk ${chunk.index} (pág. ${chunk.pageFrom}-${chunk.pageTo}) falló tras ${attempt + 1} intentos:`, err.message);
+            return []; // chunk fallido → devuelve vacío en lugar de abortar todo
+          }
+        };
 
-        for (let ci = 0; ci < totalChunks; ci++) {
+        // ── Procesamiento paralelo con concurrencia controlada ───────────────
+        let completedChunks = 0;
+        const chunkResults = new Array(totalChunks).fill(null);
+
+        // Procesar en lotes de CONCURRENCY chunks simultáneos
+        for (let i = 0; i < totalChunks; i += CONCURRENCY) {
           if (abortRef.current) break;
-          const chunk = allChunks[ci];
-          const rangeLabel = totalChunks > 1 ? ` (páginas ${chunk.pageFrom}–${chunk.pageTo} de ~${chunk.totalPages})` : '';
-          setProgress(`Analizando con IA${rangeLabel}... (${extracted.length} productos hasta ahora)`);
-          setProgressPct(Math.round(10 + ((ci / totalChunks) * 80)));
+          const batch = allChunks.slice(i, i + CONCURRENCY);
 
-          // Si hay un último item del chunk anterior, incluirlo en el prompt para verificar que está completo
-          const retryHint = lastItemOfPreviousChunk
-            ? ` El último producto detectado en el fragmento anterior fue: "${lastItemOfPreviousChunk.product_name}" (ref: ${lastItemOfPreviousChunk.product_code || 'sin ref'}, precio: ${lastItemOfPreviousChunk.cost_price}). Si este producto aparece incompleto al inicio de este fragmento, inclúyelo completo.`
-            : '';
+          setProgress(
+            `Analizando fragmentos ${i + 1}–${Math.min(i + CONCURRENCY, totalChunks)} de ${totalChunks}` +
+            ` (${extracted.length} productos encontrados)...`
+          );
 
-          const fastPrompt = `SOLO extrae filas de tablas de precios de este PDF${totalChunks > 1 ? `, céntrate en las páginas ${chunk.pageFrom} a ${chunk.pageTo}` : ''}. Ignora imágenes, logos y texto descriptivo. Para cada fila de tabla devuelve: product_code (referencia/código), product_name (descripción/nombre), cost_price (precio numérico sin €, obligatorio), unit (unidad). Omite filas sin precio. Sé exhaustivo y no omitas ningún producto.${retryHint}`;
-          const fullPrompt = `Extrae TODOS los productos del catálogo PDF del proveedor "${selectedSupplier?.name || ''}"${totalChunks > 1 ? `, analizando las páginas ${chunk.pageFrom} a ${chunk.pageTo}` : ''}. Para cada producto devuelve: product_name, product_code, brand, cost_price (número sin €), unit, category (clima/refrigeracion/electrico/solar/fontaneria/material/otro). No omitas ningún producto.${retryHint}`;
+          // Lanzar todos los chunks del lote en paralelo
+          const batchResults = await Promise.all(batch.map(chunk => analyzeChunk(chunk)));
 
-          const result = await base44.integrations.Core.InvokeLLM({
-            model: 'gemini_3_flash',
-            prompt: fastMode ? fastPrompt : fullPrompt,
-            file_urls: [chunk.url],
-            response_json_schema: responseSchema,
+          batchResults.forEach((items, bi) => {
+            chunkResults[i + bi] = items;
           });
 
-          const chunkItems = (result?.items || []).filter(i => i?.product_name && i.cost_price > 0);
+          completedChunks += batch.length;
+          setProgressPct(Math.round(8 + (completedChunks / totalChunks) * 85));
 
-          // Guardar último item para el siguiente chunk (protección corte entre partes)
-          lastItemOfPreviousChunk = chunkItems.length > 0 ? chunkItems[chunkItems.length - 1] : null;
-
-          // Deduplicar: si el primer item es idéntico al último del chunk anterior (retry), omitirlo
-          if (lastItemOfPreviousChunk && extracted.length > 0 && chunkItems.length > 0) {
-            const prev = extracted[extracted.length - 1];
-            const first = chunkItems[0];
-            if (prev.product_code && first.product_code && prev.product_code === first.product_code) {
-              chunkItems.shift(); // quitar duplicado
+          // Acumular resultados en orden (para evitar duplicados de frontera)
+          extracted = [];
+          const seenCodes = new Set();
+          for (const items of chunkResults) {
+            if (!items) continue;
+            for (const item of items) {
+              const key = item.product_code ? item.product_code.trim().toLowerCase() : null;
+              if (key && seenCodes.has(key)) continue;
+              if (key) seenCodes.add(key);
+              extracted.push(item);
             }
           }
-
-          extracted.push(...chunkItems);
           setParsedCount(extracted.length);
-          setProgressPct(Math.round(10 + ((ci + 1) / totalChunks) * 80));
         }
 
         if (applyIva && ivaRate > 0) {
