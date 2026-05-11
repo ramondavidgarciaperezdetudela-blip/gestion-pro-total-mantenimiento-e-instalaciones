@@ -1,13 +1,42 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Globe, RefreshCw, Image as ImageIcon, Loader2, CheckCircle, X,
-  Upload, ExternalLink, MinusCircle, AlertTriangle, Edit2, Save, Search
+  Upload, ExternalLink, MinusCircle, AlertTriangle, Edit2, Save, Search,
+  Settings, Plus, Trash2, ArrowRight, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+// ── Reglas de búsqueda de imágenes (localStorage) ────────────────────────────
+const RULES_KEY = 'supplier_image_search_rules';
+
+function loadRules() {
+  try { return JSON.parse(localStorage.getItem(RULES_KEY) || '{"ignore":[],"replace":[]}'); }
+  catch { return { ignore: [], replace: [] }; }
+}
+
+function saveRules(rules) {
+  localStorage.setItem(RULES_KEY, JSON.stringify(rules));
+}
+
+// Aplica reglas al nombre antes de buscar imagen
+function applyRulesToName(name, rules) {
+  let result = name || '';
+  // Primero reemplazar
+  for (const r of (rules.replace || [])) {
+    if (r.from && r.to !== undefined) {
+      result = result.replace(new RegExp(r.from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), r.to);
+    }
+  }
+  // Luego ignorar (quitar)
+  for (const kw of (rules.ignore || [])) {
+    if (kw) result = result.replace(new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '');
+  }
+  return result.replace(/\s+/g, ' ').trim();
+}
 
 // ── Utilidades ────────────────────────────────────────────────────────────────
 
@@ -56,10 +85,11 @@ function detectNameIssues(name) {
 }
 
 // ── Sección de avisos de nombres problemáticos ────────────────────────────────
-function NameIssuesSection({ prices, onFixed }) {
+function NameIssuesSection({ prices, onFixed, onSearchImage }) {
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [searchingId, setSearchingId] = useState(null); // buscando imagen inline
 
   const problematic = useMemo(() =>
     prices.map(p => ({ ...p, issue: detectNameIssues(p.product_name) })).filter(p => p.issue),
@@ -68,14 +98,44 @@ function NameIssuesSection({ prices, onFixed }) {
 
   if (problematic.length === 0) return null;
 
-  const handleSave = async (item) => {
-    if (!editValue.trim()) return;
+  const handleSaveAndSearch = async (item, nameToSave) => {
+    if (!nameToSave.trim()) return;
     setSaving(true);
-    await base44.entities.SupplierPrice.update(item.id, { product_name: editValue.trim() });
-    onFixed && onFixed(item.id, editValue.trim());
+    await base44.entities.SupplierPrice.update(item.id, { product_name: nameToSave.trim() });
+    onFixed && onFixed(item.id, nameToSave.trim());
     setEditingId(null);
     setSaving(false);
-    toast.success('Nombre corregido');
+    toast.success('Nombre guardado, buscando imagen...');
+    // Lanzar búsqueda de imagen
+    setSearchingId(item.id);
+    const result = await searchImageWithFallback({ ...item, product_name: nameToSave.trim() }, null).catch(() => null);
+    setSearchingId(null);
+    if (result?.image_url) {
+      const updateData = { image_url: result.image_url };
+      if (result.found_by_ref && result.suggested_name) { updateData.product_name = result.suggested_name; onFixed && onFixed(item.id, result.suggested_name); }
+      await base44.entities.SupplierPrice.update(item.id, updateData);
+      onSearchImage && onSearchImage(item.id, result.image_url);
+      toast.success('¡Imagen encontrada y guardada!');
+    } else {
+      toast.info('Nombre guardado. No se encontró imagen.');
+    }
+  };
+
+  // Confirmar nombre actual (está bien) y buscar imagen igualmente
+  const handleConfirmAndSearch = async (item) => {
+    setSearchingId(item.id);
+    toast.info('Buscando imagen...');
+    const result = await searchImageWithFallback(item, null).catch(() => null);
+    setSearchingId(null);
+    if (result?.image_url) {
+      const updateData = { image_url: result.image_url };
+      if (result.found_by_ref && result.suggested_name) { updateData.product_name = result.suggested_name; onFixed && onFixed(item.id, result.suggested_name); }
+      await base44.entities.SupplierPrice.update(item.id, updateData);
+      onSearchImage && onSearchImage(item.id, result.image_url);
+      toast.success('¡Imagen encontrada y guardada!');
+    } else {
+      toast.info('No se encontró imagen para este producto');
+    }
   };
 
   return (
@@ -85,39 +145,58 @@ function NameIssuesSection({ prices, onFixed }) {
         <p className="text-sm font-semibold text-orange-800">
           {problematic.length} producto{problematic.length > 1 ? 's' : ''} con nombre incorrecto
         </p>
-        <span className="text-xs text-orange-600 ml-auto">Corrígelos para mejorar la búsqueda</span>
+        <span className="text-xs text-orange-600 ml-auto">Edita o confirma para buscar imagen</span>
       </div>
-      <div className="divide-y divide-orange-100 max-h-52 overflow-y-auto">
+      <div className="divide-y divide-orange-100 max-h-64 overflow-y-auto">
         {problematic.map((p) => (
           <div key={p.id} className="p-3 space-y-1.5">
             <div className="flex items-start gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-gray-800 break-words">{p.product_name || '(vacío)'}</p>
                 <p className="text-[10px] text-orange-600 mt-0.5">⚠ {p.issue}</p>
-                {p.product_code && <p className="text-[10px] text-gray-400">Ref: {p.product_code}</p>}
+                {p.product_code && <p className="text-[10px] text-gray-400 font-mono">Ref: {p.product_code}</p>}
               </div>
-              {editingId !== p.id && (
-                <button
-                  onClick={() => { setEditingId(p.id); setEditValue(p.product_name || ''); }}
-                  className="flex-shrink-0 p-1 rounded text-orange-600 hover:bg-orange-200 transition-colors"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
+              {editingId !== p.id && searchingId !== p.id && (
+                <div className="flex gap-1 flex-shrink-0">
+                  {/* Confirmar: el nombre está bien, buscar imagen igualmente */}
+                  <button
+                    onClick={() => handleConfirmAndSearch(p)}
+                    className="flex items-center gap-0.5 text-[9px] px-1.5 py-1 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors whitespace-nowrap"
+                    title="El nombre está bien — buscar imagen"
+                  >
+                    <Check className="w-3 h-3" /> OK
+                  </button>
+                  {/* Editar nombre */}
+                  <button
+                    onClick={() => { setEditingId(p.id); setEditValue(p.product_name || ''); }}
+                    className="flex items-center gap-0.5 text-[9px] px-1.5 py-1 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 transition-colors"
+                    title="Editar nombre"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+              {searchingId === p.id && (
+                <Loader2 className="w-4 h-4 text-blue-400 animate-spin flex-shrink-0 mt-0.5" />
               )}
             </div>
             {editingId === p.id && (
-              <div className="flex gap-1.5">
+              <div className="space-y-1.5">
                 <Input
                   value={editValue}
                   onChange={e => setEditValue(e.target.value)}
-                  className="h-7 text-xs flex-1"
+                  className="h-7 text-xs"
                   autoFocus
-                  onKeyDown={e => { if (e.key === 'Enter') handleSave(p); if (e.key === 'Escape') setEditingId(null); }}
+                  placeholder="Nuevo nombre del producto..."
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveAndSearch(p, editValue); if (e.key === 'Escape') setEditingId(null); }}
                 />
-                <Button size="sm" className="h-7 px-2 text-xs bg-orange-600 hover:bg-orange-700 gap-1" onClick={() => handleSave(p)} disabled={saving}>
-                  {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                </Button>
-                <button onClick={() => setEditingId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-1">✕</button>
+                <div className="flex gap-1.5">
+                  <Button size="sm" className="h-7 px-2 text-xs bg-blue-600 hover:bg-blue-700 gap-1 flex-1" onClick={() => handleSaveAndSearch(p, editValue)} disabled={saving || !editValue.trim()}>
+                    {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+                    Guardar y buscar imagen
+                  </Button>
+                  <button onClick={() => setEditingId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-1">✕</button>
+                </div>
               </div>
             )}
           </div>
@@ -204,7 +283,7 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated, onFixed, bgState,
 
   return (
     <div className="space-y-3">
-      <NameIssuesSection prices={prices} onFixed={onFixed} />
+      <NameIssuesSection prices={prices} onFixed={onFixed} onSearchImage={onUpdated} />
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
         <p className="font-semibold mb-0.5">🌐 Actualización de precios desde internet</p>
@@ -324,8 +403,9 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated, onFixed, bgState,
 // ── Panel de imágenes ─────────────────────────────────────────────────────────
 // Busca imagen primero por nombre, si no encuentra intenta por referencia
 // Devuelve { image_url, found_by_ref, suggested_name } o null
-async function searchImageWithFallback(item, onRetry) {
-  const cleanName = normalizeName(item.product_name);
+async function searchImageWithFallback(item, onRetry, rules = null) {
+  const activeRules = rules || loadRules();
+  const cleanName = normalizeName(applyRulesToName(item.product_name, activeRules));
   const cleanBrand = normalizeName(item.brand || '');
 
   // 1º intento: por nombre
@@ -527,7 +607,7 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
 
   return (
     <div className="space-y-3">
-      <NameIssuesSection prices={prices} onFixed={onFixed} />
+      <NameIssuesSection prices={prices} onFixed={onFixed} onSearchImage={onUpdated} />
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
         <p className="font-semibold mb-0.5">🖼️ Descarga automática de imágenes</p>
@@ -711,6 +791,107 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
   );
 }
 
+// ── Panel de configuración de reglas ─────────────────────────────────────────
+function ImageSearchRulesPanel() {
+  const [rules, setRules] = useState(loadRules);
+  const [newIgnore, setNewIgnore] = useState('');
+  const [newFrom, setNewFrom] = useState('');
+  const [newTo, setNewTo] = useState('');
+
+  const persist = (updated) => { setRules(updated); saveRules(updated); };
+
+  const addIgnore = () => {
+    const kw = newIgnore.trim();
+    if (!kw || rules.ignore.includes(kw)) return;
+    persist({ ...rules, ignore: [...rules.ignore, kw] });
+    setNewIgnore('');
+    toast.success(`Palabra ignorada: "${kw}"`);
+  };
+
+  const removeIgnore = (kw) => persist({ ...rules, ignore: rules.ignore.filter(k => k !== kw) });
+
+  const addReplace = () => {
+    const from = newFrom.trim();
+    const to = newTo.trim();
+    if (!from) return;
+    persist({ ...rules, replace: [...rules.replace, { from, to }] });
+    setNewFrom(''); setNewTo('');
+    toast.success(`Regla añadida: "${from}" → "${to || '(eliminar)'}"`);
+  };
+
+  const removeReplace = (i) => persist({ ...rules, replace: rules.replace.filter((_, idx) => idx !== i) });
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600">
+        <p className="font-semibold text-slate-800 mb-1">⚙️ Reglas de búsqueda de imágenes</p>
+        <p>Estas reglas se aplican al nombre del producto <strong>antes</strong> de buscar su imagen. Útil para eliminar códigos internos, prefijos de proveedor, etc.</p>
+      </div>
+
+      {/* Palabras a ignorar */}
+      <div>
+        <p className="text-xs font-semibold text-gray-700 mb-2">🚫 Palabras/frases a ignorar al buscar</p>
+        <div className="flex gap-2 mb-2">
+          <Input
+            value={newIgnore}
+            onChange={e => setNewIgnore(e.target.value)}
+            placeholder='Ej: "PACK", "Kit.", "Código:"...'
+            className="h-8 text-xs flex-1"
+            onKeyDown={e => e.key === 'Enter' && addIgnore()}
+          />
+          <Button size="sm" className="h-8 px-3 text-xs gap-1 bg-slate-700 hover:bg-slate-800" onClick={addIgnore} disabled={!newIgnore.trim()}>
+            <Plus className="w-3 h-3" /> Añadir
+          </Button>
+        </div>
+        {rules.ignore.length === 0
+          ? <p className="text-[10px] text-gray-400 italic">Sin reglas de ignorar</p>
+          : <div className="flex flex-wrap gap-1.5">
+              {rules.ignore.map((kw, i) => (
+                <span key={i} className="inline-flex items-center gap-1 bg-red-50 border border-red-200 text-red-700 text-[10px] px-2 py-0.5 rounded-full">
+                  {kw}
+                  <button onClick={() => removeIgnore(kw)} className="hover:text-red-900"><X className="w-2.5 h-2.5" /></button>
+                </span>
+              ))}
+            </div>
+        }
+      </div>
+
+      {/* Reglas de reemplazo */}
+      <div>
+        <p className="text-xs font-semibold text-gray-700 mb-2">🔄 Reemplazar texto al buscar</p>
+        <div className="flex gap-2 mb-2 items-center">
+          <Input value={newFrom} onChange={e => setNewFrom(e.target.value)} placeholder='Buscar: "R32"' className="h-8 text-xs flex-1" onKeyDown={e => e.key === 'Enter' && addReplace()} />
+          <ArrowRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+          <Input value={newTo} onChange={e => setNewTo(e.target.value)} placeholder='Por: "R-32" (vacío=eliminar)' className="h-8 text-xs flex-1" onKeyDown={e => e.key === 'Enter' && addReplace()} />
+          <Button size="sm" className="h-8 px-3 text-xs gap-1 bg-slate-700 hover:bg-slate-800" onClick={addReplace} disabled={!newFrom.trim()}>
+            <Plus className="w-3 h-3" /> Añadir
+          </Button>
+        </div>
+        {rules.replace.length === 0
+          ? <p className="text-[10px] text-gray-400 italic">Sin reglas de reemplazo</p>
+          : <div className="space-y-1">
+              {rules.replace.map((r, i) => (
+                <div key={i} className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1 text-[10px]">
+                  <span className="font-mono text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{r.from}</span>
+                  <ArrowRight className="w-3 h-3 text-gray-400" />
+                  <span className="font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{r.to || '(eliminar)'}</span>
+                  <button onClick={() => removeReplace(i)} className="ml-auto text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
+                </div>
+              ))}
+            </div>
+        }
+      </div>
+
+      {(rules.ignore.length > 0 || rules.replace.length > 0) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-[10px] text-amber-700">
+          <strong>Vista previa:</strong> Ejemplo con reglas activas: el nombre original se transforma antes de enviar a la búsqueda.
+          Las reglas se guardan localmente en este navegador.
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Estado inicial de background ──────────────────────────────────────────────
 const initBgState = () => ({
   pricesRunning: false,
@@ -729,6 +910,7 @@ export default function SupplierOnlineUpdate({ supplier, prices, onUpdated }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('prices');
   const [bgState, setBgState] = useState(initBgState);
+  const [rules] = useState(loadRules);
   // Copia local de precios para reflejar correcciones de nombre inline
   const [localPrices, setLocalPrices] = useState(null);
 
@@ -816,6 +998,13 @@ export default function SupplierOnlineUpdate({ supplier, prices, onUpdated }) {
               Imágenes ({supplierPrices.filter(p => !p.image_url).length} sin imagen)
               {imagesActive && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />}
             </button>
+            <button
+              onClick={() => setTab('config')}
+              className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${tab === 'config' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
+              title="Configuración de reglas"
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           {tab === 'prices' && (
@@ -838,6 +1027,7 @@ export default function SupplierOnlineUpdate({ supplier, prices, onUpdated }) {
               setBgState={setBgState}
             />
           )}
+          {tab === 'config' && <ImageSearchRulesPanel />}
         </DialogContent>
       </Dialog>
     </>
