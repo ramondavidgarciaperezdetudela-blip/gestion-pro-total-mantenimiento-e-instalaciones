@@ -334,52 +334,27 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       } else if (isPdf(file)) {
         setStep('extracting');
 
-        const SIZE_LIMIT = 10 * 1024 * 1024; // 10 MB por parte
         const arrayBuffer = await file.arrayBuffer();
         const totalPages = estimatePdfPages(arrayBuffer);
 
-        // ── Dividir PDF en partes si supera 10 MB ────────────────────────────
-        let fileUrls = [];
-        if (file.size > SIZE_LIMIT) {
-          const totalParts = Math.ceil(file.size / SIZE_LIMIT);
-          const pagesPerPart = Math.ceil(totalPages / totalParts);
-          setProgress(`PDF grande (${(file.size / 1024 / 1024).toFixed(1)} MB) — subiendo en ${totalParts} partes...`);
+        // ── Subir el PDF completo UNA SOLA VEZ — nunca cortar el binario ────
+        // Cortar un PDF por bytes produce fragmentos inválidos (sin cabecera xref)
+        // que la IA rechaza con "The document has no pages."
+        setProgress(`Subiendo PDF (${(file.size / 1024 / 1024).toFixed(1)} MB)...`);
+        setProgressPct(5);
+        const { file_url: pdfUrl } = await base44.integrations.Core.UploadFile({ file });
 
-          for (let pi = 0; pi < totalParts; pi++) {
-            if (abortRef.current) break;
-            // Cortar el binario en partes iguales por bytes
-            const start = Math.floor(pi * arrayBuffer.byteLength / totalParts);
-            const end = pi < totalParts - 1
-              ? Math.floor((pi + 1) * arrayBuffer.byteLength / totalParts)
-              : arrayBuffer.byteLength;
-            const partBlob = new Blob([arrayBuffer.slice(start, end)], { type: 'application/pdf' });
-            const partFile = new File([partBlob], `parte_${pi + 1}_${file.name}`, { type: 'application/pdf' });
-            setProgress(`Subiendo parte ${pi + 1} de ${totalParts}...`);
-            setProgressPct(Math.round((pi / totalParts) * 10));
-            const { file_url } = await base44.integrations.Core.UploadFile({ file: partFile });
-            fileUrls.push({ url: file_url, pageFrom: pi * pagesPerPart + 1, pageTo: Math.min((pi + 1) * pagesPerPart, totalPages) });
-          }
-        } else {
-          setProgress('Subiendo PDF...');
-          setProgressPct(5);
-          const { file_url } = await base44.integrations.Core.UploadFile({ file });
-          fileUrls = [{ url: file_url, pageFrom: 1, pageTo: totalPages }];
-        }
-
-        // ── Dividir cada parte en chunks de 150 páginas para la IA (menos llamadas = más rápido) ────────────
-        const PAGES_PER_CHUNK = 150;
+        // ── Dividir en chunks lógicos de páginas — todos usan la misma URL ──
+        const PAGES_PER_CHUNK = 100;
+        const numChunks = Math.max(1, Math.ceil(totalPages / PAGES_PER_CHUNK));
         const allChunks = [];
-        for (const part of fileUrls) {
-          const partPages = part.pageTo - part.pageFrom + 1;
-          const numChunks = Math.max(1, Math.ceil(partPages / PAGES_PER_CHUNK));
-          for (let ci = 0; ci < numChunks; ci++) {
-            allChunks.push({
-              url: part.url,
-              pageFrom: part.pageFrom + ci * PAGES_PER_CHUNK,
-              pageTo: Math.min(part.pageFrom + (ci + 1) * PAGES_PER_CHUNK - 1, part.pageTo),
-              totalPages,
-            });
-          }
+        for (let ci = 0; ci < numChunks; ci++) {
+          allChunks.push({
+            url: pdfUrl,
+            pageFrom: ci * PAGES_PER_CHUNK + 1,
+            pageTo: Math.min((ci + 1) * PAGES_PER_CHUNK, totalPages),
+            totalPages,
+          });
         }
 
         const totalChunks = allChunks.length;
