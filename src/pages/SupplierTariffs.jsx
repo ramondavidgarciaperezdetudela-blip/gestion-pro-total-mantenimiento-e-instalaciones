@@ -52,6 +52,10 @@ export default function SupplierTariffs() {
   const [editItem, setEditItem] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editSupplier, setEditSupplier] = useState(null);
+  const [supplierForm, setSupplierForm] = useState({});
+  const [savingSupplier, setSavingSupplier] = useState(false);
+  const [deletingTariff, setDeletingTariff] = useState(null);
   const [fetchingImage, setFetchingImage] = useState(false);
   const [autoFetchingImage, setAutoFetchingImage] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -87,9 +91,9 @@ export default function SupplierTariffs() {
       let skip = PAGE;
 
       const loadBatchesInParallel = async () => {
-        while (skip < PAGE * 5) {
+        while (true) {
           const batchRequests = [];
-          for (let i = 0; i < 3 && skip < PAGE * 5; i++) {
+          for (let i = 0; i < 3; i++) {
             batchRequests.push(
               withRetry(() => base44.entities.SupplierPrice.list('-created_date', PAGE, skip))
             );
@@ -97,14 +101,16 @@ export default function SupplierTariffs() {
           }
           const batches = await Promise.all(batchRequests);
           let hasMore = false;
+          let anyReceived = false;
           batches.forEach(batch => {
-            if (batch.length > 0) {
+            if (batch && batch.length > 0) {
               allPrices = allPrices.concat(batch);
+              anyReceived = true;
               if (batch.length === PAGE) hasMore = true;
             }
           });
           setPrices([...allPrices]);
-          if (!hasMore) break;
+          if (!anyReceived || !hasMore) break;
         }
       };
 
@@ -122,7 +128,7 @@ export default function SupplierTariffs() {
       setAutoFetchingImage(true);
       try {
         const res = await base44.integrations.Core.InvokeLLM({
-          prompt: `Busca en internet la imagen oficial del producto: "${productName}"${brand ? ` de la marca ${brand}` : ''}${productCode ? `, referencia ${productCode}` : ''}. Devuelve solo la URL directa de la imagen del producto (JPG, PNG o WebP). Si no encuentras una imagen fiable, devuelve null.`,
+          prompt: `Busca en internet la imagen oficial del producto. Prioriza la búsqueda por la referencia/código: "${productCode || ''}". Si no obtienes resultados claros, busca por el nombre: "${productName}"${brand ? ` de la marca ${brand}` : ''}. Devuelve solo la URL directa de la imagen del producto (JPG, PNG o WebP). Si no encuentras una imagen fiable, devuelve null.`,
           add_context_from_internet: true,
           response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
         });
@@ -192,6 +198,40 @@ export default function SupplierTariffs() {
     toast.success('Producto eliminado');
   };
 
+  const openEditSupplier = (supplier) => {
+    setEditSupplier(supplier);
+    setSupplierForm({ ...supplier });
+  };
+
+  const handleSaveSupplier = async () => {
+    setSavingSupplier(true);
+    await base44.entities.Supplier.update(editSupplier.id, supplierForm);
+    setSuppliers(prev => prev.map(s => s.id === editSupplier.id ? { ...s, ...supplierForm } : s));
+    setEditSupplier(null);
+    setSavingSupplier(false);
+    toast.success('Proveedor actualizado');
+  };
+
+  const handleDeleteTariff = async (supplierId) => {
+    const itemsToDelete = prices.filter(p => p.supplier_id === supplierId);
+    if (itemsToDelete.length === 0) return;
+
+    setDeletingTariff(supplierId);
+    try {
+      // Eliminar en lotes para no saturar
+      const BATCH = 100;
+      for (let i = 0; i < itemsToDelete.length; i += BATCH) {
+        const batch = itemsToDelete.slice(i, i + BATCH);
+        await Promise.all(batch.map(item => base44.entities.SupplierPrice.delete(item.id)));
+      }
+      setPrices(prev => prev.filter(p => p.supplier_id !== supplierId));
+      toast.success('Tarifa eliminada por completo');
+    } catch (err) {
+      toast.error('Error al eliminar algunos productos');
+    }
+    setDeletingTariff(null);
+  };
+
   const handleUploadImage = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -206,7 +246,7 @@ export default function SupplierTariffs() {
     if (!editForm.product_name) return;
     setFetchingImage(true);
     const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Busca en internet la imagen oficial del producto: "${editForm.product_name}"${editForm.brand ? ` de la marca ${editForm.brand}` : ''}${editForm.product_code ? `, referencia ${editForm.product_code}` : ''}. Devuelve solo la URL directa de la imagen del producto (JPG o PNG). Si no encuentras una imagen fiable, devuelve null.`,
+      prompt: `Busca en internet la imagen oficial del producto. Prioriza la búsqueda por la referencia/código: "${editForm.product_code || ''}". Si no obtienes resultados claros, busca por el nombre: "${editForm.product_name}"${editForm.brand ? ` de la marca ${editForm.brand}` : ''}. Devuelve solo la URL directa de la imagen del producto (JPG o PNG). Si no encuentras una imagen fiable, devuelve null.`,
       add_context_from_internet: true,
       response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
     });
@@ -363,10 +403,20 @@ export default function SupplierTariffs() {
                   <p className="text-xs text-gray-500">{items.length} productos en tarifa · {items.filter(i => !i.image_url).length} sin imagen</p>
                 </div>
                 <Badge variant="outline" className="text-xs hidden sm:inline-flex">{supplier.category || 'general'}</Badge>
-                <div onClick={e => e.stopPropagation()}>
+                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                   <SupplierOnlineUpdate supplier={supplier} prices={prices} onUpdated={loadData} />
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-blue-600" onClick={() => openEditSupplier(supplier)} title="Editar proveedor">
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-600" onClick={() => {
+                    if (confirm(`¿Estás seguro de que quieres eliminar TODOS los productos de ${supplier.name}? Esta acción no se puede deshacer.`)) {
+                      handleDeleteTariff(supplier.id);
+                    }
+                  }} disabled={deletingTariff === supplier.id} title="Eliminar todos los productos de esta tarifa">
+                    {deletingTariff === supplier.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  </Button>
                 </div>
-                {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400 ml-1" /> : <ChevronRight className="w-4 h-4 text-gray-400 ml-1" />}
               </button>
 
               {/* Tabla de productos */}
@@ -443,6 +493,38 @@ export default function SupplierTariffs() {
           );
         })}
       </div>}
+
+      {/* Dialog editar proveedor */}
+      <Dialog open={!!editSupplier} onOpenChange={o => !o && setEditSupplier(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar proveedor</DialogTitle>
+          </DialogHeader>
+          {editSupplier && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Nombre del proveedor</label>
+                <Input
+                  value={supplierForm.name || ''}
+                  onChange={e => setSupplierForm(f => ({ ...f, name: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Categoría</label>
+                <Select value={supplierForm.category || 'general'} onValueChange={v => setSupplierForm(f => ({ ...f, category: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleSaveSupplier} disabled={savingSupplier} className="w-full bg-blue-700 hover:bg-blue-800">
+                {savingSupplier ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}
+                Guardar cambios
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog editar producto */}
       <Dialog open={!!editItem} onOpenChange={o => !o && setEditItem(null)}>
