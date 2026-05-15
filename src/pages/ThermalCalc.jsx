@@ -31,31 +31,44 @@ const EXTRA_REFRIGERANT_G_PER_M = { 'R-32': 15, 'R-410A': 20, 'R-290': 10, 'R-40
 
 function calcBreakdown(f) {
   const orientFactor = { norte: 0.8, sur: 1.2, este: 1.0, oeste: 1.1 }[f.orientation] || 1.0;
-  const insulFactor = { bueno: 30, medio: 50, malo: 70 }[f.insulation_type] || 50;
+  // Factores U estimados en W/m²K según aislamiento (simplificado)
+  const insulFactor = { bueno: 1.2, medio: 2.0, malo: 3.5 }[f.insulation_type] || 2.0;
   const dT = Math.abs((f.exterior_temp || 35) - (f.target_temp || 22));
-  const wallLoad = 2 * (f.length * f.height + f.width * f.height) * insulFactor * dT
-                 + f.length * f.width * (insulFactor * 1.5) * dT;
-  const windowLoad = (f.window_area || 0) * 600 * orientFactor;
+
+  // Carga por transmisión (Paredes + Techo)
+  const wallArea = 2 * (f.length * f.height + f.width * f.height);
+  const roofArea = f.length * f.width;
+  const wallLoad = (wallArea * insulFactor + roofArea * insulFactor * 1.2) * dT;
+
+  // Carga por ventanas (Radiación + Transmisión simplificada)
+  const windowLoad = (f.window_area || 0) * 450 * orientFactor;
+
+  // Carga por ocupación y equipos
   const peopleLoad = (f.num_people || 2) * 100;
   const equipLoad = f.equipment_heat || 0;
+
   return { wallLoad, windowLoad, peopleLoad, equipLoad };
 }
 
 function buildResult(form, breakdown) {
   const { wallLoad, windowLoad, peopleLoad, equipLoad } = breakdown;
+  // Factor de seguridad 1.15
   const totalW = Math.round((wallLoad + windowLoad + peopleLoad + equipLoad) * 1.15);
   const loadFrigorias = Math.round(totalW * 0.86);
   const loadKW = (totalW / 1000).toFixed(2);
 
-  const suitable = CLIMATE_CATALOG.filter(e => e.power_kw * 1000 >= totalW * 0.9);
+  // Selección de equipo: debe cubrir al menos el 100% de la carga calculada
+  const suitable = CLIMATE_CATALOG.filter(e => e.power_kw * 1000 >= totalW);
   const equip = suitable.length > 0 ? suitable[0] : CLIMATE_CATALOG[CLIMATE_CATALOG.length - 1];
   // Top 3 alternatives
   const alternatives = suitable.slice(0, 3).length > 0 ? suitable.slice(0, 3) : CLIMATE_CATALOG.slice(-3);
 
   const actualDist = parseFloat(form.pipe_distance) || 5;
   const maxDist = equip.max_pipe_m;
-  const extraGrams = actualDist > maxDist
-    ? Math.round((actualDist - maxDist) * (EXTRA_REFRIGERANT_G_PER_M[form.refrigerant_type] || 18))
+  // Distancia de precarga estándar (baseline 5m si no se especifica)
+  const prechargeDist = 5;
+  const extraGrams = actualDist > prechargeDist
+    ? Math.round((actualDist - prechargeDist) * (EXTRA_REFRIGERANT_G_PER_M[form.refrigerant_type] || 18))
     : 0;
 
   const pr = REFRIGERANT_PRESSURES[form.refrigerant_type] || REFRIGERANT_PRESSURES['R-32'];

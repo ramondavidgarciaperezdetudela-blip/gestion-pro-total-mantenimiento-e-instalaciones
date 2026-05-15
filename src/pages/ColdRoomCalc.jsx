@@ -36,10 +36,22 @@ function calcBreakdown(f) {
   const insul = { '60mm': 0.35, '80mm': 0.27, '100mm': 0.22, '120mm': 0.18 }[f.panel_thickness] || 0.27;
   const surf = 2 * (f.length * f.width + f.length * f.height + f.width * f.height);
   const deltaT = Math.abs((f.exterior_temp || 25) - (f.cold_room_temp || 2));
+
+  // Carga por transmisión (W)
   const transmissionLoad = surf * insul * deltaT;
-  const productLoad = (f.product_kg || 100) * 3.5 * Math.abs(f.exterior_temp - f.cold_room_temp) / 24;
+
+  // Horas de funcionamiento del compresor (típico 18h para conservar, 20h para congelado)
+  const runningHours = (f.cold_room_temp || 0) < 0 ? 20 : 18;
+
+  // Carga del producto (kJ -> W)
+  // Cp estimado: 3.5 kJ/kg·K. Convertimos a W repartiendo la carga diaria en las horas de funcionamiento
+  const productDailyKJ = (f.product_kg || 100) * 3.5 * Math.abs(f.exterior_temp - f.cold_room_temp);
+  const productLoad = (productDailyKJ / runningHours) * (1000 / 3600);
+
+  // Renovaciones de aire y ventilación (simplificado)
   const vol = f.length * f.width * f.height;
-  const ventLoad = vol * 0.5 * 1.2 * 1.005 * deltaT * 0.28;
+  const ventLoad = vol * 0.5 * 1.2 * 1.005 * deltaT * (1000 / 3600);
+
   return { transmissionLoad, productLoad, ventLoad };
 }
 
