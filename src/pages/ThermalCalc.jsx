@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Thermometer, Save, Calculator, FileDown, RefreshCw, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
@@ -31,19 +30,33 @@ const EXTRA_REFRIGERANT_G_PER_M = { 'R-32': 15, 'R-410A': 20, 'R-290': 10, 'R-40
 
 function calcBreakdown(f) {
   const orientFactor = { norte: 0.8, sur: 1.2, este: 1.0, oeste: 1.1 }[f.orientation] || 1.0;
-  const insulFactor = { bueno: 30, medio: 50, malo: 70 }[f.insulation_type] || 50;
+  // U coefficients (W/m²K)
+  const U = { bueno: 0.6, medio: 1.2, malo: 2.1 }[f.insulation_type] || 1.2;
   const dT = Math.abs((f.exterior_temp || 35) - (f.target_temp || 22));
-  const wallLoad = 2 * (f.length * f.height + f.width * f.height) * insulFactor * dT
-                 + f.length * f.width * (insulFactor * 1.5) * dT;
-  const windowLoad = (f.window_area || 0) * 600 * orientFactor;
-  const peopleLoad = (f.num_people || 2) * 100;
+  const vol = f.length * f.width * f.height;
+
+  // 1. Transmission (walls, floor, ceiling)
+  const surfaceArea = 2 * (f.length * f.height + f.width * f.height) + (f.length * f.width);
+  const wallLoad = surfaceArea * U * dT;
+
+  // 2. Solar radiation through windows
+  const windowLoad = (f.window_area || 0) * 550 * orientFactor;
+
+  // 3. Ventilation and Infiltration (W)
+  // Approx 2 air changes per hour for residential/commercial
+  const ventLoad = vol * 2 * 0.34 * dT;
+
+  // 4. Internal loads
+  const peopleLoad = (f.num_people || 2) * 130; // Sensible + Latent
   const equipLoad = f.equipment_heat || 0;
-  return { wallLoad, windowLoad, peopleLoad, equipLoad };
+
+  return { wallLoad, windowLoad, peopleLoad, equipLoad, ventLoad };
 }
 
 function buildResult(form, breakdown) {
-  const { wallLoad, windowLoad, peopleLoad, equipLoad } = breakdown;
-  const totalW = Math.round((wallLoad + windowLoad + peopleLoad + equipLoad) * 1.15);
+  const { wallLoad, windowLoad, peopleLoad, equipLoad, ventLoad } = breakdown;
+  // Safety factor of 20%
+  const totalW = Math.round((wallLoad + windowLoad + peopleLoad + equipLoad + ventLoad) * 1.20);
   const loadFrigorias = Math.round(totalW * 0.86);
   const loadKW = (totalW / 1000).toFixed(2);
 
@@ -189,8 +202,8 @@ export default function ThermalCalc() {
         `Personas: ${form.num_people} | Calor equipos: ${form.equipment_heat}W`,
         `Gas: ${form.refrigerant_type} | Tubería: ${form.pipe_distance}m | Alt: ${form.pipe_height_diff}m`,
         `--- DESGLOSE CARGAS ---`,
-        `Paredes/Techo: ${Math.round(bd.wallLoad)}W | Ventanas: ${Math.round(bd.windowLoad)}W | Personas: ${Math.round(bd.peopleLoad)}W | Equipos: ${Math.round(bd.equipLoad)}W`,
-        `Factor seguridad ×1.15 aplicado`,
+      `Transmisión: ${Math.round(bd.wallLoad)}W | Ventanas: ${Math.round(bd.windowLoad)}W | Ventilación: ${Math.round(bd.ventLoad)}W | Internas: ${Math.round(bd.peopleLoad + bd.equipLoad)}W`,
+      `Factor seguridad ×1.20 aplicado`,
         `--- RESULTADOS ---`,
         `Carga total: ${result.loadW}W | ${result.loadFrigorias} frig/h | ${result.loadKW}kW`,
         `--- EQUIPOS RECOMENDADOS ---`,
@@ -278,11 +291,11 @@ export default function ThermalCalc() {
       <div class="section" style="margin-top:10px;border-left-color:#f97316">
         <div class="section-title" style="color:#f97316">Desglose de cargas térmicas</div>
         <div class="grid2">
-          <div>Paredes/Techo: <b>${Math.round(bd.wallLoad)} W</b></div>
-          <div>Ventanas: <b>${Math.round(bd.windowLoad)} W</b></div>
-          <div>Personas: <b>${Math.round(bd.peopleLoad)} W</b></div>
-          <div>Equipos: <b>${Math.round(bd.equipLoad)} W</b></div>
-          <div>Factor seguridad (×1.15): incluido</div>
+          <div>Transmisión: <b>${Math.round(bd.wallLoad)} W</b></div>
+          <div>Radiación Ventanas: <b>${Math.round(bd.windowLoad)} W</b></div>
+          <div>Ventilación: <b>${Math.round(bd.ventLoad)} W</b></div>
+          <div>Cargas Internas: <b>${Math.round(bd.peopleLoad + bd.equipLoad)} W</b></div>
+          <div>Factor seguridad (×1.20): incluido</div>
         </div>
       </div>
 

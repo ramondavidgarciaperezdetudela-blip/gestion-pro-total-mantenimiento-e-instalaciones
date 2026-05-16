@@ -33,21 +33,42 @@ const EXTRA_REF_G_PER_M = { 'R-404A': 22, 'R-448A': 18, 'R-449A': 18, 'R-452A': 
 const COLD_CATALOG = COLD_ROOM_CATALOG;
 
 function calcBreakdown(f) {
-  const insul = { '60mm': 0.35, '80mm': 0.27, '100mm': 0.22, '120mm': 0.18 }[f.panel_thickness] || 0.27;
+  // K coefficients (W/m²K) for PUR/PIR panels
+  const K = { '60mm': 0.38, '80mm': 0.28, '100mm': 0.22, '120mm': 0.18 }[f.panel_thickness] || 0.28;
+
+  // Total surface area (walls + ceiling + floor)
   const surf = 2 * (f.length * f.width + f.length * f.height + f.width * f.height);
-  const deltaT = Math.abs((f.exterior_temp || 25) - (f.cold_room_temp || 2));
-  const transmissionLoad = surf * insul * deltaT;
-  const productLoad = (f.product_kg || 100) * 3.5 * Math.abs(f.exterior_temp - f.cold_room_temp) / 24;
   const vol = f.length * f.width * f.height;
-  const ventLoad = vol * 0.5 * 1.2 * 1.005 * deltaT * 0.28;
-  return { transmissionLoad, productLoad, ventLoad };
+  const deltaT = Math.abs((f.exterior_temp || 25) - (f.cold_room_temp || 2));
+
+  // 1. Transmission load (W)
+  const transmissionLoad = surf * K * deltaT;
+
+  // 2. Product load (W)
+  // Assuming 24h pull-down, Cp avg 3.2 kJ/kg·K (typical for food)
+  // Q = (m * Cp * dT) / (3600 * 24) * 1000
+  const productLoad = (f.product_kg || 100) * 3.2 * Math.abs(f.exterior_temp - f.cold_room_temp) / 86.4;
+
+  // 3. Ventilation/Infiltration (W)
+  // Approx 4 air changes/day for small rooms, energy per m3/K is ~0.6-0.8
+  const ventLoad = vol * 4 * 0.7 * deltaT / 24;
+
+  // 4. Internal loads (fans, lights, people)
+  // Approx 15W per m3 as estimation
+  const internalLoad = vol * 15;
+
+  return { transmissionLoad, productLoad, ventLoad, internalLoad };
 }
 
 function buildResult(form, breakdown) {
-  const { transmissionLoad, productLoad, ventLoad } = breakdown;
-  const totalLoad = Math.round((transmissionLoad + productLoad + ventLoad) * 1.25);
+  const { transmissionLoad, productLoad, ventLoad, internalLoad } = breakdown;
+  // Total load in W.
+  // Safety factor: We multiply by 24/18 to account for 18 hours of compressor runtime (defrost allowance)
+  // Plus a 10% general safety margin
+  const hourlyLoad = (transmissionLoad + productLoad + ventLoad + internalLoad) * (24 / 18) * 1.10;
+  const totalLoad = Math.round(hourlyLoad);
 
-  const suitableCold = COLD_CATALOG.filter(e => e.power_kw * 1000 >= totalLoad * 0.9);
+  const suitableCold = COLD_CATALOG.filter(e => e.power_kw * 1000 >= totalLoad * 0.95);
   const equip = suitableCold[0] || COLD_CATALOG[COLD_CATALOG.length - 1];
   const alternatives = suitableCold.slice(0, 3).length > 0 ? suitableCold.slice(0, 3) : COLD_CATALOG.slice(-3);
   const actualDist = parseFloat(form.pipe_distance) || 8;
@@ -229,8 +250,8 @@ export default function ColdRoomCalc() {
         `Producto: ${form.product_kg}kg | Gas: ${form.refrigerant_type}`,
         `Tubería: ${form.pipe_distance}m | Dif.altura: ${form.pipe_height_diff}m`,
         `--- DESGLOSE CARGAS ---`,
-        `Transmisión: ${Math.round(bd.transmissionLoad)}W | Producto: ${Math.round(bd.productLoad)}W | Ventilación: ${Math.round(bd.ventLoad)}W`,
-        `Factor seguridad ×1.25 aplicado`,
+      `Transmisión: ${Math.round(bd.transmissionLoad)}W | Producto: ${Math.round(bd.productLoad)}W | Ventilación: ${Math.round(bd.ventLoad)}W | Interna: ${Math.round(bd.internalLoad)}W`,
+      `Tiempo funcionamiento: 18h/día | Factor seguridad aplicado`,
         `--- RESULTADOS ---`,
         `Carga total: ${result.loadW}W | ${Math.round(result.loadW * 0.86)} frig/h`,
         `--- EQUIPOS RECOMENDADOS ---`,
@@ -312,9 +333,10 @@ export default function ColdRoomCalc() {
         <div class="section-title" style="color:#f97316">Desglose de cargas</div>
         <div class="grid2">
           <div>Transmisión: <b>${Math.round(bd.transmissionLoad)} W</b></div>
-          <div>Producto: <b>${Math.round(bd.productLoad)} W</b></div>
-          <div>Ventilación: <b>${Math.round(bd.ventLoad)} W</b></div>
-          <div>Factor seguridad (×1.25): incluido</div>
+          <div>Carga Producto: <b>${Math.round(bd.productLoad)} W</b></div>
+          <div>Ventilación/Infilt.: <b>${Math.round(bd.ventLoad)} W</b></div>
+          <div>Cargas Internas: <b>${Math.round(bd.internalLoad)} W</b></div>
+          <div>Funcionamiento: 18h/día (incluye desescarche)</div>
         </div>
       </div>
       <div class="kpis">

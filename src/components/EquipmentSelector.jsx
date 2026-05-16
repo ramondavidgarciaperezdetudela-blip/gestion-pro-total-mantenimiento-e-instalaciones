@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle, AlertTriangle, XCircle, RefreshCw, Info, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, RefreshCw, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
 // ─── Catálogo ampliado multi-marca ────────────────────────────────────────────
 // NORMATIVA 2026:
@@ -229,16 +228,22 @@ export default function EquipmentSelector({ mode = 'clima', loadKW, onSelect }) 
 
   const compatible = catalog.filter(e => {
     const brandOk = brandFilter === 'Todos' || e.brand === brandFilter;
+    // We allow a bit of undersizing (up to 15%) or any oversizing as long as it's within 2.5x
     const powerOk = e.power_kw >= minKW && e.power_kw <= maxKW;
     return brandOk && powerOk;
   }).sort((a, b) => {
-    // Primero los que cumplen normativa, luego por potencia
+    // 1. Compliance status (ok > warning > error)
     const ca = evaluateCompliance(a);
     const cb = evaluateCompliance(b);
     if (ca.status !== cb.status) {
-      return ca.status === 'ok' ? -1 : cb.status === 'ok' ? 1 : 0;
+      const order = { ok: 0, warning: 1, error: 2 };
+      return order[ca.status] - order[cb.status];
     }
-    return a.power_kw - b.power_kw;
+
+    // 2. Proximity to target load (absolute difference)
+    const diffA = Math.abs(a.power_kw - (loadKW || 0));
+    const diffB = Math.abs(b.power_kw - (loadKW || 0));
+    return diffA - diffB;
   });
 
   const visible = showAll ? compatible : compatible.slice(0, 4);
