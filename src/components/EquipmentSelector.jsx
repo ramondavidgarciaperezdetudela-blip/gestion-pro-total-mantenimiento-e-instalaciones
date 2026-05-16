@@ -136,8 +136,8 @@ export const COLD_ROOM_CATALOG = [
   { brand: 'Polair', model: 'SM105S R-290', power_kw: 3.2, gas: 'R-290', temp_range: '-5/+5°C', max_pipe_m: 15, max_height_m: 5, type: 'Monobloc', rite_compliant: true },
 ];
 
-const ALL_BRANDS_CLIMA = ['Todos', ...new Set(CLIMATE_CATALOG.map(e => e.brand))];
-const ALL_BRANDS_COLD = ['Todos', ...new Set(COLD_ROOM_CATALOG.map(e => e.brand))];
+const ALL_BRANDS_CLIMA = ['Todos', ...new Set(CLIMATE_CATALOG.map(e => e.brand))].sort((a, b) => a === 'Todos' ? -1 : b === 'Todos' ? 1 : a.localeCompare(b));
+const ALL_BRANDS_COLD = ['Todos', ...new Set(COLD_ROOM_CATALOG.map(e => e.brand))].sort((a, b) => a === 'Todos' ? -1 : b === 'Todos' ? 1 : a.localeCompare(b));
 
 // ─── Badge de cumplimiento ─────────────────────────────────────────────────────
 function ComplianceBadge({ equipment }) {
