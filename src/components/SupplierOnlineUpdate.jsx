@@ -1,12 +1,12 @@
-import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { loadValidChars } from '@/components/ValidCharsConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
-  Globe, RefreshCw, Image as ImageIcon, Loader2, CheckCircle, X,
-  Upload, ExternalLink, MinusCircle, AlertTriangle, Edit2, Save, Search,
+  Globe, RefreshCw, Image as ImageIcon, Loader2, X,
+  Upload, ExternalLink, MinusCircle, AlertTriangle, Edit2, Search,
   Settings, Plus, Trash2, ArrowRight, Check
 } from 'lucide-react';
 import { toast } from 'sonner';

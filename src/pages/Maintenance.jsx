@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ClipboardList, Trash2, Edit, PenLine, Eye, Phone, Send, FileDown } from 'lucide-react';
+import { Plus, ClipboardList, Trash2, PenLine, Eye, Phone, FileDown } from 'lucide-react';
 import TechnicianSelect from '../components/TechnicianSelect';
 import { format } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';

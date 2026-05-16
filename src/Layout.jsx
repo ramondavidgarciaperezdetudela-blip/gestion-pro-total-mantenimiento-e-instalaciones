@@ -102,6 +102,7 @@ const navItems = [
 { name: 'Asistente IA', page: 'AIAssistant', icon: Bot },
 { name: 'Averías', page: 'EquipmentFailureHistory', icon: AlertCircle },
 { name: 'Búsqueda IA', page: 'AISearch', icon: Search },
+{ name: 'Calc. Aire Acond.', page: 'AirConditioningCalc', icon: Sun },
 { name: 'Cal. SAT', page: 'SATCalendar', icon: Calendar },
 { name: 'Calc. Eléctrico', page: 'ElectricalCalc', icon: Zap },
 { name: 'Calc. Térmico', page: 'ThermalCalc', icon: Thermometer },

@@ -3,8 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { FileDown, ClipboardList, CheckCircle, Loader2, Camera, X } from 'lucide-react';
+import { FileDown, ClipboardList, CheckCircle, Loader2, Camera } from 'lucide-react';
 import PhotoGallery from './PhotoGallery';
 import SignatureCanvas from './SignaturePad';
 // SignaturePad.jsx exports as SignatureCanvas

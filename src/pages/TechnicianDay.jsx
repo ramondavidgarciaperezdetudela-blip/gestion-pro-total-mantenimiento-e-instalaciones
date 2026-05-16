@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { compressImage } from '@/lib/compressImage';
-import { format, parseISO, isToday } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
-  Wrench, CheckCircle2, Clock, MapPin, Phone, User, ChevronRight,
+  Wrench, CheckCircle2, Clock, ChevronRight,
   Camera, Package, AlertTriangle, RefreshCw, Save, Loader2, Plus, X,
   ImagePlus, TrendingDown
 } from 'lucide-react';

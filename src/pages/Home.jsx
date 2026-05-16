@@ -13,15 +13,12 @@ import PendingSignaturesPanel from '../components/PendingSignaturesPanel';
 import { createPageUrl } from '../utils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Calendar, Users, FileText, Wrench, ClipboardList,
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
   Building2, FolderOpen, Zap, BarChart3, Clock, AlertCircle,
-  StickyNote, Package, Battery, Palette, CreditCard, Bell, Download,
-  TrendingUp, TrendingDown, Euro, CheckCircle, XCircle, AlertTriangle,
-  ArrowRight, Phone, MapPin, ChevronRight, ShoppingCart, Search, Navigation,
-  MessageCircle, RefreshCw, ChevronDown, ChevronUp } from
+  StickyNote, Package, Palette, Bell, Download, Euro, CheckCircle, XCircle, AlertTriangle,
+  ArrowRight, ChevronRight, ShoppingCart, Search, Navigation, ChevronDown, ChevronUp } from
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
@@ -33,6 +30,7 @@ const quickLinks = [
 { name: 'Agenda', page: 'Agenda', icon: Calendar, color: 'bg-blue-500' },
 { name: 'Asistente IA', page: 'AIAssistant', icon: Bot, color: 'bg-green-500' },
 { name: 'Búsqueda IA', page: 'AISearch', icon: Bot, color: 'bg-teal-400' },
+{ name: 'Cálculo Aire Acond.', page: 'AirConditioningCalc', icon: Sun, color: 'bg-orange-400' },
 { name: 'Cálculo Humedad', page: 'ColdRoomCalc', icon: Thermometer, color: 'bg-cyan-600' },
 { name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500' },
 { name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },

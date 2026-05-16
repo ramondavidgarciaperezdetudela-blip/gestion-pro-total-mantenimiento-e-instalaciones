@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Check, X, PenLine, RotateCcw, CheckCircle, XCircle, Loader2, AlertTriangle, Phone, MessageCircle } from 'lucide-react';
+import { Check, X, PenLine, RotateCcw, CheckCircle, XCircle, Loader2, AlertTriangle, MessageCircle } from 'lucide-react';
 
 // Skeleton loader
 const DocumentSkeleton = () => (
