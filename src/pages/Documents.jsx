@@ -1,16 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Plus, Search, FileText, Trash2, Edit, Eye, ShoppingCart, Copy,
-  ChevronDown, ChevronUp, Save, Phone, Mail, BarChart3, TrendingUp,
-  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers } from
+  Plus, Search, FileText, Trash2, Edit, ShoppingCart, Copy,
+  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers } from
 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
@@ -19,7 +16,6 @@ import MaterialAutocomplete from '../components/MaterialAutocomplete';
 import MaterialsExportButton from '../components/MaterialsExportButton';
 import { format, startOfMonth } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
-import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import SignatureCanvas from '../components/SignaturePad';
 
@@ -195,31 +191,30 @@ export default function Documents() {
     setEditing(null);setDialogOpen(true);setShowAdvanced(false);
   };
 
-  // Cambio directo de campo de item (string mientras escribe, parseo al blur)
+  // Cambio directo de campo de item
   const handleItemChange = useCallback((index, field, value) => {
-    setForm((prev) => {
-      const newItems = prev.items.map((item, i) => i === index ? { ...item, [field]: value } : item);
-      return { ...prev, ...recalculate(newItems, prev.iva_rate) };
-    });
-  }, []);
-
-  const handleItemLocalChange = useCallback((index, field, strValue) => {
-    // Guarda el string tal cual para que el input no bloquee
-    setForm((prev) => {
-      const newItems = prev.items.map((item, i) => i === index ? { ...item, [field]: strValue } : item);
-      // No recalcular mientras escribe para no interrumpir
-      return { ...prev, items: newItems };
-    });
-  }, []);
-
-  const handleItemBlur = useCallback((index, field) => {
     setForm((prev) => {
       const newItems = prev.items.map((item, i) => {
         if (i !== index) return item;
-        const parsed = parseFloat(String(item[field]).replace(',', '.')) || 0;
-        return { ...item, [field]: parsed };
+        let finalVal = value;
+        // Si es numérico, intentamos parsear para el total pero mantenemos el string para el input
+        const numericFields = ['quantity', 'unit_price', 'discount'];
+        if (numericFields.includes(field)) {
+          const parsed = parseFloat(String(value).replace(',', '.')) || 0;
+          return { ...item, [field]: value, [`_parsed_${field}`]: parsed };
+        }
+        return { ...item, [field]: value };
       });
-      return { ...prev, ...recalculate(newItems, prev.iva_rate) };
+
+      // Recalcular usando valores parseados
+      const itemsForCalc = newItems.map(it => ({
+        ...it,
+        quantity: it._parsed_quantity ?? (parseFloat(String(it.quantity).replace(',', '.')) || 0),
+        unit_price: it._parsed_unit_price ?? (parseFloat(String(it.unit_price).replace(',', '.')) || 0),
+        discount: it._parsed_discount ?? (parseFloat(String(it.discount).replace(',', '.')) || 0),
+      }));
+
+      return { ...prev, ...recalculate(itemsForCalc, prev.iva_rate), items: newItems };
     });
   }, []);
 
@@ -771,21 +766,18 @@ export default function Documents() {
                    <input
                   className="col-span-2 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
                   inputMode="decimal" placeholder="Cant."
-                  value={getItemDisplayValue(i, 'quantity', item.quantity)}
-                  onChange={(e) => handleItemLocalChange(i, 'quantity', e.target.value)}
-                  onBlur={() => handleItemBlur(i, 'quantity')} />
+                  value={item.quantity ?? ''}
+                  onChange={(e) => handleItemChange(i, 'quantity', e.target.value)} />
                    <input
                   className="col-span-2 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
                   inputMode="decimal" placeholder="Precio"
-                  value={getItemDisplayValue(i, 'unit_price', item.unit_price)}
-                  onChange={(e) => handleItemLocalChange(i, 'unit_price', e.target.value)}
-                  onBlur={() => handleItemBlur(i, 'unit_price')} />
+                  value={item.unit_price ?? ''}
+                  onChange={(e) => handleItemChange(i, 'unit_price', e.target.value)} />
                    <input
                   className="col-span-1 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
                   inputMode="decimal" placeholder="Dto%"
-                  value={getItemDisplayValue(i, 'discount', item.discount || 0)}
-                  onChange={(e) => handleItemLocalChange(i, 'discount', e.target.value)}
-                  onBlur={() => handleItemBlur(i, 'discount')} />
+                  value={item.discount ?? ''}
+                  onChange={(e) => handleItemChange(i, 'discount', e.target.value)} />
                    <span className="col-span-1 text-xs text-right font-medium text-green-700">{item.total?.toFixed(2)}</span>
                    <button className="col-span-1 text-red-400 hover:text-red-600 text-lg leading-none text-center" onClick={() => removeItem(i)}>×</button>
                  </div>

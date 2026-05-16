@@ -12,7 +12,7 @@ import PhotoGallery from '../components/PhotoGallery';
 import ColdRoomHumidityCalc from '../components/ColdRoomHumidityCalc';
 import RefrigerantSelector from '../components/RefrigerantSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ColdRoomBreakdown, PressureChart, EfficiencyRadar } from '../components/ThermalCharts';
+import { ColdRoomBreakdown, PressureChart, EfficiencyRadar, MollierDiagram } from '../components/ThermalCharts';
 import EquipmentSelector, { COLD_ROOM_CATALOG } from '../components/EquipmentSelector';
 
 import { REFRIGERANT_DATABASE } from '../components/refrigerantData';
@@ -192,10 +192,20 @@ export default function ColdRoomCalc() {
     }
   }, [form.contact_id]);
 
+  const parseForm = (f) => {
+    const parsed = { ...f };
+    const numericFields = ['length', 'width', 'height', 'cold_room_temp', 'exterior_temp', 'product_kg', 'pipe_distance', 'pipe_height_diff'];
+    numericFields.forEach(field => {
+      parsed[field] = parseFloat(String(f[field]).replace(',', '.')) || 0;
+    });
+    return parsed;
+  };
+
   const calculate = () => {
-    const bd = calcBreakdown(form);
+    const parsed = parseForm(form);
+    const bd = calcBreakdown(parsed);
     setBreakdown(bd);
-    setResult(buildResult(form, bd));
+    setResult(buildResult(parsed, bd));
   };
 
   const handleBreakdownAdjust = (key, value) => {
@@ -207,7 +217,8 @@ export default function ColdRoomCalc() {
   const saveToClient = async (titleSuffix = '') => {
     if (!form.contact_id || !result) return;
     setSaving(true);
-    const bd = breakdown || calcBreakdown(form);
+    const parsed = parseForm(form);
+    const bd = breakdown || calcBreakdown(parsed);
 
     const data = {
       contact_id: form.contact_id,
@@ -215,16 +226,16 @@ export default function ColdRoomCalc() {
       calc_type: 'camara_frigorifica',
       date: format(new Date(), 'yyyy-MM-dd'),
       // Parámetros
-      room_length: form.length,
-      room_width: form.width,
-      room_height: form.height,
-      exterior_temp: form.exterior_temp,
-      cold_room_temp: form.cold_room_temp,
-      cold_room_product: form.cold_room_type,
-      cold_room_product_kg: form.product_kg,
-      refrigerant_type: form.refrigerant_type,
-      pipe_distance: form.pipe_distance,
-      pipe_height_diff: form.pipe_height_diff,
+      room_length: parsed.length,
+      room_width: parsed.width,
+      room_height: parsed.height,
+      exterior_temp: parsed.exterior_temp,
+      cold_room_temp: parsed.cold_room_temp,
+      cold_room_product: parsed.cold_room_type,
+      cold_room_product_kg: parsed.product_kg,
+      refrigerant_type: parsed.refrigerant_type,
+      pipe_distance: parsed.pipe_distance,
+      pipe_height_diff: parsed.pipe_height_diff,
       // Resultados
       calculated_load: result.loadW,
       calculated_load_frigorias: Math.round(result.loadW * 0.86),
@@ -413,9 +424,9 @@ export default function ColdRoomCalc() {
       <div className="bg-blue-50 p-3 rounded-lg space-y-2">
         <p className="text-sm font-medium text-blue-700">Dimensiones cámara</p>
         <div className="grid grid-cols-3 gap-2">
-          <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="number" value={form.length} onChange={e => setForm({...form, length: parseFloat(e.target.value)||0})} /></div>
-          <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="number" value={form.width} onChange={e => setForm({...form, width: parseFloat(e.target.value)||0})} /></div>
-          <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="number" value={form.height} onChange={e => setForm({...form, height: parseFloat(e.target.value)||0})} /></div>
+          <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="text" value={form.length} onChange={e => setForm({...form, length: e.target.value})} /></div>
+          <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="text" value={form.width} onChange={e => setForm({...form, width: e.target.value})} /></div>
+          <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="text" value={form.height} onChange={e => setForm({...form, height: e.target.value})} /></div>
         </div>
       </div>
 
@@ -431,9 +442,9 @@ export default function ColdRoomCalc() {
             </SelectContent>
           </Select>
         </div>
-        <div><label className="text-[10px] text-gray-500">T. cámara (°C)</label><Input type="number" value={form.cold_room_temp} onChange={e => setForm({...form, cold_room_temp: parseFloat(e.target.value)||0})} /></div>
-        <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="number" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)||0})} /></div>
-        <div><label className="text-[10px] text-gray-500">Producto (kg)</label><Input type="number" value={form.product_kg} onChange={e => setForm({...form, product_kg: parseFloat(e.target.value)||0})} /></div>
+        <div><label className="text-[10px] text-gray-500">T. cámara (°C)</label><Input type="text" value={form.cold_room_temp} onChange={e => setForm({...form, cold_room_temp: e.target.value})} /></div>
+        <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="text" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: e.target.value})} /></div>
+        <div><label className="text-[10px] text-gray-500">Producto (kg)</label><Input type="text" value={form.product_kg} onChange={e => setForm({...form, product_kg: e.target.value})} /></div>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
@@ -449,8 +460,8 @@ export default function ColdRoomCalc() {
             </SelectContent>
           </Select>
         </div>
-        <div><label className="text-[10px] text-gray-500">Long. tubería (m)</label><Input type="number" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: parseFloat(e.target.value)||0})} /></div>
-        <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><Input type="number" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: parseFloat(e.target.value)||0})} /></div>
+        <div><label className="text-[10px] text-gray-500">Long. tubería (m)</label><Input type="text" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: e.target.value})} /></div>
+        <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><Input type="text" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: e.target.value})} /></div>
       </div>
 
       <div>
@@ -517,7 +528,22 @@ export default function ColdRoomCalc() {
         <EfficiencyRadar scores={result.efficiencyScores} />
       </div>
 
-      <PressureChart pressureData={result.pr} refrigerant={form.refrigerant_type} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <MollierDiagram
+          refrigerant={form.refrigerant_type}
+          evapPressure={result.evapPressure}
+          condPressure={result.condPressure}
+          onAdjust={(key, val) => {
+            setResult(prev => ({
+              ...prev,
+              [key]: val,
+              // Update individual pressures in the table if they match the keys
+              pr: { ...prev.pr, [key === 'evapPressure' ? '-10°C' : '5°C']: val }
+            }));
+          }}
+        />
+        <PressureChart pressureData={result.pr} refrigerant={form.refrigerant_type} />
+      </div>
 
       {/* Selector multi-marca con normativa RITE+FGAS */}
       <Card className="border-blue-200">

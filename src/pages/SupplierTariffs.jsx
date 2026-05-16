@@ -98,9 +98,9 @@ export default function SupplierTariffs() {
       let skip = PAGE;
 
       const loadBatchesInParallel = async () => {
-        while (skip < PAGE * 100) {
+        while (skip < 500000) {
           const batchRequests = [];
-          for (let i = 0; i < 3 && skip < PAGE * 100; i++) {
+          for (let i = 0; i < 3 && skip < 500000; i++) {
             batchRequests.push(
               withRetry(() => base44.entities.SupplierPrice.list('-created_date', PAGE, skip))
             );

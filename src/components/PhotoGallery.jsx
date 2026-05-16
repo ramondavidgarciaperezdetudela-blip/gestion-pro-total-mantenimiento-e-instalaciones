@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Camera, X, Plus, FolderOpen, Loader2, Pencil, Check } from "lucide-react";
-import { base44 } from '@/api/base44Client';
+import { bulkUpload } from '@/utils/uploadHelper';
 
 /**
  * PhotoGallery — galería con subida y edición de nombre por foto.
@@ -41,26 +41,37 @@ export default function PhotoGallery({
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
+
+    // Evitar duplicados exactos (nombre y tamaño) si ya están en la lista actual (aprox)
+    // (En un sistema real usaríamos hashes, aquí es una heurística)
+    const toUpload = files.filter(f => !names.includes(f.name.replace(/\.[^.]+$/, '')));
+
     const remaining = maxPhotos - photos.length;
-    const toUpload = files.slice(0, remaining);
+    const limitedUpload = toUpload.slice(0, remaining);
+
+    if (limitedUpload.length === 0) return;
 
     setUploading(true);
-    setUploadProgress({ done: 0, total: toUpload.length });
+    setUploadProgress({ done: 0, total: limitedUpload.length });
 
-    const results = await Promise.all(
-      toUpload.map(async (file) => {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        setUploadProgress(prev => ({ ...prev, done: prev.done + 1 }));
-        return { url: file_url, name: file.name.replace(/\.[^.]+$/, '') };
-      })
-    );
+    const results = await bulkUpload(limitedUpload, (done) => {
+      setUploadProgress(prev => ({ ...prev, done }));
+    });
 
-    const newUrls = results.map(r => r.url);
-    const newNames = results.map(r => r.name);
+    const success = results.filter(r => r.success);
+    const failed = results.filter(r => !r.success);
+
+    const newUrls = success.map(r => r.url);
+    const newNames = success.map(r => r.name);
 
     onChange([...photos, ...newUrls]);
     setNames([...names, ...newNames]);
     setUploading(false);
+
+    if (failed.length > 0) {
+      alert(`Fallaron ${failed.length} archivos. Intenta de nuevo.`);
+    }
+
     setUploadProgress({ done: 0, total: 0 });
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
