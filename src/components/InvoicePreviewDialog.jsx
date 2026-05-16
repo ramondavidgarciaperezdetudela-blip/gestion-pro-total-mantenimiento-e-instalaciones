@@ -5,11 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Printer, Phone, Mail, Copy, Save, Plus, ChevronDown, ChevronUp, FileDown, X } from 'lucide-react';
+import { Edit, Phone, Mail, Copy, Save, Plus, ChevronDown, ChevronUp, FileDown } from 'lucide-react';
 import CompanyHeader from './CompanyHeader';
 import SignatureCanvas from './SignaturePad';
-import { format } from 'date-fns';
-import { getNextAvailableNumber } from './autoNumber';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo'];
 const STATUSES = ['borrador', 'enviado', 'pagado', 'vencido', 'cancelado'];

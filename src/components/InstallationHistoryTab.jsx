@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wrench, ClipboardList, Thermometer, Calendar, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { Wrench, ClipboardList, Thermometer, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { format } from 'date-fns';

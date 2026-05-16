@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import PullToRefresh from '../components/PullToRefresh';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, Printer, FileText, Link2, ClipboardList, X } from 'lucide-react';
+import { Plus, Wrench, Trash2, Search, Edit, Eye, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, FileText, Link2, ClipboardList, X } from 'lucide-react';
 import SATTechReport from '../components/SATTechReport';
 import TechnicianSelect from '../components/TechnicianSelect';
 import SATSignaturePanel from '../components/SATSignaturePanel';

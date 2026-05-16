@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, Save, Loader2, CheckCircle, Search, Filter, RefreshCw, X, Image as ImageIcon, Plus, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Save, Loader2, CheckCircle, Search, RefreshCw, X, Image as ImageIcon, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { loadValidChars, saveValidChars } from '@/components/ValidCharsConfig';
 

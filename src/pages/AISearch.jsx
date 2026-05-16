@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { Search, Bot, Users, FileText, Wrench, ClipboardList, Package, Loader2, ExternalLink, Zap, AlertTriangle } from 'lucide-react';
+import { Search, Bot, Users, FileText, Wrench, ClipboardList, Package, Loader2, ExternalLink, Zap } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 const SEARCH_MODES = [

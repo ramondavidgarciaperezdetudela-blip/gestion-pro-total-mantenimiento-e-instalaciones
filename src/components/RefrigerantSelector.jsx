@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown } from 'lucide-react';
 import { REFRIGERANT_DATABASE, getRefrigerantInfo, getCompatibleOils } from '@/components/refrigerantData';
 
 export default function RefrigerantSelector({ value, onChange, label = "Gas refrigerante" }) {

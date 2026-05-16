@@ -5,8 +5,6 @@ import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PenLine, FileText, Wrench, ClipboardList, RefreshCw, Bell, AlertTriangle } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 export default function PendingSignaturesPanel() {
   const [items, setItems] = useState([]);

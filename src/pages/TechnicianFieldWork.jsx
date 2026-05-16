@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle2, Camera, Trash2, Plus, Clock, MapPin, AlertCircle, Package, X } from 'lucide-react';
+import { CheckCircle2, Camera, Trash2, Plus, MapPin, AlertCircle, Package, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function TechnicianFieldWork() {

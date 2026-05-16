@@ -6,16 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Wrench, ChevronDown, ChevronUp, Trash2, Edit, FileSpreadsheet, Search, Camera, Image, X } from 'lucide-react';
 import TechnicianSelect from '../components/TechnicianSelect';
 import { toast } from 'sonner';
 import PhotoGallery from '../components/PhotoGallery';
-import CompanyHeader from '../components/CompanyHeader';
-import PrintButton from '../components/PrintButton';
 import { useRef } from 'react';
-import { createPageUrl } from '../utils';
-import { Link } from 'react-router-dom';
 
 const MACHINE_TYPES = ['aire_acondicionado','bomba_calor','camara_frigorifica','ventilacion','caldera','aerotermia','solar_fotovoltaico','solar_termico','electrico_cuadro','grupo_frio','otro'];
 const ENTRY_TYPES = ['reparacion','mantenimiento','revision','instalacion','averia','otro'];

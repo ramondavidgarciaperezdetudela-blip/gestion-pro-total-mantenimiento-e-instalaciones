@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Bot, Users, MessageCircle, Download, Bell, Clock, TrendingUp, Upload, Loader2, Search } from 'lucide-react';
+import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Users, MessageCircle, Download, Bell, Clock, Upload, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
 import { fetchSupplierDataFromAPI, mapCategoryFromSector } from '../components/SupplierDataFetcher';

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle, AlertTriangle, XCircle, RefreshCw, Info, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, RefreshCw, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
 // ─── Catálogo ampliado multi-marca ────────────────────────────────────────────
 // NORMATIVA 2026:
