@@ -1,0 +1,3 @@
+## 2025-05-22 - [Performance Optimization in PriceComparator]
+**Learning:** Hoisting string normalization and tokenization out of O(N²) comparison loops significantly reduces CPU pressure. In this codebase, the `PriceComparator` was performing `toLowerCase()`, `trim()`, and `split()` on every iteration of a nested loop, leading to $O(N^2 \cdot K)$ complexity where $K$ involved heavy string processing.
+**Action:** Always look for O(N²) or O(N*M) loops in components that handle large data sets (like supplier tariffs) and ensure that expensive data preparation is done once in O(N) before the comparison logic.
