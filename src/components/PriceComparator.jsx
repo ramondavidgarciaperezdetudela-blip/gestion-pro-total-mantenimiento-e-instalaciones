@@ -15,8 +15,7 @@ function buildComparisons(prices) {
     return {
       item: p,
       cleanCode: (p.product_code || '').trim().toLowerCase(),
-      words: words,
-      wordSet: new Set(words)
+      words: words
     };
   });
 
