@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Search, TrendingDown, Building2, Award, AlertCircle, X, Zap, FileText, CheckSquare } from 'lucide-react';
@@ -7,33 +6,45 @@ import { toast } from 'sonner';
 import ComparatorToBudgetDialog from './ComparatorToBudgetDialog';
 
 // ── Similitud de nombres ──────────────────────────────────────────────────────
-function similarity(a, b) {
-  const wordsA = a.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  const wordsB = b.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  if (!wordsA.length || !wordsB.length) return 0;
+/**
+ * Calculates similarity between two pre-tokenized word arrays.
+ * Optimization: Hoists string processing out of the O(n^2) loop.
+ */
+function similarity(wordsA, wordsB) {
+  if (!wordsA?.length || !wordsB?.length) return 0;
   const matches = wordsA.filter(w => wordsB.some(wb => wb.includes(w) || w.includes(wb)));
   return matches.length / Math.max(wordsA.length, wordsB.length);
 }
 
 // ── Agrupa productos similares de distintos proveedores ───────────────────────
 function buildComparisons(prices) {
+  // Pre-process prices to avoid redundant string operations in the O(N^2) loop
+  const processedPrices = prices.map(p => ({
+    ...p,
+    _normalizedCode: p.product_code?.trim().toLowerCase() || null,
+    _nameTokens: (p.product_name || '').toLowerCase().split(/\s+/).filter(w => w.length > 3)
+  }));
+
   const used = new Set();
   const groups = [];
 
-  for (let i = 0; i < prices.length; i++) {
+  for (let i = 0; i < processedPrices.length; i++) {
     if (used.has(i)) continue;
-    const base = prices[i];
+    const base = processedPrices[i];
     const group = [base];
     used.add(i);
 
-    for (let j = i + 1; j < prices.length; j++) {
+    for (let j = i + 1; j < processedPrices.length; j++) {
       if (used.has(j)) continue;
-      const candidate = prices[j];
+      const candidate = processedPrices[j];
       if (candidate.supplier_id === base.supplier_id) continue;
 
-      const sameCode = base.product_code && candidate.product_code &&
-        base.product_code.trim().toLowerCase() === candidate.product_code.trim().toLowerCase();
-      const nameSim = similarity(base.product_name || '', candidate.product_name || '');
+      // Exact code match (pre-normalized)
+      const sameCode = base._normalizedCode && candidate._normalizedCode &&
+        base._normalizedCode === candidate._normalizedCode;
+
+      // Fuzzy name similarity (pre-tokenized)
+      const nameSim = sameCode ? 1 : similarity(base._nameTokens, candidate._nameTokens);
 
       if (sameCode || nameSim >= 0.55) {
         group.push(candidate);
@@ -42,6 +53,7 @@ function buildComparisons(prices) {
     }
 
     if (group.length > 1) {
+      // Sort group by price to show the best deal first
       groups.push(group.sort((a, b) => (a.cost_price || 0) - (b.cost_price || 0)));
     }
   }
@@ -160,11 +172,26 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
 
   // Calcular columnas únicas de proveedores que aparecen en los grupos filtrados
   const supplierCols = useMemo(() => {
-    const ids = [...new Set(filtered.flatMap(g => g.map(p => p.supplier_id)))];
-    return ids.map(id => {
-      const supp = suppliers.find(s => s.id === id);
-      const sample = filtered.flatMap(g => g).find(p => p.supplier_id === id);
-      return { id, name: supp?.name || sample?.supplier_name || id, logo_url: supp?.logo_url };
+    // Optimization: Single pass to find unique supplier IDs and samples from filtered data
+    // Use a Map for O(1) lookup of supplier metadata
+    const supplierMap = new Map(suppliers.map(s => [s.id, s]));
+    const foundSupplierIds = new Map(); // id -> sample item
+
+    for (const group of filtered) {
+      for (const item of group) {
+        if (item.supplier_id && !foundSupplierIds.has(item.supplier_id)) {
+          foundSupplierIds.set(item.supplier_id, item);
+        }
+      }
+    }
+
+    return Array.from(foundSupplierIds.entries()).map(([id, sample]) => {
+      const supp = supplierMap.get(id);
+      return {
+        id,
+        name: supp?.name || sample?.supplier_name || id,
+        logo_url: supp?.logo_url
+      };
     }).sort((a, b) => a.name.localeCompare(b.name));
   }, [filtered, suppliers]);
 

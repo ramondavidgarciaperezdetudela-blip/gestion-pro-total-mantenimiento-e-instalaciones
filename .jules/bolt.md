@@ -1,0 +1,3 @@
+## 2025-05-15 - Product Comparison Optimization
+**Learning:** In the `PriceComparator`, expensive string operations (split, toLowerCase, filter) and complex array methods (flatMap, find) were executed repeatedly within nested loops and useMemo hooks. Hoisting string normalization/tokenization out of O(N^2) loops into a pre-processing pass significantly reduces per-iteration overhead. Using Maps for metadata lookup replaces O(N) array searches with O(1) lookups.
+**Action:** Always check for redundant string processing in nested loops. Map items to an optimized structure before entering high-complexity comparison logic. Use Maps instead of repeated `.find()` calls when correlating datasets.
