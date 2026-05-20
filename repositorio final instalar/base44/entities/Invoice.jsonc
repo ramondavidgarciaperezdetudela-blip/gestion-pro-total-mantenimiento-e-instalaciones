@@ -1,0 +1,183 @@
+{
+  "name": "Invoice",
+  "type": "object",
+  "properties": {
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "factura",
+        "presupuesto",
+        "recibo"
+      ],
+      "default": "factura"
+    },
+    "doc_number": {
+      "type": "string"
+    },
+    "contact_id": {
+      "type": "string",
+      "description": "ID del contacto/cliente"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_nif": {
+      "type": "string"
+    },
+    "contact_address": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "borrador",
+        "enviado",
+        "pagado",
+        "vencido",
+        "cancelado"
+      ],
+      "default": "borrador"
+    },
+    "work_type": {
+      "type": "string",
+      "enum": [
+        "electrico",
+        "clima",
+        "refrigeracion_industrial",
+        "solar",
+        "otro"
+      ],
+      "default": "otro"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "discount": {
+            "type": "number",
+            "default": 0
+          },
+          "total": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "subtotal": {
+      "type": "number"
+    },
+    "iva_rate": {
+      "type": "number",
+      "default": 21
+    },
+    "iva_amount": {
+      "type": "number"
+    },
+    "total": {
+      "type": "number"
+    },
+    "observations": {
+      "type": "string"
+    },
+    "payment_terms": {
+      "type": "string"
+    },
+    "materials_section": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "material": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "supplier": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "normative_references": {
+      "type": "string"
+    },
+    "signature_client": {
+      "type": "string",
+      "description": "Firma digital del cliente (base64 PNG)"
+    },
+    "sign_datetime": {
+      "type": "string",
+      "description": "Fecha y hora exacta de la firma del cliente (DD/MM/YYYY HH:MM:SS)"
+    },
+    "signature_method": {
+      "type": "string",
+      "enum": [
+        "web",
+        "email",
+        "whatsapp"
+      ],
+      "default": "web",
+      "description": "M\u00e9todo por el cual se recibi\u00f3 la firma"
+    },
+    "signature_history": {
+      "type": "array",
+      "description": "Historial de decisiones (aceptar/rechazar) con firmas y fechas",
+      "items": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "aceptar",
+              "rechazar"
+            ],
+            "description": "Tipo de decisi\u00f3n"
+          },
+          "signature_url": {
+            "type": "string",
+            "description": "URL de la firma digital"
+          },
+          "datetime": {
+            "type": "string",
+            "description": "Fecha y hora (DD/MM/YYYY HH:MM:SS)"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "web",
+              "email",
+              "whatsapp"
+            ],
+            "description": "M\u00e9todo de firma"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "doc_type",
+    "contact_name"
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "name": "SATWorkTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre de la plantilla"
+    },
+    "equipment_type": {
+      "type": "string",
+      "enum": [
+        "aire_acondicionado",
+        "bomba_calor",
+        "camara_frigorifica",
+        "electrico",
+        "solar",
+        "otro"
+      ],
+      "default": "camara_frigorifica"
+    },
+    "work_type": {
+      "type": "string",
+      "enum": [
+        "reparacion",
+        "mantenimiento",
+        "instalacion",
+        "revision",
+        "urgencia"
+      ],
+      "default": "mantenimiento"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripci\u00f3n del problema / motivo de visita"
+    },
+    "diagnosis": {
+      "type": "string",
+      "description": "Diagn\u00f3stico predefinido"
+    },
+    "solution": {
+      "type": "string",
+      "description": "Soluci\u00f3n o trabajos realizados predefinida"
+    },
+    "materials_used": {
+      "type": "array",
+      "description": "Materiales t\u00edpicos para este tipo de trabajo",
+      "items": {
+        "type": "object",
+        "properties": {
+          "material": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "labor_hours": {
+      "type": "number",
+      "description": "Horas de trabajo estimadas"
+    },
+    "labor_rate": {
+      "type": "number",
+      "description": "Tarifa por hora (\u20ac)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas internas de la plantilla"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Etiquetas para filtrar (ej: frio, R404A, mantenimiento_preventivo)"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "name": "SATChatMessage",
+  "type": "object",
+  "properties": {
+    "sat_order_id": {
+      "type": "string",
+      "description": "ID de la orden SAT relacionada"
+    },
+    "sat_order_number": {
+      "type": "string"
+    },
+    "author_email": {
+      "type": "string"
+    },
+    "author_name": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "photo_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Fotos adjuntas al mensaje"
+    },
+    "datetime": {
+      "type": "string",
+      "description": "Fecha y hora del mensaje"
+    }
+  },
+  "required": [
+    "sat_order_id",
+    "message"
+  ]
+}

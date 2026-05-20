@@ -1,0 +1,45 @@
+PASOS PARA INSTALACIÓN Y EJECUCIÓN (REPOSITORIO FINAL)
+
+Este directorio contiene la versión completa y optimizada de la aplicación con todas las funcionalidades solicitadas.
+
+REQUISITOS:
+1. Tener instalado Node.js (v18 o superior).
+2. Una conexión a internet para descargar dependencias.
+
+PASOS DE INSTALACIÓN:
+
+1. Abrir una terminal o consola de comandos.
+2. Navegar hasta la carpeta donde se encuentra este archivo:
+   cd repositorio_final_instalar
+
+3. Ejecutar el comando de instalación de paquetes:
+   npm install
+
+4. Configuración de Variables de Entorno:
+   Crea un archivo llamado ".env.local" en esta misma carpeta con el siguiente contenido:
+
+   VITE_BASE44_APP_ID=6994f99700e8a842baf72997
+   VITE_BASE44_APP_BASE_URL=https://gestion-pro-total-mantenimiento-e-instalaciones-6994f997.base44.app
+
+5. Ejecutar la aplicación en modo desarrollo:
+   npm run dev
+
+   (La aplicación se abrirá normalmente en http://localhost:5173)
+
+6. Para generar la versión final lista para subir a un servidor (Producción):
+   npm run build
+
+---
+SOPORTE ADICIONAL:
+Si usas Linux o macOS, puedes usar el script automatizado:
+sh setup.sh
+---
+
+FUNCIONALIDADES INCLUIDAS:
+- Soporte para 500.000 productos en tarifas.
+- Búsqueda de imágenes técnica (referencia primero).
+- Sistema de borrado de tarifas por proveedor.
+- Nuevo cálculo de Aire Acondicionado Multi-área.
+- Diagramas de Mollier interactivos.
+- Menús ordenados alfabéticamente.
+- Optimización de entrada de datos (escritura continua).
