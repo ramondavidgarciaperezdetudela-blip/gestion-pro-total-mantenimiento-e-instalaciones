@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -507,18 +507,28 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     let updated = 0;
     const failedItems = [];
 
-    // Separar nuevos de actualizaciones
+    // Separar nuevos de actualizaciones, evitando duplicados exactos en el mismo archivo
     const toCreate = [];
     const toUpdate = [];
+    const seenInFile = new Set();
 
     for (let i = 0; i < toSave.length; i++) {
       const item = toSave[i];
-      const costPrice = item.cost_price || 0;
-      const salePrice = costPrice > 0 ? Math.round(costPrice * (1 + margin / 100) * 100) / 100 : 0;
       const codeKey = (item.product_code || '').trim().toLowerCase();
 
+      // Saltar duplicados dentro del propio archivo
+      if (codeKey && seenInFile.has(codeKey)) continue;
+      if (codeKey) seenInFile.add(codeKey);
+
+      const costPrice = item.cost_price || 0;
+      const salePrice = costPrice > 0 ? Math.round(costPrice * (1 + margin / 100) * 100) / 100 : 0;
+
       if (codeKey && existingByCode[codeKey]) {
-        toUpdate.push({ ex: existingByCode[codeKey], item, costPrice, salePrice, idx: i });
+        // Solo actualizar si hay cambios significativos
+        const ex = existingByCode[codeKey];
+        if (Math.abs(ex.cost_price - costPrice) > 0.01 || ex.product_name !== item.product_name) {
+          toUpdate.push({ ex, item, costPrice, salePrice, idx: i });
+        }
       } else {
         toCreate.push({
           supplier_id:   supplierId,

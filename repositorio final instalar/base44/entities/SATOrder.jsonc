@@ -1,0 +1,178 @@
+{
+  "name": "SATOrder",
+  "type": "object",
+  "properties": {
+    "order_number": {
+      "type": "string"
+    },
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "scheduled_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "scheduled_time": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "baja",
+        "normal",
+        "alta",
+        "urgente"
+      ],
+      "default": "normal"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "reparacion",
+        "mantenimiento",
+        "instalacion",
+        "revision",
+        "urgencia"
+      ],
+      "default": "reparacion"
+    },
+    "equipment_type": {
+      "type": "string",
+      "enum": [
+        "aire_acondicionado",
+        "bomba_calor",
+        "camara_frigorifica",
+        "electrico",
+        "solar",
+        "otro"
+      ],
+      "default": "otro"
+    },
+    "description": {
+      "type": "string"
+    },
+    "diagnosis": {
+      "type": "string"
+    },
+    "solution": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendiente",
+        "en_curso",
+        "completada",
+        "cancelada"
+      ],
+      "default": "pendiente"
+    },
+    "photos_before": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Fotos antes de reparaci\u00f3n (max 30)"
+    },
+    "photos_after": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Fotos despu\u00e9s de reparaci\u00f3n (max 30)"
+    },
+    "materials_used": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "material": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "labor_hours": {
+      "type": "number"
+    },
+    "labor_rate": {
+      "type": "number"
+    },
+    "total": {
+      "type": "number"
+    },
+    "technician": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "signature_technician": {
+      "type": "string",
+      "description": "Firma digital del t\u00e9cnico (base64 PNG)"
+    },
+    "signature_client": {
+      "type": "string",
+      "description": "Firma digital de conformidad del cliente (base64 PNG)"
+    },
+    "sign_datetime_technician": {
+      "type": "string",
+      "description": "Fecha y hora exacta de la firma del t\u00e9cnico (DD/MM/YYYY HH:MM:SS)"
+    },
+    "sign_datetime_client": {
+      "type": "string",
+      "description": "Fecha y hora exacta de la firma del cliente (DD/MM/YYYY HH:MM:SS)"
+    },
+    "signature_history": {
+      "type": "array",
+      "description": "Historial de decisiones (aceptar/rechazar) con firmas y fechas",
+      "items": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "aceptar",
+              "rechazar"
+            ],
+            "description": "Tipo de decisi\u00f3n"
+          },
+          "signature_url": {
+            "type": "string",
+            "description": "URL de la firma digital"
+          },
+          "datetime": {
+            "type": "string",
+            "description": "Fecha y hora (DD/MM/YYYY HH:MM:SS)"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "web",
+              "email",
+              "whatsapp"
+            ],
+            "description": "M\u00e9todo de firma"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "contact_name",
+    "date"
+  ]
+}

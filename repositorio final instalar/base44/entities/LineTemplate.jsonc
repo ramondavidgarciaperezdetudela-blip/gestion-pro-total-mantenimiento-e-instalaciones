@@ -1,0 +1,50 @@
+{
+  "name": "LineTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre de la plantilla de l\u00edneas"
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "factura",
+        "presupuesto",
+        "recibo",
+        "todos"
+      ],
+      "default": "todos",
+      "description": "Tipo de documento al que aplica"
+    },
+    "items": {
+      "type": "array",
+      "description": "L\u00edneas de trabajo/materiales predefinidas",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "discount": {
+            "type": "number",
+            "default": 0
+          }
+        }
+      }
+    },
+    "notes_template": {
+      "type": "string",
+      "description": "Observaciones predefinidas para esta plantilla"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

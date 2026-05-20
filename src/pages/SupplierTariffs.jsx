@@ -6,6 +6,17 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Search, Building2, Package, Image as ImageIcon, ChevronDown, ChevronRight,
   Upload, Trash2, Edit, Loader2, RefreshCw, Check, TrendingDown, AlertTriangle, WifiOff
 } from 'lucide-react';
@@ -87,9 +98,9 @@ export default function SupplierTariffs() {
       let skip = PAGE;
 
       const loadBatchesInParallel = async () => {
-        while (skip < PAGE * 5) {
+        while (skip < 500000) {
           const batchRequests = [];
-          for (let i = 0; i < 3 && skip < PAGE * 5; i++) {
+          for (let i = 0; i < 3 && skip < 500000; i++) {
             batchRequests.push(
               withRetry(() => base44.entities.SupplierPrice.list('-created_date', PAGE, skip))
             );
@@ -122,7 +133,7 @@ export default function SupplierTariffs() {
       setAutoFetchingImage(true);
       try {
         const res = await base44.integrations.Core.InvokeLLM({
-          prompt: `Busca en internet la imagen oficial del producto: "${productName}"${brand ? ` de la marca ${brand}` : ''}${productCode ? `, referencia ${productCode}` : ''}. Devuelve solo la URL directa de la imagen del producto (JPG, PNG o WebP). Si no encuentras una imagen fiable, devuelve null.`,
+          prompt: `Busca en internet la imagen oficial del producto. PRIORIDAD: Primero busca por referencia "${productCode}" y si no por nombre "${productName}"${brand ? ` de la marca ${brand}` : ''}. Devuelve solo la URL directa de la imagen del producto (JPG, PNG o WebP). Si no encuentras una imagen fiable, devuelve null.`,
           add_context_from_internet: true,
           response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
         });
@@ -192,6 +203,30 @@ export default function SupplierTariffs() {
     toast.success('Producto eliminado');
   };
 
+  const handleDeleteTariff = async (supplierId) => {
+    const productsToDelete = prices.filter(p => p.supplier_id === supplierId);
+    if (productsToDelete.length === 0) return;
+
+    setLoading(true);
+    try {
+      // Borrar secuencialmente ya que no hay bulkDelete aparente en el SDK
+      // Para optimizar, lo hacemos en promesas paralelas con un límite de concurrencia
+      const CONCURRENCY = 10;
+      for (let i = 0; i < productsToDelete.length; i += CONCURRENCY) {
+        const batch = productsToDelete.slice(i, i + CONCURRENCY);
+        await Promise.all(batch.map(p => base44.entities.SupplierPrice.delete(p.id)));
+      }
+
+      setPrices(prev => prev.filter(p => p.supplier_id !== supplierId));
+      toast.success(`Tarifa eliminada (${productsToDelete.length} productos)`);
+    } catch (err) {
+      toast.error('Error al eliminar la tarifa');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUploadImage = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -206,7 +241,7 @@ export default function SupplierTariffs() {
     if (!editForm.product_name) return;
     setFetchingImage(true);
     const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Busca en internet la imagen oficial del producto: "${editForm.product_name}"${editForm.brand ? ` de la marca ${editForm.brand}` : ''}${editForm.product_code ? `, referencia ${editForm.product_code}` : ''}. Devuelve solo la URL directa de la imagen del producto (JPG o PNG). Si no encuentras una imagen fiable, devuelve null.`,
+      prompt: `Busca en internet la imagen oficial del producto. PRIORIDAD: Primero busca por referencia "${editForm.product_code}" y si no por nombre "${editForm.product_name}"${editForm.brand ? ` de la marca ${editForm.brand}` : ''}. Devuelve solo la URL directa de la imagen del producto (JPG o PNG). Si no encuentras una imagen fiable, devuelve null.`,
       add_context_from_internet: true,
       response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
     });
@@ -363,8 +398,33 @@ export default function SupplierTariffs() {
                   <p className="text-xs text-gray-500">{items.length} productos en tarifa · {items.filter(i => !i.image_url).length} sin imagen</p>
                 </div>
                 <Badge variant="outline" className="text-xs hidden sm:inline-flex">{supplier.category || 'general'}</Badge>
-                <div onClick={e => e.stopPropagation()}>
+                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                   <SupplierOnlineUpdate supplier={supplier} prices={prices} onUpdated={loadData} />
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar tarifa completa?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta acción eliminará los {items.length} productos del proveedor <strong>{supplier.name}</strong> de forma permanente.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteTariff(supplier.id)}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Eliminar todo
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
                 {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
               </button>

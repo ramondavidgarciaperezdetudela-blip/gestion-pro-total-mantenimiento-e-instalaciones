@@ -1,0 +1,74 @@
+{
+  "name": "SupplierPrice",
+  "type": "object",
+  "properties": {
+    "supplier_id": {
+      "type": "string",
+      "description": "ID del proveedor"
+    },
+    "supplier_name": {
+      "type": "string",
+      "description": "Nombre del proveedor"
+    },
+    "product_code": {
+      "type": "string",
+      "description": "C\u00f3digo del producto"
+    },
+    "product_name": {
+      "type": "string",
+      "description": "Nombre del producto"
+    },
+    "brand": {
+      "type": "string",
+      "description": "Marca del producto"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "URL de la imagen del producto"
+    },
+    "cost_price": {
+      "type": "number",
+      "description": "Precio de coste (\u20ac)"
+    },
+    "sale_price": {
+      "type": "number",
+      "description": "Precio de venta (\u20ac)"
+    },
+    "margin": {
+      "type": "number",
+      "description": "Margen de beneficio (%)"
+    },
+    "validity_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de validez del precio"
+    },
+    "quantity": {
+      "type": "number",
+      "description": "Cantidad disponible en stock"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unidad de medida (uds, kg, m, etc.)"
+    },
+    "category": {
+      "type": "string",
+      "description": "Categor\u00eda del producto"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas adicionales"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Precio activo"
+    }
+  },
+  "required": [
+    "supplier_id",
+    "supplier_name",
+    "product_name",
+    "cost_price"
+  ]
+}

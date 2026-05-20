@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import PullToRefresh from '../components/PullToRefresh';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Wrench, Trash2, Search, Edit, Eye, Send, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, Printer, FileText, Link2, ClipboardList, X } from 'lucide-react';
+import { Plus, Wrench, Trash2, Search, Edit, Eye, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, FileText, Link2, ClipboardList, X } from 'lucide-react';
 import SATTechReport from '../components/SATTechReport';
 import TechnicianSelect from '../components/TechnicianSelect';
 import SATSignaturePanel from '../components/SATSignaturePanel';
@@ -108,8 +107,18 @@ export default function SAT() {
 
   const handleSave = async () => {
     setSaving(true);
-    const total = calcTotal(form);
-    const data = { ...form, total, materials_used: (form.materials_used || []).filter(m => m.material?.trim()) };
+    const parsed = {
+      ...form,
+      labor_hours: parseFloat(String(form.labor_hours).replace(',', '.')) || 0,
+      labor_rate: parseFloat(String(form.labor_rate).replace(',', '.')) || 0,
+      materials_used: (form.materials_used || []).map(m => ({
+        ...m,
+        quantity: parseFloat(String(m.quantity).replace(',', '.')) || 0,
+        unit_price: parseFloat(String(m.unit_price).replace(',', '.')) || 0
+      })).filter(m => m.material?.trim())
+    };
+    const total = calcTotal(parsed);
+    const data = { ...parsed, total };
     let savedOrder = null;
 
     if (editing) {
@@ -241,21 +250,10 @@ export default function SAT() {
   const updateMaterial = (i, field, val) => setForm(prev => ({ ...prev, materials_used: prev.materials_used.map((m, idx) => idx === i ? { ...m, [field]: val } : m) }));
   const removeMaterial = (i) => setForm(prev => ({ ...prev, materials_used: prev.materials_used.filter((_, idx) => idx !== i) }));
 
-  // Helpers de display — simplificados: muestran el valor tal cual (string o número)
-  const getMatDisplay = (i, field, val) => val ?? '';
-  const onMatLocalChange = (i, field, str) => updateMaterial(i, field, str);
-  const onMatBlur = (i, field) => {
-    setForm(prev => ({
-      ...prev,
-      materials_used: prev.materials_used.map((m, idx) =>
-        idx === i ? { ...m, [field]: parseFloat(String(m[field]).replace(',', '.')) || 0 } : m
-      )
-    }));
+  // Helpers de display
+  const updateFormNumeric = (field, val) => {
+    setForm(prev => ({ ...prev, [field]: val }));
   };
-
-  const getLaborDisplay = (field) => form[field] ?? '';
-  const onLaborLocalChange = (field, str) => setForm(f => ({ ...f, [field]: str }));
-  const onLaborBlur = (field) => setForm(f => ({ ...f, [field]: parseFloat(String(f[field]).replace(',', '.')) || 0 }));
 
   const filtered = useMemo(() => orders.filter(o => {
     const matchSearch = !search || `${o.order_number} ${o.contact_name} ${o.description} ${o.technician}`.toLowerCase().includes(search.toLowerCase());
@@ -662,14 +660,12 @@ export default function SAT() {
                 <div key={i} className="grid grid-cols-4 gap-1 mb-1">
                   <input className="col-span-2 h-7 text-xs border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Material" value={m.material} onChange={e => updateMaterial(i, 'material', e.target.value)} />
                   <input inputMode="decimal" className="h-7 text-xs border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Cant"
-                    value={getMatDisplay(i, 'quantity', m.quantity)}
-                    onChange={e => onMatLocalChange(i, 'quantity', e.target.value)}
-                    onBlur={() => onMatBlur(i, 'quantity')} />
+                    value={m.quantity ?? ''}
+                    onChange={e => updateMaterial(i, 'quantity', e.target.value)} />
                   <div className="flex gap-1">
                     <input inputMode="decimal" className="h-7 text-xs flex-1 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="€/ud"
-                      value={getMatDisplay(i, 'unit_price', m.unit_price)}
-                      onChange={e => onMatLocalChange(i, 'unit_price', e.target.value)}
-                      onBlur={() => onMatBlur(i, 'unit_price')} />
+                      value={m.unit_price ?? ''}
+                      onChange={e => updateMaterial(i, 'unit_price', e.target.value)} />
                     <button onClick={() => removeMaterial(i)} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
@@ -679,15 +675,22 @@ export default function SAT() {
             {/* Horas */}
             <div className="grid grid-cols-2 gap-2">
               <input inputMode="decimal" className="h-9 text-sm border border-input rounded-md px-3 focus:outline-none focus:ring-1 focus:ring-ring w-full" placeholder="Horas trabajo"
-                value={getLaborDisplay('labor_hours')}
-                onChange={e => onLaborLocalChange('labor_hours', e.target.value)}
-                onBlur={() => onLaborBlur('labor_hours')} />
+                value={form.labor_hours ?? ''}
+                onChange={e => updateFormNumeric('labor_hours', e.target.value)} />
               <input inputMode="decimal" className="h-9 text-sm border border-input rounded-md px-3 focus:outline-none focus:ring-1 focus:ring-ring w-full" placeholder="€/hora"
-                value={getLaborDisplay('labor_rate')}
-                onChange={e => onLaborLocalChange('labor_rate', e.target.value)}
-                onBlur={() => onLaborBlur('labor_rate')} />
+                value={form.labor_rate ?? ''}
+                onChange={e => updateFormNumeric('labor_rate', e.target.value)} />
             </div>
-            <p className="text-xs text-right text-gray-500">Total estimado: <strong className="text-orange-700">{calcTotal(form).toFixed(2)} €</strong></p>
+            <p className="text-xs text-right text-gray-500">Total estimado: <strong className="text-orange-700">{calcTotal({
+              ...form,
+              labor_hours: parseFloat(String(form.labor_hours).replace(',', '.')) || 0,
+              labor_rate: parseFloat(String(form.labor_rate).replace(',', '.')) || 0,
+              materials_used: (form.materials_used || []).map(m => ({
+                ...m,
+                quantity: parseFloat(String(m.quantity).replace(',', '.')) || 0,
+                unit_price: parseFloat(String(m.unit_price).replace(',', '.')) || 0
+              }))
+            }).toFixed(2)} €</strong></p>
 
             <PhotoGallery photos={form.photos_before} onChange={p => setForm({ ...form, photos_before: p })} label="Fotos antes de reparación" maxPhotos={30} />
             <PhotoGallery photos={form.photos_after} onChange={p => setForm({ ...form, photos_after: p })} label="Fotos después de reparación" maxPhotos={30} />

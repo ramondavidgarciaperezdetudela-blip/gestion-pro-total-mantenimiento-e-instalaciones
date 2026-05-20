@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,11 +8,10 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import {
   Bell, AlertTriangle, Clock, CheckCircle, FileText, Wrench,
-  ClipboardList, Users, Phone, Mail, MessageCircle, Zap, RefreshCw,
+  ClipboardList, Users, Mail, MessageCircle, Zap, RefreshCw,
   Calendar, Package, FolderOpen, Bot
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 export default function SmartReminders() {
   const [data, setData] = useState({ invoices: [], sat: [], maintenance: [], appointments: [], projects: [], stock: [], contacts: [] });

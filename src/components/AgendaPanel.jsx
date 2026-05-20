@@ -1,11 +1,11 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, ChevronRight, AlertCircle, MapPin, RefreshCw } from 'lucide-react';
-import { format, addDays, isToday, isTomorrow } from 'date-fns';
+import { Calendar, ChevronRight, AlertCircle, MapPin, RefreshCw } from 'lucide-react';
+import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const TYPE_COLOR = {

@@ -12,7 +12,7 @@ import PhotoGallery from '../components/PhotoGallery';
 import ColdRoomHumidityCalc from '../components/ColdRoomHumidityCalc';
 import RefrigerantSelector from '../components/RefrigerantSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ColdRoomBreakdown, PressureChart, EfficiencyRadar } from '../components/ThermalCharts';
+import { ColdRoomBreakdown, PressureChart, EfficiencyRadar, MollierDiagram } from '../components/ThermalCharts';
 import EquipmentSelector, { COLD_ROOM_CATALOG } from '../components/EquipmentSelector';
 
 import { REFRIGERANT_DATABASE } from '../components/refrigerantData';
@@ -33,21 +33,42 @@ const EXTRA_REF_G_PER_M = { 'R-404A': 22, 'R-448A': 18, 'R-449A': 18, 'R-452A': 
 const COLD_CATALOG = COLD_ROOM_CATALOG;
 
 function calcBreakdown(f) {
-  const insul = { '60mm': 0.35, '80mm': 0.27, '100mm': 0.22, '120mm': 0.18 }[f.panel_thickness] || 0.27;
+  // K coefficients (W/m²K) for PUR/PIR panels
+  const K = { '60mm': 0.38, '80mm': 0.28, '100mm': 0.22, '120mm': 0.18 }[f.panel_thickness] || 0.28;
+
+  // Total surface area (walls + ceiling + floor)
   const surf = 2 * (f.length * f.width + f.length * f.height + f.width * f.height);
-  const deltaT = Math.abs((f.exterior_temp || 25) - (f.cold_room_temp || 2));
-  const transmissionLoad = surf * insul * deltaT;
-  const productLoad = (f.product_kg || 100) * 3.5 * Math.abs(f.exterior_temp - f.cold_room_temp) / 24;
   const vol = f.length * f.width * f.height;
-  const ventLoad = vol * 0.5 * 1.2 * 1.005 * deltaT * 0.28;
-  return { transmissionLoad, productLoad, ventLoad };
+  const deltaT = Math.abs((f.exterior_temp || 25) - (f.cold_room_temp || 2));
+
+  // 1. Transmission load (W)
+  const transmissionLoad = surf * K * deltaT;
+
+  // 2. Product load (W)
+  // Assuming 24h pull-down, Cp avg 3.2 kJ/kg·K (typical for food)
+  // Q = (m * Cp * dT) / (3600 * 24) * 1000
+  const productLoad = (f.product_kg || 100) * 3.2 * Math.abs(f.exterior_temp - f.cold_room_temp) / 86.4;
+
+  // 3. Ventilation/Infiltration (W)
+  // Approx 4 air changes/day for small rooms, energy per m3/K is ~0.6-0.8
+  const ventLoad = vol * 4 * 0.7 * deltaT / 24;
+
+  // 4. Internal loads (fans, lights, people)
+  // Approx 15W per m3 as estimation
+  const internalLoad = vol * 15;
+
+  return { transmissionLoad, productLoad, ventLoad, internalLoad };
 }
 
 function buildResult(form, breakdown) {
-  const { transmissionLoad, productLoad, ventLoad } = breakdown;
-  const totalLoad = Math.round((transmissionLoad + productLoad + ventLoad) * 1.25);
+  const { transmissionLoad, productLoad, ventLoad, internalLoad } = breakdown;
+  // Total load in W.
+  // Safety factor: We multiply by 24/18 to account for 18 hours of compressor runtime (defrost allowance)
+  // Plus a 10% general safety margin
+  const hourlyLoad = (transmissionLoad + productLoad + ventLoad + internalLoad) * (24 / 18) * 1.10;
+  const totalLoad = Math.round(hourlyLoad);
 
-  const suitableCold = COLD_CATALOG.filter(e => e.power_kw * 1000 >= totalLoad * 0.9);
+  const suitableCold = COLD_CATALOG.filter(e => e.power_kw * 1000 >= totalLoad * 0.95);
   const equip = suitableCold[0] || COLD_CATALOG[COLD_CATALOG.length - 1];
   const alternatives = suitableCold.slice(0, 3).length > 0 ? suitableCold.slice(0, 3) : COLD_CATALOG.slice(-3);
   const actualDist = parseFloat(form.pipe_distance) || 8;
@@ -171,10 +192,20 @@ export default function ColdRoomCalc() {
     }
   }, [form.contact_id]);
 
+  const parseForm = (f) => {
+    const parsed = { ...f };
+    const numericFields = ['length', 'width', 'height', 'cold_room_temp', 'exterior_temp', 'product_kg', 'pipe_distance', 'pipe_height_diff'];
+    numericFields.forEach(field => {
+      parsed[field] = parseFloat(String(f[field]).replace(',', '.')) || 0;
+    });
+    return parsed;
+  };
+
   const calculate = () => {
-    const bd = calcBreakdown(form);
+    const parsed = parseForm(form);
+    const bd = calcBreakdown(parsed);
     setBreakdown(bd);
-    setResult(buildResult(form, bd));
+    setResult(buildResult(parsed, bd));
   };
 
   const handleBreakdownAdjust = (key, value) => {
@@ -186,7 +217,8 @@ export default function ColdRoomCalc() {
   const saveToClient = async (titleSuffix = '') => {
     if (!form.contact_id || !result) return;
     setSaving(true);
-    const bd = breakdown || calcBreakdown(form);
+    const parsed = parseForm(form);
+    const bd = breakdown || calcBreakdown(parsed);
 
     const data = {
       contact_id: form.contact_id,
@@ -194,16 +226,16 @@ export default function ColdRoomCalc() {
       calc_type: 'camara_frigorifica',
       date: format(new Date(), 'yyyy-MM-dd'),
       // Parámetros
-      room_length: form.length,
-      room_width: form.width,
-      room_height: form.height,
-      exterior_temp: form.exterior_temp,
-      cold_room_temp: form.cold_room_temp,
-      cold_room_product: form.cold_room_type,
-      cold_room_product_kg: form.product_kg,
-      refrigerant_type: form.refrigerant_type,
-      pipe_distance: form.pipe_distance,
-      pipe_height_diff: form.pipe_height_diff,
+      room_length: parsed.length,
+      room_width: parsed.width,
+      room_height: parsed.height,
+      exterior_temp: parsed.exterior_temp,
+      cold_room_temp: parsed.cold_room_temp,
+      cold_room_product: parsed.cold_room_type,
+      cold_room_product_kg: parsed.product_kg,
+      refrigerant_type: parsed.refrigerant_type,
+      pipe_distance: parsed.pipe_distance,
+      pipe_height_diff: parsed.pipe_height_diff,
       // Resultados
       calculated_load: result.loadW,
       calculated_load_frigorias: Math.round(result.loadW * 0.86),
@@ -229,8 +261,8 @@ export default function ColdRoomCalc() {
         `Producto: ${form.product_kg}kg | Gas: ${form.refrigerant_type}`,
         `Tubería: ${form.pipe_distance}m | Dif.altura: ${form.pipe_height_diff}m`,
         `--- DESGLOSE CARGAS ---`,
-        `Transmisión: ${Math.round(bd.transmissionLoad)}W | Producto: ${Math.round(bd.productLoad)}W | Ventilación: ${Math.round(bd.ventLoad)}W`,
-        `Factor seguridad ×1.25 aplicado`,
+      `Transmisión: ${Math.round(bd.transmissionLoad)}W | Producto: ${Math.round(bd.productLoad)}W | Ventilación: ${Math.round(bd.ventLoad)}W | Interna: ${Math.round(bd.internalLoad)}W`,
+      `Tiempo funcionamiento: 18h/día | Factor seguridad aplicado`,
         `--- RESULTADOS ---`,
         `Carga total: ${result.loadW}W | ${Math.round(result.loadW * 0.86)} frig/h`,
         `--- EQUIPOS RECOMENDADOS ---`,
@@ -312,9 +344,10 @@ export default function ColdRoomCalc() {
         <div class="section-title" style="color:#f97316">Desglose de cargas</div>
         <div class="grid2">
           <div>Transmisión: <b>${Math.round(bd.transmissionLoad)} W</b></div>
-          <div>Producto: <b>${Math.round(bd.productLoad)} W</b></div>
-          <div>Ventilación: <b>${Math.round(bd.ventLoad)} W</b></div>
-          <div>Factor seguridad (×1.25): incluido</div>
+          <div>Carga Producto: <b>${Math.round(bd.productLoad)} W</b></div>
+          <div>Ventilación/Infilt.: <b>${Math.round(bd.ventLoad)} W</b></div>
+          <div>Cargas Internas: <b>${Math.round(bd.internalLoad)} W</b></div>
+          <div>Funcionamiento: 18h/día (incluye desescarche)</div>
         </div>
       </div>
       <div class="kpis">
@@ -391,9 +424,9 @@ export default function ColdRoomCalc() {
       <div className="bg-blue-50 p-3 rounded-lg space-y-2">
         <p className="text-sm font-medium text-blue-700">Dimensiones cámara</p>
         <div className="grid grid-cols-3 gap-2">
-          <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="number" value={form.length} onChange={e => setForm({...form, length: parseFloat(e.target.value)||0})} /></div>
-          <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="number" value={form.width} onChange={e => setForm({...form, width: parseFloat(e.target.value)||0})} /></div>
-          <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="number" value={form.height} onChange={e => setForm({...form, height: parseFloat(e.target.value)||0})} /></div>
+          <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="text" value={form.length} onChange={e => setForm({...form, length: e.target.value})} /></div>
+          <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="text" value={form.width} onChange={e => setForm({...form, width: e.target.value})} /></div>
+          <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="text" value={form.height} onChange={e => setForm({...form, height: e.target.value})} /></div>
         </div>
       </div>
 
@@ -409,9 +442,9 @@ export default function ColdRoomCalc() {
             </SelectContent>
           </Select>
         </div>
-        <div><label className="text-[10px] text-gray-500">T. cámara (°C)</label><Input type="number" value={form.cold_room_temp} onChange={e => setForm({...form, cold_room_temp: parseFloat(e.target.value)||0})} /></div>
-        <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="number" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)||0})} /></div>
-        <div><label className="text-[10px] text-gray-500">Producto (kg)</label><Input type="number" value={form.product_kg} onChange={e => setForm({...form, product_kg: parseFloat(e.target.value)||0})} /></div>
+        <div><label className="text-[10px] text-gray-500">T. cámara (°C)</label><Input type="text" value={form.cold_room_temp} onChange={e => setForm({...form, cold_room_temp: e.target.value})} /></div>
+        <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="text" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: e.target.value})} /></div>
+        <div><label className="text-[10px] text-gray-500">Producto (kg)</label><Input type="text" value={form.product_kg} onChange={e => setForm({...form, product_kg: e.target.value})} /></div>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
@@ -427,8 +460,8 @@ export default function ColdRoomCalc() {
             </SelectContent>
           </Select>
         </div>
-        <div><label className="text-[10px] text-gray-500">Long. tubería (m)</label><Input type="number" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: parseFloat(e.target.value)||0})} /></div>
-        <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><Input type="number" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: parseFloat(e.target.value)||0})} /></div>
+        <div><label className="text-[10px] text-gray-500">Long. tubería (m)</label><Input type="text" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: e.target.value})} /></div>
+        <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><Input type="text" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: e.target.value})} /></div>
       </div>
 
       <div>
@@ -495,7 +528,22 @@ export default function ColdRoomCalc() {
         <EfficiencyRadar scores={result.efficiencyScores} />
       </div>
 
-      <PressureChart pressureData={result.pr} refrigerant={form.refrigerant_type} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <MollierDiagram
+          refrigerant={form.refrigerant_type}
+          evapPressure={result.evapPressure}
+          condPressure={result.condPressure}
+          onAdjust={(key, val) => {
+            setResult(prev => ({
+              ...prev,
+              [key]: val,
+              // Update individual pressures in the table if they match the keys
+              pr: { ...prev.pr, [key === 'evapPressure' ? '-10°C' : '5°C']: val }
+            }));
+          }}
+        />
+        <PressureChart pressureData={result.pr} refrigerant={form.refrigerant_type} />
+      </div>
 
       {/* Selector multi-marca con normativa RITE+FGAS */}
       <Card className="border-blue-200">

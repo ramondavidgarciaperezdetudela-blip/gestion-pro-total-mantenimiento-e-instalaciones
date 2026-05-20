@@ -13,15 +13,12 @@ import PendingSignaturesPanel from '../components/PendingSignaturesPanel';
 import { createPageUrl } from '../utils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Calendar, Users, FileText, Wrench, ClipboardList,
   Thermometer, Sun, BookOpen, Shield, Bot, Settings,
   Building2, FolderOpen, Zap, BarChart3, Clock, AlertCircle,
-  StickyNote, Package, Battery, Palette, CreditCard, Bell, Download,
-  TrendingUp, TrendingDown, Euro, CheckCircle, XCircle, AlertTriangle,
-  ArrowRight, Phone, MapPin, ChevronRight, ShoppingCart, Search, Navigation,
-  MessageCircle, RefreshCw, ChevronDown, ChevronUp } from
+  StickyNote, Package, Palette, Bell, Download, Euro, CheckCircle, XCircle, AlertTriangle,
+  ArrowRight, ChevronRight, ShoppingCart, Search, Navigation, ChevronDown, ChevronUp } from
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
@@ -30,35 +27,37 @@ import { es } from 'date-fns/locale';
 
 
 const quickLinks = [
-{ name: 'Agenda', page: 'Agenda', icon: Calendar, color: 'bg-blue-500' },
-{ name: 'Asistente IA', page: 'AIAssistant', icon: Bot, color: 'bg-green-500' },
-{ name: 'Búsqueda IA', page: 'AISearch', icon: Bot, color: 'bg-teal-400' },
-{ name: 'Cálculo Humedad', page: 'ColdRoomCalc', icon: Thermometer, color: 'bg-cyan-600' },
-{ name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500' },
-{ name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
-{ name: 'Contactos', page: 'Contacts', icon: Users, color: 'bg-emerald-500' },
-{ name: 'Docs Legalización', page: 'LegalDocs', icon: FileText, color: 'bg-indigo-600' },
-{ name: 'Electricidad', page: 'ElectricalCalc', icon: Zap, color: 'bg-yellow-500' },
-{ name: 'Exportar', page: 'ExportData', icon: Download, color: 'bg-lime-600' },
-{ name: 'Factura', page: 'Documents?type=factura', icon: FileText, color: 'bg-violet-500' },
-{ name: 'Informes', page: 'Reports', icon: BarChart3, color: 'bg-fuchsia-500' },
-{ name: 'Informes IA', page: 'AIReports', icon: BarChart3, color: 'bg-fuchsia-400' },
-{ name: 'Inventario', page: 'Inventory', icon: Package, color: 'bg-teal-500' },
-{ name: 'Manuales', page: 'Manuals', icon: BookOpen, color: 'bg-teal-600' },
-{ name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList, color: 'bg-cyan-500' },
-{ name: 'Normativas', page: 'Regulations', icon: Shield, color: 'bg-indigo-500' },
-{ name: 'Notas', page: 'Notes', icon: StickyNote, color: 'bg-lime-500' },
-{ name: 'Optimizar Ruta', page: 'TecniciansRoutes', icon: Navigation, color: 'bg-teal-600' },
-{ name: 'Plantillas', page: 'DocumentTemplates', icon: Palette, color: 'bg-rose-500' },
-{ name: 'Presupuesto', page: 'Documents?type=presupuesto', icon: FileText, color: 'bg-blue-600' },
-{ name: 'Presupuesto IA', page: 'AIBudget', icon: Bot, color: 'bg-purple-500' },
-{ name: 'Proyectos', page: 'Projects', icon: FolderOpen, color: 'bg-pink-500' },
-{ name: 'Proveedores', page: 'Suppliers', icon: Building2, color: 'bg-slate-500' },
-{ name: 'Repuestos', page: 'SparePartsManager', icon: Package, color: 'bg-teal-700' },
-{ name: 'SAT', page: 'SAT', icon: Wrench, color: 'bg-orange-500' },
-{ name: 'Solar+Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-amber-500' },
-{ name: 'Tarifas Prov.', page: 'SupplierTariffs', icon: Package, color: 'bg-purple-600' },
-{ name: 'Copias Seg.', page: 'BackupCenter', icon: Shield, color: 'bg-blue-700' }];
+  { name: 'Agenda', page: 'Agenda', icon: Calendar, color: 'bg-blue-500' },
+  { name: 'Asistente IA', page: 'AIAssistant', icon: Bot, color: 'bg-green-500' },
+  { name: 'Búsqueda IA', page: 'AISearch', icon: Bot, color: 'bg-teal-400' },
+  { name: 'Cálculo Aire Acond.', page: 'AirConditioningCalc', icon: Sun, color: 'bg-orange-400' },
+  { name: 'Cálculo Humedad', page: 'ColdRoomCalc', icon: Thermometer, color: 'bg-cyan-600' },
+  { name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500' },
+  { name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
+  { name: 'Contactos', page: 'Contacts', icon: Users, color: 'bg-emerald-500' },
+  { name: 'Copias Seg.', page: 'BackupCenter', icon: Shield, color: 'bg-blue-700' },
+  { name: 'Docs Legalización', page: 'LegalDocs', icon: FileText, color: 'bg-indigo-600' },
+  { name: 'Electricidad', page: 'ElectricalCalc', icon: Zap, color: 'bg-yellow-500' },
+  { name: 'Exportar', page: 'ExportData', icon: Download, color: 'bg-lime-600' },
+  { name: 'Factura', page: 'Documents?type=factura', icon: FileText, color: 'bg-violet-500' },
+  { name: 'Informes', page: 'Reports', icon: BarChart3, color: 'bg-fuchsia-500' },
+  { name: 'Informes IA', page: 'AIReports', icon: BarChart3, color: 'bg-fuchsia-400' },
+  { name: 'Inventario', page: 'Inventory', icon: Package, color: 'bg-teal-500' },
+  { name: 'Manuales', page: 'Manuals', icon: BookOpen, color: 'bg-teal-600' },
+  { name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList, color: 'bg-cyan-500' },
+  { name: 'Normativas', page: 'Regulations', icon: Shield, color: 'bg-indigo-500' },
+  { name: 'Notas', page: 'Notes', icon: StickyNote, color: 'bg-lime-500' },
+  { name: 'Optimizar Ruta', page: 'TecniciansRoutes', icon: Navigation, color: 'bg-teal-600' },
+  { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette, color: 'bg-rose-500' },
+  { name: 'Presupuesto', page: 'Documents?type=presupuesto', icon: FileText, color: 'bg-blue-600' },
+  { name: 'Presupuesto IA', page: 'AIBudget', icon: Bot, color: 'bg-purple-500' },
+  { name: 'Proyectos', page: 'Projects', icon: FolderOpen, color: 'bg-pink-500' },
+  { name: 'Proveedores', page: 'Suppliers', icon: Building2, color: 'bg-slate-500' },
+  { name: 'Repuestos', page: 'SparePartsManager', icon: Package, color: 'bg-teal-700' },
+  { name: 'SAT', page: 'SAT', icon: Wrench, color: 'bg-orange-500' },
+  { name: 'Solar+Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-amber-500' },
+  { name: 'Tarifas Prov.', page: 'SupplierTariffs', icon: Package, color: 'bg-purple-600' },
+].sort((a, b) => a.name.localeCompare(b.name));
 
 
 function StatCard({ label, value, sub, icon: Icon, color, linkPage }) {
@@ -760,14 +759,14 @@ export default function Home() {
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-2">
             {[
-            { label: '+ Factura', page: 'Documents?type=factura', color: 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100' },
-            { label: '+ Presupuesto', page: 'Documents?type=presupuesto', color: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' },
-            { label: '+ SAT', page: 'SAT', color: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100' },
-            { label: '+ Mantenimiento', page: 'Maintenance', color: 'bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100' },
-            { label: '+ Cálculo Solar', page: 'SolarBatteryCalc', color: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' },
-            { label: '+ Presupuesto IA', page: 'AIBudget', color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' }].
-            map((item) =>
-            <Link key={item.page} to={createPageUrl(item.page)}>
+              { label: '+ Cálculo Solar', page: 'SolarBatteryCalc', color: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' },
+              { label: '+ Factura', page: 'Documents?type=factura', color: 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100' },
+              { label: '+ Mantenimiento', page: 'Maintenance', color: 'bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100' },
+              { label: '+ Presupuesto', page: 'Documents?type=presupuesto', color: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' },
+              { label: '+ Presupuesto IA', page: 'AIBudget', color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' },
+              { label: '+ SAT', page: 'SAT', color: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100' },
+            ].map((item) =>
+              <Link key={item.page} to={createPageUrl(item.page)}>
                 <div className={`border rounded-lg px-3 py-2.5 text-xs font-semibold text-center cursor-pointer transition-colors ${item.color}`}>
                   {item.label}
                 </div>

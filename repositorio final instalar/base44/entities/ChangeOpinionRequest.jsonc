@@ -1,0 +1,65 @@
+{
+  "name": "ChangeOpinionRequest",
+  "type": "object",
+  "properties": {
+    "doc_id": {
+      "type": "string",
+      "description": "ID del documento (presupuesto, factura, recibo)"
+    },
+    "doc_number": {
+      "type": "string",
+      "description": "N\u00famero del documento"
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "presupuesto",
+        "factura",
+        "recibo"
+      ],
+      "default": "presupuesto"
+    },
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "total": {
+      "type": "number"
+    },
+    "previous_decision": {
+      "type": "string",
+      "enum": [
+        "aceptado",
+        "rechazado"
+      ],
+      "description": "Decisi\u00f3n anterior del cliente"
+    },
+    "request_datetime": {
+      "type": "string",
+      "description": "Fecha y hora de la solicitud"
+    },
+    "change_opinion_token": {
+      "type": "string",
+      "description": "Token \u00fanico para este cambio de opini\u00f3n (para auditor\u00eda)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendiente",
+        "atendido",
+        "cancelado"
+      ],
+      "default": "pendiente"
+    }
+  },
+  "required": [
+    "doc_id",
+    "contact_name",
+    "doc_type"
+  ]
+}

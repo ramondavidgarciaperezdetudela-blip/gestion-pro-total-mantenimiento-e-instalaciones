@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, X, Check, Upload } from 'lucide-react';
+import { Camera, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function CameraCapture({ onCapture, onCancel, label = 'Capturar foto' }) {

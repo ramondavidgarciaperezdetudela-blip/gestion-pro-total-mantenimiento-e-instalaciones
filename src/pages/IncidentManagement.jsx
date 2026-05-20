@@ -6,11 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Wrench, Users, Calendar, MapPin, FileText, Save, Loader2, Edit2, Check, X, Plus, Trash2, Download } from 'lucide-react';
+import { AlertCircle, Wrench, Calendar, Save, Edit2, Check, X, Plus, Trash2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import CompanyHeader from '../components/CompanyHeader';
-import PrintButton from '../components/PrintButton';
 import { toast } from 'sonner';
 
 const STATUS_CONFIG = {

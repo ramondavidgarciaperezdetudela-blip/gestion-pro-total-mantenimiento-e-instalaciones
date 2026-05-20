@@ -1,10 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Bot, X, Send, Loader2, ChevronDown, Copy, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Bot, X, Send, Loader2, Copy } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 export default function AIChat() {

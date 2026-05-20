@@ -4,12 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Thermometer, Save, Calculator, FileDown, RefreshCw, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
-import { ThermalLoadBreakdown, PressureChart, EfficiencyRadar } from '../components/ThermalCharts';
+import { ThermalLoadBreakdown, PressureChart, EfficiencyRadar, MollierDiagram } from '../components/ThermalCharts';
 import EquipmentSelector, { CLIMATE_CATALOG } from '../components/EquipmentSelector';
 
 const REFRIGERANTS = ['R-32', 'R-410A', 'R-290', 'R-407C', 'R-134a', 'R-449A', 'R-452A', 'R-448A'];
@@ -31,19 +30,33 @@ const EXTRA_REFRIGERANT_G_PER_M = { 'R-32': 15, 'R-410A': 20, 'R-290': 10, 'R-40
 
 function calcBreakdown(f) {
   const orientFactor = { norte: 0.8, sur: 1.2, este: 1.0, oeste: 1.1 }[f.orientation] || 1.0;
-  const insulFactor = { bueno: 30, medio: 50, malo: 70 }[f.insulation_type] || 50;
+  // U coefficients (W/m²K)
+  const U = { bueno: 0.6, medio: 1.2, malo: 2.1 }[f.insulation_type] || 1.2;
   const dT = Math.abs((f.exterior_temp || 35) - (f.target_temp || 22));
-  const wallLoad = 2 * (f.length * f.height + f.width * f.height) * insulFactor * dT
-                 + f.length * f.width * (insulFactor * 1.5) * dT;
-  const windowLoad = (f.window_area || 0) * 600 * orientFactor;
-  const peopleLoad = (f.num_people || 2) * 100;
+  const vol = f.length * f.width * f.height;
+
+  // 1. Transmission (walls, floor, ceiling)
+  const surfaceArea = 2 * (f.length * f.height + f.width * f.height) + (f.length * f.width);
+  const wallLoad = surfaceArea * U * dT;
+
+  // 2. Solar radiation through windows
+  const windowLoad = (f.window_area || 0) * 550 * orientFactor;
+
+  // 3. Ventilation and Infiltration (W)
+  // Approx 2 air changes per hour for residential/commercial
+  const ventLoad = vol * 2 * 0.34 * dT;
+
+  // 4. Internal loads
+  const peopleLoad = (f.num_people || 2) * 130; // Sensible + Latent
   const equipLoad = f.equipment_heat || 0;
-  return { wallLoad, windowLoad, peopleLoad, equipLoad };
+
+  return { wallLoad, windowLoad, peopleLoad, equipLoad, ventLoad };
 }
 
 function buildResult(form, breakdown) {
-  const { wallLoad, windowLoad, peopleLoad, equipLoad } = breakdown;
-  const totalW = Math.round((wallLoad + windowLoad + peopleLoad + equipLoad) * 1.15);
+  const { wallLoad, windowLoad, peopleLoad, equipLoad, ventLoad } = breakdown;
+  // Safety factor of 20%
+  const totalW = Math.round((wallLoad + windowLoad + peopleLoad + equipLoad + ventLoad) * 1.20);
   const loadFrigorias = Math.round(totalW * 0.86);
   const loadKW = (totalW / 1000).toFixed(2);
 
@@ -126,10 +139,20 @@ export default function ThermalCalc() {
     }
   }, [form.contact_id]);
 
+  const parseForm = (f) => {
+    const parsed = { ...f };
+    const numericFields = ['length', 'width', 'height', 'window_area', 'num_people', 'equipment_heat', 'exterior_temp', 'target_temp', 'pipe_distance', 'pipe_height_diff'];
+    numericFields.forEach(field => {
+      parsed[field] = parseFloat(String(f[field]).replace(',', '.')) || 0;
+    });
+    return parsed;
+  };
+
   const calculate = () => {
-    const bd = calcBreakdown(form);
+    const parsed = parseForm(form);
+    const bd = calcBreakdown(parsed);
     setBreakdown(bd);
-    setResult(buildResult(form, bd));
+    setResult(buildResult(parsed, bd));
   };
 
   // Adjust breakdown manually from sliders → recalculate totals
@@ -143,27 +166,28 @@ export default function ThermalCalc() {
     if (!form.contact_id || !result) return;
     setSaving(true);
 
-    const bd = breakdown || calcBreakdown(form);
+    const parsed = parseForm(form);
+    const bd = breakdown || calcBreakdown(parsed);
     const data = {
       contact_id: form.contact_id,
       contact_name: form.contact_name,
       calc_type: 'clima',
       date: format(new Date(), 'yyyy-MM-dd'),
       // Parámetros del local
-      room_length: form.length,
-      room_width: form.width,
-      room_height: form.height,
-      orientation: form.orientation,
-      num_windows: form.num_windows,
-      window_area: form.window_area,
-      num_people: form.num_people,
-      equipment_heat: form.equipment_heat,
-      insulation_type: form.insulation_type,
-      target_temp: form.target_temp,
-      exterior_temp: form.exterior_temp,
-      refrigerant_type: form.refrigerant_type,
-      pipe_distance: form.pipe_distance,
-      pipe_height_diff: form.pipe_height_diff,
+      room_length: parsed.length,
+      room_width: parsed.width,
+      room_height: parsed.height,
+      orientation: parsed.orientation,
+      num_windows: parsed.num_windows,
+      window_area: parsed.window_area,
+      num_people: parsed.num_people,
+      equipment_heat: parsed.equipment_heat,
+      insulation_type: parsed.insulation_type,
+      target_temp: parsed.target_temp,
+      exterior_temp: parsed.exterior_temp,
+      refrigerant_type: parsed.refrigerant_type,
+      pipe_distance: parsed.pipe_distance,
+      pipe_height_diff: parsed.pipe_height_diff,
       // Resultados calculados
       calculated_load: result.loadW,
       calculated_load_frigorias: result.loadFrigorias,
@@ -189,8 +213,8 @@ export default function ThermalCalc() {
         `Personas: ${form.num_people} | Calor equipos: ${form.equipment_heat}W`,
         `Gas: ${form.refrigerant_type} | Tubería: ${form.pipe_distance}m | Alt: ${form.pipe_height_diff}m`,
         `--- DESGLOSE CARGAS ---`,
-        `Paredes/Techo: ${Math.round(bd.wallLoad)}W | Ventanas: ${Math.round(bd.windowLoad)}W | Personas: ${Math.round(bd.peopleLoad)}W | Equipos: ${Math.round(bd.equipLoad)}W`,
-        `Factor seguridad ×1.15 aplicado`,
+      `Transmisión: ${Math.round(bd.wallLoad)}W | Ventanas: ${Math.round(bd.windowLoad)}W | Ventilación: ${Math.round(bd.ventLoad)}W | Internas: ${Math.round(bd.peopleLoad + bd.equipLoad)}W`,
+      `Factor seguridad ×1.20 aplicado`,
         `--- RESULTADOS ---`,
         `Carga total: ${result.loadW}W | ${result.loadFrigorias} frig/h | ${result.loadKW}kW`,
         `--- EQUIPOS RECOMENDADOS ---`,
@@ -278,11 +302,11 @@ export default function ThermalCalc() {
       <div class="section" style="margin-top:10px;border-left-color:#f97316">
         <div class="section-title" style="color:#f97316">Desglose de cargas térmicas</div>
         <div class="grid2">
-          <div>Paredes/Techo: <b>${Math.round(bd.wallLoad)} W</b></div>
-          <div>Ventanas: <b>${Math.round(bd.windowLoad)} W</b></div>
-          <div>Personas: <b>${Math.round(bd.peopleLoad)} W</b></div>
-          <div>Equipos: <b>${Math.round(bd.equipLoad)} W</b></div>
-          <div>Factor seguridad (×1.15): incluido</div>
+          <div>Transmisión: <b>${Math.round(bd.wallLoad)} W</b></div>
+          <div>Radiación Ventanas: <b>${Math.round(bd.windowLoad)} W</b></div>
+          <div>Ventilación: <b>${Math.round(bd.ventLoad)} W</b></div>
+          <div>Cargas Internas: <b>${Math.round(bd.peopleLoad + bd.equipLoad)} W</b></div>
+          <div>Factor seguridad (×1.20): incluido</div>
         </div>
       </div>
 
@@ -366,9 +390,9 @@ export default function ThermalCalc() {
           <div className="bg-blue-50 p-3 rounded-lg space-y-2">
             <p className="text-sm font-medium text-blue-700">Dimensiones del local</p>
             <div className="grid grid-cols-3 gap-2">
-              <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="number" inputMode="decimal" value={form.length} onChange={e => setForm({...form, length: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="number" inputMode="decimal" value={form.width} onChange={e => setForm({...form, width: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="number" inputMode="decimal" value={form.height} onChange={e => setForm({...form, height: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="text" inputMode="decimal" value={form.length} onChange={e => setForm({...form, length: e.target.value})} /></div>
+              <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="text" inputMode="decimal" value={form.width} onChange={e => setForm({...form, width: e.target.value})} /></div>
+              <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="text" inputMode="decimal" value={form.height} onChange={e => setForm({...form, height: e.target.value})} /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
@@ -394,23 +418,23 @@ export default function ThermalCalc() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><label className="text-[10px] text-gray-500">Sup. ventanas (m²)</label><Input type="number" value={form.window_area} onChange={e => setForm({...form, window_area: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Sup. ventanas (m²)</label><Input type="text" inputMode="decimal" value={form.window_area} onChange={e => setForm({...form, window_area: e.target.value})} /></div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <div><label className="text-[10px] text-gray-500">Nº personas</label><Input type="number" inputMode="numeric" value={form.num_people} onChange={e => setForm({...form, num_people: parseInt(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Calor equipos (W)</label><Input type="number" inputMode="decimal" value={form.equipment_heat} onChange={e => setForm({...form, equipment_heat: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="number" inputMode="decimal" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Nº personas</label><Input type="text" inputMode="numeric" value={form.num_people} onChange={e => setForm({...form, num_people: e.target.value})} /></div>
+              <div><label className="text-[10px] text-gray-500">Calor equipos (W)</label><Input type="text" inputMode="decimal" value={form.equipment_heat} onChange={e => setForm({...form, equipment_heat: e.target.value})} /></div>
+              <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="text" inputMode="decimal" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: e.target.value})} /></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[10px] text-gray-500">T. objetivo interior (°C)</label><Input type="number" inputMode="decimal" value={form.target_temp} onChange={e => setForm({...form, target_temp: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">T. objetivo interior (°C)</label><Input type="text" inputMode="decimal" value={form.target_temp} onChange={e => setForm({...form, target_temp: e.target.value})} /></div>
             </div>
           </div>
 
           <div className="bg-gray-50 p-3 rounded-lg space-y-2">
             <p className="text-sm font-medium">Distancias de instalación</p>
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[10px] text-gray-500">Longitud tubería (m)</label><Input type="number" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><Input type="number" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Longitud tubería (m)</label><Input type="text" inputMode="decimal" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: e.target.value})} /></div>
+              <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><Input type="text" inputMode="decimal" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: e.target.value})} /></div>
             </div>
           </div>
 
@@ -450,7 +474,20 @@ export default function ThermalCalc() {
             <EfficiencyRadar scores={result.efficiencyScores} />
           </div>
 
-          <PressureChart pressureData={result.pr} refrigerant={form.refrigerant_type} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <MollierDiagram
+              refrigerant={form.refrigerant_type}
+              evapPressure={result.pr['0°C'] || 5}
+              condPressure={result.pr['30°C'] || 15}
+              onAdjust={(key, val) => {
+                const newPr = { ...result.pr };
+                if (key === 'evapPressure') newPr['0°C'] = val;
+                if (key === 'condPressure') newPr['30°C'] = val;
+                setResult(prev => ({ ...prev, pr: newPr }));
+              }}
+            />
+            <PressureChart pressureData={result.pr} refrigerant={form.refrigerant_type} />
+          </div>
 
           {/* Selector multi-marca con normativa RITE+FGAS */}
           <Card className="border-green-200">
