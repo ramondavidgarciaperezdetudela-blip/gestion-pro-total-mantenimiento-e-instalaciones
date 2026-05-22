@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Search, TrendingDown, Building2, Award, AlertCircle, X, Zap, FileText, CheckSquare } from 'lucide-react';
@@ -160,10 +159,22 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
 
   // Calcular columnas únicas de proveedores que aparecen en los grupos filtrados
   const supplierCols = useMemo(() => {
+    // Bolt Optimization: Use Maps for O(1) lookups instead of nested .find() on large datasets
     const ids = [...new Set(filtered.flatMap(g => g.map(p => p.supplier_id)))];
+    const supplierMap = new Map(suppliers.map(s => [s.id, s]));
+
+    const sampleMap = new Map();
+    for (const group of filtered) {
+      for (const p of group) {
+        if (!sampleMap.has(p.supplier_id)) {
+          sampleMap.set(p.supplier_id, p);
+        }
+      }
+    }
+
     return ids.map(id => {
-      const supp = suppliers.find(s => s.id === id);
-      const sample = filtered.flatMap(g => g).find(p => p.supplier_id === id);
+      const supp = supplierMap.get(id);
+      const sample = sampleMap.get(id);
       return { id, name: supp?.name || sample?.supplier_name || id, logo_url: supp?.logo_url };
     }).sort((a, b) => a.name.localeCompare(b.name));
   }, [filtered, suppliers]);
