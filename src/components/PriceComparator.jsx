@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Search, TrendingDown, Building2, Award, AlertCircle, X, Zap, FileText, CheckSquare } from 'lucide-react';
@@ -7,35 +6,68 @@ import { toast } from 'sonner';
 import ComparatorToBudgetDialog from './ComparatorToBudgetDialog';
 
 // ── Similitud de nombres ──────────────────────────────────────────────────────
-function similarity(a, b) {
-  const wordsA = a.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  const wordsB = b.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  if (!wordsA.length || !wordsB.length) return 0;
+// Optimización: Acepta arrays de palabras pre-procesados para evitar .split() repetitivos
+function similarity(wordsA, wordsB) {
+  if (!wordsA?.length || !wordsB?.length) return 0;
+  // O(N*M) pero con N, M muy pequeños (número de palabras significativas en el nombre)
   const matches = wordsA.filter(w => wordsB.some(wb => wb.includes(w) || w.includes(wb)));
   return matches.length / Math.max(wordsA.length, wordsB.length);
 }
 
 // ── Agrupa productos similares de distintos proveedores ───────────────────────
 function buildComparisons(prices) {
+  if (!prices.length) return [];
+
+  // Paso 1: Pre-procesamiento O(N) para normalizar datos y evitar re-calculo en el bucle anidado
+  const processed = prices.map((p, idx) => ({
+    ...p,
+    _idx: idx,
+    _normCode: p.product_code?.trim().toLowerCase() || null,
+    _words: (p.product_name || '').toLowerCase().split(/\s+/).filter(w => w.length > 3)
+  }));
+
+  // Paso 2: Mapa por código para búsquedas O(1) de coincidencias exactas
+  const codeMap = new Map();
+  processed.forEach(p => {
+    if (p._normCode) {
+      if (!codeMap.has(p._normCode)) codeMap.set(p._normCode, []);
+      codeMap.get(p._normCode).push(p);
+    }
+  });
+
   const used = new Set();
   const groups = [];
 
-  for (let i = 0; i < prices.length; i++) {
+  for (let i = 0; i < processed.length; i++) {
     if (used.has(i)) continue;
-    const base = prices[i];
+    const base = processed[i];
     const group = [base];
     used.add(i);
 
-    for (let j = i + 1; j < prices.length; j++) {
+    // Prioridad 1: Coincidencias exactas por código (O(S) donde S es num. proveedores con ese código)
+    if (base._normCode) {
+      const peers = codeMap.get(base._normCode);
+      if (peers) {
+        for (const peer of peers) {
+          if (!used.has(peer._idx) && peer.supplier_id !== base.supplier_id) {
+            group.push(peer);
+            used.add(peer._idx);
+          }
+        }
+      }
+    }
+
+    // Prioridad 2: Similitud por nombre O(N)
+    // Solo se ejecuta para los items no agrupados por código
+    for (let j = i + 1; j < processed.length; j++) {
       if (used.has(j)) continue;
-      const candidate = prices[j];
+      const candidate = processed[j];
       if (candidate.supplier_id === base.supplier_id) continue;
 
-      const sameCode = base.product_code && candidate.product_code &&
-        base.product_code.trim().toLowerCase() === candidate.product_code.trim().toLowerCase();
-      const nameSim = similarity(base.product_name || '', candidate.product_name || '');
+      // Usamos los arrays de palabras pre-procesados
+      const nameSim = similarity(base._words, candidate._words);
 
-      if (sameCode || nameSim >= 0.55) {
+      if (nameSim >= 0.55) {
         group.push(candidate);
         used.add(j);
       }
