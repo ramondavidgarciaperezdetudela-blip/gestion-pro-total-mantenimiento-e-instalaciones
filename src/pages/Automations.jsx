@@ -8,9 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, Plus, Trash2, Edit, Check, Clock, AlertTriangle, Calendar, Wrench, FileText, Users, Zap, MessageCircle } from 'lucide-react';
-import { format, addDays, parseISO, differenceInDays } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { Bell, Plus, Trash2, Edit, Check, Clock, Calendar, Wrench, FileText, Users, Zap, MessageCircle } from 'lucide-react';
+import { format, parseISO, differenceInDays } from 'date-fns';
 
 const REMINDER_TYPES = [
   { value: 'cita', label: 'Cita / Visita', icon: Calendar, color: 'blue' },

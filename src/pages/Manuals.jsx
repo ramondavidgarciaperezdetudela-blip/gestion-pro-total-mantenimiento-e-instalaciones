@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { BookOpen, ExternalLink, Search, Download, Sun, Battery, Zap, Copy, Printer, RefreshCw, Globe, ChevronDown, ChevronUp, WifiOff, CloudOff, Upload, Trash2, Plus, FolderOpen, Eye, Filter } from 'lucide-react';
-import { saveToCache, loadFromCache, formatCacheDate } from '@/lib/offlineCache';
+import { BookOpen, ExternalLink, Search, Sun, Zap, Copy, Printer, RefreshCw, Globe, ChevronDown, ChevronUp, WifiOff, CloudOff, Upload, Trash2, Plus, FolderOpen, Eye } from 'lucide-react';
+import { saveToCache, formatCacheDate } from '@/lib/offlineCache';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 

@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Search, TrendingDown, Building2, Award, AlertCircle, X, Zap, FileText, CheckSquare } from 'lucide-react';

@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
-import { TrendingUp, Euro, Wrench, ClipboardList, AlertTriangle } from 'lucide-react';
-import { format, subMonths, startOfMonth, endOfMonth, addDays } from 'date-fns';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { TrendingUp, Euro, Wrench, ClipboardList } from 'lucide-react';
+import { format, subMonths, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const MONTH_COLORS = ['#6366f1','#8b5cf6','#a78bfa','#c4b5fd','#818cf8','#4f46e5','#7c3aed','#6d28d9','#5b21b6','#4c1d95','#ddd6fe','#ede9fe'];

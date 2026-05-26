@@ -5,9 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-  Shield, Download, Upload, RefreshCw, Database, CheckCircle,
-  AlertCircle, Clock, Settings, Archive, Trash2, FileText,
-  Play, RotateCcw, Info, ChevronDown, ChevronRight
+  Shield, Download, Upload, RefreshCw, CheckCircle,
+  AlertCircle, Clock, Settings, Archive, Trash2, FileText, RotateCcw, Info, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 
