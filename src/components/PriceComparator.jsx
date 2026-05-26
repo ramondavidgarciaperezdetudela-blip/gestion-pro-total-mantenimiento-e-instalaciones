@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Search, TrendingDown, Building2, Award, AlertCircle, X, Zap, FileText, CheckSquare } from 'lucide-react';
@@ -7,33 +6,45 @@ import { toast } from 'sonner';
 import ComparatorToBudgetDialog from './ComparatorToBudgetDialog';
 
 // ── Similitud de nombres ──────────────────────────────────────────────────────
-function similarity(a, b) {
-  const wordsA = a.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  const wordsB = b.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  if (!wordsA.length || !wordsB.length) return 0;
-  const matches = wordsA.filter(w => wordsB.some(wb => wb.includes(w) || w.includes(wb)));
-  return matches.length / Math.max(wordsA.length, wordsB.length);
+function similarity(tokensA, tokensB) {
+  if (!tokensA.length || !tokensB.length) return 0;
+  const matches = tokensA.filter(w => tokensB.some(wb => wb.includes(w) || w.includes(wb)));
+  return matches.length / Math.max(tokensA.length, tokensB.length);
+}
+
+function getTokens(str) {
+  if (!str) return [];
+  return str.toLowerCase().split(/\s+/).filter(w => w.length > 3);
 }
 
 // ── Agrupa productos similares de distintos proveedores ───────────────────────
 function buildComparisons(prices) {
+  // Pre-normalize and tokenize to avoid redundant work in the O(N^2) loop
+  const prepped = prices.map(p => ({
+    ...p,
+    _normCode: p.product_code?.trim().toLowerCase() || null,
+    _tokens: getTokens(p.product_name)
+  }));
+
   const used = new Set();
   const groups = [];
 
-  for (let i = 0; i < prices.length; i++) {
+  for (let i = 0; i < prepped.length; i++) {
     if (used.has(i)) continue;
-    const base = prices[i];
+    const base = prepped[i];
     const group = [base];
     used.add(i);
 
-    for (let j = i + 1; j < prices.length; j++) {
+    for (let j = i + 1; j < prepped.length; j++) {
       if (used.has(j)) continue;
-      const candidate = prices[j];
+      const candidate = prepped[j];
       if (candidate.supplier_id === base.supplier_id) continue;
 
-      const sameCode = base.product_code && candidate.product_code &&
-        base.product_code.trim().toLowerCase() === candidate.product_code.trim().toLowerCase();
-      const nameSim = similarity(base.product_name || '', candidate.product_name || '');
+      // Fast check: product code match
+      const sameCode = base._normCode && candidate._normCode && base._normCode === candidate._normCode;
+
+      // Secondary check: name similarity using pre-tokenized sets
+      const nameSim = sameCode ? 1 : similarity(base._tokens, candidate._tokens);
 
       if (sameCode || nameSim >= 0.55) {
         group.push(candidate);
@@ -158,14 +169,27 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
     if (e.key === 'Escape') { setShowSugg(false); setInputVal(''); setSearch(''); }
   };
 
-  // Calcular columnas únicas de proveedores que aparecen en los grupos filtrados
+  // Optimized O(N + S) computation of active supplier columns
   const supplierCols = useMemo(() => {
-    const ids = [...new Set(filtered.flatMap(g => g.map(p => p.supplier_id)))];
-    return ids.map(id => {
-      const supp = suppliers.find(s => s.id === id);
-      const sample = filtered.flatMap(g => g).find(p => p.supplier_id === id);
-      return { id, name: supp?.name || sample?.supplier_name || id, logo_url: supp?.logo_url };
-    }).sort((a, b) => a.name.localeCompare(b.name));
+    const suppLookup = new Map(suppliers.map(s => [s.id, s]));
+    const activeSet = new Map();
+
+    // Single pass over filtered results to find active suppliers
+    for (const group of filtered) {
+      for (const item of group) {
+        if (item.supplier_id && !activeSet.has(item.supplier_id)) {
+          const sMeta = suppLookup.get(item.supplier_id);
+          activeSet.set(item.supplier_id, {
+            id: item.supplier_id,
+            name: sMeta?.name || item.supplier_name || item.supplier_id,
+            logo_url: sMeta?.logo_url
+          });
+        }
+      }
+    }
+
+    return Array.from(activeSet.values())
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [filtered, suppliers]);
 
   if (prices.length === 0) {
