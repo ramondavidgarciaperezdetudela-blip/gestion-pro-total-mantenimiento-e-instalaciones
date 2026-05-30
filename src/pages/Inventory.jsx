@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Trash2, Edit, Package, Wrench, AlertTriangle, Upload, Barcode, ScanLine, ChevronDown, Users } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, Package, Wrench, AlertTriangle, Upload, Barcode, ScanLine, Users } from 'lucide-react';
 import PrintButton from '../components/PrintButton';
 
 const EQ_CATEGORIES = ['herramienta', 'maquinaria', 'vehiculo', 'instrumento_medicion', 'equipo_proteccion', 'otro'];
@@ -151,16 +151,31 @@ export default function Inventory() {
     setCmDialog(false); setEditingCm(null); setCmForm(EMPTY_CM); loadAll();
   };
 
-  const filteredEq = equipment.filter(e =>
-    `${e.name} ${e.brand} ${e.model} ${e.serial_number}`.toLowerCase().includes(eqSearch.toLowerCase())
-  );
-  const filteredStock = stock.filter(s =>
-    `${s.name} ${s.reference} ${s.barcode} ${s.category}`.toLowerCase().includes(stockSearch.toLowerCase())
-  );
-  const filteredCm = clientMachines.filter(m =>
-    `${m.name} ${m.brand} ${m.model} ${m.serial_number} ${m.contact_name}`.toLowerCase().includes(cmSearch.toLowerCase())
-  );
-  const lowStock = stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock);
+  // Optimization: Memoize filters to avoid O(N) recalculations and redundant string operations on every render
+  const filteredEq = useMemo(() => {
+    const q = eqSearch.toLowerCase();
+    return equipment.filter(e =>
+      `${e.name} ${e.brand} ${e.model} ${e.serial_number}`.toLowerCase().includes(q)
+    );
+  }, [equipment, eqSearch]);
+
+  const filteredStock = useMemo(() => {
+    const q = stockSearch.toLowerCase();
+    return stock.filter(s =>
+      `${s.name} ${s.reference} ${s.barcode} ${s.category}`.toLowerCase().includes(q)
+    );
+  }, [stock, stockSearch]);
+
+  const filteredCm = useMemo(() => {
+    const q = cmSearch.toLowerCase();
+    return clientMachines.filter(m =>
+      `${m.name} ${m.brand} ${m.model} ${m.serial_number} ${m.contact_name}`.toLowerCase().includes(q)
+    );
+  }, [clientMachines, cmSearch]);
+
+  const lowStock = useMemo(() =>
+    stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock)
+  , [stock]);
 
   // Barcode scanner: focus input, reads via keyboard (lector USB actúa como teclado)
   const handleBarcodeKey = (e) => {
