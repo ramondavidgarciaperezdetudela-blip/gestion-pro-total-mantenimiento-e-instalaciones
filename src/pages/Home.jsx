@@ -91,6 +91,7 @@ export default function Home() {
   });
   const [recentDocs, setRecentDocs] = useState([]);
   const [recentSat, setRecentSat] = useState([]);
+  const [allSatOrders, setAllSatOrders] = useState([]);
   const [recentContacts, setRecentContacts] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [supplierSpending, setSupplierSpending] = useState([]);
@@ -120,6 +121,7 @@ export default function Home() {
 
     setAppointments(appointments);
     setRecentDocs(invoices.slice(0, 5));
+    setAllSatOrders(satOrders);
     setRecentSat(satOrders.filter((s) => s.status === 'pendiente').slice(0, 4));
 
     const presupuestos = invoices.filter(d => d.doc_type === 'presupuesto');
@@ -404,7 +406,7 @@ export default function Home() {
       {/* Paneles secundarios — montados después del primer paint */}
       {showSecondaryPanels && (
         <>
-          <SATKanban />
+          <SATKanban initialOrders={allSatOrders} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <AgendaPanel />
             <PendingSignaturesPanel />

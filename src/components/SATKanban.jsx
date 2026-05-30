@@ -66,18 +66,26 @@ function KanbanCard({ order, onStatusChange }) {
   );
 }
 
-export default function SATKanban() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function SATKanban({ initialOrders = null }) {
+  const [orders, setOrders] = useState(initialOrders || []);
+  const [loading, setLoading] = useState(initialOrders === null);
   const [updating, setUpdating] = useState(null);
 
   const load = async () => {
+    setLoading(true);
     const data = await base44.entities.SATOrder.list('-date', 100);
     setOrders(data);
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (initialOrders !== null) {
+      setOrders(initialOrders);
+      setLoading(false);
+    } else {
+      load();
+    }
+  }, [initialOrders]);
 
   const handleStatusChange = async (id, newStatus) => {
     setUpdating(id);
