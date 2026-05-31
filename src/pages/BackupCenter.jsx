@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import {
   Shield, Download, Upload, RefreshCw, Database, CheckCircle,
   AlertCircle, Clock, Settings, Archive, Trash2, FileText,
-  Play, RotateCcw, Info, ChevronDown, ChevronRight
+  Play, RotateCcw, Info, ChevronDown, ChevronRight, Copy
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -57,7 +57,7 @@ function loadHistory() {
 function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 20))); }
 
 export default function BackupCenter() {
-  const [tab, setTab] = useState('backup'); // backup | restore | config | history
+  const [tab, setTab] = useState('backup'); // backup | restore | duplicates | config | history
   const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState('');
@@ -78,6 +78,13 @@ export default function BackupCenter() {
   const [restoring, setRestoring] = useState(false);
   const [restoreProgress, setRestoreProgress] = useState('');
   const [restoreSelectedEntities, setRestoreSelectedEntities] = useState(new Set());
+  const [restoreMode, setRestoreMode] = useState('update'); // 'clean' | 'update'
+
+  // Duplicates
+  const [dupLoading, setDupLoading] = useState(false);
+  const [dupProgress, setDupProgress] = useState('');
+  const [dupResults, setDupResults] = useState(null); // { entity, total, duplicates, removed }[]
+  const [dupSelectedEntities, setDupSelectedEntities] = useState(new Set(ALL_ENTITIES));
 
   useEffect(() => {
     const cfg = loadConfig();
@@ -191,20 +198,55 @@ export default function BackupCenter() {
 
   const doRestore = async () => {
     if (!restoreData) return;
+    if (restoreMode === 'clean') {
+      const confirmed = window.confirm(
+        '⚠️ COPIA LIMPIA: Se borrarán TODOS los registros actuales de las secciones seleccionadas antes de restaurar.\n\n¿Estás seguro? Esta acción no se puede deshacer.'
+      );
+      if (!confirmed) return;
+    }
     const entitiesToRestore = ALL_ENTITIES.filter(e => restoreSelectedEntities.has(e) && restoreData[e]?.length > 0);
     setRestoring(true);
     let total = 0;
+
     for (let i = 0; i < entitiesToRestore.length; i++) {
       const ent = entitiesToRestore[i];
+
+      // Modo limpio: borrar todos los registros existentes primero
+      if (restoreMode === 'clean') {
+        setRestoreProgress(`Limpiando ${ENTITY_LABELS[ent] || ent}... (${i + 1}/${entitiesToRestore.length})`);
+        const existing = await base44.entities[ent]?.list('-created_date', 5000).catch(() => []);
+        for (const rec of (existing || [])) {
+          await base44.entities[ent]?.delete(rec.id).catch(() => {});
+        }
+      }
+
       setRestoreProgress(`Restaurando ${ENTITY_LABELS[ent] || ent}... (${i + 1}/${entitiesToRestore.length})`);
       const rows = restoreData[ent] || [];
-      // Limpiar campos del sistema antes de insertar
-      const clean = rows.map(r => {
-        const { id, created_date, updated_date, created_by, ...rest } = r;
-        return rest;
-      });
-      if (clean.length > 0) {
-        // Insertar en lotes de 100
+
+      if (restoreMode === 'update') {
+        // Modo actualizar: cargar IDs existentes y solo insertar los que faltan
+        const existing = await base44.entities[ent]?.list('-created_date', 5000).catch(() => []);
+        const existingSignatures = new Set(
+          (existing || []).map(r => JSON.stringify({ ...(({ id, created_date, updated_date, created_by, ...rest }) => rest)(r) }))
+        );
+        const toInsert = rows.filter(r => {
+          const { id, created_date, updated_date, created_by, ...rest } = r;
+          return !existingSignatures.has(JSON.stringify(rest));
+        }).map(r => {
+          const { id, created_date, updated_date, created_by, ...rest } = r;
+          return rest;
+        });
+        for (let j = 0; j < toInsert.length; j += 100) {
+          await base44.entities[ent]?.bulkCreate(toInsert.slice(j, j + 100)).catch(() => {});
+          await new Promise(r => setTimeout(r, 100));
+        }
+        total += toInsert.length;
+      } else {
+        // Modo limpio: insertar todo
+        const clean = rows.map(r => {
+          const { id, created_date, updated_date, created_by, ...rest } = r;
+          return rest;
+        });
         for (let j = 0; j < clean.length; j += 100) {
           await base44.entities[ent]?.bulkCreate(clean.slice(j, j + 100)).catch(() => {});
           await new Promise(r => setTimeout(r, 100));
@@ -212,8 +254,52 @@ export default function BackupCenter() {
         total += clean.length;
       }
     }
-    setRestoreProgress(`✅ Restauración completa: ${total.toLocaleString()} registros importados en ${entitiesToRestore.length} secciones.`);
+    setRestoreProgress(`✅ Restauración completa: ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'añadidos'} en ${entitiesToRestore.length} secciones.`);
     setRestoring(false);
+    loadCounts();
+  };
+
+  // ─── ELIMINAR DUPLICADOS ──────────────────────────────────────────────────
+  const findAndDeleteDuplicates = async () => {
+    const confirmed = window.confirm(
+      '¿Seguro que quieres eliminar los registros duplicados? Se compararán todos los campos excepto ID y fechas. Esta acción no se puede deshacer.'
+    );
+    if (!confirmed) return;
+    setDupLoading(true);
+    setDupResults(null);
+    const results = [];
+    const entitiesToCheck = ALL_ENTITIES.filter(e => dupSelectedEntities.has(e));
+
+    for (let i = 0; i < entitiesToCheck.length; i++) {
+      const ent = entitiesToCheck[i];
+      setDupProgress(`Analizando ${ENTITY_LABELS[ent] || ent}... (${i + 1}/${entitiesToCheck.length})`);
+      const all = await base44.entities[ent]?.list('-created_date', 5000).catch(() => []);
+      if (!all || all.length === 0) continue;
+
+      const seen = new Map();
+      const toDelete = [];
+      for (const rec of all) {
+        const { id, created_date, updated_date, created_by, ...rest } = rec;
+        const sig = JSON.stringify(rest);
+        if (seen.has(sig)) {
+          toDelete.push(id);
+        } else {
+          seen.set(sig, id);
+        }
+      }
+
+      if (toDelete.length > 0) {
+        setDupProgress(`Eliminando ${toDelete.length} duplicados en ${ENTITY_LABELS[ent] || ent}...`);
+        for (const id of toDelete) {
+          await base44.entities[ent]?.delete(id).catch(() => {});
+        }
+      }
+
+      results.push({ entity: ent, total: all.length, duplicates: toDelete.length });
+    }
+    setDupResults(results);
+    setDupProgress(`✅ Proceso completado. ${results.reduce((s, r) => s + r.duplicates, 0)} duplicados eliminados.`);
+    setDupLoading(false);
     loadCounts();
   };
 
@@ -259,6 +345,7 @@ export default function BackupCenter() {
         {[
           { id: 'backup', label: 'Crear backup', icon: Download },
           { id: 'restore', label: 'Restaurar', icon: Upload },
+          { id: 'duplicates', label: 'Duplicados', icon: Copy },
           { id: 'config', label: 'Configuración', icon: Settings },
           { id: 'history', label: 'Historial', icon: Clock },
         ].map(t => {
@@ -422,6 +509,34 @@ export default function BackupCenter() {
                 </div>
               )}
 
+              {/* Modo de restauración */}
+              {restoreData && restoreStatus.startsWith('ok:') && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setRestoreMode('update')}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${restoreMode === 'update' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-200'}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <RefreshCw className={`w-5 h-5 ${restoreMode === 'update' ? 'text-blue-600' : 'text-gray-400'}`} />
+                      <span className="font-semibold text-sm text-gray-900">Actualizar (recomendado)</span>
+                      {restoreMode === 'update' && <CheckCircle className="w-4 h-4 text-blue-600 ml-auto" />}
+                    </div>
+                    <p className="text-xs text-gray-500">Solo añade los registros que <strong>faltan</strong>. No borra nada de lo existente. Ideal para recuperar datos perdidos.</p>
+                  </button>
+                  <button
+                    onClick={() => setRestoreMode('clean')}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${restoreMode === 'clean' ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-white hover:border-red-200'}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Trash2 className={`w-5 h-5 ${restoreMode === 'clean' ? 'text-red-600' : 'text-gray-400'}`} />
+                      <span className="font-semibold text-sm text-gray-900">Copia limpia</span>
+                      {restoreMode === 'clean' && <CheckCircle className="w-4 h-4 text-red-600 ml-auto" />}
+                    </div>
+                    <p className="text-xs text-gray-500"><strong>Borra todo</strong> lo existente en las secciones seleccionadas y restaura desde el backup. Úsalo solo si quieres reemplazar completamente los datos.</p>
+                  </button>
+                </div>
+              )}
+
               {/* Selector de secciones a restaurar */}
               {restoreData && restoreStatus.startsWith('ok:') && (
                 <div className="space-y-3">
@@ -461,18 +576,133 @@ export default function BackupCenter() {
                   <Button
                     onClick={doRestore}
                     disabled={restoring || restoreSelectedEntities.size === 0}
-                    className="w-full bg-green-700 hover:bg-green-800 gap-2 py-3 h-auto text-base"
+                    className={`w-full gap-2 py-3 h-auto text-base ${restoreMode === 'clean' ? 'bg-red-700 hover:bg-red-800' : 'bg-green-700 hover:bg-green-800'}`}
                   >
                     {restoring ? <RefreshCw className="w-5 h-5 animate-spin" /> : <RotateCcw className="w-5 h-5" />}
-                    {restoring ? restoreProgress || 'Restaurando...' : `Restaurar ${restoreSelectedEntities.size} secciones seleccionadas`}
+                    {restoring
+                      ? restoreProgress || 'Restaurando...'
+                      : restoreMode === 'clean'
+                        ? `⚠️ Copia limpia: borrar y restaurar ${restoreSelectedEntities.size} secciones`
+                        : `Actualizar: añadir datos faltantes en ${restoreSelectedEntities.size} secciones`}
                   </Button>
 
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
-                    <p className="font-semibold mb-1">⚠️ Información importante</p>
-                    <p>Los registros se <strong>añaden</strong> a los existentes sin borrar nada. Si quieres una restauración limpia, contacta con soporte antes de proceder.</p>
-                  </div>
+                  {restoreMode === 'clean' && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
+                      <p className="font-semibold mb-1">🚨 Copia limpia — Acción destructiva</p>
+                      <p>Se borrarán <strong>todos los registros actuales</strong> de las secciones seleccionadas y se sustituirán por los del backup. Se pedirá confirmación antes de proceder.</p>
+                    </div>
+                  )}
+                  {restoreMode === 'update' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+                      <p className="font-semibold mb-1">ℹ️ Modo actualizar</p>
+                      <p>Solo se añadirán registros que no existan ya en la base de datos. Los datos actuales no se modifican ni eliminan.</p>
+                    </div>
+                  )}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ═══════════ TAB: DUPLICADOS ═══════════ */}
+      {tab === 'duplicates' && (
+        <div className="space-y-4">
+          <Card className="border-2 border-orange-200">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-xl bg-orange-500 flex items-center justify-center flex-shrink-0">
+                  <Copy className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">Eliminar registros duplicados</h2>
+                  <p className="text-sm text-gray-600 mt-0.5">
+                    Detecta y elimina automáticamente registros idénticos en cualquier sección. Se comparan todos los campos excepto el ID y las fechas del sistema.
+                  </p>
+                </div>
+              </div>
+
+              {/* Selección de secciones */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-700">Secciones a analizar:</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setDupSelectedEntities(new Set(ALL_ENTITIES))} className="text-xs text-blue-600 underline">Todas</button>
+                    <button onClick={() => setDupSelectedEntities(new Set())} className="text-xs text-gray-400 underline">Ninguna</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  {ALL_ENTITIES.map(ent => {
+                    const checked = dupSelectedEntities.has(ent);
+                    const result = dupResults?.find(r => r.entity === ent);
+                    return (
+                      <label key={ent} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${checked ? 'bg-orange-50 border-orange-300' : 'bg-gray-50 border-gray-200'}`}>
+                        <input type="checkbox" checked={checked}
+                          onChange={() => {
+                            const next = new Set(dupSelectedEntities);
+                            checked ? next.delete(ent) : next.add(ent);
+                            setDupSelectedEntities(next);
+                          }} className="rounded" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-800 truncate">{ENTITY_LABELS[ent] || ent}</p>
+                          {result ? (
+                            <p className={`text-[10px] font-semibold ${result.duplicates > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {result.duplicates > 0 ? `${result.duplicates} eliminados` : '✓ Sin duplicados'}
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-gray-400">{counts[ent] != null ? `${counts[ent]} registros` : '...'}</p>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {dupProgress && (
+                <div className={`rounded-lg px-3 py-2 text-sm font-medium ${dupProgress.startsWith('✅') ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+                  {dupProgress}
+                </div>
+              )}
+
+              {dupResults && (
+                <div className="border rounded-xl overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="text-left p-2 font-semibold text-gray-600">Sección</th>
+                        <th className="text-right p-2 font-semibold text-gray-600">Total analizados</th>
+                        <th className="text-right p-2 font-semibold text-gray-600">Duplicados eliminados</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {dupResults.filter(r => r.duplicates > 0 || r.total > 0).map(r => (
+                        <tr key={r.entity} className={r.duplicates > 0 ? 'bg-red-50' : 'bg-white'}>
+                          <td className="p-2 font-medium">{ENTITY_LABELS[r.entity] || r.entity}</td>
+                          <td className="p-2 text-right text-gray-500">{r.total}</td>
+                          <td className={`p-2 text-right font-bold ${r.duplicates > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {r.duplicates > 0 ? `-${r.duplicates}` : '✓ 0'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <Button
+                onClick={findAndDeleteDuplicates}
+                disabled={dupLoading || dupSelectedEntities.size === 0}
+                className="w-full bg-orange-600 hover:bg-orange-700 gap-2 py-3 h-auto text-base"
+              >
+                {dupLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                {dupLoading ? dupProgress || 'Analizando...' : `Detectar y eliminar duplicados en ${dupSelectedEntities.size} secciones`}
+              </Button>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
+                <p className="font-semibold mb-1">ℹ️ ¿Cómo funciona?</p>
+                <p>Se comparan todos los campos de cada registro (excepto ID, fecha creación, fecha actualización y usuario). Si dos registros tienen exactamente los mismos valores, se elimina el duplicado más reciente. Se pedirá confirmación antes de borrar.</p>
+              </div>
             </CardContent>
           </Card>
         </div>
