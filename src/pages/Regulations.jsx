@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Shield, ExternalLink, Search, RefreshCw, Zap, CheckCircle, Clock, Bell, BellOff } from 'lucide-react';
+import { Shield, ExternalLink, Search, RefreshCw, Zap, CheckCircle, Clock, Bell, BellOff, Thermometer } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import RefrigerantGuide from '../components/RefrigerantGuide';
 
 const DEFAULT_REGULATIONS = [
   {
@@ -200,6 +201,8 @@ Responde en formato JSON con este esquema exacto:
     en_revision: <Clock className="w-3 h-3" />,
   };
 
+  const [activeSection, setActiveSection] = useState('normativas'); // 'normativas' | 'refrigerantes'
+
   const categories = ['all', ...DEFAULT_REGULATIONS.map(r => r.category)];
 
   const filtered = DEFAULT_REGULATIONS.filter(cat =>
@@ -253,6 +256,28 @@ Responde en formato JSON con este esquema exacto:
           </Button>
         </div>
       </div>
+
+      {/* Pestañas de sección */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        <button
+          onClick={() => setActiveSection('normativas')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeSection === 'normativas' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <Shield className="w-4 h-4" />
+          Normativas
+        </button>
+        <button
+          onClick={() => setActiveSection('refrigerantes')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeSection === 'refrigerantes' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <Thermometer className="w-4 h-4" />
+          Gases Refrigerantes
+        </button>
+      </div>
+
+      {activeSection === 'refrigerantes' && <RefrigerantGuide />}
+
+      {activeSection === 'normativas' && <>
 
       {/* Estado de última actualización */}
       {updateResult && (
@@ -354,6 +379,7 @@ Responde en formato JSON con este esquema exacto:
           </Card>
         ))}
       </div>
+      </>}
     </div>
   );
 }

@@ -187,9 +187,10 @@ export default function SupplierTariffs() {
   };
 
   const handleDelete = async (id) => {
+    if (!window.confirm('¿Seguro que quieres eliminar esta tarifa? Esta acción no se puede deshacer.')) return;
     await base44.entities.SupplierPrice.delete(id);
     setPrices(prev => prev.filter(p => p.id !== id));
-    toast.success('Producto eliminado');
+    toast.success('Tarifa eliminada');
   };
 
   const handleUploadImage = async (e) => {
