@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import PullToRefresh from '../components/PullToRefresh';
@@ -309,17 +309,20 @@ export default function Contacts() {
     loadContacts();
   };
 
-  const filtered = contacts.filter(c => {
-    const matchSearch = `${c.name} ${c.surname} ${c.company_name} ${c.phone} ${c.email} ${c.city}`.toLowerCase().includes(search.toLowerCase());
-    const matchType = filterType === 'all' || c.type === filterType;
-    const matchPayment = filterPayment === 'all' || c.payment_profile === filterPayment;
-    return matchSearch && matchType && matchPayment;
-  });
+  const filtered = useMemo(() => {
+    const searchLower = search.toLowerCase();
+    return contacts.filter(c => {
+      const matchSearch = `${c.name} ${c.surname} ${c.company_name} ${c.phone} ${c.email} ${c.city}`.toLowerCase().includes(searchLower);
+      const matchType = filterType === 'all' || c.type === filterType;
+      const matchPayment = filterPayment === 'all' || c.payment_profile === filterPayment;
+      return matchSearch && matchType && matchPayment;
+    });
+  }, [contacts, search, filterType, filterPayment]);
 
   // Stats
-  const totalPending = contacts.reduce((s, c) => s + (c.pending_amount || 0), 0);
-  const morosoCount = contacts.filter(c => c.payment_profile === 'moroso').length;
-  const clientCount = contacts.filter(c => c.type === 'cliente').length;
+  const totalPending = useMemo(() => contacts.reduce((s, c) => s + (c.pending_amount || 0), 0), [contacts]);
+  const morosoCount = useMemo(() => contacts.filter(c => c.payment_profile === 'moroso').length, [contacts]);
+  const clientCount = useMemo(() => contacts.filter(c => c.type === 'cliente').length, [contacts]);
 
   return (
     <PullToRefresh onRefresh={loadContacts}>
