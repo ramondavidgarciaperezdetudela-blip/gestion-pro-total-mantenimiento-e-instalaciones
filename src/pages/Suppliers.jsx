@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Bot, Users, MessageCircle, Download, Bell, Clock, TrendingUp, Upload, Loader2, Search } from 'lucide-react';
+import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Users, MessageCircle, Download, Bell, Clock, Upload, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
 import { fetchSupplierDataFromAPI, mapCategoryFromSector } from '../components/SupplierDataFetcher';
@@ -221,8 +221,9 @@ export default function Suppliers() {
     setSuppliers(suppliers.filter((s) => s.id !== id));
   };
 
-  const activeSuppliers = suppliers.filter((s) => s.is_active !== false);
-  const inactiveSuppliers = suppliers.filter((s) => s.is_active === false);
+  // Memoize filtered lists to prevent redundant filtering on every render
+  const activeSuppliers = useMemo(() => suppliers.filter((s) => s.is_active !== false), [suppliers]);
+  const inactiveSuppliers = useMemo(() => suppliers.filter((s) => s.is_active === false), [suppliers]);
 
   const getDaysUntilReorder = (lastDate, frequency) => {
     if (!lastDate) return 0;
@@ -432,28 +433,38 @@ export default function Suppliers() {
                             <Search className="w-3 h-3" /> Buscar proveedores
                           </Button>
                         </div>
-                        {showSuggestions && searchProvince &&
-                    <div className="space-y-1 max-h-40 overflow-y-auto mt-2">
-                            {suppliers.
-                      filter((s) => s.is_active).
-                      filter((s) => searchProvince ? s.province === searchProvince : true).
-                      filter((s) => searchCity ? s.city?.toLowerCase().includes(searchCity.toLowerCase()) : true).
-                      length === 0 ?
-                      <p className="text-xs text-gray-500">Sin proveedores en {searchCity ? `${searchCity}, ` : ''}esta provincia</p> :
+                        {showSuggestions && searchProvince && (
+                          <div className="space-y-1 max-h-40 overflow-y-auto mt-2">
+                            {(() => {
+                              const cityLower = searchCity.toLowerCase();
+                              const filteredSuggestions = suppliers.filter((s) =>
+                                s.is_active &&
+                                (!searchProvince || s.province === searchProvince) &&
+                                (!searchCity || s.city?.toLowerCase().includes(cityLower))
+                              );
 
-                      suppliers.
-                      filter((s) => s.is_active).
-                      filter((s) => searchProvince ? s.province === searchProvince : true).
-                      filter((s) => searchCity ? s.city?.toLowerCase().includes(searchCity.toLowerCase()) : true).
-                      map((s) =>
-                      <button key={s.id} onClick={() => {setForm({ ...form, name: s.name, website: s.website || '', category: s.category || 'general', notes: s.notes || '', phone: s.phone || '', email: s.email || '' });setShowSuggestions(false);setSearchProvince('');setSearchCity('');}} className="w-full text-left p-2 rounded text-xs bg-white hover:bg-blue-100 border border-blue-100 truncate">
-                                    <div className="font-medium">{s.name}</div>
-                                    <div className="text-[10px] text-gray-500">{s.city}, {s.province}</div>
-                                  </button>
-                      )
-                      }
+                              if (filteredSuggestions.length === 0) {
+                                return <p className="text-xs text-gray-500">Sin proveedores en {searchCity ? `${searchCity}, ` : ''}esta provincia</p>;
+                              }
+
+                              return filteredSuggestions.map((s) => (
+                                <button
+                                  key={s.id}
+                                  onClick={() => {
+                                    setForm({ ...form, name: s.name, website: s.website || '', category: s.category || 'general', notes: s.notes || '', phone: s.phone || '', email: s.email || '' });
+                                    setShowSuggestions(false);
+                                    setSearchProvince('');
+                                    setSearchCity('');
+                                  }}
+                                  className="w-full text-left p-2 rounded text-xs bg-white hover:bg-blue-100 border border-blue-100 truncate"
+                                >
+                                  <div className="font-medium">{s.name}</div>
+                                  <div className="text-[10px] text-gray-500">{s.city}, {s.province}</div>
+                                </button>
+                              ));
+                            })()}
                           </div>
-                    }
+                        )}
                       </div>
                     </div>
                 }
