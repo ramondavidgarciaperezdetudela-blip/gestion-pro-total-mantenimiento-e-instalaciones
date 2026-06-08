@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
-  BarChart3, TrendingUp, Users, FileText, Wrench, ClipboardList,
-  TrendingDown, DollarSign, Calendar, Package, AlertTriangle, CheckCircle, Link2
+  BarChart3, TrendingUp, Users, FileText, Wrench,
+  DollarSign, Package, AlertTriangle, CheckCircle, Link2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
@@ -42,79 +41,104 @@ export default function Reports() {
     });
   }, []);
 
-  const months = parseInt(period);
+  const stats = useMemo(() => {
+    const months = parseInt(period);
 
-  // Facturas filtradas por período
-  const cutoff = subMonths(new Date(), months);
-  const filteredInvoices = data.invoices.filter(i => {
-    try { return i.date && parseISO(i.date) >= cutoff; } catch { return false; }
-  });
-
-  // KPIs principales
-  const totalFacturado = filteredInvoices.filter(i => i.doc_type === 'factura').reduce((s, i) => s + (i.total || 0), 0);
-  const totalPagado = filteredInvoices.filter(i => i.status === 'pagado').reduce((s, i) => s + (i.total || 0), 0);
-  const pendienteCobro = filteredInvoices.filter(i => i.status === 'enviado').reduce((s, i) => s + (i.total || 0), 0);
-  const totalPresupuestado = filteredInvoices.filter(i => i.doc_type === 'presupuesto').reduce((s, i) => s + (i.total || 0), 0);
-  const factVencidas = data.invoices.filter(i => i.status === 'vencido').length;
-  const satCompletadas = data.sat.filter(s => s.status === 'completada').length;
-  const satPendientes = data.sat.filter(s => s.status === 'pendiente').length;
-  const satEnCurso = data.sat.filter(s => s.status === 'en_curso').length;
-  const stockBajoMinimo = data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock).length;
-  const clientesActivos = data.contacts.filter(c => c.type === 'cliente' && c.is_active !== false).length;
-  const ticketMedio = filteredInvoices.filter(i => i.doc_type === 'factura' && i.total > 0).length > 0
-    ? totalFacturado / filteredInvoices.filter(i => i.doc_type === 'factura' && i.total > 0).length
-    : 0;
-
-  // Gráfico mensual de facturación
-  const monthlyData = Array.from({ length: Math.min(months, 12) }, (_, i) => {
-    const d = subMonths(new Date(), i);
-    const label = format(d, 'MMM yy', { locale: es });
-    const start = startOfMonth(d);
-    const end = endOfMonth(d);
-    const monthInvoices = data.invoices.filter(inv => {
-      try { const dt = parseISO(inv.date); return isWithinInterval(dt, { start, end }); } catch { return false; }
+    // Facturas filtradas por período
+    const cutoff = subMonths(new Date(), months);
+    const filteredInvoices = data.invoices.filter(i => {
+      try { return i.date && parseISO(i.date) >= cutoff; } catch { return false; }
     });
-    return {
-      name: label,
-      facturado: monthInvoices.filter(i => i.doc_type === 'factura').reduce((s, i) => s + (i.total || 0), 0),
-      cobrado: monthInvoices.filter(i => i.status === 'pagado').reduce((s, i) => s + (i.total || 0), 0),
-      presupuestos: monthInvoices.filter(i => i.doc_type === 'presupuesto').reduce((s, i) => s + (i.total || 0), 0),
-    };
-  }).reverse();
 
-  // Distribución trabajo por tipo
-  const satByType = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'].map(t => ({
-    name: t.charAt(0).toUpperCase() + t.slice(1),
-    value: data.sat.filter(s => s.type === t).length
-  })).filter(i => i.value > 0);
+    // KPIs principales
+    const totalFacturado = filteredInvoices.filter(i => i.doc_type === 'factura').reduce((s, i) => s + (i.total || 0), 0);
+    const totalPagado = filteredInvoices.filter(i => i.status === 'pagado').reduce((s, i) => s + (i.total || 0), 0);
+    const pendienteCobro = filteredInvoices.filter(i => i.status === 'enviado').reduce((s, i) => s + (i.total || 0), 0);
+    const totalPresupuestado = filteredInvoices.filter(i => i.doc_type === 'presupuesto').reduce((s, i) => s + (i.total || 0), 0);
+    const factVencidas = data.invoices.filter(i => i.status === 'vencido').length;
+    const satCompletadas = data.sat.filter(s => s.status === 'completada').length;
+    const satPendientes = data.sat.filter(s => s.status === 'pendiente').length;
+    const satEnCurso = data.sat.filter(s => s.status === 'en_curso').length;
+    const stockBajoMinimo = data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock).length;
+    const clientesActivos = data.contacts.filter(c => c.type === 'cliente' && c.is_active !== false).length;
+    const ticketMedio = filteredInvoices.filter(i => i.doc_type === 'factura' && i.total > 0).length > 0
+      ? totalFacturado / filteredInvoices.filter(i => i.doc_type === 'factura' && i.total > 0).length
+      : 0;
 
-  // Contactos por tipo
-  const contactsByType = ['cliente', 'proveedor', 'colaborador', 'otro'].map(t => ({
-    name: t.charAt(0).toUpperCase() + t.slice(1),
-    value: data.contacts.filter(c => c.type === t).length
-  })).filter(i => i.value > 0);
+    // Gráfico mensual de facturación
+    const monthlyData = Array.from({ length: Math.min(months, 12) }, (_, i) => {
+      const d = subMonths(new Date(), i);
+      const label = format(d, 'MMM yy', { locale: es });
+      const start = startOfMonth(d);
+      const end = endOfMonth(d);
+      const monthInvoices = data.invoices.filter(inv => {
+        try { const dt = parseISO(inv.date); return isWithinInterval(dt, { start, end }); } catch { return false; }
+      });
+      return {
+        name: label,
+        facturado: monthInvoices.filter(i => i.doc_type === 'factura').reduce((s, i) => s + (i.total || 0), 0),
+        cobrado: monthInvoices.filter(i => i.status === 'pagado').reduce((s, i) => s + (i.total || 0), 0),
+        presupuestos: monthInvoices.filter(i => i.doc_type === 'presupuesto').reduce((s, i) => s + (i.total || 0), 0),
+      };
+    }).reverse();
 
-  // Top clientes por facturación
-  const clientMap = {};
-  filteredInvoices.filter(i => i.doc_type === 'factura').forEach(i => {
-    if (!i.contact_name) return;
-    clientMap[i.contact_name] = (clientMap[i.contact_name] || 0) + (i.total || 0);
-  });
-  const topClients = Object.entries(clientMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, total]) => ({ name, total }));
+    // Distribución trabajo por tipo
+    const satByType = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'].map(t => ({
+      name: t.charAt(0).toUpperCase() + t.slice(1),
+      value: data.sat.filter(s => s.type === t).length
+    })).filter(i => i.value > 0);
 
-  // Stock bajo mínimos
-  const lowStock = data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock);
+    // Contactos por tipo
+    const contactsByType = ['cliente', 'proveedor', 'colaborador', 'otro'].map(t => ({
+      name: t.charAt(0).toUpperCase() + t.slice(1),
+      value: data.contacts.filter(c => c.type === t).length
+    })).filter(i => i.value > 0);
 
-  const kpis = [
-    { title: 'Facturado', value: `${totalFacturado.toFixed(0)} €`, sub: `${months} meses`, icon: TrendingUp, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
-    { title: 'Cobrado', value: `${totalPagado.toFixed(0)} €`, sub: `${Math.round(totalPagado/Math.max(totalFacturado,1)*100)}% del total`, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
-    { title: 'Pendiente cobro', value: `${pendienteCobro.toFixed(0)} €`, sub: `${factVencidas} vencidas`, icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
-    { title: 'Presupuestado', value: `${totalPresupuestado.toFixed(0)} €`, sub: 'en presupuestos', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-    { title: 'Ticket medio', value: `${ticketMedio.toFixed(0)} €`, sub: 'por factura', icon: DollarSign, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200' },
-    { title: 'Clientes activos', value: clientesActivos, sub: `${data.contacts.length} total`, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-    { title: 'SAT completadas', value: satCompletadas, sub: `${satPendientes} pendientes`, icon: Wrench, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200' },
-    { title: 'Stock bajo mínimo', value: stockBajoMinimo, sub: 'artículos', icon: Package, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
-  ];
+    // Top clientes por facturación
+    const clientMap = {};
+    filteredInvoices.filter(i => i.doc_type === 'factura').forEach(i => {
+      if (!i.contact_name) return;
+      clientMap[i.contact_name] = (clientMap[i.contact_name] || 0) + (i.total || 0);
+    });
+    const topClients = Object.entries(clientMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, total]) => ({ name, total }));
+
+    // Stock bajo mínimos
+    const lowStock = data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock);
+
+    const kpiList = [
+      { title: 'Facturado', value: `${totalFacturado.toFixed(0)} €`, sub: `${months} meses`, icon: TrendingUp, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
+      { title: 'Cobrado', value: `${totalPagado.toFixed(0)} €`, sub: `${Math.round(totalPagado/Math.max(totalFacturado,1)*100)}% del total`, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
+      { title: 'Pendiente cobro', value: `${pendienteCobro.toFixed(0)} €`, sub: `${factVencidas} vencidas`, icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
+      { title: 'Presupuestado', value: `${totalPresupuestado.toFixed(0)} €`, sub: 'en presupuestos', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
+      { title: 'Ticket medio', value: `${ticketMedio.toFixed(0)} €`, sub: 'por factura', icon: DollarSign, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200' },
+      { title: 'Clientes activos', value: clientesActivos, sub: `${data.contacts.length} total`, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
+      { title: 'SAT completadas', value: satCompletadas, sub: `${satPendientes} pendientes`, icon: Wrench, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200' },
+      { title: 'Stock bajo mínimo', value: stockBajoMinimo, sub: 'artículos', icon: Package, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
+    ];
+
+    const techMap = {};
+    data.sat.forEach(s => { if (s.technician) { techMap[s.technician] = (techMap[s.technician] || 0) + 1; } });
+    const techData = Object.entries(techMap).sort((a,b) => b[1]-a[1]).map(([name, value]) => ({ name, value }));
+
+    const docsByType = [
+      { name: 'Facturas', v: filteredInvoices.filter(i => i.doc_type === 'factura').length },
+      { name: 'Presupuestos', v: filteredInvoices.filter(i => i.doc_type === 'presupuesto').length },
+      { name: 'Recibos', v: filteredInvoices.filter(i => i.doc_type === 'recibo').length },
+    ];
+
+    const invoicesByStatus = ['pagado', 'enviado', 'vencido', 'borrador', 'cancelado'].map(s => ({
+      name: s, value: data.invoices.filter(i => i.status === s).length
+    })).filter(i => i.value > 0);
+
+    const stockByCategory = ['tuberias_accesorios', 'cables_electricidad', 'refrigerantes', 'filtros', 'equipos_climatizacion', 'material_solar', 'otro'].map(cat => ({
+      name: cat.replace(/_/g, ' ').slice(0, 12),
+      value: data.stock.filter(s => s.category === cat).length
+    })).filter(i => i.value > 0);
+
+    return { filteredInvoices, satCompletadas, satPendientes, satEnCurso, monthlyData, satByType, contactsByType, topClients, lowStock, kpiList, techData, docsByType, invoicesByStatus, stockByCategory };
+  }, [data, period]);
+
+  const { filteredInvoices, satCompletadas, satPendientes, satEnCurso, monthlyData, satByType, contactsByType, topClients, lowStock, kpiList, techData, docsByType, invoicesByStatus, stockByCategory } = stats;
 
   return (
     <div className="space-y-4">
@@ -144,7 +168,7 @@ export default function Reports() {
 
           {/* KPI grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {kpis.map((s, i) => {
+            {kpiList.map((s, i) => {
               const Icon = s.icon;
               return (
                 <Card key={i} className={`border ${s.border}`}>
@@ -193,11 +217,7 @@ export default function Reports() {
                   <CardHeader className="pb-2"><CardTitle className="text-sm">Documentos por tipo</CardTitle></CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={180}>
-                      <BarChart data={[
-                        { name: 'Facturas', v: filteredInvoices.filter(i => i.doc_type === 'factura').length },
-                        { name: 'Presupuestos', v: filteredInvoices.filter(i => i.doc_type === 'presupuesto').length },
-                        { name: 'Recibos', v: filteredInvoices.filter(i => i.doc_type === 'recibo').length },
-                      ]}>
+                    <BarChart data={docsByType}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                         <YAxis tick={{ fontSize: 10 }} />
@@ -213,9 +233,7 @@ export default function Reports() {
                   <CardContent>
                     <ResponsiveContainer width="100%" height={180}>
                       <PieChart>
-                        <Pie data={['pagado', 'enviado', 'vencido', 'borrador', 'cancelado'].map(s => ({
-                          name: s, value: data.invoices.filter(i => i.status === s).length
-                        })).filter(i => i.value > 0)} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, value }) => `${name}: ${value}`}>
+                      <Pie data={invoicesByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, value }) => `${name}: ${value}`}>
                           {COLORS.map((c, i) => <Cell key={i} fill={c} />)}
                         </Pie>
                         <Tooltip />
@@ -323,27 +341,22 @@ export default function Reports() {
               </Card>
 
               {/* SAT por técnico */}
-              {(() => {
-                const techMap = {};
-                data.sat.forEach(s => { if (s.technician) { techMap[s.technician] = (techMap[s.technician] || 0) + 1; } });
-                const techData = Object.entries(techMap).sort((a,b) => b[1]-a[1]);
-                return techData.length > 0 ? (
-                  <Card>
-                    <CardHeader className="pb-2"><CardTitle className="text-sm">SAT por técnico</CardTitle></CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={160}>
-                        <BarChart data={techData.map(([name, value]) => ({ name, value }))}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" tick={{ fontSize: 9 }} />
-                          <YAxis tick={{ fontSize: 10 }} />
-                          <Tooltip />
-                          <Bar dataKey="value" fill="#f59e0b" radius={[4,4,0,0]} name="Órdenes" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                ) : null;
-              })()}
+              {techData.length > 0 ? (
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm">SAT por técnico</CardTitle></CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <BarChart data={techData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 9 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="#f59e0b" radius={[4,4,0,0]} name="Órdenes" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              ) : null}
             </TabsContent>
 
             <TabsContent value="stock" className="space-y-4 pt-3">
@@ -379,10 +392,7 @@ export default function Reports() {
                 <CardHeader className="pb-2"><CardTitle className="text-sm">Stock por categoría</CardTitle></CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={['tuberias_accesorios','cables_electricidad','refrigerantes','filtros','equipos_climatizacion','material_solar','otro'].map(cat => ({
-                      name: cat.replace(/_/g, ' ').slice(0, 12),
-                      value: data.stock.filter(s => s.category === cat).length
-                    })).filter(i => i.value > 0)}>
+                    <BarChart data={stockByCategory}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" tick={{ fontSize: 9 }} />
                       <YAxis tick={{ fontSize: 10 }} />
