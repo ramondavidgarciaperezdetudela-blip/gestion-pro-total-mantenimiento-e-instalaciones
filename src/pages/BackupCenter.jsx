@@ -94,20 +94,16 @@ export default function BackupCenter() {
   }, []);
 
   const loadCounts = async () => {
-    const results = await Promise.allSettled(
-      ALL_ENTITIES.map(e => base44.entities[e]?.list('-created_date', 1).catch(() => []))
-    );
     const c = {};
-    ALL_ENTITIES.forEach((e, i) => {
-      c[e] = results[i].status === 'fulfilled' ? (results[i].value?.length || 0) : 0;
-    });
-    // Load full counts with higher limit
-    const results2 = await Promise.allSettled(
-      ALL_ENTITIES.map(e => base44.entities[e]?.list('-created_date', 5000).catch(() => []))
-    );
-    ALL_ENTITIES.forEach((e, i) => {
-      c[e] = results2[i].status === 'fulfilled' ? (results2[i].value?.length || 0) : 0;
-    });
+    for (const e of ALL_ENTITIES) {
+      try {
+        const data = await base44.entities[e]?.list('-created_date', 5000);
+        c[e] = data?.length || 0;
+      } catch {
+        c[e] = 0;
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
     setCounts(c);
   };
 
