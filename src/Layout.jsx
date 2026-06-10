@@ -32,7 +32,7 @@ function MobileBottomBar({ currentPageName }) {
 
   return (
     <>
-      <nav className="flex sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg print:hidden"
+      <nav className="flex sm:hidden fixed bottom-0 left-0 right-0 z-40 print:hidden" style={{ background: '#0d0d18', borderTop: '1px solid #1e1e30' }}
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex w-full">
           {MAIN_TABS.map((item) => {
@@ -40,8 +40,9 @@ function MobileBottomBar({ currentPageName }) {
             if (item.isMore) {
               return (
                 <button key="more" onClick={() => setMoreOpen(true)}
-                  className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 transition-colors ${moreOpen ? 'text-[var(--accent)]' : 'text-gray-500'}`}>
-                  <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${moreOpen ? 'bg-[var(--accent)]/10' : 'bg-gray-100'}`}>
+                  className="flex-1 flex flex-col items-center gap-0.5 py-1.5 transition-colors"
+                  style={{ color: moreOpen ? '#00D4FF' : '#8890a8' }}>
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: moreOpen ? '#00D4FF15' : '#ffffff08' }}>
                     <Icon className="w-4 h-4" />
                     <span className="text-[11px] font-semibold">Ver todo</span>
                   </div>
@@ -52,7 +53,8 @@ function MobileBottomBar({ currentPageName }) {
             const isActive = currentPageName === item.page || location.pathname === `/${item.page}`;
             return (
               <Link key={item.page} to={createPageUrl(item.page)}
-                className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${isActive ? 'text-[var(--accent)]' : 'text-gray-400'}`}>
+                className="flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors"
+              style={{ color: isActive ? '#00D4FF' : '#8890a8' }}>
                 <Icon className="w-5 h-5" />
                 <span className="text-[9px] font-medium leading-tight">{item.name}</span>
               </Link>
@@ -67,14 +69,14 @@ function MobileBottomBar({ currentPageName }) {
       )}
 
       {/* More Drawer */}
-      <div className={`sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 ${moreOpen ? 'translate-y-0' : 'translate-y-full pointer-events-none'}`}
-        style={{ maxHeight: '75vh', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div className={`sm:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl shadow-2xl transition-transform duration-300 ${moreOpen ? 'translate-y-0' : 'translate-y-full pointer-events-none'}`}
+        style={{ background: '#0d0d18', border: '1px solid #1e1e30', maxHeight: '75vh', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+          <div className="w-10 h-1 rounded-full" style={{ background: '#2a2a40' }} />
         </div>
-        <div className="px-4 py-2 flex items-center justify-between border-b">
-          <span className="font-semibold text-gray-800">Todos los módulos</span>
-          <button onClick={() => setMoreOpen(false)} className="p-1 text-gray-400"><X className="w-5 h-5" /></button>
+        <div className="px-4 py-2 flex items-center justify-between" style={{ borderBottom: '1px solid #1e1e30' }}>
+          <span className="font-semibold text-sm" style={{ color: '#e8eaf0' }}>Todos los módulos</span>
+          <button onClick={() => setMoreOpen(false)} className="p-1" style={{ color: '#8890a8' }}><X className="w-5 h-5" /></button>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(75vh - 80px)' }}>
           <div className="grid grid-cols-3 gap-1 p-3">
@@ -84,7 +86,8 @@ function MobileBottomBar({ currentPageName }) {
               return (
                 <Link key={item.page} to={createPageUrl(item.page)}
                   onClick={() => setMoreOpen(false)}
-                  className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors ${isActive ? 'bg-[var(--accent)]/10 text-[var(--accent)]' : 'hover:bg-gray-50 text-gray-600'}`}>
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors"
+                  style={{ background: isActive ? '#00D4FF12' : 'transparent', color: isActive ? '#00D4FF' : '#8890a8' }}>
                   <Icon className="w-5 h-5" />
                   <span className="text-[10px] font-medium text-center leading-tight">{item.name}</span>
                 </Link>
@@ -183,41 +186,46 @@ export default function Layout({ children, currentPageName }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex" dir="ltr" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div className="min-h-screen flex" dir="ltr" style={{ background: '#0A0A12', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <AIChat />
       <QuickPriceDBAccess />
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <style>{`
         :root {
-          --primary: #1e3a5f;
-          --primary-light: #2d5f8a;
-          --accent: #0ea5e9;
-          --accent-light: #38bdf8;
+          --primary: #0A0A12;
+          --primary-light: #12121e;
+          --accent: #00D4FF;
+          --accent-light: #7C3AED;
         }
-        /* scroll nativo libre */
+        body { background: #0A0A12; color: #e8eaf0; }
         .no-print { display: block; }
         @media print {
           .no-print { display: none !important; }
           table { border-collapse: collapse !important; }
           table td, table th { border: 1px solid #ccc !important; padding: 4px !important; }
         }
+        /* Dark Pro scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #0f0f1a; }
+        ::-webkit-scrollbar-thumb { background: #2a2a40; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00D4FF55; }
       `}</style>
 
       {/* Sidebar desktop */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-[var(--primary)] text-white fixed h-full z-30 shadow-xl">
-        <div className="p-4 border-b border-white/10 flex items-center gap-3">
+      <aside className="hidden lg:flex lg:flex-col lg:w-60 fixed h-full z-30" style={{ background: '#0d0d18', borderRight: '1px solid #1e1e30' }}>
+        <div className="p-4 border-b flex items-center gap-3" style={{ borderColor: '#1e1e30' }}>
           {company?.logo_url ?
-          <img src={company.logo_url} alt="Logo" className="h-10 w-10 rounded-lg object-cover bg-white p-0.5" /> :
-          <div className="h-10 w-10 rounded-lg bg-[var(--accent)] flex items-center justify-center font-bold text-lg">
+          <img src={company.logo_url} alt="Logo" className="h-9 w-9 rounded-xl object-cover" style={{ border: '1px solid #00D4FF33' }} /> :
+          <div className="h-9 w-9 rounded-xl flex items-center justify-center font-bold text-base" style={{ background: 'linear-gradient(135deg, #00D4FF, #7C3AED)', color: '#fff' }}>
               {company?.company_name?.[0] || 'S'}
             </div>
           }
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold truncate">{company?.company_name || 'Mi Empresa'}</h1>
-            <p className="text-blue-200 text-sm font-extrabold truncate">Gestión SAT Profesional</p>
+            <h1 className="text-sm font-bold truncate" style={{ color: '#e8eaf0' }}>{company?.company_name || 'Mi Empresa'}</h1>
+            <p className="text-xs truncate" style={{ color: '#00D4FF99' }}>Gestión SAT Profesional</p>
           </div>
         </div>
-        <nav className="flex-1 overflow-y-auto py-2 scrollbar-thin">
+        <nav className="flex-1 overflow-y-auto py-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPageName === item.page;
@@ -225,29 +233,36 @@ export default function Layout({ children, currentPageName }) {
               <Link
                 key={item.page}
                 to={createPageUrl(item.page)}
-                className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-all ${
-                  isActive
-                    ? 'bg-white/20 text-white font-bold border-r-2 border-[var(--accent)]'
-                    : 'text-blue-100 hover:bg-white/10 font-medium'
-                }`}>
-                <Icon className="w-4 h-4 flex-shrink-0" />
+                className="flex items-center gap-2.5 px-3 py-2 text-xs transition-all"
+                style={isActive ? {
+                  background: 'linear-gradient(90deg, #00D4FF15, transparent)',
+                  color: '#00D4FF',
+                  borderLeft: '2px solid #00D4FF',
+                  fontWeight: 600,
+                } : {
+                  color: '#8890a8',
+                  borderLeft: '2px solid transparent',
+                }}>
+                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="truncate">{item.name}</span>
               </Link>
             );
           })}
         </nav>
-        <div className="p-3 border-t border-white/10 space-y-2">
-          <button onClick={() => setSearchOpen(true)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-blue-200 hover:text-white text-sm transition-all">
-            <Search className="w-4 h-4" />
+        <div className="p-3 space-y-2" style={{ borderTop: '1px solid #1e1e30' }}>
+          <button onClick={() => setSearchOpen(true)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all" style={{ background: '#ffffff08', color: '#8890a8', border: '1px solid #1e1e30' }}>
+            <Search className="w-3.5 h-3.5" />
             <span className="flex-1 text-left">Buscar...</span>
-            <kbd className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded">⌘K</kbd>
+            <kbd className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: '#ffffff10', color: '#8890a8' }}>⌘K</kbd>
           </button>
           <div className="flex items-center justify-between px-2 py-1">
-            <span className="text-blue-200 text-base font-black">Alertas</span>
+            <span className="text-xs font-semibold" style={{ color: '#8890a8' }}>Alertas</span>
             <NotificationsPanel />
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-blue-200 hover:text-white text-sm w-full px-2 py-2 rounded hover:bg-white/10 transition-all">
-            <LogOut className="w-4 h-4" />
+          <button onClick={handleLogout} className="flex items-center gap-2 text-xs w-full px-2 py-2 rounded transition-all" style={{ color: '#8890a8' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#00D4FF'}
+            onMouseLeave={e => e.currentTarget.style.color = '#8890a8'}>
+            <LogOut className="w-3.5 h-3.5" />
             Cerrar sesión
           </button>
         </div>
@@ -259,23 +274,23 @@ export default function Layout({ children, currentPageName }) {
       }
 
       {/* Sidebar mobile */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[var(--primary)] text-white transform transition-transform lg:hidden ${
-      sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-4 flex items-center justify-between border-b border-white/10">
-          <div className="flex items-center gap-3">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        style={{ background: '#0d0d18', borderRight: '1px solid #1e1e30' }}>
+        <div className="p-4 flex items-center justify-between" style={{ borderBottom: '1px solid #1e1e30' }}>
+          <div className="flex items-center gap-2">
             {company?.logo_url ?
-            <img src={company.logo_url} alt="Logo" className="h-8 w-8 rounded-lg object-cover bg-white p-0.5" /> :
-            <div className="h-8 w-8 rounded-lg bg-[var(--accent)] flex items-center justify-center font-bold">
+            <img src={company.logo_url} alt="Logo" className="h-8 w-8 rounded-xl object-cover" /> :
+            <div className="h-8 w-8 rounded-xl flex items-center justify-center font-bold text-sm" style={{ background: 'linear-gradient(135deg, #00D4FF, #7C3AED)', color: '#fff' }}>
                 {company?.company_name?.[0] || 'S'}
               </div>
             }
-            <span className="font-bold text-sm">{company?.company_name || 'Mi Empresa'}</span>
+            <span className="font-bold text-sm" style={{ color: '#e8eaf0' }}>{company?.company_name || 'Mi Empresa'}</span>
           </div>
-          <button onClick={() => setSidebarOpen(false)}>
+          <button onClick={() => setSidebarOpen(false)} style={{ color: '#8890a8' }}>
             <X className="w-5 h-5" />
           </button>
         </div>
-        <nav className="overflow-y-auto py-2 h-[calc(100vh-80px)]">
+        <nav className="overflow-y-auto py-2 h-[calc(100vh-64px)]">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentPageName === item.page;
@@ -284,9 +299,13 @@ export default function Layout({ children, currentPageName }) {
                 key={item.page}
                 to={createPageUrl(item.page)}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 text-sm ${
-                isActive ? 'bg-white/15 text-white font-bold' : 'text-blue-100 hover:bg-white/10'}`}>
-                <Icon className="w-4 h-4" />
+                className="flex items-center gap-2.5 px-3 py-2.5 text-xs transition-all"
+                style={isActive ? {
+                  background: '#00D4FF12',
+                  color: '#00D4FF',
+                  borderLeft: '2px solid #00D4FF',
+                } : { color: '#8890a8', borderLeft: '2px solid transparent' }}>
+                <Icon className="w-3.5 h-3.5" />
                 <span>{item.name}</span>
               </Link>
             );
@@ -295,7 +314,7 @@ export default function Layout({ children, currentPageName }) {
       </aside>
 
       {/* Main */}
-      <div className="flex-1 lg:ml-64 min-h-screen relative overflow-x-hidden min-w-0">
+      <div className="flex-1 lg:ml-60 min-h-screen relative overflow-x-hidden min-w-0">
         {/* Background watermark logo — GPU layer aislada para no afectar scroll */}
         {company?.logo_url &&
         <div
@@ -303,34 +322,34 @@ export default function Layout({ children, currentPageName }) {
           style={{
             top: '50%', left: '50%',
             transform: 'translate(-50%, -50%) translateZ(0)',
-            opacity: 0.04,
+            opacity: 0.02,
             width: '60vw', maxWidth: 500,
             willChange: 'opacity',
           }}>
-            <img src={company.logo_url} alt="" style={{ width: '100%', filter: 'grayscale(1)' }} loading="lazy" decoding="async" />
+            <img src={company.logo_url} alt="" style={{ width: '100%', filter: 'grayscale(1) invert(1)' }} loading="lazy" decoding="async" />
           </div>
         }
         {/* Top bar mobile */}
-        <header className="lg:hidden bg-white border-b sticky top-0 z-30 px-4 py-3 flex items-center justify-between shadow-sm">
+        <header className="lg:hidden sticky top-0 z-30 px-4 py-3 flex items-center justify-between" style={{ background: '#0d0d18', borderBottom: '1px solid #1e1e30' }}>
           <div className="flex items-center gap-2">
-            <button onClick={() => setSidebarOpen(true)}>
-              <Menu className="w-6 h-6 text-gray-700" />
+            <button onClick={() => setSidebarOpen(true)} style={{ color: '#8890a8' }}>
+              <Menu className="w-6 h-6" />
             </button>
-            <button onClick={() => window.history.back()} className="p-1">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
+            <button onClick={() => window.history.back()} className="p-1" style={{ color: '#8890a8' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
             </button>
           </div>
-          <h2 className="font-semibold text-sm text-gray-800 truncate mx-2">
+          <h2 className="font-semibold text-sm truncate mx-2" style={{ color: '#e8eaf0' }}>
             {navItems.find((n) => n.page === currentPageName)?.name || currentPageName}
           </h2>
           <div className="flex items-center gap-1">
-            <button onClick={() => setSearchOpen(true)} className="p-1.5 text-gray-500 hover:text-gray-800">
+            <button onClick={() => setSearchOpen(true)} className="p-1.5" style={{ color: '#8890a8' }}>
               <Search className="w-5 h-5" />
             </button>
             <NotificationsPanel />
           </div>
         </header>
-        <main className="p-3 md:p-6 max-w-7xl mx-auto relative z-10 pb-28 lg:pb-6 overflow-x-hidden min-w-0 w-full" style={{ contain: 'layout style' }}>
+        <main className="p-3 md:p-5 max-w-7xl mx-auto relative z-10 pb-28 lg:pb-6 overflow-x-hidden min-w-0 w-full" style={{ contain: 'layout style' }}>
           {children}
         </main>
 

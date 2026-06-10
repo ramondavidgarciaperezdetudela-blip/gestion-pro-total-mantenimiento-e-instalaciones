@@ -63,19 +63,17 @@ const quickLinks = [
 
 function StatCard({ label, value, sub, icon: Icon, color, linkPage }) {
   const content =
-  <Card className={`border-l-4 ${color} hover:shadow-md transition-shadow cursor-pointer`}>
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className={`p-2.5 rounded-xl bg-white shadow-sm`}>
-          <Icon className="w-5 h-5 text-gray-600" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          <p className="text-gray-500 text-sm font-extrabold">{label}</p>
-          {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
-        </div>
-        {linkPage && <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />}
-      </CardContent>
-    </Card>;
+  <div className="rounded-xl p-4 flex items-center gap-3 hover:opacity-90 transition-all cursor-pointer" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
+      <div className="p-2.5 rounded-xl flex-shrink-0" style={{ background: '#ffffff08' }}>
+        <Icon className="w-5 h-5" style={{ color: '#00D4FF' }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-2xl font-bold" style={{ color: '#e8eaf0' }}>{value}</p>
+        <p className="text-xs font-semibold" style={{ color: '#8890a8' }}>{label}</p>
+        {sub && <p className="text-[10px] mt-0.5" style={{ color: '#7C3AED' }}>{sub}</p>}
+      </div>
+      {linkPage && <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: '#2a2a40' }} />}
+    </div>;
 
   return linkPage ? <Link to={createPageUrl(linkPage)}>{content}</Link> : content;
 }
@@ -185,54 +183,51 @@ export default function Home() {
   const reminderDays = (() => { try { return JSON.parse(localStorage.getItem('backupConfig'))?.reminder_days || 7; } catch { return 7; } })();
   const showBackupAlert = daysSinceBackup === null || daysSinceBackup >= reminderDays;
 
-  // Colores de badge por estado de documento
-  const STATUS_COLORS = { borrador: 'bg-gray-100 text-gray-600', enviado: 'bg-blue-100 text-blue-700', pagado: 'bg-green-100 text-green-700', vencido: 'bg-red-100 text-red-700', cancelado: 'bg-orange-100 text-orange-700' };
-  const SAT_STATUS = { pendiente: 'bg-amber-100 text-amber-700', en_curso: 'bg-blue-100 text-blue-700', completada: 'bg-green-100 text-green-700' };
+  // Colores de badge por estado de documento — Dark Pro
+  const STATUS_COLORS = { borrador: 'text-gray-400', enviado: 'text-blue-400', pagado: 'text-green-400', vencido: 'text-red-400', cancelado: 'text-orange-400' };
+  const SAT_STATUS = { pendiente: 'text-amber-400', en_curso: 'text-blue-400', completada: 'text-green-400' };
 
-  // Colores de fila completa según estado/urgencia del documento
   const DOC_ROW_BG = {
-    vencido:   'bg-red-50 border-l-4 border-l-red-400',
-    enviado:   'bg-blue-50 border-l-4 border-l-blue-300',
-    pagado:    'bg-green-50 border-l-4 border-l-green-400',
-    borrador:  'bg-gray-50 border-l-4 border-l-gray-300',
-    cancelado: 'bg-orange-50 border-l-4 border-l-orange-300',
+    vencido:   'border-l-2 border-l-red-500',
+    enviado:   'border-l-2 border-l-blue-500',
+    pagado:    'border-l-2 border-l-green-500',
+    borrador:  'border-l-2 border-l-gray-600',
+    cancelado: 'border-l-2 border-l-orange-500',
   };
 
-  // Colores de fila SAT según prioridad
   const SAT_PRIORITY_BG = {
-    urgente: 'bg-red-50 border-l-4 border-l-red-500',
-    alta:    'bg-orange-50 border-l-4 border-l-orange-400',
-    normal:  'bg-amber-50 border-l-4 border-l-amber-300',
-    baja:    'bg-gray-50 border-l-4 border-l-gray-300',
+    urgente: 'border-l-2 border-l-red-500',
+    alta:    'border-l-2 border-l-orange-500',
+    normal:  'border-l-2 border-l-amber-500',
+    baja:    'border-l-2 border-l-gray-600',
   };
   const SAT_PRIORITY_BADGE = {
-    urgente: 'bg-red-100 text-red-700',
-    alta:    'bg-orange-100 text-orange-700',
-    normal:  'bg-amber-100 text-amber-700',
-    baja:    'bg-gray-100 text-gray-600',
+    urgente: 'text-red-400',
+    alta:    'text-orange-400',
+    normal:  'text-amber-400',
+    baja:    'text-gray-500',
   };
 
-  // Colores citas por prioridad
   const APT_PRIORITY_BG = {
-    urgente: 'bg-red-50 border border-red-200',
-    alta:    'bg-orange-50 border border-orange-200',
-    media:   'bg-blue-50 border border-blue-100',
-    baja:    'bg-gray-50 border border-gray-100',
+    urgente: 'border-l-2 border-l-red-500',
+    alta:    'border-l-2 border-l-orange-500',
+    media:   'border-l-2 border-l-blue-500',
+    baja:    'border-l-2 border-l-gray-600',
   };
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-4">
         {company?.logo_url &&
-        <img src={company.logo_url} alt="Logo" className="h-14 w-14 rounded-xl object-cover shadow-md" />
+        <img src={company.logo_url} alt="Logo" className="h-12 w-12 rounded-xl object-cover" style={{ border: '1px solid #1e1e30' }} />
         }
         <div>
-          <h1 className="text-gray-900 text-4xl font-extrabold md:text-3xl">
+          <h1 className="text-3xl font-extrabold" style={{ color: '#e8eaf0' }}>
             {company?.company_name || 'Panel de Control'}
           </h1>
-          <p className="text-gray-500 text-base font-black capitalize">{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+          <p className="text-sm font-medium capitalize" style={{ color: '#00D4FF99' }}>{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
         </div>
       </div>
 
@@ -364,38 +359,36 @@ export default function Home() {
       {/* Banner backup */}
       {showBackupAlert && (
         <Link to={createPageUrl('BackupCenter')}>
-          <div className="flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 hover:bg-amber-100 transition-colors cursor-pointer">
-            <Shield className="w-5 h-5 text-amber-600 flex-shrink-0" />
+          <div className="flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition-opacity hover:opacity-80" style={{ background: '#1a1200', border: '1px solid #F59E0B55' }}>
+            <Shield className="w-5 h-5 flex-shrink-0" style={{ color: '#F59E0B' }} />
             <div className="flex-1">
-              <p className="text-sm font-semibold text-amber-800">
+              <p className="text-sm font-semibold" style={{ color: '#FCD34D' }}>
                 {daysSinceBackup === null ? '⚠ Aún no tienes ninguna copia de seguridad guardada' : `⚠ Último backup hace ${daysSinceBackup} días — recomendamos hacer uno`}
               </p>
-              <p className="text-xs text-amber-600">Haz clic para ir al Centro de Copias de Seguridad</p>
+              <p className="text-xs" style={{ color: '#F59E0B99' }}>Haz clic para ir al Centro de Copias de Seguridad</p>
             </div>
-            <ChevronRight className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: '#F59E0B' }} />
           </div>
         </Link>
       )}
 
       {/* Acceso directo rápido - Solo en desktop */}
-      <div className="hidden sm:block bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
-        <h2 className="text-gray-800 mb-3 text-3xl font-extrabold flex items-center gap-2">Acceso rápido a módulos
-
-
-        </h2>
+      <div className="hidden sm:block rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
+        <h2 className="mb-3 text-lg font-bold flex items-center gap-2" style={{ color: '#e8eaf0' }}>Acceso rápido a módulos</h2>
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
           {quickLinks.map((link) => {
             const Icon = link.icon;
             return (
               <Link key={link.page} to={createPageUrl(link.page)}>
-                <div className="group flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-white transition-all hover:shadow-md cursor-pointer">
-                  <div className={`${link.color} p-2 rounded-lg text-white group-hover:scale-110 transition-transform`}>
+                <div className="group flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all cursor-pointer hover:opacity-90" style={{ background: 'transparent' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <div className={`${link.color} p-2.5 rounded-xl text-white group-hover:scale-110 transition-transform shadow-lg`}>
                     <Icon className="w-4 h-4" />
                   </div>
-                  <span className="text-gray-700 text-base font-extrabold text-center leading-tight line-clamp-2">{link.name}</span>
+                  <span className="text-xs font-semibold text-center leading-tight line-clamp-2" style={{ color: '#8890a8' }}>{link.name}</span>
                 </div>
               </Link>);
-
           })}
         </div>
       </div>
@@ -429,7 +422,10 @@ export default function Home() {
       <div className="space-y-2">
           {alerts.map((a, i) =>
         <Link key={i} to={createPageUrl(a.page)}>
-              <div className={`flex items-center gap-3 p-3 rounded-xl border text-sm font-medium cursor-pointer hover:opacity-80 transition-opacity ${a.type === 'danger' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+              <div className="flex items-center gap-3 p-3 rounded-xl text-sm font-medium cursor-pointer hover:opacity-80 transition-opacity"
+                style={a.type === 'danger'
+                  ? { background: '#1f0a0a', border: '1px solid #ef444444', color: '#f87171' }
+                  : { background: '#1a1200', border: '1px solid #f59e0b44', color: '#fcd34d' }}>
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                 <span className="flex-1">{a.text}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -464,319 +460,301 @@ export default function Home() {
 
       {/* Gráficos proveedores */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Gastos por proveedor */}
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Euro className="w-4 h-4 text-violet-500" />Gasto por proveedor</CardTitle>
-            <Link to={createPageUrl('Suppliers')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todos</Link>
-          </CardHeader>
-          <CardContent>
-            {supplierSpending.length === 0 ?
-            <p className="text-xs text-gray-400 py-4 text-center">Sin datos de precios registrados</p> :
+        <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold flex items-center gap-2" style={{ color: '#e8eaf0' }}><Euro className="w-4 h-4" style={{ color: '#7C3AED' }} />Gasto por proveedor</span>
+            <Link to={createPageUrl('Suppliers')} className="text-xs font-semibold" style={{ color: '#00D4FF' }}>Ver todos</Link>
+          </div>
+          {supplierSpending.length === 0 ?
+          <p className="text-xs py-4 text-center" style={{ color: '#8890a8' }}>Sin datos de precios registrados</p> :
+          <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={supplierSpending} layout="vertical" margin={{ left: 4, right: 16, top: 4, bottom: 4 }}>
+                <XAxis type="number" hide />
+                <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11, fill: '#8890a8' }} />
+                <Tooltip formatter={(v) => [`${v}€`, 'Gasto']} contentStyle={{ background: '#12121e', border: '1px solid #1e1e30', color: '#e8eaf0' }} />
+                <Bar dataKey="total" radius={[0, 4, 4, 0]}>
+                  {supplierSpending.map((_, i) =>
+                <Cell key={i} fill={['#00D4FF', '#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#3B82F6'][i % 6]} />
+                )}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          }
+        </div>
 
-            <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={supplierSpending} layout="vertical" margin={{ left: 4, right: 16, top: 4, bottom: 4 }}>
-                  <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => [`${v}€`, 'Gasto']} />
-                  <Bar dataKey="total" radius={[0, 4, 4, 0]}>
-                    {supplierSpending.map((_, i) =>
-                  <Cell key={i} fill={['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe'][i % 6]} />
-                  )}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            }
-          </CardContent>
-        </Card>
-
-        {/* Top proveedores por pedidos */}
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2"><ShoppingCart className="w-4 h-4 text-blue-500" />Proveedores con más referencias</CardTitle>
-            <Link to={createPageUrl('Suppliers')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todos</Link>
-          </CardHeader>
-          <CardContent className="space-y-2">
+        <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold flex items-center gap-2" style={{ color: '#e8eaf0' }}><ShoppingCart className="w-4 h-4" style={{ color: '#00D4FF' }} />Proveedores con más referencias</span>
+            <Link to={createPageUrl('Suppliers')} className="text-xs font-semibold" style={{ color: '#00D4FF' }}>Ver todos</Link>
+          </div>
+          <div className="space-y-2">
             {topSuppliers.length === 0 ?
-            <p className="text-xs text-gray-400 py-4 text-center">Sin precios registrados</p> :
+            <p className="text-xs py-4 text-center" style={{ color: '#8890a8' }}>Sin precios registrados</p> :
             topSuppliers.map((s, i) =>
             <div key={s.name} className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
+                <span className="text-xs font-bold w-4" style={{ color: '#8890a8' }}>{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-center mb-0.5">
-                    <span className="text-xs font-medium truncate">{s.name}</span>
-                    <span className="text-xs text-gray-500 ml-2">{s.count} ref.</span>
+                    <span className="text-xs font-medium truncate" style={{ color: '#e8eaf0' }}>{s.name}</span>
+                    <span className="text-xs ml-2" style={{ color: '#8890a8' }}>{s.count} ref.</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5">
-                    <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, s.count / (topSuppliers[0]?.count || 1) * 100)}%` }} />
+                  <div className="w-full rounded-full h-1.5" style={{ background: '#1e1e30' }}>
+                    <div className="h-1.5 rounded-full" style={{ width: `${Math.min(100, s.count / (topSuppliers[0]?.count || 1) * 100)}%`, background: '#00D4FF' }} />
                   </div>
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Alertas de pedidos próximos */}
-       {reorderAlerts.length > 0 &&
-      <Card className="border-amber-200 bg-amber-50">
-           <CardHeader className="pb-2">
-             <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-800"><Bell className="w-4 h-4" />Pedidos pendientes de revisar</CardTitle>
-           </CardHeader>
-           <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2">
-             {reorderAlerts.map((r, i) =>
+      {reorderAlerts.length > 0 &&
+      <div className="rounded-xl p-4" style={{ background: '#1a1200', border: '1px solid #F59E0B44' }}>
+          <p className="text-sm font-semibold flex items-center gap-2 mb-3" style={{ color: '#FCD34D' }}><Bell className="w-4 h-4" />Pedidos pendientes de revisar</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {reorderAlerts.map((r, i) =>
           <Link key={i} to={createPageUrl('Suppliers')}>
-                 <div className="flex items-center gap-2 bg-white border border-amber-200 rounded-lg p-2 hover:shadow-sm transition-shadow">
-                   <Building2 className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                   <div className="min-w-0">
-                     <p className="text-xs font-medium truncate">{r.name}</p>
-                     <p className="text-[10px] text-amber-600 font-semibold">{r.daysLeft <= 0 ? '⚠ HOY' : `En ${r.daysLeft} días`}</p>
-                   </div>
-                 </div>
-               </Link>
+                <div className="flex items-center gap-2 rounded-lg p-2 hover:opacity-80 transition-opacity" style={{ background: '#ffffff08', border: '1px solid #F59E0B33' }}>
+                  <Building2 className="w-4 h-4 flex-shrink-0" style={{ color: '#F59E0B' }} />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium truncate" style={{ color: '#e8eaf0' }}>{r.name}</p>
+                    <p className="text-[10px] font-semibold" style={{ color: '#F59E0B' }}>{r.daysLeft <= 0 ? '⚠ HOY' : `En ${r.daysLeft} días`}</p>
+                  </div>
+                </div>
+              </Link>
           )}
-           </CardContent>
-         </Card>
+          </div>
+        </div>
       }
 
        {/* Dashboard Mantenimiento + Buscador Repuestos */}
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         {/* Dashboard Mantenimiento */}
-         <Card>
-           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Wrench className="w-4 h-4 text-cyan-500" />Mantenimiento próximo</CardTitle>
-             <Link to={createPageUrl('Maintenance')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todos</Link>
-           </CardHeader>
-           <CardContent className="space-y-2">
+         <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
+           <div className="flex items-center justify-between mb-3">
+             <span className="text-sm font-semibold flex items-center gap-2" style={{ color: '#e8eaf0' }}><Wrench className="w-4 h-4" style={{ color: '#00D4FF' }} />Mantenimiento próximo</span>
+             <Link to={createPageUrl('Maintenance')} className="text-xs font-semibold" style={{ color: '#00D4FF' }}>Ver todos</Link>
+           </div>
+           <div className="space-y-2">
              {maintenanceMachines.length === 0 ?
-            <p className="text-xs text-gray-400 py-3 text-center">Sin mantenimiento próximo</p> :
+            <p className="text-xs py-3 text-center" style={{ color: '#8890a8' }}>Sin mantenimiento próximo</p> :
             maintenanceMachines.map((m) => {
               const nextDate = new Date(m.next_maintenance_date);
               const daysUntil = Math.ceil((nextDate - new Date()) / 86400000);
               return (
-                <div key={m.id} className="p-2 bg-cyan-50 rounded-lg border border-cyan-100">
-                   <p className="text-xs font-medium truncate">{m.name}</p>
+                <div key={m.id} className="p-2.5 rounded-lg" style={{ background: '#00D4FF0a', border: '1px solid #00D4FF22' }}>
+                   <p className="text-xs font-medium truncate" style={{ color: '#e8eaf0' }}>{m.name}</p>
                    <div className="flex justify-between items-center mt-1">
-                     <p className="text-[10px] text-gray-500">{m.brand} {m.model}</p>
-                     <Badge className="text-[10px] bg-cyan-100 text-cyan-700">{daysUntil} días</Badge>
+                     <p className="text-[10px]" style={{ color: '#8890a8' }}>{m.brand} {m.model}</p>
+                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: '#00D4FF22', color: '#00D4FF' }}>{daysUntil} días</span>
                    </div>
                  </div>);
-
             })}
-           </CardContent>
-         </Card>
+           </div>
+         </div>
 
-         {/* Buscador Repuestos Rápidos Online */}
-         <Card>
-           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Search className="w-4 h-4 text-emerald-500" />Stock bajo - Buscar repuestos</CardTitle>
-             <Link to={createPageUrl('Inventory')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver inventario</Link>
-           </CardHeader>
-           <CardContent className="space-y-2">
+         <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
+           <div className="flex items-center justify-between mb-3">
+             <span className="text-sm font-semibold flex items-center gap-2" style={{ color: '#e8eaf0' }}><Search className="w-4 h-4" style={{ color: '#10B981' }} />Stock bajo - Buscar repuestos</span>
+             <Link to={createPageUrl('Inventory')} className="text-xs font-semibold" style={{ color: '#00D4FF' }}>Ver inventario</Link>
+           </div>
+           <div className="space-y-2">
              {stockItems.length === 0 ?
-            <p className="text-xs text-gray-400 py-3 text-center">Stock en niveles óptimos</p> :
+            <p className="text-xs py-3 text-center" style={{ color: '#8890a8' }}>Stock en niveles óptimos</p> :
             stockItems.map((item) =>
-            <div key={item.id} className="flex items-center justify-between gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+            <div key={item.id} className="flex items-center justify-between gap-2 p-2 rounded-lg" style={{ background: '#10B98110', border: '1px solid #10B98122' }}>
                  <div className="min-w-0 flex-1">
-                   <p className="text-xs font-medium truncate">{item.name}</p>
-                   <p className="text-[10px] text-gray-500 truncate">{item.supplier_name || 'Sin proveedor'}</p>
+                   <p className="text-xs font-medium truncate" style={{ color: '#e8eaf0' }}>{item.name}</p>
+                   <p className="text-[10px] truncate" style={{ color: '#8890a8' }}>{item.supplier_name || 'Sin proveedor'}</p>
                  </div>
                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                   <span className="text-xs font-bold text-emerald-600">{item.quantity || 0} {item.unit}</span>
-                   <Link to={createPageUrl('SupplierProductSearch')} className="bg-emerald-500 hover:bg-emerald-600 text-white p-1.5 rounded-lg transition-colors">
+                   <span className="text-xs font-bold" style={{ color: '#10B981' }}>{item.quantity || 0} {item.unit}</span>
+                   <Link to={createPageUrl('SupplierProductSearch')} className="p-1.5 rounded-lg transition-colors" style={{ background: '#10B981', color: '#fff' }}>
                      <Search className="w-3 h-3" />
                    </Link>
                  </div>
                </div>
             )}
-           </CardContent>
-         </Card>
+           </div>
+         </div>
        </div>
 
       {/* Presupuestos con respuesta del cliente */}
       {(presupuestosAceptados.length > 0 || presupuestosRechazados.length > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Aceptados */}
-          <Card className="border-green-200">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-green-700">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                Presupuestos aceptados y firmados
-                <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">{presupuestosAceptados.length}</span>
-              </CardTitle>
-              <Link to={createPageUrl('Documents?type=presupuesto')} className="text-green-600 text-xs font-bold hover:underline">Ver todos</Link>
-            </CardHeader>
-            <CardContent className="space-y-2">
+          <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #10B98133' }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold flex items-center gap-2" style={{ color: '#10B981' }}>
+                <CheckCircle className="w-4 h-4" />Presupuestos aceptados
+                <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#10B98122', color: '#10B981' }}>{presupuestosAceptados.length}</span>
+              </span>
+              <Link to={createPageUrl('Documents?type=presupuesto')} className="text-xs font-semibold" style={{ color: '#00D4FF' }}>Ver todos</Link>
+            </div>
+            <div className="space-y-2">
               {presupuestosAceptados.length === 0 ? (
-                <p className="text-xs text-gray-400 py-3 text-center">Sin presupuestos aceptados aún</p>
+                <p className="text-xs py-3 text-center" style={{ color: '#8890a8' }}>Sin presupuestos aceptados aún</p>
               ) : presupuestosAceptados.map(doc => (
-                <div key={doc.id} className="flex items-center justify-between gap-2 p-2.5 bg-green-50 rounded-lg border border-green-100">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <img src={doc.signature_client} alt="Firma" className="w-8 h-8 rounded border border-green-200 bg-white object-contain flex-shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-green-800 truncate">Presupuesto Nº{doc.doc_number}</p>
-                      <p className="text-[10px] text-green-600 truncate">{doc.contact_name} · {doc.date}</p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-green-700 flex-shrink-0">{(doc.total || 0).toFixed(0)} €</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Rechazados */}
-          <Card className="border-red-200">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-red-700">
-                <XCircle className="w-4 h-4 text-red-500" />
-                Presupuestos rechazados
-                <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">{presupuestosRechazados.length}</span>
-              </CardTitle>
-              <Link to={createPageUrl('Documents?type=presupuesto')} className="text-red-500 text-xs font-bold hover:underline">Ver todos</Link>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {presupuestosRechazados.length === 0 ? (
-                <p className="text-xs text-gray-400 py-3 text-center">Sin presupuestos rechazados</p>
-              ) : presupuestosRechazados.map(doc => (
-                <div key={doc.id} className="flex items-center justify-between gap-2 p-2.5 bg-red-50 rounded-lg border border-red-100">
+                <div key={doc.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg" style={{ background: '#10B98110', border: '1px solid #10B98122' }}>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-red-800 truncate">Presupuesto Nº{doc.doc_number}</p>
-                    <p className="text-[10px] text-red-500 truncate">{doc.contact_name} · {doc.date}</p>
+                    <p className="text-xs font-bold truncate" style={{ color: '#e8eaf0' }}>Presupuesto Nº{doc.doc_number}</p>
+                    <p className="text-[10px] truncate" style={{ color: '#10B981' }}>{doc.contact_name} · {doc.date}</p>
                   </div>
-                  <span className="text-xs font-bold text-red-600 flex-shrink-0">{(doc.total || 0).toFixed(0)} €</span>
+                  <span className="text-xs font-bold flex-shrink-0" style={{ color: '#10B981' }}>{(doc.total || 0).toFixed(0)} €</span>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+
+          <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #EF444433' }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold flex items-center gap-2" style={{ color: '#EF4444' }}>
+                <XCircle className="w-4 h-4" />Presupuestos rechazados
+                <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#EF444422', color: '#EF4444' }}>{presupuestosRechazados.length}</span>
+              </span>
+              <Link to={createPageUrl('Documents?type=presupuesto')} className="text-xs font-semibold" style={{ color: '#00D4FF' }}>Ver todos</Link>
+            </div>
+            <div className="space-y-2">
+              {presupuestosRechazados.length === 0 ? (
+                <p className="text-xs py-3 text-center" style={{ color: '#8890a8' }}>Sin presupuestos rechazados</p>
+              ) : presupuestosRechazados.map(doc => (
+                <div key={doc.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg" style={{ background: '#EF444410', border: '1px solid #EF444422' }}>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold truncate" style={{ color: '#e8eaf0' }}>Presupuesto Nº{doc.doc_number}</p>
+                    <p className="text-[10px] truncate" style={{ color: '#EF4444' }}>{doc.contact_name} · {doc.date}</p>
+                  </div>
+                  <span className="text-xs font-bold flex-shrink-0" style={{ color: '#EF4444' }}>{(doc.total || 0).toFixed(0)} €</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Citas hoy */}
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Clock className="w-4 h-4 text-blue-500" />Citas de hoy</CardTitle>
-            <Link to={createPageUrl('Agenda')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todas</Link>
-          </CardHeader>
-          <CardContent className="space-y-2">
+        <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold flex items-center gap-2" style={{ color: '#e8eaf0' }}><Clock className="w-4 h-4" style={{ color: '#00D4FF' }} />Citas de hoy</span>
+            <Link to={createPageUrl('Agenda')} className="text-xs font-semibold" style={{ color: '#00D4FF' }}>Ver todas</Link>
+          </div>
+          <div className="space-y-2">
             {appointments.length === 0 ?
-            <p className="text-xs text-gray-400 py-3 text-center">Sin citas hoy</p> :
+            <p className="text-xs py-3 text-center" style={{ color: '#8890a8' }}>Sin citas hoy</p> :
             appointments.map((apt) =>
-            <div key={apt.id} className={`flex items-center gap-2 p-2 rounded-lg ${APT_PRIORITY_BG[apt.priority] || 'bg-gray-50 border border-gray-100'}`}>
-                <span className="text-xs font-bold text-blue-600 min-w-[40px]">{apt.time_start || '--'}</span>
+            <div key={apt.id} className={`flex items-center gap-2 p-2 rounded-lg ${APT_PRIORITY_BG[apt.priority] || ''}`} style={{ background: '#ffffff06', borderLeft: '2px solid #00D4FF44' }}>
+                <span className="text-xs font-bold min-w-[40px]" style={{ color: '#00D4FF' }}>{apt.time_start || '--'}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">{apt.title}</p>
-                  <p className="text-[10px] text-gray-500 truncate">{apt.contact_name}</p>
+                  <p className="text-xs font-medium truncate" style={{ color: '#e8eaf0' }}>{apt.title}</p>
+                  <p className="text-[10px] truncate" style={{ color: '#8890a8' }}>{apt.contact_name}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   {apt.priority === 'urgente' && <AlertCircle className="w-3 h-3 text-red-500" />}
-                  <Badge variant="outline" className="text-[10px]">{apt.type}</Badge>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: '#ffffff10', color: '#8890a8' }}>{apt.type}</span>
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Últimos documentos */}
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-violet-500" />Últimos documentos</CardTitle>
-            <Link to={createPageUrl('Documents')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todos</Link>
-          </CardHeader>
-          <CardContent className="space-y-1.5">
+        <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold flex items-center gap-2" style={{ color: '#e8eaf0' }}><FileText className="w-4 h-4" style={{ color: '#7C3AED' }} />Últimos documentos</span>
+            <Link to={createPageUrl('Documents')} className="text-xs font-semibold" style={{ color: '#00D4FF' }}>Ver todos</Link>
+          </div>
+          <div className="space-y-1.5">
             {recentDocs.length === 0 ?
-            <p className="text-xs text-gray-400 py-3 text-center">Sin documentos</p> :
+            <p className="text-xs py-3 text-center" style={{ color: '#8890a8' }}>Sin documentos</p> :
             recentDocs.map((doc) =>
-            <div key={doc.id} className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 ${DOC_ROW_BG[doc.status] || 'bg-gray-50'}`}>
+            <div key={doc.id} className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 ${DOC_ROW_BG[doc.status] || ''}`} style={{ background: '#ffffff06' }}>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-extrabold capitalize truncate">{doc.doc_type} {doc.doc_number}</p>
-                  <p className="text-gray-500 text-[11px] truncate">{doc.contact_name}</p>
+                  <p className="text-xs font-bold capitalize truncate" style={{ color: '#e8eaf0' }}>{doc.doc_type} {doc.doc_number}</p>
+                  <p className="text-[11px] truncate" style={{ color: '#8890a8' }}>{doc.contact_name}</p>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <span className="text-xs font-bold">{doc.total?.toFixed(0)}€</span>
-                  <Badge className={`text-[10px] ${STATUS_COLORS[doc.status] || ''}`}>{doc.status}</Badge>
+                  <span className="text-xs font-bold" style={{ color: '#e8eaf0' }}>{doc.total?.toFixed(0)}€</span>
+                  <span className={`text-[10px] font-semibold ${STATUS_COLORS[doc.status] || ''}`}>{doc.status}</span>
                   {doc.status === 'vencido' && <AlertCircle className="w-3 h-3 text-red-500" />}
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* SAT pendientes */}
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Wrench className="w-4 h-4 text-orange-500" />SAT pendientes</CardTitle>
-            <Link to={createPageUrl('SAT')} className="text-blue-500 text-sm font-extrabold hover:underline">Ver todos</Link>
-          </CardHeader>
-          <CardContent className="space-y-1.5">
+        <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold flex items-center gap-2" style={{ color: '#e8eaf0' }}><Wrench className="w-4 h-4" style={{ color: '#F97316' }} />SAT pendientes</span>
+            <Link to={createPageUrl('SAT')} className="text-xs font-semibold" style={{ color: '#00D4FF' }}>Ver todos</Link>
+          </div>
+          <div className="space-y-1.5">
             {recentSat.length === 0 ?
-            <p className="text-xs text-gray-400 py-3 text-center">Sin órdenes pendientes</p> :
+            <p className="text-xs py-3 text-center" style={{ color: '#8890a8' }}>Sin órdenes pendientes</p> :
             recentSat.map((sat) =>
-            <div key={sat.id} className={`p-2 rounded-lg ${SAT_PRIORITY_BG[sat.priority] || 'bg-amber-50 border-l-4 border-l-amber-300'}`}>
+            <div key={sat.id} className={`p-2 rounded-lg ${SAT_PRIORITY_BG[sat.priority] || ''}`} style={{ background: '#ffffff06' }}>
                 <div className="flex items-center justify-between gap-1">
-                  <p className="text-xs font-semibold truncate flex-1">{sat.contact_name}</p>
+                  <p className="text-xs font-semibold truncate flex-1" style={{ color: '#e8eaf0' }}>{sat.contact_name}</p>
                   {sat.priority && sat.priority !== 'normal' && (
-                    <Badge className={`text-[9px] flex-shrink-0 ${SAT_PRIORITY_BADGE[sat.priority] || ''}`}>{sat.priority}</Badge>
+                    <span className={`text-[9px] flex-shrink-0 font-bold ${SAT_PRIORITY_BADGE[sat.priority] || ''}`}>{sat.priority}</span>
                   )}
                 </div>
                 <div className="flex justify-between items-center mt-0.5">
-                  <p className="text-[10px] text-gray-500">{sat.type} · {sat.date}</p>
-                  <Badge className={`text-[10px] ${SAT_STATUS[sat.status] || ''}`}>{sat.status}</Badge>
+                  <p className="text-[10px]" style={{ color: '#8890a8' }}>{sat.type} · {sat.date}</p>
+                  <span className={`text-[10px] font-semibold ${SAT_STATUS[sat.status] || ''}`}>{sat.status}</span>
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Clientes recientes + acciones rápidas documentación */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-emerald-500" />Clientes recientes</CardTitle>
-            <Link to={createPageUrl('Contacts')} className="text-blue-500 text-sm font-black hover:underline">Ver todos</Link>
-          </CardHeader>
-          <CardContent className="space-y-1">
+        <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold flex items-center gap-2" style={{ color: '#e8eaf0' }}><Users className="w-4 h-4" style={{ color: '#10B981' }} />Clientes recientes</span>
+            <Link to={createPageUrl('Contacts')} className="text-xs font-semibold" style={{ color: '#00D4FF' }}>Ver todos</Link>
+          </div>
+          <div className="space-y-1">
             {recentContacts.length === 0 ?
-            <p className="text-xs text-gray-400 py-3 text-center">Sin clientes</p> :
+            <p className="text-xs py-3 text-center" style={{ color: '#8890a8' }}>Sin clientes</p> :
             recentContacts.map((c) =>
-            <Link key={c.id} to={createPageUrl(`ContactDetail?id=${c.id}`)} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg group transition-colors">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {c.photo_url ? <img src={c.photo_url} alt="" className="w-full h-full object-cover" /> : <span className="text-xs font-bold text-emerald-700">{c.name?.[0]?.toUpperCase()}</span>}
+            <Link key={c.id} to={createPageUrl(`ContactDetail?id=${c.id}`)} className="flex items-center gap-2 p-2 rounded-lg group transition-all" style={{ background: 'transparent' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#ffffff06'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ background: 'linear-gradient(135deg, #00D4FF22, #7C3AED22)', border: '1px solid #1e1e30' }}>
+                  {c.photo_url ? <img src={c.photo_url} alt="" className="w-full h-full object-cover" /> : <span className="text-xs font-bold" style={{ color: '#00D4FF' }}>{c.name?.[0]?.toUpperCase()}</span>}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-base font-extrabold truncate">{c.name} {c.surname}</p>
-                  <p className="text-gray-400 text-sm truncate">{c.company_name || c.city || c.phone || '-'}</p>
+                  <p className="text-sm font-bold truncate" style={{ color: '#e8eaf0' }}>{c.name} {c.surname}</p>
+                  <p className="text-xs truncate" style={{ color: '#8890a8' }}>{c.company_name || c.city || c.phone || '-'}</p>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ChevronRight className="w-3 h-3 text-gray-300" />
-                </div>
+                <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#8890a8' }} />
               </Link>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-violet-500" />Crear documento rápido</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
+          <p className="text-sm font-semibold flex items-center gap-2 mb-3" style={{ color: '#e8eaf0' }}><FileText className="w-4 h-4" style={{ color: '#7C3AED' }} />Crear documento rápido</p>
+          <div className="grid grid-cols-2 gap-2">
             {[
-            { label: '+ Factura', page: 'Documents?type=factura', color: 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100' },
-            { label: '+ Presupuesto', page: 'Documents?type=presupuesto', color: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' },
-            { label: '+ SAT', page: 'SAT', color: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100' },
-            { label: '+ Mantenimiento', page: 'Maintenance', color: 'bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100' },
-            { label: '+ Cálculo Solar', page: 'SolarBatteryCalc', color: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' },
-            { label: '+ Presupuesto IA', page: 'AIBudget', color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' }].
+            { label: '+ Factura', page: 'Documents?type=factura', color: '#7C3AED' },
+            { label: '+ Presupuesto', page: 'Documents?type=presupuesto', color: '#3B82F6' },
+            { label: '+ SAT', page: 'SAT', color: '#F97316' },
+            { label: '+ Mantenimiento', page: 'Maintenance', color: '#00D4FF' },
+            { label: '+ Cálculo Solar', page: 'SolarBatteryCalc', color: '#F59E0B' },
+            { label: '+ Presupuesto IA', page: 'AIBudget', color: '#7C3AED' }].
             map((item) =>
             <Link key={item.page} to={createPageUrl(item.page)}>
-                <div className={`border rounded-lg px-3 py-2.5 text-xs font-semibold text-center cursor-pointer transition-colors ${item.color}`}>
+                <div className="rounded-lg px-3 py-2.5 text-xs font-semibold text-center cursor-pointer transition-opacity hover:opacity-80"
+                  style={{ background: item.color + '22', border: `1px solid ${item.color}44`, color: item.color }}>
                   {item.label}
                 </div>
               </Link>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       </div>{/* fin hidden sm:block */}
