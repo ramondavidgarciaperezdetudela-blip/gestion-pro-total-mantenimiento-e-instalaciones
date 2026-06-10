@@ -1,0 +1,75 @@
+{
+  "name": "StockItem",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "reference": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "tuberias_accesorios",
+        "cables_electricidad",
+        "refrigerantes",
+        "filtros",
+        "herramientas_consumibles",
+        "equipos_climatizacion",
+        "material_solar",
+        "fontaneria",
+        "otro"
+      ],
+      "default": "otro"
+    },
+    "solar_category": {
+      "type": "string",
+      "enum": [
+        "panel",
+        "inversor",
+        "bateria",
+        "cable",
+        "proteccion",
+        "estructura",
+        "mppt",
+        "otro"
+      ],
+      "description": "Subcategor\u00eda de repuesto solar"
+    },
+    "supplier_name": {
+      "type": "string"
+    },
+    "supplier_id": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 0
+    },
+    "unit": {
+      "type": "string",
+      "default": "uds"
+    },
+    "min_stock": {
+      "type": "number",
+      "default": 0
+    },
+    "unit_price": {
+      "type": "number"
+    },
+    "location": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Foto del art\u00edculo"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

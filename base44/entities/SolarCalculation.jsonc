@@ -1,0 +1,124 @@
+{
+  "name": "SolarCalculation",
+  "type": "object",
+  "properties": {
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "calc_mode": {
+      "type": "string",
+      "enum": [
+        "directo",
+        "por_consumo"
+      ],
+      "default": "directo"
+    },
+    "consumption_kwh": {
+      "type": "number",
+      "description": "Consumo en kWh o kWh/d\u00eda"
+    },
+    "num_panels": {
+      "type": "number"
+    },
+    "panel_power_w": {
+      "type": "number"
+    },
+    "panel_brand": {
+      "type": "string"
+    },
+    "panel_model": {
+      "type": "string"
+    },
+    "inverter_brand": {
+      "type": "string"
+    },
+    "inverter_model": {
+      "type": "string"
+    },
+    "inverter_power_w": {
+      "type": "number"
+    },
+    "battery_brand": {
+      "type": "string"
+    },
+    "battery_model": {
+      "type": "string"
+    },
+    "battery_capacity_kwh": {
+      "type": "number"
+    },
+    "num_batteries": {
+      "type": "number"
+    },
+    "string_config": {
+      "type": "string",
+      "description": "Configuraci\u00f3n strings"
+    },
+    "distance_panels_to_dc_box": {
+      "type": "number"
+    },
+    "distance_inverter_to_batteries": {
+      "type": "number"
+    },
+    "distance_to_ac_box": {
+      "type": "number"
+    },
+    "total_power_kwp": {
+      "type": "number"
+    },
+    "estimated_production_kwh_year": {
+      "type": "number"
+    },
+    "materials_list": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "material": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "specification": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "electrical_materials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "material": {
+            "type": "string"
+          },
+          "specification": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "wiring_schema": {
+      "type": "string",
+      "description": "Esquema de conexionado"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "calc_mode"
+  ]
+}

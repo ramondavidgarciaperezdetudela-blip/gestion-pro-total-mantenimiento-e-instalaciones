@@ -1,0 +1,113 @@
+{
+  "name": "CompanySettings",
+  "type": "object",
+  "properties": {
+    "company_name": {
+      "type": "string",
+      "description": "Nombre de la empresa"
+    },
+    "nif": {
+      "type": "string",
+      "description": "NIF de la empresa"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "province": {
+      "type": "string"
+    },
+    "postal_code": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "iban": {
+      "type": "string"
+    },
+    "printer_config": {
+      "type": "object",
+      "properties": {
+        "margin_top": {
+          "type": "number",
+          "default": 10
+        },
+        "margin_bottom": {
+          "type": "number",
+          "default": 10
+        },
+        "margin_left": {
+          "type": "number",
+          "default": 10
+        },
+        "margin_right": {
+          "type": "number",
+          "default": 10
+        },
+        "paper_size": {
+          "type": "string",
+          "enum": [
+            "A4",
+            "A5",
+            "Carta"
+          ],
+          "default": "A4"
+        }
+      }
+    },
+    "payment_terms": {
+      "type": "string",
+      "description": "Condiciones de pago por defecto"
+    },
+    "observations_climate": {
+      "type": "string"
+    },
+    "observations_electric": {
+      "type": "string"
+    },
+    "observations_refrigeration": {
+      "type": "string"
+    },
+    "technicians": {
+      "type": "array",
+      "description": "Lista de t\u00e9cnicos del equipo con credenciales",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fgas_carnet": {
+            "type": "string",
+            "description": "N\u00famero de carnet F-Gas (gases fluorados)"
+          },
+          "rite_certificate": {
+            "type": "string",
+            "description": "N\u00famero de certificado RITE (climatizaci\u00f3n)"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    }
+  },
+  "required": [
+    "company_name"
+  ]
+}

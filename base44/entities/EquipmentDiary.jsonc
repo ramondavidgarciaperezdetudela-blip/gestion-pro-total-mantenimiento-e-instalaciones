@@ -1,0 +1,110 @@
+{
+  "name": "EquipmentDiary",
+  "type": "object",
+  "properties": {
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "machine_id": {
+      "type": "string"
+    },
+    "machine_name": {
+      "type": "string"
+    },
+    "machine_type": {
+      "type": "string",
+      "enum": [
+        "aire_acondicionado",
+        "bomba_calor",
+        "camara_frigorifica",
+        "ventilacion",
+        "caldera",
+        "aerotermia",
+        "solar_fotovoltaico",
+        "solar_termico",
+        "electrico_cuadro",
+        "grupo_frio",
+        "otro"
+      ],
+      "default": "otro"
+    },
+    "equipment_brand": {
+      "type": "string"
+    },
+    "equipment_model": {
+      "type": "string"
+    },
+    "serial_number": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "description": "Entradas del diario de reparaciones",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "reparacion",
+              "mantenimiento",
+              "revision",
+              "instalacion",
+              "averia",
+              "otro"
+            ],
+            "default": "reparacion"
+          },
+          "technician": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "solution": {
+            "type": "string"
+          },
+          "parts_used": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "hours": {
+            "type": "number"
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "next_action": {
+            "type": "string"
+          },
+          "next_action_date": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "contact_id",
+    "contact_name"
+  ]
+}

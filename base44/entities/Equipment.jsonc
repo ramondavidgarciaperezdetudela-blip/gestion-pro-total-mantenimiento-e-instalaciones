@@ -1,0 +1,66 @@
+{
+  "name": "Equipment",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "brand": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "serial_number": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "herramienta",
+        "maquinaria",
+        "vehiculo",
+        "instrumento_medicion",
+        "equipo_proteccion",
+        "otro"
+      ],
+      "default": "herramienta"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "operativo",
+        "en_revision",
+        "averiado",
+        "baja"
+      ],
+      "default": "operativo"
+    },
+    "purchase_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "purchase_price": {
+      "type": "number"
+    },
+    "next_revision_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "location": {
+      "type": "string"
+    },
+    "assigned_to": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "photo_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

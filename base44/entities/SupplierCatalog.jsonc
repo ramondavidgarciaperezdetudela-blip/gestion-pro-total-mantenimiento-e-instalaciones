@@ -1,0 +1,91 @@
+{
+  "name": "SupplierCatalog",
+  "type": "object",
+  "properties": {
+    "supplier_id": {
+      "type": "string",
+      "description": "ID del proveedor"
+    },
+    "supplier_name": {
+      "type": "string",
+      "description": "Nombre del proveedor"
+    },
+    "supplier_category": {
+      "type": "string",
+      "enum": [
+        "clima",
+        "refrigeracion",
+        "electrico",
+        "solar",
+        "fontaneria",
+        "general"
+      ],
+      "description": "Categor\u00eda del proveedor"
+    },
+    "catalog_type": {
+      "type": "string",
+      "enum": [
+        "pdf_url",
+        "productos",
+        "documento"
+      ],
+      "description": "Tipo de cat\u00e1logo"
+    },
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo del cat\u00e1logo"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripci\u00f3n del cat\u00e1logo"
+    },
+    "url": {
+      "type": "string",
+      "description": "URL del PDF o p\u00e1gina de cat\u00e1logo"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL del documento descargado"
+    },
+    "products": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Lista de productos si catalog_type es 'productos'"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u00daltima actualizaci\u00f3n autom\u00e1tica"
+    },
+    "auto_update_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Permitir actualizaciones autom\u00e1ticas"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "supplier_id",
+    "supplier_name",
+    "catalog_type",
+    "title"
+  ]
+}

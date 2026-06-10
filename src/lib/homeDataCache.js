@@ -12,14 +12,14 @@ const pendingPromises = {};
 
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
-async function fetchWithRetry(fetcher, retries = 2, waitMs = 1200) {
+async function fetchWithRetry(fetcher, retries = 4, waitMs = 2000) {
   try {
     return await fetcher();
   } catch (err) {
     const isRateLimit = err?.status === 429 || err?.message?.toLowerCase().includes('rate');
     if (isRateLimit && retries > 0) {
       await delay(waitMs);
-      return fetchWithRetry(fetcher, retries - 1, waitMs * 1.5);
+      return fetchWithRetry(fetcher, retries - 1, waitMs * 2);
     }
     throw err;
   }
@@ -76,7 +76,7 @@ export async function getHomeData(forceRefresh = false) {
   ];
 
   const [invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems] =
-    await batchFetch(tasks, 2, 150);
+    await batchFetch(tasks, 1, 400);
 
   return { invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems };
 }

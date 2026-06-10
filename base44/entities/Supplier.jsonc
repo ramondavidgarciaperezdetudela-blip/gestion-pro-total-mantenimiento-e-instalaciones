@@ -1,0 +1,113 @@
+{
+  "name": "Supplier",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "login_url": {
+      "type": "string",
+      "description": "URL tienda online / pedidos"
+    },
+    "api_url": {
+      "type": "string",
+      "description": "URL API del distribuidor si disponible"
+    },
+    "api_key": {
+      "type": "string",
+      "description": "API Key del distribuidor"
+    },
+    "client_code": {
+      "type": "string",
+      "description": "N\u00famero de cliente en este distribuidor"
+    },
+    "password_hint": {
+      "type": "string",
+      "description": "Recordatorio de contrase\u00f1a"
+    },
+    "username": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "clima",
+        "refrigeracion",
+        "electrico",
+        "solar",
+        "fontaneria",
+        "general"
+      ],
+      "default": "general"
+    },
+    "province": {
+      "type": "string",
+      "description": "Provincia del proveedor"
+    },
+    "city": {
+      "type": "string",
+      "description": "Ciudad o poblaci\u00f3n del proveedor"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "contact_person": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "commercials": {
+      "type": "array",
+      "description": "Comerciales de este proveedor",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "whatsapp": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "last_order_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "reorder_frequency_days": {
+      "type": "number",
+      "default": 30
+    },
+    "enable_notifications": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

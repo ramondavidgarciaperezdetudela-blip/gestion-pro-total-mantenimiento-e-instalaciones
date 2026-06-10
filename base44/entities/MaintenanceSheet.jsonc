@@ -1,0 +1,234 @@
+{
+  "name": "MaintenanceSheet",
+  "type": "object",
+  "properties": {
+    "sheet_number": {
+      "type": "string"
+    },
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "clima",
+        "refrigeracion",
+        "electrico",
+        "solar",
+        "fontaneria",
+        "general"
+      ],
+      "default": "clima"
+    },
+    "equipment_brand": {
+      "type": "string"
+    },
+    "equipment_model": {
+      "type": "string"
+    },
+    "serial_number": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "readings_climate": {
+      "type": "object",
+      "properties": {
+        "pressure_high": {
+          "type": "number"
+        },
+        "pressure_low": {
+          "type": "number"
+        },
+        "temp_impulsion": {
+          "type": "number"
+        },
+        "temp_retorno": {
+          "type": "number"
+        },
+        "temp_exterior": {
+          "type": "number"
+        },
+        "refrigerant_type": {
+          "type": "string"
+        },
+        "refrigerant_charge": {
+          "type": "number"
+        },
+        "voltage": {
+          "type": "number"
+        },
+        "amperage_compressor": {
+          "type": "number"
+        },
+        "amperage_fan": {
+          "type": "number"
+        },
+        "superheat": {
+          "type": "number"
+        },
+        "subcooling": {
+          "type": "number"
+        },
+        "fgas_equivalent_co2": {
+          "type": "number",
+          "description": "Equivalencia CO2 (toneladas) para F-Gas"
+        },
+        "fgas_gwp": {
+          "type": "number",
+          "description": "GWP del gas"
+        }
+      }
+    },
+    "readings_electric": {
+      "type": "object",
+      "properties": {
+        "voltage_l1": {
+          "type": "number"
+        },
+        "voltage_l2": {
+          "type": "number"
+        },
+        "voltage_l3": {
+          "type": "number"
+        },
+        "amperage_l1": {
+          "type": "number"
+        },
+        "amperage_l2": {
+          "type": "number"
+        },
+        "amperage_l3": {
+          "type": "number"
+        },
+        "power_factor": {
+          "type": "number"
+        },
+        "ground_resistance": {
+          "type": "number"
+        },
+        "insulation_resistance": {
+          "type": "number"
+        },
+        "differential_test": {
+          "type": "boolean"
+        },
+        "thermal_test": {
+          "type": "boolean"
+        }
+      }
+    },
+    "readings_solar": {
+      "type": "object",
+      "properties": {
+        "panel_voltage": {
+          "type": "number"
+        },
+        "panel_current": {
+          "type": "number"
+        },
+        "inverter_output_w": {
+          "type": "number"
+        },
+        "battery_level_pct": {
+          "type": "number"
+        },
+        "production_kwh": {
+          "type": "number"
+        },
+        "panel_cleaning": {
+          "type": "boolean"
+        },
+        "connections_ok": {
+          "type": "boolean"
+        }
+      }
+    },
+    "readings_plumbing": {
+      "type": "object",
+      "properties": {
+        "water_pressure_bar": {
+          "type": "number"
+        },
+        "temp_acs": {
+          "type": "number"
+        },
+        "flow_lmin": {
+          "type": "number"
+        },
+        "leaks_detected": {
+          "type": "boolean"
+        },
+        "filter_state": {
+          "type": "string"
+        }
+      }
+    },
+    "general_tasks": {
+      "type": "string",
+      "description": "Tareas realizadas en mantenimiento general"
+    },
+    "observations": {
+      "type": "string"
+    },
+    "recommendations": {
+      "type": "string"
+    },
+    "photos_before": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "photos_after": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "photos_evaporator_plate": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "photos_condenser_plate": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "signature_technician": {
+      "type": "string",
+      "description": "Firma t\u00e9cnico (base64)"
+    },
+    "signature_client": {
+      "type": "string",
+      "description": "Firma cliente (base64)"
+    },
+    "technician_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendiente",
+        "completada"
+      ],
+      "default": "pendiente"
+    }
+  },
+  "required": [
+    "contact_name",
+    "date",
+    "type"
+  ]
+}

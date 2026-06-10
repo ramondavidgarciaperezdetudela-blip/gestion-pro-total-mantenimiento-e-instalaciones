@@ -1,0 +1,52 @@
+{
+  "name": "ChangeLog",
+  "type": "object",
+  "properties": {
+    "entity_type": {
+      "type": "string",
+      "description": "Tipo de entidad modificada (Contact, Invoice, SATOrder, etc.)"
+    },
+    "entity_id": {
+      "type": "string"
+    },
+    "entity_label": {
+      "type": "string",
+      "description": "Nombre descriptivo del registro modificado"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "crear",
+        "editar",
+        "eliminar"
+      ],
+      "default": "editar"
+    },
+    "contact_id": {
+      "type": "string",
+      "description": "ID del contacto relacionado (si aplica)"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "changes_summary": {
+      "type": "string",
+      "description": "Resumen de los cambios realizados"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "datetime": {
+      "type": "string",
+      "description": "Fecha y hora completa"
+    }
+  },
+  "required": [
+    "entity_type",
+    "action"
+  ]
+}

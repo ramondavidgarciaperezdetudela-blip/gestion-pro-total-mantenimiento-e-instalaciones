@@ -1,0 +1,112 @@
+{
+  "name": "ClientMachine",
+  "type": "object",
+  "properties": {
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nombre o descripci\u00f3n del equipo"
+    },
+    "machine_type": {
+      "type": "string",
+      "enum": [
+        "aire_acondicionado",
+        "bomba_calor",
+        "camara_frigorifica",
+        "ventilacion",
+        "caldera",
+        "aerotermia",
+        "solar_fotovoltaico",
+        "solar_termico",
+        "electrico_cuadro",
+        "grupo_frio",
+        "otro"
+      ],
+      "default": "otro"
+    },
+    "brand": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "serial_number": {
+      "type": "string"
+    },
+    "installation_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "location": {
+      "type": "string",
+      "description": "Ubicaci\u00f3n del equipo (ej: planta 1, sala t\u00e9cnica)"
+    },
+    "refrigerant_type": {
+      "type": "string"
+    },
+    "power_kw": {
+      "type": "number"
+    },
+    "warranty_expiry": {
+      "type": "string",
+      "format": "date"
+    },
+    "next_maintenance_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "maintenance_interval_months": {
+      "type": "number",
+      "default": 12
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "operativo",
+        "en_reparacion",
+        "fuera_servicio",
+        "baja"
+      ],
+      "default": "operativo"
+    },
+    "photo_url": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "maintenance_log": {
+      "type": "array",
+      "description": "Libro de mantenimiento del equipo",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "technician": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "contact_id",
+    "name"
+  ]
+}

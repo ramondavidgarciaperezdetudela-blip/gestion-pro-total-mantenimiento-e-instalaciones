@@ -1,0 +1,83 @@
+{
+  "name": "Project",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "clima",
+        "refrigeracion",
+        "electrico",
+        "solar",
+        "mixto"
+      ],
+      "default": "clima"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planificacion",
+        "en_curso",
+        "pausado",
+        "completado",
+        "cancelado"
+      ],
+      "default": "planificacion"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "budget": {
+      "type": "number"
+    },
+    "progress": {
+      "type": "number",
+      "default": 0
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pendiente",
+              "en_curso",
+              "completada"
+            ]
+          },
+          "assigned_to": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

@@ -1,0 +1,136 @@
+{
+  "name": "EquipmentFailure",
+  "type": "object",
+  "properties": {
+    "contact_id": {
+      "type": "string",
+      "description": "ID del cliente propietario del equipo"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Nombre del cliente"
+    },
+    "equipment_type": {
+      "type": "string",
+      "enum": [
+        "aire_acondicionado",
+        "bomba_calor",
+        "camara_frigorifica",
+        "electrico",
+        "solar",
+        "fontaneria",
+        "otro"
+      ],
+      "default": "camara_frigorifica"
+    },
+    "equipment_brand": {
+      "type": "string",
+      "description": "Marca del equipo"
+    },
+    "equipment_model": {
+      "type": "string",
+      "description": "Modelo del equipo"
+    },
+    "serial_number": {
+      "type": "string",
+      "description": "N\u00famero de serie"
+    },
+    "failure_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de la aver\u00eda"
+    },
+    "failure_type": {
+      "type": "string",
+      "enum": [
+        "compresor",
+        "ventilador",
+        "termostato",
+        "valvula",
+        "condensador",
+        "evaporador",
+        "fugas_gas",
+        "problemas_electricos",
+        "mantenimiento",
+        "otro"
+      ],
+      "default": "otro"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripci\u00f3n detallada de la aver\u00eda"
+    },
+    "diagnosis": {
+      "type": "string",
+      "description": "Diagn\u00f3stico realizado"
+    },
+    "solution": {
+      "type": "string",
+      "description": "Soluci\u00f3n aplicada"
+    },
+    "technician": {
+      "type": "string",
+      "description": "T\u00e9cnico responsable"
+    },
+    "repair_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de reparaci\u00f3n"
+    },
+    "repair_hours": {
+      "type": "number",
+      "description": "Horas de trabajo de reparaci\u00f3n"
+    },
+    "parts_used": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "part_name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "cost": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Piezas utilizadas en la reparaci\u00f3n"
+    },
+    "total_cost": {
+      "type": "number",
+      "description": "Coste total de la reparaci\u00f3n (mano de obra + piezas)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "reportada",
+        "en_reparacion",
+        "reparada",
+        "pendiente",
+        "cancelada"
+      ],
+      "default": "reportada"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Fotos de la aver\u00eda y reparaci\u00f3n (max 30)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas adicionales o recomendaciones"
+    }
+  },
+  "required": [
+    "contact_id",
+    "contact_name",
+    "equipment_type",
+    "failure_date",
+    "description"
+  ]
+}

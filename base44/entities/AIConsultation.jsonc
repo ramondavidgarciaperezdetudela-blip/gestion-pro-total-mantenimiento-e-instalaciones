@@ -1,0 +1,62 @@
+{
+  "name": "AIConsultation",
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string"
+    },
+    "response": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "precios",
+        "normativa",
+        "tecnico",
+        "presupuesto",
+        "general"
+      ],
+      "default": "general"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "budget_items": {
+      "type": "array",
+      "description": "L\u00edneas de presupuesto generadas por IA",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "supplier": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "expires_days": {
+      "type": "number",
+      "default": 90,
+      "description": "D\u00edas a conservar en historial"
+    }
+  },
+  "required": [
+    "query"
+  ]
+}

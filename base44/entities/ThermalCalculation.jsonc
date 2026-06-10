@@ -1,0 +1,169 @@
+{
+  "name": "ThermalCalculation",
+  "type": "object",
+  "properties": {
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "calc_type": {
+      "type": "string",
+      "enum": [
+        "clima",
+        "camara_frigorifica"
+      ],
+      "default": "clima"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "room_length": {
+      "type": "number",
+      "description": "Longitud en metros"
+    },
+    "room_width": {
+      "type": "number",
+      "description": "Anchura en metros"
+    },
+    "room_height": {
+      "type": "number",
+      "description": "Altura en metros"
+    },
+    "orientation": {
+      "type": "string",
+      "enum": [
+        "norte",
+        "sur",
+        "este",
+        "oeste"
+      ]
+    },
+    "num_windows": {
+      "type": "number"
+    },
+    "window_area": {
+      "type": "number"
+    },
+    "num_people": {
+      "type": "number"
+    },
+    "equipment_heat": {
+      "type": "number",
+      "description": "Calor de equipos en W"
+    },
+    "insulation_type": {
+      "type": "string",
+      "enum": [
+        "bueno",
+        "medio",
+        "malo"
+      ],
+      "default": "medio"
+    },
+    "target_temp": {
+      "type": "number",
+      "description": "Temperatura objetivo \u00b0C"
+    },
+    "exterior_temp": {
+      "type": "number",
+      "description": "Temperatura exterior \u00b0C"
+    },
+    "cold_room_temp": {
+      "type": "number",
+      "description": "Temperatura c\u00e1mara frigor\u00edfica \u00b0C"
+    },
+    "cold_room_product": {
+      "type": "string"
+    },
+    "cold_room_product_kg": {
+      "type": "number"
+    },
+    "pipe_distance": {
+      "type": "number",
+      "description": "Distancia tuber\u00eda metros"
+    },
+    "pipe_height_diff": {
+      "type": "number",
+      "description": "Diferencia altura metros"
+    },
+    "refrigerant_type": {
+      "type": "string",
+      "enum": [
+        "R-410A",
+        "R-32",
+        "R-134a",
+        "R-404A",
+        "R-407C",
+        "R-290",
+        "R-449A",
+        "R-452A",
+        "R-448A"
+      ]
+    },
+    "calculated_load": {
+      "type": "number",
+      "description": "Carga t\u00e9rmica calculada en W"
+    },
+    "calculated_load_frigorias": {
+      "type": "number"
+    },
+    "suggested_equipment": {
+      "type": "string"
+    },
+    "suggested_brand": {
+      "type": "string"
+    },
+    "suggested_model": {
+      "type": "string"
+    },
+    "refrigerant_charge_kg": {
+      "type": "number"
+    },
+    "extra_refrigerant_g": {
+      "type": "number"
+    },
+    "materials_list": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "material": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "specification": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "working_pressures": {
+      "type": "object",
+      "properties": {
+        "high_pressure": {
+          "type": "number"
+        },
+        "low_pressure": {
+          "type": "number"
+        },
+        "condensation_temp": {
+          "type": "number"
+        },
+        "evaporation_temp": {
+          "type": "number"
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "calc_type"
+  ]
+}

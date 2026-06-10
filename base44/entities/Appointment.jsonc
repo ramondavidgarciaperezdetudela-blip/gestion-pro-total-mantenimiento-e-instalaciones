@@ -1,0 +1,70 @@
+{
+  "name": "Appointment",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "time_start": {
+      "type": "string"
+    },
+    "time_end": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "instalacion",
+        "reparacion",
+        "mantenimiento",
+        "presupuesto",
+        "revision",
+        "otro"
+      ],
+      "default": "otro"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendiente",
+        "confirmada",
+        "completada",
+        "cancelada"
+      ],
+      "default": "pendiente"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "baja",
+        "media",
+        "alta",
+        "urgente"
+      ],
+      "default": "media"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "date"
+  ]
+}

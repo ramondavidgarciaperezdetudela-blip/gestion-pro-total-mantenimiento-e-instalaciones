@@ -1,0 +1,46 @@
+{
+  "name": "ClientDocument",
+  "type": "object",
+  "properties": {
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "calculo_termico",
+        "calculo_solar",
+        "ficha_mantenimiento",
+        "orden_sat",
+        "factura",
+        "presupuesto",
+        "recibo",
+        "informe",
+        "nota",
+        "foto_equipo",
+        "otro"
+      ]
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "contact_id",
+    "title"
+  ]
+}

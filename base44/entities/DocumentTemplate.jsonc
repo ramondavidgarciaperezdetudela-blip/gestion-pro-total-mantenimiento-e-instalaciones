@@ -1,0 +1,73 @@
+{
+  "name": "DocumentTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre de la plantilla"
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "factura",
+        "presupuesto",
+        "recibo",
+        "sat",
+        "mantenimiento",
+        "informe"
+      ],
+      "default": "factura"
+    },
+    "primary_color": {
+      "type": "string",
+      "default": "#1e3a5f"
+    },
+    "secondary_color": {
+      "type": "string",
+      "default": "#0ea5e9"
+    },
+    "header_text": {
+      "type": "string"
+    },
+    "footer_text": {
+      "type": "string"
+    },
+    "show_logo": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_iban": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_signature_box": {
+      "type": "boolean",
+      "default": true
+    },
+    "font_size": {
+      "type": "string",
+      "enum": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "default": "medium"
+    },
+    "iva_rate": {
+      "type": "number",
+      "default": 21
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes_template": {
+      "type": "string",
+      "description": "Texto por defecto en observaciones"
+    }
+  },
+  "required": [
+    "name",
+    "doc_type"
+  ]
+}

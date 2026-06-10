@@ -1,0 +1,111 @@
+{
+  "name": "Contact",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "cliente",
+        "proveedor",
+        "colaborador",
+        "otro"
+      ],
+      "default": "cliente"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "residencial",
+        "comercial",
+        "industrial",
+        "administracion_publica",
+        "comunidad_propietarios",
+        "otro"
+      ],
+      "default": "residencial"
+    },
+    "subcategory": {
+      "type": "string"
+    },
+    "company_name": {
+      "type": "string"
+    },
+    "company_logo_url": {
+      "type": "string"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Foto del contacto"
+    },
+    "name": {
+      "type": "string"
+    },
+    "surname": {
+      "type": "string"
+    },
+    "nif": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "phone2": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "province": {
+      "type": "string"
+    },
+    "postal_code": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string",
+      "default": "Espa\u00f1a"
+    },
+    "latitude": {
+      "type": "number"
+    },
+    "longitude": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "payment_profile": {
+      "type": "string",
+      "enum": [
+        "buen_pagador",
+        "pagador_normal",
+        "regateador",
+        "mal_pagador",
+        "moroso"
+      ],
+      "default": "pagador_normal",
+      "description": "Perfil de pago del cliente"
+    },
+    "pending_amount": {
+      "type": "number",
+      "description": "Importe pendiente de cobro (\u20ac)"
+    },
+    "internal_observations": {
+      "type": "string",
+      "description": "Observaciones internas (no aparece en documentos)"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
