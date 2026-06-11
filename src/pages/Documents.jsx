@@ -1,16 +1,14 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Plus, Search, FileText, Trash2, Edit, Eye, ShoppingCart, Copy,
-  ChevronDown, ChevronUp, Save, Phone, Mail, BarChart3, TrendingUp,
-  Euro, AlertCircle, CheckCircle, Clock, Filter, Download, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers } from
+  Plus, Search, FileText, Trash2, Edit, ShoppingCart, Copy,
+  ChevronDown, ChevronUp, Save, Phone, Mail,
+  AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers } from
 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
@@ -19,7 +17,6 @@ import MaterialAutocomplete from '../components/MaterialAutocomplete';
 import MaterialsExportButton from '../components/MaterialsExportButton';
 import { format, startOfMonth } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
-import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import SignatureCanvas from '../components/SignaturePad';
 
@@ -478,22 +475,39 @@ export default function Documents() {
     setTimeout(() => { w.focus(); w.print(); }, 400);
   };
 
-  // Filtrado
-  let filtered = docs.filter((d) => {
-    const matchSearch = `${d.doc_number} ${d.contact_name} ${d.work_type}`.toLowerCase().includes(search.toLowerCase());
-    const matchType = filterType === 'all' || d.doc_type === filterType;
-    const matchStatus = filterStatus === 'all' || d.status === filterStatus;
-    const matchWork = filterWorkType === 'all' || d.work_type === filterWorkType;
-    return matchSearch && matchType && matchStatus && matchWork;
-  });
+  // Filtrado memoizado para evitar cálculos en cada renderizado (p.ej. al escribir en inputs del formulario)
+  const filtered = useMemo(() => {
+    return docs.filter((d) => {
+      const matchSearch = `${d.doc_number} ${d.contact_name} ${d.work_type}`.toLowerCase().includes(search.toLowerCase());
+      const matchType = filterType === 'all' || d.doc_type === filterType;
+      const matchStatus = filterStatus === 'all' || d.status === filterStatus;
+      const matchWork = filterWorkType === 'all' || d.work_type === filterWorkType;
+      return matchSearch && matchType && matchStatus && matchWork;
+    });
+  }, [docs, search, filterType, filterStatus, filterWorkType]);
 
-  // KPIs
-  const facturas = docs.filter((d) => d.doc_type === 'factura');
-  const presupuestos = docs.filter((d) => d.doc_type === 'presupuesto');
-  const totalFacturado = facturas.reduce((s, d) => s + (d.total || 0), 0);
-  const pendienteCobro = facturas.filter((d) => ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0);
-  const cobradoMes = facturas.filter((d) => d.status === 'pagado' && d.date >= format(startOfMonth(new Date()), 'yyyy-MM-dd')).reduce((s, d) => s + (d.total || 0), 0);
-  const vencidas = facturas.filter((d) => d.status === 'vencido').length;
+  // KPIs memoizados: solo se recalculan si cambia la lista de documentos
+  const stats = useMemo(() => {
+    const facturas = docs.filter((d) => d.doc_type === 'factura');
+    const presupuestos = docs.filter((d) => d.doc_type === 'presupuesto');
+    const totalFacturado = facturas.reduce((s, d) => s + (d.total || 0), 0);
+    const pendienteCobro = facturas.filter((d) => ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0);
+    const cobradoMes = facturas.filter((d) => d.status === 'pagado' && d.date >= format(startOfMonth(new Date()), 'yyyy-MM-dd')).reduce((s, d) => s + (d.total || 0), 0);
+    const vencidas = facturas.filter((d) => d.status === 'vencido').length;
+    const presupuestosEnviados = presupuestos.filter((d) => d.status === 'enviado').length;
+
+    return {
+      facturas,
+      presupuestos,
+      totalFacturado,
+      pendienteCobro,
+      cobradoMes,
+      vencidas,
+      presupuestosEnviados
+    };
+  }, [docs]);
+
+  const { facturas, presupuestos, totalFacturado, pendienteCobro, cobradoMes, vencidas, presupuestosEnviados } = stats;
 
   return (
     <div className="space-y-4">
@@ -541,7 +555,7 @@ export default function Documents() {
           <CardContent className="p-3">
             <p className="text-gray-500 mb-0.5 text-sm font-extrabold">Presupuestos</p>
             <p className="text-blue-700 text-3xl font-bold">{presupuestos.length}</p>
-            <p className="text-gray-400 font-black">{presupuestos.filter((d) => d.status === 'enviado').length} enviados</p>
+            <p className="text-gray-400 font-black">{presupuestosEnviados} enviados</p>
           </CardContent>
         </Card>
       </div>
