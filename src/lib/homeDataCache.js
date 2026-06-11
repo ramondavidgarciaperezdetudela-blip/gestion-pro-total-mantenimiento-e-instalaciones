@@ -9,10 +9,11 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora
 const cacheStore = {};
 const cacheTimes = {};
 const pendingPromises = {};
+let pendingHomeDataPromise = null;
 
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
-async function fetchWithRetry(fetcher, retries = 4, waitMs = 2000) {
+async function fetchWithRetry(fetcher, retries = 5, waitMs = 3000) {
   try {
     return await fetcher();
   } catch (err) {
@@ -60,7 +61,13 @@ async function batchFetch(tasks, batchSize = 2, batchDelay = 150) {
 }
 
 export async function getHomeData(forceRefresh = false) {
-  if (forceRefresh) invalidateHomeCache();
+  if (forceRefresh) {
+    invalidateHomeCache();
+    pendingHomeDataPromise = null;
+  }
+
+  // Si ya hay una carga en curso, reutilizarla (evita múltiples llamadas paralelas)
+  if (pendingHomeDataPromise) return pendingHomeDataPromise;
 
   const { base44 } = await import('@/api/base44Client');
 
@@ -75,10 +82,17 @@ export async function getHomeData(forceRefresh = false) {
     { key: 'stockItems',        fetcher: () => base44.entities.StockItem.list('-updated_date', 15) },
   ];
 
-  const [invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems] =
-    await batchFetch(tasks, 1, 400);
+  pendingHomeDataPromise = batchFetch(tasks, 1, 600).then(
+    ([invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems]) => {
+      pendingHomeDataPromise = null;
+      return { invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems };
+    }
+  ).catch(err => {
+    pendingHomeDataPromise = null;
+    throw err;
+  });
 
-  return { invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems };
+  return pendingHomeDataPromise;
 }
 
 // Invalidar todo el cache
