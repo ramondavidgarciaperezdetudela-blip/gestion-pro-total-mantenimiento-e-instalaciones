@@ -1,0 +1,3 @@
+## 2026-05-18 - [PriceComparator Optimization]
+**Learning:** O(N^2) loops with nested string operations (normalization, tokenization, includes) can severely impact UI responsiveness when data exceeds a few thousand items. Shifting tokenization to a pre-processing pass significantly improves speed. However, replacing 'includes' with Set.has() breaks fuzzy matching (e.g., 'Keyboard' vs 'Keyboards'), so iterating over pre-tokenized arrays with 'includes' is a better balance for this use case.
+**Action:** Always verify if substring matching is required before replacing it with Set lookups. If substring matching is needed, pre-tokenize but maintain the 'includes' check on tokens.

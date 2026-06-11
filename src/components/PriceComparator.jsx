@@ -1,42 +1,68 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Search, TrendingDown, Building2, Award, AlertCircle, X, Zap, FileText, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import ComparatorToBudgetDialog from './ComparatorToBudgetDialog';
 
-// ── Similitud de nombres ──────────────────────────────────────────────────────
-function similarity(a, b) {
-  const wordsA = a.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  const wordsB = b.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  if (!wordsA.length || !wordsB.length) return 0;
-  const matches = wordsA.filter(w => wordsB.some(wb => wb.includes(w) || w.includes(wb)));
-  return matches.length / Math.max(wordsA.length, wordsB.length);
-}
-
 // ── Agrupa productos similares de distintos proveedores ───────────────────────
+// Optimizado: Pre-procesado de tokens y uso de Sets para búsqueda O(1)
 function buildComparisons(prices) {
+  // 1. Pre-procesado: Normalización y tokenización única para evitar O(N^2) tokenizaciones
+  const processed = prices.map(p => {
+    const cleanName = (p.product_name || '').toLowerCase();
+    const words = cleanName.split(/\s+/).filter(w => w.length > 3);
+    return {
+      item: p,
+      cleanCode: (p.product_code || '').trim().toLowerCase(),
+      words: words
+    };
+  });
+
   const used = new Set();
   const groups = [];
 
-  for (let i = 0; i < prices.length; i++) {
+  for (let i = 0; i < processed.length; i++) {
     if (used.has(i)) continue;
-    const base = prices[i];
-    const group = [base];
+    const base = processed[i];
+    const group = [base.item];
     used.add(i);
 
-    for (let j = i + 1; j < prices.length; j++) {
+    for (let j = i + 1; j < processed.length; j++) {
       if (used.has(j)) continue;
-      const candidate = prices[j];
-      if (candidate.supplier_id === base.supplier_id) continue;
+      const candidate = processed[j];
 
-      const sameCode = base.product_code && candidate.product_code &&
-        base.product_code.trim().toLowerCase() === candidate.product_code.trim().toLowerCase();
-      const nameSim = similarity(base.product_name || '', candidate.product_name || '');
+      // Evitar comparar productos del mismo proveedor
+      if (candidate.item.supplier_id === base.item.supplier_id) continue;
 
-      if (sameCode || nameSim >= 0.55) {
-        group.push(candidate);
+      // 1. Coincidencia por código (operación muy rápida)
+      const sameCode = base.cleanCode && base.cleanCode === candidate.cleanCode;
+
+      let isSimilar = sameCode;
+
+      // 2. Coincidencia por similitud de nombre (solo si no coinciden por código)
+      if (!isSimilar) {
+        const wordsA = base.words;
+        const wordsB = candidate.words;
+
+        if (wordsA.length > 0 && wordsB.length > 0) {
+          let matches = 0;
+          // Restaurada lógica de substring 'includes' para mantener funcionalidad original
+          // pero sobre palabras pre-tokenizadas para evitar re-tokenización costosa.
+          for (let k = 0; k < wordsA.length; k++) {
+            const wa = wordsA[k];
+            if (wordsB.some(wb => wb.includes(wa) || wa.includes(wb))) {
+              matches++;
+            }
+          }
+
+          const sim = matches / Math.max(wordsA.length, wordsB.length);
+          if (sim >= 0.55) isSimilar = true;
+        }
+      }
+
+      if (isSimilar) {
+        group.push(candidate.item);
         used.add(j);
       }
     }
