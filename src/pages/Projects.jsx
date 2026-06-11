@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,11 +12,10 @@ import { Progress } from "@/components/ui/progress";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   Plus, FolderOpen, Trash2, Edit, ChevronDown, ChevronUp,
-  Users, Calendar, CheckCircle2, Circle, Clock, AlertTriangle,
-  BarChart3, Target, Zap, ListTodo, GripVertical
+  CheckCircle2, Circle, AlertTriangle,
+  Zap, ListTodo, GripVertical
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
-import { getNextAvailableNumber } from '../components/autoNumber';
 
 const TYPES = ['clima', 'refrigeracion', 'electrico', 'solar', 'mixto'];
 const STATUSES = ['planificacion', 'en_curso', 'pausado', 'completado', 'cancelado'];
@@ -221,19 +220,24 @@ export default function Projects() {
     setForm({ ...form, tasks: form.tasks.map((t, idx) => idx === i ? updated : t) });
   };
 
-  // Stats
-  const total = projects.length;
-  const enCurso = projects.filter(p => p.status === 'en_curso').length;
-  const completados = projects.filter(p => p.status === 'completado').length;
-  const vencidos = projects.filter(p => p.end_date && parseISO(p.end_date) < new Date() && p.status !== 'completado' && p.status !== 'cancelado').length;
+  // Stats - Memoized to prevent recalculation on every render
+  const stats = useMemo(() => ({
+    total: projects.length,
+    enCurso: projects.filter(p => p.status === 'en_curso').length,
+    completados: projects.filter(p => p.status === 'completado').length,
+    vencidos: projects.filter(p => p.end_date && parseISO(p.end_date) < new Date() && p.status !== 'completado' && p.status !== 'cancelado').length,
+  }), [projects]);
 
-  // Filter
-  const filtered = projects.filter(p => {
-    const matchStatus = filterStatus === 'todos' || p.status === filterStatus;
-    const matchType = filterType === 'todos' || p.type === filterType;
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.contact_name || '').toLowerCase().includes(search.toLowerCase());
-    return matchStatus && matchType && matchSearch;
-  });
+  // Filter - Memoized to prevent recalculation on every render
+  const filtered = useMemo(() => {
+    const searchLower = search.toLowerCase();
+    return projects.filter(p => {
+      const matchStatus = filterStatus === 'todos' || p.status === filterStatus;
+      const matchType = filterType === 'todos' || p.type === filterType;
+      const matchSearch = !search || p.name.toLowerCase().includes(searchLower) || (p.contact_name || '').toLowerCase().includes(searchLower);
+      return matchStatus && matchType && matchSearch;
+    });
+  }, [projects, filterStatus, filterType, search]);
 
   return (
     <div className="space-y-4">
@@ -249,10 +253,10 @@ export default function Projects() {
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Total', value: total, color: 'text-gray-700', bg: 'bg-gray-50', icon: FolderOpen },
-          { label: 'En curso', value: enCurso, color: 'text-blue-700', bg: 'bg-blue-50', icon: Zap },
-          { label: 'Completados', value: completados, color: 'text-green-700', bg: 'bg-green-50', icon: CheckCircle2 },
-          { label: 'Vencidos', value: vencidos, color: 'text-red-700', bg: 'bg-red-50', icon: AlertTriangle },
+          { label: 'Total', value: stats.total, color: 'text-gray-700', bg: 'bg-gray-50', icon: FolderOpen },
+          { label: 'En curso', value: stats.enCurso, color: 'text-blue-700', bg: 'bg-blue-50', icon: Zap },
+          { label: 'Completados', value: stats.completados, color: 'text-green-700', bg: 'bg-green-50', icon: CheckCircle2 },
+          { label: 'Vencidos', value: stats.vencidos, color: 'text-red-700', bg: 'bg-red-50', icon: AlertTriangle },
         ].map((s, i) => {
           const Icon = s.icon;
           return (
