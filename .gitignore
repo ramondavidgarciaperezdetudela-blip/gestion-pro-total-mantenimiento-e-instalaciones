@@ -23,6 +23,12 @@ dist-ssr
 *.aab
 *.keystore
 
+# Electron / electron-builder (instaladores generados)
+/release
+*.AppImage
+*.dmg
+*.deb
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

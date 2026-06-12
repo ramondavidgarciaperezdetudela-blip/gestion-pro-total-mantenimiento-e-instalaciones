@@ -13,7 +13,10 @@
     "cap:add:android": "cap add android",
     "cap:sync": "cap sync",
     "cap:open:android": "cap open android",
-    "android:build": "npm run build && cap sync android && cd android && ./gradlew assembleDebug"
+    "android:build": "npm run build && cap sync android && cd android && ./gradlew assembleDebug",
+    "build:electron": "vite build --base=./",
+    "electron:dev": "npm run build:electron && electron electron/main.cjs",
+    "desktop:dist": "npm run build:electron && electron-builder"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.32",
@@ -94,6 +97,8 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "baseline-browser-mapping": "^2.8.32",
+    "electron": "^42.4.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.19.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.0.0",
