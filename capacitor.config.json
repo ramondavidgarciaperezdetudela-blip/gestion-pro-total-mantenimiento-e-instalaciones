@@ -1,0 +1,11 @@
+{
+  "appId": "com.gestionprototal.app",
+  "appName": "Gestión Pro Total",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
