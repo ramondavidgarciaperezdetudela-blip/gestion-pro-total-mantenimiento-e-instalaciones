@@ -9,6 +9,7 @@ import { Suspense, lazy } from 'react';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import LicenseGate from '@/components/LicenseGate';
 const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
 
 class ErrorBoundary extends Component {
@@ -78,6 +79,7 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Suspense fallback={<PageLoader />}>
+      <LicenseGate>
       <AnimatedRoutes>
         <Routes>
           <Route path="/" element={
@@ -104,6 +106,7 @@ const AuthenticatedApp = () => {
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </AnimatedRoutes>
+      </LicenseGate>
     </Suspense>
   );
 };

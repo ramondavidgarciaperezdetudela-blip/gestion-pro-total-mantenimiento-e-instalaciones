@@ -45,3 +45,6 @@ dist-ssr
 SOLO-PARA-MI/
 *CLAVE-SECRETA*
 secret.txt
+
+.env.local
+.env*.local
