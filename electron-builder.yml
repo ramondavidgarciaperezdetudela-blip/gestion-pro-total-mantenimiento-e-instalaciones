@@ -1,0 +1,52 @@
+appId: com.gestionprototal.desktop
+productName: Gestión Pro Total
+copyright: © Ramón David García Pérez de Tudela
+
+# Inyecta el punto de entrada de Electron en el paquete final.
+extraMetadata:
+  main: electron/main.cjs
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+
+# ---------- Windows ----------
+win:
+  target:
+    - nsis        # Instalador con desinstalador integrado (.exe)
+    - portable    # Versión portable sin instalación (.exe)
+  artifactName: ${productName}-${version}-Windows-Setup.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Gestión Pro Total
+  # NSIS genera automáticamente el desinstalador (Unins000.exe) y la entrada en
+  # "Aplicaciones y características" de Windows.
+
+# ---------- macOS ----------
+mac:
+  target:
+    - dmg         # Imagen de disco para instalar arrastrando a Aplicaciones
+  category: public.app-category.business
+  artifactName: ${productName}-${version}-Mac.${ext}
+
+dmg:
+  title: Gestión Pro Total
+
+# ---------- Linux (incluye contenedor Linux de Chromebook) ----------
+linux:
+  target:
+    - AppImage    # Ejecutable portable, no requiere instalación
+    - deb         # Paquete instalable/desinstalable con apt/dpkg
+  category: Office
+  maintainer: Ramón David García Pérez de Tudela
+  artifactName: ${productName}-${version}-Linux.${ext}

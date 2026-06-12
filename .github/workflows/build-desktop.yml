@@ -1,0 +1,72 @@
+name: Build Desktop Installers
+
+# Compila los instaladores de escritorio (Windows, macOS y Linux) y los publica
+# como Release para descarga directa. Linux (.deb/.AppImage) sirve también para el
+# contenedor Linux de Chromebook.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # 1) Asegura que la Release existe antes de subir binarios (evita carreras).
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Crear/actualizar Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-latest
+          name: "Gestión Pro Total — Instaladores de escritorio"
+          body: |
+            Instaladores de escritorio generados automáticamente.
+
+            - Windows: `*-Windows-Setup.exe` (instalador con desinstalador) o portable.
+            - macOS: `*-Mac.dmg`.
+            - Linux / Chromebook (contenedor Linux): `*-Linux.AppImage` o `*-Linux.deb`.
+          make_latest: false
+
+  # 2) Compila en cada sistema operativo y sube los instaladores a la Release.
+  build-desktop:
+    needs: create-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app (base relativa para Electron)
+        run: npm run build:electron
+
+      - name: Build desktop installers
+        run: npx electron-builder --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish installers to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-latest
+          files: |
+            release/*.exe
+            release/*.dmg
+            release/*.AppImage
+            release/*.deb
+          fail_on_unmatched_files: false
