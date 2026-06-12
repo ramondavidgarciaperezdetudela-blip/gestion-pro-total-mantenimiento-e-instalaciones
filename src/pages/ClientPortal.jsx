@@ -7,11 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Users, FileText, Wrench, CheckCircle, Clock, AlertCircle,
-  Download, Send, Eye, Search, Phone, Mail, MessageCircle,
-  Euro, TrendingUp, FileCheck, XCircle, Link
+  Users, FileText, Wrench, CheckCircle, Clock, AlertCircle, Send, Eye, Search, Phone, Mail, MessageCircle,
+  Euro, FileCheck, Link
 } from 'lucide-react';
-import { format } from 'date-fns';
 
 const STATUS_COLORS = {
   borrador: 'bg-gray-100 text-gray-600',

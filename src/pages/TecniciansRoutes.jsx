@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MapPin, Plus, Trash2, Navigation, Clock, Euro, AlertCircle, Edit2, Copy, Check, Loader, Zap } from 'lucide-react';
+import { MapPin, Plus, Trash2, Navigation, Clock, Euro, Edit2, Check, Loader, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';

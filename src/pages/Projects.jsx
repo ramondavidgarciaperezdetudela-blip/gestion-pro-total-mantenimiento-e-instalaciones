@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
-  Plus, FolderOpen, Trash2, Edit, ChevronDown, ChevronUp,
-  Users, Calendar, CheckCircle2, Circle, Clock, AlertTriangle,
-  BarChart3, Target, Zap, ListTodo, GripVertical
+  Plus, FolderOpen, Trash2, Edit, ChevronDown, ChevronUp, CheckCircle2, Circle, AlertTriangle, Zap, ListTodo, GripVertical
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
-import { getNextAvailableNumber } from '../components/autoNumber';
 
 const TYPES = ['clima', 'refrigeracion', 'electrico', 'solar', 'mixto'];
 const STATUSES = ['planificacion', 'en_curso', 'pausado', 'completado', 'cancelado'];

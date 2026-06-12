@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Sun, Zap, Euro, Clock, Home, BarChart2, Info } from 'lucide-react';
+import { TrendingUp, Sun, Euro, Clock } from 'lucide-react';
 
 // ─── Datos de irradiación media por latitud (HSP medias mensuales en España) ───
 const IRRADIACION_ESPANA = {

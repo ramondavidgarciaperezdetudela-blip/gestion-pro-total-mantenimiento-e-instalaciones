@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, ShoppingCart, Loader2, ExternalLink, Package } from 'lucide-react';
+import { Search, ShoppingCart, Loader2, Package } from 'lucide-react';
 
 export default function SupplierProductSearch({ open, onClose, onAddItem }) {
   const [suppliers, setSuppliers] = useState([]);

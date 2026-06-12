@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Star, CheckCircle, XCircle, Info } from 'lucide-react';
+import { Zap, Star, CheckCircle, Info } from 'lucide-react';
 
 const INVERSORES = [
   {
