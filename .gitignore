@@ -16,6 +16,13 @@ dist
 dist-ssr
 *.local
 
+# Capacitor native projects (generados; ver docs/BUILD-MULTIPLATAFORMA.md)
+/android
+/ios
+*.apk
+*.aab
+*.keystore
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
