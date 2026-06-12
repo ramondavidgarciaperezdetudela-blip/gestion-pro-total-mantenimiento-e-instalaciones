@@ -1,0 +1,3 @@
+## 2026-06-12 - [Consolidated Memoization for Reports]
+**Learning:** Report-heavy pages like `src/pages/Reports.jsx` use `Tabs` for navigation, which triggers full component re-renders on every switch. Recalculating complex data transformations (KPIs, chart arrays, filters) on every render creates visible UI lag during transitions and period changes. Consolidating these into a single `useMemo` hook with `data` and `period` as dependencies ensures stability and speed.
+**Action:** Consolidate scattered derived variables into a single memoized `stats` object at the top of the component and destructure them for clean JSX access. Refactor immediately invoked function expressions (IIFEs) used for data transformation inside JSX into the same memoized object.
