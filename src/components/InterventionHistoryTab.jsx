@@ -2,12 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
-  Wrench, FileText, Package, ClipboardList, ChevronDown, ChevronUp,
-  Calendar, Euro, User, Filter
+  Wrench, FileText, Package, ClipboardList, ChevronDown, ChevronUp, User, Filter
 } from 'lucide-react';
 
 const fmtDate = (d) => {

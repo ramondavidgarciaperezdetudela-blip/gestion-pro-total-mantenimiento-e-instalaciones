@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Wrench, ChevronDown, ChevronUp, Trash2, Edit, Download, FileSpreadsheet, Camera, FolderOpen, X, Printer, MessageCircle, Send, Image } from 'lucide-react';
+import { Plus, Wrench, ChevronUp, Trash2, Edit, FileSpreadsheet, Camera, FolderOpen, X, Printer, MessageCircle, Send, Image } from 'lucide-react';
 import SignatureCanvas from './SignaturePad';
 import { toast } from 'sonner';
 import PhotoGallery from './PhotoGallery';

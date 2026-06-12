@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 
 const THRESHOLD = 72;
@@ -58,7 +58,7 @@ export default function PullToRefresh({ onRefresh, children }) {
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [onRefresh]);
 
   const progress = Math.min(pullDistance / THRESHOLD, 1);

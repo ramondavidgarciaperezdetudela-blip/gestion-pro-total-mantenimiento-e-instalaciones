@@ -1,5 +1,4 @@
 import { base44 } from '@/api/base44Client';
-import { toast } from 'sonner';
 
 export const fetchSupplierDataFromAPI = async (searchTerm, searchType = 'name') => {
   if (!searchTerm?.trim()) return null;

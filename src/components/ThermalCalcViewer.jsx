@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileDown, ChevronDown, ChevronUp, Printer, Trash2 } from 'lucide-react';
+import { FileDown, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 
 /**
  * ThermalCalcViewer — Muestra un cálculo guardado (ThermalCalculation) de forma completa:

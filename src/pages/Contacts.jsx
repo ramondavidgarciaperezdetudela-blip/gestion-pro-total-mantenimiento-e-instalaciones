@@ -1,20 +1,18 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import PullToRefresh from '../components/PullToRefresh';
 import { createPageUrl } from '../utils';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-   Plus, Search, Phone, Mail, Building2, User, Navigation, Trash2, Edit,
-   Camera, Users, AlertTriangle, Euro, LayoutGrid, List, Star, MapPin,
-   ChevronRight, TrendingUp, FileText, Wrench, Download, WifiOff, RefreshCw
+   Plus, Search, Phone, Mail, Building2, User, Trash2, Edit,
+   Camera, Users, AlertTriangle, LayoutGrid, List, MapPin, Download, WifiOff, RefreshCw
  } from 'lucide-react';
 import { saveToCache, loadFromCache, formatCacheDate } from '@/lib/offlineCache';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
