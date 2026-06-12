@@ -34,11 +34,8 @@ jobs:
         run: npm ci
 
       - name: Build web app
-        env:
-          # Configura estos valores como "Secrets" del repositorio para que la app
-          # se conecte al backend de Base44. Settings > Secrets and variables > Actions.
-          VITE_BASE44_APP_ID: ${{ secrets.VITE_BASE44_APP_ID }}
-          VITE_BASE44_APP_BASE_URL: ${{ secrets.VITE_BASE44_APP_BASE_URL }}
+        # Los valores de conexión a Base44 se leen de .env.production (incluido en
+        # el repositorio), por lo que no hace falta configurar secrets.
         run: npm run build
 
       - name: Add Android platform
