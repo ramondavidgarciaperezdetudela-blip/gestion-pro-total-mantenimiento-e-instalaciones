@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Solicitud de Licencia — Gestión Pro Total</title>
+<style>
+  * { box-sizing:border-box; font-family:system-ui,"Segoe UI",Roboto,sans-serif; }
+  body { margin:0; background:#0f172a; color:#0f172a; }
+  .box { max-width:560px; margin:30px auto; background:#fff; border-radius:14px; padding:26px; box-shadow:0 10px 30px rgba(0,0,0,.3); }
+  h1 { font-size:20px; color:#1e40af; margin:0 0 4px; }
+  p.sub { color:#64748b; margin:0 0 20px; font-size:14px; }
+  label { display:block; font-weight:600; font-size:13px; margin:12px 0 4px; }
+  input, textarea { width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:14px; }
+  .device { background:#0f172a; color:#7dd3fc; padding:12px; border-radius:8px; font-family:ui-monospace,monospace; text-align:center; font-size:18px; letter-spacing:1px; margin:6px 0; }
+  button { width:100%; background:#16a34a; color:#fff; border:0; padding:13px; border-radius:8px; font-size:15px; font-weight:700; cursor:pointer; margin-top:18px; }
+  button.sec { background:#475569; margin-top:8px; }
+  .muted { color:#64748b; font-size:12px; }
+  .out { background:#f1f5f9; border-radius:8px; padding:12px; margin-top:14px; font-family:ui-monospace,monospace; font-size:12px; word-break:break-all; display:none; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>📝 Solicitar licencia de Gestión Pro Total</h1>
+  <p class="sub">Rellena tus datos y envíanoslos. Te devolveremos tu clave de activación.</p>
+
+  <label>Tu identificador de equipo (no lo cambies)</label>
+  <div class="device" id="device">Generando…</div>
+  <p class="muted">Este código identifica tu ordenador. Tu licencia solo funcionará en él.</p>
+
+  <label>Nombre / Empresa *</label>
+  <input id="cliente" placeholder="Mantenimientos García S.L." />
+  <label>Email *</label>
+  <input id="email" type="email" placeholder="tucorreo@empresa.com" />
+  <label>Teléfono</label>
+  <input id="tel" placeholder="600 000 000" />
+  <label>Comentarios (plan deseado, nº de empleados…)</label>
+  <textarea id="notas" rows="3"></textarea>
+
+  <button onclick="enviar()">Enviar solicitud por email</button>
+  <button class="sec" onclick="copiar()">Copiar datos al portapapeles</button>
+  <div class="out" id="out"></div>
+  <p class="muted" style="margin-top:14px">Soporte: ramondavidgarciaperezdetudela@gmail.com</p>
+</div>
+
+<script>
+const LS='gpt_device_id_v1';
+function getDeviceId(){
+  let id=localStorage.getItem(LS); if(id)return id;
+  const seed=[navigator.userAgent,navigator.language,navigator.platform||'',screen.width+'x'+screen.height,new Date().getTimezoneOffset(),(crypto.randomUUID&&crypto.randomUUID())||Math.random()].join('|');
+  let h=0; for(let i=0;i<seed.length;i++)h=(Math.imul(31,h)+seed.charCodeAt(i))|0;
+  id='DEV-'+(h>>>0).toString(16).toUpperCase().padStart(8,'0');
+  localStorage.setItem(LS,id); return id;
+}
+const device=getDeviceId();
+document.getElementById('device').textContent=device;
+
+function datos(){
+  return `SOLICITUD DE LICENCIA - Gestion Pro Total
+Equipo: ${device}
+Cliente: ${document.getElementById('cliente').value}
+Email: ${document.getElementById('email').value}
+Telefono: ${document.getElementById('tel').value}
+Notas: ${document.getElementById('notas').value}`;
+}
+function enviar(){
+  const email=document.getElementById('email').value;
+  if(!document.getElementById('cliente').value||!email){alert('Pon al menos nombre y email.');return;}
+  const body=encodeURIComponent(datos());
+  window.location.href=`mailto:ramondavidgarciaperezdetudela@gmail.com?subject=${encodeURIComponent('Solicitud licencia Gestion Pro Total - '+device)}&body=${body}`;
+}
+function copiar(){
+  navigator.clipboard.writeText(datos());
+  const o=document.getElementById('out'); o.style.display='block'; o.textContent=datos();
+  alert('Datos copiados. Pégalos en un email o WhatsApp.');
+}
+</script>
+</body>
+</html>

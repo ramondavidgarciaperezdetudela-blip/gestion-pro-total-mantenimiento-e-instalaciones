@@ -1,0 +1,4 @@
+Las carpetas dist/ (app compilada) y el .apk NO se incluyen en el repositorio.
+Para generarlos:  npm run build:electron   -> copia la carpeta dist resultante
+                  junto a cada script (Windows/Mac/ChromeBook).
+El .apk y los instaladores nativos se descargan desde las Releases de GitHub.
