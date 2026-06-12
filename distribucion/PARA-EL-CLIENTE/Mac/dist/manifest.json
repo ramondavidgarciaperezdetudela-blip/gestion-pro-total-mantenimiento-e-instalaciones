@@ -1,0 +1,47 @@
+{
+  "name": "SAT Gestión Profesional",
+  "short_name": "SAT Gestión",
+  "description": "Gestión SAT Profesional - Climatización, Electricidad, Refrigeración y Solar",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e3a5f",
+  "theme_color": "#1e3a5f",
+  "orientation": "any",
+  "lang": "es",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "https://base44.com/logo_v2.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Nueva Orden SAT",
+      "short_name": "SAT",
+      "url": "/SAT",
+      "description": "Crear nueva orden de servicio técnico"
+    },
+    {
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "url": "/Agenda",
+      "description": "Ver agenda y citas"
+    },
+    {
+      "name": "Clientes",
+      "short_name": "Clientes",
+      "url": "/Contacts",
+      "description": "Gestionar clientes"
+    },
+    {
+      "name": "Documentos",
+      "short_name": "Docs",
+      "url": "/Documents",
+      "description": "Facturas y presupuestos"
+    }
+  ]
+}

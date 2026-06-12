@@ -1,40 +1,35 @@
 # Panel-Cloud — Validación de licencias en servidor (recomendado)
 
-La validación 100% offline obliga a llevar la clave secreta dentro de la app
-(extraíble). Para protección **fuerte**, valida las licencias en un servidor
-donde la clave nunca sale. Esto te da además: revocar licencias al instante,
-ver qué clientes están activos y bloquear cuentas morosas.
+Con firma de clave pública, la app ya valida offline de forma segura (nadie
+puede falsificar licencias). El servidor solo es necesario si además quieres
+**revocar licencias al instante** o llevar control de clientes/morosos.
 
-## Opción A — Función serverless (Cloudflare Workers / Vercel)
+## Función serverless (Cloudflare Workers / Vercel)
 
-Crea un endpoint `POST /validar` con este pseudocódigo (Node/Workers):
+Endpoint `POST /validar` (Node/Workers). Verifica la firma con la CLAVE
+PÚBLICA (no necesita la privada) y consulta tu lista de revocadas:
 
 ```js
-import { createHmac, timingSafeEqual } from 'node:crypto';
-const SECRET = process.env.GPT_SECRET; // tu clave maestra, SOLO en el servidor
+// La clave PÚBLICA es segura de poner aquí.
+const PUBLIC_JWK = { kty:'EC', crv:'P-256', x:'...', y:'...' };
 
 export default async function handler(req) {
   const { license, deviceId } = await req.json();
-  const [payloadB64, sigB64] = (license || '').split('.');
-  const expected = createHmac('sha256', SECRET).update(payloadB64).digest();
-  const provided = Buffer.from(sigB64.replace(/-/g,'+').replace(/_/g,'/'), 'base64');
-  if (expected.length !== provided.length || !timingSafeEqual(expected, provided))
-    return Response.json({ valid:false, reason:'FIRMA_NO_COINCIDE' });
-  const p = JSON.parse(Buffer.from(payloadB64,'base64url').toString());
+  const [pB64, sigB64] = (license || '').split('.');
+  const key = await crypto.subtle.importKey('jwk', PUBLIC_JWK,
+    { name:'ECDSA', namedCurve:'P-256' }, false, ['verify']);
+  const unb64 = s => Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')), c=>c.charCodeAt(0));
+  const ok = await crypto.subtle.verify({ name:'ECDSA', hash:'SHA-256' }, key,
+    unb64(sigB64), new TextEncoder().encode(pB64));
+  if (!ok) return Response.json({ valid:false, reason:'FIRMA_NO_COINCIDE' });
+  const p = JSON.parse(new TextDecoder().decode(unb64(pB64)));
   if (p.expira && Date.now() > p.expira) return Response.json({ valid:false, reason:'CADUCADA' });
   if (p.deviceId && p.deviceId !== deviceId) return Response.json({ valid:false, reason:'OTRO_EQUIPO' });
-  // opcional: comprobar lista de revocadas en KV/DB
+  // if (await estaRevocada(license)) return Response.json({ valid:false, reason:'REVOCADA' });
   return Response.json({ valid:true, reason:'OK', plan:p.plan, expira:p.expira });
 }
 ```
 
-Variables de entorno: `GPT_SECRET` = tu clave maestra (carpeta SOLO-PARA-MI).
-
 ## Conectar la app
-
-En la app, usa `validateLicenseCloud(key, 'https://tu-endpoint/validar')`
-de `src/lib/licenseManager.js`. Mira `docs/SISTEMA-LICENCIAS.md`.
-
-## Opción B — Hoja de cálculo + Apps Script
-Si no quieres servidor, puedes registrar manualmente las licencias emitidas en
-una hoja de Google y revocar a mano. Menos automático, pero cero coste.
+Compila con `VITE_LICENSE_ENDPOINT=https://tu-endpoint/validar`. La app usará
+`validateLicenseCloud` automáticamente. Mira `docs/SISTEMA-LICENCIAS.md`.

@@ -20,7 +20,7 @@ async function validateCurrent() {
   const key = loadLicense();
   if (!key) return { valid: false, reason: 'SIN_LICENCIA' };
   if (cfg.mode === 'cloud') return validateLicenseCloud(key, cfg.cloudEndpoint, { deviceId: getDeviceId() });
-  return validateLicenseLocal(key, cfg.localSecret, { deviceId: getDeviceId() });
+  return validateLicenseLocal(key, null, { deviceId: getDeviceId() });
 }
 
 function ActivationScreen({ reason, onActivated }) {
@@ -92,11 +92,8 @@ export default function LicenseGate({ children }) {
     if (isPublicPath() || !cfg.enabled || cfg.ownerBypass) {
       return setState({ checking: false, valid: true });
     }
-    const configured = cfg.mode === 'cloud' ? !!cfg.cloudEndpoint : !!cfg.localSecret;
-    if (!configured) {
-      if (import.meta.env.DEV) {
-        console.warn('[Licencias] Capa activada sin secreto/endpoint: se deja pasar. Configura VITE_LICENSE_SECRET o VITE_LICENSE_ENDPOINT para exigir licencia.');
-      }
+    // En modo cloud sin endpoint configurado, no bloquear (evita autobloqueo).
+    if (cfg.mode === 'cloud' && !cfg.cloudEndpoint) {
       return setState({ checking: false, valid: true });
     }
     const res = await validateCurrent();

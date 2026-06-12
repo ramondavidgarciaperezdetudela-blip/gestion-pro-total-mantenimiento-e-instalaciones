@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="https://base44.com/logo_v2.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1e3a5f" />
+    <meta name="description" content="Gestión SAT Profesional - Climatización, Electricidad, Refrigeración y Solar" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SAT Gestión" />
+    <meta name="application-name" content="SAT Gestión" />
+    <meta name="msapplication-TileColor" content="#1e3a5f" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <!-- Open Graph -->
+    <meta property="og:title" content="SAT Gestión Profesional" />
+    <meta property="og:description" content="Gestión SAT Profesional - Climatización, Electricidad, Refrigeración y Solar" />
+    <meta property="og:type" content="website" />
+    <link rel="manifest" href="./manifest.json" />
+    <!-- Preconnect para acelerar peticiones API -->
+    <link rel="preconnect" href="https://api.base44.com" />
+    <link rel="dns-prefetch" href="https://api.base44.com" />
+    <link rel="preconnect" href="https://storage.googleapis.com" />
+    <link rel="dns-prefetch" href="https://storage.googleapis.com" />
+    <title>SAT Gestión Profesional</title>
+    <style>
+      /* Splash screen mientras carga */
+      #splash {
+        position: fixed; inset: 0;
+        background: #1e3a5f;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease;
+      }
+      #splash.hidden { opacity: 0; pointer-events: none; }
+      #splash-title {
+        color: white; font-family: Arial, sans-serif;
+        font-size: 24px; font-weight: 700; margin-top: 16px;
+      }
+      #splash-sub {
+        color: #93c5fd; font-family: Arial, sans-serif;
+        font-size: 13px; margin-top: 6px;
+      }
+      .splash-spinner {
+        width: 40px; height: 40px;
+        border: 4px solid rgba(255,255,255,0.2);
+        border-top-color: #0ea5e9;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-top: 24px;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+    <script type="module" crossorigin src="./assets/index-Cbg3Vpbv.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B9HZzC3S.css">
+  </head>
+  <body>
+    <div id="splash">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+        <rect width="64" height="64" rx="16" fill="#0ea5e9"/>
+        <path d="M32 14L46 22V42L32 50L18 42V22L32 14Z" stroke="white" stroke-width="3" fill="none"/>
+        <path d="M32 22L40 27V37L32 42L24 37V27L32 22Z" fill="white" opacity="0.3"/>
+        <circle cx="32" cy="32" r="5" fill="white"/>
+      </svg>
+      <div id="splash-title">SAT Gestión</div>
+      <div id="splash-sub">Cargando aplicación...</div>
+      <div class="splash-spinner"></div>
+    </div>
+    <div id="root"></div>
+    <script>
+      // Ocultar splash cuando la app esté lista
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const splash = document.getElementById('splash');
+          if (splash) {
+            splash.classList.add('hidden');
+            setTimeout(() => splash.remove(), 500);
+          }
+        }, 300); // reducido de 800ms a 300ms
+      });
+
+      // Registrar Service Worker para PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+
+      // Detectar si se puede instalar la PWA y mostrar banner
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // Crear banner de instalación
+        const banner = document.createElement('div');
+        banner.id = 'install-banner';
+        banner.style.cssText = `
+          position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+          background: #1e3a5f; color: white; border-radius: 12px;
+          padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 9000;
+          font-family: Arial, sans-serif; font-size: 13px; max-width: 340px;
+          animation: slideUp 0.3s ease;
+        `;
+        banner.innerHTML = `
+          <span>📲</span>
+          <span><strong>Instalar app</strong><br/>Accede más rápido desde tu escritorio o móvil</span>
+          <button id="install-btn" style="background:#0ea5e9;color:white;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-weight:600;white-space:nowrap">Instalar</button>
+          <button id="dismiss-btn" style="background:none;color:#93c5fd;border:none;cursor:pointer;font-size:18px;padding:0 4px">×</button>
+        `;
+        document.body.appendChild(banner);
+        document.getElementById('install-btn').addEventListener('click', () => {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(() => { banner.remove(); deferredPrompt = null; });
+        });
+        document.getElementById('dismiss-btn').addEventListener('click', () => banner.remove());
+      });
+    </script>
+  </body>
+</html>

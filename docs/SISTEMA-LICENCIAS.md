@@ -1,65 +1,49 @@
-# Sistema de licencias (capa opcional)
+# Sistema de licencias (firma de clave pública)
 
-Esta app incorpora una **capa de licencias OPCIONAL**. Por defecto **no está
-activada**: la app funciona con normalidad sin pedir ninguna clave. Cuando
-quieras vender con control de licencias, actívala siguiendo esta guía.
+La app incorpora una capa de licencias basada en **firma ECDSA P-256**:
+
+- La app lleva solo la **clave pública** (incrustada en `src/lib/licenseManager.js`).
+  Sirve para **verificar** licencias, pero **no** para crearlas: por eso es seguro
+  publicar el código y el `dist`.
+- Tú firmas las licencias con la **clave privada** (carpeta `SOLO-PARA-MI`,
+  nunca se sube). Sin ella nadie puede generar licencias válidas.
+
+La protección está **activada** por defecto (`enabled: true` en
+`src/lib/license.config.js`). La app pide una licencia válida, salvo en rutas
+públicas (presupuestos/SAT compartidos) y en builds con bypass de propietario.
 
 ## Piezas
-- `src/lib/licenseManager.js` — librería de validación (HMAC-SHA256, atado a
-  equipo, expiración). No contiene la clave secreta.
-- **Panel de administración** y **formulario de solicitud**: ficheros HTML del
-  paquete de entrega (`GESTOR-LICENCIAS/`), fuera del repo público.
-- **Clave maestra**: privada, nunca se sube a GitHub.
+- `src/lib/licenseManager.js` — verificación ECDSA, atado a equipo, expiración.
+- `src/lib/license.config.js` — flags de la capa (activar, modo, rutas públicas).
+- `src/components/LicenseGate.jsx` — envoltorio + pantalla de activación.
+- **Panel de administración** (`distribucion/GESTOR-LICENCIAS/`) — firma licencias
+  con tu clave privada (fuera del repo público va la privada).
 
-## Cómo funciona
-Una licencia tiene el formato `payload.firma`:
-- `payload` = base64url de `{cliente, email, deviceId, plan, emitida, expira}`.
-- `firma` = `HMAC-SHA256(payload, CLAVE_MAESTRA)`.
+## Formato de licencia
+`base64url(payload).base64url(firmaECDSA)` donde
+`payload = { cliente, email, deviceId, plan, emitida, expira, v }`.
+Si `deviceId` está relleno, la licencia solo vale en ese equipo (anti-compartición).
 
-La licencia se ata al `deviceId` del equipo, de modo que copiarla a otro PC la
-invalida (`OTRO_EQUIPO`).
+## Modos
+- **Local (por defecto)**: verificación offline con la clave pública incrustada.
+- **Cloud (opcional)**: compila con `VITE_LICENSE_ENDPOINT=https://.../validar`
+  para validar en servidor y poder **revocar** licencias. Ver
+  `distribucion/GESTOR-LICENCIAS/Panel-Cloud/`.
 
-## Activar el bloqueo en la app (opcional)
-Envuelve el árbol de la app con una comprobación. Ejemplo mínimo:
-
-```jsx
-import { useEffect, useState } from 'react';
-import {
-  loadLicense, saveLicense, getDeviceId,
-  validateLicenseLocal, validateLicenseCloud, describeReason,
-} from '@/lib/licenseManager';
-
-// Modo CLOUD (recomendado): no necesita la clave en el cliente.
-const CLOUD_ENDPOINT = ''; // p.ej. 'https://tu-worker/validar'
-// Modo LOCAL (offline): exige tener el SECRET en el cliente (extraíble).
-const LOCAL_SECRET = '';   // déjalo vacío si usas cloud
-
-export function LicenseGate({ children }) {
-  const [state, setState] = useState({ checking: true, valid: false });
-
-  useEffect(() => { (async () => {
-    const key = loadLicense();
-    if (!key) return setState({ checking: false, valid: false });
-    const res = CLOUD_ENDPOINT
-      ? await validateLicenseCloud(key, CLOUD_ENDPOINT)
-      : await validateLicenseLocal(key, LOCAL_SECRET, { deviceId: getDeviceId() });
-    setState({ checking: false, valid: res.valid, reason: res.reason });
-  })(); }, []);
-
-  if (state.checking) return <p>Comprobando licencia…</p>;
-  if (state.valid) return children;
-  return <ActivationScreen onActivated={() => location.reload()} reason={state.reason} />;
-}
+## Variables de entorno (build, opcionales)
 ```
+VITE_LICENSE_ENDPOINT      # URL del validador en servidor (activa modo cloud)
+VITE_LICENSE_OWNER_BYPASS  # "1" para tu build personal sin pedir licencia
+VITE_LICENSE_PUBKEY        # JWK alternativo si algún día rotas la clave pública
+```
+Pon estos valores en un `.env.local` (no se sube a git). Sin nada configurado,
+la app valida offline con la clave pública incrustada.
 
-Después, en tu `App.jsx`, envuelve las rutas privadas con `<LicenseGate>`.
+## Desactivar la capa
+Pon `enabled: false` en `src/lib/license.config.js` y recompila: la app dejará
+de pedir licencia.
 
-> Recomendación: usa el **modo CLOUD** (carpeta `Panel-Cloud` del paquete) para
-> poder **revocar** licencias y controlar morosos. El modo local es cómodo pero
-> la clave es extraíble del cliente.
-
-## Seguridad
-- HMAC-SHA256 con `crypto.subtle`, comparación en tiempo constante.
-- La clave maestra **nunca** debe subirse al repositorio (`.gitignore`).
-- El hash público de verificación de la clave está en `MASTER_KEY_FINGERPRINT`
-  (informativo, no permite firmar).
+## Rotar la clave (si se compromete la privada)
+1. Genera un nuevo par ECDSA P-256.
+2. Sustituye la clave pública en `licenseManager.js` (o usa `VITE_LICENSE_PUBKEY`).
+3. Reemite las licencias activas con la nueva clave privada.

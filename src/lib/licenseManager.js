@@ -1,34 +1,33 @@
 /**
- * licenseManager.js — Capa OPCIONAL de licencias para Gestión Pro Total
- * ---------------------------------------------------------------------
- * Módulo independiente y AUTOCONTENIDO. Por defecto NO se usa en la app
- * (no está enrutado ni bloquea nada). Para activarlo, mira:
- *   docs/SISTEMA-LICENCIAS.md
+ * licenseManager.js — Capa de licencias para Gestión Pro Total (ECDSA P-256)
+ * -------------------------------------------------------------------------
+ * Módulo autocontenido. Usa firma de CLAVE PÚBLICA:
+ *   - La app lleva solo la CLAVE PÚBLICA (segura, puede ir en el repo y en
+ *     el bundle del cliente: no permite falsificar licencias).
+ *   - Tú firmas las licencias con la CLAVE PRIVADA (carpeta SOLO-PARA-MI),
+ *     que NUNCA se sube ni se entrega.
  *
- * Diseño:
- *   - Cada licencia es:  base64url(payloadJSON) + "." + base64url(HMAC-SHA256(payload, SECRET))
- *   - El payload contiene: cliente, email, deviceId, plan, emitida, expira.
- *   - La licencia se ata al `deviceId` del equipo (anti-compartición).
- *   - La verificación se puede hacer de 2 formas:
- *       a) LOCAL   -> recalculando el HMAC con el SECRET (modo offline).
- *       b) CLOUD   -> enviando la licencia a un endpoint que la valida
- *                     en servidor (el SECRET nunca sale del servidor).
- *   - Este fichero NO contiene la clave secreta. Para validación local
- *     debes inyectarla por configuración (no recomendado en producción
- *     pública). Para validación cloud no hace falta secret en el cliente.
+ * Formato de licencia:  base64url(payloadJSON) + "." + base64url(firmaECDSA)
+ *   payload = { cliente, email, deviceId, plan, emitida, expira, v }
+ *   firma   = ECDSA(P-256, SHA-256) del texto base64url del payload.
  *
- * IMPORTANTE sobre seguridad: la validación 100% offline obliga a tener
- * el SECRET en el cliente, que es extraíble. Para protección fuerte usa
- * el modo CLOUD (Panel-Cloud). Esta capa es un control comercial básico,
- * no un DRM infranqueable.
+ * La licencia se ata al `deviceId` del equipo (si se rellena) para evitar
+ * que se comparta. Verificación local (offline) o cloud (servidor).
  */
 
 const LS_KEY = 'gpt_license_v1';
 const LS_DEVICE = 'gpt_device_id_v1';
 
-// Hash público de verificación de la clave maestra (informativo, NO es el secret).
-export const MASTER_KEY_FINGERPRINT =
-  '95a98140f7c06711128264653447379f43a7db3c97cb14377933f1e2289199ce';
+// Clave PÚBLICA de verificación (segura de publicar). Se puede sobreescribir
+// por configuración con VITE_LICENSE_PUBKEY (JSON JWK) si algún día rotas claves.
+export const PUBLIC_KEY_JWK = (() => {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_LICENSE_PUBKEY) {
+      return JSON.parse(import.meta.env.VITE_LICENSE_PUBKEY);
+    }
+  } catch { /* noop */ }
+  return { kty: 'EC', crv: 'P-256', x: '41ltfzdxFBhY6qcPIdFrjdzFJBkqUYeU3pp4qTK_ab4', y: 'Utb-BOZYRf9pF2oC_19wwfbsc704IiM3fsGazMYoHrc' };
+})();
 
 /* ----------------------------- utilidades ----------------------------- */
 
@@ -51,31 +50,18 @@ function strToBytes(s) {
   return new TextEncoder().encode(s);
 }
 
-async function hmacSha256(secret, message) {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    strToBytes(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, strToBytes(message));
-  return new Uint8Array(sig);
+async function importPublicKey(jwk = PUBLIC_KEY_JWK) {
+  return crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
 }
 
-function constantTimeEqual(a, b) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
-  return diff === 0;
+async function importPrivateKey(jwk) {
+  return crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
 }
 
 /* --------------------------- device id (huella) ------------------------ */
 
 /**
  * Genera (y persiste) un identificador estable del equipo/navegador.
- * No es un fingerprint invasivo: combina datos básicos + aleatorio,
- * y se guarda en localStorage para que sea estable en ese equipo.
  */
 export function getDeviceId() {
   let id = localStorage.getItem(LS_DEVICE);
@@ -88,11 +74,8 @@ export function getDeviceId() {
     new Date().getTimezoneOffset(),
     (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36),
   ].join('|');
-  // hash corto y legible
   let h = 0;
-  for (let i = 0; i < seed.length; i++) {
-    h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
-  }
+  for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
   id = 'DEV-' + (h >>> 0).toString(16).toUpperCase().padStart(8, '0');
   localStorage.setItem(LS_DEVICE, id);
   return id;
@@ -101,16 +84,16 @@ export function getDeviceId() {
 /* ----------------------- generación (lado admin) ----------------------- */
 
 /**
- * Crea una licencia firmada. SOLO se usa en el panel de administración,
- * donde tú introduces el SECRET. No lo llames desde la app del cliente.
+ * Crea una licencia firmada. SOLO en el panel de administración, con la
+ * CLAVE PRIVADA (JWK). No se usa nunca en la app del cliente.
  *
  * @param {object} data { cliente, email, deviceId, plan, dias }
- * @param {string} secret clave maestra (hex)
+ * @param {object} privateJwk clave privada en formato JWK
  * @returns {Promise<string>} clave de licencia
  */
-export async function generateLicense(data, secret) {
+export async function generateLicense(data, privateJwk) {
   const now = Date.now();
-  const dias = Number(data.dias) || 365;
+  const dias = Number(data.dias) || 0;
   const payload = {
     cliente: data.cliente || '',
     email: data.email || '',
@@ -120,10 +103,10 @@ export async function generateLicense(data, secret) {
     expira: dias > 0 ? now + dias * 86400000 : 0, // 0 = perpetua
     v: 1,
   };
-  const payloadStr = JSON.stringify(payload);
-  const payloadB64 = toB64url(strToBytes(payloadStr));
-  const sig = await hmacSha256(secret, payloadB64);
-  return payloadB64 + '.' + toB64url(sig);
+  const payloadB64 = toB64url(strToBytes(JSON.stringify(payload)));
+  const key = await importPrivateKey(privateJwk);
+  const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, strToBytes(payloadB64));
+  return payloadB64 + '.' + toB64url(new Uint8Array(sig));
 }
 
 /* --------------------- verificación (lado cliente) --------------------- */
@@ -132,44 +115,41 @@ export function parseLicense(key) {
   if (!key || typeof key !== 'string' || key.indexOf('.') < 0) return null;
   const [payloadB64] = key.split('.');
   try {
-    const json = new TextDecoder().decode(fromB64url(payloadB64));
-    return JSON.parse(json);
+    return JSON.parse(new TextDecoder().decode(fromB64url(payloadB64)));
   } catch {
     return null;
   }
 }
 
 /**
- * Valida una licencia OFFLINE recomputando el HMAC con el secret.
+ * Valida una licencia OFFLINE verificando la firma con la CLAVE PÚBLICA.
  * Devuelve { valid, reason, payload }.
  */
-export async function validateLicenseLocal(key, secret, opts = {}) {
+export async function validateLicenseLocal(key, _unused, opts = {}) {
   const payload = parseLicense(key);
   if (!payload) return { valid: false, reason: 'FORMATO_INVALIDO' };
   const [payloadB64, sigB64] = key.split('.');
-  const expected = await hmacSha256(secret, payloadB64);
-  let provided;
+  let okSig = false;
   try {
-    provided = fromB64url(sigB64);
+    const pub = await importPublicKey(opts.publicJwk || PUBLIC_KEY_JWK);
+    okSig = await crypto.subtle.verify(
+      { name: 'ECDSA', hash: 'SHA-256' },
+      pub,
+      fromB64url(sigB64),
+      strToBytes(payloadB64)
+    );
   } catch {
-    return { valid: false, reason: 'FIRMA_INVALIDA' };
+    return { valid: false, reason: 'FIRMA_INVALIDA', payload };
   }
-  if (!constantTimeEqual(expected, provided)) {
-    return { valid: false, reason: 'FIRMA_NO_COINCIDE', payload };
-  }
-  if (payload.expira && Date.now() > payload.expira) {
-    return { valid: false, reason: 'CADUCADA', payload };
-  }
+  if (!okSig) return { valid: false, reason: 'FIRMA_NO_COINCIDE', payload };
+  if (payload.expira && Date.now() > payload.expira) return { valid: false, reason: 'CADUCADA', payload };
   const expectedDevice = opts.deviceId || getDeviceId();
-  if (payload.deviceId && payload.deviceId !== expectedDevice) {
-    return { valid: false, reason: 'OTRO_EQUIPO', payload };
-  }
+  if (payload.deviceId && payload.deviceId !== expectedDevice) return { valid: false, reason: 'OTRO_EQUIPO', payload };
   return { valid: true, reason: 'OK', payload };
 }
 
 /**
- * Valida una licencia CONTRA UN SERVIDOR (modo recomendado).
- * El endpoint guarda el secret y responde { valid, reason }.
+ * Valida una licencia CONTRA UN SERVIDOR (modo recomendado para revocar).
  */
 export async function validateLicenseCloud(key, endpoint, opts = {}) {
   try {
@@ -180,27 +160,21 @@ export async function validateLicenseCloud(key, endpoint, opts = {}) {
     });
     if (!res.ok) return { valid: false, reason: 'SERVIDOR_' + res.status };
     return await res.json();
-  } catch (e) {
-    // Sin conexión: permitir gracia si hay licencia local válida cacheada.
+  } catch {
     return { valid: false, reason: 'SIN_CONEXION', offline: true };
   }
 }
 
 /* --------------------------- almacenamiento ---------------------------- */
 
-export function saveLicense(key) {
-  localStorage.setItem(LS_KEY, key);
-}
-export function loadLicense() {
-  return localStorage.getItem(LS_KEY) || '';
-}
-export function clearLicense() {
-  localStorage.removeItem(LS_KEY);
-}
+export function saveLicense(key) { localStorage.setItem(LS_KEY, key); }
+export function loadLicense() { return localStorage.getItem(LS_KEY) || ''; }
+export function clearLicense() { localStorage.removeItem(LS_KEY); }
 
 export function describeReason(reason) {
   const map = {
     OK: 'Licencia válida.',
+    SIN_LICENCIA: 'Introduce tu clave de licencia.',
     FORMATO_INVALIDO: 'La clave no tiene un formato válido.',
     FIRMA_INVALIDA: 'La firma de la licencia no es válida.',
     FIRMA_NO_COINCIDE: 'La licencia ha sido manipulada o no es auténtica.',
@@ -221,5 +195,5 @@ export default {
   loadLicense,
   clearLicense,
   describeReason,
-  MASTER_KEY_FINGERPRINT,
+  PUBLIC_KEY_JWK,
 };
