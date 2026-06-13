@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Panel de Licencias — Gestión Pro Total</title>
+<style>
+  :root{
+    --bg:#0a0f1c; --panel:#0f1626; --panel2:#131c30; --line:#1e293b;
+    --txt:#e2e8f0; --muted:#94a3b8; --blue:#3b82f6; --cyan:#22d3ee;
+    --green:#22c55e; --amber:#f59e0b; --red:#ef4444; --purple:#8b5cf6;
+  }
+  *{box-sizing:border-box;font-family:system-ui,"Segoe UI",Roboto,sans-serif}
+  body{margin:0;background:var(--bg);color:var(--txt)}
+  .login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .login .box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px;max-width:380px;width:100%}
+  header{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;background:linear-gradient(90deg,#0b1220,#0c1426);border-bottom:1px solid var(--line);flex-wrap:wrap;gap:10px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .ico{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#6366f1);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .brand h1{margin:0;font-size:18px} .brand small{color:var(--muted);font-size:12px}
+  .hbtns{display:flex;gap:8px;flex-wrap:wrap}
+  button,.btn{cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--txt);border-radius:9px;padding:8px 12px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+  button:hover{border-color:#334155}
+  .btn-primary{background:linear-gradient(90deg,#2563eb,#3b82f6);border:0}
+  .btn-green{background:#16a34a;border:0}.btn-red{background:#dc2626;border:0}
+  .sync{color:var(--green);border-color:#14532d;background:#0b1f14}
+  .wrap{padding:18px 22px;max-width:1400px;margin:0 auto}
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .stat .n{font-size:26px;font-weight:800}.stat .l{color:var(--muted);font-size:12px;display:flex;gap:6px;align-items:center;margin-top:4px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .tab{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:8px 12px;font-size:13px;color:var(--muted)}
+  .tab.active{color:#fff;border-color:var(--blue);background:#10213f}
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .card h2{margin:0 0 14px;font-size:15px;display:flex;align-items:center;gap:8px}
+  label{display:block;font-size:11px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;margin:12px 0 5px;font-weight:700}
+  input,select,textarea{width:100%;background:#0b1322;border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:10px;font-size:14px}
+  input::placeholder,textarea::placeholder{color:#475569}
+  .row{display:flex;gap:8px}.row>*{flex:1}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{ text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:10px 10px;border-bottom:1px solid var(--line)}
+  td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  .key{color:var(--cyan);font-family:ui-monospace,monospace;font-size:12px;cursor:pointer;word-break:break-all}
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700}
+  .pill.act{background:#0b2417;color:#4ade80}.pill.exp{background:#2a1316;color:#fca5a5}
+  .pill.pend{background:#2a2410;color:#fcd34d}.pill.rev{background:#231427;color:#d8b4fe}
+  .muted{color:var(--muted)}.right{margin-left:auto}
+  .search{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .toggle0{background:var(--amber);color:#1a1206;border:0;font-weight:800;border-radius:9px;padding:0 12px}
+  .hidden{display:none}
+  .empty{padding:40px;text-align:center;color:var(--muted)}
+  .ai{background:#0b1322;border:1px dashed #334155;border-radius:10px;padding:12px;font-size:13px;color:var(--muted)}
+  a{color:var(--cyan)}
+  @media(max-width:1000px){.stats{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="login">
+  <div class="box">
+    <div class="brand" style="margin-bottom:14px"><div class="ico">⚙️</div><div><h1>Panel de Licencias</h1><small>Gestión Pro Total</small></div></div>
+    <p class="muted" style="font-size:13px">Introduce el PIN de administrador para entrar.</p>
+    <label>PIN</label>
+    <input id="pin" type="password" placeholder="••••" onkeydown="if(event.key==='Enter')entrar()" />
+    <p id="pinmsg" style="color:var(--red);font-size:12px;margin:8px 0 0"></p>
+    <button class="btn-primary" style="width:100%;margin-top:14px;justify-content:center" onclick="entrar()">Entrar</button>
+    <p class="muted" style="font-size:11px;margin-top:12px">PIN por defecto: <b>1234</b> (cámbialo en Configuración).</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+<header>
+  <div class="brand"><div class="ico">⚙️</div><div><h1>Panel de Licencias</h1><small>Gestión Pro Total</small></div></div>
+  <div class="hbtns">
+    <span class="btn sync">● Sincronizado</span>
+    <button onclick="exportar()">⤓ Exportar</button>
+    <button onclick="document.getElementById('importFile').click()">⤒ Importar</button>
+    <input id="importFile" type="file" accept="application/json" class="hidden" onchange="importar(event)" />
+    <button class="btn-primary" onclick="focusForm()">＋ Nueva licencia</button>
+    <button onclick="salir()">Salir</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><div class="n" id="s-clientes">0</div><div class="l">👥 Clientes</div></div>
+    <div class="stat"><div class="n" id="s-licencias">0</div><div class="l">📄 Licencias</div></div>
+    <div class="stat"><div class="n" style="color:var(--green)" id="s-activas">0</div><div class="l">✅ Activas</div></div>
+    <div class="stat"><div class="n" style="color:var(--amber)" id="s-pendientes">0</div><div class="l">⏳ Pendientes</div></div>
+    <div class="stat"><div class="n" style="color:var(--cyan)" id="s-ingresos">0.00 €</div><div class="l">💶 Ingresos</div></div>
+    <div class="stat"><div class="n" style="color:var(--purple)" id="s-distrib">0</div><div class="l">🏢 Distribuidores</div></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs" id="tabs"></div>
+
+  <!-- VISTA PRINCIPAL (asignación + tabla) -->
+  <div id="view-main" class="grid">
+    <div class="card">
+      <h2>📝 Asignación manual <span class="right muted" style="font-size:11px">SIN IA</span></h2>
+      <label>Nombre del cliente *</label>
+      <input id="f-nombre" placeholder="Nombre completo o empresa" />
+      <label>Email *</label>
+      <input id="f-email" type="email" placeholder="cliente@email.com" />
+      <label>ID de equipo (opcional, ata la licencia a un PC)</label>
+      <input id="f-device" placeholder="DEV-XXXXXXXX (vacío = cualquier equipo)" />
+      <label>Tipo de licencia</label>
+      <select id="f-tipo" onchange="onTipo()"></select>
+      <label>Precio (€)</label>
+      <div class="row">
+        <input id="f-precio" type="number" step="0.01" placeholder="0.00" />
+        <button class="toggle0" title="Marcar como gratis" onclick="document.getElementById('f-precio').value=0">T 0€</button>
+      </div>
+      <label>Fecha de pago</label>
+      <input id="f-fecha" type="date" />
+      <label>Notas internas</label>
+      <input id="f-notas" placeholder="Observaciones..." />
+      <button class="btn-primary" style="width:100%;margin-top:16px;justify-content:center" onclick="generar()">⚡ Generar clave</button>
+      <p id="genmsg" class="muted" style="font-size:12px;margin-top:10px"></p>
+    </div>
+
+    <div class="card">
+      <div class="search">
+        <h2 id="tablaTitulo" style="margin:0">📄 Todas las licencias</h2>
+        <input id="buscar" class="right" style="max-width:280px" placeholder="🔍 Buscar..." oninput="render()" />
+        <button onclick="render()">↻</button>
+      </div>
+      <table>
+        <thead><tr><th>Cliente</th><th>Clave</th><th>Tipo</th><th>Estado</th><th>Precio</th><th>F.Pago</th><th>Expira</th><th>Acciones</th></tr></thead>
+        <tbody id="tabla"></tbody>
+      </table>
+      <div id="vacio" class="empty hidden">No hay licencias en esta vista.</div>
+    </div>
+  </div>
+
+  <!-- CLIENTES -->
+  <div id="view-clientes" class="card hidden">
+    <h2>👥 Clientes</h2>
+    <table><thead><tr><th>Cliente</th><th>Email</th><th>Licencias</th><th>Gasto total</th><th>Última</th></tr></thead><tbody id="tabla-clientes"></tbody></table>
+    <div id="vacio-clientes" class="empty hidden">Aún no hay clientes.</div>
+  </div>
+
+  <!-- DISTRIBUIDOR -->
+  <div id="view-distribuidor" class="card hidden">
+    <h2>🏢 Distribuidores</h2>
+    <p class="muted" style="font-size:13px">Da de alta colaboradores que venden por ti. Llevan su propio margen.</p>
+    <div class="row" style="max-width:600px">
+      <input id="d-nombre" placeholder="Nombre del distribuidor" />
+      <input id="d-margen" type="number" placeholder="% comisión" />
+      <button class="btn-green" onclick="addDistrib()">Añadir</button>
+    </div>
+    <table style="margin-top:14px"><thead><tr><th>Distribuidor</th><th>Comisión</th><th>Ventas</th><th></th></tr></thead><tbody id="tabla-distrib"></tbody></table>
+  </div>
+
+  <!-- BACKUP -->
+  <div id="view-backup" class="card hidden">
+    <h2>💾 Copia de seguridad</h2>
+    <p class="muted" style="font-size:13px">Exporta o restaura todos los datos del panel (clientes, licencias, distribuidores, auditoría).</p>
+    <div class="hbtns">
+      <button class="btn-green" onclick="exportar()">⤓ Descargar copia (JSON)</button>
+      <button onclick="document.getElementById('importFile').click()">⤒ Restaurar copia</button>
+      <button class="btn-red" onclick="borrarTodo()">Borrar todo</button>
+    </div>
+    <p class="muted" style="font-size:12px;margin-top:10px">Última copia: <span id="lastBackup">nunca</span></p>
+  </div>
+
+  <!-- AUDITORIA -->
+  <div id="view-auditoria" class="card hidden">
+    <h2>🕵️ Auditoría</h2>
+    <table><thead><tr><th>Fecha</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="tabla-audit"></tbody></table>
+    <div id="vacio-audit" class="empty hidden">Sin eventos todavía.</div>
+  </div>
+
+  <!-- AGENTE IA -->
+  <div id="view-ia" class="card hidden">
+    <h2>🤖 Agente IA</h2>
+    <p class="muted" style="font-size:13px">Sugerencias automáticas sobre tu negocio de licencias.</p>
+    <div id="ia-out" class="ai">Pulsa "Analizar" para ver recomendaciones.</div>
+    <button class="btn-primary" style="margin-top:12px" onclick="analizarIA()">✨ Analizar</button>
+  </div>
+
+  <!-- CONFIGURACION -->
+  <div id="view-config" class="card hidden">
+    <h2>⚙️ Configuración</h2>
+    <label>Clave privada maestra (JSON) — para firmar licencias</label>
+    <textarea id="c-priv" rows="3" placeholder='{"kty":"EC","crv":"P-256","x":"...","y":"...","d":"..."}'></textarea>
+    <p class="muted" style="font-size:12px">Pégala desde SOLO-PARA-MI/CLAVE-PRIVADA-MAESTRA.json. Se guarda solo en este navegador.</p>
+    <div class="row" style="max-width:420px;margin-top:10px">
+      <div><label>PIN de acceso</label><input id="c-pin" placeholder="Nuevo PIN" /></div>
+      <div style="display:flex;align-items:flex-end"><button class="btn-green" onclick="guardarConfig()">Guardar</button></div>
+    </div>
+    <p class="muted" style="font-size:12px;margin-top:14px">Clave pública (verificación, segura):</p>
+    <code class="muted" style="font-size:11px;word-break:break-all" id="c-pub"></code>
+  </div>
+</div>
+</div>
+
+<script type="module">
+/* ===================== Cripto ECDSA (igual que la app) ===================== */
+const enc=new TextEncoder(), dec=new TextDecoder();
+const b64url=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const PUBLIC_JWK={"kty":"EC","crv":"P-256","x":"41ltfzdxFBhY6qcPIdFrjdzFJBkqUYeU3pp4qTK_ab4","y":"Utb-BOZYRf9pF2oC_19wwfbsc704IiM3fsGazMYoHrc"};
+document.getElementById('c-pub').textContent=JSON.stringify(PUBLIC_JWK);
+
+/* ===================== Planes ===================== */
+const PLANES=[
+  {id:'demo',nombre:'Demo',precio:0,dias:14},
+  {id:'mensual',nombre:'Mensual',precio:19,dias:30},
+  {id:'trimestral',nombre:'Trimestral',precio:49,dias:90},
+  {id:'semestral',nombre:'Semestral',precio:89,dias:180},
+  {id:'anual',nombre:'Anual',precio:149,dias:365},
+  {id:'perpetuo',nombre:'Perpetuo',precio:599,dias:0},
+  {id:'escuela',nombre:'Escuela',precio:99,dias:365},
+  {id:'empresa',nombre:'Empresa (Packs)',precio:49,dias:30},
+];
+
+/* ===================== Estado / almacenamiento ===================== */
+const LS='gpt_panel_v1';
+const def={licencias:[],distribuidores:[],auditoria:[],pin:'1234',priv:'',lastBackup:null};
+let DB=load();
+function load(){ try{return Object.assign({},def,JSON.parse(localStorage.getItem(LS)||'{}'));}catch{return {...def};} }
+function save(){ localStorage.setItem(LS,JSON.stringify(DB)); }
+function log(accion,detalle){ DB.auditoria.unshift({t:Date.now(),accion,detalle}); if(DB.auditoria.length>500)DB.auditoria.pop(); save(); }
+
+const $=id=>document.getElementById(id);
+
+/* ===================== Login ===================== */
+window.entrar=()=>{ if($('pin').value===DB.pin){ $('login').classList.add('hidden'); $('app').classList.remove('hidden'); init(); } else { $('pinmsg').textContent='PIN incorrecto.'; } };
+window.salir=()=>{ location.reload(); };
+
+/* ===================== Pestañas ===================== */
+const TABS=[
+  {id:'clientes',label:'👥 Clientes',view:'view-clientes'},
+  {id:'todas',label:'📄 Todas',view:'view-main',filtro:'todas'},
+  {id:'activas',label:'✅ Activas',view:'view-main',filtro:'activas'},
+  {id:'demo',label:'🎁 Demo',view:'view-main',filtro:'demo'},
+  {id:'pendientes',label:'⏳ Pendientes',view:'view-main',filtro:'pendientes'},
+  {id:'revocadas',label:'🚫 Revocadas',view:'view-main',filtro:'revocadas'},
+  {id:'backup',label:'💾 Backup',view:'view-backup'},
+  {id:'distribuidor',label:'🏢 Distribuidor',view:'view-distribuidor'},
+  {id:'auditoria',label:'🕵️ Auditoría',view:'view-auditoria'},
+  {id:'ia',label:'🤖 Agente IA',view:'view-ia'},
+  {id:'config',label:'⚙️ Configuración',view:'view-config'},
+];
+let actual='todas';
+function buildTabs(){
+  $('tabs').innerHTML='';
+  TABS.forEach(t=>{
+    const b=document.createElement('button');
+    b.className='tab'+(t.id===actual?' active':'');
+    b.textContent=t.label;
+    b.onclick=()=>{ actual=t.id; selectTab(t); };
+    $('tabs').appendChild(b);
+  });
+}
+const VIEWS=['view-main','view-clientes','view-distribuidor','view-backup','view-auditoria','view-ia','view-config'];
+function selectTab(t){
+  buildTabs();
+  VIEWS.forEach(v=>$(v).classList.add('hidden'));
+  $(t.view).classList.remove('hidden');
+  if(t.filtro){ filtro=t.filtro; const titulos={todas:'Todas las licencias',activas:'Licencias activas',demo:'Licencias demo',pendientes:'Pagos pendientes',revocadas:'Licencias revocadas'}; $('tablaTitulo').textContent='📄 '+titulos[t.filtro]; }
+  renderAll();
+}
+let filtro='todas';
+
+/* ===================== Generar licencia ===================== */
+function fillTipos(){ $('f-tipo').innerHTML=PLANES.map(p=>`<option value="${p.id}">${iconTipo(p.id)} ${p.nombre} — ${p.precio>0?p.precio.toFixed(2)+' €':'GRATIS'}</option>`).join(''); }
+function iconTipo(id){ return {demo:'🎁',mensual:'📅',trimestral:'📅',semestral:'📅',anual:'📅',perpetuo:'♾️',escuela:'🎓',empresa:'🏢'}[id]||'📄'; }
+window.onTipo=()=>{ const p=PLANES.find(x=>x.id==$('f-tipo').value); $('f-precio').value=p?p.precio:0; };
+window.focusForm=()=>{ selectTab(TABS.find(t=>t.id==='todas')); $('f-nombre').focus(); };
+
+async function signKey(jwk){ return crypto.subtle.importKey('jwk',jwk,{name:'ECDSA',namedCurve:'P-256'},false,['sign']); }
+function shortId(payload){ const d=new Date(payload.emitida); const ym=''+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0'); const rnd=()=>Math.random().toString(36).slice(2,8).toUpperCase(); return `GPT-${ym}-${payload.plan.slice(0,2).toUpperCase()}-${rnd()}-${rnd().slice(0,4)}`; }
+
+window.generar=async()=>{
+  const nombre=$('f-nombre').value.trim(), email=$('f-email').value.trim();
+  if(!nombre||!email){ $('genmsg').textContent='Pon nombre y email.'; return; }
+  if(!DB.priv){ $('genmsg').textContent='Falta la clave privada: ponla en ⚙️ Configuración.'; return; }
+  let jwk; try{ jwk=JSON.parse(DB.priv);}catch{ $('genmsg').textContent='La clave privada no es un JSON válido.'; return; }
+  const plan=PLANES.find(x=>x.id==$('f-tipo').value);
+  const now=Date.now();
+  const payload={cliente:nombre,email,deviceId:$('f-device').value.trim(),plan:plan.id,emitida:now,expira:plan.dias>0?now+plan.dias*86400000:0,v:1};
+  const pB64=b64url(enc.encode(JSON.stringify(payload)));
+  const k=await signKey(jwk);
+  const sig=await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},k,enc.encode(pB64));
+  const fullKey=pB64+'.'+b64url(sig);
+  const rec={ id:crypto.randomUUID(), cliente:nombre, email, deviceId:payload.deviceId, tipo:plan.id,
+    precio:parseFloat($('f-precio').value)||0, fechaPago:$('f-fecha').value||new Date().toISOString().slice(0,10),
+    notas:$('f-notas').value.trim(), emitida:now, expira:payload.expira, estado:'activa',
+    pendiente: (parseFloat($('f-precio').value)||0)>0 && !$('f-fecha').value ? true:false,
+    shortId:shortId(payload), fullKey };
+  DB.licencias.unshift(rec); log('Generar', `${nombre} · ${plan.nombre}`); save();
+  $('genmsg').innerHTML=`✅ Clave generada. <a href="#" id="cp">Copiar clave completa</a>`;
+  $('cp').onclick=(e)=>{e.preventDefault();navigator.clipboard.writeText(fullKey);alert('Clave completa copiada. Envíasela al cliente.');};
+  ['f-nombre','f-email','f-device','f-notas'].forEach(i=>$(i).value='');
+  renderAll();
+};
+
+/* ===================== Render tabla ===================== */
+function estadoDe(l){ if(l.estado==='revocada')return 'revocada'; if(l.pendiente)return 'pendiente'; if(l.expira&&Date.now()>l.expira)return 'expirada'; return 'activa'; }
+function matchFiltro(l){ const e=estadoDe(l);
+  if(filtro==='todas')return true;
+  if(filtro==='activas')return e==='activa';
+  if(filtro==='pendientes')return e==='pendiente';
+  if(filtro==='revocadas')return e==='revocada';
+  if(filtro==='demo')return l.tipo==='demo';
+  return true;
+}
+window.render=()=>{
+  const q=($('buscar').value||'').toLowerCase();
+  const rows=DB.licencias.filter(matchFiltro).filter(l=>!q||l.cliente.toLowerCase().includes(q)||(l.email||'').toLowerCase().includes(q)||l.shortId.toLowerCase().includes(q));
+  const tb=$('tabla'); tb.innerHTML='';
+  $('vacio').classList.toggle('hidden',rows.length>0);
+  rows.forEach(l=>{
+    const e=estadoDe(l);
+    const pills={activa:['act','✓ Activa'],expirada:['exp','✕ Expirada'],pendiente:['pend','⏳ Pendiente'],revocada:['rev','🚫 Revocada']}[e];
+    const tipo=PLANES.find(p=>p.id===l.tipo);
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><b>${l.cliente}</b><br><span class="muted" style="font-size:12px">${l.email||''}</span></td>
+      <td><span class="key" title="Clic para copiar clave completa">${l.shortId}</span></td>
+      <td>${tipo?tipo.nombre.toLowerCase():l.tipo}</td>
+      <td><span class="pill ${pills[0]}">${pills[1]}</span></td>
+      <td>${l.precio>0?l.precio.toFixed(2)+' €':'GRATIS'}</td>
+      <td>${l.fechaPago||'-'}</td>
+      <td>${l.expira?new Date(l.expira).toLocaleDateString():'permanente'}</td>
+      <td></td>`;
+    const acc=tr.lastElementChild;
+    if(e!=='revocada'){ const rb=document.createElement('button'); rb.className='btn-red'; rb.textContent='Revocar'; rb.onclick=()=>revocar(l.id); acc.appendChild(rb); }
+    if(e==='pendiente'){ const pb=document.createElement('button'); pb.className='btn-green'; pb.style.marginLeft='6px'; pb.textContent='Marcar pagada'; pb.onclick=()=>marcarPagada(l.id); acc.appendChild(pb); }
+    const cb=document.createElement('button'); cb.style.marginLeft='6px'; cb.textContent='📋'; cb.title='Copiar clave completa'; cb.onclick=()=>{navigator.clipboard.writeText(l.fullKey);alert('Clave copiada.');}; acc.appendChild(cb);
+    tr.querySelector('.key').onclick=()=>{navigator.clipboard.writeText(l.fullKey);alert('Clave completa copiada.');};
+    tb.appendChild(tr);
+  });
+};
+window.revocar=(id)=>{ const l=DB.licencias.find(x=>x.id===id); if(!l)return; if(!confirm('¿Revocar la licencia de '+l.cliente+'?'))return; l.estado='revocada'; log('Revocar',l.cliente); save(); renderAll(); };
+window.marcarPagada=(id)=>{ const l=DB.licencias.find(x=>x.id===id); if(!l)return; l.pendiente=false; if(!l.fechaPago)l.fechaPago=new Date().toISOString().slice(0,10); log('Pago',l.cliente); save(); renderAll(); };
+
+/* ===================== Stats / clientes / otros ===================== */
+function renderStats(){
+  const ls=DB.licencias;
+  const clientes=new Set(ls.map(l=>l.email||l.cliente));
+  $('s-clientes').textContent=clientes.size;
+  $('s-licencias').textContent=ls.length;
+  $('s-activas').textContent=ls.filter(l=>estadoDe(l)==='activa').length;
+  $('s-pendientes').textContent=ls.filter(l=>estadoDe(l)==='pendiente').length;
+  $('s-ingresos').textContent=ls.filter(l=>!l.pendiente&&l.estado!=='revocada').reduce((a,l)=>a+(l.precio||0),0).toFixed(2)+' €';
+  $('s-distrib').textContent=DB.distribuidores.length;
+}
+function renderClientes(){
+  const map={};
+  DB.licencias.forEach(l=>{ const k=l.email||l.cliente; (map[k]=map[k]||{cliente:l.cliente,email:l.email,n:0,gasto:0,ultima:0}); map[k].n++; map[k].gasto+=l.precio||0; map[k].ultima=Math.max(map[k].ultima,l.emitida); });
+  const arr=Object.values(map).sort((a,b)=>b.ultima-a.ultima);
+  $('vacio-clientes').classList.toggle('hidden',arr.length>0);
+  $('tabla-clientes').innerHTML=arr.map(c=>`<tr><td><b>${c.cliente}</b></td><td class="muted">${c.email||'-'}</td><td>${c.n}</td><td>${c.gasto.toFixed(2)} €</td><td>${new Date(c.ultima).toLocaleDateString()}</td></tr>`).join('');
+}
+function renderDistrib(){
+  $('tabla-distrib').innerHTML=DB.distribuidores.map((d,i)=>`<tr><td><b>${d.nombre}</b></td><td>${d.margen}%</td><td>${d.ventas||0}</td><td><button class="btn-red" data-i="${i}">✕</button></td></tr>`).join('');
+  $('tabla-distrib').querySelectorAll('button').forEach(b=>b.onclick=()=>{DB.distribuidores.splice(+b.dataset.i,1);save();renderAll();});
+}
+window.addDistrib=()=>{ const n=$('d-nombre').value.trim(); if(!n)return; DB.distribuidores.push({nombre:n,margen:parseFloat($('d-margen').value)||0,ventas:0}); log('Distribuidor',n); save(); $('d-nombre').value='';$('d-margen').value=''; renderAll(); };
+function renderAudit(){
+  $('vacio-audit').classList.toggle('hidden',DB.auditoria.length>0);
+  $('tabla-audit').innerHTML=DB.auditoria.map(a=>`<tr><td class="muted">${new Date(a.t).toLocaleString()}</td><td>${a.accion}</td><td class="muted">${a.detalle||''}</td></tr>`).join('');
+}
+window.analizarIA=()=>{
+  const ls=DB.licencias, ing=ls.filter(l=>!l.pendiente&&l.estado!=='revocada').reduce((a,l)=>a+(l.precio||0),0);
+  const pend=ls.filter(l=>estadoDe(l)==='pendiente'), pronto=ls.filter(l=>l.expira&&l.expira>Date.now()&&l.expira-Date.now()<15*86400000);
+  const tips=[];
+  tips.push(`💶 Ingresos confirmados: <b>${ing.toFixed(2)} €</b> en ${ls.length} licencias.`);
+  if(pend.length) tips.push(`⏳ Tienes <b>${pend.length}</b> pago(s) pendiente(s): ${pend.map(p=>p.cliente).join(', ')}. Reclámalos.`);
+  if(pronto.length) tips.push(`🔔 <b>${pronto.length}</b> licencia(s) caducan en menos de 15 días: ofréceles renovación.`);
+  const demos=ls.filter(l=>l.tipo==='demo'); if(demos.length) tips.push(`🎁 ${demos.length} demo(s) activas: buen momento para convertir a plan de pago.`);
+  if(ls.length===0) tips.push('Aún no has emitido licencias. Crea la primera en "Asignación manual".');
+  $('ia-out').innerHTML=tips.map(t=>`<div style="margin:6px 0">${t}</div>`).join('');
+};
+
+/* ===================== Export / Import / Backup ===================== */
+window.exportar=()=>{ const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='panel-licencias-backup.json'; a.click(); DB.lastBackup=Date.now(); save(); $('lastBackup')&&($('lastBackup').textContent=new Date(DB.lastBackup).toLocaleString()); };
+window.importar=(ev)=>{ const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); DB=Object.assign({},def,d); save(); log('Importar','copia restaurada'); renderAll(); alert('Datos restaurados.'); }catch{ alert('Archivo no válido.'); } }; r.readAsText(f); };
+window.borrarTodo=()=>{ if(confirm('¿Borrar TODOS los datos del panel? No se puede deshacer.')){ DB={...def,pin:DB.pin,priv:DB.priv}; save(); renderAll(); } };
+
+/* ===================== Config ===================== */
+window.guardarConfig=()=>{ if($('c-priv').value.trim())DB.priv=$('c-priv').value.trim(); if($('c-pin').value.trim())DB.pin=$('c-pin').value.trim(); save(); alert('Configuración guardada.'); };
+
+/* ===================== Init ===================== */
+function renderAll(){ renderStats(); render(); renderClientes(); renderDistrib(); renderAudit(); if(DB.lastBackup&&$('lastBackup'))$('lastBackup').textContent=new Date(DB.lastBackup).toLocaleString(); }
+function init(){ fillTipos(); onTipo(); $('f-fecha').value=new Date().toISOString().slice(0,10); $('c-priv').value=DB.priv||''; buildTabs(); selectTab(TABS.find(t=>t.id==='todas')); }
+</script>
+</body>
+</html>
