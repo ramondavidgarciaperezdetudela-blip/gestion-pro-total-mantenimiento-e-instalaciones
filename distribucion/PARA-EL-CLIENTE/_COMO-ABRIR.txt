@@ -1,0 +1,14 @@
+CÓMO ABRIR GESTIÓN PRO TOTAL
+============================
+LO MÁS FÁCIL (sin instalar, sin servidor):
+  → Haz DOBLE CLIC en  "ABRIR-Gestion-Pro-Total.html"
+    (en tu carpeta: Windows / Mac / ChromeBook)
+  Es un único fichero con todo dentro: se abre en tu navegador y ya funciona.
+
+ALTERNATIVA (servidor local):
+  Windows: doble clic en iniciar.bat
+  Mac: doble clic en servidor.command
+
+La primera vez te pedirá la CLAVE DE LICENCIA o podrás suscribirte.
+
+NOTA: para sincronizar datos en varios equipos necesitas conexión/servidor.

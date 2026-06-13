@@ -48,3 +48,5 @@ secret.txt
 
 .env.local
 .env*.local
+
+dist-offline/

@@ -2,8 +2,21 @@
 // Carga la aplicación web ya compilada (carpeta dist) en una ventana nativa.
 const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 const isDev = !app.isPackaged;
+
+// Buscar el HTML a cargar. Preferimos el build OFFLINE de un solo fichero
+// (todo embebido), que funciona desde file:// dentro de Electron. Si no
+// existe, caemos al index.html normal.
+function resolveIndex() {
+  const candidates = [
+    path.join(__dirname, '..', 'dist-offline', 'Gestion-Pro-Total.html'),
+    path.join(__dirname, '..', 'dist', 'Gestion-Pro-Total.html'),
+    path.join(__dirname, '..', 'dist', 'index.html'),
+  ];
+  return candidates.find((p) => { try { return fs.existsSync(p); } catch { return false; } }) || candidates[candidates.length - 1];
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -19,8 +32,8 @@ function createWindow() {
     },
   });
 
-  // Cargar la app compilada (index.html relativo a este archivo dentro del paquete).
-  const indexHtml = path.join(__dirname, '..', 'dist', 'index.html');
+  // Cargar la app compilada (preferimos el fichero único offline).
+  const indexHtml = resolveIndex();
   win.loadFile(indexHtml);
 
   // Si una recarga en una subruta falla (file://), volver al index y dejar que
