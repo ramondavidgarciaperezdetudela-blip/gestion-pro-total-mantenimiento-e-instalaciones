@@ -185,6 +185,44 @@ export function describeReason(reason) {
   return map[reason] || 'Estado de licencia desconocido.';
 }
 
+/* ------------- Compatibilidad con páginas de licencia (ECDSA) ------------- */
+const LS_AUDIT = 'gpt_license_audit_v1';
+function pushAudit(tipo, detalle) {
+  try {
+    const a = JSON.parse(localStorage.getItem(LS_AUDIT) || '[]');
+    a.unshift({ t: Date.now(), tipo, detalle });
+    localStorage.setItem(LS_AUDIT, JSON.stringify(a.slice(0, 200)));
+  } catch { /* noop */ }
+}
+
+/** Valida una clave y devuelve un objeto enriquecido (API compatible). */
+export async function validateLicenseKey(key) {
+  const res = await validateLicenseLocal(key, null, { deviceId: getDeviceId() });
+  return { ...(res.payload || {}), valid: res.valid, reason: res.reason, mensaje: describeReason(res.reason), key };
+}
+export function storeLicense(data) {
+  const key = typeof data === 'string' ? data : (data && (data.key || data.licencia || ''));
+  if (key) saveLicense(key);
+  return key;
+}
+export function getStoredLicense() {
+  const key = loadLicense();
+  if (!key) return null;
+  return { ...(parseLicense(key) || {}), key };
+}
+export function getDeviceFingerprint() { return getDeviceId(); }
+export function registrarActivacion(d) { pushAudit('activacion', (d && (d.cliente || d.email)) || ''); }
+export function registrarIntentoComparticion(info) { pushAudit('comparticion', typeof info === 'string' ? info : JSON.stringify(info || {})); }
+export function desactivarEnEsteDispositivo() { clearLicense(); pushAudit('desactivacion', ''); }
+export function revocarLicenciaLocal() { clearLicense(); pushAudit('revocacion', ''); }
+export async function checkCurrentLicense() { return validateLicenseKey(loadLicense()); }
+export function checkSharingOnStart() { return false; }
+export function diasRestantes() {
+  const l = getStoredLicense();
+  if (!l || !l.expira) return Infinity;
+  return Math.max(0, Math.ceil((l.expira - Date.now()) / 86400000));
+}
+
 export default {
   getDeviceId,
   generateLicense,
