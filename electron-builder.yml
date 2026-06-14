@@ -19,9 +19,9 @@ files:
 win:
   target:
     - nsis        # Instalador con desinstalador integrado (.exe)
-    - portable    # Versión portable sin instalación (.exe)
-  artifactName: ${productName}-${version}-Windows-Setup.${ext}
+    - portable    # Versión portable sin instalación (un solo .exe: doble clic y a usar)
 
+# Instalador clásico (Siguiente -> Siguiente -> Instalar)
 nsis:
   oneClick: false
   perMachine: false
@@ -29,8 +29,13 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Gestión Pro Total
+  artifactName: ${productName}-${version}-Windows-Instalador.${ext}
   # NSIS genera automáticamente el desinstalador (Unins000.exe) y la entrada en
   # "Aplicaciones y características" de Windows.
+
+# Portable: un único .exe que el usuario ejecuta directamente, sin instalar.
+portable:
+  artifactName: ${productName}-${version}-Windows-Portable.${ext}
 
 # ---------- macOS ----------
 mac:
