@@ -1,11 +1,16 @@
 name: Build Android APK
 
-# Genera el APK de la aplicación como artefacto descargable.
-# Se ejecuta manualmente (workflow_dispatch) o al publicar una etiqueta vX.Y.Z.
-# Con una etiqueta de versión publica una Release oficial con ese número; en
-# ejecuciones manuales mantiene la release rodante "apk-latest".
+# Genera el APK de la aplicación y lo publica como Release para descarga directa.
+# - Disparo manual sin "version": actualiza la release rodante "apk-latest".
+# - Disparo manual con "version" (ej: v1.0.0) o al empujar una etiqueta vX.Y.Z:
+#   publica una Release oficial con ese número (creando la etiqueta si no existe).
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Etiqueta de versión a publicar (ej: v1.0.0). Vacío = release rodante apk-latest."
+        required: false
+        default: ""
   push:
     tags:
       - 'v*'
@@ -64,8 +69,8 @@ jobs:
       - name: Publish APK to a Release (descarga directa)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'apk-latest' }}
-          name: ${{ startsWith(github.ref, 'refs/tags/') && format('Gestión Pro Total {0}', github.ref_name) || 'Gestión Pro Total — APK (última compilación)' }}
+          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'apk-latest') }}
+          name: ${{ (inputs.version != '' || startsWith(github.ref, 'refs/tags/')) && format('Gestión Pro Total {0}', inputs.version != '' && inputs.version || github.ref_name) || 'Gestión Pro Total — APK (última compilación)' }}
           body: |
             APK de Gestión Pro Total.
             Descarga directa del archivo `gestion-pro-total.apk` más abajo.
