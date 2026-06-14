@@ -1,0 +1,10 @@
+GESTIÓN PRO TOTAL — ANDROID
+===========================
+
+RECOMENDADO:
+  > "gestion-pro-total.apk"
+    1) Copia el .apk al móvil/tablet.
+    2) Ábrelo. Permite "Instalar de orígenes desconocidos" si lo pide.
+    3) Instalar > Abrir.
+
+>> Coloca aquí el .apk descargado de la Release antes de enviar. <<
