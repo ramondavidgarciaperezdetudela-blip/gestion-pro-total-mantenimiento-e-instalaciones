@@ -1,12 +1,18 @@
 name: Build Desktop Installers
 
 # Compila los instaladores de escritorio (Windows, macOS y Linux) y los publica
-# como Release para descarga directa. Linux (.deb/.AppImage) sirve también para el
-# contenedor Linux de Chromebook.
-# Con una etiqueta de versión (vX.Y.Z) publica una Release oficial con ese número;
-# en ejecuciones manuales mantiene la release rodante "desktop-latest".
+# como Release. Linux (.deb/.AppImage) sirve también para el contenedor Linux de
+# Chromebook.
+# - Disparo manual sin "version": actualiza la release rodante "desktop-latest".
+# - Disparo manual con "version" (ej: v1.0.0) o al empujar una etiqueta vX.Y.Z:
+#   publica una Release oficial con ese número (creando la etiqueta si no existe).
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Etiqueta de versión a publicar (ej: v1.0.0). Vacío = release rodante desktop-latest."
+        required: false
+        default: ""
   push:
     tags:
       - 'v*'
@@ -21,15 +27,15 @@ jobs:
       - name: Crear/actualizar Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest' }}
-          name: ${{ startsWith(github.ref, 'refs/tags/') && format('Gestión Pro Total {0}', github.ref_name) || 'Gestión Pro Total — Instaladores de escritorio' }}
+          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest') }}
+          name: ${{ (inputs.version != '' || startsWith(github.ref, 'refs/tags/')) && format('Gestión Pro Total {0}', inputs.version != '' && inputs.version || github.ref_name) || 'Gestión Pro Total — Instaladores de escritorio' }}
           body: |
             Instaladores de escritorio generados automáticamente.
 
             - Windows: `*-Windows-Setup.exe` (instalador con desinstalador) o portable.
             - macOS: `*-Mac.dmg`.
             - Linux / Chromebook (contenedor Linux): `*-Linux.AppImage` o `*-Linux.deb`.
-          make_latest: ${{ startsWith(github.ref, 'refs/tags/') }}
+          make_latest: ${{ inputs.version != '' || startsWith(github.ref, 'refs/tags/') }}
 
   # 2) Compila en cada sistema operativo y sube los instaladores a la Release.
   build-desktop:
@@ -65,7 +71,7 @@ jobs:
       - name: Publish installers to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest' }}
+          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest') }}
           files: |
             release/*.exe
             release/*.dmg
