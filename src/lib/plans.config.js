@@ -18,8 +18,8 @@ export const paymentConfig = {
   bizumPhone: '',                 // p.ej. '600 12 34 56'
   iban: '',                       // p.ej. 'ES12 3456 7890 1234 5678 9012'
   beneficiario: 'Gestión Pro Total',
-  // --- Contacto ---
-  contactEmail: 'ramondavidgarciaperezdetudela@gmail.com',
+  // --- Contacto / Soporte ---
+  contactEmail: 'kairigarcia.gestionprototal@gmail.com',
   whatsapp: '',                   // opcional, p.ej. '34600123456'
 };
 
