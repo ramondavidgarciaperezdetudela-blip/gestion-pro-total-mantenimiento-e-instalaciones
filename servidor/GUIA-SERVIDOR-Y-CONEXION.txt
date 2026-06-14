@@ -1,0 +1,323 @@
+================================================================
+ GESTION PRO TOTAL - GUIA COMPLETA DE SERVIDOR Y CONEXION
+ Todos los ordenadores, moviles y tablets de la empresa
+================================================================
+
+╔══════════════════════════════════════════════════════════════╗
+║  COMO FUNCIONA                                               ║
+╚══════════════════════════════════════════════════════════════╝
+
+Un ordenador de la empresa actua como SERVIDOR.
+El resto de dispositivos se conectan a el via navegador web,
+sin instalar nada. Los datos se sincronizan en tiempo real
+con la nube de Base44.
+
+  [Servidor Linux/Windows]  <---->  [Base44 Cloud]
+         |
+         |---- [PC Windows de la red]
+         |---- [Mac de la red]
+         |---- [Tablet Android]
+         |---- [iPhone / iPad]
+         |---- [Chromebook]
+         |---- [Cualquier navegador moderno]
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  PARTE 1: INSTALAR EL SERVIDOR                               ║
+╚══════════════════════════════════════════════════════════════╝
+
+━━━━ OPCION A: Servidor Linux (Ubuntu/Debian) ━━━━━━━━━━━━━━━━
+
+REQUISITOS:
+  - Ubuntu 20.04/22.04/24.04 o Debian 11/12
+  - 2 GB RAM minimo, 4 GB recomendado
+  - 20 GB disco
+  - Conexion a Internet durante la instalacion
+
+PASOS:
+  1. Descomprime el ZIP en el servidor:
+       unzip gestion-pro-total-completo.zip
+       
+  2. Entra en la carpeta del servidor:
+       cd gestion-pro-total-completo/servidor
+       
+  3. Ejecuta el instalador como root:
+       sudo bash instalar-servidor-linux.sh
+       
+  4. Al finalizar veras la IP del servidor, por ejemplo:
+       https://192.168.1.100
+
+  TIEMPO ESTIMADO: 5-10 minutos
+
+━━━━ OPCION B: Servidor Windows (10/11/Server) ━━━━━━━━━━━━━━━
+
+REQUISITOS:
+  - Windows 10/11 o Windows Server 2019/2022
+  - 4 GB RAM minimo
+  - 20 GB disco libre
+
+PASOS:
+  1. Descomprime el ZIP completo
+  
+  2. Ve a la carpeta servidor\
+  
+  3. Haz doble clic en: instalar-servidor-windows.bat
+     (Acepta el control de cuentas de usuario si aparece)
+     
+  4. Al finalizar veras la IP del servidor, por ejemplo:
+       http://192.168.1.100
+
+  TIEMPO ESTIMADO: 10-15 minutos
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  PARTE 2: ABRIR EL PUERTO EN EL FIREWALL (OBLIGATORIO)       ║
+╚══════════════════════════════════════════════════════════════╝
+
+Sin este paso, los demas dispositivos no podran conectarse.
+
+━━━━ Windows (Firewall de Windows) ━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Abre: Panel de Control > Sistema y Seguridad
+           > Firewall de Windows Defender
+           > Configuracion Avanzada
+           
+  2. Clic en "Reglas de entrada" > "Nueva Regla"
+  
+  3. Selecciona "Puerto" > Siguiente
+  
+  4. TCP, Puerto especifico: 80
+     (Si usas HTTPS: tambien el 443)
+     
+  5. Permitir la conexion > Siguiente
+  
+  6. Marca las tres opciones (Dominio, Privado, Publico)
+  
+  7. Nombre: "Gestion Pro Total" > Finalizar
+  
+  Forma rapida (como Administrador en PowerShell):
+  netsh advfirewall firewall add rule name="GPT-HTTP"
+    protocol=TCP dir=in localport=80 action=allow
+
+━━━━ Linux (UFW) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  El instalador ya lo hace automaticamente.
+  Para verificar:
+    sudo ufw status
+  
+  Si no esta activo:
+    sudo ufw allow 80/tcp
+    sudo ufw allow 443/tcp
+    sudo ufw enable
+
+━━━━ Router de la empresa ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Si quieres acceder desde fuera de la oficina (opcional):
+  
+  1. Accede al router (normalmente 192.168.1.1)
+  2. Busca "Reenvio de puertos" o "Port Forwarding"
+  3. Crea una regla:
+     - Puerto externo: 80
+     - Puerto interno: 80
+     - IP destino: IP del servidor (ej: 192.168.1.100)
+  4. Para HTTPS repite con el puerto 443
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  PARTE 3: CONECTAR LOS DISPOSITIVOS                          ║
+╚══════════════════════════════════════════════════════════════╝
+
+Una vez instalado el servidor, cualquier dispositivo de la red
+puede acceder abriendo el navegador y escribiendo la IP:
+
+  http://192.168.1.100     (sin SSL)
+  https://192.168.1.100    (con SSL - mostrara aviso 1a vez)
+
+━━━━ PC Windows / Mac / Chromebook ━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Abre Chrome, Firefox, Edge o Safari
+  2. Escribe en la barra de direcciones:
+       http://192.168.1.100
+     (Sustituye por la IP real de tu servidor)
+  3. La aplicacion cargara directamente
+  
+  Para acceso rapido, guarda como marcador o acceso directo:
+  - Chrome: Menu (...) > Mas herramientas > Crear acceso directo
+  - Edge:   Menu (...) > Aplicaciones > Instalar este sitio
+  - Safari: Compartir > Anadir al Dock
+
+━━━━ Android (movil y tablet) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Abre Chrome en Android
+  2. Escribe: http://192.168.1.100
+  3. Menu (3 puntos) > "Anadir a pantalla de inicio"
+  4. Pon el nombre "Gestion Pro Total" > Anadir
+  
+  Quedara un icono en tu pantalla como si fuera una app nativa.
+
+━━━━ iPhone / iPad ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Abre Safari en iOS/iPadOS
+  2. Escribe: http://192.168.1.100
+  3. Toca el icono Compartir (cuadrado con flecha arriba)
+  4. "Anadir a pantalla de inicio"
+  5. Pon el nombre "Gestion Pro Total" > Anadir
+  
+  Aparecer en la pantalla de inicio como una app.
+
+━━━━ Primera vez con SSL (aviso de certificado) ━━━━━━━━━━━━━━
+
+  Si usas https:// con certificado autofirmado, el navegador
+  mostrara un aviso de seguridad. Esto es normal en redes locales.
+  
+  Chrome/Edge: Clic en "Avanzado" > "Continuar a 192.168.1.100"
+  Firefox:     "Avanzado" > "Aceptar el riesgo y continuar"
+  Safari:      "Visitar este sitio web"
+  
+  Solo hay que hacerlo UNA VEZ por dispositivo.
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  PARTE 4: IP FIJA EN EL SERVIDOR (RECOMENDADO)               ║
+╚══════════════════════════════════════════════════════════════╝
+
+Para que la IP del servidor no cambie cada vez que se reinicia:
+
+━━━━ Opcion A: Configurar IP fija en Linux ━━━━━━━━━━━━━━━━━━━
+
+  sudo nano /etc/netplan/01-netcfg.yaml
+  
+  Pon el contenido (ajusta la interfaz, ej: eth0 o enp0s3):
+  
+  network:
+    version: 2
+    ethernets:
+      eth0:
+        dhcp4: no
+        addresses: [192.168.1.100/24]
+        gateway4: 192.168.1.1
+        nameservers:
+          addresses: [8.8.8.8, 1.1.1.1]
+  
+  Aplicar:
+    sudo netplan apply
+
+━━━━ Opcion B: Configurar IP fija en Windows ━━━━━━━━━━━━━━━━━
+
+  1. Panel de Control > Redes > Adaptadores de red
+  2. Boton derecho en tu adaptador > Propiedades
+  3. Protocolo TCP/IPv4 > Propiedades
+  4. "Usar la siguiente direccion IP":
+     IP: 192.168.1.100
+     Mascara: 255.255.255.0
+     Puerta de enlace: 192.168.1.1
+     DNS: 8.8.8.8 y 1.1.1.1
+
+━━━━ Opcion C: Reserva DHCP en el router ━━━━━━━━━━━━━━━━━━━━━
+
+  La mas sencilla: En el router, asigna siempre la misma IP
+  a la MAC del servidor. Cada router es diferente, busca:
+  "DHCP Reservation" o "Asignacion estatica DHCP"
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  PARTE 5: SINCRONIZACION CON LA NUBE                         ║
+╚══════════════════════════════════════════════════════════════╝
+
+La aplicacion sincroniza automaticamente con Base44 Cloud.
+Los datos no se guardan en el servidor, sino en la nube.
+El servidor solo sirve la interfaz web.
+
+Esto significa:
+  ✓ Los datos son accesibles desde cualquier lugar con Internet
+  ✓ Si el servidor local cae, se puede acceder directamente
+    desde: https://gestion-pro-total-mantenimiento-e-instalaciones-6994f997.base44.app
+  ✓ Los cambios de un dispositivo se ven en todos los demas
+    en tiempo real
+
+Sin Internet:
+  - La interfaz carga desde el servidor local (sin Internet)
+  - Los datos se sirven desde la cache del navegador
+  - Al recuperar Internet, se sincronizan automaticamente
+    (el banner de sincronizacion lo indica)
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  PARTE 6: MANTENIMIENTO DEL SERVIDOR                         ║
+╚══════════════════════════════════════════════════════════════╝
+
+━━━━ Actualizar la aplicacion (Linux) ━━━━━━━━━━━━━━━━━━━━━━━━
+
+  sudo gpt-actualizar
+
+━━━━ Actualizar la aplicacion (Windows) ━━━━━━━━━━━━━━━━━━━━━━
+
+  Doble clic en: servidor\actualizar-servidor.bat
+
+━━━━ Ver logs de acceso (Linux) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  tail -f /var/log/nginx/gpt-access.log
+  tail -f /var/log/nginx/gpt-error.log
+
+━━━━ Reiniciar servidor web ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Linux:   sudo systemctl restart nginx
+  Windows: cd C:\nginx && nginx -s reload
+
+━━━━ Comprobar que el servidor esta activo ━━━━━━━━━━━━━━━━━━━━
+
+  Desde cualquier dispositivo de la red, abre el navegador y ve a:
+    http://192.168.1.100/health
+  
+  Debe responder: {"status":"ok","server":"Gestion Pro Total"}
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  SOLUCION DE PROBLEMAS                                       ║
+╚══════════════════════════════════════════════════════════════╝
+
+PROBLEMA: "No puedo acceder desde otro ordenador"
+SOLUCION:
+  1. Verifica que el servidor esta encendido y con Nginx activo
+  2. Comprueba el firewall (Parte 2 de esta guia)
+  3. Verifica que ambos equipos estan en la misma red WiFi/LAN
+  4. Prueba haciendo ping: ping 192.168.1.100
+
+PROBLEMA: "Aviso de certificado en el navegador"
+SOLUCION:
+  Es normal con certificados autofirmados.
+  Clic en Avanzado > Continuar. Solo una vez por dispositivo.
+
+PROBLEMA: "La app carga pero los datos no aparecen"
+SOLUCION:
+  Los datos vienen de Base44 Cloud. Verifica:
+  1. El servidor tiene conexion a Internet
+  2. La URL en .env.local es correcta
+  3. La cuenta de Base44 esta activa
+
+PROBLEMA: "El servidor no arranca tras reiniciar Windows"
+SOLUCION:
+  Ejecuta como Administrador:
+  schtasks /run /tn "GestionProTotal-Nginx"
+  O reinstala el instalador del servidor.
+
+PROBLEMA: "IP del servidor cambio"
+SOLUCION:
+  Configura IP fija (ver Parte 4)
+  O usa el nombre del servidor en vez de la IP:
+  http://nombre-del-pc (funciona en redes Windows)
+
+================================================================
+ RESUMEN RAPIDO
+================================================================
+
+ SERVIDOR: ejecuta instalar-servidor-linux.sh o
+           instalar-servidor-windows.bat
+
+ DISPOSITIVOS: abren el navegador y van a http://[IP-SERVIDOR]
+
+ DATOS: se sincronizan automaticamente con Base44 Cloud
+
+ SIN INTERNET: funciona en red local, sincroniza al volver
+
+================================================================

@@ -1,0 +1,20 @@
+GESTION PRO TOTAL — Chromebook
+==============================
+
+LA FORMA MAS FACIL (PWA, sin instalar nada):
+  1. Abre Chrome en tu Chromebook.
+  2. Entra en la web de la app (o abre el servidor local, ver abajo).
+  3. En la barra de direcciones pulsa el icono "Instalar".
+  4. Quedara como una app mas en tu lanzador.
+
+OPCION ANDROID (si tu Chromebook tiene Play Store):
+  Copia el archivo de la carpeta Android (gestion-pro-total.apk) y abrelo.
+  Activa "Origenes desconocidos" si te lo pide.
+
+OPCION SERVIDOR LOCAL (necesita Linux activado en ChromeOS):
+  1. Activa Linux: Ajustes > Avanzada > Desarrolladores > Entorno Linux.
+  2. Copia esta carpeta a la zona de archivos de Linux.
+  3. En la terminal:  bash servidor-chromebook.sh
+  4. Abre http://localhost:8080
+
+Soporte: ramondavidgarciaperezdetudela@gmail.com

@@ -148,6 +148,16 @@ const navItems = [
 { name: 'Tarifas Prov.', page: 'SupplierTariffs', icon: Package },
 { name: 'Timeline', page: 'ProjectTimeline', icon: Calendar },
 { name: 'Vista Técnico', page: 'TechnicianDay', icon: Wrench },
+{ name: 'Análisis A/C', page: 'ACPlanAnalysis', icon: Thermometer },
+{ name: 'Calc. Potencia A/C', page: 'ACPotenciaCalc', icon: Zap },
+{ name: 'Calc. Multi-área', page: 'MultiAreaCalc', icon: Thermometer },
+{ name: 'Equiv. Refrigerantes', page: 'RefrigerantEquiv', icon: Droplets },
+{ name: 'Herram. Danfoss', page: 'DanfossTools', icon: Wrench },
+{ name: 'Prov. Gases', page: 'GasSuppliers', icon: Building2 },
+{ name: 'Nuevo Contacto', page: 'ContactForm', icon: Users },
+{ name: 'Actualizaciones', page: 'UpdateCenter', icon: Download },
+{ name: 'Activar Licencia', page: 'LicenseActivation', icon: Shield },
+{ name: 'Renovar Licencia', page: 'LicenseRenewal', icon: Shield },
 ];
 
 

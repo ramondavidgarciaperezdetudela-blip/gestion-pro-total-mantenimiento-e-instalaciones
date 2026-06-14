@@ -95,6 +95,17 @@ const EquipmentDiaryPage = lazy(() => import('./pages/EquipmentDiaryPage'));
 const SATChat = lazy(() => import('./pages/SATChat'));
 const SATCalendar = lazy(() => import('./pages/SATCalendar'));
 const TechnicianDay = lazy(() => import('./pages/TechnicianDay'));
+const ACPlanAnalysis = lazy(() => import('./pages/ACPlanAnalysis'));
+const ACPotenciaCalc = lazy(() => import('./pages/ACPotenciaCalc'));
+const ContactForm = lazy(() => import('./pages/ContactForm'));
+const DanfossTools = lazy(() => import('./pages/DanfossTools'));
+const GasSuppliers = lazy(() => import('./pages/GasSuppliers'));
+const LicenseActivation = lazy(() => import('./pages/LicenseActivation'));
+const LicenseRenewal = lazy(() => import('./pages/LicenseRenewal'));
+const MultiAreaCalc = lazy(() => import('./pages/MultiAreaCalc'));
+const RefrigerantEquiv = lazy(() => import('./pages/RefrigerantEquiv'));
+const SharingWarning = lazy(() => import('./pages/SharingWarning'));
+const UpdateCenter = lazy(() => import('./pages/UpdateCenter'));
 import __Layout from './Layout.jsx';
 
 
@@ -145,6 +156,17 @@ export const PAGES = {
     "SATChat": SATChat,
     "SATCalendar": SATCalendar,
     "TechnicianDay": TechnicianDay,
+    "ACPlanAnalysis": ACPlanAnalysis,
+    "ACPotenciaCalc": ACPotenciaCalc,
+    "ContactForm": ContactForm,
+    "DanfossTools": DanfossTools,
+    "GasSuppliers": GasSuppliers,
+    "LicenseActivation": LicenseActivation,
+    "LicenseRenewal": LicenseRenewal,
+    "MultiAreaCalc": MultiAreaCalc,
+    "RefrigerantEquiv": RefrigerantEquiv,
+    "SharingWarning": SharingWarning,
+    "UpdateCenter": UpdateCenter,
 }
 
 export const pagesConfig = {

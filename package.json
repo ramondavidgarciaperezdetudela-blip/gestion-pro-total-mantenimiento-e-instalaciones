@@ -15,8 +15,9 @@
     "cap:open:android": "cap open android",
     "android:build": "npm run build && cap sync android && cd android && ./gradlew assembleDebug",
     "build:electron": "vite build --base=./",
-    "electron:dev": "npm run build:electron && electron electron/main.cjs",
-    "desktop:dist": "npm run build:electron && electron-builder"
+    "build:offline": "vite build --config vite.config.offline.js && node scripts/inline-offline.mjs",
+    "electron:dev": "npm run build:offline && electron electron/main.cjs",
+    "desktop:dist": "npm run build:electron && npm run build:offline && electron-builder"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.32",

@@ -41,3 +41,12 @@ dist-ssr
 *.sw?
 
 .env
+# Nunca subir secretos de licencias
+SOLO-PARA-MI/
+*CLAVE-SECRETA*
+secret.txt
+
+.env.local
+.env*.local
+
+dist-offline/

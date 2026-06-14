@@ -1,0 +1,9 @@
+Esta carpeta YA incluye la app compilada (dist) y el .apk: NO hay que
+programar ni compilar nada.
+
+  Windows    -> abre la carpeta Windows y doble clic en iniciar.bat
+  Mac        -> carpeta Mac, doble clic en servidor.command
+  ChromeBook -> carpeta ChromeBook (PWA) o instala el .apk
+  Android    -> instala gestion-pro-total.apk
+
+La primera vez la app pedirá la CLAVE DE LICENCIA (la que te enviamos).

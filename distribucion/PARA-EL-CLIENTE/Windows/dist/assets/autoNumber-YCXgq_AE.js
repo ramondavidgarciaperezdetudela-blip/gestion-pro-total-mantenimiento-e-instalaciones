@@ -1,0 +1,1 @@
+function s(a,n=3){const e=a.map(t=>parseInt(t,10)).filter(t=>!isNaN(t)&&t>0).sort((t,r)=>t-r);for(let t=0;t<e.length;t++){const r=t+1;if(e[t]!==r)return String(r).padStart(n,"0")}const o=(e[e.length-1]||0)+1;return String(o).padStart(n,"0")}export{s as g};
