@@ -3,6 +3,8 @@ name: Build Desktop Installers
 # Compila los instaladores de escritorio (Windows, macOS y Linux) y los publica
 # como Release para descarga directa. Linux (.deb/.AppImage) sirve también para el
 # contenedor Linux de Chromebook.
+# Con una etiqueta de versión (vX.Y.Z) publica una Release oficial con ese número;
+# en ejecuciones manuales mantiene la release rodante "desktop-latest".
 on:
   workflow_dispatch:
   push:
@@ -19,15 +21,15 @@ jobs:
       - name: Crear/actualizar Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: desktop-latest
-          name: "Gestión Pro Total — Instaladores de escritorio"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && format('Gestión Pro Total {0}', github.ref_name) || 'Gestión Pro Total — Instaladores de escritorio' }}
           body: |
             Instaladores de escritorio generados automáticamente.
 
             - Windows: `*-Windows-Setup.exe` (instalador con desinstalador) o portable.
             - macOS: `*-Mac.dmg`.
             - Linux / Chromebook (contenedor Linux): `*-Linux.AppImage` o `*-Linux.deb`.
-          make_latest: false
+          make_latest: ${{ startsWith(github.ref, 'refs/tags/') }}
 
   # 2) Compila en cada sistema operativo y sube los instaladores a la Release.
   build-desktop:
@@ -63,7 +65,7 @@ jobs:
       - name: Publish installers to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: desktop-latest
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest' }}
           files: |
             release/*.exe
             release/*.dmg
