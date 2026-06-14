@@ -2,6 +2,8 @@ name: Build Android APK
 
 # Genera el APK de la aplicación como artefacto descargable.
 # Se ejecuta manualmente (workflow_dispatch) o al publicar una etiqueta vX.Y.Z.
+# Con una etiqueta de versión publica una Release oficial con ese número; en
+# ejecuciones manuales mantiene la release rodante "apk-latest".
 on:
   workflow_dispatch:
   push:
@@ -62,10 +64,10 @@ jobs:
       - name: Publish APK to a Release (descarga directa)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: apk-latest
-          name: "Gestión Pro Total — APK (última compilación)"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'apk-latest' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && format('Gestión Pro Total {0}', github.ref_name) || 'Gestión Pro Total — APK (última compilación)' }}
           body: |
-            APK de depuración generado automáticamente desde la rama main.
+            APK de Gestión Pro Total.
             Descarga directa del archivo `gestion-pro-total.apk` más abajo.
           files: gestion-pro-total.apk
           make_latest: true
