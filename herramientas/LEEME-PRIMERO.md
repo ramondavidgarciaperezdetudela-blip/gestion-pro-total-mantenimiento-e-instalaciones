@@ -7,6 +7,21 @@ y pulsas un botón.
 - 📄 El programa es el archivo **`Subir-Nueva-Version.html`** (en esta misma carpeta).
 - 👉 Para usarlo: **doble clic** sobre él. Se abre en tu navegador (Chrome, Edge, etc.).
 
+### 🖥️ Tener el icono en el Escritorio (recomendado)
+
+Para no buscar el archivo cada vez, crea un acceso directo con el logo de la app:
+
+- **En Windows:** doble clic en **`Crear acceso directo (Windows).bat`**.
+  Aparecerá en tu Escritorio un icono llamado **"Subir version Gestion Pro"** con el
+  logo de la aplicación. A partir de ahí, solo tienes que pulsar ese icono.
+- **En Mac:** usa el archivo **`Subir version Gestion Pro (Mac).command`** (doble clic).
+  La primera vez, si macOS no deja abrirlo: clic derecho → "Abrir" → "Abrir".
+  Puedes arrastrarlo al Dock para tenerlo a mano.
+
+> ⚠️ No muevas el archivo `Subir-Nueva-Version.html` ni el icono `Gestion-Pro-Total.ico`
+> de esta carpeta, o el acceso directo dejará de funcionar. Si los mueves, vuelve a
+> ejecutar el creador de acceso directo.
+
 ---
 
 ## 🔑 SOLO LA PRIMERA VEZ: crear tu "clave de acceso" (token)
