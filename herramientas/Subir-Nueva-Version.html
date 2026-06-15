@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subir nueva versión · Gestión Pro Total</title>
+<style>
+  :root{
+    --azul:#2563eb; --azul-osc:#1d4ed8; --verde:#16a34a; --rojo:#dc2626;
+    --gris:#64748b; --borde:#e2e8f0; --fondo:#f1f5f9; --texto:#0f172a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--fondo); color:var(--texto); margin:0; padding:24px;
+    line-height:1.5;
+  }
+  .caja{
+    max-width:760px; margin:0 auto; background:#fff; border:1px solid var(--borde);
+    border-radius:16px; padding:28px 28px 32px; box-shadow:0 6px 24px rgba(15,23,42,.06);
+  }
+  h1{font-size:24px; margin:0 0 4px;}
+  .sub{color:var(--gris); margin:0 0 24px; font-size:15px;}
+  .paso{
+    border:1px solid var(--borde); border-radius:12px; padding:18px 20px; margin-bottom:18px;
+  }
+  .paso h2{font-size:17px; margin:0 0 12px; display:flex; align-items:center; gap:8px;}
+  .num{
+    background:var(--azul); color:#fff; width:26px; height:26px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center; font-size:14px; flex:0 0 auto;
+  }
+  label{display:block; font-weight:600; margin:12px 0 6px; font-size:14px;}
+  .ayuda{font-weight:400; color:var(--gris); font-size:13px;}
+  input[type=text],input[type=password],textarea{
+    width:100%; padding:11px 13px; border:1px solid var(--borde); border-radius:9px;
+    font-size:15px; font-family:inherit; background:#fff;
+  }
+  textarea{min-height:70px; resize:vertical;}
+  .fila{display:flex; gap:12px; flex-wrap:wrap;}
+  .fila>div{flex:1; min-width:180px;}
+  .recordar{display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; color:var(--gris);}
+  .recordar input{width:auto;}
+  #zona{
+    border:2px dashed #cbd5e1; border-radius:12px; padding:26px; text-align:center;
+    color:var(--gris); cursor:pointer; transition:.15s; background:#f8fafc;
+  }
+  #zona.activa{border-color:var(--azul); background:#eff6ff; color:var(--azul-osc);}
+  #zona b{color:var(--azul-osc);}
+  #lista{list-style:none; padding:0; margin:14px 0 0;}
+  #lista li{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:9px 12px; border:1px solid var(--borde); border-radius:8px; margin-bottom:8px; font-size:14px;
+  }
+  #lista li .quitar{color:var(--rojo); cursor:pointer; font-weight:700; border:none; background:none; font-size:18px;}
+  button.principal{
+    width:100%; background:var(--azul); color:#fff; border:none; padding:15px;
+    font-size:17px; font-weight:700; border-radius:11px; cursor:pointer; margin-top:8px;
+  }
+  button.principal:hover{background:var(--azul-osc);}
+  button.principal:disabled{background:#94a3b8; cursor:not-allowed;}
+  #estado{margin-top:18px;}
+  .linea{padding:9px 13px; border-radius:8px; margin-bottom:8px; font-size:14px;}
+  .info{background:#eff6ff; color:var(--azul-osc);}
+  .ok{background:#f0fdf4; color:var(--verde);}
+  .err{background:#fef2f2; color:var(--rojo);}
+  .barra{height:8px; background:#e2e8f0; border-radius:6px; overflow:hidden; margin-top:6px;}
+  .barra>div{height:100%; width:0; background:var(--verde); transition:.2s;}
+  .final{
+    margin-top:18px; padding:18px; border-radius:12px; background:#f0fdf4; border:1px solid #bbf7d0;
+    display:none;
+  }
+  .final a{color:var(--azul-osc); font-weight:700; word-break:break-all;}
+  details{margin-top:8px; font-size:13px; color:var(--gris);}
+  summary{cursor:pointer; font-weight:600; color:var(--azul-osc);}
+  code{background:#f1f5f9; padding:2px 6px; border-radius:5px; font-size:13px;}
+  .aviso{font-size:12px; color:var(--gris); margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="caja">
+  <h1>📤 Subir nueva versión</h1>
+  <p class="sub">Gestión Pro Total · sube los ficheros y se publican solos para tus clientes.</p>
+
+  <!-- PASO 1: clave -->
+  <div class="paso">
+    <h2><span class="num">1</span> Tu clave de acceso</h2>
+    <label>Clave de acceso (token)
+      <span class="ayuda">— ¿No tienes? Mira el archivo <code>LEEME-PRIMERO.md</code>.</span>
+    </label>
+    <input type="password" id="token" placeholder="Pega aquí tu clave (empieza por github_pat_ o ghp_)" autocomplete="off">
+    <div class="recordar">
+      <input type="checkbox" id="recordar">
+      <label for="recordar" style="margin:0; font-weight:400;">Recordar la clave en este equipo (no usar en ordenadores compartidos)</label>
+    </div>
+  </div>
+
+  <!-- PASO 2: datos -->
+  <div class="paso">
+    <h2><span class="num">2</span> Datos de la versión</h2>
+    <div class="fila">
+      <div>
+        <label>Número de versión <span class="ayuda">(p. ej. 1.0.1)</span></label>
+        <input type="text" id="version" placeholder="1.0.1">
+      </div>
+      <div>
+        <label>Título <span class="ayuda">(opcional)</span></label>
+        <input type="text" id="titulo" placeholder="Gestión Pro Total 1.0.1">
+      </div>
+    </div>
+    <label>Novedades de esta versión <span class="ayuda">(opcional, lo verán los clientes)</span></label>
+    <textarea id="notas" placeholder="- Corrección de errores&#10;- Mejoras de rendimiento"></textarea>
+  </div>
+
+  <!-- PASO 3: ficheros -->
+  <div class="paso">
+    <h2><span class="num">3</span> Ficheros a publicar</h2>
+    <div id="zona">
+      <b>Arrastra aquí los ficheros</b> (instaladores, APK, etc.)<br>
+      o haz clic para elegirlos
+      <input type="file" id="archivos" multiple style="display:none">
+    </div>
+    <ul id="lista"></ul>
+  </div>
+
+  <!-- PASO 4: publicar -->
+  <button class="principal" id="publicar">🚀 Publicar versión</button>
+
+  <div id="estado"></div>
+
+  <div class="final" id="final">
+    <strong>✅ ¡Publicado!</strong> Este es el enlace de descargas para tus clientes
+    (siempre el mismo):<br>
+    <a id="enlace" target="_blank"></a>
+  </div>
+
+  <details>
+    <summary>¿A qué repositorio se suben los ficheros?</summary>
+    <p>Se suben al repositorio público de descargas:
+    <code id="repoTexto"></code>.<br>
+    Si algún día cambia, edita los valores <code>OWNER</code> y <code>REPO</code> al
+    principio del código de este archivo.</p>
+  </details>
+  <p class="aviso">🔒 Tu clave de acceso nunca se guarda en internet. Solo se usa para
+  hablar directamente con GitHub desde tu navegador.</p>
+</div>
+
+<script>
+  // ====== CONFIGURACIÓN (cámbialo solo si el repositorio público cambia) ======
+  const OWNER = "ramondavidgarciaperezdetudela-blip";
+  const REPO  = "gestion-pro-total-releases";
+  // ===========================================================================
+
+  const $ = (id) => document.getElementById(id);
+  $("repoTexto").textContent = OWNER + "/" + REPO;
+  $("enlace").textContent = "https://github.com/" + OWNER + "/" + REPO + "/releases/latest";
+  $("enlace").href = "https://github.com/" + OWNER + "/" + REPO + "/releases/latest";
+
+  let ficheros = [];
+
+  // --- Recordar token ---
+  const guardado = localStorage.getItem("gpt_token");
+  if (guardado) { $("token").value = guardado; $("recordar").checked = true; }
+
+  // --- Selección de ficheros ---
+  const zona = $("zona");
+  zona.addEventListener("click", () => $("archivos").click());
+  $("archivos").addEventListener("change", (e) => añadir(e.target.files));
+  zona.addEventListener("dragover", (e) => { e.preventDefault(); zona.classList.add("activa"); });
+  zona.addEventListener("dragleave", () => zona.classList.remove("activa"));
+  zona.addEventListener("drop", (e) => {
+    e.preventDefault(); zona.classList.remove("activa"); añadir(e.dataTransfer.files);
+  });
+
+  function añadir(lista) {
+    for (const f of lista) {
+      if (!ficheros.some(x => x.name === f.name && x.size === f.size)) ficheros.push(f);
+    }
+    pintarLista();
+  }
+  function pintarLista() {
+    const ul = $("lista"); ul.innerHTML = "";
+    ficheros.forEach((f, i) => {
+      const li = document.createElement("li");
+      const mb = (f.size / 1048576).toFixed(1);
+      li.innerHTML = `<span>📄 ${f.name} <span class="ayuda">(${mb} MB)</span></span>`;
+      const b = document.createElement("button");
+      b.className = "quitar"; b.textContent = "×"; b.title = "Quitar";
+      b.onclick = () => { ficheros.splice(i, 1); pintarLista(); };
+      li.appendChild(b); ul.appendChild(li);
+    });
+  }
+
+  // --- Mensajes de estado ---
+  function msg(texto, tipo) {
+    const d = document.createElement("div");
+    d.className = "linea " + (tipo || "info");
+    d.innerHTML = texto;
+    $("estado").appendChild(d);
+    return d;
+  }
+  function limpiar() { $("estado").innerHTML = ""; $("final").style.display = "none"; }
+
+  // --- Publicar ---
+  $("publicar").addEventListener("click", publicar);
+
+  async function publicar() {
+    limpiar();
+    const token = $("token").value.trim();
+    let version = $("version").value.trim().replace(/^v/i, "");
+    const titulo = $("titulo").value.trim();
+    const notas = $("notas").value.trim();
+
+    // Validaciones sencillas
+    if (!token) return msg("⚠️ Falta tu clave de acceso (paso 1).", "err");
+    if (!version) return msg("⚠️ Falta el número de versión (paso 2).", "err");
+    if (!/^\d+\.\d+\.\d+/.test(version)) return msg("⚠️ El número de versión debe ser tipo <code>1.0.1</code>.", "err");
+    if (ficheros.length === 0) return msg("⚠️ Añade al menos un fichero (paso 3).", "err");
+
+    // Recordar token
+    if ($("recordar").checked) localStorage.setItem("gpt_token", token);
+    else localStorage.removeItem("gpt_token");
+
+    $("publicar").disabled = true;
+    const tag = "v" + version;
+    const api = "https://api.github.com/repos/" + OWNER + "/" + REPO;
+    const cab = { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" };
+
+    try {
+      // 1) ¿Existe ya una release con esta versión?
+      msg("🔎 Comprobando la versión <b>" + tag + "</b>…");
+      let release = null;
+      const ya = await fetch(api + "/releases/tags/" + tag, { headers: cab });
+      if (ya.status === 200) {
+        release = await ya.json();
+        msg("ℹ️ Ya existía la versión " + tag + ". Se añadirán/actualizarán los ficheros.");
+      } else if (ya.status === 401) {
+        throw new Error("La clave de acceso no es válida o ha caducado. Revisa el paso 1.");
+      } else if (ya.status === 404) {
+        // 2) Crear la release nueva
+        msg("📦 Creando la versión <b>" + tag + "</b>…");
+        const r = await fetch(api + "/releases", {
+          method: "POST", headers: cab,
+          body: JSON.stringify({
+            tag_name: tag,
+            name: titulo || ("Gestión Pro Total " + version),
+            body: notas || ("Versión " + version),
+            draft: false, prerelease: false, target_commitish: "main"
+          })
+        });
+        if (!r.ok) throw new Error("No se pudo crear la versión: " + (await leerError(r)));
+        release = await r.json();
+      } else {
+        throw new Error("Respuesta inesperada de GitHub (" + ya.status + ").");
+      }
+
+      // 3) Subir cada fichero
+      const assets = release.assets || [];
+      let n = 0;
+      for (const f of ficheros) {
+        n++;
+        const linea = msg("⬆️ Subiendo " + n + "/" + ficheros.length + ": <b>" + f.name + "</b>…");
+        const barra = document.createElement("div");
+        barra.className = "barra"; barra.innerHTML = "<div></div>";
+        linea.appendChild(barra);
+
+        // Si ya existe un fichero con ese nombre, borrarlo antes (para reemplazarlo)
+        const prev = assets.find(a => a.name === f.name);
+        if (prev) {
+          await fetch(api + "/releases/assets/" + prev.id, { method: "DELETE", headers: cab });
+        }
+
+        await subirAsset(release.id, f, token, (pct) => {
+          barra.firstChild.style.width = pct + "%";
+        });
+        linea.innerHTML = "✅ Subido: <b>" + f.name + "</b>";
+      }
+
+      msg("🎉 <b>¡Todo listo!</b>", "ok");
+      $("final").style.display = "block";
+      ficheros = []; pintarLista();
+    } catch (e) {
+      msg("❌ " + e.message, "err");
+      msg("Si el problema persiste, revisa el archivo <code>LEEME-PRIMERO.md</code> o pide ayuda.", "info");
+    } finally {
+      $("publicar").disabled = false;
+    }
+  }
+
+  // Subir un fichero como "asset" de la release, con barra de progreso
+  function subirAsset(releaseId, file, token, onProgress) {
+    return new Promise((resolve, reject) => {
+      const url = "https://uploads.github.com/repos/" + OWNER + "/" + REPO +
+                  "/releases/" + releaseId + "/assets?name=" + encodeURIComponent(file.name);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url, true);
+      xhr.setRequestHeader("Authorization", "Bearer " + token);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      xhr.setRequestHeader("Accept", "application/vnd.github+json");
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) onProgress(Math.round(ev.loaded / ev.total * 100));
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error("Error al subir " + file.name + " (" + xhr.status + "). " + xhr.responseText.slice(0, 200)));
+      };
+      xhr.onerror = () => reject(new Error("Fallo de conexión al subir " + file.name +
+        ". Comprueba tu internet."));
+      xhr.send(file);
+    });
+  }
+
+  async function leerError(r) {
+    try { const j = await r.json(); return (j.message || "") + (j.errors ? " " + JSON.stringify(j.errors) : ""); }
+    catch { return r.status + ""; }
+  }
+</script>
+</body>
+</html>
