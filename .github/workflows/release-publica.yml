@@ -72,12 +72,14 @@ jobs:
         run: chmod +x ./gradlew && ./gradlew assembleDebug --no-daemon
       - name: Renombrar APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk gestion-pro-total.apk
-      - name: Subir APK al repo público
+      - name: Obtener versión
+        id: ver
+        run: echo "v=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Subir APK a la MISMA release (v${{ steps.ver.outputs.v }})
         uses: softprops/action-gh-release@v2
         with:
           repository: ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases
           token: ${{ secrets.RELEASES_TOKEN }}
-          tag_name: v${{ github.run_number }}-apk
-          name: Gestión Pro Total — APK
+          tag_name: v${{ steps.ver.outputs.v }}
           files: gestion-pro-total.apk
           make_latest: false
