@@ -74,9 +74,12 @@ function StartScreen({ reason, onActivated }) {
     <div className="fixed inset-0 overflow-auto bg-slate-900 p-4 flex items-start sm:items-center justify-center">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl my-6">
         {/* Cabecera */}
-        <div className="bg-blue-700 text-white rounded-t-2xl px-6 py-5">
-          <h1 className="text-xl font-bold">Gestión Pro Total</h1>
-          <p className="text-blue-100 text-sm">Activa tu licencia o suscríbete para empezar.</p>
+        <div className="bg-blue-700 text-white rounded-t-2xl px-6 py-5 flex items-center gap-3">
+          <img src="logo-512.png" alt="Gestión Pro Total" className="h-12 w-auto drop-shadow" />
+          <div>
+            <h1 className="text-xl font-bold">Gestión Pro Total</h1>
+            <p className="text-blue-100 text-sm">Activa tu licencia o suscríbete para empezar.</p>
+          </div>
         </div>
 
         {/* Pestañas */}
