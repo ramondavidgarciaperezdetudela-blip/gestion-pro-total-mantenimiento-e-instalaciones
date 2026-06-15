@@ -7,13 +7,16 @@ name: Publicar release pública (descargas + auto-update)
 #
 # REQUISITOS (una sola vez):
 #   1) Crea el repo PÚBLICO:  gestion-pro-total-releases
-#   2) Crea un token (PAT) con permiso de escritar contenidos en ese repo.
+#   2) Crea un token (PAT) con permiso de escribir contenidos en ese repo.
 #   3) Guárdalo aquí como secreto:  Settings > Secrets > Actions > RELEASES_TOKEN
 #
 # Lánzalo a mano desde la pestaña Actions (Run workflow).
 
 on:
   workflow_dispatch:
+
+env:
+  RELEASES_REPO: ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases
 
 jobs:
   comprobar:
@@ -27,8 +30,76 @@ jobs:
           fi
           echo "Token presente. Continuando."
 
-  escritorio:
+  # Deja el repositorio público en un estado limpio y publicable:
+  #   - Si está vacío, crea un commit inicial (README) para que se pueda
+  #     crear una release publicada (un repo sin commits da "Repository is empty").
+  #   - Elimina cualquier release/tag previa de esta misma versión (incluidos
+  #     borradores) para que la publicación parta de cero y quede como release real.
+  preparar:
     needs: comprobar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Obtener versión
+        id: ver
+        run: echo "v=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Inicializar, limpiar y crear la release pública
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          VER: ${{ steps.ver.outputs.v }}
+        run: |
+          set -e
+          api="https://api.github.com/repos/$RELEASES_REPO"
+          auth=(-H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json")
+
+          # 1) Inicializar el repo si está vacío (sin commits -> crear README).
+          code=$(curl -s -o /dev/null -w "%{http_code}" "${auth[@]}" "$api/contents/README.md")
+          if [ "$code" = "404" ]; then
+            echo "Repositorio vacío: creando commit inicial (README)..."
+            content=$(printf '# Gestión Pro Total — Descargas\n\nInstaladores oficiales de la aplicación. Ve a la pestaña **Releases** para descargar la última versión.\n' | base64 -w0)
+            curl -s -X PUT "${auth[@]}" "$api/contents/README.md" \
+              -d "{\"message\":\"Inicializar repositorio de descargas\",\"content\":\"$content\"}" >/dev/null
+            echo "README creado."
+          else
+            echo "Repositorio ya inicializado (HTTP $code)."
+          fi
+
+          # Rama por defecto del repo público (destino del tag de la release).
+          default_branch=$(curl -s "${auth[@]}" "$api" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).default_branch||'main')}catch{console.log('main')}})")
+          echo "Rama por defecto: $default_branch"
+
+          # 2) Borrar release previa de esta versión (incluye borradores), si existe.
+          rel_id=$(curl -s "${auth[@]}" "$api/releases/tags/v$VER" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).id||'')}catch{console.log('')}})")
+          if [ -n "$rel_id" ]; then
+            echo "Eliminando release previa v$VER (id $rel_id)..."
+            curl -s -X DELETE "${auth[@]}" "$api/releases/$rel_id" >/dev/null
+          fi
+          # Buscar también borradores que no aparecen por tag.
+          draft_id=$(curl -s "${auth[@]}" "$api/releases?per_page=100" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const r=JSON.parse(s).find(x=>x.tag_name==='v'+process.env.VER);console.log(r?r.id:'')}catch{console.log('')}})")
+          if [ -n "$draft_id" ] && [ "$draft_id" != "$rel_id" ]; then
+            echo "Eliminando borrador previo v$VER (id $draft_id)..."
+            curl -s -X DELETE "${auth[@]}" "$api/releases/$draft_id" >/dev/null
+          fi
+
+          # 3) Borrar el tag git previo si quedó suelto.
+          curl -s -X DELETE "${auth[@]}" "$api/git/refs/tags/v$VER" >/dev/null || true
+
+          # 4) Crear la release PUBLICADA (con su tag) por adelantado, para que los
+          #    compiladores suban sus binarios a la MISMA release sin carreras de
+          #    creación (que provocaban el error 422 "must have a valid tag").
+          echo "Creando release publicada v$VER en $default_branch..."
+          create_code=$(curl -s -o /tmp/rel.json -w "%{http_code}" -X POST "${auth[@]}" "$api/releases" \
+            -d "{\"tag_name\":\"v$VER\",\"target_commitish\":\"$default_branch\",\"name\":\"Gestión Pro Total v$VER\",\"body\":\"Instaladores oficiales de Gestión Pro Total (Windows, macOS, Linux y Android).\",\"draft\":false,\"prerelease\":false}")
+          echo "Respuesta creación release: HTTP $create_code"
+          if [ "$create_code" != "201" ]; then
+            echo "::error::No se pudo crear la release v$VER en el repo público."
+            cat /tmp/rel.json
+            exit 1
+          fi
+          echo "Release pública v$VER lista. Los compiladores subirán sus binarios."
+
+  escritorio:
+    needs: preparar
     strategy:
       fail-fast: false
       matrix:
@@ -51,7 +122,7 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
 
   android:
-    needs: comprobar
+    needs: escritorio
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
