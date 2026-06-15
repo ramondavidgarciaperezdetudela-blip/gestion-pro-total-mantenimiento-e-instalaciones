@@ -14,11 +14,13 @@ directories:
 # electron-builder genera automáticamente los tamaños/formatos por sistema.
 icon: build/icon.png
 
-# Publicación de releases en GitHub (habilita la auto-actualización con electron-updater).
+# Publicación de releases en el repo PÚBLICO de releases (habilita la
+# auto-actualización con electron-updater sin credenciales para el cliente).
+# El código permanece en el repo privado; solo los binarios van al repo público.
 publish:
   provider: github
   owner: ramondavidgarciaperezdetudela-blip
-  repo: gestion-pro-total-mantenimiento-e-instalaciones
+  repo: gestion-pro-total-releases
 
 files:
   - dist/**/*
