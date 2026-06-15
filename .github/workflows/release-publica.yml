@@ -7,13 +7,16 @@ name: Publicar release pública (descargas + auto-update)
 #
 # REQUISITOS (una sola vez):
 #   1) Crea el repo PÚBLICO:  gestion-pro-total-releases
-#   2) Crea un token (PAT) con permiso de escritar contenidos en ese repo.
+#   2) Crea un token (PAT) con permiso de escribir contenidos en ese repo.
 #   3) Guárdalo aquí como secreto:  Settings > Secrets > Actions > RELEASES_TOKEN
 #
 # Lánzalo a mano desde la pestaña Actions (Run workflow).
 
 on:
   workflow_dispatch:
+
+env:
+  RELEASES_REPO: ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases
 
 jobs:
   comprobar:
@@ -27,8 +30,59 @@ jobs:
           fi
           echo "Token presente. Continuando."
 
-  escritorio:
+  # Deja el repositorio público en un estado limpio y publicable:
+  #   - Si está vacío, crea un commit inicial (README) para que se pueda
+  #     crear una release publicada (un repo sin commits da "Repository is empty").
+  #   - Elimina cualquier release/tag previa de esta misma versión (incluidos
+  #     borradores) para que la publicación parta de cero y quede como release real.
+  preparar:
     needs: comprobar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Obtener versión
+        id: ver
+        run: echo "v=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Inicializar y limpiar el repo público
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          VER: ${{ steps.ver.outputs.v }}
+        run: |
+          set -e
+          api="https://api.github.com/repos/$RELEASES_REPO"
+          auth=(-H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json")
+
+          # 1) Inicializar el repo si está vacío (sin commits -> crear README).
+          code=$(curl -s -o /dev/null -w "%{http_code}" "${auth[@]}" "$api/contents/README.md")
+          if [ "$code" = "404" ]; then
+            echo "Repositorio vacío: creando commit inicial (README)..."
+            content=$(printf '# Gestión Pro Total — Descargas\n\nInstaladores oficiales de la aplicación. Ve a la pestaña **Releases** para descargar la última versión.\n' | base64 -w0)
+            curl -s -X PUT "${auth[@]}" "$api/contents/README.md" \
+              -d "{\"message\":\"Inicializar repositorio de descargas\",\"content\":\"$content\"}" >/dev/null
+            echo "README creado."
+          else
+            echo "Repositorio ya inicializado (HTTP $code)."
+          fi
+
+          # 2) Borrar release previa de esta versión (incluye borradores), si existe.
+          rel_id=$(curl -s "${auth[@]}" "$api/releases/tags/v$VER" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).id||'')}catch{console.log('')}})")
+          if [ -n "$rel_id" ]; then
+            echo "Eliminando release previa v$VER (id $rel_id)..."
+            curl -s -X DELETE "${auth[@]}" "$api/releases/$rel_id" >/dev/null
+          fi
+          # Buscar también borradores que no aparecen por tag.
+          draft_id=$(curl -s "${auth[@]}" "$api/releases?per_page=100" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const r=JSON.parse(s).find(x=>x.tag_name==='v'+process.env.VER);console.log(r?r.id:'')}catch{console.log('')}})")
+          if [ -n "$draft_id" ] && [ "$draft_id" != "$rel_id" ]; then
+            echo "Eliminando borrador previo v$VER (id $draft_id)..."
+            curl -s -X DELETE "${auth[@]}" "$api/releases/$draft_id" >/dev/null
+          fi
+
+          # 3) Borrar el tag git previo si quedó suelto.
+          curl -s -X DELETE "${auth[@]}" "$api/git/refs/tags/v$VER" >/dev/null || true
+          echo "Repositorio público listo para publicar v$VER."
+
+  escritorio:
+    needs: preparar
     strategy:
       fail-fast: false
       matrix:
@@ -51,7 +105,7 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
 
   android:
-    needs: comprobar
+    needs: escritorio
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

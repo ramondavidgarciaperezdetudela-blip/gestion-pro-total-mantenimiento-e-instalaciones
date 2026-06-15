@@ -21,6 +21,9 @@ publish:
   provider: github
   owner: ramondavidgarciaperezdetudela-blip
   repo: gestion-pro-total-releases
+  # Publica la release directamente (no como borrador) para que sea visible
+  # en /releases/latest y la auto-actualización la detecte sin pasos manuales.
+  releaseType: release
 
 files:
   - dist/**/*
