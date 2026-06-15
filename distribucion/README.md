@@ -33,3 +33,6 @@ Coloca los ficheros en sus carpetas por ti:
 
 ## Enviar al cliente
 Comprime la carpeta del sistema que corresponda y envíasela. Cada carpeta lleva un LEEME con instrucciones para el cliente.
+
+## Soporte
+Dudas o incidencias: **kairigarcia.gestionprototal@gmail.com**

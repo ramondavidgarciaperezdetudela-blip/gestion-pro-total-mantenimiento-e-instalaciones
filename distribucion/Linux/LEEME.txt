@@ -11,3 +11,5 @@ ALTERNATIVA (instalación):
     Instalar:  sudo dpkg -i *.deb   (o doble clic con el Centro de Software)
 
 >> Coloca aquí el AppImage/.deb descargado de la Release antes de enviar. <<
+
+SOPORTE Y CONTACTO: kairigarcia.gestionprototal@gmail.com

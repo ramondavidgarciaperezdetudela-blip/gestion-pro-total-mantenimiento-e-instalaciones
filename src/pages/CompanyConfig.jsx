@@ -859,7 +859,7 @@ function DeleteAccountSection() {
       }
       base44.auth.logout('/');
     } catch (e) {
-      alert('Error al eliminar la cuenta. Contacta con soporte.');
+      alert('Error al eliminar la cuenta. Contacta con soporte: kairigarcia.gestionprototal@gmail.com');
     }
     setDeleting(false);
   };
