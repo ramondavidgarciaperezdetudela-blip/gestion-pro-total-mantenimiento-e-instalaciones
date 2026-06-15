@@ -6,6 +6,25 @@ const fs = require('fs');
 
 const isDev = !app.isPackaged;
 
+// Auto-actualización (opcional). Comprueba si hay una versión nueva publicada
+// en las Releases de GitHub y la instala. Solo se ejecuta en la app empaquetada
+// y nunca interrumpe si no hay conexión o el canal no está disponible.
+// NOTA: si el repositorio de releases es privado, el equipo del cliente no
+// puede descargar la actualización sin credenciales; en ese caso publica las
+// releases en un repositorio público o un servidor propio (provider en
+// electron-builder.yml). Mientras tanto, esto simplemente no hace nada.
+function initAutoUpdate() {
+  if (isDev) return;
+  try {
+    const { autoUpdater } = require('electron-updater');
+    autoUpdater.autoDownload = true;
+    autoUpdater.on('error', () => {});           // silencioso: nunca molesta al usuario
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  } catch {
+    /* electron-updater no disponible: se ignora */
+  }
+}
+
 // Buscar el HTML a cargar. Preferimos el build OFFLINE de un solo fichero
 // (todo embebido), que funciona desde file:// dentro de Electron. Si no
 // existe, caemos al index.html normal.
@@ -56,6 +75,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+  initAutoUpdate();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

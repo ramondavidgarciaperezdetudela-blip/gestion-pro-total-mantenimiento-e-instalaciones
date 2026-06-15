@@ -180,6 +180,13 @@ function StartScreen({ reason, onActivated }) {
           )}
 
           <p className="text-xs text-slate-400 mt-5 text-center">Soporte: {pay.contactEmail}</p>
+          <p className="text-[11px] text-slate-400 mt-1 text-center">
+            <a href="legal/eula.html" target="_blank" rel="noopener" className="hover:underline">Licencia (EULA)</a>
+            {' · '}
+            <a href="legal/privacidad.html" target="_blank" rel="noopener" className="hover:underline">Privacidad</a>
+            {' · '}
+            <a href="legal/terminos.html" target="_blank" rel="noopener" className="hover:underline">Términos</a>
+          </p>
         </div>
       </div>
     </div>
