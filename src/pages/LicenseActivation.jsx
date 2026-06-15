@@ -58,7 +58,7 @@ export default function LicenseActivation({ onActivated }) {
       if(r.valid){
         storeLicense(r); registrarActivacion(r);
         setInfo(r); setEstado('ok');
-        setMsg('¡Licencia '+r.tipo+' activada correctamente!');
+        setMsg('¡Licencia '+(r.plan||'')+' activada correctamente!');
         setTimeout(()=>onActivated(),1600);
       } else {
         setEstado('error'); setMsg(r.reason||'Clave no válida.');
@@ -283,9 +283,10 @@ export default function LicenseActivation({ onActivated }) {
 
             {estado==='ok'&&info&&(
               <div style={{background:'#065f4622',border:'1px solid #10b981',borderRadius:8,padding:'10px 14px',marginTop:12,fontSize:12,color:'#6ee7b7'}}>
-                <div><strong>Plan:</strong> {info.tipo}</div>
-                {info.expira&&<div><strong>Válida hasta:</strong> {new Date(info.expira).toLocaleDateString('es-ES')}</div>}
-                {info.permanente&&<div><strong>Permanente</strong> ♾️</div>}
+                <div><strong>Plan:</strong> {info.plan}</div>
+                {info.expira
+                  ? <div><strong>Válida hasta:</strong> {new Date(info.expira).toLocaleDateString('es-ES')}</div>
+                  : <div><strong>Licencia permanente</strong> ♾️</div>}
               </div>
             )}
 
