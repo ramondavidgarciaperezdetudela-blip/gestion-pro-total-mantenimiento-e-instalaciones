@@ -10,6 +10,16 @@ directories:
   output: release
   buildResources: build
 
+# Icono de la aplicación (build/icon.png 1024px y build/icon.ico para Windows).
+# electron-builder genera automáticamente los tamaños/formatos por sistema.
+icon: build/icon.png
+
+# Publicación de releases en GitHub (habilita la auto-actualización con electron-updater).
+publish:
+  provider: github
+  owner: ramondavidgarciaperezdetudela-blip
+  repo: gestion-pro-total-mantenimiento-e-instalaciones
+
 files:
   - dist/**/*
   - electron/**/*
