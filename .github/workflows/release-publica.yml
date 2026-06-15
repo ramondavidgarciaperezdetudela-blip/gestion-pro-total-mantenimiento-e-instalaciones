@@ -1,0 +1,83 @@
+name: Publicar release pública (descargas + auto-update)
+
+# Publica los instaladores en el REPOSITORIO PÚBLICO de releases
+# (gestion-pro-total-releases), generando los metadatos de auto-actualización
+# (latest.yml / latest-mac.yml / latest-linux.yml) para electron-updater.
+# El código fuente permanece en este repositorio privado.
+#
+# REQUISITOS (una sola vez):
+#   1) Crea el repo PÚBLICO:  gestion-pro-total-releases
+#   2) Crea un token (PAT) con permiso de escritar contenidos en ese repo.
+#   3) Guárdalo aquí como secreto:  Settings > Secrets > Actions > RELEASES_TOKEN
+#
+# Lánzalo a mano desde la pestaña Actions (Run workflow).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  comprobar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar que existe el token
+        run: |
+          if [ -z "${{ secrets.RELEASES_TOKEN }}" ]; then
+            echo "::error::Falta el secreto RELEASES_TOKEN. Crea el repo público y el token (ver cabecera del workflow)."
+            exit 1
+          fi
+          echo "Token presente. Continuando."
+
+  escritorio:
+    needs: comprobar
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Build web (base relativa)
+        run: npm run build:electron
+      - name: Compilar y PUBLICAR en el repo público (con auto-update)
+        run: npx electron-builder --publish always
+        env:
+          # Token con permiso de escritura en gestion-pro-total-releases
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+
+  android:
+    needs: comprobar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap add android && npx cap sync android
+      - name: Compilar APK
+        working-directory: android
+        run: chmod +x ./gradlew && ./gradlew assembleDebug --no-daemon
+      - name: Renombrar APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk gestion-pro-total.apk
+      - name: Subir APK al repo público
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases
+          token: ${{ secrets.RELEASES_TOKEN }}
+          tag_name: v${{ github.run_number }}-apk
+          name: Gestión Pro Total — APK
+          files: gestion-pro-total.apk
+          make_latest: false
