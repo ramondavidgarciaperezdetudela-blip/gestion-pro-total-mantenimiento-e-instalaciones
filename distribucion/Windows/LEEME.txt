@@ -15,3 +15,5 @@ NOTA: la primera vez Windows puede mostrar un aviso azul (SmartScreen,
 (Esto desaparece cuando el .exe esté firmado con certificado.)
 
 >> Coloca aquí el/los .exe descargados de la Release antes de enviar. <<
+
+SOPORTE Y CONTACTO: kairigarcia.gestionprototal@gmail.com

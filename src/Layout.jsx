@@ -363,6 +363,14 @@ export default function Layout({ children, currentPageName }) {
           {children}
         </main>
 
+        {/* Pie de página global con el correo de soporte */}
+        <footer className="max-w-7xl mx-auto px-3 md:px-5 pb-28 lg:pb-6 pt-2 text-center text-xs text-slate-400">
+          Gestión Pro Total · Soporte:{' '}
+          <a href="mailto:kairigarcia.gestionprototal@gmail.com" className="text-sky-600 hover:underline">
+            kairigarcia.gestionprototal@gmail.com
+          </a>
+        </footer>
+
         {/* Mobile bottom tab bar */}
         <MobileBottomBar currentPageName={currentPageName} />
       </div>

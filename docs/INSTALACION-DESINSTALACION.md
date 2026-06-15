@@ -116,3 +116,9 @@ vez. Para distribución pública conviene firmar:
 - **macOS:** cuenta de Apple Developer + notarización.
 Esos certificados pueden añadirse como *secrets* y conectarse a electron-builder
 en el workflow `.github/workflows/build-desktop.yml`.
+
+---
+
+## Soporte y contacto
+
+Para cualquier duda o incidencia: **kairigarcia.gestionprototal@gmail.com**
