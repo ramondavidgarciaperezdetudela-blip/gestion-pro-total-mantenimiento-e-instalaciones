@@ -1,14 +1,14 @@
 # Instalación y desinstalación por plataforma
 
 Esta guía cubre cómo **instalar** y **desinstalar** Gestión Pro Total en cada
-sistema operativo. Los instaladores se generan automáticamente y se publican en
-la página de **Releases** del repositorio:
+sistema operativo. Todos los instaladores (Windows, macOS, Linux y Android) se
+publican en una **única página pública de descargas**, siempre con la última versión:
 
-➡️ **Instaladores de escritorio:**
-`https://github.com/ramondavidgarciaperezdetudela-blip/gestion-pro-total-mantenimiento-e-instalaciones/releases/tag/desktop-latest`
+➡️ **Página de descargas (todas las plataformas):**
+`https://github.com/ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases/releases/latest`
 
-➡️ **APK Android (también válido para Chromebook):**
-`https://github.com/ramondavidgarciaperezdetudela-blip/gestion-pro-total-mantenimiento-e-instalaciones/releases/tag/apk-latest`
+> Este enlace es siempre el mismo y muestra automáticamente la versión más reciente.
+> La app de escritorio, además, se **actualiza sola** cuando hay una versión nueva.
 
 | Sistema | Archivo a descargar | Tipo |
 |---|---|---|

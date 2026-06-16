@@ -7,7 +7,10 @@ Soporte: **kairigarcia.gestionprototal@gmail.com**
 
 ## 1. Qué archivo dar a cada cliente
 
-Descarga el archivo de la **Release** (o usa `distribucion/DESCARGAR-ENTREGAS.bat`) y entrega el de su sistema:
+Descarga el archivo desde la **página pública de descargas** (siempre la última versión) y entrega el de su sistema:
+
+➡️ `https://github.com/ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases/releases/latest`
+
 
 | El cliente usa… | Archivo a enviar | Cómo lo abre |
 |-----------------|------------------|--------------|
