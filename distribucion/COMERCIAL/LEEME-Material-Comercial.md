@@ -7,7 +7,9 @@ Todo lo necesario para presentar y vender el programa.
 | Archivo | Qué es | Cómo usarlo |
 |---|---|---|
 | **Presentacion-Comercial.html** | Presentación de diapositivas (lista para enseñar) | **Doble clic** → se abre en el navegador. Pulsa **F** para pantalla completa y usa las **flechas ← →** para pasar diapositivas. |
-| **Video-Presentacion-Gestion-Pro-Total.mp4** | Vídeo corto de presentación (~50 s) | Doble clic para verlo. Puedes enviarlo por WhatsApp/email o ponerlo en redes. |
+| **Video-Presentacion-Gestion-Pro-Total.mp4** | Vídeo de presentación horizontal (~50 s, abre con la pantalla real) | Doble clic para verlo. Ideal para web, email o reuniones. |
+| **Video-Corto-Vertical-Redes.mp4** | Vídeo corto **vertical 9:16** (~25 s) | Para Instagram/TikTok/WhatsApp Estados. |
+| **capturas/** | Capturas reales de la app (escritorio y móvil) | Para webs, anuncios o la ficha del producto. |
 | **Argumentario-Comercial.md** | Guion de venta (beneficios, objeciones, cierre) | Para preparar la llamada o la visita. |
 | **Tarifas-y-Planes.md** | Lista de precios y planes | Para consultar precios al vender. |
 
