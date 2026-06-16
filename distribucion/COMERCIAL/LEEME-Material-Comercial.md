@@ -7,6 +7,7 @@ Todo lo necesario para presentar y vender el programa.
 | Archivo | Qué es | Cómo usarlo |
 |---|---|---|
 | **Presentacion-Comercial.html** | Presentación de diapositivas (lista para enseñar) | **Doble clic** → se abre en el navegador. Pulsa **F** para pantalla completa y usa las **flechas ← →** para pasar diapositivas. |
+| **Video-Demo-Realista.mp4** | Vídeo **demo realista** (~44 s) con **capturas reales de la app** (calculadoras con resultados, menú completo) | El más convincente para enseñar el producto por dentro. |
 | **Video-Presentacion-Gestion-Pro-Total.mp4** | Vídeo de presentación horizontal (~50 s, abre con la pantalla real) | Doble clic para verlo. Ideal para web, email o reuniones. |
 | **Video-Corto-Vertical-Redes.mp4** | Vídeo corto **vertical 9:16** (~25 s) | Para Instagram/TikTok/WhatsApp Estados. |
 | **capturas/** | Capturas reales de la app (escritorio y móvil) | Para webs, anuncios o la ficha del producto. |
