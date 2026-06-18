@@ -65,8 +65,8 @@ def s_title(big,sub):
 
 def s_planes():
     img=BASE.copy();d=ImageDraw.Draw(img,"RGBA");ct(d,W/2,200,"Planes y licencias",f(66),WHITE)
-    rows=[("Demo","Gratis · 14 días",False),("Mensual","19 € /mes",False),("Anual","149 € · 2 meses gratis",True),
-          ("Perpetuo","599 € pago único",False),("Escuela","99 € /año",False),("Empresa","desde 49 € /mes",False)]
+    rows=[("Demo","Gratis · 7 días",False),("Mensual","19 € /mes",False),("Anual","149 € · 2 meses gratis",True),
+          ("Perpetuo","599 € pago único",False),("Estudiantes","Gratis · matrícula",False),("Empresa","desde 49 € /mes",False)]
     y=340;rh=200;gap=24
     for nm,pr,top in rows:
         x0,x1=90,W-90
@@ -81,7 +81,7 @@ def s_planes():
 
 def s_close():
     img=BASE.copy();d=ImageDraw.Draw(img,"RGBA")
-    ct(d,W/2,560,"Prueba 14 días",f(86),WHITE);ct(d,W/2,665,"GRATIS",f(108),GOLD)
+    ct(d,W/2,560,"Prueba 7 días",f(86),WHITE);ct(d,W/2,665,"GRATIS",f(108),GOLD)
     ct(d,W/2,840,"Si no te ahorra tiempo, no pagas.",f(40,False),GREY)
     logo(img,360,W/2,1180);ct(d,W/2,1400,"kairigarcia.gestionprototal@gmail.com",f(34),CYAN)
     ct(d,W/2,1470,"Gestión Pro Total · Empieza hoy",f(34,False),GREY);return np.array(img)

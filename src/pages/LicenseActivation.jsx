@@ -34,11 +34,14 @@ export default function LicenseActivation({ onActivated }) {
   const fileRef = useRef();
 
   const PLANES = {
-    demo:       { nom:'Demo 7 días',        pre:'GRATIS',   dur:'7d' },
-    mensual:    { nom:'Mensual',            pre:'9,99 €',   dur:'1 mes' },
-    anual:      { nom:'Anual',              pre:'79,99 €',  dur:'12 meses' },
-    permanente: { nom:'Permanente',         pre:'199 €',    dur:'Sin caducidad' },
-    escuela:    { nom:'Educativa',          pre:'Consultar',dur:'2 años' },
+    demo:        { nom:'Demo 7 días',     pre:'GRATIS',     dur:'7 días' },
+    mensual:     { nom:'Mensual',         pre:'19 €',       dur:'1 mes' },
+    trimestral:  { nom:'Trimestral',      pre:'49 €',       dur:'3 meses' },
+    semestral:   { nom:'Semestral',       pre:'89 €',       dur:'6 meses' },
+    anual:       { nom:'Anual',           pre:'149 €',      dur:'12 meses' },
+    perpetuo:    { nom:'Perpetuo',        pre:'599 €',      dur:'Sin caducidad' },
+    estudiantes: { nom:'Estudiantes',     pre:'GRATIS',     dur:'1 año · con matrícula' },
+    empresa:     { nom:'Empresa (Packs)', pre:'Desde 49 €', dur:'A medida' },
   };
 
   // ── Formatear clave ─────────────────────────────────────────────────────
@@ -81,7 +84,8 @@ export default function LicenseActivation({ onActivated }) {
   const enviarSolicitud = () => {
     if(!nombre.trim()){ setMsg('Introduce tu nombre.'); setEstado('error'); return; }
     if(!email.trim()||!/^[^@]+@[^@]+\.[^@]+$/.test(email)){ setMsg('Email no válido.'); setEstado('error'); return; }
-    if(plan!=='demo'&&plan!=='escuela'&&!fich){ setMsg('Adjunta el comprobante de pago.'); setEstado('error'); return; }
+    if(plan==='estudiantes'&&!fich){ setMsg('Adjunta tu justificante de matrícula actual.'); setEstado('error'); return; }
+    if(plan!=='demo'&&plan!=='estudiantes'&&!fich){ setMsg('Adjunta el comprobante de pago.'); setEstado('error'); return; }
     setEstado('idle'); setMsg('');
 
     const reqId = genReqId();
@@ -208,7 +212,7 @@ export default function LicenseActivation({ onActivated }) {
 
             {/* Plan */}
             <span style={S.lbl}>Plan de licencia</span>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginTop:4}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginTop:4}}>
               {Object.entries(PLANES).map(([p,pl])=>(
                 <div key={p} onClick={()=>setPlan(p)} style={{border:`2px solid ${plan===p?'#3b82f6':'#2a3a55'}`,background:plan===p?'#1e3a5f55':'#0a0e1a',borderRadius:8,padding:'8px 4px',cursor:'pointer',textAlign:'center',transition:'all .2s'}}>
                   <div style={{fontSize:11,fontWeight:700,color:'#f1f5f9'}}>{pl.nom}</div>
@@ -231,7 +235,7 @@ export default function LicenseActivation({ onActivated }) {
             {/* Comprobante de pago */}
             {plan!=='demo'&&(
               <>
-                <span style={S.lbl}>Comprobante de pago {plan!=='escuela'&&'*'}</span>
+                <span style={S.lbl}>{plan==='estudiantes'?'Justificante de matrícula actual *':'Comprobante de pago *'}</span>
                 {!fich?(
                   <div onClick={()=>fileRef.current?.click()} style={{border:`2px dashed ${!fich&&estado==='error'?'#ef4444':'#2a3a55'}`,borderRadius:8,padding:'16px',textAlign:'center',cursor:'pointer',marginTop:4,transition:'border .2s'}}
                     onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files?.[0];if(f){const evt={target:{files:[f]}};handleFile(evt);}}}>

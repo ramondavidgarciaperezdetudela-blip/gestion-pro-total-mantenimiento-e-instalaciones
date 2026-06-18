@@ -39,6 +39,20 @@ VITE_LICENSE_PUBKEY        # JWK alternativo si algún día rotas la clave públ
 Pon estos valores en un `.env.local` (no se sube a git). Sin nada configurado,
 la app valida offline con la clave pública incrustada.
 
+## Planes y reglas (definidos en `src/lib/plans.config.js`)
+| Plan | Precio | Duración | Requisito |
+|---|---|---|---|
+| Demo | Gratis | **7 días** | Ninguno. Al caducar, el cliente debe activar otro plan. |
+| Mensual / Trimestral / Semestral / Anual | de pago | 30 / 90 / 180 / 365 días | Comprobante de pago |
+| Perpetuo | de pago | sin caducidad (0) | Comprobante de pago |
+| **Estudiantes** | **Gratis** | **365 días** | **Justificante de matrícula actual.** Se renueva cada año reemitiendo la clave con la nueva matrícula, hasta que elija otro plan. |
+| Empresa (Packs) | a medida | según acuerdo | — |
+
+Los planes gratuitos llevan `gratis: true` (ocultan los botones de cobro). El plan con
+justificante lleva `requisito` (p. ej. `'matrícula actual'`), que la pantalla de inicio
+muestra y añade al texto de la solicitud. Cambiar duraciones/precios: edita
+`plans.config.js` (app) y los paneles de `distribucion/GESTOR-LICENCIAS/`.
+
 ## Desactivar la capa
 Pon `enabled: false` en `src/lib/license.config.js` y recompila: la app dejará
 de pedir licencia.

@@ -24,5 +24,5 @@ presupuestos, facturas y agenda— en una sola app que funciona hasta sin intern
 - *"¿Y mis datos?"* → Son tuyos, en tu dispositivo, con copias cuando quieras.
 
 ## Cierre
-"Te activo una demo de 14 días ahora mismo. Si en dos semanas no te ahorra
+"Te activo una demo de 7 días ahora mismo. Si en una semana no te ahorra
 tiempo, no pagas nada. ¿Te paso el enlace?"

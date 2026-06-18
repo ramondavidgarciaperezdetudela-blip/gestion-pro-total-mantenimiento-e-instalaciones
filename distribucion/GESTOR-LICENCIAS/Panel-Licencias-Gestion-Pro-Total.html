@@ -197,7 +197,7 @@ textarea{resize:vertical;min-height:70px}
                 <option value="mensual">Mensual — 9,99 €</option>
                 <option value="anual" selected>Anual — 79,99 €</option>
                 <option value="permanente">Permanente — 199 €</option>
-                <option value="escuela">Educativa 2 años</option>
+                <option value="escuela">Estudiantes (1 año · matrícula)</option>
               </select>
               <label>Método de pago</label>
               <select id="sol-metodo">
@@ -279,7 +279,7 @@ textarea{resize:vertical;min-height:70px}
               <option value="mensual">📆 Mensual — 9,99 €</option>
               <option value="anual" selected>📅 Anual — 79,99 €</option>
               <option value="permanente">♾️ Permanente — 199 €</option>
-              <option value="escuela">🎓 Educativa 2 años</option>
+              <option value="escuela">🎓 Estudiantes (1 año · matrícula)</option>
               <optgroup label="─── Packs empresariales ───">
                 <option value="pack10">📦 Pack 10 licencias — 69,90 €</option>
                 <option value="pack25">📦 Pack 25 licencias — 149,75 €</option>
@@ -622,7 +622,7 @@ textarea{resize:vertical;min-height:70px}
                 <option value="mensual">📆 Mensual — 9,99 €</option>
                 <option value="anual" selected>📅 Anual — 79,99 €</option>
                 <option value="permanente">♾️ Permanente — 199 €</option>
-                <option value="escuela">🎓 Educativa 2 años</option>
+                <option value="escuela">🎓 Estudiantes (1 año · matrícula)</option>
               </select>
               <label>Precio (€)</label>
               <div style="display:flex;gap:6px">
@@ -715,7 +715,7 @@ textarea{resize:vertical;min-height:70px}
           <div><label>📆 Mensual (€/mes)</label><input type="number" id="cfg-p-mensual" placeholder="9.99" step="0.01" oninput="saveProgramCfg()"></div>
           <div><label>📅 Anual (€/año)</label><input type="number" id="cfg-p-anual" placeholder="79.99" step="0.01" oninput="saveProgramCfg()"></div>
           <div><label>♾️ Permanente (€)</label><input type="number" id="cfg-p-permanente" placeholder="199" step="0.01" oninput="saveProgramCfg()"></div>
-          <div><label>🎓 Educativa (años)</label><input type="number" id="cfg-p-escuela-anos" placeholder="2" min="1" oninput="saveProgramCfg()"></div>
+          <div><label>🎓 Estudiantes (años, matrícula)</label><input type="number" id="cfg-p-escuela-anos" placeholder="1" min="1" oninput="saveProgramCfg()"></div>
         </div>
       </div>
 
@@ -806,7 +806,7 @@ textarea{resize:vertical;min-height:70px}
           <option value="mensual">📆 Mensual</option>
           <option value="anual" selected>📅 Anual</option>
           <option value="permanente">♾️ Permanente</option>
-          <option value="escuela">🎓 Educativa 2 años</option>
+          <option value="escuela">🎓 Estudiantes (1 año · matrícula)</option>
         </select>
       </div>
       <div>
@@ -898,7 +898,7 @@ function _expiraMs(tipo){
   else if(tipo==='trimestral'){ d.setMonth(d.getMonth()+3); }
   else if(tipo==='semestral'){ d.setMonth(d.getMonth()+6); }
   else if(tipo==='anual'){ d.setFullYear(d.getFullYear()+1); }
-  else if(tipo==='escuela'){ d.setFullYear(d.getFullYear()+2); }
+  else if(tipo==='escuela'){ d.setFullYear(d.getFullYear()+1); } // Estudiantes: 1 año (renovable con matrícula)
   else { return 0; } // permanente / distribuidor = perpetua
   return d.getTime();
 }
@@ -916,7 +916,7 @@ function calcExp(tipo,desde){
   if(tipo==='demo'){d.setDate(d.getDate()+n);}
   else if(tipo==='mensual'){d.setMonth(d.getMonth()+1);}
   else if(tipo==='anual'){d.setFullYear(d.getFullYear()+1);}
-  else if(tipo==='escuela'){d.setFullYear(d.getFullYear()+(parseInt(programCfg['precio_escuela_anos'])||2));}
+  else if(tipo==='escuela'){d.setFullYear(d.getFullYear()+(parseInt(programCfg['precio_escuela_anos'])||1));}
   else return null;
   return d.toISOString();
 }
@@ -1012,7 +1012,7 @@ function saveProgramCfg(){
     scriptUrl:$('cfg-script-url')?.value||'', secret:$('cfg-secret')?.value||'',
     precio_mensual:$('cfg-p-mensual')?.value||'9.99', precio_anual:$('cfg-p-anual')?.value||'79.99',
     precio_permanente:$('cfg-p-permanente')?.value||'199', precio_demo_dias:$('cfg-p-demo-dias')?.value||'7',
-    precio_escuela_anos:$('cfg-p-escuela-anos')?.value||'2',
+    precio_escuela_anos:$('cfg-p-escuela-anos')?.value||'1',
     precio_pack10:$('cfg-p-pack10')?.value||'69.99',
     precio_pack25:$('cfg-p-pack25')?.value||'149.99',
     precio_pack50:$('cfg-p-pack50')?.value||'249.99',
@@ -1381,7 +1381,7 @@ async function verificarSolicitud(id){
   sol.keyAsignada=key;
   saveData(); renderSolicitudes(); renderStats(); renderTable();
   // Abrir email para enviar la clave
-  const tipos={demo:'Demo 7 días',mensual:'Mensual',anual:'Anual',permanente:'Permanente',escuela:'Educativa 2 años'};
+  const tipos={demo:'Demo 7 días',mensual:'Mensual',anual:'Anual',permanente:'Permanente',escuela:'Estudiantes (1 año · matrícula)'};
   const s=encodeURIComponent('Tu clave de licencia — Gestión Pro Total');
   const nl=String.fromCharCode(10);
   const emailBody=[
@@ -1846,7 +1846,7 @@ async function generarLicenciaRapida(){
   $('q-btn-copiar').onclick=()=>navigator.clipboard.writeText(key).then(()=>toast('Clave copiada'));
   $('q-btn-email').onclick=()=>{
     const s=encodeURIComponent('Tu clave de licencia — Gestión Pro Total');
-    const tipos={demo:'Demo 7 días',mensual:'Mensual',anual:'Anual',permanente:'Permanente',escuela:'Educativa 2 años'};
+    const tipos={demo:'Demo 7 días',mensual:'Mensual',anual:'Anual',permanente:'Permanente',escuela:'Estudiantes (1 año · matrícula)'};
     const b=encodeURIComponent(
       'Hola '+nombre+',\n\nTu clave de licencia es:\n\n'+key+
       '\n\nPlan: '+(tipos[tipo]||tipo)+
@@ -2113,7 +2113,7 @@ function copiarClave(){ if(currentLic)navigator.clipboard.writeText(currentLic.k
 function enviarEmailClave(){
   if(!currentLic)return;
   const {key,email,cliente,tipo,expira}=currentLic;
-  const tipos={demo:'Demo 7 días',mensual:'Mensual',anual:'Anual',permanente:'Permanente',escuela:'Educativa 2 años'};
+  const tipos={demo:'Demo 7 días',mensual:'Mensual',anual:'Anual',permanente:'Permanente',escuela:'Estudiantes (1 año · matrícula)'};
   const s=encodeURIComponent('Tu clave de licencia — Gestión Pro Total');
   const b=encodeURIComponent(`Hola ${cliente},\n\nTu clave:\n\n${key}\n\nPlan: ${tipos[tipo]||tipo}\n${expira?'Válida hasta: '+new Date(expira).toLocaleDateString('es-ES'):'Sin caducidad'}\n\nSoporte: ${ADMIN_EMAIL}`);
   window.open(`mailto:${email}?subject=${s}&body=${b}`);
@@ -2384,8 +2384,8 @@ function buildSystemPrompt(){
   return `Eres el Agente IA de Gestión Pro Total, software de gestión para empresas técnicas.
 Tu misión: gestionar solicitudes de licencias de forma rápida y precisa.
 Datos de pago: Bizum ${iaCfg.bizum||'[configurar]'}, IBAN ${iaCfg.iban||'[configurar]'}, Titular ${iaCfg.titular||'[configurar]'}.
-Licencias: Demo(gratis 7d), Mensual(9.99€/mes), Anual(79.99€/año), Permanente(199€), Escuela(2años correo institucional).
-Verificación pagos: 48h. Demo: inmediata. Anti-compartición: clave en 2 dispositivos → revocar ambas.
+Licencias: Demo(gratis 7 días, al caducar elige plan), Mensual(19€/mes), Trimestral(49€/3meses), Semestral(89€/6meses), Anual(149€/año), Perpetuo(599€ sin caducidad), Estudiantes(GRATIS 1 año, requiere justificante de matrícula actual, renovable cada año), Empresa(packs a medida).
+Verificación pagos: 48h. Demo: inmediata. Estudiantes: comprobar matrícula antes de emitir. Anti-compartición: clave en 2 dispositivos → revocar ambas.
 Responde en español, conciso y profesional. Máximo 3-4 líneas por respuesta.`;
 }
 
@@ -2575,7 +2575,7 @@ function renderConfig(){
   if($('cfg-pack100'))   $('cfg-pack100').value=programCfg.precio_pack100||'399.00';
   if($('cfg-p-permanente'))$('cfg-p-permanente').value=programCfg.precio_permanente||'199';
   if($('cfg-p-demo-dias'))$('cfg-p-demo-dias').value=programCfg.precio_demo_dias||'7';
-  if($('cfg-p-escuela-anos'))$('cfg-p-escuela-anos').value=programCfg.precio_escuela_anos||'2';
+  if($('cfg-p-escuela-anos'))$('cfg-p-escuela-anos').value=programCfg.precio_escuela_anos||'1';
   if($('cfg-p-pack10'))   $('cfg-p-pack10').value  =programCfg.precio_pack10  ||'69.99';
   if($('cfg-p-pack25'))   $('cfg-p-pack25').value  =programCfg.precio_pack25  ||'149.99';
   if($('cfg-p-pack50'))   $('cfg-p-pack50').value  =programCfg.precio_pack50  ||'249.99';

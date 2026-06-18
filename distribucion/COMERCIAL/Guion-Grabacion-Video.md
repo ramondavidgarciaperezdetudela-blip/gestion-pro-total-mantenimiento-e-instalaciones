@@ -80,7 +80,7 @@ Para cada escena tienes: **qué mostrar** + *(qué decir, opcional, si quieres v
 
 ### 11) Cierre  ·  ~6 s
 - **Muestra:** vuelve a la pantalla de inicio o al logo.
-- *"Gestión Pro Total. Pruébalo 14 días gratis."*
+- *"Gestión Pro Total. Pruébalo 7 días gratis."*
 
 ---
 

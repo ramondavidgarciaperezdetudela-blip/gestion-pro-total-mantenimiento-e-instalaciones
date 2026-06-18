@@ -1,20 +1,58 @@
-GESTION PRO TOTAL — Chromebook
-==============================
+GESTION PRO TOTAL — Chromebook (ChromeOS)
+==========================================
 
-LA FORMA MAS FACIL (PWA, sin instalar nada):
-  1. Abre Chrome en tu Chromebook.
-  2. Entra en la web de la app (o abre el servidor local, ver abajo).
-  3. En la barra de direcciones pulsa el icono "Instalar".
-  4. Quedara como una app mas en tu lanzador.
+Tienes DOS formas oficiales de instalarlo. Elige la que mejor te vaya.
 
-OPCION ANDROID (si tu Chromebook tiene Play Store):
-  Copia el archivo de la carpeta Android (gestion-pro-total.apk) y abrelo.
-  Activa "Origenes desconocidos" si te lo pide.
 
-OPCION SERVIDOR LOCAL (necesita Linux activado en ChromeOS):
-  1. Activa Linux: Ajustes > Avanzada > Desarrolladores > Entorno Linux.
+==========================================================
+METODO 1 (RECOMENDADO) — APP ANDROID (.APK)
+==========================================================
+La mayoria de Chromebooks tienen Play Store y ejecutan apps Android.
+
+  1. Descarga "gestion-pro-total.apk" desde:
+     https://github.com/ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases/releases/latest
+  2. En el Chromebook abre el archivo .apk (carpeta Descargas).
+  3. Si te pide permitir "instalar apps desconocidas", activalo y sigue.
+  4. Quedara como una app mas en tu lanzador, con su icono.
+
+Si tu Chromebook NO tiene Play Store/Android, usa el Metodo 2.
+
+
+==========================================================
+METODO 2 — INSTALAR COMO APP WEB (PWA)
+==========================================================
+Funciona en CUALQUIER Chromebook, solo con Chrome.
+
+  1. Abre Chrome y entra en:
+     https://gestion-pro-total.base44.app
+  2. En la barra de direcciones (arriba a la derecha) veras un icono de
+     INSTALAR (un monitor con una flecha hacia abajo). Pulsalo.
+     - Si no lo ves: menu  ⋮  ->  "Guardar e instalar"  ->
+       "Instalar Gestion Pro Total...".
+  3. Confirma "Instalar". Quedara como una app en tu lanzador.
+
+  >> Ahora SI aparece "Instalar": hemos corregido el icono y los datos
+     de la app (manifest) que antes impedian la instalacion en Chromebook.
+
+
+==========================================================
+METODO 3 (avanzado) — SERVIDOR LOCAL (Linux/Crostini)
+==========================================================
+Solo si quieres usarlo sin internet con Linux activado:
+
+  1. Ajustes > Avanzada > Desarrolladores > Entorno de desarrollo Linux.
   2. Copia esta carpeta a la zona de archivos de Linux.
-  3. En la terminal:  bash servidor-chromebook.sh
-  4. Abre http://localhost:8080
+  3. En la terminal:   bash servidor-chromebook.sh
+  4. Abre http://localhost:8080 en Chrome y pulsa "Instalar".
 
-Soporte: ramondavidgarciaperezdetudela@gmail.com
+
+----------------------------------------------------------
+ACTIVAR LA LICENCIA (igual en todas las plataformas)
+----------------------------------------------------------
+Al abrir la app por primera vez:
+  - DEMO: gratis 7 dias. Al terminar, elige el plan que quieras.
+  - ESTUDIANTES: gratis; adjunta tu matricula actual. Dura 1 año y se
+    renueva cada año con nueva matricula (hasta que elijas otro plan).
+  - Resto de planes: paga y te enviamos la clave de activacion.
+
+Soporte: kairigarcia.gestionprototal@gmail.com

@@ -71,8 +71,8 @@ def intro():
 def planes():
     img=BASE.copy(); d=ImageDraw.Draw(img,"RGBA")
     d.rounded_rectangle([160,140,174,240],6,fill=BLUE); d.text((210,150),"Planes y licencias",font=f(60),fill=WHITE)
-    P=[("DEMO","Gratis","14 días",False),("MENSUAL","19 €","al mes",False),("ANUAL","149 €","2 meses gratis",True),
-       ("PERPETUO","599 €","pago único",False),("ESCUELA","99 €","educativo",False),("EMPRESA","desde 49 €","varios equipos",False)]
+    P=[("DEMO","Gratis","7 días",False),("MENSUAL","19 €","al mes",False),("ANUAL","149 €","2 meses gratis",True),
+       ("PERPETUO","599 €","pago único",False),("ESTUDIANTES","Gratis","con matrícula",False),("EMPRESA","desde 49 €","varios equipos",False)]
     cols=3; gw,gh=480,250; gx=(W-cols*gw)/(cols+1); y0=320
     for i,(n,pr,nt,st) in enumerate(P):
         r,c=divmod(i,cols); x=gx+c*(gw+gx); y=y0+r*(gh+44)
@@ -85,7 +85,7 @@ def planes():
 
 def close():
     img=BASE.copy(); d=ImageDraw.Draw(img,"RGBA")
-    ct(d,W/2,250,"Prueba 14 días gratis",f(78),WHITE)
+    ct(d,W/2,250,"Prueba 7 días gratis",f(78),WHITE)
     ct(d,W/2,370,"Si no te ahorra tiempo, no pagas nada.",f(42,False),GREY)
     logo(img,330,W/2,640); ct(d,W/2,820,"kairigarcia.gestionprototal@gmail.com",f(38),CYAN)
     ct(d,W/2,890,"Gestión Pro Total · Empieza hoy",f(30,False),GREY)
