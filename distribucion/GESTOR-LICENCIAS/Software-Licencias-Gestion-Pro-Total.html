@@ -40,6 +40,8 @@
     <div class="warn">⚠️ Pega aquí el contenido de <b>CLAVE-PRIVADA-MAESTRA.json</b> (carpeta SOLO-PARA-MI). No se comparte con nadie.</div>
     <textarea id="priv" rows="3" placeholder='{"kty":"EC","crv":"P-256","x":"...","y":"...","d":"..."}'></textarea>
     <label class="muted"><input type="checkbox" id="remember" style="width:auto"> Recordar en este navegador</label>
+    <button class="sec" onclick="generarClavesMaestras()">🔑 Generar claves maestras (si no las tienes)</button>
+    <p class="muted">⚠️ Si generas claves NUEVAS, la app debe llevar la nueva clave PÚBLICA y volver a publicarse, o las licencias no validarán.</p>
   </div>
 
   <div class="card">
@@ -105,7 +107,21 @@ async function verifyKey(){ return crypto.subtle.importKey('jwk',PUBLIC_JWK,{nam
 function clientes(){ try{return JSON.parse(localStorage.getItem(LS)||'[]');}catch{return[];} }
 function guardar(a){ localStorage.setItem(LS,JSON.stringify(a)); render(); }
 
+window.generarClavesMaestras=async()=>{
+  try{
+    const kp=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
+    const priv=await crypto.subtle.exportKey('jwk',kp.privateKey);
+    const pub =await crypto.subtle.exportKey('jwk',kp.publicKey);
+    delete priv.key_ops; delete priv.ext; delete pub.key_ops; delete pub.ext;
+    const privStr=JSON.stringify(priv), pubStr=JSON.stringify({kty:pub.kty,crv:pub.crv,x:pub.x,y:pub.y});
+    $('priv').value=privStr; if($('remember').checked)localStorage.setItem(LSP,privStr);
+    const dl=(n,t)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));a.download=n;a.click();};
+    dl('CLAVE-PRIVADA-MAESTRA.json',privStr); dl('CLAVE-PUBLICA.txt',pubStr);
+    alert('CLAVES MAESTRAS GENERADAS y descargadas.\n\nGUARDA la privada en SOLO-PARA-MI (no la compartas).\n\nCLAVE PUBLICA (para la app):\n'+pubStr+'\n\nSi cambias de claves, pon esta publica en la app y vuelve a publicarla.');
+  }catch(e){ alert('No se pudieron generar las claves: '+e.message); }
+};
 window.emitir=async()=>{
+  try{
   const jwk=privJwk(); const now=Date.now(), dias=Number($('dias').value)||0;
   const payload={cliente:$('cliente').value.trim(),email:$('email').value.trim(),deviceId:$('deviceId').value.trim(),plan:$('plan').value,emitida:now,expira:dias>0?now+dias*86400000:0,v:1};
   if(!payload.cliente){alert('Pon el nombre del cliente.');return;}
@@ -115,6 +131,7 @@ window.emitir=async()=>{
   const key=pB64+'.'+b64url(sig);
   $('salida').style.display='block'; $('salida').textContent=key; $('copiar').style.display='inline-block'; window._lastKey=key;
   const a=clientes(); a.push({...payload,key}); guardar(a);
+  }catch(e){ if(e&&e.message) alert('No se pudo generar la licencia: '+e.message); }
 };
 window.copiar=()=>{ navigator.clipboard.writeText(window._lastKey||''); alert('Clave copiada. Envíasela al cliente.'); };
 
