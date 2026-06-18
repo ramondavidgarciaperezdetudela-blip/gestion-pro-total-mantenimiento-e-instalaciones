@@ -5,11 +5,14 @@
 Hola. Aquí tienes TODO listo para vender y entregar tu app.
 Lee este orden:
 
-📁 PARA-EL-CLIENTE/   → Lo que le das al cliente según su sistema:
-     Windows/   (doble clic en iniciar.bat)
-     Mac/       (doble clic en servidor.command)
-     ChromeBook/(PWA o APK)
-     Android/   (gestion-pro-total.apk)
+📁 PARA-EL-CLIENTE/   → Lo que le das al cliente según su sistema.
+     En cada carpeta hay un MENÚ de instalación; el cliente solo abre:
+     Windows/   → INSTALAR-Gestion-Pro-Total.bat
+     Mac/       → INSTALAR-Gestion-Pro-Total.command
+     ChromeBook/→ INSTALAR-Gestion-Pro-Total.sh   (Linux/Chromebook)
+     Android/   → gestion-pro-total.apk
+     El menú ofrece: [1] instalar en el PC (app normal), [2] servidor local,
+     [3] nube / app web.
    * NO incluyas otras carpetas al cliente.
 
 📁 GESTOR-LICENCIAS/  → Tus herramientas para vender licencias:
