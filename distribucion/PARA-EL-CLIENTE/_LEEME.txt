@@ -1,9 +1,15 @@
-Esta carpeta YA incluye la app compilada (dist) y el .apk: NO hay que
-programar ni compilar nada.
+Esta carpeta incluye todo lo necesario: NO hay que programar ni compilar nada.
 
-  Windows    -> abre la carpeta Windows y doble clic en iniciar.bat
-  Mac        -> carpeta Mac, doble clic en servidor.command
-  ChromeBook -> carpeta ChromeBook (PWA) o instala el .apk
-  Android    -> instala gestion-pro-total.apk
+PARA INSTALAR, abre el MENÚ DE INSTALACIÓN de tu carpeta y elige una opción
+(Instalar en el PC / Servidor local / Nube):
 
-La primera vez la app pedirá la CLAVE DE LICENCIA (la que te enviamos).
+  Windows    -> carpeta Windows    -> doble clic en  INSTALAR-Gestion-Pro-Total.bat
+  Mac        -> carpeta Mac        -> doble clic en  INSTALAR-Gestion-Pro-Total.command
+  Linux/CB   -> carpeta ChromeBook -> ejecutar       INSTALAR-Gestion-Pro-Total.sh
+  Android    -> instala            gestion-pro-total.apk
+
+La opción [1] "Instalar en el PC" lo deja como una aplicación normal del sistema
+(icono, menú de inicio y desinstalador), descargando el instalador oficial.
+
+La primera vez la app pedirá la CLAVE DE LICENCIA o podrás suscribirte
+(Demo 7 días gratis · Estudiantes gratis con matrícula).
