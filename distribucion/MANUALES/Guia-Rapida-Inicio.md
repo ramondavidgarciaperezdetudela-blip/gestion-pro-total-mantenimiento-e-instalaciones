@@ -1,12 +1,13 @@
 # 🚀 Guía rápida de inicio — Gestión Pro Total
 
-## 1. Instalar (elige una)
-- **Windows**: carpeta `PARA-EL-CLIENTE/Windows` → doble clic en `iniciar.bat`
-  (o `instalar-windows.bat` para crear acceso directo).
-- **Mac**: carpeta `Mac` → doble clic en `servidor.command`.
-- **Chromebook**: carpeta `ChromeBook` → instala como PWA o usa el `.apk`.
+## 1. Instalar
+Abre el **menú de instalación** de tu carpeta en `PARA-EL-CLIENTE` y elige
+opción ([1] instalar en el PC como app normal · [2] servidor local · [3] nube):
+- **Windows**: `INSTALAR-Gestion-Pro-Total.bat`
+- **Mac**: `INSTALAR-Gestion-Pro-Total.command`
+- **Linux / Chromebook**: `INSTALAR-Gestion-Pro-Total.sh`
 - **Android**: instala `gestion-pro-total.apk`.
-- **Cualquiera (sin instalar)**: abre la web e instálala como App (PWA).
+- **Rápido, sin instalar**: doble clic en `ABRIR-Gestion-Pro-Total.html`.
 
 ## 2. Activar tu licencia
 Pega la clave que te enviamos en la pantalla de activación. Queda guardada.

@@ -42,7 +42,7 @@ Solo si quieres usarlo sin internet con Linux activado:
 
   1. Ajustes > Avanzada > Desarrolladores > Entorno de desarrollo Linux.
   2. Copia esta carpeta a la zona de archivos de Linux.
-  3. En la terminal:   bash servidor-chromebook.sh
+  3. En la terminal:   bash INSTALAR-Gestion-Pro-Total.sh   y elige la opcion [2].
   4. Abre http://localhost:8080 en Chrome y pulsa "Instalar".
 
 

@@ -1,18 +1,17 @@
 GESTION PRO TOTAL — Mac
 =======================
 
-OPCION 1 (recomendada, sin instalar):
-  Haz doble clic en "servidor.command".
-  Se abrira tu navegador con la aplicacion.
-  La primera vez, si macOS lo bloquea: clic derecho > Abrir > Abrir.
-  (Necesita Python 3, que viene en macOS; si no, instala desde python.org)
+LO MAS FACIL: doble clic en "INSTALAR-Gestion-Pro-Total.command".
+  Te ofrece un menu con 3 opciones. La primera vez, si macOS lo bloquea:
+  clic derecho > Abrir > Abrir.
 
-OPCION 2 (app de escritorio .dmg):
-  Descarga el instalador oficial para Mac desde:
-  https://github.com/ramondavidgarciaperezdetudela-blip/gestion-pro-total-mantenimiento-e-instalaciones/releases/latest
+  [1] Instalar en el Mac (app normal)  <- RECOMENDADO
+      Descarga el instalador oficial .dmg y arrastras la app a Aplicaciones,
+      como cualquier programa. Tambien desde:
+      https://github.com/ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases/releases/latest
+  [2] Servidor local: usarlo desde varios equipos de tu red.
+  [3] Nube / app web: abrir en el navegador e instalar como app (PWA).
 
-OPCION 3 (instalar como App/PWA):
-  Con el servidor abierto, en Safari/Chrome usa "Compartir > Anadir al Dock"
-  o el icono de instalar de la barra de direcciones.
+Sin instalar nada (rapido): doble clic en "ABRIR-Gestion-Pro-Total.html".
 
-Soporte: ramondavidgarciaperezdetudela@gmail.com
+Soporte: kairigarcia.gestionprototal@gmail.com
