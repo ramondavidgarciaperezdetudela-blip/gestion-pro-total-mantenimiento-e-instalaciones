@@ -33,7 +33,9 @@ Al abrirlo por primera vez aparece la **pantalla de licencia** con dos pestañas
 
 ### Paso 2 — Elige plan y paga
 En **“Solicitar licencia”** el cliente:
-1. Elige el **plan** (Demo, Mensual, Trimestral, Semestral, Anual, Perpetuo, Escuela, Empresa).
+1. Elige el **plan** (Demo, Mensual, Trimestral, Semestral, Anual, Perpetuo, Estudiantes, Empresa).
+   - **Demo:** gratis **7 días**; al caducar, el cliente elige y activa el plan que quiera.
+   - **Estudiantes:** **gratis**, pero debe **adjuntar su matrícula actual**. Dura **1 año** y se **renueva cada año** con nueva matrícula (hasta que pase a otro plan).
 2. Paga por el método disponible:
    - **Tarjeta** (si has configurado el enlace de Stripe del plan), o
    - **Bizum / Transferencia** (con tus datos).

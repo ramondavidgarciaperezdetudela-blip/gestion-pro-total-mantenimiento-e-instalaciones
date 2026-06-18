@@ -23,15 +23,17 @@ export const paymentConfig = {
   whatsapp: '',                   // opcional, p.ej. '34600123456'
 };
 
+// `requisito` (opcional): texto del justificante que el cliente debe aportar.
+// `gratis: true` marca planes sin pago (no muestran botones de cobro).
 export const plans = [
-  { id: 'demo',       nombre: 'Demo',            precio: 'Gratis',   periodo: '14 días',    dias: 14,  stripeUrl: '', nota: 'Prueba todo sin compromiso' },
-  { id: 'mensual',    nombre: 'Mensual',         precio: '19 €',     periodo: '/mes',       dias: 30,  stripeUrl: '' },
-  { id: 'trimestral', nombre: 'Trimestral',      precio: '49 €',     periodo: '/3 meses',   dias: 90,  stripeUrl: '' },
-  { id: 'semestral',  nombre: 'Semestral',       precio: '89 €',     periodo: '/6 meses',   dias: 180, stripeUrl: '' },
-  { id: 'anual',      nombre: 'Anual',           precio: '149 €',    periodo: '/año',       dias: 365, stripeUrl: '', destacado: true, nota: 'El más elegido · 2 meses gratis' },
-  { id: 'perpetuo',   nombre: 'Perpetuo',        precio: '599 €',    periodo: 'pago único', dias: 0,   stripeUrl: '', nota: 'Pagas una vez, para siempre' },
-  { id: 'escuela',    nombre: 'Escuela',         precio: '99 €',     periodo: '/año',       dias: 365, stripeUrl: '', nota: 'Educativo / formación' },
-  { id: 'empresa',    nombre: 'Empresa (Packs)', precio: 'Desde 49 €', periodo: '/mes',     dias: 30,  stripeUrl: '', nota: 'Varios equipos, a medida' },
+  { id: 'demo',        nombre: 'Demo',            precio: 'Gratis',   periodo: '7 días',     dias: 7,   stripeUrl: '', gratis: true, nota: 'Gratis 7 días · luego elige tu plan' },
+  { id: 'mensual',     nombre: 'Mensual',         precio: '19 €',     periodo: '/mes',       dias: 30,  stripeUrl: '' },
+  { id: 'trimestral',  nombre: 'Trimestral',      precio: '49 €',     periodo: '/3 meses',   dias: 90,  stripeUrl: '' },
+  { id: 'semestral',   nombre: 'Semestral',       precio: '89 €',     periodo: '/6 meses',   dias: 180, stripeUrl: '' },
+  { id: 'anual',       nombre: 'Anual',           precio: '149 €',    periodo: '/año',       dias: 365, stripeUrl: '', destacado: true, nota: 'El más elegido · 2 meses gratis' },
+  { id: 'perpetuo',    nombre: 'Perpetuo',        precio: '599 €',    periodo: 'pago único', dias: 0,   stripeUrl: '', nota: 'Pagas una vez, para siempre' },
+  { id: 'estudiantes', nombre: 'Estudiantes',     precio: 'Gratis',   periodo: '/año',       dias: 365, stripeUrl: '', gratis: true, requisito: 'matrícula actual', nota: 'Gratis con matrícula · renovable cada año' },
+  { id: 'empresa',     nombre: 'Empresa (Packs)', precio: 'Desde 49 €', periodo: '/mes',     dias: 30,  stripeUrl: '', nota: 'Varios equipos, a medida' },
 ];
 
 export default { paymentConfig, plans };

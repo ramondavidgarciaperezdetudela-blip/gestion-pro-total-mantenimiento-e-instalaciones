@@ -50,7 +50,8 @@ function StartScreen({ reason, onActivated }) {
     `Plan: ${plan.nombre} (${plan.precio} ${plan.periodo})\n` +
     `Equipo: ${deviceId}\n` +
     `Cliente: ${nombre}\n` +
-    `Email: ${email}`;
+    `Email: ${email}` +
+    (plan.requisito ? `\nAdjunto: justificante de ${plan.requisito} (imprescindible)` : '');
 
   const enviarSolicitud = () => {
     if (!nombre || !email) { alert('Pon tu nombre y email para enviarte la clave.'); return; }
@@ -137,8 +138,12 @@ function StartScreen({ reason, onActivated }) {
               <div className="mt-5 rounded-xl bg-slate-50 border border-slate-200 p-4">
                 <p className="text-sm font-semibold text-slate-700 mb-2">Pagar plan <span className="text-blue-700">{plan.nombre}</span> · {plan.precio} {plan.periodo}</p>
 
-                {plan.id === 'demo' ? (
-                  <p className="text-sm text-slate-600">La demo es gratis: envíanos tus datos y te mandamos una clave de prueba de 14 días.</p>
+                {plan.gratis ? (
+                  <p className="text-sm text-slate-600">
+                    {plan.id === 'estudiantes'
+                      ? 'Gratis para estudiantes: adjunta tu justificante de matrícula actual. Licencia válida 1 año, renovable cada año mientras sigas estudiando (hasta que elijas otro plan).'
+                      : 'Demo gratis durante 7 días. Cuando termine, elige y activa el plan que quieras desde esta misma pantalla.'}
+                  </p>
                 ) : (
                   <div className="space-y-3">
                     {/* Tarjeta (Stripe) */}
@@ -158,7 +163,9 @@ function StartScreen({ reason, onActivated }) {
 
               {/* Enviar datos / solicitar clave */}
               <button onClick={enviarSolicitud} className="w-full mt-4 bg-green-600 text-white font-semibold py-3 rounded-lg hover:opacity-95">
-                {plan.id === 'demo' ? 'Solicitar demo gratis' : 'He pagado · enviar mis datos para recibir la clave'}
+                {plan.gratis
+                  ? (plan.id === 'estudiantes' ? 'Enviar datos + matrícula y solicitar licencia' : 'Solicitar demo gratis (7 días)')
+                  : 'He pagado · enviar mis datos para recibir la clave'}
               </button>
               <div className="flex gap-2 mt-2">
                 <button onClick={copiarDatos} className="flex-1 bg-slate-200 text-slate-700 font-medium py-2 rounded-lg hover:bg-slate-300 text-sm">Copiar datos</button>

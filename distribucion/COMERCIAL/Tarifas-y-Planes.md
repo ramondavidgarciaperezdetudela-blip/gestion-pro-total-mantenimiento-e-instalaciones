@@ -4,14 +4,21 @@
 
 | Plan            | Precio       | Periodo      | Ideal para                         |
 |-----------------|--------------|--------------|------------------------------------|
-| **Demo**        | Gratis       | 14 días      | Probar todas las funciones         |
+| **Demo**        | Gratis       | **7 días**   | Probar todo. Al acabar, elige plan |
 | **Mensual**     | 19 €         | /mes         | Empezar sin compromiso             |
 | **Trimestral**  | 49 €         | /3 meses     | Ahorro corto plazo                 |
 | **Semestral**   | 89 €         | /6 meses     | Uso continuado                     |
 | **Anual** ⭐    | 149 €        | /año         | El más elegido (2 meses gratis)    |
 | **Perpetuo**    | 599 €        | pago único   | Pagar una vez, para siempre        |
-| **Escuela**     | 99 €         | /año         | Centros de formación / educativo   |
+| **Estudiantes** | **Gratis**   | /año         | Estudiantes con **matrícula actual** |
 | **Empresa (Packs)** | Desde 49 € | /mes      | Varios equipos, a medida           |
+
+> **Demo (7 días):** gratis y sin tarjeta. Cuando termina, el cliente elige y activa
+> el plan que quiera desde la misma pantalla.
+>
+> **Estudiantes (gratis):** sin coste, pero hay que **justificar la matrícula actual**.
+> La licencia dura **1 año** y se **renueva cada año** aportando la nueva matrícula,
+> hasta que el estudiante decida pasarse a otro plan.
 
 ## Formas de pago (en la pantalla de inicio)
 - **Tarjeta** (Stripe Payment Link) — botón directo por plan.

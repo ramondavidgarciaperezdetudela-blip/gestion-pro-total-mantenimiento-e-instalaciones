@@ -51,9 +51,19 @@
     <label>ID del equipo del cliente (DEV-XXXXXXXX) — vacío = cualquier equipo</label>
     <input id="deviceId" placeholder="Lo obtiene el cliente en la solicitud" />
     <label>Plan</label>
-    <select id="plan"><option>PRO</option><option>EMPRESA</option><option>DEMO</option></select>
+    <select id="plan">
+      <option value="Demo" data-dias="7">Demo (7 días · gratis)</option>
+      <option value="Mensual" data-dias="30">Mensual (30 días)</option>
+      <option value="Trimestral" data-dias="90">Trimestral (90 días)</option>
+      <option value="Semestral" data-dias="180">Semestral (180 días)</option>
+      <option value="Anual" data-dias="365" selected>Anual (365 días)</option>
+      <option value="Perpetuo" data-dias="0">Perpetuo (sin caducidad)</option>
+      <option value="Estudiantes" data-dias="365">Estudiantes (1 año · gratis, requiere matrícula)</option>
+      <option value="Empresa" data-dias="30">Empresa (a medida)</option>
+    </select>
     <label>Duración (días, 0 = perpetua)</label>
     <input id="dias" type="number" value="365" />
+    <p class="muted" style="margin:6px 0 0">Demo: 7 días gratis. <b>Estudiantes</b>: gratis con justificante de <b>matrícula actual</b>; válida 1 año y se renueva cada año reemitiendo la clave hasta que elija otro plan.</p>
     <button class="green" onclick="emitir()">Generar licencia</button>
     <div id="salida" class="key" style="display:none"></div>
     <button id="copiar" class="sec" style="display:none" onclick="copiar()">Copiar clave</button>
@@ -86,6 +96,7 @@ const PUBLIC_JWK = {"kty":"EC","crv":"P-256","x":"41ltfzdxFBhY6qcPIdFrjdzFJBkqUY
 const LS='gpt_admin_clientes_v1', LSP='gpt_admin_priv_v1';
 const $=id=>document.getElementById(id);
 if(localStorage.getItem(LSP)){ $('priv').value=localStorage.getItem(LSP); $('remember').checked=true; }
+$('plan').onchange=()=>{ const o=$('plan').selectedOptions[0]; if(o&&o.dataset.dias!==undefined)$('dias').value=o.dataset.dias; };
 $('remember').onchange=()=>{ if($('remember').checked)localStorage.setItem(LSP,$('priv').value); else localStorage.removeItem(LSP); };
 
 function privJwk(){ const t=$('priv').value.trim(); if(!t){alert('Pega tu clave privada arriba.');throw 0;} let j; try{j=JSON.parse(t);}catch{alert('La clave privada no es un JSON válido.');throw 0;} if($('remember').checked)localStorage.setItem(LSP,t); return j; }

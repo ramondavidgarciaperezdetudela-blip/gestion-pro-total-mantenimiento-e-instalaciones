@@ -139,7 +139,7 @@ DeviceID: ${data.deviceId || '—'}
 Fecha:    ${new Date().toLocaleString('es-ES')}
 
 Observaciones: ${data.obs || 'Sin observaciones'}
-
+${/estudiant|escuela/i.test(data.plan||'') ? '\n⚠️ PLAN ESTUDIANTES: verifica el JUSTIFICANTE DE MATRÍCULA ACTUAL antes de emitir. Licencia 1 año, renovable cada año con nueva matrícula.\n' : ''}${/demo/i.test(data.plan||'') ? '\nℹ️ DEMO: 7 días gratis. Al caducar, el cliente debe elegir un plan.\n' : ''}
 =====================================
 Abre el Panel de Licencias para procesarla.
 `;

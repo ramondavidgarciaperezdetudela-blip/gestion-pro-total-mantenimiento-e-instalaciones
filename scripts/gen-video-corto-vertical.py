@@ -91,9 +91,9 @@ def s_big(a,b):
 def s_planes():
     img=BASE.copy(); d=ImageDraw.Draw(img,"RGBA")
     ct(d,W/2,250,"Planes y licencias",f(70),WHITE)
-    rows=[("Demo","Gratis · 14 días",False),("Mensual","19 € /mes",False),
+    rows=[("Demo","Gratis · 7 días",False),("Mensual","19 € /mes",False),
           ("Anual","149 € · 2 meses gratis",True),("Perpetuo","599 € pago único",False),
-          ("Escuela","99 € /año",False),("Empresa","desde 49 € /mes",False)]
+          ("Estudiantes","Gratis · matrícula",False),("Empresa","desde 49 € /mes",False)]
     y=400; rh=200; gap=24
     for nm,pr,top in rows:
         x0,x1=90,W-90
@@ -111,7 +111,7 @@ def s_planes():
 
 def s_close():
     img=BASE.copy(); d=ImageDraw.Draw(img,"RGBA")
-    ct(d,W/2,560,"Prueba 14 días",f(90),WHITE); ct(d,W/2,665,"GRATIS",f(110),GOLD)
+    ct(d,W/2,560,"Prueba 7 días",f(90),WHITE); ct(d,W/2,665,"GRATIS",f(110),GOLD)
     ct(d,W/2,840,"Si no te ahorra tiempo,",f(44,False),GREY)
     ct(d,W/2,900,"no pagas nada.",f(44,False),GREY)
     logo(img,360,W/2,1180)

@@ -19,7 +19,7 @@ Todo lo necesario para presentar y vender el programa.
 
 1. Empieza poniendo el **vídeo** (rompe el hielo y resume el producto).
 2. Pasa a la **presentación** para entrar en detalle según lo que pida el cliente.
-3. Cierra con la diapositiva de **"Prueba 14 días gratis"**.
+3. Cierra con la diapositiva de **"Prueba 7 días gratis"**.
 4. Apóyate en el **Argumentario** para resolver objeciones.
 
 ## Enlace de descarga para clientes (siempre el mismo)

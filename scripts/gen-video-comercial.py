@@ -175,9 +175,9 @@ def slide_bullets(title, bullets, marker="check"):
 def slide_plans():
     img = BASE.copy(); d = ImageDraw.Draw(img, "RGBA")
     header(d, "Planes y licencias")
-    plans = [("DEMO","Gratis","14 días de prueba",False),("MENSUAL","19 €","al mes",False),
+    plans = [("DEMO","Gratis","7 días de prueba",False),("MENSUAL","19 €","al mes",False),
              ("ANUAL","149 €","2 meses gratis",True),("PERPETUO","599 €","pago único",False),
-             ("ESCUELA","99 €","al año · educativo",False),("EMPRESA","desde 49 €","varios equipos",False)]
+             ("ESTUDIANTES","Gratis","con matrícula",False),("EMPRESA","desde 49 €","varios equipos",False)]
     cols=3; gw,gh=480,270; gx=(W-cols*gw)/(cols+1); gy=50; y0=340
     for i,(name,price,note,star) in enumerate(plans):
         r,c = divmod(i,cols); x=gx+c*(gw+gx); y=y0+r*(gh+gy)
@@ -192,7 +192,7 @@ def slide_plans():
 
 def slide_close():
     img = BASE.copy(); d = ImageDraw.Draw(img, "RGBA")
-    ctext(d, W/2, 250, "Prueba 14 días gratis", font(80), WHITE)
+    ctext(d, W/2, 250, "Prueba 7 días gratis", font(80), WHITE)
     ctext(d, W/2, 380, "Si no te ahorra tiempo, no pagas nada.", font(44, False), GREY)
     d.rounded_rectangle([W/2-220, 470, W/2+220, 478], 4, fill=BLUE)
     paste_logo(img, 360, W/2, 660)
