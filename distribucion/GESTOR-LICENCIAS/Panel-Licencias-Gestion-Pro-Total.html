@@ -679,6 +679,8 @@ textarea{resize:vertical;min-height:70px}
             <label>Clave privada de licencias (ECDSA, JSON)</label>
             <textarea id="cfg-secret" rows="3" placeholder='{"kty":"EC","crv":"P-256","x":"...","y":"...","d":"..."}' oninput="saveProgramCfg()" style="width:100%;font-family:ui-monospace,monospace;font-size:12px"></textarea>
             <p style="font-size:11px;color:var(--mt);margin-top:6px">🔒 Pega el contenido de <b>SOLO-PARA-MI/CLAVE-PRIVADA-MAESTRA.json</b>. Se guarda solo en este navegador. Con ella se firman las claves que valida la app.</p>
+            <button type="button" class="btn btn-pu btn-sm" style="margin-top:8px" onclick="generarClavesMaestras()">🔑 Generar claves maestras (si no las tienes)</button>
+            <p style="font-size:11px;color:var(--am);margin-top:6px">⚠️ Si generas claves NUEVAS, la app debe llevar la nueva clave PÚBLICA y volver a publicarse, o las licencias no validarán.</p>
           </div>
         </div>
       </div>
@@ -886,10 +888,42 @@ function getSecret(){ return programCfg.secret||'GPT-SECRET-KEY-2024-GestionProT
 function _b64url(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
 function getPrivJwk(){
   const raw=(programCfg.secret||'').trim();
-  if(!raw) throw new Error('Falta la clave privada: pégala en ⚙️ Configuración.');
+  if(!raw) throw new Error('Falta la clave privada: pégala en ⚙️ Configuración. Si no la tienes, pulsa "Generar claves maestras".');
   let j; try{ j=JSON.parse(raw); }catch{ throw new Error('La clave privada (Configuración) no es un JSON válido.'); }
   if(!j.d) throw new Error('Esa clave no es privada (falta "d"). Pega el contenido de CLAVE-PRIVADA-MAESTRA.json.');
   return j;
+}
+// Si una firma/generación falla (p.ej. falta la clave privada), mostrar el motivo
+// y desbloquear los botones que se quedaron en "Generando...".
+window.addEventListener('unhandledrejection', (e)=>{
+  const msg=(e.reason && (e.reason.message||e.reason)) || 'Error al generar la clave';
+  try{ toast(String(msg), true); }catch(_){ alert(String(msg)); }
+  ['btn-quick-gen','btn-ia-manual'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.disabled=false; if(/Generando/i.test(b.textContent)) b.textContent='⚡ Generar clave'; } });
+});
+// ── Generar par de claves maestras (ECDSA P-256) ──────────────────────────
+async function generarClavesMaestras(){
+  try{
+    const kp=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'}, true, ['sign','verify']);
+    const priv=await crypto.subtle.exportKey('jwk', kp.privateKey);
+    const pub =await crypto.subtle.exportKey('jwk', kp.publicKey);
+    delete priv.key_ops; delete priv.ext; delete pub.key_ops; delete pub.ext;
+    const privStr=JSON.stringify(priv), pubStr=JSON.stringify({kty:pub.kty,crv:pub.crv,x:pub.x,y:pub.y});
+    // Cargar la privada en Configuración para poder firmar ya
+    const cs=document.getElementById('cfg-secret'); if(cs){ cs.value=privStr; cs.dispatchEvent(new Event('input',{bubbles:true})); }
+    const aviso=
+      'CLAVES MAESTRAS GENERADAS\n\n'+
+      '1) GUARDA la CLAVE PRIVADA en un sitio seguro (SOLO-PARA-MI/CLAVE-PRIVADA-MAESTRA.json).\n'+
+      '   NUNCA la compartas. Ya queda cargada en este equipo para firmar.\n\n'+
+      'CLAVE PRIVADA (guárdala):\n'+privStr+'\n\n'+
+      '2) Para que la app valide tus licencias, su CLAVE PÚBLICA debe ser esta:\n'+pubStr+'\n'+
+      '   (Si cambias de claves, hay que poner esta pública en la app y volver a publicarla.)';
+    // Descargar ambos como archivos
+    const dl=(nombre,txt)=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'})); a.download=nombre; a.click(); };
+    dl('CLAVE-PRIVADA-MAESTRA.json', privStr);
+    dl('CLAVE-PUBLICA.txt', pubStr);
+    try{ toast('Claves generadas y descargadas. Privada cargada en Configuración.'); }catch(_){}
+    alert(aviso);
+  }catch(e){ try{ toast('No se pudieron generar las claves: '+e.message, true); }catch(_){ alert(e.message); } }
 }
 function _expiraMs(tipo){
   const dias=parseInt(programCfg.precio_demo_dias)||7; const d=new Date();
