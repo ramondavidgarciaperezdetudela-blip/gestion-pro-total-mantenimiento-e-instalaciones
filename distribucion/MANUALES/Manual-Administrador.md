@@ -3,7 +3,7 @@
 Dirigido a ti (propietario del software) para gestionar licencias y despliegue.
 
 ## 1. Emitir licencias
-Usa `GESTOR-LICENCIAS/Software-Licencias-Gestion-Pro-Total.html`. Necesitas tu
+Usa `GESTOR-LICENCIAS/GESTOR-DE-LICENCIAS.html`. Necesitas tu
 clave maestra (carpeta `SOLO-PARA-MI`). Pasos en `INSTRUCCIONES-PRIVADAS.md`.
 
 ## 2. Modelo de protección

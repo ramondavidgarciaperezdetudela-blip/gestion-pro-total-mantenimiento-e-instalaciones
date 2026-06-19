@@ -48,7 +48,7 @@ de Google** automáticamente.
 
 ## PASO 3 — Emitir la licencia (desde cualquier sitio)
 
-1. Abre **`Panel-Licencias-Gestion-Pro-Total.html`** (puedes guardarlo en Google Drive y
+1. Abre **`GESTOR-DE-LICENCIAS.html`** (puedes guardarlo en Google Drive y
    abrirlo desde cualquier equipo, o tenerlo en tu carpeta).
 2. Pega tu **clave privada** (solo se queda en ese momento, no se sube).
 3. Rellena cliente, email, **ID de equipo** y **plan**.
@@ -73,7 +73,7 @@ de Google** automáticamente.
 
 ## ¿Y si quiero el panel también accesible online?
 
-Sube `Panel-Licencias-Gestion-Pro-Total.html` a **Google Drive** (clic derecho → Abrir
+Sube `GESTOR-DE-LICENCIAS.html` a **Google Drive** (clic derecho → Abrir
 con → Vista previa, o usa un visor HTML) o ábrelo desde tu equipo. Como la firma se hace
 en tu navegador con tu clave privada (que tú pegas), **no hace falta ningún servidor** y
 sigue siendo seguro.
