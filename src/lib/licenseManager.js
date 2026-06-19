@@ -26,7 +26,7 @@ export const PUBLIC_KEY_JWK = (() => {
       return JSON.parse(import.meta.env.VITE_LICENSE_PUBKEY);
     }
   } catch { /* noop */ }
-  return { kty: 'EC', crv: 'P-256', x: '41ltfzdxFBhY6qcPIdFrjdzFJBkqUYeU3pp4qTK_ab4', y: 'Utb-BOZYRf9pF2oC_19wwfbsc704IiM3fsGazMYoHrc' };
+  return { kty: 'EC', crv: 'P-256', x: 'GVRs2q7_P5nhqdC7AhpNftcw2ovLkauL_H9aAEd800o', y: '0G5uk7mC3roiruWZE_vWzpiw2PzNEI2B7MdGVGUV5js' };
 })();
 
 /* ----------------------------- utilidades ----------------------------- */
