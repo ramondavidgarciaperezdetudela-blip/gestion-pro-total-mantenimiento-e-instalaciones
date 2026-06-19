@@ -679,7 +679,14 @@ textarea{resize:vertical;min-height:70px}
             <label>Clave privada de licencias (ECDSA, JSON)</label>
             <textarea id="cfg-secret" rows="3" placeholder='{"kty":"EC","crv":"P-256","x":"...","y":"...","d":"..."}' oninput="saveProgramCfg()" style="width:100%;font-family:ui-monospace,monospace;font-size:12px"></textarea>
             <p style="font-size:11px;color:var(--mt);margin-top:6px">🔒 Pega el contenido de <b>SOLO-PARA-MI/CLAVE-PRIVADA-MAESTRA.json</b>. Se guarda solo en este navegador. Con ella se firman las claves que valida la app.</p>
-            <button type="button" class="btn btn-pu btn-sm" style="margin-top:8px" onclick="generarClavesMaestras()">🔑 Generar claves maestras (si no las tienes)</button>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+              <button type="button" class="btn btn-pu btn-sm" onclick="generarClavesMaestras()">🔑 Generar claves (si no las tienes)</button>
+              <button type="button" class="btn btn-gr btn-sm" onclick="exportConfig()">💾 Guardar copia de la clave</button>
+              <button type="button" class="btn btn-ac btn-sm" onclick="document.getElementById('imp-config').click()">📥 Restaurar clave/config</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="verClavePrivada()">👁 Ver / copiar clave</button>
+              <input type="file" id="imp-config" accept="application/json,.json" style="display:none" onchange="importConfig(this)">
+            </div>
+            <p style="font-size:11px;color:var(--mt);margin-top:6px">✅ La clave queda <b>guardada automáticamente</b> en este equipo: solo la pegas una vez. Para llevarla a otro equipo o no perderla, usa <b>"Guardar copia de la clave"</b> y luego <b>"Restaurar"</b>.</p>
             <p style="font-size:11px;color:var(--am);margin-top:6px">⚠️ Si generas claves NUEVAS, la app debe llevar la nueva clave PÚBLICA y volver a publicarse, o las licencias no validarán.</p>
           </div>
         </div>
@@ -1062,7 +1069,34 @@ function saveProgramCfg(){
     adminPass:programCfg.adminPass||ADMIN_PLAIN,
   };
   localStorage.setItem(CFG_KEY,JSON.stringify(programCfg));
-  toast('✅ Configuración guardada');
+}
+// ── Copia de seguridad de la CONFIGURACIÓN (incluye la clave privada) ──────
+function exportConfig(){
+  try{
+    const cfg=JSON.parse(localStorage.getItem(CFG_KEY)||'{}');
+    if(!cfg.secret){ toast('No hay clave privada guardada que exportar. Pégala o genérala primero.',true); return; }
+    const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='GPT-Config-Licencias.json'; a.click();
+    toast('💾 Configuración guardada (incluye tu clave privada). Guárdala en lugar seguro.');
+  }catch(e){ toast('Error al exportar configuración: '+e.message,true); }
+}
+function importConfig(input){
+  const file=input&&input.files&&input.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{
+    const cfg=JSON.parse(r.result);
+    programCfg=Object.assign({}, programCfg, cfg);
+    localStorage.setItem(CFG_KEY, JSON.stringify(programCfg));
+    if(typeof renderConfig==='function') renderConfig();
+    toast('✅ Configuración restaurada. Tu clave privada queda cargada y guardada.');
+  }catch(e){ toast('Fichero de configuración no válido: '+e.message,true); } input.value=''; };
+  r.readAsText(file);
+}
+function verClavePrivada(){
+  const k=(programCfg.secret||(document.getElementById('cfg-secret')&&document.getElementById('cfg-secret').value)||'').trim();
+  if(!k){ toast('No hay clave privada guardada.',true); return; }
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(k).then(()=>toast('🔑 Clave privada copiada al portapapeles.')).catch(()=>alert(k)); }
+  else alert(k);
 }
 function exportData(){
   const ts=new Date().toISOString().slice(0,19).replace(/:/g,'-');
@@ -2600,7 +2634,7 @@ function renderConfig(){
   if($('cfg-base-url'))  $('cfg-base-url').value=programCfg.baseUrl||'';
   if($('cfg-drive-id'))  $('cfg-drive-id').value=programCfg.driveId||'1jijk-S2WNJRn7Jvy3arSGDtW5eAbaC8L';
   if($('cfg-script-url'))$('cfg-script-url').value=programCfg.scriptUrl||'';
-  if($('cfg-secret'))    $('cfg-secret').value=programCfg.secret||'GPT-SECRET-KEY-2024-GestionProTotal-v1';
+  if($('cfg-secret'))    $('cfg-secret').value=programCfg.secret||'';
   if($('cfg-p-mensual')) $('cfg-p-mensual').value=programCfg.precio_mensual||'9.99';
   if($('cfg-p-anual'))    $('cfg-p-anual').value=programCfg.precio_anual||'79.99';
   if($('cfg-pack10'))    $('cfg-pack10').value=programCfg.precio_pack10||'69.90';
