@@ -30,9 +30,9 @@ Lee este orden:
 ------------------------------------------------------------
 CÓMO EMPEZAR A VENDER (resumen):
  1. Cliente abre "Solicitud-Licencia" y te manda su ID de equipo.
- 2. Tú abres "Software-Licencias", pegas tu clave maestra y generas la clave.
+ 2. Tú abres "GESTOR-DE-LICENCIAS.html", pegas tu clave maestra y generas la clave.
  3. Le envías la clave + la carpeta PARA-EL-CLIENTE de su sistema.
  4. Cobra según COMERCIAL/Tarifas-y-Planes.md
 ------------------------------------------------------------
-Soporte: ramondavidgarciaperezdetudela@gmail.com
+Soporte: kairigarcia.gestionprototal@gmail.com
 ============================================================

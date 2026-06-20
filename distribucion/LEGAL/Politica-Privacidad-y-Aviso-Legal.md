@@ -4,7 +4,7 @@
 
 ## 1. Responsable
 El responsable del tratamiento es el titular de Gestión Pro Total.
-Contacto: ramondavidgarciaperezdetudela@gmail.com
+Contacto: kairigarcia.gestionprototal@gmail.com
 
 ## 2. Datos que tratamos
 - **En el dispositivo del Usuario**: clientes, facturas, tareas y demás datos de

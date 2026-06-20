@@ -55,4 +55,4 @@ restáuralas cuando lo necesites.
 - *Mi licencia dice "otro equipo"*: se activó en otro PC; pídenos traslado.
 - *Perdí datos*: restaura desde tu última copia.
 
-Soporte: ramondavidgarciaperezdetudela@gmail.com
+Soporte: kairigarcia.gestionprototal@gmail.com

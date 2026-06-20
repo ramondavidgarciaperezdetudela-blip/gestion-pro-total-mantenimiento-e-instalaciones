@@ -129,10 +129,23 @@ function listar(d){
 }
 
 function guardarSolicitud(d){
-  // Guarda la solicitud y avisa por email (compatibilidad con el receptor anterior)
+  // Guarda el comprobante en la carpeta del cliente (Drive) y avisa por email
+  let adj='';
+  try{
+    if(d.comprobante && d.comprobante.b64){
+      const car=_carpetaCliente(d.nombre||d.email||'Solicitudes');
+      const m=String(d.comprobante.b64).match(/^data:([^;]+);base64,(.*)$/);
+      if(m){
+        const blob=Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], 'COMPROBANTE-'+(d.comprobante.name||'pago'));
+        car.createFile(blob); adj='\n\n📎 Comprobante guardado en la carpeta del cliente en tu Drive.';
+      }
+    }
+  }catch(e){ adj='\n\n(No se pudo guardar el comprobante: '+e+')'; }
   MailApp.sendEmail(CFG.EMAIL_ADMIN, '📬 Solicitud de licencia — '+(d.nombre||'?'),
-    'Cliente: '+(d.nombre||'')+'\nEmail: '+(d.email||'')+'\nPlan: '+(d.plan||'')+'\nEquipo: '+(d.deviceId||'')+
-    (/(estudiant|escuela)/i.test(d.plan||'')?'\n\n⚠️ ESTUDIANTES: verifica la MATRÍCULA antes de emitir.':''));
+    'Cliente: '+(d.nombre||'')+'\nEmail: '+(d.email||'')+'\nTeléfono: '+(d.telefono||'')+
+    '\nPlan: '+(d.plan||'')+'\nEquipo: '+(d.deviceId||'')+'\nNotas: '+(d.obs||'')+
+    '\nConsentimiento RGPD: '+(d.consentimiento?'SÍ':'no')+
+    (/(estudiant|escuela)/i.test(d.plan||'')?'\n\n⚠️ ESTUDIANTES: verifica la MATRÍCULA antes de emitir.':'')+adj);
   return {ok:true};
 }
 
