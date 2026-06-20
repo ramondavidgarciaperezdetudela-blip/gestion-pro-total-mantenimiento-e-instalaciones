@@ -24,6 +24,12 @@ export const licenseConfig = {
 
   cloudEndpoint: import.meta.env.VITE_LICENSE_ENDPOINT || '',
 
+  // Validación en la nube por JSONP (Apps Script). Si está definida, la app
+  // comprueba al abrir si la licencia está REVOCADA o COMPARTIDA (otro equipo).
+  // Si no hay internet, sigue funcionando con la validación local (offline).
+  cloudJsonp: import.meta.env.VITE_LICENSE_JSONP ||
+    'https://script.google.com/macros/s/AKfycbwzhYoqLgif9YEUVbosytFDII_9wyZtLCN2_gxau4VwlfcOUpxcPyQqM-ondccvL3uc/exec',
+
   // Tu build personal: VITE_LICENSE_OWNER_BYPASS=1 para no pedir licencia.
   ownerBypass: import.meta.env.VITE_LICENSE_OWNER_BYPASS === '1',
 
