@@ -85,7 +85,7 @@ function StartScreen({ reason, onActivated }) {
     : '';
 
   return (
-    <div className="fixed inset-0 overflow-auto bg-slate-900 p-4 flex items-start sm:items-center justify-center">
+    <div className="fixed inset-0 overflow-auto bg-slate-900 p-4 flex items-start sm:items-center justify-center" style={{ zIndex: 2147483600 }}>
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl my-6">
         {/* Cabecera */}
         <div className="bg-blue-700 text-white rounded-t-2xl px-6 py-5 flex items-center gap-3">
@@ -122,11 +122,11 @@ function StartScreen({ reason, onActivated }) {
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-600">Nombre / Empresa</label>
-                  <input value={nombre} onChange={(e) => setNombre(e.target.value)} className="w-full mt-1 border border-slate-300 rounded-lg p-2 text-sm" placeholder="Mantenimientos García S.L." />
+                  <input value={nombre} onChange={(e) => setNombre(e.target.value)} name="empresa" autoComplete="organization" className="w-full mt-1 border border-slate-300 rounded-lg p-2 text-sm" placeholder="Mantenimientos García S.L." />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-600">Email</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full mt-1 border border-slate-300 rounded-lg p-2 text-sm" placeholder="tucorreo@empresa.com" />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} name="email" autoComplete="email" className="w-full mt-1 border border-slate-300 rounded-lg p-2 text-sm" placeholder="tucorreo@empresa.com" />
                 </div>
               </div>
 
