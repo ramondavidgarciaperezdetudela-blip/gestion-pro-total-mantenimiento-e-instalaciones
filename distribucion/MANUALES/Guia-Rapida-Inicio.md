@@ -23,4 +23,4 @@ Pega la clave que te enviamos en la pantalla de activación. Queda guardada.
 - Modo oscuro: en Ajustes.
 - Todo funciona sin conexión y se sincroniza al volver online.
 
-Soporte: ramondavidgarciaperezdetudela@gmail.com
+Soporte: kairigarcia.gestionprototal@gmail.com

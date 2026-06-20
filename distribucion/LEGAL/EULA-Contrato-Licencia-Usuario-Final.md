@@ -44,4 +44,4 @@ Este Contrato se rige por la legislación española y la del país de residencia
 del Usuario cuando sea de aplicación imperativa.
 
 ## 9. Contacto
-ramondavidgarciaperezdetudela@gmail.com
+kairigarcia.gestionprototal@gmail.com
