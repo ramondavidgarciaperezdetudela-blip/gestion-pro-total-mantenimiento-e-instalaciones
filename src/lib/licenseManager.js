@@ -167,6 +167,27 @@ export async function validateLicenseCloud(key, endpoint, opts = {}) {
 
 /* --------------------------- almacenamiento ---------------------------- */
 
+/**
+ * Validación en la nube por JSONP (compatible con navegador, sin CORS).
+ * Llama a Apps Script: ?accion=validar&key=&deviceId=&callback=
+ * Devuelve { reachable, valid, reason }. Si no hay internet → reachable:false.
+ */
+export function validateLicenseCloudJsonp(key, deviceId, baseUrl, timeoutMs = 6000) {
+  return new Promise((resolve) => {
+    if (!baseUrl || typeof document === 'undefined') { resolve({ reachable: false }); return; }
+    const cb = '__gptlic_' + Math.random().toString(36).slice(2);
+    const s = document.createElement('script');
+    let done = false;
+    const cleanup = () => { try { delete window[cb]; } catch (_) { window[cb] = undefined; } if (s.parentNode) s.remove(); };
+    const to = setTimeout(() => { if (!done) { done = true; cleanup(); resolve({ reachable: false }); } }, timeoutMs);
+    window[cb] = (data) => { if (done) return; done = true; clearTimeout(to); cleanup(); resolve({ reachable: true, ...(data || {}) }); };
+    const sep = baseUrl.indexOf('?') < 0 ? '?' : '&';
+    s.src = baseUrl + sep + 'accion=validar&key=' + encodeURIComponent(key) + '&deviceId=' + encodeURIComponent(deviceId || '') + '&callback=' + cb;
+    s.onerror = () => { if (!done) { done = true; clearTimeout(to); cleanup(); resolve({ reachable: false }); } };
+    document.head.appendChild(s);
+  });
+}
+
 export function saveLicense(key) { localStorage.setItem(LS_KEY, key); }
 export function loadLicense() { return localStorage.getItem(LS_KEY) || ''; }
 export function clearLicense() { localStorage.removeItem(LS_KEY); }
@@ -180,6 +201,9 @@ export function describeReason(reason) {
     FIRMA_NO_COINCIDE: 'La licencia ha sido manipulada o no es auténtica.',
     CADUCADA: 'La licencia ha caducado. Renueva tu suscripción.',
     OTRO_EQUIPO: 'Esta licencia está activada en otro equipo.',
+    COMPARTIDA: 'Esta clave se ha usado en varios equipos y ha quedado bloqueada. Contacta con soporte.',
+    REVOCADA: 'Esta licencia ha sido revocada. Contacta con soporte.',
+    NO_REGISTRADA: 'La licencia no consta registrada. Contacta con soporte.',
     SIN_CONEXION: 'No se pudo contactar con el servidor de licencias.',
   };
   return map[reason] || 'Estado de licencia desconocido.';

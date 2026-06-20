@@ -5,7 +5,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   loadLicense, saveLicense, clearLicense, getDeviceId,
-  validateLicenseLocal, validateLicenseCloud, describeReason,
+  validateLicenseLocal, validateLicenseCloud, validateLicenseCloudJsonp, describeReason,
 } from '@/lib/licenseManager';
 import { licenseConfig as cfg } from '@/lib/license.config';
 import { plans, paymentConfig as pay } from '@/lib/plans.config';
@@ -18,8 +18,21 @@ function isPublicPath() {
 async function validateCurrent() {
   const key = loadLicense();
   if (!key) return { valid: false, reason: 'SIN_LICENCIA' };
-  if (cfg.mode === 'cloud') return validateLicenseCloud(key, cfg.cloudEndpoint, { deviceId: getDeviceId() });
-  return validateLicenseLocal(key, null, { deviceId: getDeviceId() });
+  // 1) Validación local (firma + caducidad + equipo). Funciona siempre, también offline.
+  const local = (cfg.mode === 'cloud')
+    ? await validateLicenseCloud(key, cfg.cloudEndpoint, { deviceId: getDeviceId() })
+    : await validateLicenseLocal(key, null, { deviceId: getDeviceId() });
+  if (!local.valid) return local;
+  // 2) Si hay nube (JSONP), comprueba REVOCADA / COMPARTIDA. Si no hay internet, vale lo local.
+  if (cfg.cloudJsonp) {
+    try {
+      const c = await validateLicenseCloudJsonp(key, getDeviceId(), cfg.cloudJsonp);
+      if (c.reachable && c.valid === false) {
+        return { valid: false, reason: c.reason || 'REVOCADA', payload: local.payload };
+      }
+    } catch (_) { /* sin conexión: se mantiene la validación local */ }
+  }
+  return local;
 }
 
 function StartScreen({ reason, onActivated }) {

@@ -156,7 +156,15 @@ function _avisoComparticion(cliente,email,key,equipos){
     'Revísala en el panel para revocarla definitivamente si procede.'); }catch(e){}
 }
 
-// Página de comprobación (abrir la URL en el navegador)
-function doGet(){
+// Página de comprobación + VALIDACIÓN por JSONP (para que la app la lea sin CORS).
+//   ?accion=validar&key=...&deviceId=...&callback=cb   →  cb({valid:...})
+function doGet(e){
+  const p=(e&&e.parameter)||{};
+  if(p.accion==='validar'){
+    const r=validarYRegistrarUso({key:p.key||'', deviceId:p.deviceId||''});
+    const body=p.callback ? (p.callback+'('+JSON.stringify(r)+')') : JSON.stringify(r);
+    return ContentService.createTextOutput(body)
+      .setMimeType(p.callback?ContentService.MimeType.JAVASCRIPT:ContentService.MimeType.JSON);
+  }
   return HtmlService.createHtmlOutput('<h2>✅ Backend de licencias activo</h2><p>Gestión Pro Total</p>');
 }
