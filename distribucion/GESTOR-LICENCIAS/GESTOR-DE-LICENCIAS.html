@@ -932,6 +932,12 @@ async function generarClavesMaestras(){
     alert(aviso);
   }catch(e){ try{ toast('No se pudieron generar las claves: '+e.message, true); }catch(_){ alert(e.message); } }
 }
+// Envía datos al backend de licencias en la nube (Apps Script). Fire-and-forget.
+function cloudPost(obj){
+  const u=programCfg.scriptUrl||localStorage.getItem('gpt_script_url')||'';
+  if(!u) return;
+  try{ fetch(u,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(obj)}); }catch(e){}
+}
 function _expiraMs(tipo){
   const dias=parseInt(programCfg.precio_demo_dias)||7; const d=new Date();
   if(tipo==='demo'){ d.setDate(d.getDate()+dias); }
@@ -1553,6 +1559,7 @@ function revocarCompartida(id){
   if(!confirm('Revocar esta licencia por uso compartido? El cliente no podra acceder al programa.'))return;
   const l=licencias.find(x=>x.id===id); if(!l)return;
   l.estado='inactiva';
+  try{cloudPost({accion:'revocar',key:l.key,pass:(programCfg.adminPass||ADMIN_PLAIN)});}catch(e){}
   l.notas=(l.notas||'')+' [REVOCADA: uso compartido '+new Date().toLocaleDateString('es-ES')+']';
   saveData(); renderSharing(); renderTable(); renderStats();
   // Marcar también en el cliente
@@ -1849,7 +1856,7 @@ function renderTable(){
     </div></td>
   </tr>`).join('')}</tbody></table>`;
 }
-function revocar(id){ if(!confirm('¿Revocar licencia?'))return; const l=licencias.find(x=>x.id===id); if(!l)return; l.estado='inactiva'; saveData(); renderTable(); renderStats(); auditLog('LIC_REVOCADA','ID:'+id,'WARN'); toast('Licencia revocada'); }
+function revocar(id){ if(!confirm('¿Revocar licencia?'))return; const l=licencias.find(x=>x.id===id); if(!l)return; l.estado='inactiva'; try{cloudPost({accion:'revocar',key:l.key,pass:(programCfg.adminPass||ADMIN_PLAIN)});}catch(e){} saveData(); renderTable(); renderStats(); auditLog('LIC_REVOCADA','ID:'+id,'WARN'); toast('Licencia revocada'); }
 function reactivar(id){ const l=licencias.find(x=>x.id===id); if(!l)return; l.estado='activa'; saveData(); renderTable(); renderStats(); auditLog('LIC_REACTIVADA','ID:'+id,'INFO'); toast('Licencia reactivada'); }
 
 // ── Generar licencia ──────────────────────────────────────────────────────
@@ -2110,6 +2117,8 @@ function cerrarModal(){ $('modal-nueva').classList.remove('open'); }
 
 // Crea o actualiza la ficha del cliente al asignar una licencia
 function upsertCliente(lic){
+  // Vincular a la nube: registra la clave (crea carpeta del cliente en tu Drive)
+  try{ cloudPost({accion:'registrar',key:lic.key,cliente:lic.cliente||'',email:lic.email||'',plan:lic.tipo||'',estado:lic.estado||'activa',emitida:lic.creada||new Date().toISOString(),expira:lic.expira||'',notas:lic.notas||''}); }catch(e){}
   const email = (lic.email||'').toLowerCase().trim();
   if(!email) return;
   let cli = clientes.find(c=>c.email.toLowerCase()===email);
