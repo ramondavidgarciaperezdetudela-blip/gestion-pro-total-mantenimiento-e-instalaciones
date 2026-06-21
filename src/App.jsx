@@ -4,7 +4,15 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Route, Routes } from 'react-router-dom';
+
+// En la app de escritorio (Electron) la página se sirve con protocolo file://,
+// por lo que BrowserRouter interpretaría la ruta del fichero (…/dist/index.html)
+// como una ruta de la app y mostraría un 404. En ese caso usamos HashRouter,
+// que funciona perfectamente desde file://. En la web seguimos con
+// BrowserRouter para conservar las URLs limpias y los enlaces públicos.
+const isFileProtocol = typeof window !== 'undefined' && window.location.protocol === 'file:';
+const Router = isFileProtocol ? HashRouter : BrowserRouter;
 import { Suspense, lazy } from 'react';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';

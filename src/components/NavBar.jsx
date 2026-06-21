@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowLeft, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { navigateTo } from '@/utils';
 
 // Navegación segura: no usa hooks de react-router directamente
 // para evitar errores si se usa fuera del Router context
@@ -9,11 +10,11 @@ export default function NavBar({ title, onBack, homeKey = 'Home', className = ''
   const handleBack = () => {
     if (onBack) { onBack(); return; }
     if (window.history.length > 1) window.history.back();
-    else window.location.href = `/${homeKey}`;
+    else navigateTo(homeKey);
   };
 
   const handleHome = () => {
-    window.location.href = `/${homeKey}`;
+    navigateTo(homeKey);
   };
 
   return (
