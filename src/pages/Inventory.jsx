@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -151,16 +151,21 @@ export default function Inventory() {
     setCmDialog(false); setEditingCm(null); setCmForm(EMPTY_CM); loadAll();
   };
 
-  const filteredEq = equipment.filter(e =>
+  // Optimization: Memoize filtered lists and low stock items to prevent expensive
+  // recalculations on every render (e.g. during dialog state changes)
+  const filteredEq = useMemo(() => equipment.filter(e =>
     `${e.name} ${e.brand} ${e.model} ${e.serial_number}`.toLowerCase().includes(eqSearch.toLowerCase())
-  );
-  const filteredStock = stock.filter(s =>
+  ), [equipment, eqSearch]);
+
+  const filteredStock = useMemo(() => stock.filter(s =>
     `${s.name} ${s.reference} ${s.barcode} ${s.category}`.toLowerCase().includes(stockSearch.toLowerCase())
-  );
-  const filteredCm = clientMachines.filter(m =>
+  ), [stock, stockSearch]);
+
+  const filteredCm = useMemo(() => clientMachines.filter(m =>
     `${m.name} ${m.brand} ${m.model} ${m.serial_number} ${m.contact_name}`.toLowerCase().includes(cmSearch.toLowerCase())
-  );
-  const lowStock = stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock);
+  ), [clientMachines, cmSearch]);
+
+  const lowStock = useMemo(() => stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock), [stock]);
 
   // Barcode scanner: focus input, reads via keyboard (lector USB actúa como teclado)
   const handleBarcodeKey = (e) => {
