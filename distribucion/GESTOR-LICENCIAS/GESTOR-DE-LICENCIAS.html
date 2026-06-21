@@ -677,7 +677,8 @@ textarea{resize:vertical;min-height:70px}
             <label>Email del administrador</label>
             <input type="email" id="cfg-email" placeholder="kairigarcia.gestionprototal@gmail.com" oninput="saveProgramCfg()">
             <label>Clave privada de licencias (ECDSA, JSON)</label>
-            <textarea id="cfg-secret" rows="3" placeholder='{"kty":"EC","crv":"P-256","x":"...","y":"...","d":"..."}' oninput="saveProgramCfg()" style="width:100%;font-family:ui-monospace,monospace;font-size:12px"></textarea>
+            <textarea id="cfg-secret" rows="3" placeholder='{"kty":"EC","crv":"P-256","x":"...","y":"...","d":"..."}' oninput="saveProgramCfg();checkKeyMatch()" style="width:100%;font-family:ui-monospace,monospace;font-size:12px"></textarea>
+            <div id="key-match" style="font-size:12px;font-weight:700;margin-top:6px"></div>
             <p style="font-size:11px;color:var(--mt);margin-top:6px">🔒 Pega el contenido de <b>SOLO-PARA-MI/CLAVE-PRIVADA-MAESTRA.json</b>. Se guarda solo en este navegador. Con ella se firman las claves que valida la app.</p>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
               <button type="button" class="btn btn-pu btn-sm" onclick="generarClavesMaestras()">🔑 Generar claves (si no las tienes)</button>
@@ -937,6 +938,17 @@ function cloudPost(obj){
   const u=programCfg.scriptUrl||localStorage.getItem('gpt_script_url')||'';
   if(!u) return;
   try{ fetch(u,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(obj)}); }catch(e){}
+}
+// Clave PÚBLICA que lleva la app publicada. La privada cargada debe tener esta x/y.
+const APP_PUBLIC = { x:'GVRs2q7_P5nhqdC7AhpNftcw2ovLkauL_H9aAEd800o', y:'0G5uk7mC3roiruWZE_vWzpiw2PzNEI2B7MdGVGUV5js' };
+function checkKeyMatch(){
+  const el=document.getElementById('key-match'); if(!el) return;
+  const raw=(document.getElementById('cfg-secret')?.value||'').trim();
+  if(!raw){ el.textContent=''; return; }
+  let j; try{ j=JSON.parse(raw); }catch{ el.textContent='⚠️ La clave no es un JSON válido.'; el.style.color='#ef4444'; return; }
+  if(!j.d){ el.textContent='⚠️ Esto no es una clave PRIVADA (falta "d").'; el.style.color='#ef4444'; return; }
+  if(j.x===APP_PUBLIC.x && j.y===APP_PUBLIC.y){ el.textContent='✓ Clave correcta: coincide con la app publicada.'; el.style.color='#16a34a'; }
+  else{ el.textContent='⛔ Esta clave NO corresponde a la app publicada: las licencias darán "no auténtica". Pega tu CLAVE-PRIVADA-MAESTRA.json original (la entregada).'; el.style.color='#ef4444'; }
 }
 function _expiraMs(tipo){
   const dias=parseInt(programCfg.precio_demo_dias)||7; const d=new Date();
@@ -2644,6 +2656,7 @@ function renderConfig(){
   if($('cfg-drive-id'))  $('cfg-drive-id').value=programCfg.driveId||'1jijk-S2WNJRn7Jvy3arSGDtW5eAbaC8L';
   if($('cfg-script-url'))$('cfg-script-url').value=programCfg.scriptUrl||'';
   if($('cfg-secret'))    $('cfg-secret').value=programCfg.secret||'';
+  try{ checkKeyMatch(); }catch(e){}
   if($('cfg-p-mensual')) $('cfg-p-mensual').value=programCfg.precio_mensual||'9.99';
   if($('cfg-p-anual'))    $('cfg-p-anual').value=programCfg.precio_anual||'79.99';
   if($('cfg-pack10'))    $('cfg-pack10').value=programCfg.precio_pack10||'69.90';
