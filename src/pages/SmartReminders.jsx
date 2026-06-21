@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,46 @@ import {
   Calendar, Package, FolderOpen, Bot
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
+
+const sendWhatsApp = (phone, text) => {
+  const p = phone?.replace(/[^0-9]/g, '');
+  const msg = encodeURIComponent(text);
+  window.open(p ? `https://wa.me/34${p}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+};
+
+const sendEmail = (email, subject, body) => {
+  window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+};
+
+const AlertRow = React.memo(({ icon: Icon, color, title, sub, badge, badgeColor, page, phone, email, waText, emailSubject, emailBody }) => (
+  <div className={`flex items-start gap-3 p-3 rounded-lg border-l-4 ${color} bg-white hover:shadow-sm transition-shadow`}>
+    <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" />
+    <div className="flex-1 min-w-0">
+      <p className="text-sm font-medium truncate">{title}</p>
+      {sub && <p className="text-xs text-gray-500 truncate">{sub}</p>}
+    </div>
+    <div className="flex items-center gap-1 flex-shrink-0 flex-wrap justify-end">
+      {badge && <Badge className={`text-[10px] ${badgeColor}`}>{badge}</Badge>}
+      {phone && waText && (
+        <button onClick={() => sendWhatsApp(phone, waText)} className="p-1 text-green-600 hover:bg-green-50 rounded" title="WhatsApp">
+          <MessageCircle className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {email && emailSubject && (
+        <button onClick={() => sendEmail(email, emailSubject, emailBody || '')} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Email">
+          <Mail className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {page && (
+        <Link to={createPageUrl(page)}>
+          <button className="p-1 text-gray-400 hover:text-gray-600 rounded" title="Ver">
+            <Zap className="w-3.5 h-3.5" />
+          </button>
+        </Link>
+      )}
+    </div>
+  </div>
+));
 
 export default function SmartReminders() {
   const [data, setData] = useState({ invoices: [], sat: [], maintenance: [], appointments: [], projects: [], stock: [], contacts: [] });
@@ -38,52 +78,40 @@ export default function SmartReminders() {
     setLoading(false);
   };
 
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const now = new Date();
-
   // ─── ANÁLISIS AUTOMÁTICO ────────────────────────────────────────────────────
+  const {
+    factVencidas, factProximas, satPendientes, satUrgentes, maintAntigu,
+    aptHoy, aptManana, projVencidos, stockBajo, clientesMorosos,
+    totalAlertas, totalAvisos, now, today
+  } = useMemo(() => {
+    const _now = new Date();
+    const _today = format(_now, 'yyyy-MM-dd');
+    const tom = format(new Date(_now.getTime() + 86400000), 'yyyy-MM-dd');
 
-  // Facturas vencidas
-  const factVencidas = data.invoices.filter(i => i.status === 'enviado' && i.due_date && i.due_date < today);
-  // Facturas próximas a vencer (≤14 días)
-  const factProximas = data.invoices.filter(i => i.status === 'enviado' && i.due_date && i.due_date >= today && differenceInDays(parseISO(i.due_date), now) <= 14);
-  // SAT pendientes / urgentes
-  const satPendientes = data.sat.filter(o => o.status === 'pendiente');
-  const satUrgentes = data.sat.filter(o => o.priority === 'urgente' && o.status !== 'completada');
-  // Mantenimientos sin fecha de revisión o antiguos (>365 días)
-  const maintAntigu = data.maintenance.filter(m => {
-    if (!m.date) return false;
-    return differenceInDays(now, parseISO(m.date)) > 365;
-  });
-  // Citas de hoy y mañana
-  const aptHoy = data.appointments.filter(a => a.date === today);
-  const aptManana = data.appointments.filter(a => {
-    const tom = format(new Date(now.getTime() + 86400000), 'yyyy-MM-dd');
-    return a.date === tom;
-  });
-  // Proyectos vencidos
-  const projVencidos = data.projects.filter(p => p.end_date && p.end_date < today && !['completado', 'cancelado'].includes(p.status));
-  // Stock bajo mínimo
-  const stockBajo = data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock);
-  // Clientes morosos / mal pagadores
-  const clientesMorosos = data.contacts.filter(c => ['moroso', 'mal_pagador'].includes(c.payment_profile) && c.pending_amount > 0);
+    const fV = data.invoices.filter(i => i.status === 'enviado' && i.due_date && i.due_date < _today);
+    const fP = data.invoices.filter(i => i.status === 'enviado' && i.due_date && i.due_date >= _today && differenceInDays(parseISO(i.due_date), _now) <= 14);
+    const sP = data.sat.filter(o => o.status === 'pendiente');
+    const sU = data.sat.filter(o => o.priority === 'urgente' && o.status !== 'completada');
+    const mA = data.maintenance.filter(m => m.date && differenceInDays(_now, parseISO(m.date)) > 365);
+    const aH = data.appointments.filter(a => a.date === _today);
+    const aM = data.appointments.filter(a => a.date === tom);
+    const pV = data.projects.filter(p => p.end_date && p.end_date < _today && !['completado', 'cancelado'].includes(p.status));
+    const sB = data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock);
+    const cM = data.contacts.filter(c => ['moroso', 'mal_pagador'].includes(c.payment_profile) && c.pending_amount > 0);
 
-  const totalAlertas = factVencidas.length + satUrgentes.length + projVencidos.length + clientesMorosos.length;
-  const totalAvisos = factProximas.length + satPendientes.length + maintAntigu.length + stockBajo.length;
+    return {
+      factVencidas: fV, factProximas: fP, satPendientes: sP, satUrgentes: sU, maintAntigu: mA,
+      aptHoy: aH, aptManana: aM, projVencidos: pV, stockBajo: sB, clientesMorosos: cM,
+      totalAlertas: fV.length + sU.length + pV.length + cM.length,
+      totalAvisos: fP.length + sP.length + mA.length + sB.length,
+      now: _now, today: _today
+    };
+  }, [data]);
 
-  const getContact = (contactId) => contacts.find(c => c.id === contactId);
+  const contactsMap = useMemo(() => new Map(contacts.map(c => [c.id, c])), [contacts]);
+  const getContact = useCallback((contactId) => contactsMap.get(contactId), [contactsMap]);
 
-  const sendWhatsApp = (phone, text) => {
-    const p = phone?.replace(/[^0-9]/g, '');
-    const msg = encodeURIComponent(text);
-    window.open(p ? `https://wa.me/34${p}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
-  };
-
-  const sendEmail = (email, subject, body) => {
-    window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
-  };
-
-  const generateAISummary = async () => {
+  const generateAISummary = useCallback(async () => {
     setAiLoading(true);
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `Eres el asistente de gestión de una empresa de instalaciones técnicas. Analiza la situación actual y da un resumen ejecutivo con prioridades.
@@ -110,37 +138,7 @@ Máximo 300 palabras, usa bullet points.`,
     });
     setAiSummary(res);
     setAiLoading(false);
-  };
-
-  const AlertRow = ({ icon: Icon, color, title, sub, badge, badgeColor, page, phone, email, waText, emailSubject, emailBody }) => (
-    <div className={`flex items-start gap-3 p-3 rounded-lg border-l-4 ${color} bg-white hover:shadow-sm transition-shadow`}>
-      <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{title}</p>
-        {sub && <p className="text-xs text-gray-500 truncate">{sub}</p>}
-      </div>
-      <div className="flex items-center gap-1 flex-shrink-0 flex-wrap justify-end">
-        {badge && <Badge className={`text-[10px] ${badgeColor}`}>{badge}</Badge>}
-        {phone && waText && (
-          <button onClick={() => sendWhatsApp(phone, waText)} className="p-1 text-green-600 hover:bg-green-50 rounded" title="WhatsApp">
-            <MessageCircle className="w-3.5 h-3.5" />
-          </button>
-        )}
-        {email && emailSubject && (
-          <button onClick={() => sendEmail(email, emailSubject, emailBody || '')} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Email">
-            <Mail className="w-3.5 h-3.5" />
-          </button>
-        )}
-        {page && (
-          <Link to={createPageUrl(page)}>
-            <button className="p-1 text-gray-400 hover:text-gray-600 rounded" title="Ver">
-              <Zap className="w-3.5 h-3.5" />
-            </button>
-          </Link>
-        )}
-      </div>
-    </div>
-  );
+  }, [factVencidas, satUrgentes, projVencidos, clientesMorosos, factProximas, satPendientes, maintAntigu, stockBajo, aptHoy, aptManana]);
 
   if (loading) return <div className="text-center py-16 text-gray-400"><RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2" /><p>Analizando datos...</p></div>;
 
