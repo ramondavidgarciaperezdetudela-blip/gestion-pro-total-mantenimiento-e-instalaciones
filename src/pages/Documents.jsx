@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -405,12 +405,12 @@ export default function Documents() {
   };
 
   // Presupuestos pendientes >7 días
-  const presupuestosPendientes = docs.filter(d => {
+  const presupuestosPendientes = useMemo(() => docs.filter(d => {
     if (d.doc_type !== 'presupuesto') return false;
     if (!['borrador', 'enviado'].includes(d.status)) return false;
     const dias = Math.floor((new Date() - new Date(d.date)) / (1000 * 60 * 60 * 24));
     return dias > 7;
-  }).sort((a, b) => new Date(a.date) - new Date(b.date));
+  }).sort((a, b) => new Date(a.date) - new Date(b.date)), [docs]);
 
   const [showPendientes, setShowPendientes] = useState(true);
 
@@ -475,21 +475,24 @@ export default function Documents() {
   };
 
   // Filtrado
-  let filtered = docs.filter((d) => {
+  const filtered = useMemo(() => docs.filter((d) => {
     const matchSearch = `${d.doc_number} ${d.contact_name} ${d.work_type}`.toLowerCase().includes(search.toLowerCase());
     const matchType = filterType === 'all' || d.doc_type === filterType;
     const matchStatus = filterStatus === 'all' || d.status === filterStatus;
     const matchWork = filterWorkType === 'all' || d.work_type === filterWorkType;
     return matchSearch && matchType && matchStatus && matchWork;
-  });
+  }), [docs, search, filterType, filterStatus, filterWorkType]);
 
   // KPIs
-  const facturas = docs.filter((d) => d.doc_type === 'factura');
-  const presupuestos = docs.filter((d) => d.doc_type === 'presupuesto');
-  const totalFacturado = facturas.reduce((s, d) => s + (d.total || 0), 0);
-  const pendienteCobro = facturas.filter((d) => ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0);
-  const cobradoMes = facturas.filter((d) => d.status === 'pagado' && d.date >= format(startOfMonth(new Date()), 'yyyy-MM-dd')).reduce((s, d) => s + (d.total || 0), 0);
-  const vencidas = facturas.filter((d) => d.status === 'vencido').length;
+  const { facturas, presupuestos, totalFacturado, pendienteCobro, cobradoMes, vencidas } = useMemo(() => {
+    const facturas = docs.filter((d) => d.doc_type === 'factura');
+    const presupuestos = docs.filter((d) => d.doc_type === 'presupuesto');
+    const totalFacturado = facturas.reduce((s, d) => s + (d.total || 0), 0);
+    const pendienteCobro = facturas.filter((d) => ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0);
+    const cobradoMes = facturas.filter((d) => d.status === 'pagado' && d.date >= format(startOfMonth(new Date()), 'yyyy-MM-dd')).reduce((s, d) => s + (d.total || 0), 0);
+    const vencidas = facturas.filter((d) => d.status === 'vencido').length;
+    return { facturas, presupuestos, totalFacturado, pendienteCobro, cobradoMes, vencidas };
+  }, [docs]);
 
   return (
     <div className="space-y-4">
