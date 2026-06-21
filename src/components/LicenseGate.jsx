@@ -23,14 +23,15 @@ async function validateCurrent() {
     ? await validateLicenseCloud(key, cfg.cloudEndpoint, { deviceId: getDeviceId() })
     : await validateLicenseLocal(key, null, { deviceId: getDeviceId() });
   if (!local.valid) return local;
-  // 2) Si hay nube (JSONP), comprueba REVOCADA / COMPARTIDA. Si no hay internet, vale lo local.
+  // 2) Si hay nube (JSONP), SOLO bloquea si la clave está REVOCADA o COMPARTIDA.
+  //    Cualquier otro caso (no registrada aún, sin conexión, error) → vale la validación local.
   if (cfg.cloudJsonp) {
     try {
       const c = await validateLicenseCloudJsonp(key, getDeviceId(), cfg.cloudJsonp);
-      if (c.reachable && c.valid === false) {
-        return { valid: false, reason: c.reason || 'REVOCADA', payload: local.payload };
+      if (c.reachable && c.valid === false && (c.reason === 'REVOCADA' || c.reason === 'COMPARTIDA')) {
+        return { valid: false, reason: c.reason, payload: local.payload };
       }
-    } catch (_) { /* sin conexión: se mantiene la validación local */ }
+    } catch (_) { /* sin conexión / error: se mantiene la validación local */ }
   }
   return local;
 }
