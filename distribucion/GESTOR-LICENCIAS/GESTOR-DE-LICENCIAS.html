@@ -316,7 +316,7 @@ textarea{resize:vertical;min-height:70px}
             <!-- Resultado -->
             <div id="q-resultado" style="display:none;margin-top:12px;background:var(--bg);border:2px dashed var(--ac);border-radius:var(--r);padding:14px;text-align:center">
               <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Clave generada</div>
-              <div id="q-key-val" style="font-family:monospace;font-size:14px;font-weight:900;color:var(--ac2);word-break:break-all"></div>
+              <div id="q-key-val" style="font-family:monospace;font-size:13px;line-height:1.7;font-weight:800;color:var(--ac2);white-space:pre-wrap;word-break:break-all;background:#0b1220;border:1px solid var(--brd);border-radius:8px;padding:12px;text-align:left;max-height:none;overflow-wrap:anywhere"></div>
               <div id="q-key-exp" style="font-size:11px;color:var(--mt);margin-top:4px"></div>
               <div style="display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap">
                 <button class="btn btn-gr btn-sm" id="q-btn-copiar" onclick="">📋 Copiar</button>
@@ -887,6 +887,8 @@ const $  = id => document.getElementById(id);
 const on = (id,fn) => { const el=$(id); if(el) el.addEventListener('input',fn); };
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function toast(msg,err=false){ const t=$('toast'); t.textContent=msg; t.className='toast show'+(err?' err':''); setTimeout(()=>t.className='toast',3500); }
+// Parte una clave larga en 4 líneas legibles para mostrarla (NO altera la clave real)
+function fmtKeyLines(key,lineas=4){ if(!key) return ''; const n=Math.ceil(key.length/lineas); const out=[]; for(let i=0;i<key.length;i+=n) out.push(key.slice(i,i+n)); return out.join('\n'); }
 
 // ── Crypto ────────────────────────────────────────────────────────────────
 async function hmac(msg,key){ const e=new TextEncoder(),ck=await crypto.subtle.importKey('raw',e.encode(key),{name:'HMAC',hash:'SHA-256'},false,['sign']),s=await crypto.subtle.sign('HMAC',ck,e.encode(msg)); return Array.from(new Uint8Array(s)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
@@ -1382,7 +1384,7 @@ function enviarPortalPack(packId){
     'IMPORTANTE: No modifiques la configuración del portal o las claves serán invalidadas.'+nl+nl+
     'Soporte: '+(programCfg.adminEmail||ADMIN_EMAIL)
   );
-  window.open('mailto:'+pack.email+'?subject='+sub+'&body='+body);
+  window.open('https://mail.google.com/mail/?view=cm&fs=1&to='+pack.email+'&su='+sub+'&body='+body);
   descargarPortalPack(packId); // Descarga el HTML para adjuntar
   toast('Email preparado · Portal descargado para adjuntar');
 }
@@ -1483,7 +1485,7 @@ async function verificarSolicitud(id){
     'Soporte: '+(programCfg.adminEmail||ADMIN_EMAIL)
   ].join(nl);
   const b=encodeURIComponent(emailBody);
-  window.open('mailto:'+sol.email+'?subject='+s+'&body='+b);
+  window.open('https://mail.google.com/mail/?view=cm&fs=1&to='+sol.email+'&su='+s+'&body='+b);
   // Sincronizar de vuelta al localStorage del programa (si mismo navegador)
   try{
     const sols=JSON.parse(localStorage.getItem('gpt_solicitudes_v1')||'[]');
@@ -1499,7 +1501,7 @@ function reenviarClave(id){
   const sol=solicitudes.find(s=>s.id===id); if(!sol||!sol.keyAsignada)return;
   const s=encodeURIComponent('Tu clave de licencia — Gestión Pro Total');
   const nl2=String.fromCharCode(10);
-  const b=encodeURIComponent(['Hola '+sol.nombre,nl2,'Tu clave: '+sol.keyAsignada,nl2,'Soporte: '+(programCfg.adminEmail||ADMIN_EMAIL)].join(nl2));  window.open('mailto:'+sol.email+'?subject='+s+'&body='+b);
+  const b=encodeURIComponent(['Hola '+sol.nombre,nl2,'Tu clave: '+sol.keyAsignada,nl2,'Soporte: '+(programCfg.adminEmail||ADMIN_EMAIL)].join(nl2));  window.open('https://mail.google.com/mail/?view=cm&fs=1&to='+sol.email+'&su='+s+'&body='+b);
   toast('Email preparado para reenvío');
 }
 
@@ -1668,7 +1670,7 @@ function seleccionarCliente(id){
     </div>
 
     <div style="font-size:12px;line-height:1.9;margin-bottom:12px">
-      <div>📧 <a href="mailto:${escHtml(cli.email)}" style="color:var(--ac2)">${escHtml(cli.email||'—')}</a></div>
+      <div>📧 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=${escHtml(cli.email)}" style="color:var(--ac2)">${escHtml(cli.email||'—')}</a></div>
       ${cli.telefono?`<div>📱 ${escHtml(cli.telefono)}</div>`:''}
       ${cli.notas?`<div style="color:var(--mt)">📝 ${escHtml(cli.notas)}</div>`:''}
       <div style="color:var(--mt);font-size:10px">Alta: ${new Date(cli.creado).toLocaleDateString('es-ES')}</div>
@@ -1922,8 +1924,8 @@ async function generarLicenciaRapida(){
   upsertCliente(lic);
   saveData(); renderStats(); renderTable();
 
-  // Mostrar resultado
-  $('q-key-val').textContent=key;
+  // Mostrar resultado (clave partida en 4 líneas legibles, sin alterar la clave real)
+  $('q-key-val').textContent=fmtKeyLines(key);
   $('q-key-exp').textContent=exp
     ?'Expira: '+new Date(exp).toLocaleDateString('es-ES')
     :'Permanente · sin caducidad';
@@ -1941,7 +1943,7 @@ async function generarLicenciaRapida(){
       '\n\nCómo activar:\n1. Abre la app\n2. Introduce la clave\n3. Pulsa Activar'+
       '\n\nSoporte: '+ADMIN_EMAIL
     );
-    window.open('mailto:'+email+'?subject='+s+'&body='+b);
+    window.open('https://mail.google.com/mail/?view=cm&fs=1&to='+email+'&su='+s+'&body='+b);
   };
 
   auditLog('LIC_MANUAL_RAPIDA', nombre+' — '+tipo+(precio===0?' — GRATIS':'— '+precio+'€')+' — '+key, 'INFO');
@@ -2018,7 +2020,7 @@ function enviarPortalEmail(packId){
     '2. Verás todas tus claves con su estado',
     '3. Activa cada clave en el programa cuando la necesites',nl,
     'Si tienes dudas: '+ADMIN_EMAIL].join(nl));
-  window.open('mailto:'+p.email+'?subject='+sub+'&body='+body);
+  window.open('https://mail.google.com/mail/?view=cm&fs=1&to='+p.email+'&su='+sub+'&body='+body);
   descargarPortal(packId);
 }
 
@@ -2205,7 +2207,7 @@ function enviarEmailClave(){
   const tipos={demo:'Demo 7 días',mensual:'Mensual',anual:'Anual',permanente:'Permanente',escuela:'Estudiantes (1 año · matrícula)'};
   const s=encodeURIComponent('Tu clave de licencia — Gestión Pro Total');
   const b=encodeURIComponent(`Hola ${cliente},\n\nTu clave:\n\n${key}\n\nPlan: ${tipos[tipo]||tipo}\n${expira?'Válida hasta: '+new Date(expira).toLocaleDateString('es-ES'):'Sin caducidad'}\n\nSoporte: ${ADMIN_EMAIL}`);
-  window.open(`mailto:${email}?subject=${s}&body=${b}`);
+  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${s}&body=${b}`);
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
@@ -2247,7 +2249,7 @@ async function backupDrive(isManual){
 }
 async function backupServer(){ const url=$('bk-srv-url')?.value.trim()||bkCfg.srvUrl||'', token=$('bk-srv-token')?.value.trim()||bkCfg.srvToken||''; if(!url){toast('Configura la URL del servidor externo',true);return;} try{ const h={'Content-Type':'application/json'}; if(token)h['Authorization']=token; const r=await fetch(url,{method:'POST',headers:h,body:JSON.stringify({licencias,distribuidores,ts:new Date().toISOString()})}); bkCfg.srvLastTs=new Date().toISOString(); localStorage.setItem(BK_KEY,JSON.stringify(bkCfg)); if($('bk-srv-last')) $('bk-srv-last').textContent='HTTP '+r.status+' · '+new Date().toLocaleTimeString('es-ES'); auditLog('BACKUP_SERVER','HTTP '+r.status,'INFO'); toast('☁️ Backup en servidor: '+r.status); }catch(e){toast('Error servidor: '+e.message,true);} }
 async function testServer(){ const url=$('bk-srv-url')?.value.trim(); if(!url){toast('Introduce la URL primero',true);return;} try{await fetch(url,{method:'GET',mode:'no-cors'});toast('✅ Servidor accesible');}catch(e){toast('No conectó: '+e.message,true);} }
-function backupEmail(){ const email=$('bk-email')?.value||ADMIN_EMAIL; const s=encodeURIComponent('Backup Licencias GPT — '+new Date().toLocaleDateString('es-ES')); const b=encodeURIComponent(`Backup\nFecha: ${new Date().toLocaleString('es-ES')}\nLicencias: ${licencias.length}\n\n${JSON.stringify({licencias,distribuidores}).slice(0,4000)}`); window.open(`mailto:${email}?subject=${s}&body=${b}`); bkCfg.emailLastTs=new Date().toISOString(); localStorage.setItem(BK_KEY,JSON.stringify(bkCfg)); if($('bk-email-last')) $('bk-email-last').textContent='Enviado: '+new Date().toLocaleTimeString('es-ES'); auditLog('BACKUP_EMAIL','Email preparado','INFO'); toast('📧 Email de backup preparado'); }
+function backupEmail(){ const email=$('bk-email')?.value||ADMIN_EMAIL; const s=encodeURIComponent('Backup Licencias GPT — '+new Date().toLocaleDateString('es-ES')); const b=encodeURIComponent(`Backup\nFecha: ${new Date().toLocaleString('es-ES')}\nLicencias: ${licencias.length}\n\n${JSON.stringify({licencias,distribuidores}).slice(0,4000)}`); window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${s}&body=${b}`); bkCfg.emailLastTs=new Date().toISOString(); localStorage.setItem(BK_KEY,JSON.stringify(bkCfg)); if($('bk-email-last')) $('bk-email-last').textContent='Enviado: '+new Date().toLocaleTimeString('es-ES'); auditLog('BACKUP_EMAIL','Email preparado','INFO'); toast('📧 Email de backup preparado'); }
 async function backupAll(){ toast('🚀 Backup en todos los destinos...'); exportData(); if(bkCfg.driveUrl)await backupDrive(false); if(bkCfg.srvUrl)await backupServer(); backupEmail(); bkCfg.allLastTs=new Date().toISOString(); localStorage.setItem(BK_KEY,JSON.stringify(bkCfg)); if($('bk-all-last')) $('bk-all-last').textContent='Último: '+new Date().toLocaleTimeString('es-ES'); updateBkSummary(); auditLog('BACKUP_ALL','Todos los destinos','INFO'); toast('✅ Backup completado'); }
 function autoBackupCheck(){ const last=bkCfg.allLastTs||bkCfg.driveLastTs; const h=parseInt(programCfg.bk_intervalo)||20; if(!last||(Date.now()-new Date(last).getTime())>h*3600000){if(programCfg.bk_drive&&bkCfg.driveUrl)backupDrive(false); if(programCfg.bk_servidor&&bkCfg.srvUrl)backupServer(); if(programCfg.bk_local)exportData();} }
 function updateBkSummary(){ const el=$('bk-summary'); if(!el)return; const rows=[['🖥️ Local','✅ Activo'],['💾 Disco/USB',autoLocal?'✅ Auto ON':'⏸️ Manual'],['🌐 Servidor',bkCfg.srvUrl?'✅ Configurado':'❌ Sin URL'],['📁 Drive',bkCfg.driveUrl?'✅ Configurado':'❌ Sin URL'],['📧 Email',bkCfg.emailLastTs?'✅ '+new Date(bkCfg.emailLastTs).toLocaleDateString('es-ES'):'⏸️ No enviado']]; el.innerHTML=rows.map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--brd)22"><span style="color:var(--mt)">${k}</span><span style="font-size:11px">${v}</span></div>`).join(''); const sp=$('sync-pill'),st=$('sync-txt'); if(sp&&bkCfg.driveUrl){sp.className='sync-pill sync-ok';st.textContent='Drive configurado';}else if(sp){sp.className='sync-pill sync-warn';st.textContent='Sin cloud';} }
@@ -2266,7 +2268,7 @@ async function generarDistribuidor(){
   const el=$('d-result'); el.style.display='block';
   el.innerHTML=`<div style="background:var(--bg);border:2px dashed var(--pu);border-radius:var(--r);padding:20px;text-align:center">
     <div style="font-size:10px;color:var(--mt);margin-bottom:6px;text-transform:uppercase">Clave de distribuidor generada</div>
-    <div style="font-family:monospace;font-size:16px;font-weight:900;color:var(--pu);letter-spacing:.1em;word-break:break-all">${key}</div>
+    <div style="font-family:monospace;font-size:13px;line-height:1.7;font-weight:800;color:var(--pu);white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;background:#0b1220;border:1px solid var(--brd);border-radius:8px;padding:12px;text-align:left">${fmtKeyLines(key)}</div>
     <div style="font-size:11px;color:var(--mt);margin-top:5px">${empresa} · ${dist.tipo} · ${dist.maxlic===0?'♾️ Sin límite':dist.maxlic+' sublicencias'} · ${dist.vigencia==='vitalicia'?'Vitalicia':dist.vigencia+' año(s)'}</div>
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
       <button class="btn btn-pu btn-sm" onclick="navigator.clipboard.writeText('${key}').then(()=>toast('Copiada'))">📋 Copiar</button>
@@ -2276,7 +2278,7 @@ async function generarDistribuidor(){
   </div>`;
   auditLog('DIST_NUEVA',empresa+' — '+key,'INFO'); toast('✅ Distribuidor registrado');
 }
-function enviarEmailDist(email,empresa,key,tipo,maxlic){ const s=encodeURIComponent('Clave de distribución — Gestión Pro Total'); const b=encodeURIComponent(`Bienvenido como distribuidor de Gestión Pro Total.\n\nEmpresa: ${empresa}\nClave: ${key}\nTipo: ${tipo}\nSublicencias: ${maxlic==0?'Sin límite':maxlic}\n\nSoporte: ${ADMIN_EMAIL}`); window.open(`mailto:${email}?subject=${s}&body=${b}`); }
+function enviarEmailDist(email,empresa,key,tipo,maxlic){ const s=encodeURIComponent('Clave de distribución — Gestión Pro Total'); const b=encodeURIComponent(`Bienvenido como distribuidor de Gestión Pro Total.\n\nEmpresa: ${empresa}\nClave: ${key}\nTipo: ${tipo}\nSublicencias: ${maxlic==0?'Sin límite':maxlic}\n\nSoporte: ${ADMIN_EMAIL}`); window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${s}&body=${b}`); }
 function generarReadmeDist(id){ const d=distribuidores.find(x=>x.id===id); if(!d)return; const blob=new Blob([`GESTIÓN PRO TOTAL — Paquete Distribuidor\nEmpresa: ${d.empresa}\nClave: ${d.key}\nTipo: ${d.tipo}\nSublicencias: ${d.maxlic===0?'Sin límite':d.maxlic}\nVigencia: ${d.vigencia==='vitalicia'?'Vitalicia':d.vigencia+' año(s)'}\nSoporte: ${ADMIN_EMAIL}`],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='GPT-Distribuidor-'+d.empresa.replace(/\s+/g,'-')+'.txt'; a.click(); toast('📦 README descargado'); }
 function renderDistList(){ const el=$('dist-lista'); if(!el)return; if(!distribuidores.length){el.innerHTML='<div style="padding:30px;text-align:center;color:var(--mt)">Sin distribuidores registrados</div>';return;} el.innerHTML=`<table><thead><tr><th>Empresa</th><th>Clave</th><th>Tipo</th><th>Sublicencias</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${distribuidores.map(d=>`<tr><td><div style="font-weight:600">${escHtml(d.empresa)}</div><div style="font-size:10px;color:var(--mt)">${escHtml(d.email)}</div></td><td><span class="key-mono" onclick="navigator.clipboard.writeText('${escHtml(d.key)}').then(()=>toast('Copiada'))">${escHtml(d.key)}</span></td><td style="font-size:11px">${d.tipo}</td><td style="text-align:center">${(d.sublicencias?.length||0)} / ${d.maxlic===0?'♾️':d.maxlic}</td><td><span class="pill ${d.estado==='activa'?'p-ac':'p-in'}">${d.estado}</span></td><td><div style="display:flex;gap:5px"><button class="btn btn-ac btn-sm" onclick="enviarEmailDist('${d.email}','${escHtml(d.empresa)}','${d.key}','${d.tipo}','${d.maxlic}')">📧</button><button class="btn btn-gr btn-sm" onclick="generarReadmeDist('${d.id}')">📦</button></div></td></tr>`).join('')}</tbody></table>`; }
 
