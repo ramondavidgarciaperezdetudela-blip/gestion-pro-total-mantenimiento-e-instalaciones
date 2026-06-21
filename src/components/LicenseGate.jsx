@@ -11,8 +11,9 @@ import { licenseConfig as cfg } from '@/lib/license.config';
 import { plans, paymentConfig as pay } from '@/lib/plans.config';
 
 function isPublicPath() {
-  const p = (window.location.pathname || '').toLowerCase();
-  return cfg.publicPaths.some((pp) => p.startsWith(pp.toLowerCase())) || p.includes('publico');
+  // Incluimos el hash para que funcione también con HashRouter (app de escritorio).
+  const p = ((window.location.pathname || '') + ' ' + (window.location.hash || '')).toLowerCase();
+  return cfg.publicPaths.some((pp) => p.includes(pp.toLowerCase())) || p.includes('publico');
 }
 
 async function validateCurrent() {
