@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -404,13 +404,13 @@ export default function Documents() {
     window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
   };
 
-  // Presupuestos pendientes >7 días
-  const presupuestosPendientes = docs.filter(d => {
+  // Presupuestos pendientes >7 días - Memoized to prevent redundant filtering/sorting on each render
+  const presupuestosPendientes = useMemo(() => docs.filter(d => {
     if (d.doc_type !== 'presupuesto') return false;
     if (!['borrador', 'enviado'].includes(d.status)) return false;
     const dias = Math.floor((new Date() - new Date(d.date)) / (1000 * 60 * 60 * 24));
     return dias > 7;
-  }).sort((a, b) => new Date(a.date) - new Date(b.date));
+  }).sort((a, b) => new Date(a.date) - new Date(b.date)), [docs]);
 
   const [showPendientes, setShowPendientes] = useState(true);
 
@@ -474,22 +474,33 @@ export default function Documents() {
     setTimeout(() => { w.focus(); w.print(); }, 400);
   };
 
-  // Filtrado
-  let filtered = docs.filter((d) => {
+  // Filtrado - Memoized to prevent re-filtering on every state change or parent re-render
+  const filtered = useMemo(() => docs.filter((d) => {
     const matchSearch = `${d.doc_number} ${d.contact_name} ${d.work_type}`.toLowerCase().includes(search.toLowerCase());
     const matchType = filterType === 'all' || d.doc_type === filterType;
     const matchStatus = filterStatus === 'all' || d.status === filterStatus;
     const matchWork = filterWorkType === 'all' || d.work_type === filterWorkType;
     return matchSearch && matchType && matchStatus && matchWork;
-  });
+  }), [docs, search, filterType, filterStatus, filterWorkType]);
 
-  // KPIs
-  const facturas = docs.filter((d) => d.doc_type === 'factura');
-  const presupuestos = docs.filter((d) => d.doc_type === 'presupuesto');
-  const totalFacturado = facturas.reduce((s, d) => s + (d.total || 0), 0);
-  const pendienteCobro = facturas.filter((d) => ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0);
-  const cobradoMes = facturas.filter((d) => d.status === 'pagado' && d.date >= format(startOfMonth(new Date()), 'yyyy-MM-dd')).reduce((s, d) => s + (d.total || 0), 0);
-  const vencidas = facturas.filter((d) => d.status === 'vencido').length;
+  // KPIs - Memoized to avoid O(N) calculations during UI interactions (e.g. typing in search)
+  const { totalFacturado, cobradoMes, pendienteCobro, vencidas, numFacturas, numPresupuestos, numPresupuestosEnviados } = useMemo(() => {
+    const facturas = docs.filter((d) => d.doc_type === 'factura');
+    const presupuestos = docs.filter((d) => d.doc_type === 'presupuesto');
+
+    return {
+      totalFacturado: facturas.reduce((s, d) => s + (d.total || 0), 0),
+      cobradoMes: facturas.filter((d) => d.status === 'pagado' && d.date >= format(startOfMonth(new Date()), 'yyyy-MM-dd')).reduce((s, d) => s + (d.total || 0), 0),
+      pendienteCobro: facturas.filter((d) => ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0),
+      vencidas: facturas.filter((d) => d.status === 'vencido').length,
+      numFacturas: facturas.length,
+      numPresupuestos: presupuestos.length,
+      numPresupuestosEnviados: presupuestos.filter((d) => d.status === 'enviado').length
+    };
+  }, [docs]);
+
+  // Total amount of filtered documents - Memoized to prevent O(N) calculation on every render
+  const filteredTotal = useMemo(() => filtered.reduce((s, d) => s + (d.total || 0), 0).toFixed(2), [filtered]);
 
   return (
     <div className="space-y-4">
@@ -516,7 +527,7 @@ export default function Documents() {
           <CardContent className="p-3">
             <p className="text-gray-500 mb-0.5 text-sm font-extrabold">Total facturado</p>
             <p className="text-violet-700 text-3xl font-bold">{totalFacturado.toFixed(0)} €</p>
-            <p className="text-gray-400 font-extrabold">{facturas.length} facturas</p>
+            <p className="text-gray-400 font-extrabold">{numFacturas} facturas</p>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-green-400">
@@ -536,8 +547,8 @@ export default function Documents() {
         <Card className="border-l-4 border-blue-400">
           <CardContent className="p-3">
             <p className="text-gray-500 mb-0.5 text-sm font-extrabold">Presupuestos</p>
-            <p className="text-blue-700 text-3xl font-bold">{presupuestos.length}</p>
-            <p className="text-gray-400 font-black">{presupuestos.filter((d) => d.status === 'enviado').length} enviados</p>
+            <p className="text-blue-700 text-3xl font-bold">{numPresupuestos}</p>
+            <p className="text-gray-400 font-black">{numPresupuestosEnviados} enviados</p>
           </CardContent>
         </Card>
       </div>
@@ -632,7 +643,9 @@ export default function Documents() {
         </Select>
       </div>
 
-      <p className="text-xs text-gray-400">{filtered.length} documento{filtered.length !== 1 ? 's' : ''} · Total: <strong>{filtered.reduce((s, d) => s + (d.total || 0), 0).toFixed(2)} €</strong></p>
+      <p className="text-xs text-gray-400">
+        {filtered.length} documento{filtered.length !== 1 ? 's' : ''} · Total: <strong>{filteredTotal} €</strong>
+      </p>
 
       {/* ===== DIALOG CREAR/EDITAR ===== */}
       <Dialog open={dialogOpen} onOpenChange={(o) => {
