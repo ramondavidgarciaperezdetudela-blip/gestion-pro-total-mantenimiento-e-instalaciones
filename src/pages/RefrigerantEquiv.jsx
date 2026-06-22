@@ -133,6 +133,42 @@ const GAS_DATA = [
     equiv:[
       { gas:'R-744', drop:false, aceite:'POE CO2 (Bitzer BSE60K)',   vaciar:true,  factor:1.00, gwp:1,    nota:'CO2 no tiene sustituto equivalente. Sistema diseñado específicamente.' },
     ]},
+  // ─────────────────────────────────── R-11 (CFC legado) ──────────────────────
+  { origen:'R-11', gwp_o:4750, tipo_o:'CFC (prohibido)', aceite_o:'Mineral',
+    equiv:[
+      { gas:'R-123', drop:false, aceite:'Mineral/Alkilbenceno',      vaciar:true,  factor:0.95, gwp:79,   nota:'Sustituto en enfriadoras centrífugas. B1 baja toxicidad. Requiere reconversión.' },
+      { gas:'R-1233zd',drop:false,aceite:'POE',                       vaciar:true,  factor:0.90, gwp:1,    nota:'HFO de muy bajo GWP para chillers nuevos. No drop-in.' },
+    ]},
+  // ─────────────────────────────────── R-13 / R-503 (muy baja temp.) ──────────
+  { origen:'R-13', gwp_o:14400, tipo_o:'CFC (prohibido)', aceite_o:'Mineral',
+    equiv:[
+      { gas:'R-23',  drop:false, aceite:'POE',                       vaciar:true,  factor:0.95, gwp:14800, nota:'Cascada baja temperatura. Cambio de aceite a POE.' },
+      { gas:'R-508B',drop:false, aceite:'POE',                       vaciar:true,  factor:0.95, gwp:13396, nota:'Ultra baja temperatura (-80°C). Sistemas en cascada específicos.' },
+    ]},
+  // ─────────────────────────────────── R-500 (CFC legado) ─────────────────────
+  { origen:'R-500', gwp_o:8077, tipo_o:'CFC/HFC (prohibido)', aceite_o:'Mineral',
+    equiv:[
+      { gas:'R-134a',drop:false, aceite:'POE',                       vaciar:true,  factor:0.85, gwp:1430, nota:'Reconversión a POE. Cambiar filtro deshidratador.' },
+      { gas:'R-401B',drop:true,  aceite:'Mineral/AB (mantener)',     vaciar:false, factor:0.88, gwp:1290, nota:'Drop-in transitorio (HCFC, en retirada).' },
+    ]},
+  // ─────────────────────────────────── R-407A (origen) ────────────────────────
+  { origen:'R-407A', gwp_o:2107, tipo_o:'HFC (zeótropo)', aceite_o:'POE',
+    equiv:[
+      { gas:'R-448A',drop:true,  aceite:'POE (mantener)',            vaciar:false, factor:0.97, gwp:1387, nota:'Drop-in de menor GWP. Cargar en fase líquida.' },
+      { gas:'R-449A',drop:true,  aceite:'POE (mantener)',            vaciar:false, factor:0.97, gwp:1397, nota:'Drop-in ampliamente aprobado.' },
+    ]},
+  // ─────────────────────────────────── R-513A (origen) ────────────────────────
+  { origen:'R-513A', gwp_o:573, tipo_o:'HFO/HFC A1', aceite_o:'POE',
+    equiv:[
+      { gas:'R-1234ze',drop:false,aceite:'POE',                      vaciar:true,  factor:0.85, gwp:7,    nota:'Menor GWP para chillers. A2L. Capacidad algo menor.' },
+      { gas:'R-450A',drop:true,  aceite:'POE (mantener)',            vaciar:false, factor:0.99, gwp:605,  nota:'Alternativa A1 de GWP similar.' },
+    ]},
+  // ─────────────────────────────────── R-1234ze (origen) ──────────────────────
+  { origen:'R-1234ze', gwp_o:7, tipo_o:'HFO A2L', aceite_o:'POE',
+    equiv:[
+      { gas:'R-513A',drop:false, aceite:'POE',                       vaciar:false, factor:1.15, gwp:573,  nota:'Alternativa A1 (no inflamable) con mayor capacidad.' },
+      { gas:'R-1233zd',drop:false,aceite:'POE',                      vaciar:true,  factor:1.00, gwp:1,    nota:'Para chillers centrífugos de muy bajo GWP.' },
+    ]},
 ];
 
 // Tipos de compresor → gas típico, aceite y CARGA DE ACEITE nominal en litros.
@@ -159,7 +195,43 @@ const COMPRESORES_GAS = {
   'Dorin H/HEX':       { gases:['R-744 (CO2)','R-404A'],      aceite:'Dorin POE / CO2',          litros:2.0, multi:true, nota:'Series transcríticas para CO2' },
   'Embraco/Secop':     { gases:['R-134a','R-600a','R-290'],  aceite:'POE / Mineral según modelo',litros:0.25,multi:true, nota:'Herméticos pequeños (frío doméstico/comercial)' },
   'GMCC/Highly Rotary':{ gases:['R-32','R-410A'],             aceite:'POE FV50S',                litros:0.45,multi:false },
+  'Carrier 06D/06E':   { gases:['R-22','R-407C','R-134a'],    aceite:'Mineral/POE según gas',    litros:3.8, multi:true },
+  'Trane Scroll CSH':  { gases:['R-410A','R-454B'],           aceite:'POE OIL00048',             litros:1.9, multi:false },
+  'Bristol H2':        { gases:['R-22','R-407C','R-404A'],    aceite:'Mineral/POE',              litros:1.2, multi:true },
+  'LG Scroll/Rotary':  { gases:['R-32','R-410A'],             aceite:'POE FVC68D',               litros:0.6, multi:false },
+  'Panasonic Rotary':  { gases:['R-32','R-410A','R-600a'],    aceite:'POE',                      litros:0.45,multi:true },
+  'Hitachi Scroll':    { gases:['R-410A','R-32'],             aceite:'POE FV68S',                litros:1.0, multi:false },
+  'Cubigel (ACC)':     { gases:['R-134a','R-600a','R-290'],   aceite:'Mineral/POE según modelo', litros:0.30,multi:true, nota:'Herméticos pequeños' },
+  'Performer (Danfoss)':{ gases:['R-410A','R-407C'],          aceite:'POE 160SZ',                litros:1.55,multi:true },
 };
+
+// ── Densidad del líquido (kg/m³, aprox. ~30-40 °C) para carga por metro ────────
+const DENS_LIQ = {
+  'R-22':1170,'R-404A':1020,'R-410A':1010,'R-134a':1150,'R-407C':1100,'R-407F':1090,
+  'R-507A':1020,'R-32':920,'R-448A':1090,'R-449A':1090,'R-452A':1080,'R-513A':1110,
+  'R-450A':1120,'R-454B':1000,'R-1234yf':1050,'R-1234ze':1130,'R-290':480,'R-600a':540,'R-744':720,
+};
+
+// ── Tubos de cobre frigorífico (OD pulgadas → diámetro interior aprox. mm) ─────
+const TUBOS_COBRE = [
+  { od:'1/4"',    id:4.8 },
+  { od:'3/8"',    id:8.0 },
+  { od:'1/2"',    id:10.9 },
+  { od:'5/8"',    id:13.8 },
+  { od:'3/4"',    id:16.6 },
+  { od:'7/8"',    id:19.9 },
+  { od:'1.1/8"',  id:25.6 },
+  { od:'1.3/8"',  id:31.8 },
+];
+
+// Carga de líquido por metro (g/m) = densidad · sección · 1000
+function cargaLiquidoGporM(refrig, idMm) {
+  const d = DENS_LIQ[refrig];
+  if (!d || !idMm) return null;
+  const area = Math.PI * Math.pow(idMm / 1000 / 2, 2); // m²
+  return d * area * 1000; // g por metro
+}
+
 
 export default function RefrigerantEquiv() {
   const [tab,     setTab]     = useState('tabla');       // tabla | calculadora | compresor
@@ -170,8 +242,18 @@ export default function RefrigerantEquiv() {
   const [compBusca, setCompBusca] = useState('');
   const [compInfo, setCompInfo]   = useState(null);
   const [searching, setSearching] = useState(false);
+  // Aceite preciso (por compresor)
+  const [compAceite, setCompAceite] = useState('');
+  // Tubería
+  const [tubGas,  setTubGas]  = useState('R-410A');
+  const [tubId,   setTubId]   = useState(8.0);
+  const [tubLong, setTubLong] = useState('');
 
   const todos = GAS_DATA.map(g => g.origen);
+  const aceiteCompresor = compAceite ? COMPRESORES_GAS[compAceite] : null;
+  const gPorMetro = cargaLiquidoGporM(tubGas, parseFloat(tubId));
+  const cargaLinea = (gPorMetro && tubLong)
+    ? (gPorMetro * parseFloat(tubLong) / 1000).toFixed(3) : null; // kg
 
   const gasSelec = GAS_DATA.find(g => g.origen === gasOri);
   const equivSelec = gasSelec?.equiv.find(e => e.gas === gasDest);
@@ -223,7 +305,7 @@ export default function RefrigerantEquiv() {
 
         {/* Tabs */}
         <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white shadow">
-          {[['tabla','📊 Tabla'],['calculadora','⚖️ Calcular'],['compresor','🔧 Compresor']].map(([k,l]) => (
+          {[['tabla','📊 Tabla'],['calculadora','⚖️ Calcular'],['compresor','🔧 Compresor'],['tuberia','🧮 Tubería']].map(([k,l]) => (
             <button key={k} onClick={() => setTab(k)}
               className={`flex-1 py-2.5 text-sm font-medium transition-all ${tab===k ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
               {l}
@@ -350,12 +432,35 @@ export default function RefrigerantEquiv() {
                         <p className="text-2xl font-bold text-amber-700">≈ {aceiteLitros} L</p>
                       </div>
                       <p className="text-[11px] text-slate-500 mt-1">
-                        Orientativo (≈ {LITROS_ACEITE_POR_KG} L por kg de gas). El valor exacto es la
-                        <b> carga nominal del compresor</b> — míralo en la placa o en la pestaña «Compresor».
-                        Añade un pequeño extra en líneas largas.
+                        Orientativo (≈ {LITROS_ACEITE_POR_KG} L por kg de gas). Para el valor exacto,
+                        elige tu compresor abajo o míralo en la placa.
                       </p>
                     </div>
                   )}
+
+                  {/* Aceite preciso por compresor */}
+                  <div className="rounded-lg p-3 border border-slate-200 bg-slate-50">
+                    <p className="text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                      <Droplets className="w-3.5 h-3.5 text-blue-600" /> Aceite exacto por compresor
+                    </p>
+                    <select value={compAceite} onChange={e => setCompAceite(e.target.value)}
+                      className="w-full border border-input rounded-md px-3 py-2 text-sm">
+                      <option value="">— Elige tu compresor (carga nominal) —</option>
+                      {Object.keys(COMPRESORES_GAS).map(k => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                    {aceiteCompresor && (
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-xs text-slate-600">{aceiteCompresor.aceite}</span>
+                        <span className="text-xl font-bold text-blue-700">{aceiteCompresor.litros} L</span>
+                      </div>
+                    )}
+                    {aceiteCompresor && (
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Carga nominal del cárter (orientativa). En líneas muy largas añade un poco más
+                        para compensar el aceite que circula con el gas. Confirma en la placa del compresor.
+                      </p>
+                    )}
+                  </div>
 
                   <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 italic">ℹ {equivSelec.nota}</p>
                   <div className="text-xs text-slate-400 space-y-1">
@@ -425,6 +530,75 @@ export default function RefrigerantEquiv() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── TAB 4: TUBERÍA — carga por longitud de línea de líquido ── */}
+        {tab === 'tuberia' && (
+          <div className="space-y-3">
+            <div className="bg-white rounded-xl shadow p-4 space-y-3">
+              <h2 className="font-bold text-slate-800">Carga de gas por metro de línea de líquido</h2>
+              <p className="text-xs text-slate-500">
+                Calcula el gas extra que hay que añadir según la longitud de la línea de líquido
+                (lo que más influye en la carga adicional).
+              </p>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Refrigerante</label>
+                <select value={tubGas} onChange={e => setTubGas(e.target.value)}
+                  className="w-full border border-input rounded-md px-3 py-2 text-sm">
+                  {Object.keys(DENS_LIQ).map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Diámetro de la línea de líquido</label>
+                <select value={tubId} onChange={e => setTubId(e.target.value)}
+                  className="w-full border border-input rounded-md px-3 py-2 text-sm">
+                  {TUBOS_COBRE.map(t => <option key={t.od} value={t.id}>{t.od} (Ø int. {t.id} mm)</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Longitud de la línea de líquido (m)</label>
+                <Input type="number" inputMode="decimal" step="0.5" placeholder="Ej: 12" value={tubLong}
+                  onChange={e => setTubLong(e.target.value)} />
+              </div>
+            </div>
+
+            {gPorMetro && (
+              <div className="rounded-xl shadow overflow-hidden border-2 border-blue-300">
+                <div className="bg-blue-600 px-4 py-3">
+                  <p className="text-white font-bold text-lg">{tubGas} · línea de líquido</p>
+                </div>
+                <div className="bg-white p-4 space-y-3">
+                  <div className="flex items-center justify-between bg-blue-50 rounded-lg p-3">
+                    <span className="text-sm text-slate-600">Carga por metro</span>
+                    <span className="text-2xl font-bold text-blue-800">≈ {gPorMetro.toFixed(0)} g/m</span>
+                  </div>
+                  {cargaLinea && (
+                    <div className="flex items-center justify-between bg-green-50 rounded-lg p-3">
+                      <span className="text-sm text-slate-600">Gas en {tubLong} m de línea</span>
+                      <span className="text-3xl font-bold text-green-700">≈ {cargaLinea} kg</span>
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3">
+                    Orientativo: solo la línea de líquido (la parte que más carga aporta). La carga total
+                    del equipo = carga del fabricante + este ajuste por longitud de línea. Confirma siempre
+                    con la ficha técnica del fabricante.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Referencia: diámetros habituales */}
+            <div className="bg-white rounded-xl shadow p-4">
+              <p className="text-xs font-semibold text-slate-600 mb-2">Diámetros de cobre habituales (orientativo)</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-slate-50 rounded p-2"><b>Splits pequeños (≤3,5 kW):</b> líquido 1/4", aspiración 3/8"</div>
+                <div className="bg-slate-50 rounded p-2"><b>Splits medios (3,5–7 kW):</b> líquido 1/4"–3/8", aspiración 1/2"–5/8"</div>
+                <div className="bg-slate-50 rounded p-2"><b>Comercial (7–15 kW):</b> líquido 3/8", aspiración 5/8"–7/8"</div>
+                <div className="bg-slate-50 rounded p-2"><b>Frío comercial mayor:</b> calcular con software del fabricante</div>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-2">Los diámetros dependen del fabricante, longitud y desnivel. Usa siempre la tabla del equipo.</p>
+            </div>
           </div>
         )}
       </div>
