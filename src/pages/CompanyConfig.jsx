@@ -10,6 +10,91 @@ import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Tra
 import PostalCodeSearch from '@/components/PostalCodeSearch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ValidCharsConfig from '@/components/ValidCharsConfig';
+import { loadLicense, parseLicense, getDeviceId, clearLicense } from '@/lib/licenseManager';
+
+// ── Gestión de la licencia en este equipo ────────────────────────────────────
+function LicenseSection() {
+  const [key, setKey] = useState(loadLicense());
+  const payload = parseLicense(key);
+  const deviceId = getDeviceId();
+
+  const expiraTxt = payload?.expira
+    ? new Date(payload.expira).toLocaleDateString('es-ES')
+    : 'Sin caducidad';
+  const dias = payload?.expira
+    ? Math.max(0, Math.ceil((payload.expira - Date.now()) / 86400000))
+    : null;
+
+  const desactivar = () => {
+    if (!window.confirm('¿Seguro que quieres DESACTIVAR la licencia en este equipo?\n\nLa app volverá a pedir la clave de activación. Podrás volver a activarla con la misma clave.')) return;
+    clearLicense();
+    window.location.reload();
+  };
+
+  const copiarEquipo = async () => {
+    try { await navigator.clipboard.writeText(deviceId); alert('Identificador de equipo copiado.'); }
+    catch { alert(deviceId); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+        <p className="font-medium mb-1">🔑 Licencia de este equipo</p>
+        <p>Aquí puedes ver el estado de tu licencia y desactivarla en este equipo (por ejemplo, para liberar la clave y activarla en otro ordenador, o para volver a probar la activación).</p>
+      </div>
+
+      {payload ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="border rounded-lg p-3 bg-green-50">
+            <p className="text-xs text-gray-500">Estado</p>
+            <p className="font-bold text-green-700">✓ Activada</p>
+          </div>
+          <div className="border rounded-lg p-3">
+            <p className="text-xs text-gray-500">Plan</p>
+            <p className="font-semibold capitalize">{payload.plan || '—'}</p>
+          </div>
+          <div className="border rounded-lg p-3">
+            <p className="text-xs text-gray-500">Cliente</p>
+            <p className="font-semibold truncate">{payload.cliente || '—'}</p>
+          </div>
+          <div className="border rounded-lg p-3">
+            <p className="text-xs text-gray-500">Email</p>
+            <p className="font-semibold truncate">{payload.email || '—'}</p>
+          </div>
+          <div className="border rounded-lg p-3">
+            <p className="text-xs text-gray-500">Válida hasta</p>
+            <p className="font-semibold">{expiraTxt}{dias !== null && ` · ${dias} día(s)`}</p>
+          </div>
+          <div className="border rounded-lg p-3">
+            <p className="text-xs text-gray-500">Equipo vinculado</p>
+            <p className="font-mono text-xs truncate">{payload.deviceId || 'Cualquiera'}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="border rounded-lg p-3 bg-amber-50">
+          <p className="font-bold text-amber-700">Sin licencia activada en este equipo</p>
+          <p className="text-xs text-amber-600 mt-1">La app pedirá la clave de activación al abrirse.</p>
+        </div>
+      )}
+
+      <div className="border rounded-lg p-3 flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs text-gray-500">Tu identificador de equipo</p>
+          <p className="font-mono text-sm truncate">{deviceId}</p>
+        </div>
+        <Button variant="outline" size="sm" className="gap-1.5 flex-shrink-0" onClick={copiarEquipo}>
+          <Copy className="w-4 h-4" /> Copiar
+        </Button>
+      </div>
+
+      {payload && (
+        <Button variant="destructive" className="gap-2" onClick={desactivar}>
+          <LogOut className="w-4 h-4" /> Desactivar licencia en este equipo
+        </Button>
+      )}
+    </div>
+  );
+}
 
 function TechnicianManager({ technicians, onChange }) {
   const [newTech, setNewTech] = useState({ name: '', fgas_carnet: '', rite_certificate: '' });
@@ -203,6 +288,7 @@ export default function CompanyConfig() {
           <TabsTrigger value="red" className="flex-1 text-xs">Red / Acceso</TabsTrigger>
           <TabsTrigger value="ia" className="flex-1 text-xs">IA Cálculos</TabsTrigger>
           <TabsTrigger value="caracteres" className="flex-1 text-xs">Caracteres</TabsTrigger>
+          <TabsTrigger value="licencia" className="flex-1 text-xs">Licencia</TabsTrigger>
           <TabsTrigger value="cuenta" className="flex-1 text-xs text-red-600">Cuenta</TabsTrigger>
         </TabsList>
 
@@ -655,6 +741,17 @@ export default function CompanyConfig() {
         </TabsContent>
 
         {/* ─── ELIMINAR CUENTA ────────────────────────────────────────────── */}
+        <TabsContent value="licencia">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Shield className="w-5 h-5 text-blue-600" />Licencia</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LicenseSection />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="cuenta">
           <Card className="border-red-200">
             <CardHeader>

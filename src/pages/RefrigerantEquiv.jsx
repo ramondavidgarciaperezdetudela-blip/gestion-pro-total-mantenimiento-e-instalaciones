@@ -65,6 +65,41 @@ const GAS_DATA = [
       { gas:'R-454B', drop:false, aceite:'POE A2L',                 vaciar:true,  factor:0.93, gwp:466,  nota:'Ambos A2L. Menor GWP. Verificar compatibilidad compresor.' },
       { gas:'R-452B', drop:false, aceite:'POE A2L',                 vaciar:true,  factor:0.95, gwp:698,  nota:'Alternativa A2L similar a R-32.' },
     ]},
+  // ─────────────────────────────────── R-407C ─────────────────────────────────
+  { origen:'R-407C', gwp_o:1774, tipo_o:'HFC (zeótropo)', aceite_o:'POE',
+    equiv:[
+      { gas:'R-407F', drop:true,  aceite:'POE (mantener)',          vaciar:false, factor:0.96, gwp:1825, nota:'Drop-in. Mejor eficiencia en baja temperatura. Cargar siempre en fase líquida.' },
+      { gas:'R-407A', drop:true,  aceite:'POE (mantener)',          vaciar:false, factor:0.95, gwp:2107, nota:'Drop-in para refrigeración comercial. Mantener POE.' },
+      { gas:'R-454B', drop:false, aceite:'POE A2L',                 vaciar:true,  factor:0.88, gwp:466,  nota:'Bajo GWP A2L. Nueva instalación o retrofit con cambio de componentes.' },
+    ]},
+  // ─────────────────────────────────── R-407F ─────────────────────────────────
+  { origen:'R-407F', gwp_o:1825, tipo_o:'HFC (zeótropo)', aceite_o:'POE',
+    equiv:[
+      { gas:'R-448A', drop:true,  aceite:'POE (mantener)',          vaciar:false, factor:0.97, gwp:1387, nota:'Drop-in. Menor GWP. Cargar en fase líquida.' },
+      { gas:'R-449A', drop:true,  aceite:'POE (mantener)',          vaciar:false, factor:0.97, gwp:1397, nota:'Drop-in ampliamente aprobado.' },
+    ]},
+  // ─────────────────────────────────── R-448A ─────────────────────────────────
+  { origen:'R-448A', gwp_o:1387, tipo_o:'HFC/HFO A1', aceite_o:'POE',
+    equiv:[
+      { gas:'R-449A', drop:true,  aceite:'POE (mantener)',          vaciar:false, factor:1.00, gwp:1397, nota:'Prácticamente intercambiable. Mismo aceite.' },
+      { gas:'R-454C', drop:false, aceite:'POE A2L',                 vaciar:true,  factor:0.90, gwp:146,  nota:'Muy bajo GWP A2L. Nueva instalación.' },
+    ]},
+  // ─────────────────────────────────── R-1234yf ───────────────────────────────
+  { origen:'R-1234yf', gwp_o:4, tipo_o:'HFO A2L', aceite_o:'PAG/POE',
+    equiv:[
+      { gas:'R-1234yf', drop:false, aceite:'PAG (automoción)',      vaciar:false, factor:1.00, gwp:4,    nota:'Refrigerante de automoción de bajo GWP. Sin sustituto directo de menor GWP.' },
+    ]},
+  // ─────────────────────────────────── R-600a Isobutano ───────────────────────
+  { origen:'R-600a', gwp_o:3, tipo_o:'Natural HC A3', aceite_o:'Mineral/POE para HC',
+    equiv:[
+      { gas:'R-290', drop:false, aceite:'POE específico A3',         vaciar:true,  factor:1.10, gwp:3,    nota:'Propano. Natural A3. Solo equipos diseñados para HC, carga máx 150g.' },
+    ]},
+  // ─────────────────────────────────── R-23 (muy baja temp.) ──────────────────
+  { origen:'R-23', gwp_o:14800, tipo_o:'HFC (baja temperatura)', aceite_o:'POE',
+    equiv:[
+      { gas:'R-508B', drop:false, aceite:'POE',                      vaciar:true,  factor:0.95, gwp:13396, nota:'Cascada/ultra baja temperatura (-80°C). Sistemas específicos.' },
+      { gas:'R-170', drop:false, aceite:'POE específico',            vaciar:true,  factor:0.50, gwp:6,     nota:'Etano. Natural muy baja temperatura. Inflamable A3. Cascada.' },
+    ]},
   // ─────────────────────────────────── R-290 Propano ──────────────────────────
   { origen:'R-290', gwp_o:3, tipo_o:'Natural HC A3', aceite_o:'POE específico A3',
     equiv:[
@@ -77,18 +112,30 @@ const GAS_DATA = [
     ]},
 ];
 
-// Tipos de compresor → gas típico (para búsqueda)
+// Tipos de compresor → gas típico, aceite y CARGA DE ACEITE nominal en litros.
+// La carga de aceite (litros) es ORIENTATIVA: confirma siempre en la placa o
+// ficha técnica del compresor, ya que varía según modelo y cilindrada exactos.
 const COMPRESORES_GAS = {
-  'Bitzer 4FES':       { gases:['R-404A','R-448A','R-449A'], aceite:'Bitzer BSE55', multi:false },
-  'Bitzer 4NES':       { gases:['R-404A','R-507A','R-448A'], aceite:'Bitzer BSE55', multi:false },
-  'Copeland ZS':       { gases:['R-410A','R-454B'],           aceite:'Copeland Ultra 32-3MAF', multi:false },
-  'Copeland ZF':       { gases:['R-404A','R-448A','R-449A'], aceite:'Copeland Ultra 32-3MAF', multi:false },
-  'Copeland Scroll':   { gases:['R-410A','R-32','R-454B'],   aceite:'Copeland Ultra 32-3MAF', multi:true, nota:'Multi-refrigerante según serie' },
-  'Danfoss Maneurop':  { gases:['R-404A','R-134a','R-22'],   aceite:'Fuchs Reniso Triton SEZ 32', multi:true },
-  'Tecumseh AEZ':      { gases:['R-134a','R-513A'],           aceite:'POE Mobil EAL Arctic 22', multi:false },
-  'Daikin Rotary':     { gases:['R-32','R-410A'],             aceite:'Daikin PA33', multi:false },
-  'Mitsubishi Scroll': { gases:['R-32','R-454B'],             aceite:'Suniso 4GS/POE', multi:false },
-  'Emerson Climate':   { gases:['R-410A','R-32','R-454B'],   aceite:'Emerson Ultra 32', multi:true },
+  'Bitzer 4FES':       { gases:['R-404A','R-448A','R-449A'], aceite:'Bitzer BSE55',              litros:1.5, multi:false },
+  'Bitzer 4NES':       { gases:['R-404A','R-507A','R-448A'], aceite:'Bitzer BSE55',              litros:2.6, multi:false },
+  'Bitzer 2EES':       { gases:['R-134a','R-404A','R-449A'], aceite:'Bitzer BSE32',              litros:0.9, multi:true },
+  'Bitzer 6FE/HSK':    { gases:['R-404A','R-407F','R-448A'], aceite:'Bitzer BSE55',              litros:4.0, multi:true },
+  'Copeland ZS':       { gases:['R-410A','R-454B'],           aceite:'Copeland Ultra 32-3MAF',   litros:1.3, multi:false },
+  'Copeland ZB':       { gases:['R-404A','R-134a','R-448A'], aceite:'Copeland Ultra 32-3MAF',   litros:1.3, multi:true },
+  'Copeland ZF':       { gases:['R-404A','R-448A','R-449A'], aceite:'Copeland Ultra 32-3MAF',   litros:1.65,multi:false },
+  'Copeland Scroll':   { gases:['R-410A','R-32','R-454B'],   aceite:'Copeland Ultra 32-3MAF',   litros:1.4, multi:true, nota:'Multi-refrigerante según serie' },
+  'Copeland Stream':   { gases:['R-404A','R-407F','R-448A'], aceite:'Copeland Ultra 32-3MAF',   litros:3.25,multi:true },
+  'Danfoss Maneurop':  { gases:['R-404A','R-134a','R-22'],   aceite:'Fuchs Reniso Triton SEZ 32',litros:1.4, multi:true },
+  'Danfoss SM/SZ':     { gases:['R-407C','R-134a','R-410A'], aceite:'Danfoss 160Z / POE 32',    litros:1.45,multi:true },
+  'Tecumseh AEZ':      { gases:['R-134a','R-513A'],           aceite:'POE Mobil EAL Arctic 22',  litros:0.5, multi:false },
+  'Tecumseh CAJ':      { gases:['R-404A','R-449A'],           aceite:'POE Mobil EAL Arctic 22',  litros:0.65,multi:false },
+  'Daikin Rotary':     { gases:['R-32','R-410A'],             aceite:'Daikin PA33 / FVC50K',     litros:0.55,multi:false },
+  'Mitsubishi Scroll': { gases:['R-32','R-454B'],             aceite:'Suniso 4GS / POE',         litros:0.9, multi:false },
+  'Emerson Climate':   { gases:['R-410A','R-32','R-454B'],   aceite:'Emerson Ultra 32',          litros:1.4, multi:true },
+  'Frascold S/Q':      { gases:['R-404A','R-448A','R-407F'], aceite:'Frascold POE',             litros:2.7, multi:true },
+  'Dorin H/HEX':       { gases:['R-744 (CO2)','R-404A'],      aceite:'Dorin POE / CO2',          litros:2.0, multi:true, nota:'Series transcríticas para CO2' },
+  'Embraco/Secop':     { gases:['R-134a','R-600a','R-290'],  aceite:'POE / Mineral según modelo',litros:0.25,multi:true, nota:'Herméticos pequeños (frío doméstico/comercial)' },
+  'GMCC/Highly Rotary':{ gases:['R-32','R-410A'],             aceite:'POE FV50S',                litros:0.45,multi:false },
 };
 
 export default function RefrigerantEquiv() {
@@ -107,6 +154,11 @@ export default function RefrigerantEquiv() {
   const equivSelec = gasSelec?.equiv.find(e => e.gas === gasDest);
   const pesoConvertido = pesoOri && equivSelec
     ? (parseFloat(pesoOri) * equivSelec.factor).toFixed(2) : null;
+  // Estimación ORIENTATIVA de aceite (litros). El valor exacto es la carga
+  // nominal del compresor (ver pestaña Compresor o placa del equipo).
+  const LITROS_ACEITE_POR_KG = 0.30;
+  const aceiteLitros = pesoConvertido
+    ? (parseFloat(pesoConvertido) * LITROS_ACEITE_POR_KG).toFixed(2) : null;
 
   const filtrados = GAS_DATA.filter(g =>
     g.origen.toLowerCase().includes(busca.toLowerCase()) ||
@@ -263,6 +315,25 @@ export default function RefrigerantEquiv() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Estimación de aceite en litros */}
+                  {aceiteLitros && (
+                    <div className="rounded-lg p-3 border border-amber-200 bg-amber-50">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-slate-600 flex items-center gap-1">
+                          <Droplets className="w-3.5 h-3.5 text-amber-600" />
+                          Aceite estimado {equivSelec.vaciar ? '(a reponer tras vaciar)' : '(reposición aprox.)'}
+                        </p>
+                        <p className="text-2xl font-bold text-amber-700">≈ {aceiteLitros} L</p>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Orientativo (≈ {LITROS_ACEITE_POR_KG} L por kg de gas). El valor exacto es la
+                        <b> carga nominal del compresor</b> — míralo en la placa o en la pestaña «Compresor».
+                        Añade un pequeño extra en líneas largas.
+                      </p>
+                    </div>
+                  )}
+
                   <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 italic">ℹ {equivSelec.nota}</p>
                   <div className="text-xs text-slate-400 space-y-1">
                     <p>GWP {gasOri}: {GAS_DATA.find(g=>g.origen===gasOri)?.gwp_o.toLocaleString()}</p>
@@ -314,9 +385,18 @@ export default function RefrigerantEquiv() {
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">Aceite recomendado por fabricante</p>
-                    <p className="font-semibold text-slate-800">{compInfo.aceite}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Aceite recomendado</p>
+                      <p className="font-semibold text-slate-800">{compInfo.aceite}</p>
+                    </div>
+                    {compInfo.litros != null && (
+                      <div className="bg-amber-50 rounded-lg p-2">
+                        <p className="text-xs text-slate-500 mb-0.5 flex items-center gap-1"><Droplets className="w-3.5 h-3.5 text-amber-600" />Carga de aceite</p>
+                        <p className="font-bold text-amber-700">≈ {compInfo.litros} L</p>
+                        <p className="text-[10px] text-slate-400">Orientativo — confirmar en placa</p>
+                      </div>
+                    )}
                   </div>
                   {compInfo.nota && <p className="text-sm text-slate-600 italic bg-slate-50 rounded p-2">ℹ {compInfo.nota}</p>}
                 </div>
