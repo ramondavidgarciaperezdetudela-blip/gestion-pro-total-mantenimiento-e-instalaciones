@@ -31,10 +31,10 @@ export default function UpdateChecker({ compact = false, headless = false }) {
   const [state, setState] = useState('idle'); // idle | checking | update | uptodate | error
   const [info,  setInfo]  = useState(null);
   const [show,  setShow]  = useState(false);
-  const [auto,  setAuto]  = useState(false); // true = comprobación automática al cargar
 
-  // Comprobar actualizaciones
-  const check = useCallback(async () => {
+  // Comprobar actualizaciones. isAuto=true → solo molesta si HAY actualización
+  // (no muestra el aviso si está al día o si no hay conexión).
+  const check = useCallback(async (isAuto = false) => {
     setState('checking');
     try {
       // Intentar primero el version.json del repo (más rápido)
@@ -47,7 +47,7 @@ export default function UpdateChecker({ compact = false, headless = false }) {
         setShow(true);
       } else {
         setState('uptodate');
-        if (!auto) setShow(true); // mostrar "al día" solo si fue manual
+        if (!isAuto) setShow(true); // mostrar "al día" solo si fue manual
       }
     } catch (err) {
       // Fallback: GitHub releases API
@@ -71,15 +71,15 @@ export default function UpdateChecker({ compact = false, headless = false }) {
             setShow(true);
           } else {
             setState('uptodate');
-            if (!auto) setShow(true);
+            if (!isAuto) setShow(true);
           }
         } else throw new Error();
       } catch {
         setState('error');
-        if (!auto) setShow(true);
+        if (!isAuto) setShow(true);
       }
     }
-  }, [auto]);
+  }, []);
 
   // Comprobar automáticamente al cargar (una vez al día)
   useEffect(() => {
@@ -87,11 +87,10 @@ export default function UpdateChecker({ compact = false, headless = false }) {
     const now = Date.now();
     // Comprobar automáticamente si no se ha comprobado hoy
     if (!lastCheck || now - parseInt(lastCheck) > 86400000) {
-      setAuto(true);
       localStorage.setItem('gpt_last_update_check', String(now));
-      check();
+      check(true); // automático: solo avisa si hay nueva versión
     }
-  }, []);
+  }, [check]);
 
   const downloadURL = isAPK ? info?.apk_url : info?.zip_url;
   const downloadLabel = isAPK ? 'Descargar APK actualizado' : 'Descargar actualización';
@@ -100,7 +99,7 @@ export default function UpdateChecker({ compact = false, headless = false }) {
   if (compact) {
     return (
       <button
-        onClick={() => { setAuto(false); check(); setShow(true); }}
+        onClick={() => { check(false); setShow(true); }}
         className="relative p-1.5 rounded-full hover:bg-white/10 transition-colors"
         title="Comprobar actualizaciones"
       >
@@ -118,7 +117,7 @@ export default function UpdateChecker({ compact = false, headless = false }) {
       {!headless && (
       <Button
         variant="outline"
-        onClick={() => { setAuto(false); check(); }}
+        onClick={() => { check(false); }}
         disabled={state === 'checking'}
         className="flex items-center gap-2 text-sm"
       >
@@ -225,7 +224,7 @@ export default function UpdateChecker({ compact = false, headless = false }) {
                       github.com/{GITHUB_USER}/{GITHUB_REPO}/releases
                     </a>
                   </p>
-                  <Button onClick={() => { check(); }} className="w-full">
+                  <Button onClick={() => { check(false); }} className="w-full">
                     <RefreshCw className="w-4 h-4 mr-2" /> Reintentar
                   </Button>
                 </div>
