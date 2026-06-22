@@ -138,6 +138,14 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx cap add android && npx cap sync android
+      - name: Firma estable (clave fija → actualizar sin desinstalar)
+        # Usamos SIEMPRE la misma clave de firma para que cada APK nueva se
+        # instale ENCIMA de la anterior sin tener que desinstalar. Sin esto,
+        # cada compilación generaría una clave distinta y Android bloquearía la
+        # actualización por firma diferente.
+        run: |
+          mkdir -p ~/.android
+          cp android-signing/debug.keystore ~/.android/debug.keystore
       - name: Compilar APK
         working-directory: android
         run: chmod +x ./gradlew && ./gradlew assembleDebug --no-daemon
