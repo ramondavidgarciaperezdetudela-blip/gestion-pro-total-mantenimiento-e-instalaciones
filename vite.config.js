@@ -1,10 +1,15 @@
 import base44 from "@base44/vite-plugin"
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import pkg from './package.json' assert { type: 'json' }
 
 // https://vite.dev/config/
 export default defineConfig({
   logLevel: 'error', // Suppress warnings, only show errors
+  define: {
+    // Versión real de la app (para el comprobador de actualizaciones).
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [
     base44({
       // Support for legacy code that imports the base44 SDK with @/integrations, @/entities, etc.

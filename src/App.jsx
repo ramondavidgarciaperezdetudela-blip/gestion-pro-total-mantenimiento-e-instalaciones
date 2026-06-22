@@ -18,6 +18,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import LicenseGate from '@/components/LicenseGate';
+import UpdateChecker from '@/components/UpdateChecker';
 const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
 
 class ErrorBoundary extends Component {
@@ -114,6 +115,8 @@ const AuthenticatedApp = () => {
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </AnimatedRoutes>
+      {/* Aviso automático de nueva versión (escritorio usa además electron-updater) */}
+      <UpdateChecker headless />
       </LicenseGate>
     </Suspense>
   );

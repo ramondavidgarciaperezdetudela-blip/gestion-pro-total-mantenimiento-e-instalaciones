@@ -1,14 +1,16 @@
+/* global __APP_VERSION__ */
 import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Download, X, AlertCircle, CheckCircle2, ArrowUpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// ── Configuración del repositorio GitHub ─────────────────────────────────────
-// IMPORTANTE: cambia TU_USUARIO por tu usuario real de GitHub
-const GITHUB_USER  = 'TU_USUARIO';
-const GITHUB_REPO  = 'gestion-pro-total';
+// ── Configuración del repositorio PÚBLICO de descargas ───────────────────────
+// Las versiones nuevas se publican aquí (instaladores de escritorio + APK).
+const GITHUB_USER  = 'ramondavidgarciaperezdetudela-blip';
+const GITHUB_REPO  = 'gestion-pro-total-releases';
 const VERSION_URL  = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/version.json`;
 const RELEASES_URL = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/releases/latest`;
-const CURRENT_VERSION = '2025.1.0';
+// Versión instalada real (inyectada en build desde package.json).
+const CURRENT_VERSION = (typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0');
 
 // Comparar versiones semánticas  "2025.1.0" < "2025.2.0" → true
 function isNewer(remote, current) {
@@ -25,7 +27,7 @@ function isNewer(remote, current) {
 const isAPK  = typeof window !== 'undefined' && typeof window.GPTPrint !== 'undefined';
 const isIOS  = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-export default function UpdateChecker({ compact = false }) {
+export default function UpdateChecker({ compact = false, headless = false }) {
   const [state, setState] = useState('idle'); // idle | checking | update | uptodate | error
   const [info,  setInfo]  = useState(null);
   const [show,  setShow]  = useState(false);
@@ -112,7 +114,8 @@ export default function UpdateChecker({ compact = false }) {
 
   return (
     <>
-      {/* Botón principal */}
+      {/* Botón principal (oculto en modo headless: solo auto-aviso) */}
+      {!headless && (
       <Button
         variant="outline"
         onClick={() => { setAuto(false); check(); }}
@@ -130,6 +133,7 @@ export default function UpdateChecker({ compact = false }) {
           : state === 'update'   ? `Actualización disponible v${info?.version}`
           : 'Comprobar actualizaciones'}
       </Button>
+      )}
 
       {/* Modal de resultado */}
       {show && (
