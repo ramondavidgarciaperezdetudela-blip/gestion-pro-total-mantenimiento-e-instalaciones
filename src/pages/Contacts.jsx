@@ -44,7 +44,7 @@ const EMPTY_FORM = {
   pending_amount: 0, internal_observations: '', photo_url: ''
 };
 
-function ContactCard({ contact, onEdit, onDelete }) {
+const ContactCard = React.memo(({ contact, onEdit, onDelete }) => {
   const pp = PAYMENT_PROFILES[contact.payment_profile] || PAYMENT_PROFILES.pagador_normal;
 
   return (
@@ -111,9 +111,9 @@ function ContactCard({ contact, onEdit, onDelete }) {
       </CardContent>
     </Card>
   );
-}
+});
 
-function ContactRow({ contact, onEdit, onDelete }) {
+const ContactRow = React.memo(({ contact, onEdit, onDelete }) => {
   const pp = PAYMENT_PROFILES[contact.payment_profile] || PAYMENT_PROFILES.pagador_normal;
   return (
     <div className="flex items-center gap-3 p-3 border-b hover:bg-gray-50 transition-colors group">
@@ -153,7 +153,7 @@ function ContactRow({ contact, onEdit, onDelete }) {
       </div>
     </div>
   );
-}
+});
 
 export default function Contacts() {
   const [contacts, setContacts] = useState([]);
@@ -186,8 +186,12 @@ export default function Contacts() {
     try {
       // Cargamos en dos tandas para evitar rate limit con datasets grandes
       const data = await base44.entities.Contact.list('-created_date', 300);
-      setContacts(data);
-      saveToCache('contacts', data);
+      const dataWithSearch = data.map(c => ({
+        ...c,
+        _searchStr: `${c.name} ${c.surname} ${c.company_name} ${c.phone} ${c.email} ${c.city}`.toLowerCase()
+      }));
+      setContacts(dataWithSearch);
+      saveToCache('contacts', dataWithSearch);
       setCacheDate(formatCacheDate(Date.now()));
       setIsOffline(false);
     } catch (err) {
@@ -196,8 +200,12 @@ export default function Contacts() {
         await new Promise(r => setTimeout(r, 1500));
         try {
           const data = await base44.entities.Contact.list('-created_date', 300);
-          setContacts(data);
-          saveToCache('contacts', data);
+          const dataWithSearch = data.map(c => ({
+            ...c,
+            _searchStr: `${c.name} ${c.surname} ${c.company_name} ${c.phone} ${c.email} ${c.city}`.toLowerCase()
+          }));
+          setContacts(dataWithSearch);
+          saveToCache('contacts', dataWithSearch);
           setCacheDate(formatCacheDate(Date.now()));
           setIsOffline(false);
           return;
@@ -207,7 +215,7 @@ export default function Contacts() {
     }
   }, []);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     // Si no hay nombre, usar empresa como nombre para que no falle la entidad
     const dataToSave = { ...form };
     if (!dataToSave.name?.trim() && dataToSave.company_name?.trim()) {
@@ -223,18 +231,18 @@ export default function Contacts() {
     setEditing(null);
     setForm(EMPTY_FORM);
     loadContacts();
-  };
+  }, [form, editing, loadContacts]);
 
-  const handlePhotoUpload = async (e) => {
+  const handlePhotoUpload = useCallback(async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setPhotoUploading(true);
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
     setForm(prev => ({ ...prev, photo_url: file_url }));
     setPhotoUploading(false);
-  };
+  }, []);
 
-  const handleAutoFetchLogo = async () => {
+  const handleAutoFetchLogo = useCallback(async () => {
     setFetchingLogo(true);
     const logoUrl = form.website
       ? await fetchCompanyLogo(form.website, form.company_name)
@@ -249,10 +257,10 @@ export default function Contacts() {
       alert('No se encontró logo para esta empresa. Prueba a añadir la web de la empresa.');
     }
     setFetchingLogo(false);
-  };
+  }, [form, editing, loadContacts]);
 
   // Buscar datos de empresa por NIF o nombre usando IA con internet
-  const handleFetchCompanyData = async () => {
+  const handleFetchCompanyData = useCallback(async () => {
     const query = form.nif || form.company_name;
     if (!query) return alert('Introduce primero el NIF/CIF o nombre de la empresa');
     setFetchingCompany(true);
@@ -293,24 +301,24 @@ export default function Contacts() {
       alert('Error al buscar datos de empresa: ' + e.message);
     }
     setFetchingCompany(false);
-  };
+  }, [form]);
 
-  const handleEdit = (c) => {
+  const handleEdit = useCallback((c) => {
     setEditing(c);
     setForm({ ...EMPTY_FORM, ...c });
     setDialogOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     if (!confirm('¿Eliminar contacto?')) return;
     await base44.entities.Contact.delete(id);
     loadContacts();
-  };
+  }, [loadContacts]);
 
   const filtered = useMemo(() => {
     const searchLower = search.toLowerCase();
     return contacts.filter(c => {
-      const matchSearch = `${c.name} ${c.surname} ${c.company_name} ${c.phone} ${c.email} ${c.city}`.toLowerCase().includes(searchLower);
+      const matchSearch = (c._searchStr || "").includes(searchLower);
       const matchType = filterType === 'all' || c.type === filterType;
       const matchPayment = filterPayment === 'all' || c.payment_profile === filterPayment;
       return matchSearch && matchType && matchPayment;
@@ -318,9 +326,11 @@ export default function Contacts() {
   }, [contacts, search, filterType, filterPayment]);
 
   // Stats
-  const totalPending = useMemo(() => contacts.reduce((s, c) => s + (c.pending_amount || 0), 0), [contacts]);
-  const morosoCount = useMemo(() => contacts.filter(c => c.payment_profile === 'moroso').length, [contacts]);
-  const clientCount = useMemo(() => contacts.filter(c => c.type === 'cliente').length, [contacts]);
+  const stats = useMemo(() => ({
+    totalPending: contacts.reduce((s, c) => s + (c.pending_amount || 0), 0),
+    morosoCount: contacts.filter(c => c.payment_profile === 'moroso').length,
+    clientCount: contacts.filter(c => c.type === 'cliente').length
+  }), [contacts]);
 
   return (
     <PullToRefresh onRefresh={loadContacts}>
@@ -458,15 +468,15 @@ export default function Contacts() {
       {/* Stats rápidas */}
       <div className="grid grid-cols-3 gap-3">
         <Card className="bg-emerald-50 border-emerald-200"><CardContent className="p-3 text-center">
-          <p className="text-lg font-bold text-emerald-700">{clientCount}</p>
+          <p className="text-lg font-bold text-emerald-700">{stats.clientCount}</p>
           <p className="text-xs text-emerald-600">Clientes</p>
         </CardContent></Card>
         <Card className="bg-red-50 border-red-200"><CardContent className="p-3 text-center">
-          <p className="text-lg font-bold text-red-700">{totalPending.toFixed(0)}€</p>
+          <p className="text-lg font-bold text-red-700">{stats.totalPending.toFixed(0)}€</p>
           <p className="text-xs text-red-600">Pendiente cobro</p>
         </CardContent></Card>
         <Card className="bg-orange-50 border-orange-200"><CardContent className="p-3 text-center">
-          <p className="text-lg font-bold text-orange-700">{morosoCount}</p>
+          <p className="text-lg font-bold text-orange-700">{stats.morosoCount}</p>
           <p className="text-xs text-orange-600">Morosos</p>
         </CardContent></Card>
       </div>
