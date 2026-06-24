@@ -23,7 +23,7 @@ import {
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
-import { format, startOfMonth } from 'date-fns';
+import { format, startOfMonth, subMonths, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 
@@ -138,24 +138,70 @@ export default function Home() {
   // Paneles secundarios diferidos — no se montan hasta que el render principal está listo
   const [showSecondaryPanels, setShowSecondaryPanels] = useState(false);
   const [showTertiaryPanels, setShowTertiaryPanels] = useState(false);
+  const [dashboardData, setDashboardData] = useState({ monthlyData: [], satByPriority: [], weekMaintenance: [], loading: true });
 
-  const processData = useCallback((invoices, satOrders, contacts, appointments, companySettings, suppliers, stockItems) => {
-    const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+  const processData = useCallback((invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems) => {
+    const now = new Date();
+    const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
     if (companySettings.length > 0) setCompany(companySettings[0]);
 
-    const facturas = invoices.filter((d) => d.doc_type === 'factura');
-    const totalInvoiced = facturas.reduce((s, d) => s + (d.total || 0), 0);
-    const pendingAmount = facturas.filter((d) => ['enviado', 'vencido'].includes(d.status)).reduce((s, d) => s + (d.total || 0), 0);
-    const paidThisMonth = facturas.filter((d) => d.status === 'pagado' && d.date >= monthStart).reduce((s, d) => s + (d.total || 0), 0);
-    const overdueInvoices = facturas.filter((d) => d.status === 'vencido').length;
-    const invoicesPaid = facturas.filter((d) => d.status === 'pagado').length;
-    const invoicesPending = facturas.filter((d) => d.status === 'enviado').length;
-    const satPending = satOrders.filter((s) => s.status === 'pendiente').length;
+    // ⚡ Optimization: Centralized O(N) data processing for all dashboard KPIs and charts
+    let totalInvoiced = 0;
+    let pendingAmount = 0;
+    let paidThisMonth = 0;
+    let overdueInvoices = 0;
+    let invoicesPaid = 0;
+    let invoicesPending = 0;
+
+    const monthlyRevenueMap = {};
+    for (let i = 0; i < 12; i++) {
+      const d = subMonths(now, i);
+      monthlyRevenueMap[format(d, 'yyyy-MM')] = {
+        label: format(d, 'MMM yy', { locale: es }),
+        total: 0
+      };
+    }
+
+    invoices.forEach(d => {
+      if (d.doc_type === 'factura') {
+        totalInvoiced += (d.total || 0);
+        if (['enviado', 'vencido'].includes(d.status)) pendingAmount += (d.total || 0);
+        if (d.status === 'pagado') {
+          invoicesPaid++;
+          if (d.date >= monthStart) paidThisMonth += (d.total || 0);
+          const monthKey = (d.date || '').slice(0, 7);
+          if (monthlyRevenueMap[monthKey]) {
+            monthlyRevenueMap[monthKey].total += Math.round(d.total || 0);
+          }
+        }
+        if (d.status === 'vencido') overdueInvoices++;
+        if (d.status === 'enviado') invoicesPending++;
+      }
+    });
+
+    const monthlyData = Object.keys(monthlyRevenueMap)
+      .sort()
+      .map(key => ({ key, ...monthlyRevenueMap[key] }));
+
+    const satPending = satOrders.filter((s) => s.status === 'pendiente');
+    const satByPriority = [
+      { name: 'Urgente', count: satPending.filter(s => s.priority === 'urgente').length, color: '#ef4444' },
+      { name: 'Alta', count: satPending.filter(s => s.priority === 'alta').length, color: '#f97316' },
+      { name: 'Normal', count: satPending.filter(s => s.priority === 'normal').length, color: '#f59e0b' },
+      { name: 'Baja', count: satPending.filter(s => s.priority === 'baja').length, color: '#6b7280' },
+    ].filter(p => p.count > 0);
+
+    const nextWeek = addDays(now, 7);
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const nextWeekStr = format(nextWeek, 'yyyy-MM-dd');
+    const weekMaintenance = maintenanceSheets.filter(m =>
+      m.status !== 'completada' && m.date >= todayStr && m.date <= nextWeekStr
+    ).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
     setAppointments(appointments);
     setRecentDocs(invoices.slice(0, 5));
     setAllSatOrders(satOrders);
-    setRecentSat(satOrders.filter((s) => s.status === 'pendiente').slice(0, 4));
+    setRecentSat(satPending.slice(0, 4));
 
     const presupuestos = invoices.filter(d => d.doc_type === 'presupuesto');
     setPresupuestosAceptados(presupuestos.filter(d => d.signature_client && d.status !== 'cancelado').slice(0, 10));
@@ -178,23 +224,24 @@ export default function Home() {
     const newAlerts = [];
     if (overdueInvoices > 0) newAlerts.push({ type: 'danger', text: `${overdueInvoices} factura(s) vencidas sin cobrar`, page: 'Documents' });
     if (pendingAmount > 500) newAlerts.push({ type: 'warning', text: `${pendingAmount.toFixed(0)}€ pendientes de cobro`, page: 'Documents' });
-    if (satPending > 3) newAlerts.push({ type: 'warning', text: `${satPending} órdenes SAT pendientes`, page: 'SAT' });
+    if (satPending.length > 3) newAlerts.push({ type: 'warning', text: `${satPending.length} órdenes SAT pendientes`, page: 'SAT' });
     reorder.forEach((r) => newAlerts.push({ type: 'warning', text: `Revisar pedido a ${r.name} (${r.daysLeft <= 0 ? 'HOY' : `en ${r.daysLeft} días`})`, page: 'Suppliers' }));
     setAlerts(newAlerts);
 
     setKpis(prev => ({
-      ...prev, totalInvoiced, pendingAmount, satPending, overdueInvoices, paidThisMonth,
+      ...prev, totalInvoiced, pendingAmount, satPending: satPending.length, overdueInvoices, paidThisMonth,
       invoicesPaid, invoicesPending, invoicesOverdue: overdueInvoices,
       contacts: contacts.length,
       unpaidContacts: contacts.filter((c) => (c.pending_amount || 0) > 0).length,
       totalSuppliers: suppliers.filter((s) => s.is_active !== false).length,
     }));
+    setDashboardData({ monthlyData, satByPriority, weekMaintenance, loading: false });
   }, []);
 
   const loadData = useCallback(async (forceRefresh = false) => {
     const { getHomeData } = await import('@/lib/homeDataCache');
-    const { invoices, satOrders, contacts, appointments, companySettings, suppliers, stockItems } = await getHomeData(forceRefresh);
-    processData(invoices, satOrders, contacts, appointments, companySettings, suppliers, stockItems);
+    const { invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems } = await getHomeData(forceRefresh);
+    processData(invoices, satOrders, maintenanceSheets, contacts, appointments, companySettings, suppliers, stockItems);
   }, [processData]);
 
   useEffect(() => {
@@ -519,7 +566,12 @@ export default function Home() {
 
 
       {/* Panel ingresos + trabajos pendientes + mantenimientos semana */}
-      <MonthlyRevenueChart />
+      <MonthlyRevenueChart
+        monthlyData={dashboardData.monthlyData}
+        satByPriority={dashboardData.satByPriority}
+        weekMaintenance={dashboardData.weekMaintenance}
+        loading={dashboardData.loading}
+      />
 
       {/* Gráficos proveedores */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

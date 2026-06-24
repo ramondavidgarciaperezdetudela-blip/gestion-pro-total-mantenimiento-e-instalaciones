@@ -1,76 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { TrendingUp, Euro, Wrench, ClipboardList } from 'lucide-react';
-import { format, subMonths, addDays } from 'date-fns';
-import { es } from 'date-fns/locale';
 
-const MONTH_COLORS = ['#6366f1','#8b5cf6','#a78bfa','#c4b5fd','#818cf8','#4f46e5','#7c3aed','#6d28d9','#5b21b6','#4c1d95','#ddd6fe','#ede9fe'];
-
-export default function MonthlyRevenueChart() {
-  const [monthlyData, setMonthlyData] = useState([]);
-  const [satByPriority, setSatByPriority] = useState([]);
-  const [weekMaintenance, setWeekMaintenance] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      const invoices = await base44.entities.Invoice.filter({ doc_type: 'factura' });
-      await new Promise(r => setTimeout(r, 150));
-      const satOrders = await base44.entities.SATOrder.list();
-      await new Promise(r => setTimeout(r, 150));
-      const maintenance = await base44.entities.MaintenanceSheet.list();
-
-      // Ingresos últimos 12 meses
-      const months = [];
-      for (let i = 11; i >= 0; i--) {
-        const d = subMonths(new Date(), i);
-        const key = format(d, 'yyyy-MM');
-        const label = format(d, 'MMM yy', { locale: es });
-        const total = invoices
-          .filter(inv => inv.status === 'pagado' && (inv.date || '').startsWith(key))
-          .reduce((s, inv) => s + (inv.total || 0), 0);
-        months.push({ key, label, total: Math.round(total) });
-      }
-      setMonthlyData(months);
-
-      // SAT por prioridad (pendientes)
-      const pending = satOrders.filter(s => s.status === 'pendiente');
-      const byPriority = [
-        { name: 'Urgente', count: pending.filter(s => s.priority === 'urgente').length, color: '#ef4444' },
-        { name: 'Alta', count: pending.filter(s => s.priority === 'alta').length, color: '#f97316' },
-        { name: 'Normal', count: pending.filter(s => s.priority === 'normal').length, color: '#f59e0b' },
-        { name: 'Baja', count: pending.filter(s => s.priority === 'baja').length, color: '#6b7280' },
-      ].filter(p => p.count > 0);
-      setSatByPriority(byPriority);
-
-      // Mantenimientos que vencen esta semana (status=pendiente, fecha próxima 7 días)
-      const today = new Date();
-      const nextWeek = addDays(today, 7);
-      const todayStr = format(today, 'yyyy-MM-dd');
-      const nextWeekStr = format(nextWeek, 'yyyy-MM-dd');
-      const dueThisWeek = maintenance.filter(m =>
-        m.status !== 'completada' && m.date >= todayStr && m.date <= nextWeekStr
-      ).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-      setWeekMaintenance(dueThisWeek);
-
-      setLoading(false);
-    };
-    load();
-  }, []);
-
-  const maxRevenue = Math.max(...monthlyData.map(m => m.total), 1);
+/**
+ * ⚡ Optimization: Refactored to a presentational component.
+ * Data is now passed as props from the Home page, which already centralizes
+ * data fetching via homeDataCache, avoiding 3 redundant heavy API calls.
+ */
+export default function MonthlyRevenueChart({
+  monthlyData = [],
+  satByPriority = [],
+  weekMaintenance = [],
+  loading = false
+}) {
   const currentMonth = monthlyData[monthlyData.length - 1];
   const prevMonth = monthlyData[monthlyData.length - 2];
   const trend = currentMonth && prevMonth && prevMonth.total > 0
     ? ((currentMonth.total - prevMonth.total) / prevMonth.total * 100).toFixed(1)
     : null;
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm bg-gray-50/50 rounded-xl border border-dashed">
+      Cargando estadísticas...
+    </div>
+  );
 
   return (
     <div className="space-y-4">

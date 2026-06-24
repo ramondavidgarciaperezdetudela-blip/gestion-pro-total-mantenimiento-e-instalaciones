@@ -1,0 +1,3 @@
+## 2024-05-22 - [Data Flow Optimization: Centralized Home Dashboard]
+**Learning:** Container components at the dashboard level that perform independent data fetching (e.g. `MonthlyRevenueChart`) can cause significant redundancy when their parent already utilizes a centralized cache (`homeDataCache`). This leads to "waterfall" network effects and wasted CPU cycles.
+**Action:** Refactor child components to be purely presentational (props-based) and consolidate data processing into a single O(N) pass in the parent. Increase fetch limits in the centralized cache to satisfy all sub-component requirements in one go.

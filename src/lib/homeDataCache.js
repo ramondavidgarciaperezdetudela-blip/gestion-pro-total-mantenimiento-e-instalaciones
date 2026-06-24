@@ -72,9 +72,9 @@ export async function getHomeData(forceRefresh = false) {
   const { base44 } = await import('@/api/base44Client');
 
   const tasks = [
-    { key: 'invoices',          fetcher: () => base44.entities.Invoice.list('-date', 60) },
-    { key: 'satOrders',         fetcher: () => base44.entities.SATOrder.list('-date', 50) },
-    { key: 'maintenanceSheets', fetcher: () => base44.entities.MaintenanceSheet.list('-date', 30) },
+    { key: 'invoices',          fetcher: () => base44.entities.Invoice.list('-date', 500) }, // ⚡ Increased for 12-month revenue chart accuracy
+    { key: 'satOrders',         fetcher: () => base44.entities.SATOrder.list('-date', 150) }, // ⚡ Increased for better dashboard coverage
+    { key: 'maintenanceSheets', fetcher: () => base44.entities.MaintenanceSheet.list('-date', 100) }, // ⚡ Increased for weekly view
     { key: 'contacts',          fetcher: () => base44.entities.Contact.list('name', 80) },
     { key: 'appointments',      fetcher: () => base44.entities.Appointment.filter({ date: new Date().toISOString().slice(0, 10) }) },
     { key: 'companySettings',   fetcher: () => base44.entities.CompanySettings.list() },
