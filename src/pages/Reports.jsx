@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +13,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend
 } from 'recharts';
-import { format, subMonths, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, subMonths, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import CompanyHeader from '../components/CompanyHeader';
 import PrintButton from '../components/PrintButton';
@@ -42,66 +42,121 @@ export default function Reports() {
 
   const months = parseInt(period);
 
-  // Facturas filtradas por período
-  const cutoff = subMonths(new Date(), months);
-  const filteredInvoices = data.invoices.filter(i => {
-    try { return i.date && parseISO(i.date) >= cutoff; } catch { return false; }
-  });
+  const stats = useMemo(() => {
+    const cutoff = subMonths(new Date(), months);
+    const filteredInvoices = data.invoices.filter(i => {
+      try { return i.date && parseISO(i.date) >= cutoff; } catch { return false; }
+    });
 
-  // KPIs principales
-  const totalFacturado = filteredInvoices.filter(i => i.doc_type === 'factura').reduce((s, i) => s + (i.total || 0), 0);
-  const totalPagado = filteredInvoices.filter(i => i.status === 'pagado').reduce((s, i) => s + (i.total || 0), 0);
-  const pendienteCobro = filteredInvoices.filter(i => i.status === 'enviado').reduce((s, i) => s + (i.total || 0), 0);
-  const totalPresupuestado = filteredInvoices.filter(i => i.doc_type === 'presupuesto').reduce((s, i) => s + (i.total || 0), 0);
-  const factVencidas = data.invoices.filter(i => i.status === 'vencido').length;
-  const satCompletadas = data.sat.filter(s => s.status === 'completada').length;
-  const satPendientes = data.sat.filter(s => s.status === 'pendiente').length;
-  const satEnCurso = data.sat.filter(s => s.status === 'en_curso').length;
-  const stockBajoMinimo = data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock).length;
-  const clientesActivos = data.contacts.filter(c => c.type === 'cliente' && c.is_active !== false).length;
-  const ticketMedio = filteredInvoices.filter(i => i.doc_type === 'factura' && i.total > 0).length > 0
-    ? totalFacturado / filteredInvoices.filter(i => i.doc_type === 'factura' && i.total > 0).length
-    : 0;
+    let totalFacturado = 0;
+    let totalPagado = 0;
+    let pendienteCobro = 0;
+    let totalPresupuestado = 0;
+    let numFacturas = 0;
+
+    filteredInvoices.forEach(i => {
+      const val = i.total || 0;
+      if (i.doc_type === 'factura') {
+        totalFacturado += val;
+        numFacturas++;
+        if (i.status === 'pagado') totalPagado += val;
+        if (i.status === 'enviado') pendienteCobro += val;
+      } else if (i.doc_type === 'presupuesto') {
+        totalPresupuestado += val;
+      }
+    });
+
+    return {
+      filteredInvoices,
+      totalFacturado,
+      totalPagado,
+      pendienteCobro,
+      totalPresupuestado,
+      factVencidas: data.invoices.filter(i => i.status === 'vencido').length,
+      satCompletadas: data.sat.filter(s => s.status === 'completada').length,
+      satPendientes: data.sat.filter(s => s.status === 'pendiente').length,
+      satEnCurso: data.sat.filter(s => s.status === 'en_curso').length,
+      stockBajoMinimo: data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock).length,
+      clientesActivos: data.contacts.filter(c => c.type === 'cliente' && c.is_active !== false).length,
+      ticketMedio: numFacturas > 0 ? totalFacturado / numFacturas : 0
+    };
+  }, [data, months]);
+
+  const {
+    filteredInvoices, totalFacturado, totalPagado, pendienteCobro, totalPresupuestado,
+    factVencidas, satCompletadas, satPendientes, satEnCurso, stockBajoMinimo,
+    clientesActivos, ticketMedio
+  } = stats;
 
   // Gráfico mensual de facturación
-  const monthlyData = Array.from({ length: Math.min(months, 12) }, (_, i) => {
-    const d = subMonths(new Date(), i);
-    const label = format(d, 'MMM yy', { locale: es });
-    const start = startOfMonth(d);
-    const end = endOfMonth(d);
-    const monthInvoices = data.invoices.filter(inv => {
-      try { const dt = parseISO(inv.date); return isWithinInterval(dt, { start, end }); } catch { return false; }
+  const monthlyData = useMemo(() => {
+    const last12 = Array.from({ length: Math.min(months, 12) }, (_, i) => {
+      const d = subMonths(new Date(), i);
+      return {
+        key: format(d, 'yyyy-MM'),
+        name: format(d, 'MMM yy', { locale: es }),
+        facturado: 0,
+        cobrado: 0,
+        presupuestos: 0
+      };
+    }).reverse();
+
+    data.invoices.forEach(inv => {
+      if (!inv.date) return;
+      const key = inv.date.slice(0, 7); // yyyy-MM
+      const m = last12.find(x => x.key === key);
+      if (!m) return;
+      const val = inv.total || 0;
+      if (inv.doc_type === 'factura') {
+        m.facturado += val;
+        if (inv.status === 'pagado') m.cobrado += val;
+      } else if (inv.doc_type === 'presupuesto') {
+        m.presupuestos += val;
+      }
     });
-    return {
-      name: label,
-      facturado: monthInvoices.filter(i => i.doc_type === 'factura').reduce((s, i) => s + (i.total || 0), 0),
-      cobrado: monthInvoices.filter(i => i.status === 'pagado').reduce((s, i) => s + (i.total || 0), 0),
-      presupuestos: monthInvoices.filter(i => i.doc_type === 'presupuesto').reduce((s, i) => s + (i.total || 0), 0),
-    };
-  }).reverse();
+    return last12;
+  }, [data.invoices, months]);
 
   // Distribución trabajo por tipo
-  const satByType = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'].map(t => ({
-    name: t.charAt(0).toUpperCase() + t.slice(1),
-    value: data.sat.filter(s => s.type === t).length
-  })).filter(i => i.value > 0);
+  const satByType = useMemo(() =>
+    ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'].map(t => ({
+      name: t.charAt(0).toUpperCase() + t.slice(1),
+      value: data.sat.filter(s => s.type === t).length
+    })).filter(i => i.value > 0)
+  , [data.sat]);
 
   // Contactos por tipo
-  const contactsByType = ['cliente', 'proveedor', 'colaborador', 'otro'].map(t => ({
-    name: t.charAt(0).toUpperCase() + t.slice(1),
-    value: data.contacts.filter(c => c.type === t).length
-  })).filter(i => i.value > 0);
+  const contactsByType = useMemo(() =>
+    ['cliente', 'proveedor', 'colaborador', 'otro'].map(t => ({
+      name: t.charAt(0).toUpperCase() + t.slice(1),
+      value: data.contacts.filter(c => c.type === t).length
+    })).filter(i => i.value > 0)
+  , [data.contacts]);
 
   // Top clientes por facturación
-  const clientMap = {};
-  filteredInvoices.filter(i => i.doc_type === 'factura').forEach(i => {
-    if (!i.contact_name) return;
-    clientMap[i.contact_name] = (clientMap[i.contact_name] || 0) + (i.total || 0);
-  });
-  const topClients = Object.entries(clientMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, total]) => ({ name, total }));
+  const topClients = useMemo(() => {
+    const clientMap = {};
+    filteredInvoices.forEach(i => {
+      if (i.doc_type !== 'factura' || !i.contact_name) return;
+      clientMap[i.contact_name] = (clientMap[i.contact_name] || 0) + (i.total || 0);
+    });
+    return Object.entries(clientMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, total]) => ({ name, total }));
+  }, [filteredInvoices]);
 
   // Stock bajo mínimos
-  const lowStock = data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock);
+  const lowStock = useMemo(() => data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock), [data.stock]);
+
+  const techData = useMemo(() => {
+    const techMap = {};
+    data.sat.forEach(s => {
+      if (s.technician) {
+        techMap[s.technician] = (techMap[s.technician] || 0) + 1;
+      }
+    });
+    return Object.entries(techMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value]) => ({ name, value }));
+  }, [data.sat]);
 
   const kpis = [
     { title: 'Facturado', value: `${totalFacturado.toFixed(0)} €`, sub: `${months} meses`, icon: TrendingUp, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
@@ -176,7 +231,7 @@ export default function Reports() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip formatter={v => `${v.toFixed(2)} €`} />
+                      <Tooltip formatter={v => `${typeof v === 'number' ? v.toFixed(2) : v} €`} />
                       <Legend />
                       <Line type="monotone" dataKey="facturado" stroke="#8b5cf6" strokeWidth={2} dot={false} name="Facturado" />
                       <Line type="monotone" dataKey="cobrado" stroke="#10b981" strokeWidth={2} dot={false} name="Cobrado" />
@@ -321,27 +376,22 @@ export default function Reports() {
               </Card>
 
               {/* SAT por técnico */}
-              {(() => {
-                const techMap = {};
-                data.sat.forEach(s => { if (s.technician) { techMap[s.technician] = (techMap[s.technician] || 0) + 1; } });
-                const techData = Object.entries(techMap).sort((a,b) => b[1]-a[1]);
-                return techData.length > 0 ? (
-                  <Card>
-                    <CardHeader className="pb-2"><CardTitle className="text-sm">SAT por técnico</CardTitle></CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={160}>
-                        <BarChart data={techData.map(([name, value]) => ({ name, value }))}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" tick={{ fontSize: 9 }} />
-                          <YAxis tick={{ fontSize: 10 }} />
-                          <Tooltip />
-                          <Bar dataKey="value" fill="#f59e0b" radius={[4,4,0,0]} name="Órdenes" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                ) : null;
-              })()}
+              {techData.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm">SAT por técnico</CardTitle></CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <BarChart data={techData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 9 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="#f59e0b" radius={[4,4,0,0]} name="Órdenes" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             <TabsContent value="stock" className="space-y-4 pt-3">
