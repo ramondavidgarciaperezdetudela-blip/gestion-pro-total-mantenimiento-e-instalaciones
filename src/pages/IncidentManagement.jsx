@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,52 @@ const FAILURE_TYPES = [
   { value: 'otro', label: 'Otro' },
 ];
 
+const IncidentCard = React.memo(({ incident, onDownload, onEdit, onDelete }) => {
+  const statusConfig = STATUS_CONFIG[incident.status] || {};
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex flex-wrap justify-between items-start gap-3">
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-gray-900">{incident.contact_name}</h3>
+              <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+              <span className="text-xs text-gray-500">{incident.equipment_brand} {incident.equipment_model}</span>
+            </div>
+            <p className="text-sm text-gray-700">{incident.description}</p>
+            <div className="flex flex-wrap gap-4 text-xs text-gray-600">
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" /> {format(new Date(incident.failure_date), 'dd/MM/yyyy', { locale: es })}
+              </span>
+              {incident.technician && (
+                <span className="flex items-center gap-1">
+                  <Wrench className="w-3 h-3" /> {incident.technician}
+                </span>
+              )}
+              {incident.repair_date && (
+                <span className="text-green-700 font-semibold">
+                  Reparado: {format(new Date(incident.repair_date), 'dd/MM/yyyy', { locale: es })}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <Button size="sm" variant="outline" onClick={() => onDownload(incident)}>
+              <Download className="w-3.5 h-3.5" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onEdit(incident)}>
+              <Edit2 className="w-3.5 h-3.5" />
+            </Button>
+            <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => onDelete(incident.id)}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
 export default function IncidentManagement() {
   const [contacts, setContacts] = useState([]);
   const [incidents, setIncidents] = useState([]);
@@ -60,7 +106,7 @@ export default function IncidentManagement() {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [contactsList, incidentsList, companyData, machinesList] = await Promise.all([
@@ -81,15 +127,15 @@ export default function IncidentManagement() {
       console.error('Error loading data:', e);
     }
     setLoading(false);
-  };
+  }, []);
 
-  const handleSelectContact = (id) => {
+  const handleSelectContact = useCallback((id) => {
     setSelectedContact(id);
     const c = contacts.find(x => x.id === id);
     if (c) setForm(f => ({ ...f, contact_id: id, contact_name: `${c.name} ${c.surname || ''}` }));
-  };
+  }, [contacts]);
 
-  const handleSaveIncident = async () => {
+  const handleSaveIncident = useCallback(async () => {
     if (!form.contact_id || !form.description) {
       toast.error('Rellena campos requeridos');
       return;
@@ -109,15 +155,15 @@ export default function IncidentManagement() {
     } catch (e) {
       toast.error('Error al guardar');
     }
-  };
+  }, [form, editingId, loadData]);
 
-  const handleEditIncident = (incident) => {
+  const handleEditIncident = useCallback((incident) => {
     setForm(incident);
     setEditingId(incident.id);
     setShowForm(true);
-  };
+  }, []);
 
-  const handleDeleteIncident = async (id) => {
+  const handleDeleteIncident = useCallback(async (id) => {
     if (!confirm('¿Eliminar esta incidencia?')) return;
     try {
       await base44.entities.EquipmentFailure.delete(id);
@@ -126,9 +172,9 @@ export default function IncidentManagement() {
     } catch (e) {
       toast.error('Error al eliminar');
     }
-  };
+  }, [loadData]);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setForm({
       contact_id: '', contact_name: '', equipment_type: 'otro',
       equipment_brand: '', equipment_model: '', serial_number: '',
@@ -137,9 +183,9 @@ export default function IncidentManagement() {
       repair_date: '', repair_hours: 0, status: 'pendiente', notes: '',
     });
     setEditingId(null);
-  };
+  }, []);
 
-  const filteredIncidents = incidents.filter(inc => {
+  const filteredIncidents = useMemo(() => incidents.filter(inc => {
     const matchContact = !selectedContact || inc.contact_id === selectedContact;
     const matchStatus = !filterStatus || inc.status === filterStatus;
     const matchSearch = !searchTerm || 
@@ -147,9 +193,9 @@ export default function IncidentManagement() {
       inc.equipment_brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       inc.description?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchContact && matchStatus && matchSearch;
-  });
+  }), [incidents, selectedContact, filterStatus, searchTerm]);
 
-  const downloadIncidentReport = (incident) => {
+  const downloadIncidentReport = useCallback((incident) => {
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -300,7 +346,7 @@ export default function IncidentManagement() {
     a.href = url;
     a.download = `reporte-incidencia-${incident.id?.substring(0, 8)}.html`;
     a.click();
-  };
+  }, [company]);
 
   if (loading) return <div className="p-4 text-center">Cargando...</div>;
 
@@ -497,51 +543,15 @@ export default function IncidentManagement() {
             </CardContent>
           </Card>
         ) : (
-          filteredIncidents.map(incident => {
-            const statusConfig = STATUS_CONFIG[incident.status] || {};
-            return (
-              <Card key={incident.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex flex-wrap justify-between items-start gap-3">
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-gray-900">{incident.contact_name}</h3>
-                        <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
-                        <span className="text-xs text-gray-500">{incident.equipment_brand} {incident.equipment_model}</span>
-                      </div>
-                      <p className="text-sm text-gray-700">{incident.description}</p>
-                      <div className="flex flex-wrap gap-4 text-xs text-gray-600">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" /> {format(new Date(incident.failure_date), 'dd/MM/yyyy', { locale: es })}
-                        </span>
-                        {incident.technician && (
-                          <span className="flex items-center gap-1">
-                            <Wrench className="w-3 h-3" /> {incident.technician}
-                          </span>
-                        )}
-                        {incident.repair_date && (
-                          <span className="text-green-700 font-semibold">
-                            Reparado: {format(new Date(incident.repair_date), 'dd/MM/yyyy', { locale: es })}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <Button size="sm" variant="outline" onClick={() => downloadIncidentReport(incident)}>
-                        <Download className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleEditIncident(incident)}>
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteIncident(incident.id)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
+          filteredIncidents.map(incident => (
+            <IncidentCard
+              key={incident.id}
+              incident={incident}
+              onDownload={downloadIncidentReport}
+              onEdit={handleEditIncident}
+              onDelete={handleDeleteIncident}
+            />
+          ))
         )}
       </div>
     </div>
