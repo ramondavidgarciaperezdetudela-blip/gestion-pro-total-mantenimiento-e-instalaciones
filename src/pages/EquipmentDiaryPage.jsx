@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,6 @@ import { Plus, Wrench, ChevronDown, ChevronUp, Trash2, Edit, FileSpreadsheet, Se
 import TechnicianSelect from '../components/TechnicianSelect';
 import { toast } from 'sonner';
 import PhotoGallery from '../components/PhotoGallery';
-import { useRef } from 'react';
 
 const MACHINE_TYPES = ['aire_acondicionado','bomba_calor','camara_frigorifica','ventilacion','caldera','aerotermia','solar_fotovoltaico','solar_termico','electrico_cuadro','grupo_frio','otro'];
 const ENTRY_TYPES = ['reparacion','mantenimiento','revision','instalacion','averia','otro'];
@@ -41,6 +40,122 @@ const EMPTY_ENTRY = {
   old_reference: '', new_reference: '',
 };
 
+// ⚡ Bolt: Extract EntryRow and wrap in React.memo to prevent unnecessary re-renders when list updates
+const EntryRow = React.memo(({ entry, idx, diary, onEdit, onDelete }) => (
+  <div className="p-3 hover:bg-orange-50 cursor-pointer transition-colors border-b last:border-b-0" onClick={() => onEdit(diary, idx)}>
+    <div className="flex items-start justify-between gap-2">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <span className="text-xs font-bold text-gray-700">{entry.date}</span>
+          <Badge className={`text-[10px] ${ENTRY_TYPE_COLORS[entry.type] || ''}`}>{entry.type}</Badge>
+          {entry.technician && <span className="text-xs text-gray-500">👷 {entry.technician}</span>}
+          {(entry.hours > 0 || entry.cost > 0) && (
+            <span className="text-xs text-gray-500">{entry.hours > 0 ? `${entry.hours}h` : ''}{entry.cost > 0 ? ` · ${entry.cost}€` : ''}</span>
+          )}
+          <span className="text-[10px] text-orange-400 ml-auto">✎ editar</span>
+        </div>
+        <p className="text-sm text-gray-800">{entry.description}</p>
+        {entry.solution && <p className="text-xs text-green-700 mt-1">✓ {entry.solution}</p>}
+        {entry.parts_used && <p className="text-xs text-blue-600 mt-1">🔩 {entry.parts_used}</p>}
+        {(entry.old_reference || entry.new_reference || entry.old_serial || entry.new_serial) && (
+          <div className="mt-1 text-xs text-gray-500 space-y-0.5">
+            {entry.old_reference && <p>Ref. anterior: <span className="font-medium">{entry.old_reference}</span></p>}
+            {entry.new_reference && <p>Ref. nueva: <span className="font-medium text-blue-700">{entry.new_reference}</span></p>}
+            {entry.old_serial && <p>SN anterior: <span className="font-medium">{entry.old_serial}</span></p>}
+            {entry.new_serial && <p>SN nuevo: <span className="font-medium text-blue-700">{entry.new_serial}</span></p>}
+          </div>
+        )}
+        {entry.next_action && <p className="text-xs text-amber-600 mt-1">→ {entry.next_action}{entry.next_action_date ? ` (${entry.next_action_date})` : ''}</p>}
+        {entry.photos?.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {entry.photos.map((p, pi) => <img key={pi} src={p} alt="" className="w-14 h-14 object-cover rounded border" />)}
+          </div>
+        )}
+      </div>
+      <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+        <button onClick={() => onDelete(diary, idx)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+      </div>
+    </div>
+  </div>
+));
+
+// ⚡ Bolt: Extract DiaryCard and wrap in React.memo to prevent unnecessary re-renders of the entire list
+const DiaryCard = React.memo(({
+  diary,
+  isExpanded,
+  onToggleExpand,
+  onExport,
+  onEditDiary,
+  onAddEntry,
+  onDeleteDiary,
+  onEditEntry,
+  onDeleteEntry
+}) => (
+  <Card className="overflow-hidden">
+    <CardContent className="p-0">
+      <div className="p-3 bg-orange-50 border-b flex items-start justify-between gap-2 flex-wrap">
+        <div className="flex gap-3 flex-1 min-w-0">
+          {diary.equipment_photo_url && (
+            <img src={diary.equipment_photo_url} alt="equipo" className="w-16 h-16 object-cover rounded-lg border flex-shrink-0" />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-semibold text-orange-800">{diary.machine_name}</p>
+              <Badge className="text-[10px] bg-orange-100 text-orange-700">{diary.machine_type?.replace(/_/g, ' ')}</Badge>
+              {diary.equipment_brand && <span className="text-xs text-gray-500">{diary.equipment_brand} {diary.equipment_model}</span>}
+            </div>
+            <p className="text-xs text-blue-700 font-medium mt-0.5">👤 {diary.contact_name}</p>
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+              {diary.serial_number && <p className="text-xs text-gray-500">🔢 SN: {diary.serial_number}{diary.serial_number_old ? ` (ant: ${diary.serial_number_old})` : ''}</p>}
+              {diary.equipment_power_kw && <p className="text-xs text-gray-500">⚡ {diary.equipment_power_kw} kW</p>}
+              {diary.equipment_refrigerant && <p className="text-xs text-gray-500">❄️ {diary.equipment_refrigerant}</p>}
+              {diary.equipment_year && <p className="text-xs text-gray-500">📅 Inst. {diary.equipment_year}</p>}
+              {diary.warranty_expires && <p className="text-xs text-gray-500">🛡️ Garantía: {diary.warranty_expires}</p>}
+              {diary.location && <p className="text-xs text-gray-500">📍 {diary.location}</p>}
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5">{(diary.entries || []).length} entrada(s)</p>
+          </div>
+        </div>
+        <div className="flex gap-1 flex-shrink-0 flex-wrap">
+          <Button size="sm" variant="outline" className="h-7 text-xs text-green-700" onClick={() => onExport(diary)}>
+            <FileSpreadsheet className="w-3 h-3 mr-1" />Excel/CSV
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onEditDiary(diary)}>
+            <Edit className="w-3 h-3" />
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs text-orange-700" onClick={() => onAddEntry(diary)}>
+            <Plus className="w-3 h-3 mr-1" />Añadir
+          </Button>
+          <button onClick={() => onToggleExpand(diary.id)} className="p-1 text-gray-400">
+            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          <button onClick={() => onDeleteDiary(diary.id)} className="p-1 text-red-400">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="divide-y">
+          {(!diary.entries || diary.entries.length === 0) && (
+            <p className="text-sm text-gray-400 text-center py-4">Sin entradas. Pulsa "Añadir".</p>
+          )}
+          {(diary.entries || []).map((entry, idx) => (
+            <EntryRow
+              key={idx}
+              entry={entry}
+              idx={idx}
+              diary={diary}
+              onEdit={onEditEntry}
+              onDelete={onDeleteEntry}
+            />
+          ))}
+        </div>
+      )}
+    </CardContent>
+  </Card>
+));
+
 export default function EquipmentDiaryPage() {
   const [diaries, setDiaries] = useState([]);
   const [contacts, setContacts] = useState([]);
@@ -55,13 +170,12 @@ export default function EquipmentDiaryPage() {
   const [expandedDiary, setExpandedDiary] = useState(null);
   const [company, setCompany] = useState(null);
   const [filterContact, setFilterContact] = useState('all');
-  const printRef = useRef(null);
 
   useEffect(() => {
     loadAll();
   }, []);
 
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     setLoading(true);
     const [d, c, comp] = await Promise.all([
       base44.entities.EquipmentDiary.list('-created_date', 200),
@@ -72,9 +186,9 @@ export default function EquipmentDiaryPage() {
     setContacts(c);
     if (comp.length > 0) setCompany(comp[0]);
     setLoading(false);
-  };
+  }, []);
 
-  const saveDiary = async () => {
+  const saveDiary = useCallback(async () => {
     if (!diaryForm.machine_name) { toast.error('Introduce el nombre del equipo'); return; }
     if (editingDiary) {
       await base44.entities.EquipmentDiary.update(editingDiary.id, diaryForm);
@@ -87,27 +201,27 @@ export default function EquipmentDiaryPage() {
     setEditingDiary(null);
     setDiaryForm(EMPTY_DIARY);
     loadAll();
-  };
+  }, [diaryForm, editingDiary, loadAll]);
 
-  const deleteDiary = async (id) => {
+  const deleteDiary = useCallback(async (id) => {
     if (!confirm('¿Eliminar este diario?')) return;
     await base44.entities.EquipmentDiary.delete(id);
     loadAll();
-  };
+  }, [loadAll]);
 
-  const openNewEntry = (diary) => {
+  const openNewEntry = useCallback((diary) => {
     setEditingEntry({ diary, entryIndex: null });
     setEntryForm({ ...EMPTY_ENTRY, date: new Date().toISOString().split('T')[0] });
     setEntryDialogOpen(true);
-  };
+  }, []);
 
-  const openEditEntry = (diary, entryIndex) => {
+  const openEditEntry = useCallback((diary, entryIndex) => {
     setEditingEntry({ diary, entryIndex });
     setEntryForm({ ...EMPTY_ENTRY, ...diary.entries[entryIndex] });
     setEntryDialogOpen(true);
-  };
+  }, []);
 
-  const saveEntry = async () => {
+  const saveEntry = useCallback(async () => {
     if (!entryForm.description) { toast.error('Añade una descripción'); return; }
     const diary = editingEntry.diary;
     const entries = [...(diary.entries || [])];
@@ -121,55 +235,70 @@ export default function EquipmentDiaryPage() {
     setEntryDialogOpen(false);
     setEditingEntry(null);
     loadAll();
-  };
+  }, [entryForm, editingEntry, loadAll]);
 
-  const deleteEntry = async (diary, entryIndex) => {
+  const deleteEntry = useCallback(async (diary, entryIndex) => {
     if (!confirm('¿Eliminar esta entrada?')) return;
     const entries = diary.entries.filter((_, i) => i !== entryIndex);
     await base44.entities.EquipmentDiary.update(diary.id, { ...diary, entries });
     loadAll();
-  };
+  }, [loadAll]);
 
-  const exportToExcel = (diary) => {
+  const exportToExcel = useCallback((diary) => {
     const rows = [
       ['DIARIO DE REPARACIONES Y MANTENIMIENTO'],
       ['Empresa:', company?.company_name || '', 'NIF:', company?.nif || '', 'Tel:', company?.phone || ''],
       [],
       ['Cliente:', diary.contact_name],
-      ['Equipo:', diary.machine_name, 'Tipo:', diary.machine_type?.replace(/_/g,' ')],
+      ['Equipo:', diary.machine_name, 'Tipo:', diary.machine_type?.replace(/_/g, ' ')],
       ['Marca:', diary.equipment_brand || '-', 'Modelo:', diary.equipment_model || '-'],
       ['Nº Serie actual:', diary.serial_number || '-', 'Nº Serie anterior:', diary.serial_number_old || '-'],
       ['Ubicación:', diary.location || '-'],
       [],
-      ['FECHA','TIPO','TÉCNICO','DESCRIPCIÓN','SOLUCIÓN','PIEZAS/MATERIALES','HRS','COSTE(€)','REF.ANTIGUA','REF.NUEVA','Nº SERIE ANT.','Nº SERIE NVO.','PRÓXIMA ACCIÓN','FECHA PRÓX.'],
+      ['FECHA', 'TIPO', 'TÉCNICO', 'DESCRIPCIÓN', 'SOLUCIÓN', 'PIEZAS/MATERIALES', 'HRS', 'COSTE(€)', 'REF.ANTIGUA', 'REF.NUEVA', 'Nº SERIE ANT.', 'Nº SERIE NVO.', 'PRÓXIMA ACCIÓN', 'FECHA PRÓX.'],
     ];
     (diary.entries || []).forEach(e => {
       rows.push([
-        e.date||'', e.type||'', e.technician||'', e.description||'', e.solution||'',
-        e.parts_used||'', e.hours||0, e.cost||0,
-        e.old_reference||'', e.new_reference||'',
-        e.old_serial||'', e.new_serial||'',
-        e.next_action||'', e.next_action_date||''
+        e.date || '', e.type || '', e.technician || '', e.description || '', e.solution || '',
+        e.parts_used || '', e.hours || 0, e.cost || 0,
+        e.old_reference || '', e.new_reference || '',
+        e.old_serial || '', e.new_serial || '',
+        e.next_action || '', e.next_action_date || ''
       ]);
     });
-    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-    const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Diario_${diary.machine_name.replace(/\s+/g,'_')}_${diary.contact_name?.replace(/\s+/g,'_')}.csv`;
+    a.download = `Diario_${diary.machine_name.replace(/\s+/g, '_')}_${diary.contact_name?.replace(/\s+/g, '_')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Exportado — ábrelo con Excel o Google Sheets');
-  };
+  }, [company]);
 
-  const filtered = diaries.filter(d => {
+  // ⚡ Bolt: Memoize filtered list to avoid O(N) calculations on every render
+  const filtered = useMemo(() => diaries.filter(d => {
     const matchSearch = `${d.machine_name} ${d.contact_name} ${d.equipment_brand} ${d.equipment_model} ${d.serial_number}`.toLowerCase().includes(search.toLowerCase());
     const matchContact = filterContact === 'all' || d.contact_id === filterContact;
     return matchSearch && matchContact;
-  });
+  }), [diaries, search, filterContact]);
 
-  const uniqueContacts = contacts.filter(c => diaries.some(d => d.contact_id === c.id));
+  // ⚡ Bolt: Optimize uniqueContacts by using a Set for contact IDs, reducing complexity from O(C*D) to O(C+D)
+  const uniqueContacts = useMemo(() => {
+    const activeContactIds = new Set(diaries.map(d => d.contact_id));
+    return contacts.filter(c => activeContactIds.has(c.id));
+  }, [contacts, diaries]);
+
+  const handleToggleExpand = useCallback((id) => {
+    setExpandedDiary(prev => prev === id ? null : id);
+  }, []);
+
+  const handleEditDiary = useCallback((diary) => {
+    setEditingDiary(diary);
+    setDiaryForm({ ...EMPTY_DIARY, ...diary });
+    setDiaryDialogOpen(true);
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -192,7 +321,7 @@ export default function EquipmentDiaryPage() {
           <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar cliente" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los clientes</SelectItem>
-            {uniqueContacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname||''}</SelectItem>)}
+            {uniqueContacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname || ''}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -208,100 +337,22 @@ export default function EquipmentDiaryPage() {
       )}
 
       {filtered.map(diary => (
-        <Card key={diary.id} className="overflow-hidden">
-          <CardContent className="p-0">
-            <div className="p-3 bg-orange-50 border-b flex items-start justify-between gap-2 flex-wrap">
-              <div className="flex gap-3 flex-1 min-w-0">
-                {diary.equipment_photo_url && (
-                  <img src={diary.equipment_photo_url} alt="equipo" className="w-16 h-16 object-cover rounded-lg border flex-shrink-0" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-orange-800">{diary.machine_name}</p>
-                    <Badge className="text-[10px] bg-orange-100 text-orange-700">{diary.machine_type?.replace(/_/g,' ')}</Badge>
-                    {diary.equipment_brand && <span className="text-xs text-gray-500">{diary.equipment_brand} {diary.equipment_model}</span>}
-                  </div>
-                  <p className="text-xs text-blue-700 font-medium mt-0.5">👤 {diary.contact_name}</p>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
-                    {diary.serial_number && <p className="text-xs text-gray-500">🔢 SN: {diary.serial_number}{diary.serial_number_old ? ` (ant: ${diary.serial_number_old})` : ''}</p>}
-                    {diary.equipment_power_kw && <p className="text-xs text-gray-500">⚡ {diary.equipment_power_kw} kW</p>}
-                    {diary.equipment_refrigerant && <p className="text-xs text-gray-500">❄️ {diary.equipment_refrigerant}</p>}
-                    {diary.equipment_year && <p className="text-xs text-gray-500">📅 Inst. {diary.equipment_year}</p>}
-                    {diary.warranty_expires && <p className="text-xs text-gray-500">🛡️ Garantía: {diary.warranty_expires}</p>}
-                    {diary.location && <p className="text-xs text-gray-500">📍 {diary.location}</p>}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-0.5">{(diary.entries||[]).length} entrada(s)</p>
-                </div>
-              </div>
-              <div className="flex gap-1 flex-shrink-0 flex-wrap">
-                <Button size="sm" variant="outline" className="h-7 text-xs text-green-700" onClick={() => exportToExcel(diary)}>
-                  <FileSpreadsheet className="w-3 h-3 mr-1" />Excel/CSV
-                </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setEditingDiary(diary); setDiaryForm({...EMPTY_DIARY,...diary}); setDiaryDialogOpen(true); }}>
-                  <Edit className="w-3 h-3" />
-                </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs text-orange-700" onClick={() => openNewEntry(diary)}>
-                  <Plus className="w-3 h-3 mr-1" />Añadir
-                </Button>
-                <button onClick={() => setExpandedDiary(expandedDiary === diary.id ? null : diary.id)} className="p-1 text-gray-400">
-                  {expandedDiary === diary.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-                <button onClick={() => deleteDiary(diary.id)} className="p-1 text-red-400">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {expandedDiary === diary.id && (
-              <div className="divide-y">
-                {(!diary.entries || diary.entries.length === 0) && (
-                  <p className="text-sm text-gray-400 text-center py-4">Sin entradas. Pulsa "Añadir".</p>
-                )}
-                {(diary.entries||[]).map((entry, idx) => (
-                  <div key={idx} className="p-3 hover:bg-orange-50 cursor-pointer transition-colors border-b last:border-b-0" onClick={() => openEditEntry(diary, idx)}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="text-xs font-bold text-gray-700">{entry.date}</span>
-                          <Badge className={`text-[10px] ${ENTRY_TYPE_COLORS[entry.type]||''}`}>{entry.type}</Badge>
-                          {entry.technician && <span className="text-xs text-gray-500">👷 {entry.technician}</span>}
-                          {(entry.hours > 0 || entry.cost > 0) && (
-                            <span className="text-xs text-gray-500">{entry.hours>0?`${entry.hours}h`:''}{entry.cost>0?` · ${entry.cost}€`:''}</span>
-                          )}
-                          <span className="text-[10px] text-orange-400 ml-auto">✎ editar</span>
-                        </div>
-                        <p className="text-sm text-gray-800">{entry.description}</p>
-                        {entry.solution && <p className="text-xs text-green-700 mt-1">✓ {entry.solution}</p>}
-                        {entry.parts_used && <p className="text-xs text-blue-600 mt-1">🔩 {entry.parts_used}</p>}
-                        {(entry.old_reference || entry.new_reference || entry.old_serial || entry.new_serial) && (
-                          <div className="mt-1 text-xs text-gray-500 space-y-0.5">
-                            {entry.old_reference && <p>Ref. anterior: <span className="font-medium">{entry.old_reference}</span></p>}
-                            {entry.new_reference && <p>Ref. nueva: <span className="font-medium text-blue-700">{entry.new_reference}</span></p>}
-                            {entry.old_serial && <p>SN anterior: <span className="font-medium">{entry.old_serial}</span></p>}
-                            {entry.new_serial && <p>SN nuevo: <span className="font-medium text-blue-700">{entry.new_serial}</span></p>}
-                          </div>
-                        )}
-                        {entry.next_action && <p className="text-xs text-amber-600 mt-1">→ {entry.next_action}{entry.next_action_date?` (${entry.next_action_date})`:''}</p>}
-                        {entry.photos?.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {entry.photos.map((p, pi) => <img key={pi} src={p} alt="" className="w-14 h-14 object-cover rounded border" />)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => deleteEntry(diary, idx)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <DiaryCard
+          key={diary.id}
+          diary={diary}
+          isExpanded={expandedDiary === diary.id}
+          onToggleExpand={handleToggleExpand}
+          onExport={exportToExcel}
+          onEditDiary={handleEditDiary}
+          onAddEntry={openNewEntry}
+          onDeleteDiary={deleteDiary}
+          onEditEntry={openEditEntry}
+          onDeleteEntry={deleteEntry}
+        />
       ))}
 
       {/* Dialog nuevo/editar diario */}
-      <Dialog open={diaryDialogOpen} onOpenChange={() => {}}>
+      <Dialog open={diaryDialogOpen} onOpenChange={(o) => { if(!o) { setDiaryDialogOpen(false); setEditingDiary(null); } }}>
         <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
@@ -369,7 +420,7 @@ export default function EquipmentDiaryPage() {
       </Dialog>
 
       {/* Dialog nueva/editar entrada */}
-      <Dialog open={entryDialogOpen} onOpenChange={() => {}}>
+      <Dialog open={entryDialogOpen} onOpenChange={(o) => { if(!o) { setEntryDialogOpen(false); setEditingEntry(null); } }}>
         <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
