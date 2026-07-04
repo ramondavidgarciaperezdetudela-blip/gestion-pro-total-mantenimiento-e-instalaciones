@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ const EMPTY_FORM = {
   budget: 0, progress: 0, tasks: [], notes: '', priority: 'media',
 };
 
-function TaskRow({ task, onChange, onDelete }) {
+const TaskRow = memo(function TaskRow({ task, onChange, onDelete }) {
   return (
     <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
       <button onClick={() => onChange({ ...task, status: task.status === 'completada' ? 'pendiente' : 'completada' })}>
@@ -57,9 +57,9 @@ function TaskRow({ task, onChange, onDelete }) {
       </button>
     </div>
   );
-}
+});
 
-function ProjectCard({ project, onEdit, onDelete, onTaskToggle, onStatusChange }) {
+const ProjectCard = memo(function ProjectCard({ project, onEdit, onDelete, onTaskToggle, onStatusChange }) {
   const [expanded, setExpanded] = useState(false);
   const daysLeft = project.end_date
     ? differenceInDays(parseISO(project.end_date), new Date())
@@ -144,7 +144,7 @@ function ProjectCard({ project, onEdit, onDelete, onTaskToggle, onStatusChange }
       </CardContent>
     </Card>
   );
-}
+});
 
 export default function Projects() {
   const [projects, setProjects] = useState([]);
@@ -161,14 +161,14 @@ export default function Projects() {
     loadAll();
   }, []);
 
-  const loadAll = () => {
+  const loadAll = useCallback(() => {
     Promise.all([
       base44.entities.Project.list('-created_date', 500),
       base44.entities.Contact.list('name', 500),
     ]).then(([p, c]) => { setProjects(p); setContacts(c); });
-  };
+  }, []);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!form.name) return;
     if (editing) {
       await base44.entities.Project.update(editing.id, form);
@@ -179,26 +179,26 @@ export default function Projects() {
     setEditing(null);
     setForm(EMPTY_FORM);
     loadAll();
-  };
+  }, [editing, form, loadAll]);
 
-  const handleEdit = (proj) => {
+  const handleEdit = useCallback((proj) => {
     setEditing(proj);
     setForm({ ...EMPTY_FORM, ...proj, tasks: proj.tasks || [] });
     setDialogOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     if (!confirm('¿Eliminar proyecto?')) return;
     await base44.entities.Project.delete(id);
     loadAll();
-  };
+  }, [loadAll]);
 
-  const handleStatusChange = async (id, status) => {
+  const handleStatusChange = useCallback(async (id, status) => {
     await base44.entities.Project.update(id, { status });
     setProjects(p => p.map(x => x.id === id ? { ...x, status } : x));
-  };
+  }, []);
 
-  const handleTaskToggle = async (project, taskIndex) => {
+  const handleTaskToggle = useCallback(async (project, taskIndex) => {
     const tasks = project.tasks.map((t, i) =>
       i === taskIndex ? { ...t, status: t.status === 'completada' ? 'pendiente' : 'completada' } : t
     );
@@ -206,7 +206,7 @@ export default function Projects() {
     const progress = tasks.length > 0 ? Math.round(done / tasks.length * 100) : project.progress;
     await base44.entities.Project.update(project.id, { tasks, progress });
     setProjects(p => p.map(x => x.id === project.id ? { ...x, tasks, progress } : x));
-  };
+  }, []);
 
   const addTask = () => {
     if (!newTask.trim()) return;
@@ -218,19 +218,38 @@ export default function Projects() {
     setForm({ ...form, tasks: form.tasks.map((t, idx) => idx === i ? updated : t) });
   };
 
-  // Stats
-  const total = projects.length;
-  const enCurso = projects.filter(p => p.status === 'en_curso').length;
-  const completados = projects.filter(p => p.status === 'completado').length;
-  const vencidos = projects.filter(p => p.end_date && parseISO(p.end_date) < new Date() && p.status !== 'completado' && p.status !== 'cancelado').length;
+  // Memoized derived data: Stats, filtering and kanban grouping in a single pass O(N)
+  const { stats, filtered, kanbanGroups } = useMemo(() => {
+    const now = new Date();
+    const s = { total: projects.length, enCurso: 0, completados: 0, vencidos: 0 };
+    const groups = {};
+    STATUSES.forEach(status => groups[status] = []);
 
-  // Filter
-  const filtered = projects.filter(p => {
-    const matchStatus = filterStatus === 'todos' || p.status === filterStatus;
-    const matchType = filterType === 'todos' || p.type === filterType;
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.contact_name || '').toLowerCase().includes(search.toLowerCase());
-    return matchStatus && matchType && matchSearch;
-  });
+    const f = projects.filter(p => {
+      // Aggregate stats for ALL projects
+      if (p.status === 'en_curso') s.enCurso++;
+      if (p.status === 'completado') s.completados++;
+      if (p.end_date && parseISO(p.end_date) < now && p.status !== 'completado' && p.status !== 'cancelado') s.vencidos++;
+
+      // Filter logic
+      const matchStatus = filterStatus === 'todos' || p.status === filterStatus;
+      const matchType = filterType === 'todos' || p.type === filterType;
+      const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.contact_name || '').toLowerCase().includes(search.toLowerCase());
+
+      const isMatched = matchStatus && matchType && matchSearch;
+
+      // If matched, add to kanban groups (optimization: avoid repeated filtering for kanban view)
+      if (isMatched && groups[p.status]) {
+        groups[p.status].push(p);
+      }
+
+      return isMatched;
+    });
+
+    return { stats: s, filtered: f, kanbanGroups: groups };
+  }, [projects, filterStatus, filterType, search]);
+
+  const { total, enCurso, completados, vencidos } = stats;
 
   return (
     <div className="space-y-4">
@@ -310,7 +329,7 @@ export default function Projects() {
           }}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 items-start">
               {STATUSES.map(status => {
-                const colProjects = filtered.filter(p => p.status === status);
+                const colProjects = kanbanGroups[status] || [];
                 return (
                   <div key={status} className="flex flex-col min-h-[200px]">
                     <div className={`text-xs font-semibold px-2 py-1.5 rounded-lg text-center mb-2 border ${STATUS_COLORS[status]}`}>
