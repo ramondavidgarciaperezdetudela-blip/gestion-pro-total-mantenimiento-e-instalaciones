@@ -40,6 +40,136 @@ const PRIORITY_COLORS = {
   urgente: 'bg-red-100 text-red-700',
 };
 
+/**
+ * Generates a normalized search string for an order.
+ * @param {Object} o The order object
+ * @returns {string} The normalized search string
+ */
+const getSearchStr = (o) => `${o.order_number || ''} ${o.contact_name || ''} ${o.description || ''} ${o.technician || ''}`.toLowerCase();
+
+/**
+ * @param {Object} props
+ * @param {any} props.order
+ * @param {(order: any) => void} props.onPreview
+ * @param {(order: any) => void} props.onEdit
+ * @param {(id: string) => void} [props.onDelete]
+ * @param {(order: any) => void} props.onWhatsApp
+ * @param {(order: any) => void} [props.onEmail]
+ * @param {'default' | 'accepted' | 'rejected'} [props.variant]
+ */
+function SATOrderCardBase({ order, onPreview, onEdit, onDelete, onWhatsApp, onEmail, variant = 'default' }) {
+  const isUrgent = order.priority === 'urgente';
+  const isHigh = order.priority === 'alta';
+
+  let borderColor = 'border-l-gray-200';
+  if (variant === 'accepted') borderColor = 'border-l-green-500';
+  else if (variant === 'rejected') borderColor = 'border-l-red-500';
+  else {
+    if (isUrgent) borderColor = 'border-l-red-500';
+    else if (isHigh) borderColor = 'border-l-orange-400';
+    else if (order.status === 'completada') borderColor = 'border-l-green-400';
+    else if (order.status === 'en_curso') borderColor = 'border-l-blue-500';
+  }
+
+  const Icon = variant === 'accepted' ? CheckCircle2 : variant === 'rejected' ? X : Wrench;
+  const iconColor = variant === 'accepted' ? 'text-green-500' : variant === 'rejected' ? 'text-red-500' : 'text-orange-500';
+
+  return (
+    <Card className={`hover:shadow-md transition-shadow border-l-4 ${borderColor}`}>
+      <CardContent className="p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            <Icon className={`w-5 h-5 ${iconColor} mt-0.5 flex-shrink-0`} />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-sm truncate">#{order.order_number || 'S/N'} — {order.contact_name}</p>
+              {variant === 'default' ? (
+                <p className="text-xs text-gray-500">{order.date} | {order.type?.replace(/_/g, ' ')} | {order.equipment_type?.replace(/_/g, ' ')}</p>
+              ) : (
+                <p className="text-xs text-gray-500">{order.date} | {variant === 'accepted' ? '✅ Aceptada' : '❌ Rechazada'} el {order.sign_datetime_client}</p>
+              )}
+              {order.description && <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">{order.description}</p>}
+              {order.technician && <p className="text-xs text-blue-600">👷 {order.technician}</p>}
+              {variant === 'default' && order.scheduled_date && <p className="text-xs text-purple-600">📅 Programado: {order.scheduled_date} {order.scheduled_time}</p>}
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <Badge className={variant === 'default' ? STATUS_COLORS[order.status] : (variant === 'accepted' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-red-100 text-red-700 border-red-300')}>{order.status}</Badge>
+            {variant === 'default' && order.priority && order.priority !== 'normal' && <Badge className={PRIORITY_COLORS[order.priority]}>{order.priority}</Badge>}
+            {order.total > 0 && <span className="text-xs font-semibold text-gray-700">{order.total?.toFixed(2)} €</span>}
+          </div>
+        </div>
+        <div className="flex gap-1 mt-2 pt-2 border-t flex-wrap">
+          <button onClick={() => onPreview(order)} className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${variant === 'accepted' ? 'bg-green-50 text-green-700 hover:bg-green-100' : variant === 'rejected' ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}>
+            <Eye className="w-3 h-3" />Ver
+          </button>
+          <button onClick={() => onEdit(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
+            <Edit className="w-3 h-3" />Editar
+          </button>
+          <button onClick={() => onWhatsApp(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
+            <Phone className="w-3 h-3" />WA
+          </button>
+          {variant === 'default' && onEmail && (
+            <button onClick={() => onEmail(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-purple-50 text-purple-700 hover:bg-purple-100">
+              <Mail className="w-3 h-3" />Email
+            </button>
+          )}
+          {variant === 'default' && onDelete && (
+            <button onClick={() => onDelete(order.id)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
+              <Trash2 className="w-3 h-3" />Eliminar
+            </button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+const SATOrderCard = React.memo(SATOrderCardBase);
+
+/**
+ * @param {Object} props
+ * @param {any} props.order
+ * @param {(order: any) => void} props.onPreview
+ * @param {(order: any) => void} props.onEdit
+ * @param {(order: any) => void} props.onWhatsApp
+ */
+function ScheduledOrderCardBase({ order, onPreview, onEdit, onWhatsApp }) {
+  const daysUntil = differenceInDays(parseISO(order.scheduled_date), new Date());
+  const borderColor = order.priority === 'urgente' ? 'border-l-red-500' : daysUntil <= 1 ? 'border-l-orange-400' : 'border-l-blue-400';
+
+  return (
+    <Card className={`border-l-4 ${borderColor}`}>
+      <CardContent className="p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-sm">#{order.order_number || 'S/N'}</span>
+              <span className="text-sm text-gray-700">{order.contact_name}</span>
+              <Badge className={STATUS_COLORS[order.status]}>{order.status}</Badge>
+              {order.priority && order.priority !== 'normal' && <Badge className={PRIORITY_COLORS[order.priority]}>{order.priority}</Badge>}
+            </div>
+            <p className="text-xs text-purple-700 font-semibold mt-1">
+              📅 {order.scheduled_date} {order.scheduled_time && `a las ${order.scheduled_time}`}
+              {daysUntil === 0 && <span className="ml-2 text-orange-600">— HOY</span>}
+              {daysUntil === 1 && <span className="ml-2 text-orange-500">— Mañana</span>}
+              {daysUntil < 0 && <span className="ml-2 text-red-600">— Vencida ({Math.abs(daysUntil)}d)</span>}
+              {daysUntil > 1 && <span className="ml-2 text-gray-400">— en {daysUntil}d</span>}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">{order.type?.replace(/_/g, ' ')} | {order.equipment_type?.replace(/_/g, ' ')}</p>
+            {order.description && <p className="text-xs text-gray-600 line-clamp-1">{order.description}</p>}
+            {order.technician && <p className="text-xs text-blue-600">👷 {order.technician}</p>}
+          </div>
+          <div className="flex flex-col gap-1 flex-shrink-0">
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onPreview(order)}><Eye className="w-3 h-3 mr-1" />Ver</Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onEdit(order)}><Edit className="w-3 h-3 mr-1" />Editar</Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs text-green-700" onClick={() => onWhatsApp(order)}><Phone className="w-3 h-3 mr-1" />WA</Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+const ScheduledOrderCard = React.memo(ScheduledOrderCardBase);
+
 const EMPTY_FORM = {
   order_number: '', contact_id: '', contact_name: '', date: format(new Date(), 'yyyy-MM-dd'),
   scheduled_date: '', scheduled_time: '', priority: 'normal',
@@ -79,7 +209,8 @@ export default function SAT() {
       base44.entities.Contact.list('name', 200),
       base44.entities.CompanySettings.list().then(x => x[0]),
     ]);
-    setOrders(o);
+    const enriched = o.map(item => ({ ...item, _searchStr: getSearchStr(item) }));
+    setOrders(enriched);
     setContacts(c);
     setCompany(comp);
 
@@ -182,11 +313,14 @@ export default function SAT() {
     setDialogOpen(false);
     setEditing(null);
     setAutoGenerateInvoice(false);
+    // Enriquecer con string de búsqueda
+    const enrichedSaved = { ...savedOrder, _searchStr: getSearchStr(savedOrder) };
+
     // Actualizar estado local sin recargar todo
     if (editing) {
-      setOrders(prev => prev.map(o => o.id === savedOrder.id ? { ...o, ...savedOrder } : o));
+      setOrders(prev => prev.map(o => o.id === enrichedSaved.id ? { ...o, ...enrichedSaved } : o));
     } else {
-      setOrders(prev => [savedOrder, ...prev]);
+      setOrders(prev => [enrichedSaved, ...prev]);
     }
     if (savedOrder) setPreviewOrder(savedOrder);
   };
@@ -196,11 +330,11 @@ export default function SAT() {
     return getNextAvailableNumber(nums);
   };
 
-  const handleEdit = (order) => {
+  const handleEdit = React.useCallback((order) => {
     setEditing(order);
     setForm({ ...EMPTY_FORM, ...order, materials_used: (order.materials_used || []).filter(m => m.material?.trim()), photos_before: order.photos_before || [], photos_after: order.photos_after || [] });
     setDialogOpen(true);
-  };
+  }, []);
 
   useEffect(() => {
     if (!previewOrder) return;
@@ -214,27 +348,31 @@ export default function SAT() {
     return unsubscribe;
   }, [previewOrder?.id]);
 
-  const handleDelete = async (id) => {
+  const handleDelete = React.useCallback(async (id) => {
     if (!confirm('¿Eliminar esta orden SAT?')) return;
     await base44.entities.SATOrder.delete(id);
     setOrders(prev => prev.filter(o => o.id !== id));
-  };
+  }, []);
 
-  const sendEmail = (order) => {
+  const sendEmail = React.useCallback((order) => {
     const c = contacts.find(x => x.id === order.contact_id);
     if (!c?.email) return alert('Este cliente no tiene email registrado');
     const subject = encodeURIComponent(`Orden SAT #${order.order_number} - ${order.type}`);
     const body = encodeURIComponent(`Estimado/a ${order.contact_name},\n\nLe informamos del estado de su orden SAT:\n\nNº: ${order.order_number}\nTipo: ${order.type}\nEstado: ${order.status}\nDescripción: ${order.description || '-'}\nSolución: ${order.solution || '-'}\nTotal: ${order.total?.toFixed(2)} €\n\nQuedamos a su disposición.`);
     window.open(`mailto:${c.email}?subject=${subject}&body=${body}`, '_blank');
-  };
+  }, [contacts]);
 
-  const sendWhatsApp = (order) => {
+  const sendWhatsApp = React.useCallback((order) => {
     const c = contacts.find(x => x.id === order.contact_id);
     const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
     const msg = encodeURIComponent(`*Orden SAT #${order.order_number}*\nCliente: ${order.contact_name}\nFecha: ${order.date}\nTipo: ${order.type}\nEstado: ${order.status}\n\nDescripción: ${order.description || '-'}\nSolución: ${order.solution || '-'}\nTotal: ${order.total?.toFixed(2)} €`);
     const url = phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
     window.open(url, '_blank');
-  };
+  }, [contacts]);
+
+  const handlePreview = React.useCallback((order) => {
+    setPreviewOrder(order);
+  }, []);
 
   const addMaterial = () => setForm(prev => ({ ...prev, materials_used: [...(prev.materials_used || []), { material: '', quantity: '', unit_price: '' }] }));
   const updateMaterial = (i, field, val) => setForm(prev => ({ ...prev, materials_used: prev.materials_used.map((m, idx) => idx === i ? { ...m, [field]: val } : m) }));
@@ -256,29 +394,44 @@ export default function SAT() {
   const onLaborLocalChange = (field, str) => setForm(f => ({ ...f, [field]: str }));
   const onLaborBlur = (field) => setForm(f => ({ ...f, [field]: parseFloat(String(f[field]).replace(',', '.')) || 0 }));
 
-  const filtered = useMemo(() => orders.filter(o => {
-    const matchSearch = !search || `${o.order_number} ${o.contact_name} ${o.description} ${o.technician}`.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === 'all' || o.status === filterStatus;
-    const matchPriority = filterPriority === 'all' || o.priority === filterPriority;
-    let matchSignatureStatus = true;
-    if (filterSignatureStatus === 'aceptadas') matchSignatureStatus = o.status === 'en_curso' && o.signature_client;
-    else if (filterSignatureStatus === 'rechazadas') matchSignatureStatus = o.status === 'cancelada' && o.signature_client;
-    return matchSearch && matchStatus && matchPriority && matchSignatureStatus;
-  }), [orders, search, filterStatus, filterPriority, filterSignatureStatus]);
+  const derivedData = useMemo(() => {
+    const stats = { total: orders.length, pendiente: 0, en_curso: 0, urgentes: 0, aceptadas: 0, rechazadas: 0 };
+    const filtered = [];
+    const scheduled = [];
+    const aceptadasList = [];
+    const rechazadasList = [];
+    const searchLower = search.toLowerCase();
 
-  const stats = useMemo(() => ({
-    total: orders.length,
-    pendiente: orders.filter(o => o.status === 'pendiente').length,
-    en_curso: orders.filter(o => o.status === 'en_curso').length,
-    urgentes: orders.filter(o => o.priority === 'urgente' && o.status !== 'completada').length,
-    aceptadas: orders.filter(o => o.status === 'en_curso' && o.signature_client).length,
-    rechazadas: orders.filter(o => o.status === 'cancelada' && o.signature_client).length,
-  }), [orders]);
+    orders.forEach(o => {
+      // Stats calculation
+      if (o.status === 'pendiente') stats.pendiente++;
+      if (o.status === 'en_curso') stats.en_curso++;
+      if (o.priority === 'urgente' && o.status !== 'completada') stats.urgentes++;
+      if (o.status === 'en_curso' && o.signature_client) stats.aceptadas++;
+      if (o.status === 'cancelada' && o.signature_client) stats.rechazadas++;
 
-  const scheduled = useMemo(() => orders
-    .filter(o => o.scheduled_date && o.status !== 'completada' && o.status !== 'cancelada')
-    .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))
-  , [orders]);
+      // Filtering logic for the main list
+      const matchSearch = !search || (o._searchStr || '').includes(searchLower);
+      const matchStatus = filterStatus === 'all' || o.status === filterStatus;
+      const matchPriority = filterPriority === 'all' || o.priority === filterPriority;
+      let matchSignatureStatus = true;
+      if (filterSignatureStatus === 'aceptadas') matchSignatureStatus = o.status === 'en_curso' && o.signature_client;
+      else if (filterSignatureStatus === 'rechazadas') matchSignatureStatus = o.status === 'cancelada' && o.signature_client;
+
+      if (matchSearch && matchStatus && matchPriority && matchSignatureStatus) filtered.push(o);
+
+      // Specialized lists
+      if (o.scheduled_date && o.status !== 'completada' && o.status !== 'cancelada') scheduled.push(o);
+      if (o.status === 'en_curso' && o.signature_client) aceptadasList.push(o);
+      if (o.status === 'cancelada' && o.signature_client) rechazadasList.push(o);
+    });
+
+    scheduled.sort((a, b) => (a.scheduled_date || '').localeCompare(b.scheduled_date || ''));
+
+    return { stats, filtered, scheduled, aceptadasList, rechazadasList };
+  }, [orders, search, filterStatus, filterPriority, filterSignatureStatus]);
+
+  const { stats, filtered, scheduled, aceptadasList, rechazadasList } = derivedData;
 
   return (
     <>
@@ -366,50 +519,15 @@ export default function SAT() {
             </div>
           )}
           {filtered.map(order => (
-            <Card key={order.id} className={`hover:shadow-md transition-shadow border-l-4 ${
-              order.priority === 'urgente' ? 'border-l-red-500' :
-              order.priority === 'alta' ? 'border-l-orange-400' :
-              order.status === 'completada' ? 'border-l-green-400' :
-              order.status === 'en_curso' ? 'border-l-blue-500' :
-              'border-l-gray-200'
-            }`}>
-              <CardContent className="p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2 flex-1 min-w-0">
-                    <Wrench className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm truncate">#{order.order_number || 'S/N'} — {order.contact_name}</p>
-                      <p className="text-xs text-gray-500">{order.date} | {order.type?.replace(/_/g, ' ')} | {order.equipment_type?.replace(/_/g, ' ')}</p>
-                      {order.description && <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">{order.description}</p>}
-                      {order.technician && <p className="text-xs text-blue-600">👷 {order.technician}</p>}
-                      {order.scheduled_date && <p className="text-xs text-purple-600">📅 Programado: {order.scheduled_date} {order.scheduled_time}</p>}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <Badge className={STATUS_COLORS[order.status]}>{order.status}</Badge>
-                    {order.priority && order.priority !== 'normal' && <Badge className={PRIORITY_COLORS[order.priority]}>{order.priority}</Badge>}
-                    {order.total > 0 && <span className="text-xs font-semibold text-gray-700">{order.total?.toFixed(2)} €</span>}
-                  </div>
-                </div>
-                <div className="flex gap-1 mt-2 pt-2 border-t flex-wrap">
-                  <button onClick={() => setPreviewOrder(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-orange-50 text-orange-700 hover:bg-orange-100">
-                    <Eye className="w-3 h-3" />Ver
-                  </button>
-                  <button onClick={() => handleEdit(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
-                    <Edit className="w-3 h-3" />Editar
-                  </button>
-                  <button onClick={() => sendWhatsApp(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
-                    <Phone className="w-3 h-3" />WA
-                  </button>
-                  <button onClick={() => sendEmail(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-purple-50 text-purple-700 hover:bg-purple-100">
-                    <Mail className="w-3 h-3" />Email
-                  </button>
-                  <button onClick={() => handleDelete(order.id)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
-                    <Trash2 className="w-3 h-3" />Eliminar
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
+            <SATOrderCard
+              key={order.id}
+              order={order}
+              onPreview={handlePreview}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onWhatsApp={sendWhatsApp}
+              onEmail={sendEmail}
+            />
           ))}
         </TabsContent>
 
@@ -421,39 +539,15 @@ export default function SAT() {
               <p>No hay órdenes aceptadas y firmadas</p>
             </div>
           )}
-          {orders
-            .filter(o => o.status === 'en_curso' && o.signature_client)
-            .map(order => (
-            <Card key={order.id} className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
-              <CardContent className="p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2 flex-1 min-w-0">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm truncate">#{order.order_number || 'S/N'} — {order.contact_name}</p>
-                      <p className="text-xs text-gray-500">{order.date} | ✅ Aceptada el {order.sign_datetime_client}</p>
-                      {order.description && <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">{order.description}</p>}
-                      {order.technician && <p className="text-xs text-blue-600">👷 {order.technician}</p>}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <Badge className="bg-green-100 text-green-700 border-green-300">{order.status}</Badge>
-                    {order.total > 0 && <span className="text-xs font-semibold text-gray-700">{order.total?.toFixed(2)} €</span>}
-                  </div>
-                </div>
-                <div className="flex gap-1 mt-2 pt-2 border-t flex-wrap">
-                  <button onClick={() => setPreviewOrder(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
-                    <Eye className="w-3 h-3" />Ver
-                  </button>
-                  <button onClick={() => handleEdit(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
-                    <Edit className="w-3 h-3" />Editar
-                  </button>
-                  <button onClick={() => sendWhatsApp(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
-                    <Phone className="w-3 h-3" />WA
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
+          {aceptadasList.map(order => (
+            <SATOrderCard
+              key={order.id}
+              order={order}
+              variant="accepted"
+              onPreview={handlePreview}
+              onEdit={handleEdit}
+              onWhatsApp={sendWhatsApp}
+            />
           ))}
         </TabsContent>
 
@@ -465,39 +559,15 @@ export default function SAT() {
               <p>No hay órdenes rechazadas y firmadas</p>
             </div>
           )}
-          {orders
-            .filter(o => o.status === 'cancelada' && o.signature_client)
-            .map(order => (
-            <Card key={order.id} className="border-l-4 border-l-red-500 hover:shadow-md transition-shadow">
-              <CardContent className="p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2 flex-1 min-w-0">
-                    <X className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm truncate">#{order.order_number || 'S/N'} — {order.contact_name}</p>
-                      <p className="text-xs text-gray-500">{order.date} | ❌ Rechazada el {order.sign_datetime_client}</p>
-                      {order.description && <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">{order.description}</p>}
-                      {order.technician && <p className="text-xs text-blue-600">👷 {order.technician}</p>}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <Badge className="bg-red-100 text-red-700 border-red-300">{order.status}</Badge>
-                    {order.total > 0 && <span className="text-xs font-semibold text-gray-700">{order.total?.toFixed(2)} €</span>}
-                  </div>
-                </div>
-                <div className="flex gap-1 mt-2 pt-2 border-t flex-wrap">
-                  <button onClick={() => setPreviewOrder(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100">
-                    <Eye className="w-3 h-3" />Ver
-                  </button>
-                  <button onClick={() => handleEdit(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 hover:bg-blue-100">
-                    <Edit className="w-3 h-3" />Editar
-                  </button>
-                  <button onClick={() => sendWhatsApp(order)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
-                    <Phone className="w-3 h-3" />WA
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
+          {rechazadasList.map(order => (
+            <SATOrderCard
+              key={order.id}
+              order={order}
+              variant="rejected"
+              onPreview={handlePreview}
+              onEdit={handleEdit}
+              onWhatsApp={sendWhatsApp}
+            />
           ))}
         </TabsContent>
 
@@ -512,44 +582,15 @@ export default function SAT() {
             </div>
           )}
           <div className="space-y-2">
-            {scheduled.map(order => {
-              const daysUntil = differenceInDays(parseISO(order.scheduled_date), new Date());
-              return (
-                <Card key={order.id} className={`border-l-4 ${
-                  order.priority === 'urgente' ? 'border-l-red-500' :
-                  daysUntil <= 1 ? 'border-l-orange-400' :
-                  'border-l-blue-400'
-                }`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm">#{order.order_number || 'S/N'}</span>
-                          <span className="text-sm text-gray-700">{order.contact_name}</span>
-                          <Badge className={STATUS_COLORS[order.status]}>{order.status}</Badge>
-                          {order.priority && order.priority !== 'normal' && <Badge className={PRIORITY_COLORS[order.priority]}>{order.priority}</Badge>}
-                        </div>
-                        <p className="text-xs text-purple-700 font-semibold mt-1">
-                          📅 {order.scheduled_date} {order.scheduled_time && `a las ${order.scheduled_time}`}
-                          {daysUntil === 0 && <span className="ml-2 text-orange-600">— HOY</span>}
-                          {daysUntil === 1 && <span className="ml-2 text-orange-500">— Mañana</span>}
-                          {daysUntil < 0 && <span className="ml-2 text-red-600">— Vencida ({Math.abs(daysUntil)}d)</span>}
-                          {daysUntil > 1 && <span className="ml-2 text-gray-400">— en {daysUntil}d</span>}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-0.5">{order.type?.replace(/_/g, ' ')} | {order.equipment_type?.replace(/_/g, ' ')}</p>
-                        {order.description && <p className="text-xs text-gray-600 line-clamp-1">{order.description}</p>}
-                        {order.technician && <p className="text-xs text-blue-600">👷 {order.technician}</p>}
-                      </div>
-                      <div className="flex flex-col gap-1 flex-shrink-0">
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPreviewOrder(order)}><Eye className="w-3 h-3 mr-1" />Ver</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleEdit(order)}><Edit className="w-3 h-3 mr-1" />Editar</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs text-green-700" onClick={() => sendWhatsApp(order)}><Phone className="w-3 h-3 mr-1" />WA</Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {scheduled.map(order => (
+              <ScheduledOrderCard
+                key={order.id}
+                order={order}
+                onPreview={handlePreview}
+                onEdit={handleEdit}
+                onWhatsApp={sendWhatsApp}
+              />
+            ))}
           </div>
         </TabsContent>
       </Tabs>
