@@ -462,6 +462,28 @@ function PresupuestoPublico() {
                   </Button>
                 </>
               )}
+              {/* Ver el documento sin firmar ahora (por si se abrió por error) */}
+              <button
+                onClick={() => setStep('view')}
+                className="w-full text-center text-xs text-gray-400 underline mt-1"
+              >
+                Solo quiero ver el documento ahora (firmar más tarde)
+              </button>
+            </div>
+          )}
+
+          {/* Modo SOLO VER: se ha quitado la firma; botón para firmar cuando quiera */}
+          {step === 'view' && (
+            <div className="border-t pt-4">
+              <Button
+                onClick={() => { setStep('decision'); scrollToSign(); }}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-base font-semibold"
+              >
+                <Check className="w-4 h-4 mr-2" /> Firmar (aceptar o rechazar)
+              </Button>
+              <p className="text-center text-xs text-gray-400 mt-2">
+                Puede revisar el documento arriba con calma y pulsar aquí cuando quiera firmar.
+              </p>
             </div>
           )}
 
@@ -612,8 +634,8 @@ function PresupuestoPublico() {
               ) : (
                 <SignaturePad onSave={handleSign} />
               )}
-              <Button variant="ghost" size="sm" className="w-full text-gray-400" onClick={() => setStep('decision')}>
-                Cancelar
+              <Button variant="ghost" size="sm" className="w-full text-gray-500" onClick={() => setStep('view')}>
+                Cancelar y ver el documento sin firmar
               </Button>
             </div>
           )}
@@ -634,8 +656,8 @@ function PresupuestoPublico() {
               ) : (
                 <SignaturePad onSave={handleRejectWithSign} />
               )}
-              <Button variant="ghost" size="sm" className="w-full text-gray-400" onClick={() => setStep('decision')}>
-                Cancelar
+              <Button variant="ghost" size="sm" className="w-full text-gray-500" onClick={() => setStep('view')}>
+                Cancelar y ver el documento sin firmar
               </Button>
             </div>
           )}

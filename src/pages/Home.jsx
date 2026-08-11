@@ -439,7 +439,7 @@ export default function Home() {
       <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
         <h2 className="mb-3 text-lg font-bold flex items-center gap-2" style={{ color: '#e8eaf0' }}>Acceso rápido a módulos</h2>
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-          {quickLinks.map((link) => {
+          {[...quickLinks].sort((a, b) => a.name.localeCompare(b.name, 'es')).map((link) => {
             const Icon = link.icon;
             return (
               <Link key={link.page} to={createPageUrl(link.page)}>
