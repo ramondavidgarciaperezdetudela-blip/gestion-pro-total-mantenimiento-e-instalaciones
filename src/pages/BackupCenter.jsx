@@ -16,7 +16,35 @@ const ALL_ENTITIES = [
   'ClientDocument', 'ClientNote', 'ThermalCalculation', 'SolarCalculation',
   'Equipment', 'ChangeLog', 'CompanySettings', 'LineTemplate', 'PriceItem',
   'AIConsultation', 'SATChatMessage', 'EquipmentDiary',
+  // Añadidas para cubrir TODOS los apartados del programa:
+  'ChangeOpinionRequest', 'ClientMachine', 'DocumentTemplate',
+  'EquipmentFailure', 'SATWorkTemplate', 'SupplierCatalog',
 ];
+
+// Lee TODOS los registros de una entidad de forma robusta (paginado y con
+// reintento sin orden). Evita que una sección quede vacía en la copia por un
+// fallo de ordenación o por superar un límite.
+async function fetchAllRecords(ent) {
+  const E = base44.entities[ent];
+  if (!E) return [];
+  const PAGE = 1000;
+  let all = [], skip = 0;
+  for (let guard = 0; guard < 1000; guard++) {
+    let batch = null;
+    try {
+      batch = await E.filter({}, null, PAGE, skip);
+    } catch {
+      // Reintento sin paginación/orden si filter no está disponible
+      try { batch = await E.list('', 10000); } catch { batch = []; }
+      return batch || [];
+    }
+    if (!batch || batch.length === 0) break;
+    all = all.concat(batch);
+    if (batch.length < PAGE) break;
+    skip += PAGE;
+  }
+  return all;
+}
 
 // Clave natural por sección para el UPSERT al restaurar (actualizar en vez de
 // duplicar). Devuelve una cadena estable o null (si null → se usa el cotejo por
@@ -41,7 +69,12 @@ const KEYERS = {
   Note:               (r) => _s(r.title) || null,
   ClientDocument:     (r) => (_s(r.contact_id) && `${_s(r.contact_id)}|${_s(r.name)}`) || null,
   ClientNote:         (r) => (_s(r.contact_id) && `${_s(r.contact_id)}|${_s(r.content).slice(0,60)}`) || null,
-  // ChangeLog, AIConsultation, SATChatMessage, EquipmentDiary → histórico: sin clave (solo añadir lo que falte)
+  ClientMachine:      (r) => _s(r.serial_number) || (_s(r.contact_id) && `${_s(r.contact_id)}|${_s(r.brand)}|${_s(r.model)}`) || null,
+  DocumentTemplate:   (r) => _s(r.name) || null,
+  SATWorkTemplate:    (r) => _s(r.name) || null,
+  SupplierCatalog:    (r) => (_s(r.supplier_id) && `${_s(r.supplier_id)}|${_s(r.name)}`) || _s(r.name) || null,
+  // ChangeLog, AIConsultation, SATChatMessage, EquipmentDiary, ChangeOpinionRequest,
+  // EquipmentFailure → histórico: sin clave (solo añadir lo que falte)
 };
 
 const ENTITY_LABELS = {
@@ -67,6 +100,12 @@ const ENTITY_LABELS = {
   AIConsultation: 'Consultas IA',
   SATChatMessage: 'Mensajes SAT',
   EquipmentDiary: 'Diario Equipos',
+  ChangeOpinionRequest: 'Solicitudes Cambio Opinión',
+  ClientMachine: 'Máquinas de Clientes',
+  DocumentTemplate: 'Plantillas de Documento',
+  EquipmentFailure: 'Averías de Equipos',
+  SATWorkTemplate: 'Plantillas de Trabajo SAT',
+  SupplierCatalog: 'Catálogos de Proveedor',
 };
 
 const STORAGE_KEY = 'backupConfig';
@@ -122,7 +161,7 @@ export default function BackupCenter() {
     const c = {};
     for (const e of ALL_ENTITIES) {
       try {
-        const data = await base44.entities[e]?.list('-created_date', 5000);
+        const data = await fetchAllRecords(e);
         c[e] = data?.length || 0;
       } catch {
         c[e] = 0;
@@ -152,7 +191,7 @@ export default function BackupCenter() {
       const ent = entitiesToBackup[i];
       setProgress(`Exportando ${ENTITY_LABELS[ent] || ent}... (${i + 1}/${entitiesToBackup.length})`);
       setProgressPct(Math.round(5 + (i / entitiesToBackup.length) * 85));
-      const data = await base44.entities[ent]?.list('-created_date', 5000).catch(() => []);
+      const data = await fetchAllRecords(ent);
       allData[ent] = data || [];
       await new Promise(r => setTimeout(r, 50));
     }
@@ -235,7 +274,7 @@ export default function BackupCenter() {
       // Modo limpio: borrar todos los registros existentes primero
       if (restoreMode === 'clean') {
         setRestoreProgress(`Limpiando ${ENTITY_LABELS[ent] || ent}... (${i + 1}/${entitiesToRestore.length})`);
-        const existing = await base44.entities[ent]?.list('-created_date', 5000).catch(() => []);
+        const existing = await fetchAllRecords(ent);
         for (const rec of (existing || [])) {
           await base44.entities[ent]?.delete(rec.id).catch(() => {});
         }
@@ -250,7 +289,7 @@ export default function BackupCenter() {
         // se crea. Para secciones de tipo histórico (sin clave) solo se añade lo
         // que falte, cotejando por contenido exacto.
         const strip = (r) => { const { id, created_date, updated_date, created_by, ...rest } = r; return rest; };
-        const existing = await base44.entities[ent]?.list('-created_date', 5000).catch(() => []);
+        const existing = await fetchAllRecords(ent);
         const keyer = KEYERS[ent];
 
         if (keyer) {
@@ -322,7 +361,7 @@ export default function BackupCenter() {
     for (let i = 0; i < entitiesToCheck.length; i++) {
       const ent = entitiesToCheck[i];
       setDupProgress(`Analizando ${ENTITY_LABELS[ent] || ent}... (${i + 1}/${entitiesToCheck.length})`);
-      const all = await base44.entities[ent]?.list('-created_date', 5000).catch(() => []);
+      const all = await fetchAllRecords(ent);
       if (!all || all.length === 0) continue;
 
       const seen = new Map();
