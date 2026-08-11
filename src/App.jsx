@@ -17,7 +17,7 @@ import { Suspense, lazy } from 'react';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import LicenseGate from '@/components/LicenseGate';
+
 import UpdateChecker from '@/components/UpdateChecker';
 const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
 
@@ -88,7 +88,6 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Suspense fallback={<PageLoader />}>
-      <LicenseGate>
       <AnimatedRoutes>
         <Routes>
           <Route path="/" element={
@@ -117,7 +116,6 @@ const AuthenticatedApp = () => {
       </AnimatedRoutes>
       {/* Aviso automático de nueva versión (escritorio usa además electron-updater) */}
       <UpdateChecker headless />
-      </LicenseGate>
     </Suspense>
   );
 };

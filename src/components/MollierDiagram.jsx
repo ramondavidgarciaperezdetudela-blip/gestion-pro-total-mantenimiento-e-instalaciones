@@ -76,10 +76,6 @@ export default function MollierDiagram({ refrigerante = 'R-32', potenciaKw = 3.5
   const dragStart = useRef(null);
 
   const d   = REF_DATA[refrigerante] || REF_DATA['R-32'];
-  // Protección extra: si d tiene valores 0 usar fallback completo
-  if (!d || d.hMin >= d.hMax || d.pMin <= 0 || d.pMax <= d.pMin) {
-    return <div className="flex items-center justify-center h-64 text-slate-400 text-sm">Diagrama no disponible para este refrigerante</div>;
-  }
   const Qf  = safeNum(potenciaKw, 3.5);
 
   // ── Cálculos del ciclo ────────────────────────────────────────────────────
