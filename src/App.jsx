@@ -43,6 +43,7 @@ const SATPublico = lazy(() => import('./pages/SATPublico'));
 const SupplierTariffs = lazy(() => import('./pages/SupplierTariffs'));
 const PurchaseSummary = lazy(() => import('./pages/PurchaseSummary'));
 const BackupCenter = lazy(() => import('./pages/BackupCenter'));
+const CapillaryCalc = lazy(() => import('./pages/CapillaryCalc'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-32">
@@ -111,6 +112,7 @@ const AuthenticatedApp = () => {
           <Route path="/SupplierTariffs" element={<LayoutWrapper currentPageName="SupplierTariffs"><SupplierTariffs /></LayoutWrapper>} />
           <Route path="/PurchaseSummary" element={<LayoutWrapper currentPageName="PurchaseSummary"><PurchaseSummary /></LayoutWrapper>} />
           <Route path="/BackupCenter" element={<LayoutWrapper currentPageName="BackupCenter"><BackupCenter /></LayoutWrapper>} />
+          <Route path="/CapillaryCalc" element={<LayoutWrapper currentPageName="CapillaryCalc"><CapillaryCalc /></LayoutWrapper>} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </AnimatedRoutes>

@@ -277,6 +277,7 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated, onFixed, bgState,
               websiteUrl:     supplier.website || supplier.login_url || '',
               sampleProducts: batch.map(p => ({ product_code: p.product_code, product_name: p.product_name })),
               margin,
+              updateImages: true,
             }),
             8,
             () => setBgState(s => ({ ...s, pricesRetrying: true }))

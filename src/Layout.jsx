@@ -11,6 +11,8 @@ import {
   MoreHorizontal, MessageSquare } from
 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
+import ThemeToggle from './components/ThemeToggle';
+import SectionBackground from './components/SectionBackground';
 import GlobalSearch from './components/GlobalSearch';
 import AIChat from './components/AIChat';
 import QuickPriceDBAccess from './components/QuickPriceDBAccess';
@@ -152,6 +154,7 @@ const navItems = [
 { name: 'Calc. Potencia A/C', page: 'ACPotenciaCalc', icon: Zap },
 { name: 'Calc. Multi-área', page: 'MultiAreaCalc', icon: Thermometer },
 { name: 'Equiv. Refrigerantes', page: 'RefrigerantEquiv', icon: Droplets },
+{ name: 'Cáp. Tubo', page: 'CapillaryCalc', icon: Droplets },
 { name: 'Herram. Danfoss', page: 'DanfossTools', icon: Wrench },
 { name: 'Prov. Gases', page: 'GasSuppliers', icon: Building2 },
 { name: 'Nuevo Contacto', page: 'ContactForm', icon: Users },
@@ -196,18 +199,12 @@ export default function Layout({ children, currentPageName }) {
   };
 
   return (
-    <div className="min-h-screen flex" dir="ltr" style={{ background: '#0A0A12', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div className="min-h-screen flex" dir="ltr" style={{ background: 'hsl(var(--background))', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <AIChat />
       <QuickPriceDBAccess />
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <style>{`
-        :root {
-          --primary: #0A0A12;
-          --primary-light: #12121e;
-          --accent: #00D4FF;
-          --accent-light: #7C3AED;
-        }
-        body { background: #0A0A12; color: #e8eaf0; }
+        body { background: hsl(var(--background)); color: hsl(var(--foreground)); }
         .no-print { display: block; }
         @media print {
           .no-print { display: none !important; }
@@ -267,7 +264,10 @@ export default function Layout({ children, currentPageName }) {
           </button>
           <div className="flex items-center justify-between px-2 py-1">
             <span className="text-xs font-semibold" style={{ color: '#8890a8' }}>Alertas</span>
-            <NotificationsPanel />
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              <NotificationsPanel />
+            </div>
           </div>
           <button onClick={handleLogout} className="flex items-center gap-2 text-xs w-full px-2 py-2 rounded transition-all" style={{ color: '#8890a8' }}
             onMouseEnter={e => e.currentTarget.style.color = '#00D4FF'}
@@ -325,6 +325,8 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Main */}
       <div className="flex-1 lg:ml-60 min-h-screen relative overflow-x-hidden min-w-0">
+        {/* Fondo por sección según el módulo activo */}
+        <SectionBackground pageName={currentPageName} />
         {/* Background watermark logo — GPU layer aislada para no afectar scroll */}
         {company?.logo_url &&
         <div
@@ -353,6 +355,7 @@ export default function Layout({ children, currentPageName }) {
             {navItems.find((n) => n.page === currentPageName)?.name || currentPageName}
           </h2>
           <div className="flex items-center gap-1">
+            <ThemeToggle size="w-5 h-5" />
             <button onClick={() => setSearchOpen(true)} className="p-1.5" style={{ color: '#8890a8' }}>
               <Search className="w-5 h-5" />
             </button>
