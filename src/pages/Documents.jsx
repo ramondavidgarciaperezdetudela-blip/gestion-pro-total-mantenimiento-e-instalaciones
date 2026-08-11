@@ -266,10 +266,13 @@ export default function Documents() {
   const handleSave = async () => {
     setSaving(true);
     const docLabel = form.doc_type === 'factura' ? 'Factura' : form.doc_type === 'presupuesto' ? 'Presupuesto' : 'Recibo';
+    let savedDoc = null;
+    const wasEditing = !!editing;
+    const editingId = editing?.id;
     if (editing) {
-      await base44.entities.Invoice.update(editing.id, form);
+      savedDoc = await base44.entities.Invoice.update(editing.id, form);
     } else {
-      await base44.entities.Invoice.create(form);
+      savedDoc = await base44.entities.Invoice.create(form);
       if (form.contact_id) {
         await base44.entities.ClientDocument.create({
           contact_id: form.contact_id, contact_name: form.contact_name,
@@ -284,6 +287,11 @@ export default function Documents() {
     setDialogOpen(false);setEditing(null);
     const d = await base44.entities.Invoice.list('-date', 500);
     setDocs(d);
+    // Abrir la vista previa del documento guardado para poder enviarlo,
+    // imprimirlo o exportarlo a PDF al momento (y en cualquier momento).
+    const savedId = savedDoc?.id || editingId;
+    const fresh = (savedId && d.find(x => x.id === savedId)) || savedDoc || (!wasEditing ? d[0] : null);
+    if (fresh) setPreviewDoc(fresh);
   };
 
   const handleDelete = async (id) => {
