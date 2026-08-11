@@ -18,6 +18,32 @@ const ALL_ENTITIES = [
   'AIConsultation', 'SATChatMessage', 'EquipmentDiary',
 ];
 
+// Clave natural por sección para el UPSERT al restaurar (actualizar en vez de
+// duplicar). Devuelve una cadena estable o null (si null → se usa el cotejo por
+// contenido exacto, pensado para registros de tipo "histórico" que solo se añaden).
+const _s = (v) => (v == null ? '' : String(v).trim().toLowerCase());
+const KEYERS = {
+  Contact:            (r) => _s(r.nif) || _s(r.email) || _s(r.phone) || (_s(r.name) && `${_s(r.name)}|${_s(r.surname)}`) || null,
+  Supplier:           (r) => _s(r.nif) || _s(r.cif) || _s(r.name) || null,
+  SupplierPrice:      (r) => (_s(r.product_code) && `${_s(r.supplier_id)}|${_s(r.product_code)}`) || (_s(r.product_name) && `${_s(r.supplier_id)}|${_s(r.product_name)}`) || null,
+  PriceItem:          (r) => _s(r.supplier_ref) || _s(r.description) || null,
+  Invoice:            (r) => (_s(r.doc_number) && `${_s(r.doc_type)}|${_s(r.doc_number)}`) || null,
+  SATOrder:           (r) => _s(r.order_number) || null,
+  MaintenanceSheet:   (r) => _s(r.sheet_number) || null,
+  StockItem:          (r) => _s(r.sku) || _s(r.ref) || _s(r.name) || null,
+  Project:            (r) => _s(r.name) || null,
+  LineTemplate:       (r) => _s(r.name) || null,
+  Equipment:          (r) => _s(r.serial_number) || (_s(r.brand) && `${_s(r.brand)}|${_s(r.model)}|${_s(r.name)}`) || null,
+  ThermalCalculation: (r) => _s(r.name) || null,
+  SolarCalculation:   (r) => _s(r.name) || null,
+  CompanySettings:    () => 'singleton',
+  Appointment:        (r) => (_s(r.date) && `${_s(r.date)}|${_s(r.time_start)}|${_s(r.title)}`) || null,
+  Note:               (r) => _s(r.title) || null,
+  ClientDocument:     (r) => (_s(r.contact_id) && `${_s(r.contact_id)}|${_s(r.name)}`) || null,
+  ClientNote:         (r) => (_s(r.contact_id) && `${_s(r.contact_id)}|${_s(r.content).slice(0,60)}`) || null,
+  // ChangeLog, AIConsultation, SATChatMessage, EquipmentDiary → histórico: sin clave (solo añadir lo que falte)
+};
+
 const ENTITY_LABELS = {
   Contact: 'Clientes / Contactos',
   Invoice: 'Facturas y Presupuestos',
@@ -219,23 +245,51 @@ export default function BackupCenter() {
       const rows = restoreData[ent] || [];
 
       if (restoreMode === 'update') {
-        // Modo actualizar: cargar IDs existentes y solo insertar los que faltan
+        // Modo ACTUALIZAR (upsert): no duplica. Si el registro ya existe (por su
+        // clave natural: NIF, referencia, nº de documento...) se ACTUALIZA; si no,
+        // se crea. Para secciones de tipo histórico (sin clave) solo se añade lo
+        // que falte, cotejando por contenido exacto.
+        const strip = (r) => { const { id, created_date, updated_date, created_by, ...rest } = r; return rest; };
         const existing = await base44.entities[ent]?.list('-created_date', 5000).catch(() => []);
-        const existingSignatures = new Set(
-          (existing || []).map(r => JSON.stringify({ ...(({ id, created_date, updated_date, created_by, ...rest }) => rest)(r) }))
-        );
-        const toInsert = rows.filter(r => {
-          const { id, created_date, updated_date, created_by, ...rest } = r;
-          return !existingSignatures.has(JSON.stringify(rest));
-        }).map(r => {
-          const { id, created_date, updated_date, created_by, ...rest } = r;
-          return rest;
-        });
-        for (let j = 0; j < toInsert.length; j += 100) {
-          await base44.entities[ent]?.bulkCreate(toInsert.slice(j, j + 100)).catch(() => {});
-          await new Promise(r => setTimeout(r, 100));
+        const keyer = KEYERS[ent];
+
+        if (keyer) {
+          const byKey = {};
+          (existing || []).forEach(r => { const k = keyer(r); if (k) byKey[k] = r; });
+          const toCreate = [];
+          const toUpdate = [];
+          for (const r of rows) {
+            const k = keyer(r);
+            const data = strip(r);
+            if (k && byKey[k]) toUpdate.push({ id: byKey[k].id, data });
+            else toCreate.push(data);
+          }
+          // Crear lo que falta (por lotes)
+          for (let j = 0; j < toCreate.length; j += 100) {
+            await base44.entities[ent]?.bulkCreate(toCreate.slice(j, j + 100)).catch(() => {});
+            await new Promise(r => setTimeout(r, 80));
+          }
+          // Actualizar lo existente (en paralelo con límite, sin duplicar)
+          let u = 0;
+          const POOL = 6;
+          const runners = Array.from({ length: Math.min(POOL, toUpdate.length) }, async () => {
+            while (u < toUpdate.length) {
+              const it = toUpdate[u++];
+              await base44.entities[ent]?.update(it.id, it.data).catch(() => {});
+            }
+          });
+          await Promise.all(runners);
+          total += toCreate.length + toUpdate.length;
+        } else {
+          // Sin clave natural (histórico): añadir solo lo que no exista exactamente
+          const existingSignatures = new Set((existing || []).map(r => JSON.stringify(strip(r))));
+          const toInsert = rows.map(strip).filter(r => !existingSignatures.has(JSON.stringify(r)));
+          for (let j = 0; j < toInsert.length; j += 100) {
+            await base44.entities[ent]?.bulkCreate(toInsert.slice(j, j + 100)).catch(() => {});
+            await new Promise(r => setTimeout(r, 80));
+          }
+          total += toInsert.length;
         }
-        total += toInsert.length;
       } else {
         // Modo limpio: insertar todo
         const clean = rows.map(r => {
@@ -249,7 +303,7 @@ export default function BackupCenter() {
         total += clean.length;
       }
     }
-    setRestoreProgress(`✅ Restauración completa: ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'añadidos'} en ${entitiesToRestore.length} secciones.`);
+    setRestoreProgress(`✅ Restauración completa: ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.`);
     setRestoring(false);
     loadCounts();
   };
