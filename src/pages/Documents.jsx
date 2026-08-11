@@ -1148,8 +1148,12 @@ export default function Documents() {
                       {STATUSES.map((s) => <SelectItem key={s} value={s} className="text-xs capitalize">{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  {isPresupuesto && isRechazado && (
-                    <button onClick={(e) => { e.stopPropagation(); sendSignLink(doc, 'whatsapp'); }} className="text-green-500 hover:text-green-700 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Reenviar enlace de firma"><Send className="w-3.5 h-3.5" /></button>
+                  {/* Acciones rápidas SIEMPRE visibles: enviar / imprimir / PDF */}
+                  <button onClick={(e) => { e.stopPropagation(); sendWhatsApp(doc); }} className="text-green-600 hover:text-green-800 p-1" title="Enviar por WhatsApp"><MessageCircle className="w-4 h-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); sendEmail(doc); }} className="text-blue-600 hover:text-blue-800 p-1" title="Enviar por Email"><Mail className="w-4 h-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); exportPDF(doc); }} className="text-red-600 hover:text-red-800 p-1" title="Imprimir o guardar en PDF"><Printer className="w-4 h-4" /></button>
+                  {isPresupuesto && (
+                    <button onClick={(e) => { e.stopPropagation(); sendSignLink(doc, 'whatsapp'); }} className="text-emerald-500 hover:text-emerald-700 p-1" title="Enviar enlace de firma (aceptar/rechazar)"><Send className="w-4 h-4" /></button>
                   )}
                   <button onClick={(e) => { e.stopPropagation(); handleEdit(doc); }} className="text-gray-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
                   <button onClick={() => handleDuplicate(doc)} className="text-gray-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Duplicar"><Copy className="w-3.5 h-3.5" /></button>
