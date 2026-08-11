@@ -16,8 +16,10 @@
  *   - Rutas públicas (presupuestos/SAT compartidos) nunca se bloquean.
  */
 export const licenseConfig = {
-  // Protección activa.
-  enabled: true,
+  // ⚠️ DESACTIVADA temporalmente: el programa NO pide clave de registro al
+  // iniciar (hasta nuevo aviso). El gestor de licencias se conserva en
+  // /LICENCIAS-GUARDADO para reactivarlo cuando todo esté listo.
+  enabled: false,
 
   // 'cloud' si hay endpoint configurado; si no, 'local' (clave pública).
   mode: import.meta.env.VITE_LICENSE_ENDPOINT ? 'cloud' : 'local',
