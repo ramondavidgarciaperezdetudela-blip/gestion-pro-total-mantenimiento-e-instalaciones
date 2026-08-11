@@ -60,6 +60,9 @@ export default function SupplierTariffs() {
   // Relleno de imágenes en segundo plano (por lotes, poco a poco)
   const [bulkImg, setBulkImg] = useState(null); // { done, total, ok } | null
   const bulkCancelRef = useRef(false);
+  // Actualización desde la web del proveedor (precio/foto/descripción)
+  const [bulkUpd, setBulkUpd] = useState(null); // { done, total, ok } | null
+  const bulkUpdCancelRef = useRef(false);
   const autoFetchTimerRef = useRef(null);
   const lastAutoFetchNameRef = useRef('');
 
@@ -180,6 +183,48 @@ export default function SupplierTariffs() {
     await Promise.all(Array.from({ length: Math.min(CONC, pendientes.length) }, worker));
     setBulkImg(null);
     toast.success(`Imágenes rellenadas: ${ok} de ${pendientes.length}${bulkCancelRef.current ? ' (detenido)' : ''}`);
+  };
+
+  // ── Actualizar precio/foto/descripción desde la web del proveedor ──────────
+  const updateFromSupplierWeb = async () => {
+    if (bulkUpd) { bulkUpdCancelRef.current = true; return; } // segundo clic = detener
+    const lista = prices.filter(p => filterSupplier === 'all' || p.supplier_id === filterSupplier);
+    if (lista.length === 0) { toast.info('No hay productos para actualizar'); return; }
+    if (!window.confirm(`Se buscarán en internet los datos actuales (precio, foto y descripción) de ${lista.length} productos y se actualizarán. Va poco a poco en segundo plano. ¿Continuar?`)) return;
+    bulkUpdCancelRef.current = false;
+    setBulkUpd({ done: 0, total: lista.length, ok: 0 });
+    let done = 0, ok = 0, idx = 0;
+    const CONC = 2;
+    const worker = async () => {
+      while (idx < lista.length && !bulkUpdCancelRef.current) {
+        const item = lista[idx++];
+        try {
+          const res = await base44.integrations.Core.InvokeLLM({
+            prompt: `Busca en internet (preferiblemente en la web oficial del proveedor/fabricante) los datos ACTUALES del producto: "${item.product_name}"${item.brand ? ` marca ${item.brand}` : ''}${item.product_code ? `, referencia ${item.product_code}` : ''}${item.supplier_name ? ` del proveedor ${item.supplier_name}` : ''}. Devuelve: precio_actual (número en euros, sin IVA si es posible), image_url (URL directa de la foto oficial JPG/PNG/WebP) y descripcion (texto breve del producto). Si algún dato no es fiable, déjalo null.`,
+            add_context_from_internet: true,
+            response_json_schema: { type: 'object', properties: {
+              precio_actual: { type: 'number' }, image_url: { type: 'string' }, descripcion: { type: 'string' }
+            } }
+          });
+          const upd = {};
+          if (res?.precio_actual && res.precio_actual > 0) upd.cost_price = res.precio_actual;
+          if (res?.image_url) upd.image_url = res.image_url;
+          if (res?.descripcion && res.descripcion.length > 3 && !item.product_name) upd.product_name = res.descripcion;
+          if (res?.descripcion && res.descripcion.length > 3) upd.notes = res.descripcion;
+          if (Object.keys(upd).length) {
+            await base44.entities.SupplierPrice.update(item.id, upd);
+            ok++;
+            setPrices(prev => prev.map(p => p.id === item.id ? { ...p, ...upd } : p));
+          }
+        } catch (_) { /* seguir */ }
+        done++;
+        setBulkUpd({ done, total: lista.length, ok });
+        await new Promise(r => setTimeout(r, 300));
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(CONC, lista.length) }, worker));
+    setBulkUpd(null);
+    toast.success(`Actualizados desde web: ${ok} de ${lista.length}${bulkUpdCancelRef.current ? ' (detenido)' : ''}`);
   };
 
   // Agrupar por proveedor
@@ -363,7 +408,22 @@ export default function SupplierTariffs() {
             ? <><Loader2 className="w-4 h-4 animate-spin" />{`Imágenes ${bulkImg.done}/${bulkImg.total} — Detener`}</>
             : <><ImageIcon className="w-4 h-4" />Rellenar imágenes que faltan</>}
         </Button>
+        <Button
+          variant={bulkUpd ? 'destructive' : 'outline'}
+          onClick={updateFromSupplierWeb}
+          className="gap-2 whitespace-nowrap"
+          title="Buscar en la web del proveedor el precio, foto y descripción actuales y actualizar"
+        >
+          {bulkUpd
+            ? <><Loader2 className="w-4 h-4 animate-spin" />{`Actualizando ${bulkUpd.done}/${bulkUpd.total} — Detener`}</>
+            : <><RefreshCw className="w-4 h-4" />Actualizar desde web (precio/foto/desc.)</>}
+        </Button>
       </div>}
+      {bulkUpd && (
+        <div className="text-xs text-gray-500 -mt-2">
+          Actualizando desde la web del proveedor: {bulkUpd.done}/{bulkUpd.total} ({bulkUpd.ok} actualizados). En segundo plano; puedes seguir trabajando.
+        </div>
+      )}
       {bulkImg && (
         <div className="text-xs text-gray-500 -mt-2">
           Rellenando imágenes en segundo plano: {bulkImg.done}/{bulkImg.total} ({bulkImg.ok} encontradas). Puedes seguir usando el programa.
