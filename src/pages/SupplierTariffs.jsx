@@ -57,6 +57,9 @@ export default function SupplierTariffs() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [activeTab, setActiveTab] = useState('tarifas');
   const imageFileRef = useRef(null);
+  // Relleno de imágenes en segundo plano (por lotes, poco a poco)
+  const [bulkImg, setBulkImg] = useState(null); // { done, total, ok } | null
+  const bulkCancelRef = useRef(false);
   const autoFetchTimerRef = useRef(null);
   const lastAutoFetchNameRef = useRef('');
 
@@ -139,6 +142,45 @@ export default function SupplierTariffs() {
   }, []);
 
   useEffect(() => { loadData(); }, []);
+
+  // ── Rellenar imágenes que faltan, en segundo plano y poco a poco ───────────
+  const fillMissingImages = async () => {
+    if (bulkImg) { bulkCancelRef.current = true; return; } // segundo clic = detener
+    // Productos sin imagen (respetando el filtro de proveedor si hay uno activo)
+    const pendientes = prices.filter(p =>
+      !p.image_url && (filterSupplier === 'all' || p.supplier_id === filterSupplier)
+    );
+    if (pendientes.length === 0) { toast.info('No hay productos sin imagen'); return; }
+    bulkCancelRef.current = false;
+    setBulkImg({ done: 0, total: pendientes.length, ok: 0 });
+    let done = 0, ok = 0;
+    const CONC = 2; // 2 en paralelo para no saturar
+    let idx = 0;
+    const worker = async () => {
+      while (idx < pendientes.length && !bulkCancelRef.current) {
+        const item = pendientes[idx++];
+        try {
+          const res = await base44.integrations.Core.InvokeLLM({
+            prompt: `Busca en internet la imagen oficial del producto: "${item.product_name}"${item.brand ? ` de la marca ${item.brand}` : ''}${item.product_code ? `, referencia ${item.product_code}` : ''}. Devuelve solo la URL directa de la imagen (JPG, PNG o WebP). Si no encuentras una fiable, devuelve null.`,
+            add_context_from_internet: true,
+            response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
+          });
+          if (res?.image_url) {
+            await base44.entities.SupplierPrice.update(item.id, { image_url: res.image_url });
+            ok++;
+            // actualizar la ficha en pantalla al momento
+            setPrices(prev => prev.map(p => p.id === item.id ? { ...p, image_url: res.image_url } : p));
+          }
+        } catch (_) { /* seguir con el siguiente */ }
+        done++;
+        setBulkImg({ done, total: pendientes.length, ok });
+        await new Promise(r => setTimeout(r, 250)); // ritmo suave
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(CONC, pendientes.length) }, worker));
+    setBulkImg(null);
+    toast.success(`Imágenes rellenadas: ${ok} de ${pendientes.length}${bulkCancelRef.current ? ' (detenido)' : ''}`);
+  };
 
   // Agrupar por proveedor
   const grouped = useMemo(() => {
@@ -311,7 +353,22 @@ export default function SupplierTariffs() {
         <Button variant="outline" size="icon" onClick={loadData} title="Recargar">
           <RefreshCw className="w-4 h-4" />
         </Button>
+        <Button
+          variant={bulkImg ? 'destructive' : 'outline'}
+          onClick={fillMissingImages}
+          className="gap-2 whitespace-nowrap"
+          title="Buscar y rellenar las imágenes que faltan, en segundo plano"
+        >
+          {bulkImg
+            ? <><Loader2 className="w-4 h-4 animate-spin" />{`Imágenes ${bulkImg.done}/${bulkImg.total} — Detener`}</>
+            : <><ImageIcon className="w-4 h-4" />Rellenar imágenes que faltan</>}
+        </Button>
       </div>}
+      {bulkImg && (
+        <div className="text-xs text-gray-500 -mt-2">
+          Rellenando imágenes en segundo plano: {bulkImg.done}/{bulkImg.total} ({bulkImg.ok} encontradas). Puedes seguir usando el programa.
+        </div>
+      )}
 
       {activeTab === 'tarifas' && loading && (
         <div className="flex items-center justify-center py-20 text-gray-400">

@@ -1,88 +1,58 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
+// Búsqueda de códigos postales españoles.
+// Fuente principal: Zippopotam (gratuita, fiable, con CORS) para código postal.
+// La antigua api.codigospostales.es dejó de responder y provocaba errores 500.
+// Esta versión NUNCA devuelve 500 por fallo de la fuente: si no hay datos,
+// devuelve una lista vacía de forma controlada.
+
+async function porCodigoPostal(cp: string) {
+  const code = (cp || '').replace(/\D/g, '').slice(0, 5);
+  if (code.length < 4) return [];
+  try {
+    const r = await fetch(`https://api.zippopotam.us/es/${code}`);
+    if (!r.ok) return [];
+    const d = await r.json();
+    const places = Array.isArray(d?.places) ? d.places : [];
+    return places.map((p: any) => ({
+      postal_code: d['post code'] || code,
+      city: p['place name'] || '',
+      province: p['state'] || '',
+      community: p['state'] || '',
+    }));
+  } catch {
+    return [];
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchType, searchValue } = await req.json();
-
     if (!searchValue || !searchType) {
-      return Response.json({ error: 'searchType and searchValue required' }, { status: 400 });
+      return Response.json({ success: true, results: [], count: 0 });
     }
 
-    let results = [];
-
-    try {
-      // Usar API de códigos postales españoles (codigospostales.com o similar)
-      if (searchType === 'postal_code') {
-        // Buscar por código postal
-        const response = await fetch(`https://api.codigospostales.es/?json&cod=${searchValue.trim()}`);
-        const data = await response.json();
-        
-        if (data && Array.isArray(data) && data.length > 0) {
-          results = data.map(item => ({
-            postal_code: item.codigo_postal,
-            city: item.municipio,
-            province: item.provincia,
-            community: item.comunidad_autonoma
-          }));
-        }
-      } else if (searchType === 'city') {
-        // Buscar por ciudad/población
-        const response = await fetch(`https://api.codigospostales.es/?json&municipio=${encodeURIComponent(searchValue.trim())}`);
-        const data = await response.json();
-        
-        if (data && Array.isArray(data) && data.length > 0) {
-          results = data.map(item => ({
-            postal_code: item.codigo_postal,
-            city: item.municipio,
-            province: item.provincia,
-            community: item.comunidad_autonoma
-          }));
-          
-          // Eliminar duplicados
-          results = results.filter((item, index, self) =>
-            index === self.findIndex(t => t.postal_code === item.postal_code)
-          );
-        }
-      } else if (searchType === 'province') {
-        // Buscar por provincia
-        const response = await fetch(`https://api.codigospostales.es/?json&provincia=${encodeURIComponent(searchValue.trim())}`);
-        const data = await response.json();
-        
-        if (data && Array.isArray(data) && data.length > 0) {
-          results = data.map(item => ({
-            postal_code: item.codigo_postal,
-            city: item.municipio,
-            province: item.provincia,
-            community: item.comunidad_autonoma
-          }));
-          
-          results = results.filter((item, index, self) =>
-            index === self.findIndex(t => t.postal_code === item.postal_code)
-          ).slice(0, 50); // Limitar resultados para no saturar
-        }
-      }
-    } catch (apiError) {
-      console.log('API error:', apiError.message);
-      // Si falla la API externa, devolver error controlado
-      return Response.json({ 
-        error: 'No se pudo obtener información de códigos postales',
-        details: apiError.message 
-      }, { status: 500 });
+    let results: any[] = [];
+    // Caso principal: el usuario escribe un código postal para autocompletar
+    // población y provincia.
+    if (searchType === 'postal_code') {
+      results = await porCodigoPostal(searchValue);
+    } else {
+      // Búsqueda por población/provincia: no hay fuente pública fiable gratuita
+      // para el inverso; si el texto contiene dígitos, probamos como CP.
+      const digits = String(searchValue).replace(/\D/g, '');
+      if (digits.length >= 4) results = await porCodigoPostal(digits);
     }
 
-    return Response.json({ 
-      success: true, 
-      results: results.length > 0 ? results : [],
-      count: results.length
-    });
+    return Response.json({ success: true, results, count: results.length });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    // Nunca 500 por esto: devolvemos vacío controlado.
+    return Response.json({ success: true, results: [], count: 0, note: String(error?.message || error) });
   }
 });
