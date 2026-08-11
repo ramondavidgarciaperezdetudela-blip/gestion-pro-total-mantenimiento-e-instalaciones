@@ -1,6 +1,6 @@
 // Proceso principal de Electron para Gestión Pro Total (escritorio).
 // Carga la aplicación web ya compilada (carpeta dist) en una ventana nativa.
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -16,10 +16,25 @@ const isDev = !app.isPackaged;
 function initAutoUpdate() {
   if (isDev) return;
   try {
-    const { autoUpdater } = require('electron-updater');
-    autoUpdater.autoDownload = true;
+    const { autoUpdater } = require('electron-updater');    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;     // instala al cerrar, sin borrar nada
     autoUpdater.on('error', () => {});           // silencioso: nunca molesta al usuario
+    // Cuando la nueva versión está descargada, ofrecer instalar YA (sin perder datos).
+    autoUpdater.on('update-downloaded', (info) => {
+      dialog.showMessageBox({
+        type: 'info',
+        buttons: ['Reiniciar e instalar ahora', 'Más tarde'],
+        defaultId: 0,
+        title: 'Actualización disponible',
+        message: `Hay una versión nueva (${info?.version || ''}) lista para instalar.`,
+        detail: 'Se instalará ENCIMA de la actual, sin desinstalar y sin perder ninguno de tus datos. ¿Reiniciar e instalar ahora?',
+      }).then((res) => {
+        if (res.response === 0) autoUpdater.quitAndInstall(false, true);
+      }).catch(() => {});
+    });
     autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    // Re-comprobar cada 6 horas por si sale una versión nueva con la app abierta.
+    setInterval(() => { try { autoUpdater.checkForUpdates().catch(() => {}); } catch { /* ignore */ } }, 6 * 60 * 60 * 1000);
   } catch {
     /* electron-updater no disponible: se ignora */
   }
