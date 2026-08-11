@@ -153,30 +153,12 @@ export default function SupplierCatalogImport({ onImported }) {
         return;
       }
 
-      // 3. Buscar imágenes por IA para cada producto
-      setStep('images');
-      const withImages = [];
-      for (let i = 0; i < extracted.length; i++) {
-        const item = extracted[i];
-        setProgress(`Buscando imagen ${i + 1}/${extracted.length}: ${item.description?.substring(0, 40)}...`);
-        try {
-          const imgResult = await base44.integrations.Core.InvokeLLM({
-            prompt: `Busca en internet la imagen oficial del producto: "${item.description}"${item.brand ? ` de la marca ${item.brand}` : ''}${item.supplier_ref ? `, referencia ${item.supplier_ref}` : ''}.
-Devuelve solo la URL directa de la imagen del producto (JPG o PNG). Si no encuentras una imagen fiable del producto exacto, devuelve null.`,
-            add_context_from_internet: true,
-            response_json_schema: {
-              type: 'object',
-              properties: { image_url: { type: 'string' } }
-            }
-          });
-          withImages.push({ ...item, image_url: imgResult?.image_url || null });
-        } catch {
-          withImages.push({ ...item, image_url: null });
-        }
-      }
-
-      setItems(withImages);
-      setSelectedItems(new Set(withImages.map((_, i) => i)));
+      // 3. Vista previa RÁPIDA (sin bloquear buscando imágenes una a una).
+      //    Con catálogos grandes (+700 líneas) buscar la imagen de cada producto
+      //    por internet tardaba muchísimo y podía fallar. La imagen se busca
+      //    después, en segundo plano y en paralelo (limitado), sin frenar la carga.
+      setItems(extracted.map(it => ({ ...it, image_url: it.image_url || null })));
+      setSelectedItems(new Set(extracted.map((_, i) => i)));
       setStep('preview');
       setProgress('');
     } catch (err) {
@@ -185,13 +167,50 @@ Devuelve solo la URL directa de la imagen del producto (JPG o PNG). Si no encuen
     }
   };
 
+  // Clave de deduplicación: referencia del proveedor si existe; si no, la descripción.
+  const dedupeKey = (it) =>
+    ((it.supplier_ref && String(it.supplier_ref).trim()) || String(it.description || '').trim())
+      .toLowerCase();
+
+  // Ejecuta tareas en paralelo con un límite (para ir rápido sin saturar).
+  const runPool = async (arr, limit, worker) => {
+    let idx = 0;
+    const runners = Array.from({ length: Math.min(limit, arr.length) }, async () => {
+      while (idx < arr.length) {
+        const cur = idx++;
+        await worker(arr[cur], cur);
+      }
+    });
+    await Promise.all(runners);
+  };
+
   const handleSave = async () => {
     setStep('saving');
-    setProgress('Guardando en base de datos...');
+    setProgress('Cargando productos existentes...');
     const toSave = items.filter((_, i) => selectedItems.has(i));
-    let saved = 0;
-    for (const item of toSave) {
-      await base44.entities.PriceItem.create({
+
+    // 1) Cargar existentes para hacer UPSERT (actualizar en vez de duplicar).
+    let existingByKey = {};
+    try {
+      let all = [], skip = 0;
+      while (true) {
+        const batch = await base44.entities.PriceItem.filter({}, null, 500, skip);
+        all = all.concat(batch || []);
+        if (!batch || batch.length < 500) break;
+        skip += 500;
+      }
+      all.forEach(e => {
+        const k = ((e.supplier_ref && String(e.supplier_ref).trim()) || String(e.description || '').trim()).toLowerCase();
+        if (k) existingByKey[k] = e;
+      });
+    } catch (_) { existingByKey = {}; }
+
+    let saved = 0, updated = 0, done = 0;
+    const total = toSave.length;
+
+    // 2) Guardar/actualizar en paralelo (rápido, sin límite de entradas).
+    await runPool(toSave, 8, async (item) => {
+      const payload = {
         description: item.description || 'Sin descripción',
         brand: item.brand || '',
         supplier_ref: item.supplier_ref || '',
@@ -201,13 +220,25 @@ Devuelve solo la URL directa de la imagen del producto (JPG o PNG). Si no encuen
         notes: item.notes || '',
         image_url: item.image_url || '',
         is_active: true,
-      });
-      saved++;
-      setProgress(`Guardando ${saved}/${toSave.length}...`);
-    }
+      };
+      const ex = existingByKey[dedupeKey(item)];
+      try {
+        if (ex && ex.id) {
+          // Actualiza el precio y datos de la entrada existente (no duplica).
+          await base44.entities.PriceItem.update(ex.id, payload);
+          updated++;
+        } else {
+          await base44.entities.PriceItem.create(payload);
+          saved++;
+        }
+      } catch (_) { /* se cuenta como no guardado; continúa */ }
+      done++;
+      if (done % 10 === 0 || done === total) setProgress(`Procesando ${done}/${total}...`);
+    });
+
     setStep('done');
-    setProgress(`✅ ${saved} productos añadidos a la base de datos`);
-    onImported && onImported(saved);
+    setProgress(`✅ ${saved} nuevos · ${updated} actualizados (de ${total})`);
+    onImported && onImported(saved + updated);
   };
 
   const toggleItem = (i) => {
