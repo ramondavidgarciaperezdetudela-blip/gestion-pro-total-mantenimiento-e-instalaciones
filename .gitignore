@@ -54,3 +54,4 @@ dist-offline/
 # Excepción: clave de firma ESTABLE de la APK (debug keystore, pass "android").
 # Debe ir versionada para que cada APK se firme igual y se actualice sin desinstalar.
 !android-signing/debug.keystore
+base44/.app.jsonc
