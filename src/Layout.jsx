@@ -161,7 +161,7 @@ const navItems = [
 { name: 'Actualizaciones', page: 'UpdateCenter', icon: Download },
 { name: 'Activar Licencia', page: 'LicenseActivation', icon: Shield },
 { name: 'Renovar Licencia', page: 'LicenseRenewal', icon: Shield },
-];
+].sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
 
 export default function Layout({ children, currentPageName }) {

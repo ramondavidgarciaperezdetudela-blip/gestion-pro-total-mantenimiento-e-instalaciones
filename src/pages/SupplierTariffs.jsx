@@ -85,11 +85,14 @@ export default function SupplierTariffs() {
     if (firstBatch.length === PAGE) {
       let allPrices = [...firstBatch];
       let skip = PAGE;
+      // Sin tope artificial: cargar TODAS las tarifas (guardia de seguridad muy
+      // alta por si hay catálogos enormes, p. ej. Salvador Escoda ~64.000 refs).
+      const MAX_RECORDS = 500000;
 
       const loadBatchesInParallel = async () => {
-        while (skip < PAGE * 5) {
+        while (skip < MAX_RECORDS) {
           const batchRequests = [];
-          for (let i = 0; i < 3 && skip < PAGE * 5; i++) {
+          for (let i = 0; i < 4 && skip < MAX_RECORDS; i++) {
             batchRequests.push(
               withRetry(() => base44.entities.SupplierPrice.list('-created_date', PAGE, skip))
             );
