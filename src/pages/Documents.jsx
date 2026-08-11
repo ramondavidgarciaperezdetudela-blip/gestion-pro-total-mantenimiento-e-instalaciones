@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Plus, Search, FileText, Trash2, Edit, ShoppingCart, Copy,
-  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers } from
+  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers, Loader2 } from
 'lucide-react';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
@@ -220,6 +220,40 @@ export default function Documents() {
   }, []);
 
   const getItemDisplayValue = useCallback((index, field, formValue) => formValue ?? '', []);
+
+  // ── Añadir línea buscando por REFERENCIA de proveedor ──────────────────────
+  const [refBusca, setRefBusca] = useState('');
+  const [refBuscando, setRefBuscando] = useState(false);
+  const [refMsg, setRefMsg] = useState('');
+  const addLineaPorReferencia = useCallback(async () => {
+    const ref = refBusca.trim();
+    if (!ref) return;
+    setRefBuscando(true); setRefMsg('');
+    try {
+      let found = null;
+      // 1) Tarifas de proveedor por código exacto
+      const m = await base44.entities.SupplierPrice.filter({ product_code: ref }).catch(() => []);
+      if (m && m.length) found = { description: m[0].product_name, unit_price: m[0].sale_price || m[0].cost_price || 0 };
+      // 2) Artículos de precio por referencia de proveedor
+      if (!found) {
+        const p = await base44.entities.PriceItem.filter({ supplier_ref: ref }).catch(() => []);
+        if (p && p.length) found = { description: p[0].description, unit_price: p[0].unit_price || 0 };
+      }
+      if (found) {
+        setForm((prev) => {
+          const newItems = [...prev.items, { _id: ++_itemId, description: found.description, quantity: 1, unit_price: found.unit_price, discount: 0, total: found.unit_price }];
+          return { ...prev, ...recalculate(newItems, prev.iva_rate) };
+        });
+        setRefBusca('');
+        setRefMsg('✅ Añadido: ' + found.description);
+      } else {
+        setRefMsg('⚠ No se encontró ninguna referencia "' + ref + '"');
+      }
+    } catch {
+      setRefMsg('⚠ Error al buscar la referencia');
+    }
+    setRefBuscando(false);
+  }, [refBusca]);
 
   const addItem = useCallback(() => {
     setForm((prev) => ({ ...prev, items: [...prev.items, newItem()] }));
@@ -747,6 +781,21 @@ export default function Documents() {
             {/* Líneas */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Líneas del documento</label>
+              {/* Añadir artículo por REFERENCIA de proveedor (rellena descripción y precio) */}
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg p-2">
+                <Search className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <input
+                  className="flex-1 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
+                  placeholder="Referencia del proveedor → añade el artículo con su descripción y precio"
+                  value={refBusca}
+                  onChange={(e) => setRefBusca(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addLineaPorReferencia(); } }}
+                />
+                <Button size="sm" onClick={addLineaPorReferencia} disabled={refBuscando || !refBusca.trim()} className="bg-blue-600 hover:bg-blue-700 text-white gap-1">
+                  {refBuscando ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}Buscar ref.
+                </Button>
+              </div>
+              {refMsg && <p className="text-xs px-1 text-gray-600">{refMsg}</p>}
               <div className="hidden md:grid grid-cols-12 gap-1 text-[10px] text-gray-400 px-1">
                 <span className="col-span-5">Descripción</span>
                 <span className="col-span-2">Cant.</span>

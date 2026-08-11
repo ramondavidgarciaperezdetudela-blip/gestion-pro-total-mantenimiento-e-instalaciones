@@ -240,13 +240,14 @@ export default function Contacts() {
       ? await fetchCompanyLogo(form.website, form.company_name)
       : await fetchCompanyLogo(null, form.company_name);
     if (logoUrl) {
-      setForm(prev => ({ ...prev, company_logo_url: logoUrl }));
+      // Guardar como logo Y como foto principal si no hay foto, para que se vea en la ficha.
+      setForm(prev => ({ ...prev, company_logo_url: logoUrl, photo_url: prev.photo_url || logoUrl }));
       if (editing) {
-        await base44.entities.Contact.update(editing.id, { ...form, company_logo_url: logoUrl });
+        await base44.entities.Contact.update(editing.id, { ...form, company_logo_url: logoUrl, photo_url: form.photo_url || logoUrl });
         loadContacts();
       }
     } else {
-      alert('No se encontró logo para esta empresa. Prueba a añadir la web de la empresa.');
+      alert('No se encontró logo/imagen para esta empresa. Prueba a añadir la web de la empresa o sube la imagen manualmente.');
     }
     setFetchingLogo(false);
   };
