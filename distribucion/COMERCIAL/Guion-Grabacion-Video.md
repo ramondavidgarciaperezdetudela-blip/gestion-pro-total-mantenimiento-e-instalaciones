@@ -6,6 +6,25 @@ los textos y la música.
 
 ---
 
+## ⭐ Novedades a mostrar (versión actual)
+
+Si regrabas el vídeo, incluye estas pantallas nuevas (son las que más impresionan
+a un técnico):
+
+1. **Calculadoras con gráfico de resultado** — abre 2-3 (carga térmica, cámara
+   frigorífica, eléctrica o solar) y enseña el gráfico/esquema que sale al calcular.
+2. **Diagnóstico frigorífico** — enseña la entrada por LADO BAJA / LADO ALTA con la
+   presión y la «temperatura según manómetro», el recalentamiento y el
+   subenfriamiento, y el **esquema con todas las medidas**. Pulsa **Generar imagen**
+   para enseñar la imagen lista para el informe.
+3. **Plantillas de documentos** — enseña **Buscar en internet** trayendo modelos y
+   añadiendo uno con un clic.
+4. **Diseño técnico** — enseña el modo oscuro y el menú por secciones.
+5. **Escribir del tirón** — al rellenar un cálculo, muestra que los cuadros salen
+   vacíos y se escribe seguido, con decimales.
+
+---
+
 ## 🧰 Antes de empezar (preparativos)
 
 1. **Rellena algunos datos de ejemplo** para que no se vea vacío: 2-3 clientes,

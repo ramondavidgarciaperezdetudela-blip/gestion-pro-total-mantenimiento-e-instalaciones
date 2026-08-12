@@ -17,6 +17,20 @@ presupuestos, facturas y agenda— en una sola app que funciona hasta sin intern
 - **Trabaja en cualquier sitio**: offline y en cualquier dispositivo.
 - **Imagen profesional**: PDFs y portal del cliente con tu logo.
 
+## Herramientas técnicas que la diferencian (frío, clima, eléctrico y solar)
+- **Calculadoras profesionales con gráficos de resultado**: carga térmica, cámara
+  frigorífica, potencia de aire acondicionado, multizona, eléctrica (caída de
+  tensión), solar y baterías, tubo capilar… cada una con su gráfico y esquema.
+- **Diagnóstico frigorífico avanzado**: mide presiones y temperaturas indicando
+  DÓNDE tomarlas, calcula recalentamiento y subenfriamiento con su diferencial,
+  detecta falta/exceso de gas y fallos de válvula, y genera una **imagen del
+  esquema con todos los datos** para adjuntar al informe o al diario de reparación.
+- **Conversión de refrigerante**: gas actual → nuevo con peso a introducir, cambio
+  de aceite y búsqueda del compresor en internet.
+- **Plantillas de documentos**: modelos profesionales, buscador por internet e
+  importación desde Word/Excel/PDF, 100 % personalizables.
+- **Diseño técnico** con lecturas numéricas claras y modo oscuro.
+
 ## Objeciones frecuentes
 - *"Es caro"* → Cuesta menos que una hora de tu trabajo al mes y te ahorra varias.
 - *"Ya uso Excel"* → Excel no te avisa de cobros ni programa mantenimientos.
