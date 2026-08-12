@@ -120,7 +120,7 @@ function EsquemaFrig({ alta, baja, colorAlta, colorBaja, titulo, lecturas }) {
       <Punto x={430} y={60} n="2" color={HOT} />
       <Punto x={505} y={90} n="5" color={HOT} />
       <Punto x={505} y={148} n="6" color={HOT} />
-      <Punto x={300} y={306} n="3" color={COLD} />
+      <Punto x={190} y={306} n="3" color={COLD} />
       <Punto x={90} y={214} n="4" color={COLD} />
 
       {/* Etiquetas de medida sobre el circuito */}

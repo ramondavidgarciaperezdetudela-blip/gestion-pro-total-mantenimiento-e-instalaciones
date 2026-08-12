@@ -12,6 +12,8 @@ Todo lo necesario para presentar y vender el programa.
 | **Video-Demo-Realista-Vertical.mp4** | Demo realista **vertical 9:16** (~39 s) con capturas reales | Para Reels/TikTok mostrando el producto por dentro. |
 | **Video-Corto-Vertical-Redes.mp4** | Vídeo corto **vertical 9:16** (~25 s) | Para Instagram/TikTok/WhatsApp Estados. |
 | **capturas/** | Capturas reales de la app (escritorio y móvil) | Para webs, anuncios o la ficha del producto. |
+| **capturas-nuevas/** | Capturas actualizadas de las pantallas nuevas (diagnóstico frigorífico con esquema, inicio, calculadoras con gráficos, plantillas) | Para la presentación a comerciales y la ficha del producto. |
+| **Video-Demo-Gestion-Pro-Total.webm** | Vídeo demo (~50 s) con recorrido REAL por las pantallas nuevas | Para enseñar el producto a comerciales. Se reproduce en cualquier navegador. |
 | **Argumentario-Comercial.md** | Guion de venta (beneficios, objeciones, cierre) | Para preparar la llamada o la visita. |
 | **Guion-Grabacion-Video.md** | Guion para grabar el vídeo con pantallas reales | Incluye una sección **⭐ Novedades a mostrar** con las funciones nuevas. |
 | **Tarifas-y-Planes.md** | Lista de precios y planes | Para consultar precios al vender. |
