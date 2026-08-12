@@ -36,7 +36,8 @@ const refrigerationLinks = [
 { name: 'Proveedores de Gas', page: 'GasSuppliers', icon: Droplets, color: 'bg-cyan-600', desc: 'Distribuidores y fichas de gases' },
 { name: 'Cálculo Cámara', page: 'ColdRoomCalc', icon: Thermometer, color: 'bg-blue-600', desc: 'Carga térmica de cámara frigorífica' },
 { name: 'Potencia A/C', page: 'ACPotenciaCalc', icon: Gauge, color: 'bg-teal-600', desc: 'Frigorías / potencia de climatización' },
-{ name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500', desc: 'Cargas térmicas y aislamiento' }];
+{ name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500', desc: 'Cargas térmicas y aislamiento' },
+{ name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Gauge, color: 'bg-rose-600', desc: 'Esquema frigorífico + presiones y diagnóstico' }];
 
 // ── Accesos directos a TODOS los módulos ─────────────────────────────────────
 const quickLinks = [
