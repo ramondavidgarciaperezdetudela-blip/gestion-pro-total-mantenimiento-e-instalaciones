@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Zap, Calculator } from 'lucide-react';
 import PrintButton from '../components/PrintButton';
@@ -22,8 +22,8 @@ function calcSection(I, L, V, dv_max_pct, system) {
 
 export default function ElectricalCalc() {
   const [form, setForm] = useState({
-    power_kw: 5, voltage: 230, system: 'monofasico', cos_phi: 0.9,
-    length_m: 20, dv_max: 3, protection_type: 'magnetotermico',
+    power_kw: '', voltage: 230, system: 'monofasico', cos_phi: 0.9,
+    length_m: '', dv_max: 3, protection_type: 'magnetotermico',
   });
   const [result, setResult] = useState(null);
   const printRef = useRef(null);
@@ -70,7 +70,7 @@ export default function ElectricalCalc() {
       <Card>
         <CardContent className="p-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-xs text-gray-500">Potencia (kW)</label><Input type="number" value={form.power_kw} onChange={e => setForm({...form, power_kw: e.target.value})} /></div>
+            <div><label className="text-xs text-gray-500">Potencia (kW)</label><NumberField value={form.power_kw} onChange={v => setForm({...form, power_kw: v})} /></div>
             <div>
               <label className="text-xs text-gray-500">Sistema</label>
               <Select value={form.system} onValueChange={v => setForm({...form, system: v, voltage: v === 'monofasico' ? 230 : 400})}>
@@ -81,9 +81,9 @@ export default function ElectricalCalc() {
                 </SelectContent>
               </Select>
             </div>
-            <div><label className="text-xs text-gray-500">Cos φ (factor potencia)</label><Input type="number" step="0.01" min="0.7" max="1" value={form.cos_phi} onChange={e => setForm({...form, cos_phi: e.target.value})} /></div>
-            <div><label className="text-xs text-gray-500">Longitud (m)</label><Input type="number" value={form.length_m} onChange={e => setForm({...form, length_m: e.target.value})} /></div>
-            <div><label className="text-xs text-gray-500">Caída tensión máx. (%)</label><Input type="number" step="0.5" value={form.dv_max} onChange={e => setForm({...form, dv_max: e.target.value})} /></div>
+            <div><label className="text-xs text-gray-500">Cos φ (factor potencia)</label><NumberField value={form.cos_phi} onChange={v => setForm({...form, cos_phi: v})} /></div>
+            <div><label className="text-xs text-gray-500">Longitud (m)</label><NumberField value={form.length_m} onChange={v => setForm({...form, length_m: v})} /></div>
+            <div><label className="text-xs text-gray-500">Caída tensión máx. (%)</label><NumberField value={form.dv_max} onChange={v => setForm({...form, dv_max: v})} /></div>
           </div>
           <Button onClick={calculate} className="w-full bg-yellow-500 hover:bg-yellow-600 text-black">
             <Calculator className="w-4 h-4 mr-2" /> Calcular

@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +50,7 @@ export default function IncidentManagement() {
     equipment_brand: '', equipment_model: '', serial_number: '',
     failure_date: format(new Date(), 'yyyy-MM-dd'), failure_type: 'otro',
     description: '', diagnosis: '', solution: '', technician: '',
-    repair_date: '', repair_hours: 0, status: 'pendiente', notes: '',
+    repair_date: '', repair_hours: '', status: 'pendiente', notes: '',
   });
   
   const [selectedIncident, setSelectedIncident] = useState(null);
@@ -134,7 +135,7 @@ export default function IncidentManagement() {
       equipment_brand: '', equipment_model: '', serial_number: '',
       failure_date: format(new Date(), 'yyyy-MM-dd'), failure_type: 'otro',
       description: '', diagnosis: '', solution: '', technician: '',
-      repair_date: '', repair_hours: 0, status: 'pendiente', notes: '',
+      repair_date: '', repair_hours: '', status: 'pendiente', notes: '',
     });
     setEditingId(null);
   };
@@ -453,7 +454,7 @@ export default function IncidentManagement() {
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Horas trabajo</label>
-                <Input type="number" value={form.repair_hours} onChange={e => setForm({...form, repair_hours: parseFloat(e.target.value) || 0})} />
+                <NumberField value={form.repair_hours} onChange={v => setForm({...form, repair_hours: v})} />
               </div>
             </div>
             <div className="space-y-2">

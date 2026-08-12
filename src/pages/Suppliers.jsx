@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -494,7 +495,7 @@ export default function Suppliers() {
                   </div>
                   <div>
                     <label className="text-xs text-gray-700">Cada cuántos días hacer pedido</label>
-                    <Input type="number" min="1" value={form.reorder_frequency_days} onChange={(e) => setForm({ ...form, reorder_frequency_days: parseInt(e.target.value) || 30 })} className="mt-1" />
+                    <NumberField decimals={false} value={form.reorder_frequency_days} onChange={(v) => setForm({ ...form, reorder_frequency_days: v })} className="mt-1" />
                   </div>
                   <label className="flex items-center gap-2 text-xs cursor-pointer">
                     <input type="checkbox" checked={form.enable_notifications} onChange={(e) => setForm({ ...form, enable_notifications: e.target.checked })} />

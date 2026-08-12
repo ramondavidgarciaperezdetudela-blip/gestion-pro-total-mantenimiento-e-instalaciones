@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-lea
 import L from 'leaflet';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -168,7 +169,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
 
   // ─── Modo de dimensionado ──────────────────────────────────────────────────
   const [dimMode, setDimMode] = useState('fijo'); // 'fijo' | 'consumo'
-  const [consumoVivienda, setConsumoVivienda] = useState(4500); // kWh/año
+  const [consumoVivienda, setConsumoVivienda] = useState(''); // kWh/año
   const [numPanelsInput, setNumPanelsInput] = useState(numPanels || 8);
   const [panelWInput, setPanelWInput] = useState(panelW || 400);
   
@@ -244,7 +245,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
   // ─── Económicos ────────────────────────────────────────────────────────────
   const [precioKwh, setPrecioKwh] = useState(0.18);
   const [costeInstalacion, setCosteInstalacion] = useState('');
-  const [consumoAnual, setConsumoAnual] = useState(4500);
+  const [consumoAnual, setConsumoAnual] = useState('');
   const [autoconsumo, setAutoconsumo] = useState(70);
   const [vidaUtil, setVidaUtil] = useState(25);
 
@@ -750,8 +751,8 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-xs text-gray-500">Latitud</label>
-                    <Input type="number" step="0.000001" value={lat} onChange={e => { 
-                      const newLat = parseFloat(e.target.value);
+                    <NumberField value={lat} onChange={v => {
+                      const newLat = v;
                       setLat(newLat);
                       setMarkerPos([newLat, lng]);
                       setMapCenter([newLat, lng]);
@@ -759,8 +760,8 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                   </div>
                   <div>
                     <label className="text-xs text-gray-500">Longitud</label>
-                    <Input type="number" step="0.000001" value={lng} onChange={e => { 
-                      const newLng = parseFloat(e.target.value);
+                    <NumberField value={lng} onChange={v => {
+                      const newLng = v;
                       setLng(newLng);
                       setMarkerPos([lat, newLng]);
                       setMapCenter([lat, newLng]);
@@ -883,11 +884,11 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-gray-500">Nº paneles a instalar</label>
-                <Input type="number" value={numPanelsInput} onChange={e => setNumPanelsInput(e.target.value)} className="mt-1 h-8 text-xs" />
+                <NumberField decimals={false} value={numPanelsInput} onChange={v => setNumPanelsInput(v)} className="mt-1 h-8 text-xs" />
               </div>
               <div>
                 <label className="text-xs text-gray-500">Potencia panel (W)</label>
-                <Input type="number" value={panelWInput} onChange={e => setPanelWInput(e.target.value)} className="mt-1 h-8 text-xs" />
+                <NumberField decimals={false} value={panelWInput} onChange={v => setPanelWInput(v)} className="mt-1 h-8 text-xs" />
               </div>
             </div>
           )}
@@ -896,12 +897,12 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-gray-500">Consumo vivienda (kWh/año o kWh/día)</label>
-                <Input type="number" value={consumoVivienda} onChange={e => setConsumoVivienda(e.target.value)} className="mt-1 h-8 text-xs" placeholder="4500 (anual) o 12 (día)" />
+                <NumberField value={consumoVivienda} onChange={v => setConsumoVivienda(v)} className="mt-1 h-8 text-xs" placeholder="4500 (anual) o 12 (día)" />
                 <p className="text-[10px] text-gray-400 mt-0.5">Si &gt;50 → anual, si ≤50 → diario</p>
               </div>
               <div>
                 <label className="text-xs text-gray-500">Potencia panel (W)</label>
-                <Input type="number" value={panelWInput} onChange={e => setPanelWInput(e.target.value)} className="mt-1 h-8 text-xs" />
+                <NumberField decimals={false} value={panelWInput} onChange={v => setPanelWInput(v)} className="mt-1 h-8 text-xs" />
               </div>
             </div>
           )}
@@ -1080,7 +1081,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-gray-500">Pendiente (°) <span className="text-blue-500">ópt: {optTilt}°</span></label>
-                  <Input type="number" value={tilt} onChange={e => setTilt(e.target.value)} placeholder={`${montajeData.tilt}° (auto)`} className="mt-1 h-8 text-xs" />
+                  <NumberField value={tilt} onChange={v => setTilt(v)} placeholder={`${montajeData.tilt}° (auto)`} className="mt-1 h-8 text-xs" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Azimut</label>
@@ -1093,18 +1094,18 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
               <div>
                 <label className="text-xs text-gray-500 font-medium">Pérdida del sistema (%)</label>
                 <div className="grid grid-cols-3 gap-2 mt-1">
-                  <div><label className="text-[10px] text-gray-400">Cable (%)</label><Input type="number" value={perdidaCable} onChange={e => setPerdidaCable(parseFloat(e.target.value)||1)} className="h-7 text-xs" /></div>
-                  <div><label className="text-[10px] text-gray-400">Inversor (%)</label><Input type="number" value={perdidaInversor} onChange={e => setPerdidaInversor(parseFloat(e.target.value)||2)} className="h-7 text-xs" /></div>
-                  <div><label className="text-[10px] text-gray-400">FV (%)</label><Input type="number" value={perdidaPV} onChange={e => setPerdidaPV(parseFloat(e.target.value)||0.5)} className="h-7 text-xs" /></div>
+                  <div><label className="text-[10px] text-gray-400">Cable (%)</label><NumberField value={perdidaCable} onChange={v => setPerdidaCable(v)} className="h-7 text-xs" /></div>
+                  <div><label className="text-[10px] text-gray-400">Inversor (%)</label><NumberField value={perdidaInversor} onChange={v => setPerdidaInversor(v)} className="h-7 text-xs" /></div>
+                  <div><label className="text-[10px] text-gray-400">FV (%)</label><NumberField value={perdidaPV} onChange={v => setPerdidaPV(v)} className="h-7 text-xs" /></div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-xs text-gray-500">Precio kWh (€)</label><Input type="number" step="0.01" value={precioKwh} onChange={e => setPrecioKwh(parseFloat(e.target.value)||0.18)} className="mt-1 h-8 text-xs" /></div>
-                <div><label className="text-xs text-gray-500">Coste instalación (€)</label><Input type="number" value={costeInstalacion} onChange={e => setCosteInstalacion(e.target.value)} placeholder={`${results.costeEst} €`} className="mt-1 h-8 text-xs" /></div>
+                <div><label className="text-xs text-gray-500">Precio kWh (€)</label><NumberField value={precioKwh} onChange={v => setPrecioKwh(v)} className="mt-1 h-8 text-xs" /></div>
+                <div><label className="text-xs text-gray-500">Coste instalación (€)</label><NumberField value={costeInstalacion} onChange={v => setCosteInstalacion(v)} placeholder={`${results.costeEst} €`} className="mt-1 h-8 text-xs" /></div>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-xs text-gray-500">Consumo anual (kWh)</label><Input type="number" value={consumoAnual} onChange={e => setConsumoAnual(parseFloat(e.target.value)||4500)} className="mt-1 h-8 text-xs" /></div>
-                <div><label className="text-xs text-gray-500">Autoconsumo (%)</label><Input type="number" value={autoconsumo} onChange={e => setAutoconsumo(parseFloat(e.target.value)||70)} className="mt-1 h-8 text-xs" /></div>
+                <div><label className="text-xs text-gray-500">Consumo anual (kWh)</label><NumberField value={consumoAnual} onChange={v => setConsumoAnual(v)} className="mt-1 h-8 text-xs" /></div>
+                <div><label className="text-xs text-gray-500">Autoconsumo (%)</label><NumberField value={autoconsumo} onChange={v => setAutoconsumo(v)} className="mt-1 h-8 text-xs" /></div>
               </div>
             </div>
           </div>
@@ -1394,7 +1395,7 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
                 <p className="text-xs font-semibold text-gray-700 mb-2">Curva de amortización ({vidaUtil} años)</p>
                 <div>
                   <label className="text-xs text-gray-500">Vida útil sistema (años)</label>
-                  <Input type="number" value={vidaUtil} onChange={e => setVidaUtil(parseInt(e.target.value)||25)} className="h-7 text-xs mb-2 w-24 mt-0.5" min={5} max={40} />
+                  <NumberField decimals={false} value={vidaUtil} onChange={v => setVidaUtil(v)} className="h-7 text-xs mb-2 w-24 mt-0.5" />
                 </div>
                 <div className="flex items-end gap-0.5 h-24">
                   {Array.from({ length: Math.min(vidaUtil, 30) }, (_, i) => {

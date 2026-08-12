@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,10 +17,10 @@ export default function SupplierPriceManager({ supplierId, supplierName }) {
   const [form, setForm] = useState({
     product_code: '',
     product_name: '',
-    cost_price: 0,
-    sale_price: 0,
+    cost_price: '',
+    sale_price: '',
     validity_date: '',
-    quantity: 0,
+    quantity: '',
     unit: 'uds',
     category: '',
     notes: '',
@@ -66,7 +67,7 @@ export default function SupplierPriceManager({ supplierId, supplierName }) {
       await loadPrices();
       setDialogOpen(false);
       setEditingPrice(null);
-      setForm({ product_code: '', product_name: '', cost_price: 0, sale_price: 0, validity_date: '', quantity: 0, unit: 'uds', category: '', notes: '', is_active: true });
+      setForm({ product_code: '', product_name: '', cost_price: '', sale_price: '', validity_date: '', quantity: '', unit: 'uds', category: '', notes: '', is_active: true });
       toast.success('Precio guardado');
     } catch (error) {
       toast.error('Error al guardar');
@@ -194,7 +195,7 @@ export default function SupplierPriceManager({ supplierId, supplierName }) {
           <Button
             onClick={() => {
               setEditingPrice(null);
-              setForm({ product_code: '', product_name: '', cost_price: 0, sale_price: 0, validity_date: '', quantity: 0, unit: 'uds', category: '', notes: '', is_active: true });
+              setForm({ product_code: '', product_name: '', cost_price: '', sale_price: '', validity_date: '', quantity: '', unit: 'uds', category: '', notes: '', is_active: true });
               setDialogOpen(true);
             }}
             size="sm"
@@ -297,21 +298,17 @@ export default function SupplierPriceManager({ supplierId, supplierName }) {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-gray-600">Precio coste *</label>
-                  <Input 
-                    type="number" 
-                    step="0.01" 
-                    value={form.cost_price} 
-                    onChange={e => setForm({...form, cost_price: parseFloat(e.target.value) || 0})}
+                  <NumberField
+                    value={form.cost_price}
+                    onChange={v => setForm({...form, cost_price: v})}
                     className="mt-1"
                   />
                 </div>
                 <div>
                   <label className="text-xs text-gray-600">Precio venta</label>
-                  <Input 
-                    type="number" 
-                    step="0.01" 
-                    value={form.sale_price} 
-                    onChange={e => setForm({...form, sale_price: parseFloat(e.target.value) || 0})}
+                  <NumberField
+                    value={form.sale_price}
+                    onChange={v => setForm({...form, sale_price: v})}
                     className="mt-1"
                   />
                 </div>
@@ -326,10 +323,9 @@ export default function SupplierPriceManager({ supplierId, supplierName }) {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-gray-600">Cantidad</label>
-                <Input 
-                  type="number" 
-                  value={form.quantity} 
-                  onChange={e => setForm({...form, quantity: parseFloat(e.target.value) || 0})}
+                <NumberField
+                  value={form.quantity}
+                  onChange={v => setForm({...form, quantity: v})}
                   className="mt-1"
                 />
               </div>

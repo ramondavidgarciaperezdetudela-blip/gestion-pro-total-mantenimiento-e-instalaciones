@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Wrench, Plus, Edit, Trash2, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
@@ -36,7 +37,7 @@ export default function EquipmentFailureHistory() {
     contact_id: '', contact_name: '',
     equipment_type: 'camara_frigorifica', equipment_brand: '', equipment_model: '', serial_number: '',
     failure_date: format(new Date(), 'yyyy-MM-dd'), failure_type: 'otro', description: '',
-    diagnosis: '', solution: '', technician: '', repair_date: '', repair_hours: 0,
+    diagnosis: '', solution: '', technician: '', repair_date: '', repair_hours: '',
     parts_used: [], total_cost: 0, status: 'reportada', photos: [], notes: ''
   });
 
@@ -67,7 +68,7 @@ export default function EquipmentFailureHistory() {
   const handleAddPart = () => {
     setFormData({
       ...formData,
-      parts_used: [...formData.parts_used, { part_name: '', quantity: 0, cost: 0 }]
+      parts_used: [...formData.parts_used, { part_name: '', quantity: '', cost: '' }]
     });
   };
 
@@ -103,7 +104,7 @@ export default function EquipmentFailureHistory() {
       contact_id: selectedContact, contact_name: formData.contact_name,
       equipment_type: 'camara_frigorifica', equipment_brand: '', equipment_model: '', serial_number: '',
       failure_date: format(new Date(), 'yyyy-MM-dd'), failure_type: 'otro', description: '',
-      diagnosis: '', solution: '', technician: '', repair_date: '', repair_hours: 0,
+      diagnosis: '', solution: '', technician: '', repair_date: '', repair_hours: '',
       parts_used: [], total_cost: 0, status: 'reportada', photos: [], notes: ''
     });
     setEditingId(null);
@@ -176,7 +177,7 @@ export default function EquipmentFailureHistory() {
               <div className="grid grid-cols-3 gap-2">
                 <Input placeholder="Técnico" value={formData.technician} onChange={e => setFormData({...formData, technician: e.target.value})} />
                 <Input type="date" placeholder="Fecha reparación" value={formData.repair_date} onChange={e => setFormData({...formData, repair_date: e.target.value})} />
-                <Input type="number" placeholder="Horas" value={formData.repair_hours} onChange={e => setFormData({...formData, repair_hours: parseFloat(e.target.value)||0})} />
+                <NumberField placeholder="Horas" value={formData.repair_hours} onChange={v => setFormData({...formData, repair_hours: v})} />
               </div>
 
               <Select value={formData.status} onValueChange={v => setFormData({...formData, status: v})}>
@@ -189,8 +190,8 @@ export default function EquipmentFailureHistory() {
                 {formData.parts_used.map((part, i) => (
                   <div key={i} className="flex gap-2 mb-2">
                     <Input placeholder="Nombre" value={part.part_name} onChange={e => { const p = [...formData.parts_used]; p[i].part_name = e.target.value; setFormData({...formData, parts_used: p}); }} />
-                    <Input type="number" placeholder="Cantidad" value={part.quantity} onChange={e => { const p = [...formData.parts_used]; p[i].quantity = parseFloat(e.target.value)||0; setFormData({...formData, parts_used: p}); }} className="w-20" />
-                    <Input type="number" placeholder="Coste" value={part.cost} onChange={e => { const p = [...formData.parts_used]; p[i].cost = parseFloat(e.target.value)||0; setFormData({...formData, parts_used: p}); }} className="w-24" />
+                    <NumberField placeholder="Cantidad" value={part.quantity} onChange={v => { const p = [...formData.parts_used]; p[i].quantity = v; setFormData({...formData, parts_used: p}); }} className="w-20" />
+                    <NumberField placeholder="Coste" value={part.cost} onChange={v => { const p = [...formData.parts_used]; p[i].cost = v; setFormData({...formData, parts_used: p}); }} className="w-24" />
                     <Button onClick={() => handleRemovePart(i)} variant="outline" size="sm"><Trash2 className="w-4 h-4" /></Button>
                   </div>
                 ))}

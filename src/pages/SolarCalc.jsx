@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sun, Save, UserCheck, Edit3, CheckCircle, TrendingUp } from 'lucide-react';
@@ -82,8 +82,8 @@ export default function SolarCalc() {
   const [mode, setMode] = useState('directo');
   const [form, setForm] = useState({
     contact_id: '', contact_name: '',
-    num_panels: 8, panel_power_w: 400, consumption_kwh: 15,
-    distance_panels_to_dc_box: 15, distance_inverter_to_batteries: 3, distance_to_ac_box: 8,
+    num_panels: '', panel_power_w: 400, consumption_kwh: '',
+    distance_panels_to_dc_box: '', distance_inverter_to_batteries: '', distance_to_ac_box: '',
     lat: '', lng: '', ref_catastral: '', tilt: '', azimuth: '',
   });
   const [savedId, setSavedId] = useState(null);
@@ -155,24 +155,24 @@ export default function SolarCalc() {
               {mode === 'por_consumo' && (
                 <div>
                   <label className="text-sm font-medium">Consumo diario (kWh/día) o anual (kWh/año)</label>
-                  <Input type="number" value={form.consumption_kwh} onChange={e => setForm({...form, consumption_kwh: parseFloat(e.target.value)||0})} className="mt-1" />
+                  <NumberField value={form.consumption_kwh} onChange={v => setForm({...form, consumption_kwh: v})} className="mt-1" />
                   <p className="text-[10px] text-gray-400 mt-1">Si introduces &gt;50 se trata como anual</p>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 {mode === 'directo' && (
-                  <div><label className="text-xs text-gray-500">Nº paneles</label><Input type="number" value={form.num_panels} onChange={e => setForm({...form, num_panels: parseInt(e.target.value)||0})} /></div>
+                  <div><label className="text-xs text-gray-500">Nº paneles</label><NumberField decimals={false} value={form.num_panels} onChange={v => setForm({...form, num_panels: v})} /></div>
                 )}
-                <div><label className="text-xs text-gray-500">Potencia panel (W)</label><Input type="number" value={form.panel_power_w} onChange={e => setForm({...form, panel_power_w: parseInt(e.target.value)||0})} /></div>
+                <div><label className="text-xs text-gray-500">Potencia panel (W)</label><NumberField decimals={false} value={form.panel_power_w} onChange={v => setForm({...form, panel_power_w: v})} /></div>
               </div>
 
               <div className="bg-gray-50 p-3 rounded-lg space-y-2">
                 <p className="text-sm font-medium">Distancias de instalación</p>
                 <div className="grid grid-cols-3 gap-2">
-                  <div><label className="text-[10px] text-gray-500">Paneles → cuadro DC (m)</label><Input type="number" value={form.distance_panels_to_dc_box} onChange={e => setForm({...form, distance_panels_to_dc_box: parseFloat(e.target.value)||0})} /></div>
-                  <div><label className="text-[10px] text-gray-500">Inv. → baterías (m)</label><Input type="number" value={form.distance_inverter_to_batteries} onChange={e => setForm({...form, distance_inverter_to_batteries: parseFloat(e.target.value)||0})} /></div>
-                  <div><label className="text-[10px] text-gray-500">Inv. → cuadro AC (m)</label><Input type="number" value={form.distance_to_ac_box} onChange={e => setForm({...form, distance_to_ac_box: parseFloat(e.target.value)||0})} /></div>
+                  <div><label className="text-[10px] text-gray-500">Paneles → cuadro DC (m)</label><NumberField value={form.distance_panels_to_dc_box} onChange={v => setForm({...form, distance_panels_to_dc_box: v})} /></div>
+                  <div><label className="text-[10px] text-gray-500">Inv. → baterías (m)</label><NumberField value={form.distance_inverter_to_batteries} onChange={v => setForm({...form, distance_inverter_to_batteries: v})} /></div>
+                  <div><label className="text-[10px] text-gray-500">Inv. → cuadro AC (m)</label><NumberField value={form.distance_to_ac_box} onChange={v => setForm({...form, distance_to_ac_box: v})} /></div>
                 </div>
               </div>
 

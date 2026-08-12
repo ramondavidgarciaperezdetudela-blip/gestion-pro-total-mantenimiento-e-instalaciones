@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -61,7 +62,7 @@ export default function AIBudget() {
   const set = (field, val) => setCurrent(prev => ({ ...prev, [field]: val }));
 
   const addItemManually = () => {
-    set('items', [...current.items, { description: '', quantity: 1, unit_price: 0, supplier: '', discount: 0 }]);
+    set('items', [...current.items, { description: '', quantity: 1, unit_price: '', supplier: '', discount: '' }]);
   };
 
   const updateItem = (i, field, val) => {
@@ -380,9 +381,9 @@ Devuelve materiales/partidas para presupuesto profesional con descripción, cant
                     return (
                       <tr key={i} className="hover:bg-gray-50">
                         <td className="p-1"><Input className="h-7 text-xs" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} /></td>
-                        <td className="p-1"><Input type="number" className="h-7 text-xs text-center" value={item.quantity} onChange={e => updateItem(i, 'quantity', parseFloat(e.target.value) || 0)} /></td>
-                        <td className="p-1"><Input type="number" className="h-7 text-xs text-center" value={item.unit_price} onChange={e => updateItem(i, 'unit_price', parseFloat(e.target.value) || 0)} /></td>
-                        <td className="p-1"><Input type="number" className="h-7 text-xs text-center" value={item.discount || 0} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)} /></td>
+                        <td className="p-1"><NumberField className="h-7 text-xs text-center" value={item.quantity} onChange={v => updateItem(i, 'quantity', v)} /></td>
+                        <td className="p-1"><NumberField className="h-7 text-xs text-center" value={item.unit_price} onChange={v => updateItem(i, 'unit_price', v)} /></td>
+                        <td className="p-1"><NumberField className="h-7 text-xs text-center" value={item.discount || ''} onChange={v => updateItem(i, 'discount', v)} /></td>
                         <td className="p-1 hidden sm:table-cell"><Input className="h-7 text-xs" value={item.supplier || ''} onChange={e => updateItem(i, 'supplier', e.target.value)} /></td>
                         <td className="p-2 text-right font-medium text-xs">{lineTotal.toFixed(2)} €</td>
                         <td className="p-1"><button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button></td>

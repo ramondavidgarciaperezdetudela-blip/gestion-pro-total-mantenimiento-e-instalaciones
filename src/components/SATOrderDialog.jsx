@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import TechnicianSelect from './TechnicianSelect';
@@ -30,7 +31,7 @@ const EMPTY_FORM = {
   order_number: '', contact_id: '', contact_name: '', date: format(new Date(), 'yyyy-MM-dd'),
   type: 'reparacion', equipment_type: 'otro', description: '', diagnosis: '', solution: '',
   status: 'pendiente', priority: 'normal', photos_before: [], photos_after: [],
-  materials_used: [], labor_hours: 0, labor_rate: 35, total: 0, technician: '', notes: ''
+  materials_used: [], labor_hours: '', labor_rate: 35, total: 0, technician: '', notes: ''
 };
 
 // ─── VISTA PREVIA ────────────────────────────────────────────────────────────
@@ -243,7 +244,7 @@ function SATForm({ order, contact, onSave, onCancel }) {
 
   const calcTotal = (f) => (f.labor_hours || 0) * (f.labor_rate || 0) + (f.materials_used || []).reduce((s, m) => s + (m.quantity || 0) * (m.unit_price || 0), 0);
 
-  const addMaterial = () => setForm(prev => ({ ...prev, materials_used: [...(prev.materials_used || []), { material: '', quantity: 1, unit_price: 0 }] }));
+  const addMaterial = () => setForm(prev => ({ ...prev, materials_used: [...(prev.materials_used || []), { material: '', quantity: 1, unit_price: '' }] }));
   const updateMaterial = (i, field, val) => setForm(prev => ({ ...prev, materials_used: prev.materials_used.map((m, idx) => idx === i ? { ...m, [field]: val } : m) }));
   const removeMaterial = (i) => setForm(prev => ({ ...prev, materials_used: prev.materials_used.filter((_, idx) => idx !== i) }));
 
@@ -313,9 +314,9 @@ function SATForm({ order, contact, onSave, onCancel }) {
                 placeholder="Material"
               />
             </div>
-            <input type="number" className="h-8 text-xs border border-input rounded-md px-2 focus:outline-none" placeholder="Cant" value={m.quantity} onChange={e => updateMaterial(i, 'quantity', parseFloat(e.target.value) || 0)} />
+            <NumberField className="h-8 text-xs border border-input rounded-md px-2 focus:outline-none" placeholder="Cant" value={m.quantity} onChange={v => updateMaterial(i, 'quantity', v)} />
             <div className="flex gap-1">
-              <input type="number" className="h-8 text-xs flex-1 border border-input rounded-md px-2 focus:outline-none" placeholder="€/ud" value={m.unit_price} onChange={e => updateMaterial(i, 'unit_price', parseFloat(e.target.value) || 0)} />
+              <NumberField className="h-8 text-xs flex-1 border border-input rounded-md px-2 focus:outline-none" placeholder="€/ud" value={m.unit_price} onChange={v => updateMaterial(i, 'unit_price', v)} />
               <button onClick={() => removeMaterial(i)} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
           </div>
@@ -323,8 +324,8 @@ function SATForm({ order, contact, onSave, onCancel }) {
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <Input type="number" placeholder="Horas trabajo" value={form.labor_hours} onChange={e => setForm({ ...form, labor_hours: parseFloat(e.target.value) || 0 })} />
-        <Input type="number" placeholder="€/hora" value={form.labor_rate} onChange={e => setForm({ ...form, labor_rate: parseFloat(e.target.value) || 0 })} />
+        <NumberField placeholder="Horas trabajo" value={form.labor_hours} onChange={v => setForm({ ...form, labor_hours: v })} />
+        <NumberField placeholder="€/hora" value={form.labor_rate} onChange={v => setForm({ ...form, labor_rate: v })} />
       </div>
       <p className="text-xs text-right text-gray-500">Total estimado: <strong className="text-orange-700">{calcTotal(form).toFixed(2)} €</strong></p>
 

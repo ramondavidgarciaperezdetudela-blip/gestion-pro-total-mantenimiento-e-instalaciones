@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -169,7 +170,7 @@ export default function ProjectTimeline() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-gray-500">Horas trabajadas</label>
-                <Input type="number" min={0} max={24} step={0.5} className="mt-1" value={form.hours} onChange={e => setForm({ ...form, hours: parseFloat(e.target.value) })} />
+                <NumberField className="mt-1" value={form.hours} onChange={v => setForm({ ...form, hours: v })} />
               </div>
               <div>
                 <label className="text-xs text-gray-500">Estado</label>

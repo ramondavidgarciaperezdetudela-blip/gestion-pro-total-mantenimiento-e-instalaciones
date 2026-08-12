@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Sun, Euro, Clock } from 'lucide-react';
@@ -92,7 +92,7 @@ export default function SolarPVGISCalc({ totalKwp = 3.2, numPanels = 8, panelW =
   const [perdidas, setPerdidas] = useState(14);
   const [precioKwh, setPrecioKwh] = useState(0.18);
   const [costeInstalacion, setCosteInstalacion] = useState('');
-  const [consumoAnual, setConsumoAnual] = useState(4000);
+  const [consumoAnual, setConsumoAnual] = useState('');
   const [vidaUtil, setVidaUtil] = useState(25);
   const [interes, setInteres] = useState(2.5);
   const [autoconsumo, setAutoconsumo] = useState(70); // % de producción que se autoconsume
@@ -219,17 +219,17 @@ export default function SolarPVGISCalc({ totalKwp = 3.2, numPanels = 8, panelW =
                 <label className="text-xs font-medium text-gray-600">
                   Inclinación (°) <span className="text-blue-500">— óptima: {optimalTilt}°</span>
                 </label>
-                <Input type="number" placeholder={`${cubiertaData.tilt}° (sugerida)`} value={tiltManual} onChange={e => setTiltManual(e.target.value)} className="mt-1" />
+                <NumberField placeholder={`${cubiertaData.tilt}° (sugerida)`} value={tiltManual} onChange={v => setTiltManual(v)} className="mt-1" />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-600">Azimut (°) <span className="text-gray-400 text-[10px]">0=Sur, 90=O, -90=E</span></label>
-                <Input type="number" placeholder={`${cubiertaData.azimut}° (sugerido)`} value={azimutManual} onChange={e => setAzimutManual(e.target.value)} className="mt-1" />
+                <NumberField placeholder={`${cubiertaData.azimut}° (sugerido)`} value={azimutManual} onChange={v => setAzimutManual(v)} className="mt-1" />
               </div>
             </div>
 
             <div>
               <label className="text-xs font-medium text-gray-600">Pérdidas sistema (%): temperatura + sombras + cables</label>
-              <Input type="number" value={perdidas} onChange={e => setPerdidas(parseFloat(e.target.value)||14)} className="mt-1" />
+              <NumberField value={perdidas} onChange={v => setPerdidas(v)} className="mt-1" />
             </div>
           </CardContent>
         </Card>
@@ -239,21 +239,21 @@ export default function SolarPVGISCalc({ totalKwp = 3.2, numPanels = 8, panelW =
           <CardContent className="p-3 space-y-3">
             <div>
               <label className="text-xs font-medium text-gray-600">Precio electricidad red (€/kWh)</label>
-              <Input type="number" step="0.01" value={precioKwh} onChange={e => setPrecioKwh(parseFloat(e.target.value)||0.18)} className="mt-1" />
+              <NumberField value={precioKwh} onChange={v => setPrecioKwh(v)} className="mt-1" />
               <p className="text-[10px] text-gray-400 mt-0.5">Media España 2024 ≈ 0.18 €/kWh</p>
             </div>
             <div>
               <label className="text-xs font-medium text-gray-600">Coste total instalación (€) <span className="text-gray-400">— estimado: {results.costeEst.toLocaleString('es-ES')} €</span></label>
-              <Input type="number" placeholder={`${results.costeEst.toLocaleString('es-ES')} € (estimado)`} value={costeInstalacion} onChange={e => setCosteInstalacion(e.target.value)} className="mt-1" />
+              <NumberField placeholder={`${results.costeEst.toLocaleString('es-ES')} € (estimado)`} value={costeInstalacion} onChange={v => setCosteInstalacion(v)} className="mt-1" />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-600">Consumo anual vivienda (kWh/año)</label>
-              <Input type="number" value={consumoAnual} onChange={e => setConsumoAnual(parseFloat(e.target.value)||4000)} className="mt-1" />
+              <NumberField value={consumoAnual} onChange={v => setConsumoAnual(v)} className="mt-1" />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-600">% producción autoconsumida</label>
               <div className="flex items-center gap-2 mt-1">
-                <Input type="number" min="10" max="100" value={autoconsumo} onChange={e => setAutoconsumo(parseFloat(e.target.value)||70)} />
+                <NumberField value={autoconsumo} onChange={v => setAutoconsumo(v)} />
                 <span className="text-sm font-bold text-green-600">{autoconsumo}%</span>
               </div>
               <p className="text-[10px] text-gray-400 mt-0.5">Con baterías ≈ 80-90%. Sin baterías ≈ 50-70%</p>
@@ -261,11 +261,11 @@ export default function SolarPVGISCalc({ totalKwp = 3.2, numPanels = 8, panelW =
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs font-medium text-gray-600">Vida útil (años)</label>
-                <Input type="number" value={vidaUtil} onChange={e => setVidaUtil(parseInt(e.target.value)||25)} className="mt-1" />
+                <NumberField decimals={false} value={vidaUtil} onChange={v => setVidaUtil(v)} className="mt-1" />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-600">Interés (%/año)</label>
-                <Input type="number" step="0.1" value={interes} onChange={e => setInteres(parseFloat(e.target.value)||2.5)} className="mt-1" />
+                <NumberField value={interes} onChange={v => setInteres(v)} className="mt-1" />
               </div>
             </div>
           </CardContent>

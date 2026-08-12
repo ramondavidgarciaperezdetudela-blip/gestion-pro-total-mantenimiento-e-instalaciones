@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { NumberField } from '@/components/ui/number-field';
 import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import DownloadExcelTemplate from '@/components/DownloadExcelTemplate';
 
@@ -861,8 +861,8 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                   <label className="text-sm font-medium text-gray-700 mb-1 block">
                     4. Margen de venta: <span className="text-purple-700 font-bold">{margin}%</span>
                   </label>
-                  <Input type="number" min="0" max="200" value={margin}
-                    onChange={e => setMargin(parseInt(e.target.value) || 0)} className="w-32" />
+                  <NumberField decimals={false} value={margin}
+                    onChange={v => setMargin(v)} className="w-32" />
                 </div>
               </div>
             )}

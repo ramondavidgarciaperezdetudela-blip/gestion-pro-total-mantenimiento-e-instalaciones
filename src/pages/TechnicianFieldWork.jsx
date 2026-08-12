@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle2, Camera, Trash2, Plus, MapPin, AlertCircle, Package, X } from 'lucide-react';
@@ -17,7 +18,7 @@ export default function TechnicianFieldWork() {
   const [showMaterialDialog, setShowMaterialDialog] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [materials, setMaterials] = useState([]);
-  const [materialForm, setMaterialForm] = useState({ name: '', quantity: 1, cost: 0 });
+  const [materialForm, setMaterialForm] = useState({ name: '', quantity: 1, cost: '' });
   const [photoInput, setPhotoInput] = useState(null);
 
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function TechnicianFieldWork() {
       return;
     }
     setMaterials([...materials, { ...materialForm, id: Date.now() }]);
-    setMaterialForm({ name: '', quantity: 1, cost: 0 });
+    setMaterialForm({ name: '', quantity: 1, cost: '' });
     toast.success('Material añadido');
   };
 
@@ -287,24 +288,18 @@ export default function TechnicianFieldWork() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-gray-500">Cantidad</label>
-                <Input 
-                  type="number"
-                  min={1}
-                  step={0.1}
+                <NumberField
                   className="mt-1"
                   value={materialForm.quantity}
-                  onChange={e => setMaterialForm({ ...materialForm, quantity: parseFloat(e.target.value) })}
+                  onChange={v => setMaterialForm({ ...materialForm, quantity: v })}
                 />
               </div>
               <div>
                 <label className="text-xs text-gray-500">Coste (€)</label>
-                <Input 
-                  type="number"
-                  min={0}
-                  step={0.01}
+                <NumberField
                   className="mt-1"
                   value={materialForm.cost}
-                  onChange={e => setMaterialForm({ ...materialForm, cost: parseFloat(e.target.value) })}
+                  onChange={v => setMaterialForm({ ...materialForm, cost: v })}
                 />
               </div>
             </div>

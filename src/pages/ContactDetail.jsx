@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -454,7 +455,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Importe pendiente (€)</label>
-                  <Input type="number" value={contactForm.pending_amount || 0} onChange={(e) => setContactForm({ ...contactForm, pending_amount: parseFloat(e.target.value) })} />
+                  <NumberField value={contactForm.pending_amount} onChange={(v) => setContactForm({ ...contactForm, pending_amount: v })} />
                 </div>
               </div>
               <div>

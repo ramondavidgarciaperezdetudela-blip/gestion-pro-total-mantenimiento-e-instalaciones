@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,7 +35,7 @@ const EMPTY_DIARY = {
 const EMPTY_ENTRY = {
   date: new Date().toISOString().split('T')[0],
   type: 'reparacion', technician: '', description: '', solution: '',
-  parts_used: '', cost: 0, hours: 0, photos: [],
+  parts_used: '', cost: '', hours: '', photos: [],
   next_action: '', next_action_date: '',
   // Referencia antigua y nueva
   old_serial: '', new_serial: '',
@@ -354,8 +355,8 @@ export default function EquipmentDiaryPage() {
               <Input placeholder="Nº serie anterior" value={diaryForm.serial_number_old||''} onChange={e => setDiaryForm({...diaryForm, serial_number_old: e.target.value})} />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-xs text-gray-500">Potencia (kW)</label><Input type="number" step="0.1" placeholder="3.5" value={diaryForm.equipment_power_kw||''} onChange={e => setDiaryForm({...diaryForm, equipment_power_kw: e.target.value})} /></div>
-              <div><label className="text-xs text-gray-500">Año instalación</label><Input type="number" placeholder="2020" value={diaryForm.equipment_year||''} onChange={e => setDiaryForm({...diaryForm, equipment_year: e.target.value})} /></div>
+              <div><label className="text-xs text-gray-500">Potencia (kW)</label><NumberField placeholder="3.5" value={diaryForm.equipment_power_kw||''} onChange={v => setDiaryForm({...diaryForm, equipment_power_kw: v})} /></div>
+              <div><label className="text-xs text-gray-500">Año instalación</label><NumberField decimals={false} placeholder="2020" value={diaryForm.equipment_year||''} onChange={v => setDiaryForm({...diaryForm, equipment_year: v})} /></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <Input placeholder="Gas refrigerante (ej: R-32)" value={diaryForm.equipment_refrigerant||''} onChange={e => setDiaryForm({...diaryForm, equipment_refrigerant: e.target.value})} />
@@ -410,11 +411,11 @@ export default function EquipmentDiaryPage() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-gray-500">Horas trabajadas</label>
-                <Input type="number" min="0" step="0.5" value={entryForm.hours} onChange={e => setEntryForm({...entryForm, hours: parseFloat(e.target.value)||0})} />
+                <NumberField value={entryForm.hours} onChange={v => setEntryForm({...entryForm, hours: v})} />
               </div>
               <div>
                 <label className="text-xs text-gray-500">Coste (€)</label>
-                <Input type="number" min="0" step="0.01" value={entryForm.cost} onChange={e => setEntryForm({...entryForm, cost: parseFloat(e.target.value)||0})} />
+                <NumberField value={entryForm.cost} onChange={v => setEntryForm({...entryForm, cost: v})} />
               </div>
             </div>
 

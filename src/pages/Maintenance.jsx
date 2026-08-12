@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,10 +28,10 @@ const EMPTY_FORM = {
   sheet_number: '', contact_id: '', contact_name: '', date: format(new Date(), 'yyyy-MM-dd'),
   type: 'clima', equipment_brand: '', equipment_model: '', serial_number: '', location: '',
   technician_name: '',
-  readings_climate: { pressure_high: 0, pressure_low: 0, temp_impulsion: 0, temp_retorno: 0, temp_exterior: 0, refrigerant_type: 'R-410A', refrigerant_charge: 0, voltage: 0, amperage_compressor: 0, amperage_fan: 0, superheat: 0, subcooling: 0, fgas_equivalent_co2: 0, fgas_gwp: 2088 },
-  readings_electric: { voltage_l1: 0, voltage_l2: 0, voltage_l3: 0, amperage_l1: 0, amperage_l2: 0, amperage_l3: 0, power_factor: 0, ground_resistance: 0, insulation_resistance: 0, differential_test: false, thermal_test: false },
-  readings_solar: { panel_voltage: 0, panel_current: 0, inverter_output_w: 0, battery_level_pct: 0, production_kwh: 0, panel_cleaning: false, connections_ok: false },
-  readings_plumbing: { water_pressure_bar: 0, temp_acs: 0, flow_lmin: 0, leaks_detected: false, filter_state: '' },
+  readings_climate: { pressure_high: '', pressure_low: '', temp_impulsion: '', temp_retorno: '', temp_exterior: '', refrigerant_type: 'R-410A', refrigerant_charge: '', voltage: '', amperage_compressor: '', amperage_fan: '', superheat: '', subcooling: '', fgas_equivalent_co2: 0, fgas_gwp: 2088 },
+  readings_electric: { voltage_l1: '', voltage_l2: '', voltage_l3: '', amperage_l1: '', amperage_l2: '', amperage_l3: '', power_factor: '', ground_resistance: '', insulation_resistance: '', differential_test: false, thermal_test: false },
+  readings_solar: { panel_voltage: '', panel_current: '', inverter_output_w: '', battery_level_pct: '', production_kwh: '', panel_cleaning: false, connections_ok: false },
+  readings_plumbing: { water_pressure_bar: '', temp_acs: '', flow_lmin: '', leaks_detected: false, filter_state: '' },
   general_tasks: '',
   observations: '', recommendations: '',
   photos_before: [], photos_after: [], photos_evaporator_plate: [], photos_condenser_plate: [],
@@ -315,7 +316,7 @@ export default function Maintenance() {
                   <p className="font-medium text-sm text-blue-700">Lecturas Clima / Refrigeración</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[['pressure_high','P. Alta (bar)'],['pressure_low','P. Baja (bar)'],['voltage','Voltaje (V)'],['temp_impulsion','T. Impulsión °C'],['temp_retorno','T. Retorno °C'],['temp_exterior','T. Exterior °C'],['amperage_compressor','A. Compresor'],['amperage_fan','A. Ventilador'],['superheat','Recalent. °C'],['subcooling','Subenfr. °C'],['refrigerant_charge','Carga gas (kg)']].map(([f,l]) => (
-                      <div key={f}><label className="text-[10px] text-gray-500">{l}</label><Input type="number" value={form.readings_climate[f] || 0} onChange={e => updateClimate(f, parseFloat(e.target.value))} /></div>
+                      <div key={f}><label className="text-[10px] text-gray-500">{l}</label><NumberField value={form.readings_climate[f]} onChange={v => updateClimate(f, v)} /></div>
                     ))}
                     <div>
                       <label className="text-[10px] text-gray-500">Tipo gas</label>
@@ -350,7 +351,7 @@ export default function Maintenance() {
                   <p className="font-medium text-sm text-yellow-700">Lecturas Eléctricas</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[['voltage_l1','V L1'],['voltage_l2','V L2'],['voltage_l3','V L3'],['amperage_l1','A L1'],['amperage_l2','A L2'],['amperage_l3','A L3'],['power_factor','Factor potencia'],['ground_resistance','R. Tierra (Ω)'],['insulation_resistance','R. Aislam. (MΩ)']].map(([f,l]) => (
-                      <div key={f}><label className="text-[10px] text-gray-500">{l}</label><Input type="number" value={form.readings_electric[f] || 0} onChange={e => updateElectric(f, parseFloat(e.target.value))} /></div>
+                      <div key={f}><label className="text-[10px] text-gray-500">{l}</label><NumberField value={form.readings_electric[f]} onChange={v => updateElectric(f, v)} /></div>
                     ))}
                   </div>
                   <div className="flex gap-4 text-sm mt-1">
@@ -366,7 +367,7 @@ export default function Maintenance() {
                   <p className="font-medium text-sm text-amber-700">Lecturas Sistema Solar</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[['panel_voltage','V Panel'],['panel_current','A Panel'],['inverter_output_w','W Inversor'],['battery_level_pct','% Batería'],['production_kwh','kWh producidos']].map(([f,l]) => (
-                      <div key={f}><label className="text-[10px] text-gray-500">{l}</label><Input type="number" value={form.readings_solar[f] || 0} onChange={e => updateSolar(f, parseFloat(e.target.value))} /></div>
+                      <div key={f}><label className="text-[10px] text-gray-500">{l}</label><NumberField value={form.readings_solar[f]} onChange={v => updateSolar(f, v)} /></div>
                     ))}
                     <div><label className="text-[10px] text-gray-500">Estado filtros</label><Input value={form.readings_solar.filter_state || ''} onChange={e => updateSolar('filter_state', e.target.value)} /></div>
                   </div>
@@ -383,7 +384,7 @@ export default function Maintenance() {
                   <p className="font-medium text-sm text-teal-700">Lecturas Fontanería</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[['water_pressure_bar','Presión (bar)'],['temp_acs','T. ACS (°C)'],['flow_lmin','Caudal (l/min)']].map(([f,l]) => (
-                      <div key={f}><label className="text-[10px] text-gray-500">{l}</label><Input type="number" value={form.readings_plumbing[f] || 0} onChange={e => updatePlumbing(f, parseFloat(e.target.value))} /></div>
+                      <div key={f}><label className="text-[10px] text-gray-500">{l}</label><NumberField value={form.readings_plumbing[f]} onChange={v => updatePlumbing(f, v)} /></div>
                     ))}
                     <div><label className="text-[10px] text-gray-500">Estado filtros</label><Input value={form.readings_plumbing.filter_state || ''} onChange={e => updatePlumbing('filter_state', e.target.value)} /></div>
                   </div>

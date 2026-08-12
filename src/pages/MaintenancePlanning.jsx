@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Wrench, AlertCircle, Plus, Edit2, Save, Loader2, CheckCircle2 } from 'lucide-react';
@@ -345,11 +346,10 @@ export default function MaintenancePlanning() {
                         {machineForm.maintenance_type === 'personalizado' && (
                           <div>
                             <label className="text-xs font-semibold text-gray-700 mb-1 block">Días</label>
-                            <Input 
-                              type="number" 
-                              value={machineForm.maintenance_days} 
-                              onChange={e => setMachineForm({...machineForm, maintenance_days: parseInt(e.target.value) || 30})}
-                              min="1"
+                            <NumberField
+                              decimals={false}
+                              value={machineForm.maintenance_days}
+                              onChange={v => setMachineForm({...machineForm, maintenance_days: v})}
                             />
                           </div>
                         )}

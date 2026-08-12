@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -214,7 +214,7 @@ export default function ColdRoomHumidityCalc({ tempCold = 2, presionEvap = 5.72,
   const [pressure, setPressure] = useState(presionEvap);
   const [exterior, setExterior] = useState(tempExterior);
   const [refrigerant, setRefrigerant] = useState(refrigerantType);
-  const [refWeight, setRefWeight] = useState(refrigerantWeight);
+  const [refWeight, setRefWeight] = useState(refrigerantWeight || '');
   const [suppliers, setSuppliers] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState('salvador-escoda');
   const [materialPrices, setMaterialPrices] = useState({});
@@ -310,16 +310,16 @@ export default function ColdRoomHumidityCalc({ tempCold = 2, presionEvap = 5.72,
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-purple-50 rounded-lg">
             <div>
               <label className="text-xs text-purple-700 font-semibold block mb-1">Temperatura cámara (°C)</label>
-              <Input type="number" value={temp} onChange={e => setTemp(e.target.value)} className="text-sm" />
+              <NumberField value={temp} onChange={v => setTemp(v)} className="text-sm" />
             </div>
             <div>
               <label className="text-xs text-purple-700 font-semibold block mb-1">Presión evaporación (bar)</label>
-              <Input type="number" step="0.1" value={pressure} onChange={e => setPressure(e.target.value)} className="text-sm" />
+              <NumberField value={pressure} onChange={v => setPressure(v)} className="text-sm" />
               <p className="text-[10px] text-purple-600 mt-1">📍 Según gas refrigerante</p>
             </div>
             <div>
               <label className="text-xs text-purple-700 font-semibold block mb-1">Temperatura exterior (°C)</label>
-              <Input type="number" value={exterior} onChange={e => setExterior(e.target.value)} className="text-sm" />
+              <NumberField value={exterior} onChange={v => setExterior(v)} className="text-sm" />
             </div>
             <div>
               <label className="text-xs text-purple-700 font-semibold block mb-1">Tipo refrigerante</label>
@@ -338,7 +338,7 @@ export default function ColdRoomHumidityCalc({ tempCold = 2, presionEvap = 5.72,
             </div>
             <div className="md:col-span-4">
               <label className="text-xs text-purple-700 font-semibold block mb-1">Peso refrigerante instalado (kg) - Opcional</label>
-              <Input type="number" step="0.1" value={refWeight} onChange={e => setRefWeight(parseFloat(e.target.value)||0)} className="text-sm" placeholder="Ej: 2.5 kg" />
+              <NumberField value={refWeight} onChange={v => setRefWeight(v)} className="text-sm" placeholder="Ej: 2.5 kg" />
             </div>
           </div>
 

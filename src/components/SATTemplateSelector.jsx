@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumberField } from '@/components/ui/number-field';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ClipboardList, Plus, Search, Trash2, Edit, Check, Loader2, Save, X } from 'lucide-react';
@@ -15,12 +16,12 @@ function TemplateEditor({ template, onSave, onCancel }) {
   const [form, setForm] = useState(template || {
     name: '', equipment_type: 'camara_frigorifica', work_type: 'mantenimiento',
     description: '', diagnosis: '', solution: '',
-    materials_used: [], labor_hours: 0, labor_rate: 35, notes: '', tags: []
+    materials_used: [], labor_hours: '', labor_rate: 35, notes: '', tags: []
   });
   const [saving, setSaving] = useState(false);
   const [tagInput, setTagInput] = useState('');
 
-  const addMaterial = () => setForm(f => ({ ...f, materials_used: [...(f.materials_used || []), { material: '', quantity: 1, unit_price: 0 }] }));
+  const addMaterial = () => setForm(f => ({ ...f, materials_used: [...(f.materials_used || []), { material: '', quantity: 1, unit_price: '' }] }));
   const updateMat = (i, field, val) => setForm(f => ({ ...f, materials_used: f.materials_used.map((m, idx) => idx === i ? { ...m, [field]: val } : m) }));
   const removeMat = (i) => setForm(f => ({ ...f, materials_used: f.materials_used.filter((_, idx) => idx !== i) }));
 
@@ -91,11 +92,11 @@ function TemplateEditor({ template, onSave, onCancel }) {
             <div key={i} className="grid grid-cols-5 gap-1">
               <input className="col-span-3 h-7 text-xs border border-input rounded-md px-2" placeholder="Material"
                 value={m.material} onChange={e => updateMat(i, 'material', e.target.value)} />
-              <input type="number" className="h-7 text-xs border border-input rounded-md px-2" placeholder="Cant"
-                value={m.quantity} onChange={e => updateMat(i, 'quantity', parseFloat(e.target.value) || 0)} />
+              <NumberField className="h-7 text-xs border border-input rounded-md px-2" placeholder="Cant"
+                value={m.quantity} onChange={v => updateMat(i, 'quantity', v)} />
               <div className="flex gap-1">
-                <input type="number" className="h-7 text-xs flex-1 border border-input rounded-md px-2" placeholder="€/ud"
-                  value={m.unit_price} onChange={e => updateMat(i, 'unit_price', parseFloat(e.target.value) || 0)} />
+                <NumberField className="h-7 text-xs flex-1 border border-input rounded-md px-2" placeholder="€/ud"
+                  value={m.unit_price} onChange={v => updateMat(i, 'unit_price', v)} />
                 <button onClick={() => removeMat(i)} className="text-red-400 hover:text-red-600 flex-shrink-0"><X className="w-3 h-3" /></button>
               </div>
             </div>
@@ -107,11 +108,11 @@ function TemplateEditor({ template, onSave, onCancel }) {
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-xs text-gray-500 mb-1 block">Horas estimadas</label>
-          <Input type="number" step="0.5" value={form.labor_hours} onChange={e => setForm(f => ({ ...f, labor_hours: parseFloat(e.target.value) || 0 }))} className="h-8 text-xs" />
+          <NumberField value={form.labor_hours} onChange={v => setForm(f => ({ ...f, labor_hours: v }))} className="h-8 text-xs" />
         </div>
         <div>
           <label className="text-xs text-gray-500 mb-1 block">€/hora</label>
-          <Input type="number" value={form.labor_rate} onChange={e => setForm(f => ({ ...f, labor_rate: parseFloat(e.target.value) || 0 }))} className="h-8 text-xs" />
+          <NumberField value={form.labor_rate} onChange={v => setForm(f => ({ ...f, labor_rate: v }))} className="h-8 text-xs" />
         </div>
       </div>
 
