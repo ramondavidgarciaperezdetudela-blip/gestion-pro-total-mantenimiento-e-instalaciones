@@ -165,6 +165,85 @@ const navItems = [
 { name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Droplets },
 ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
+// ─── Agrupación técnica de la navegación ──────────────────────────────────────
+// Se deriva del identificador de página, así que se mantiene aunque la lista
+// se reordene alfabéticamente.
+const PAGE_SECTION = {
+  // Operaciones (SAT y trabajo de campo)
+  SAT: 'Operaciones', SATChat: 'Operaciones', SATCalendar: 'Operaciones',
+  TechnicianFieldWork: 'Operaciones', TechnicianDay: 'Operaciones', TecniciansRoutes: 'Operaciones',
+  Maintenance: 'Operaciones', MaintenancePlanning: 'Operaciones', IncidentManagement: 'Operaciones',
+  EquipmentDiaryPage: 'Operaciones', EquipmentFailureHistory: 'Operaciones', Agenda: 'Operaciones',
+  // Clientes y proyectos
+  Contacts: 'Clientes', ContactForm: 'Clientes', ClientPortal: 'Clientes',
+  Projects: 'Clientes', ProjectTimeline: 'Clientes',
+  // Documentos
+  Documents: 'Documentos', DocumentTemplates: 'Documentos', BusinessCards: 'Documentos',
+  LegalDocs: 'Documentos', Catalogs: 'Documentos',
+  // Cálculo y diagnóstico técnico
+  ThermalCalc: 'Cálculo y diagnóstico', ElectricalCalc: 'Cálculo y diagnóstico',
+  ColdRoomCalc: 'Cálculo y diagnóstico', ACPotenciaCalc: 'Cálculo y diagnóstico',
+  ACPlanAnalysis: 'Cálculo y diagnóstico', MultiAreaCalc: 'Cálculo y diagnóstico',
+  SolarBatteryCalc: 'Cálculo y diagnóstico', CapillaryCalc: 'Cálculo y diagnóstico',
+  RefrigerantEquiv: 'Cálculo y diagnóstico', DiagnosticoCarga: 'Cálculo y diagnóstico',
+  DanfossTools: 'Cálculo y diagnóstico',
+  // Proveedores y stock
+  Suppliers: 'Proveedores y stock', GasSuppliers: 'Proveedores y stock',
+  SupplierTariffs: 'Proveedores y stock', Inventory: 'Proveedores y stock',
+  SparePartsManager: 'Proveedores y stock', PurchaseSummary: 'Proveedores y stock',
+  // IA y asistencia
+  AIAssistant: 'IA y asistencia', AISearch: 'IA y asistencia', AIReports: 'IA y asistencia',
+  AIPlanning: 'IA y asistencia', AIBudget: 'IA y asistencia', SmartReminders: 'IA y asistencia',
+  AISupport: 'IA y asistencia',
+  // Informes y datos
+  Reports: 'Informes y datos', AuditLog: 'Informes y datos', ExportData: 'Informes y datos',
+  BackupCenter: 'Informes y datos', Automations: 'Informes y datos', Notes: 'Informes y datos',
+  // Sistema
+  Home: 'Sistema', CompanyConfig: 'Sistema', Manuals: 'Sistema', Regulations: 'Sistema',
+  UpdateCenter: 'Sistema', LicenseActivation: 'Sistema', LicenseRenewal: 'Sistema',
+};
+const SECTION_ORDER = [
+  'Sistema', 'Operaciones', 'Cálculo y diagnóstico', 'Clientes',
+  'Documentos', 'Proveedores y stock', 'IA y asistencia', 'Informes y datos', 'Otros',
+];
+const basePage = (p) => (p || '').split('?')[0];
+function groupNav(items) {
+  const buckets = {};
+  items.forEach((it) => {
+    const sec = PAGE_SECTION[basePage(it.page)] || 'Otros';
+    (buckets[sec] = buckets[sec] || []).push(it);
+  });
+  return SECTION_ORDER.filter((s) => buckets[s]?.length).map((s) => ({ section: s, items: buckets[s] }));
+}
+
+// Navegación agrupada por secciones técnicas (compartida por escritorio y móvil)
+function SidebarNav({ currentPageName, onNavigate, activeStyle, idleColor }) {
+  return (
+    <>
+      {groupNav(navItems).map(({ section, items }) => (
+        <div key={section} className="mb-1">
+          <div className="px-3 pt-3 pb-1 tech-label" style={{ color: '#5a6178' }}>{section}</div>
+          {items.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentPageName === item.page;
+            return (
+              <Link
+                key={item.page}
+                to={createPageUrl(item.page)}
+                onClick={onNavigate}
+                className="flex items-center gap-2.5 px-3 py-2 text-xs transition-all"
+                style={isActive ? activeStyle : { color: idleColor, borderLeft: '2px solid transparent' }}>
+                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">{item.name}</span>
+              </Link>
+            );
+          })}
+        </div>
+      ))}
+    </>
+  );
+}
+
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -235,28 +314,16 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentPageName === item.page;
-            return (
-              <Link
-                key={item.page}
-                to={createPageUrl(item.page)}
-                className="flex items-center gap-2.5 px-3 py-2 text-xs transition-all"
-                style={isActive ? {
-                  background: 'linear-gradient(90deg, #00D4FF15, transparent)',
-                  color: '#00D4FF',
-                  borderLeft: '2px solid #00D4FF',
-                  fontWeight: 600,
-                } : {
-                  color: '#8890a8',
-                  borderLeft: '2px solid transparent',
-                }}>
-                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="truncate">{item.name}</span>
-              </Link>
-            );
-          })}
+          <SidebarNav
+            currentPageName={currentPageName}
+            idleColor="#8890a8"
+            activeStyle={{
+              background: 'linear-gradient(90deg, #00D4FF15, transparent)',
+              color: '#00D4FF',
+              borderLeft: '2px solid #00D4FF',
+              fontWeight: 600,
+            }}
+          />
         </nav>
         <div className="p-3 space-y-2" style={{ borderTop: '1px solid #1e1e30' }}>
           <button onClick={() => setSearchOpen(true)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all" style={{ background: '#ffffff08', color: '#8890a8', border: '1px solid #1e1e30' }}>
@@ -303,25 +370,17 @@ export default function Layout({ children, currentPageName }) {
           </button>
         </div>
         <nav className="overflow-y-auto py-2 h-[calc(100vh-64px)]">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentPageName === item.page;
-            return (
-              <Link
-                key={item.page}
-                to={createPageUrl(item.page)}
-                onClick={() => setSidebarOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2.5 text-xs transition-all"
-                style={isActive ? {
-                  background: '#00D4FF12',
-                  color: '#00D4FF',
-                  borderLeft: '2px solid #00D4FF',
-                } : { color: '#8890a8', borderLeft: '2px solid transparent' }}>
-                <Icon className="w-3.5 h-3.5" />
-                <span>{item.name}</span>
-              </Link>
-            );
-          })}
+          <SidebarNav
+            currentPageName={currentPageName}
+            onNavigate={() => setSidebarOpen(false)}
+            idleColor="#8890a8"
+            activeStyle={{
+              background: '#00D4FF12',
+              color: '#00D4FF',
+              borderLeft: '2px solid #00D4FF',
+              fontWeight: 600,
+            }}
+          />
         </nav>
       </aside>
 
