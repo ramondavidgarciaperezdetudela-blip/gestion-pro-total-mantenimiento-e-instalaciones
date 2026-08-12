@@ -35,25 +35,105 @@ const CONV = {
   'R-507A': [{ g: 'R-448A', f: 0.95, aceite: 'POE (mantener)', vaciar: false }, { g: 'R-449A', f: 0.95, aceite: 'POE (mantener)', vaciar: false }],
 };
 
-const N = (v, set, ph, step = '0.1') => (
-  <Input type="number" inputMode="decimal" step={step} placeholder={ph} value={v} onChange={(e) => set(e.target.value)} />
+// Cuadro numérico que sale vacío, se escribe del tirón y admite decimales
+// con coma o punto. Guarda la cadena (vacío = '') para conservar la lógica de
+// diagnóstico que distingue "sin dato" de "cero".
+const N = (v, set, ph) => (
+  <Input
+    type="text"
+    inputMode="decimal"
+    placeholder={ph}
+    value={v}
+    onChange={(e) => {
+      const val = e.target.value.replace(',', '.');
+      if (val === '' || val === '-' || /^-?\d*\.?\d*$/.test(val)) set(val);
+    }}
+  />
 );
 
-function EsquemaFrig({ alta, baja, colorAlta, colorBaja, titulo }) {
+function EsquemaFrig({ alta, baja, colorAlta, colorBaja, titulo, lecturas }) {
+  // lecturas (opcional): { tCond, tLiq, subenf, tEvap, tAsp, recal, tAmb }
+  const L = lecturas || {};
+  const HOT = '#ef4444';   // lado de alta presión (gas caliente / líquido)
+  const COLD = '#0ea5e9';  // lado de baja presión (gas frío / aspiración)
+  const val = (x, u = '') => (x !== undefined && x !== null && x !== '' && !Number.isNaN(x) ? `${x}${u}` : '—');
+  // Punto de medición numerado
+  const Punto = ({ x, y, n, color }) => (
+    <g>
+      <circle cx={x} cy={y} r="9" fill={color} stroke="#fff" strokeWidth="1.5" />
+      <text x={x} y={y + 3} fontSize="10" fontWeight="bold" textAnchor="middle" fill="#fff">{n}</text>
+    </g>
+  );
   return (
-    <svg viewBox="0 0 520 260" width="100%" style={{ maxWidth: 520, background: '#f8fafc', borderRadius: 8 }}>
-      {titulo && <text x="260" y="12" fontSize="10" textAnchor="middle" fill="#475569" fontWeight="bold">{titulo}</text>}
-      <rect x="40" y="30" width="440" height="200" rx="10" fill="none" stroke="#94a3b8" strokeWidth="2" />
-      <circle cx="40" cy="130" r="22" fill="#0f2740" /><text x="40" y="134" fill="#fff" fontSize="9" textAnchor="middle">COMP</text>
-      <rect x="180" y="16" width="160" height="28" rx="6" fill="#dbeafe" stroke="#2563eb" /><text x="260" y="34" fontSize="11" textAnchor="middle" fill="#1e3a8a">CONDENSADOR</text>
-      <polygon points="480,120 468,130 480,140 492,130" fill="#f59e0b" /><text x="480" y="160" fontSize="8" textAnchor="middle" fill="#92400e">Expansión</text>
-      <rect x="180" y="216" width="160" height="28" rx="6" fill="#dcfce7" stroke="#16a34a" /><text x="260" y="234" fontSize="11" textAnchor="middle" fill="#166534">EVAPORADOR</text>
-      <rect x="70" y="60" width="96" height="40" rx="6" fill="#fff" stroke={colorAlta} strokeWidth="2" />
-      <text x="118" y="76" fontSize="9" textAnchor="middle" fill="#475569">ALTA (bar)</text>
-      <text x="118" y="92" fontSize="14" fontWeight="bold" textAnchor="middle" fill={colorAlta}>{alta}</text>
-      <rect x="70" y="160" width="96" height="40" rx="6" fill="#fff" stroke={colorBaja} strokeWidth="2" />
-      <text x="118" y="176" fontSize="9" textAnchor="middle" fill="#475569">BAJA (bar)</text>
-      <text x="118" y="192" fontSize="14" fontWeight="bold" textAnchor="middle" fill={colorBaja}>{baja}</text>
+    <svg viewBox="0 0 560 360" width="100%" style={{ maxWidth: 560, background: '#f8fafc', borderRadius: 8 }}>
+      {titulo && <text x="280" y="16" fontSize="12" textAnchor="middle" fill="#0f2740" fontWeight="bold">{titulo}</text>}
+
+      {/* Tubería lado ALTA (descarga → condensador → línea de líquido) */}
+      <path d="M100,150 L100,70 L220,70" fill="none" stroke={HOT} strokeWidth="4" />
+      <path d="M360,70 L470,70 L470,160" fill="none" stroke={HOT} strokeWidth="4" />
+      {/* Tubería lado BAJA (evaporador → aspiración) */}
+      <path d="M470,180 L470,285 L360,285" fill="none" stroke={COLD} strokeWidth="4" />
+      <path d="M220,285 L100,285 L100,175" fill="none" stroke={COLD} strokeWidth="4" />
+
+      {/* Flechas de sentido del flujo */}
+      <polygon points="160,64 172,70 160,76" fill={HOT} />
+      <polygon points="470,120 464,132 476,132" fill={HOT} />
+      <polygon points="300,291 288,285 300,279" fill={COLD} />
+      <polygon points="100,225 94,237 106,237" fill={COLD} />
+
+      {/* Compresor */}
+      <circle cx="100" cy="162" r="26" fill="#0f2740" />
+      <text x="100" y="159" fill="#fff" fontSize="9" textAnchor="middle">COMPRE-</text>
+      <text x="100" y="170" fill="#fff" fontSize="9" textAnchor="middle">SOR</text>
+
+      {/* Condensador (alta) */}
+      <rect x="220" y="54" width="140" height="32" rx="6" fill="#fee2e2" stroke={HOT} strokeWidth="2" />
+      <text x="290" y="74" fontSize="11" textAnchor="middle" fill="#991b1b" fontWeight="bold">CONDENSADOR</text>
+
+      {/* Válvula de expansión */}
+      <polygon points="470,160 458,172 470,184 482,172" fill="#f59e0b" stroke="#b45309" />
+      <text x="470" y="205" fontSize="8.5" textAnchor="middle" fill="#92400e">Válvula</text>
+      <text x="470" y="215" fontSize="8.5" textAnchor="middle" fill="#92400e">expansión</text>
+
+      {/* Evaporador (baja) */}
+      <rect x="220" y="269" width="140" height="32" rx="6" fill="#e0f2fe" stroke={COLD} strokeWidth="2" />
+      <text x="290" y="289" fontSize="11" textAnchor="middle" fill="#075985" fontWeight="bold">EVAPORADOR</text>
+
+      {/* Manómetro ALTA */}
+      <rect x="150" y="100" width="96" height="42" rx="6" fill="#fff" stroke={colorAlta} strokeWidth="2" />
+      <text x="198" y="116" fontSize="9" textAnchor="middle" fill="#475569">ALTA (bar)</text>
+      <text x="198" y="134" fontSize="15" fontWeight="bold" textAnchor="middle" fill={colorAlta}>{alta}</text>
+      {/* Manómetro BAJA */}
+      <rect x="150" y="214" width="96" height="42" rx="6" fill="#fff" stroke={colorBaja} strokeWidth="2" />
+      <text x="198" y="230" fontSize="9" textAnchor="middle" fill="#475569">BAJA (bar)</text>
+      <text x="198" y="248" fontSize="15" fontWeight="bold" textAnchor="middle" fill={colorBaja}>{baja}</text>
+
+      {/* Puntos de medición numerados */}
+      <Punto x={128} y={70} n="1" color={HOT} />
+      <Punto x={470} y={110} n="2" color={HOT} />
+      <Punto x={340} y={285} n="3" color={COLD} />
+      <Punto x={100} y={210} n="4" color={COLD} />
+
+      {/* Leyenda de dónde medir + lectura */}
+      <g fontSize="9" fill="#334155">
+        <rect x="300" y="102" width="250" height="150" rx="6" fill="#ffffff" stroke="#e2e8f0" />
+        <text x="312" y="118" fontWeight="bold" fill="#0f2740">Dónde medir</text>
+        <circle cx="316" cy="132" r="7" fill={HOT} /><text x="316" y="135" fontSize="8" fontWeight="bold" textAnchor="middle" fill="#fff">1</text>
+        <text x="330" y="129">Descarga: salida del compresor</text>
+        <text x="330" y="140" fill="#64748b">gas caliente (alta)</text>
+        <circle cx="316" cy="156" r="7" fill={HOT} /><text x="316" y="159" fontSize="8" fontWeight="bold" textAnchor="middle" fill="#fff">2</text>
+        <text x="330" y="153">Línea de líquido: salida condensador</text>
+        <text x="330" y="164" fill="#64748b">subenfriamiento {val(L.subenf, ' °C')}</text>
+        <circle cx="316" cy="180" r="7" fill={COLD} /><text x="316" y="183" fontSize="8" fontWeight="bold" textAnchor="middle" fill="#fff">3</text>
+        <text x="330" y="177">Evaporación: manómetro de baja</text>
+        <text x="330" y="188" fill="#64748b">T. evap. {val(L.tEvap, ' °C')}</text>
+        <circle cx="316" cy="204" r="7" fill={COLD} /><text x="316" y="207" fontSize="8" fontWeight="bold" textAnchor="middle" fill="#fff">4</text>
+        <text x="330" y="201">Aspiración: 15 cm antes del compresor</text>
+        <text x="330" y="212" fill="#64748b">recalentamiento {val(L.recal, ' °C')}</text>
+        <text x="312" y="234" fill="#991b1b">● alta presión</text>
+        <text x="410" y="234" fill="#075985">● baja presión</text>
+        <text x="312" y="247" fill="#64748b">T. amb. {val(L.tAmb, ' °C')}</text>
+      </g>
     </svg>
   );
 }
@@ -205,7 +285,12 @@ export default function DiagnosticoCarga() {
 
             <div className="bg-white rounded-xl shadow p-4">
               <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"><Snowflake className="w-4 h-4 text-sky-600" />Esquema del circuito</p>
-              <EsquemaFrig alta={pAlta || rec.alta} baja={pBaja || rec.baja} colorAlta={cA} colorBaja={cB} />
+              <EsquemaFrig alta={pAlta || rec.alta} baja={pBaja || rec.baja} colorAlta={cA} colorBaja={cB}
+                lecturas={{
+                  tEvap, tAsp, tCond, tLiq, tAmb,
+                  recal: recal != null ? recal.toFixed(1) : '',
+                  subenf: subenf != null ? subenf.toFixed(1) : '',
+                }} />
             </div>
 
             {diag1.map((d, i) => (

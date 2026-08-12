@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Edit, Trash2, Palette, Save, Star, Eye, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, Palette, Save, Star, Eye, Download, Search, Loader2, Globe } from 'lucide-react';
 import LineTemplateManager from '../components/LineTemplateManager';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo', 'sat', 'mantenimiento', 'informe', 'legalización', 'tarjeta_contacto'];
@@ -62,6 +62,11 @@ export default function DocumentTemplates() {
    const fileUploadRef = useRef(null);
    const importRef = useRef(null);
    const [uploading, setUploading] = useState(false);
+   const [netDialog, setNetDialog] = useState(false);
+   const [netQuery, setNetQuery] = useState('');
+   const [netLoading, setNetLoading] = useState(false);
+   const [netResults, setNetResults] = useState([]);
+   const [netError, setNetError] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -101,6 +106,79 @@ export default function DocumentTemplates() {
     setEditing(nuevo && nuevo.id ? nuevo : null);
     setForm({ ...EMPTY_TPL, ...tpl });
     setEditDialog(true);
+  };
+
+  // Buscar diseños de plantilla en internet con IA y añadirlos con un clic.
+  const buscarPlantillasInternet = async () => {
+    setNetLoading(true);
+    setNetError('');
+    setNetResults([]);
+    try {
+      const r = await base44.integrations.Core.InvokeLLM({
+        add_context_from_internet: true,
+        prompt: `Busca en internet diseños profesionales de plantillas de documentos (facturas, presupuestos, órdenes de trabajo, informes técnicos) para una empresa de servicio técnico de climatización, refrigeración, electricidad y energía solar en España.
+${netQuery ? `El usuario busca en concreto: "${netQuery}".` : ''}
+Devuelve entre 6 y 8 modelos VARIADOS y elegantes, inspirados en tendencias reales de diseño de documentos. Para cada modelo indica: un nombre corto, una descripción breve del estilo, colores en hexadecimal (primario oscuro y secundario de acento), una tipografía de esta lista exacta [Arial, Times New Roman, Georgia, Verdana, Calibri, Trebuchet MS], un tamaño de fuente [small, medium, large], un estilo de tabla [simple, bordered, striped], un texto de cabecera adecuado, un texto de pie adecuado, y el tipo de documento [factura, presupuesto, recibo, sat, mantenimiento, informe]. Textos en español.`,
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            modelos: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  modelo: { type: 'string' },
+                  desc: { type: 'string' },
+                  primary_color: { type: 'string' },
+                  secondary_color: { type: 'string' },
+                  font_family: { type: 'string' },
+                  font_size: { type: 'string' },
+                  table_style: { type: 'string' },
+                  header_text: { type: 'string' },
+                  footer_text: { type: 'string' },
+                  doc_type: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      });
+      const okColor = (c) => (/^#([0-9a-fA-F]{6})$/.test(c || '') ? c : null);
+      const okFont = (f) => (FONT_FAMILIES.includes(f) ? f : 'Arial');
+      const okSize = (s) => (['small', 'medium', 'large'].includes(s) ? s : 'medium');
+      const okTable = (t) => (['simple', 'bordered', 'striped'].includes(t) ? t : 'striped');
+      const okDoc = (d) => (DOC_TYPES.includes(d) ? d : 'factura');
+      const modelos = (r?.modelos || [])
+        .map((m) => ({
+          modelo: (m.modelo || 'Plantilla').slice(0, 60),
+          desc: (m.desc || '').slice(0, 140),
+          tpl: {
+            name: (m.modelo || 'Plantilla').slice(0, 60),
+            primary_color: okColor(m.primary_color) || '#1e3a5f',
+            secondary_color: okColor(m.secondary_color) || '#0ea5e9',
+            font_family: okFont(m.font_family),
+            font_size: okSize(m.font_size),
+            table_style: okTable(m.table_style),
+            header_text: (m.header_text || '').slice(0, 80),
+            footer_text: (m.footer_text || '').slice(0, 160),
+            doc_type: okDoc(m.doc_type),
+          },
+        }))
+        .filter((m) => m.modelo);
+      if (modelos.length === 0) setNetError('No se han encontrado resultados. Prueba con otra búsqueda.');
+      setNetResults(modelos);
+    } catch {
+      setNetError('No se pudo buscar en internet ahora mismo. Revisa la conexión e inténtalo de nuevo.');
+    } finally {
+      setNetLoading(false);
+    }
+  };
+
+  // Añadir un modelo encontrado en internet (sin abrir el editor, para poder añadir varios).
+  const addNetModel = async (model) => {
+    const tpl = { ...EMPTY_TPL, ...model.tpl, doc_type: model.tpl.doc_type || 'factura', is_default: false };
+    await base44.entities.DocumentTemplate.create(tpl);
+    await loadAll();
   };
 
   // Exportar una plantilla a fichero (.json) para guardarla/compartirla
@@ -320,6 +398,9 @@ export default function DocumentTemplates() {
           <Palette className="w-6 h-6 text-purple-600" />Plantillas de documentos
         </h1>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => { setNetDialog(true); if (netResults.length === 0 && !netLoading) buscarPlantillasInternet(); }}>
+            <Globe className="w-4 h-4 mr-1" />Buscar en internet
+          </Button>
           <Button variant="outline" onClick={() => importRef.current?.click()}>
             <Download className="w-4 h-4 mr-1 rotate-180" />Importar (.json/Word/Excel/PDF…)
           </Button>
@@ -345,8 +426,60 @@ export default function DocumentTemplates() {
             </button>
           ))}
         </div>
-        <p className="text-[10px] text-gray-400 mt-2">Todas las plantillas son 100% modificables (colores, tipografía, márgenes, cabecera/pie, tabla…). Puedes <b>Exportar</b> una plantilla e <b>Importar</b> otras.</p>
+        <p className="text-[10px] text-gray-400 mt-2">Todas las plantillas son 100% modificables (colores, tipografía, márgenes, cabecera/pie, tabla…). Puedes <b>Buscar en internet</b> más modelos, <b>Exportar</b> una plantilla e <b>Importar</b> otras.</p>
       </div>
+
+      {/* Buscador de plantillas en internet (IA) */}
+      <Dialog open={netDialog} onOpenChange={setNetDialog}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Globe className="w-5 h-5 text-blue-600" />Buscar plantillas en internet</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-gray-500">Describe el estilo que buscas (por ejemplo: «factura elegante azul», «presupuesto climatización moderno», «informe técnico sobrio»). La IA propondrá modelos que puedes añadir con un clic y luego modificar a tu gusto.</p>
+            <div className="flex gap-2">
+              <Input
+                value={netQuery}
+                onChange={(e) => setNetQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !netLoading) buscarPlantillasInternet(); }}
+                placeholder="¿Qué tipo de plantilla buscas? (opcional)"
+              />
+              <Button onClick={buscarPlantillasInternet} disabled={netLoading} className="bg-blue-600 gap-2 shrink-0">
+                {netLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                Buscar
+              </Button>
+            </div>
+
+            {netError && <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">{netError}</div>}
+
+            {netLoading && (
+              <div className="flex items-center justify-center gap-2 text-sm text-gray-500 py-8">
+                <Loader2 className="w-5 h-5 animate-spin" /> Buscando diseños en internet…
+              </div>
+            )}
+
+            {!netLoading && netResults.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {netResults.map((m, i) => (
+                  <div key={i} className="border rounded-lg p-2" style={{ borderColor: (m.tpl.secondary_color || '#e5e7eb') + '66' }}>
+                    <div className="h-9 rounded mb-1" style={{ background: `linear-gradient(90deg, ${m.tpl.primary_color}, ${m.tpl.secondary_color})` }} />
+                    <p className="text-[11px] font-bold leading-tight text-gray-800">{m.modelo}</p>
+                    <p className="text-[9px] text-gray-500 leading-tight line-clamp-2 min-h-[1.6em]">{m.desc}</p>
+                    <p className="text-[8px] text-gray-400 uppercase tracking-wide mt-0.5">{m.tpl.doc_type} · {m.tpl.font_family}</p>
+                    <div className="flex gap-1 mt-1">
+                      <button onClick={() => addNetModel(m)} className="flex-1 text-[10px] font-semibold text-white bg-blue-600 rounded px-1.5 py-1 hover:bg-blue-700">+ Añadir</button>
+                      <button onClick={() => { addPreset(m); setNetDialog(false); }} className="text-[10px] font-semibold text-blue-600 border border-blue-200 rounded px-1.5 py-1 hover:bg-blue-50" title="Añadir y editar ahora">Editar</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!netLoading && netResults.length > 0 && (
+              <p className="text-[10px] text-gray-400">Los modelos se guardan como plantillas normales: totalmente editables (colores, tipografía, márgenes, cabecera/pie, tabla…).</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {!company?.logo_url && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
