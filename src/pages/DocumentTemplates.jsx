@@ -113,18 +113,31 @@ export default function DocumentTemplates() {
     URL.revokeObjectURL(a.href);
   };
 
-  // Importar una plantilla desde fichero (.json) — totalmente modificable después
+  // Importar una plantilla. Admite:
+  //  · .json  → configuración de plantilla (colores, márgenes…), totalmente editable.
+  //  · Word/Excel/PDF/imagen/txt → se sube y se guarda como plantilla ADJUNTA que
+  //    puedes abrir/usar (creada en cualquier programa externo).
   const importTemplate = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const esJson = /\.json$/i.test(file.name);
     try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      const { id, created_date, updated_date, created_by, ...clean } = data || {};
-      await base44.entities.DocumentTemplate.create({ ...EMPTY_TPL, ...clean, is_default: false, name: (clean.name || 'Plantilla importada') + '' });
+      if (esJson) {
+        const data = JSON.parse(await file.text());
+        const { id, created_date, updated_date, created_by, ...clean } = data || {};
+        await base44.entities.DocumentTemplate.create({ ...EMPTY_TPL, ...clean, is_default: false, name: (clean.name || 'Plantilla importada') + '' });
+      } else {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        await base44.entities.DocumentTemplate.create({
+          ...EMPTY_TPL, is_default: false,
+          name: file.name.replace(/\.[^.]+$/, ''),
+          attachment_url: file_url, attachment_name: file.name,
+          header_text: 'Plantilla externa (' + file.name + ')',
+        });
+      }
       await loadAll();
     } catch {
-      alert('No se pudo importar. El fichero debe ser una plantilla .json válida (exportada desde aquí).');
+      alert('No se pudo importar el fichero. Formatos admitidos: .json (config) o Word/Excel/PDF/imagen/TXT (adjunto).');
     }
     if (e.target) e.target.value = '';
   };
@@ -307,9 +320,9 @@ export default function DocumentTemplates() {
         </h1>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => importRef.current?.click()}>
-            <Download className="w-4 h-4 mr-1 rotate-180" />Importar
+            <Download className="w-4 h-4 mr-1 rotate-180" />Importar (.json/Word/Excel/PDF…)
           </Button>
-          <input ref={importRef} type="file" accept=".json,application/json" className="hidden" onChange={importTemplate} />
+          <input ref={importRef} type="file" accept=".json,.pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.odt,.ods" className="hidden" onChange={importTemplate} />
           <Button onClick={() => { setEditing(null); setForm(EMPTY_TPL); setEditDialog(true); }} className="bg-purple-600">
             <Plus className="w-4 h-4 mr-1" />Nueva plantilla
           </Button>
@@ -380,6 +393,11 @@ export default function DocumentTemplates() {
                         <button onClick={() => { setEditing(tpl); setForm({ ...EMPTY_TPL, ...tpl }); setEditDialog(true); }} className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="Editar">
                           <Edit className="w-4 h-4" />
                         </button>
+                        {tpl.attachment_url && (
+                          <a href={tpl.attachment_url} target="_blank" rel="noopener noreferrer" className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-purple-50" title={`Abrir adjunto: ${tpl.attachment_name || 'archivo'}`}>
+                            <Eye className="w-4 h-4" />
+                          </a>
+                        )}
                         <button onClick={() => exportTemplate(tpl)} className="p-1.5 text-gray-400 hover:text-green-600 rounded hover:bg-green-50" title="Exportar (.json)">
                           <Download className="w-4 h-4" />
                         </button>
