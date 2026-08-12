@@ -36,7 +36,7 @@ export const licenseConfig = {
   ownerBypass: import.meta.env.VITE_LICENSE_OWNER_BYPASS === '1',
 
   // Rutas que nunca se bloquean (vistas públicas para clientes).
-  publicPaths: ['/presupuesto-publico', '/sat-publico'],
+  publicPaths: ['/presupuesto-publico', '/sat-publico', '/verificar-documento'],
 };
 
 export default licenseConfig;

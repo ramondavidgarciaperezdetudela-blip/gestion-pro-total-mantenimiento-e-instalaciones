@@ -9,6 +9,7 @@ import {
   Plus, Search, FileText, Trash2, Edit, ShoppingCart, Copy,
   ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers, Loader2 } from
 'lucide-react';
+import QRCodeLib from 'qrcode';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
 import AdvancedPriceSearch from '../components/AdvancedPriceSearch';
@@ -459,6 +460,22 @@ export default function Documents() {
   const exportPDF = async (doc) => {
     const csArr = await base44.entities.CompanySettings.list();
     const cs = csArr?.[0] || {};
+    // QR de verificación del documento (abre la página pública de verificación).
+    const base = (cs.public_app_url && String(cs.public_app_url).replace(/\/$/, '')) || window.location.origin;
+    const verifyUrl = `${base}/verificar-documento?id=${doc.id}`;
+    let verifyQR = '';
+    try { verifyQR = await QRCodeLib.toDataURL(verifyUrl, { width: 220, margin: 1 }); } catch { verifyQR = ''; }
+    const validezTxt = doc.verify_expires ? `Verificable hasta ${new Date(doc.verify_expires).toLocaleDateString('es-ES')}` : 'Verificable online';
+    const verifyBoxHtml = verifyQR ? `
+      <div style="margin-top:16px;display:flex;gap:12px;align-items:center;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;background:#f9fafb">
+        <img src="${verifyQR}" width="72" height="72" style="border-radius:4px;background:#fff;padding:3px" />
+        <div style="font-size:8px;color:#555;line-height:1.5">
+          <div style="font-weight:700;color:#1e3a5f;font-size:10px">Verificación del documento</div>
+          <div>Escanea el QR para comprobar su autenticidad y estado.</div>
+          <div>Código: <b>${(doc.id||'').toString().slice(-10)}</b></div>
+          <div>${validezTxt}</div>
+        </div>
+      </div>` : '';
     const hasDiscount = doc.items?.some(i => i.discount > 0);
     const itemsHtml = (doc.items || []).map((item, i) => `
       <tr style="background:${i % 2 === 0 ? '#f9fafb' : '#fff'}">
@@ -508,6 +525,7 @@ export default function Documents() {
       <img src="${doc.signature_client}" style="max-height:60px;border:1px solid #e5e7eb;border-radius:4px;background:#fff" alt="Firma" />
       <p style="font-size:8px;color:#555;margin-top:3px">${doc.contact_name}${doc.sign_datetime ? ` · 🕐 ${doc.sign_datetime}` : ` · ${doc.date}`}</p>
     </div>` : ''}
+    ${verifyBoxHtml}
     <div class="footer">Documento generado · ${cs.company_name||''} · ${cs.phone||''} · ${cs.email||''}</div>
     </body></html>`;
     const w = window.open('', '_blank');
@@ -1160,6 +1178,25 @@ export default function Documents() {
                 <Button variant="outline" size="sm" onClick={() => {setPreviewDoc(null);handleDuplicate(previewDoc);}}>
                   <Copy className="w-4 h-4 mr-1" />Duplicar
                 </Button>
+              </div>
+              {/* Verificación del documento (QR): caducidad configurable */}
+              <div className="mt-3 border-t pt-3">
+                <p className="text-xs font-semibold text-gray-600 mb-1">🔐 Verificación por QR (validez del enlace)</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {[['90 días', 90], ['6 meses', 182], ['1 año', 365], ['Sin caducidad', 0]].map(([lbl, dias]) => (
+                    <Button key={lbl} size="sm" variant="outline" className="text-xs"
+                      onClick={async () => {
+                        const exp = dias > 0 ? new Date(Date.now() + dias * 86400000).toISOString() : null;
+                        await base44.entities.Invoice.update(previewDoc.id, { verify_enabled: true, verify_expires: exp });
+                        setPreviewDoc({ ...previewDoc, verify_enabled: true, verify_expires: exp });
+                        setDocs(docs.map(d => d.id === previewDoc.id ? { ...d, verify_enabled: true, verify_expires: exp } : d));
+                      }}>{lbl}</Button>
+                  ))}
+                  <span className="text-[11px] text-gray-500">
+                    {previewDoc.verify_expires ? `Válido hasta ${new Date(previewDoc.verify_expires).toLocaleDateString('es-ES')}` : 'Sin caducidad'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">El QR va en el PDF y abre la página de verificación. Si editas el documento, la verificación se actualiza sola.</p>
               </div>
             </>
           }
