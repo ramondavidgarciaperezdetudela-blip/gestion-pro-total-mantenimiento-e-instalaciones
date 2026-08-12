@@ -96,6 +96,21 @@ const quickLinks = [
 { name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
 { name: 'Soporte IA', page: 'AISupport', icon: Bot, color: 'bg-blue-500' }];
 
+// Índice rápido página -> objeto de enlace (para armar los grupos reutilizando icono/color/nombre)
+const _linkByPage = Object.fromEntries(quickLinks.map(l => [l.page, l]));
+
+// Accesos AGRUPADOS por secciones (como el bloque de Refrigeración y Gases).
+const GRUPOS = [
+  { titulo: 'Proveedores y Tarifas', color: '#f59e0b', pages: ['Suppliers', 'SupplierTariffs', 'SparePartsManager', 'Inventory', 'Catalogs'] },
+  { titulo: 'Cálculos', color: '#ef4444', pages: ['ThermalCalc', 'ElectricalCalc', 'BatteryCalc', 'SolarBatteryCalc', 'SolarCalc', 'ColdRoomCalc', 'ACPotenciaCalc', 'MultiAreaCalc', 'ACPlanAnalysis'] },
+  { titulo: 'Documentos', color: '#7C3AED', pages: ['Documents', 'Documents?type=factura', 'Documents?type=presupuesto', 'DocumentTemplates', 'LegalDocs'] },
+  { titulo: 'SAT y Trabajo', color: '#F97316', pages: ['SAT', 'SATChat', 'TechnicianFieldWork', 'TecniciansRoutes', 'Maintenance', 'MaintenancePlanning', 'IncidentManagement', 'EquipmentFailureHistory', 'EquipmentDiaryPage'] },
+  { titulo: 'Clientes y Agenda', color: '#10B981', pages: ['Contacts', 'ClientPortal', 'Projects', 'ProjectTimeline', 'Agenda', 'SATCalendar', 'TechnicianDay'] },
+  { titulo: 'IA y Asistencia', color: '#3B82F6', pages: ['AIAssistant', 'AISearch', 'AIBudget', 'AIReports', 'AIPlanning', 'AISupport'] },
+  { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'Regulations', 'DanfossTools', 'GasSuppliers', 'RefrigerantEquiv'] },
+  { titulo: 'Informes y Sistema', color: '#64748b', pages: ['Reports', 'Automations', 'SmartReminders', 'Notes', 'BusinessCards', 'ExportData', 'BackupCenter', 'UpdateCenter', 'CompanyConfig'] },
+].map(g => ({ ...g, links: g.pages.map(p => _linkByPage[p]).filter(Boolean) }));
+
 
 function StatCard({ label, value, sub, icon: Icon, color, linkPage }) {
   const content =
@@ -436,25 +451,33 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Acceso directo a TODOS los módulos (móvil + escritorio) */}
-      <div className="rounded-xl p-4" style={{ background: '#12121e', border: '1px solid #1e1e30' }}>
-        <h2 className="mb-3 text-lg font-bold flex items-center gap-2" style={{ color: '#e8eaf0' }}>Acceso rápido a módulos</h2>
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-          {[...quickLinks].sort((a, b) => a.name.localeCompare(b.name, 'es')).map((link) => {
-            const Icon = link.icon;
-            return (
-              <Link key={link.page} to={createPageUrl(link.page)}>
-                <div className="group flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all cursor-pointer hover:opacity-90" style={{ background: 'transparent' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <div className={`${link.color} p-2.5 rounded-xl text-white group-hover:scale-110 transition-transform shadow-lg`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-semibold text-center leading-tight line-clamp-2" style={{ color: '#8890a8' }}>{link.name}</span>
-                </div>
-              </Link>);
-          })}
-        </div>
+      {/* Accesos AGRUPADOS por secciones (móvil + escritorio) */}
+      <div className="space-y-3">
+        <h2 className="text-lg font-bold flex items-center gap-2 px-1" style={{ color: '#e8eaf0' }}>Accesos por secciones</h2>
+        {GRUPOS.map((grupo) => (
+          <div key={grupo.titulo} className="rounded-xl p-4" style={{ background: '#12121e', border: `1px solid ${grupo.color}44` }}>
+            <h3 className="mb-3 text-sm font-bold flex items-center gap-2" style={{ color: grupo.color }}>
+              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: grupo.color }} />{grupo.titulo}
+              <span className="text-[10px] font-normal" style={{ color: '#8890a8' }}>({grupo.links.length})</span>
+            </h3>
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+              {[...grupo.links].sort((a, b) => a.name.localeCompare(b.name, 'es')).map((link) => {
+                const Icon = link.icon;
+                return (
+                  <Link key={link.page} to={createPageUrl(link.page)}>
+                    <div className="group flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all cursor-pointer hover:opacity-90" style={{ background: 'transparent' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <div className={`${link.color} p-2.5 rounded-xl text-white group-hover:scale-110 transition-transform shadow-lg`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-semibold text-center leading-tight line-clamp-2" style={{ color: '#8890a8' }}>{link.name}</span>
+                    </div>
+                  </Link>);
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Todo lo siguiente solo en desktop */}
