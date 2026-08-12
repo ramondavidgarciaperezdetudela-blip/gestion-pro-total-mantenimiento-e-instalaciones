@@ -13,7 +13,14 @@ Todo lo necesario para presentar y vender el programa.
 | **Video-Corto-Vertical-Redes.mp4** | Vídeo corto **vertical 9:16** (~25 s) | Para Instagram/TikTok/WhatsApp Estados. |
 | **capturas/** | Capturas reales de la app (escritorio y móvil) | Para webs, anuncios o la ficha del producto. |
 | **Argumentario-Comercial.md** | Guion de venta (beneficios, objeciones, cierre) | Para preparar la llamada o la visita. |
+| **Guion-Grabacion-Video.md** | Guion para grabar el vídeo con pantallas reales | Incluye una sección **⭐ Novedades a mostrar** con las funciones nuevas. |
 | **Tarifas-y-Planes.md** | Lista de precios y planes | Para consultar precios al vender. |
+
+> **Nota:** el **argumentario** y la **presentación** ya están actualizados con las
+> funciones nuevas (calculadoras con gráficos, diagnóstico frigorífico con imagen
+> para el informe, buscador de plantillas en internet y diseño técnico). Los
+> **vídeos .mp4** muestran una versión anterior; para reflejar lo nuevo, vuelve a
+> grabarlos siguiendo el **Guion-Grabacion-Video.md** (sección «Novedades a mostrar»).
 
 ## Consejos para la presentación
 
