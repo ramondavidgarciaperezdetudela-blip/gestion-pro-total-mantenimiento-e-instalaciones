@@ -15,6 +15,7 @@ const EMPTY = {
   color_scheme: 'dark_blue', layout: 'horizontal',
   show_qr: true, show_logo: true, show_address: false, show_nif: false,
   use_company_email: false, use_company_phone: false,
+  custom_fields: [], // [{ label, value }] campos a medida que también van al QR/vCard
 };
 
 const SCHEMES = {
@@ -50,7 +51,15 @@ function buildVCardString(card, company) {
   const email = card.use_company_email ? company?.email : card.email;
   const web = card.website || company?.website || '';
   const addr = card.show_address ? (card.address || company?.address || '') : '';
-  return `BEGIN:VCARD\nVERSION:3.0\nFN:${card.name}\nORG:${companyName}\nTITLE:${card.role || ''}\nTEL:${phone || ''}\nEMAIL:${email || ''}\nURL:${web}\nADR:;;${addr};${company?.city || ''};;${company?.postal_code || ''};${company?.country || 'España'}\nEND:VCARD`;
+  const nif = card.show_nif ? (card.nif || company?.nif || '') : '';
+  const extra = (card.custom_fields || [])
+    .filter(f => f && (f.label || f.value))
+    .map(f => `${f.label ? f.label + ': ' : ''}${f.value || ''}`.trim())
+    .filter(Boolean);
+  const noteParts = [...extra];
+  if (nif) noteParts.unshift(`NIF: ${nif}`);
+  const note = noteParts.length ? `\nNOTE:${noteParts.join(' | ')}` : '';
+  return `BEGIN:VCARD\nVERSION:3.0\nFN:${card.name || ''}\nORG:${companyName}\nTITLE:${card.role || ''}\nTEL:${phone || ''}\nEMAIL:${email || ''}\nURL:${web}\nADR:;;${addr};${company?.city || ''};;${company?.postal_code || ''};${company?.country || 'España'}${note}\nEND:VCARD`;
 }
 
 function CardPreview({ card, company, size = 'normal' }) {
@@ -172,14 +181,14 @@ export default function BusinessCards() {
     a.click();
   };
 
-  const handlePrintMultiple = (card, copies = 10) => {
+  const handlePrintMultiple = async (card, copies = 10) => {
     const s = SCHEMES[card.color_scheme] || SCHEMES.dark_blue;
     const companyName = card.company_name_override || company?.company_name || 'Mi Empresa S.L.';
     const phone = card.use_company_phone ? company?.phone : card.phone;
     const email = card.use_company_email ? company?.email : card.email;
     const web = card.website || company?.website || '';
     const vcard = buildVCardString(card, company);
-    const qrUrl = `https://chart.googleapis.com/chart?cht=qr&chs=80x80&chl=${encodeURIComponent(vcard)}&choe=UTF-8`;
+    const qrUrl = card.show_qr ? await QRCodeLib.toDataURL(vcard, { width: 240, margin: 1 }).catch(() => '') : '';
     const logoHtml = card.show_logo && company?.logo_url
       ? `<img src="${company.logo_url}" style="height:36px;width:36px;object-fit:contain;background:white;border-radius:4px;padding:2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);flex-shrink:0;" />`
       : `<div style="width:36px;height:36px;background:${s.accent};border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px;color:${s.bg};line-height:1;flex-shrink:0;">${companyName[0] || 'E'}</div>`;
@@ -254,14 +263,14 @@ export default function BusinessCards() {
     if (w) { w.document.write(html); w.document.close(); }
   };
 
-  const handlePrint = (card) => {
+  const handlePrint = async (card) => {
     const s = SCHEMES[card.color_scheme] || SCHEMES.dark_blue;
     const companyName = card.company_name_override || company?.company_name || 'Mi Empresa S.L.';
     const phone = card.use_company_phone ? company?.phone : card.phone;
     const email = card.use_company_email ? company?.email : card.email;
     const web = card.website || company?.website || '';
     const vcard = buildVCardString(card, company);
-    const qrUrl = `https://chart.googleapis.com/chart?cht=qr&chs=60x60&chl=${encodeURIComponent(vcard)}&choe=UTF-8`;
+    const qrUrl = card.show_qr ? await QRCodeLib.toDataURL(vcard, { width: 200, margin: 1 }).catch(() => '') : '';
     const logoHtml = card.show_logo && company?.logo_url
       ? `<img src="${company.logo_url}" style="height:36px;width:36px;object-fit:contain;background:white;border-radius:4px;padding:2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);flex-shrink:0;" />`
       : `<div style="width:36px;height:36px;background:${s.accent};border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px;color:${s.bg};flex-shrink:0;">${companyName[0] || 'E'}</div>`;
@@ -436,9 +445,30 @@ export default function BusinessCards() {
                   {Toggle('show_address', 'Dirección')}
                   {Toggle('show_nif', 'NIF personal')}
                 </div>
+                {/* Campos personalizados a medida (van también al QR/vCard) */}
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-gray-700">Campos personalizados (a tu gusto)</p>
+                    <Button type="button" size="sm" variant="outline" className="h-7 text-xs gap-1"
+                      onClick={() => setForm({ ...form, custom_fields: [...(form.custom_fields || []), { label: '', value: '' }] })}>
+                      <Plus className="w-3 h-3" />Añadir campo
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-gray-400">Ej: WhatsApp, Web, Instagram, Horario… Se añaden a la tarjeta y al QR, y el QR se actualiza solo.</p>
+                  {(form.custom_fields || []).map((f, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <Input className="flex-1 h-8 text-xs" placeholder="Etiqueta (ej: WhatsApp)" value={f.label}
+                        onChange={e => setForm({ ...form, custom_fields: form.custom_fields.map((x, j) => j === idx ? { ...x, label: e.target.value } : x) })} />
+                      <Input className="flex-1 h-8 text-xs" placeholder="Valor" value={f.value}
+                        onChange={e => setForm({ ...form, custom_fields: form.custom_fields.map((x, j) => j === idx ? { ...x, value: e.target.value } : x) })} />
+                      <button type="button" className="text-red-400 hover:text-red-600 text-lg leading-none px-1"
+                        onClick={() => setForm({ ...form, custom_fields: form.custom_fields.filter((_, j) => j !== idx) })}>×</button>
+                    </div>
+                  ))}
+                </div>
                 <div className="bg-blue-50 border border-blue-200 rounded p-2 text-xs text-blue-700 flex items-start gap-2">
                   <QrCode className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <p>El <strong>código QR</strong> codifica los datos de contacto en formato vCard — al escanearlo con cualquier móvil se puede guardar el contacto directamente.</p>
+                  <p>El <strong>código QR</strong> codifica los datos de contacto en formato vCard (incluidos tus campos personalizados) — al escanearlo con cualquier móvil se guarda el contacto directamente. Se genera en el propio programa, así que <strong>nunca queda en blanco</strong> y se actualiza al cambiar los datos.</p>
                 </div>
               </TabsContent>
             </Tabs>
