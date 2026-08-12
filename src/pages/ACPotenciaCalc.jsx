@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Thermometer, Calculator, Save, Trash2, User, Wind, CheckCircle, Loader2, FileText, Upload, MapPin, Package, AlertCircle, X, ZoomIn } from 'lucide-react';
+import { Thermometer, Calculator, Save, Trash2, User, Wind, CheckCircle, Loader2, FileText, Upload, MapPin, Package, X, ZoomIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import NavBar from '@/components/NavBar';
 import MollierDiagram from '@/components/MollierDiagram';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 
 // ─── Tipos de máquina disponibles (definición explícita y ordenada) ─────────
 const TIPOS_MAQUINA = [
@@ -882,6 +883,64 @@ EXCLUYE SIEMPRE: baños, aseos, garajes, jardines, terrazas.`;
               </div>
             ))}
           </div>
+
+          {/* Gráfico comparativo: potencia necesaria vs recomendada vs equipos candidatos */}
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-red-500" />
+                Potencia necesaria vs. equipos disponibles (kW)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ResponsiveContainer width="100%" height={210}>
+                <BarChart
+                  data={[
+                    { n: 'Base', kw: resultado.power_kw, tipo: 'base' },
+                    { n: 'Recom. +15%', kw: resultado.power_kw_coef, tipo: 'reco' },
+                    ...resultado.candidatos.map(m => ({
+                      n: `${m.brand} ${m.power_kw}kW`,
+                      kw: m.power_kw,
+                      tipo: (resultado.maquinaIdeal && m.model === resultado.maquinaIdeal.model) ? 'ideal' : 'maquina',
+                    })),
+                  ]}
+                  margin={{ left: 4, right: 12, top: 8, bottom: 4 }}
+                >
+                  <XAxis dataKey="n" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                  <YAxis tick={{ fontSize: 10 }} unit=" kW" width={48} />
+                  <Tooltip formatter={(v) => [`${v} kW`, 'Potencia']} />
+                  <ReferenceLine
+                    y={resultado.power_kw_coef}
+                    stroke="#dc2626"
+                    strokeDasharray="4 3"
+                    label={{ value: 'Recomendada', position: 'insideTopRight', fontSize: 9, fill: '#dc2626' }}
+                  />
+                  <Bar dataKey="kw" radius={[4, 4, 0, 0]}>
+                    {[
+                      { n: 'Base', kw: resultado.power_kw, tipo: 'base' },
+                      { n: 'Recom. +15%', kw: resultado.power_kw_coef, tipo: 'reco' },
+                      ...resultado.candidatos.map(m => ({
+                        tipo: (resultado.maquinaIdeal && m.model === resultado.maquinaIdeal.model) ? 'ideal' : 'maquina',
+                      })),
+                    ].map((d, i) => (
+                      <Cell
+                        key={i}
+                        fill={
+                          d.tipo === 'base' ? '#3b82f6'
+                          : d.tipo === 'reco' ? '#ef4444'
+                          : d.tipo === 'ideal' ? '#16a34a'
+                          : '#f59e0b'
+                        }
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <p className="text-[10px] text-gray-400 mt-1">
+                Barras verdes: equipo ideal recomendado. Ámbar: alternativas del catálogo. La línea roja marca la potencia recomendada ({resultado.power_kw_coef} kW, con +15% de seguridad).
+              </p>
+            </CardContent>
+          </Card>
 
           {/* Máquinas recomendadas */}
           <Card>

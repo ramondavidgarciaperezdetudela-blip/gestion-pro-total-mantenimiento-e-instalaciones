@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Droplets, Gauge, Ruler, Activity, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -171,6 +172,45 @@ export default function CapillaryCalc() {
               className="w-full accent-cyan-500"
             />
           </div>
+        </div>
+      )}
+
+      {/* Gráfico: longitud estimada por diámetro (valores reales calculados) */}
+      {result && table.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Ruler className="w-4 h-4 text-primary" />
+            <p className="text-sm font-semibold text-foreground">
+              Longitud de capilar según diámetro interno ({refrigerant}, {num(capacity, 1)} kW)
+            </p>
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={table} margin={{ left: 4, right: 12, top: 4, bottom: 4 }}>
+              <XAxis
+                dataKey="d"
+                tick={{ fontSize: 11 }}
+                tickFormatter={v => v.toFixed(1)}
+                label={{ value: 'Ø interno (mm)', position: 'insideBottom', offset: -2, fontSize: 11 }}
+              />
+              <YAxis tick={{ fontSize: 10 }} label={{ value: 'L (m)', angle: -90, position: 'insideLeft', fontSize: 11 }} />
+              <Tooltip
+                formatter={v => [`${num(v, 2)} m`, 'Longitud']}
+                labelFormatter={l => `Ø ${Number(l).toFixed(2)} mm`}
+              />
+              <Bar dataKey="L" radius={[4, 4, 0, 0]}>
+                {table.map(row => (
+                  <Cell
+                    key={row.d}
+                    fill={row.d === diameter ? data.color : 'hsl(var(--muted-foreground))'}
+                    fillOpacity={row.d === diameter ? 1 : 0.35}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            La barra resaltada corresponde al diámetro seleccionado (Ø {diameter.toFixed(2)} mm → {num(result.L, 2)} m). La longitud crece con la cuarta potencia del diámetro.
+          </p>
         </div>
       )}
 

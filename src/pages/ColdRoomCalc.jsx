@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -488,6 +489,28 @@ export default function ColdRoomCalc() {
           <p className="text-xs text-green-500">Equipo sugerido</p>
         </div>
       </div>
+
+      {/* Gráfico del desglose de la carga frigorífica (imagen del resultado) */}
+      {breakdown && (
+        <div className="bg-white border border-gray-200 rounded-lg p-3 mt-3">
+          <p className="text-sm font-semibold text-gray-700 mb-2">Desglose de la carga frigorífica (W)</p>
+          <ResponsiveContainer width="100%" height={190}>
+            <BarChart data={[
+              { n: 'Transmisión', w: Math.round(breakdown.transmissionLoad || 0), c: '#3b82f6' },
+              { n: 'Producto', w: Math.round(breakdown.productLoad || 0), c: '#06b6d4' },
+              { n: 'Ventilación', w: Math.round(breakdown.ventLoad || 0), c: '#10b981' },
+            ]} margin={{ left: 4, right: 12, top: 4, bottom: 4 }}>
+              <XAxis dataKey="n" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 10 }} />
+              <Tooltip formatter={(v) => [`${v} W`, 'Carga']} />
+              <Bar dataKey="w" radius={[4, 4, 0, 0]}>
+                {[0, 1, 2].map((i) => <Cell key={i} fill={['#3b82f6', '#06b6d4', '#10b981'][i]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="text-[10px] text-gray-400 mt-1">Incluye un +25% de mayoración de seguridad en el total. Ajusta los deslizadores para afinar cada partida.</p>
+        </div>
+      )}
 
       {/* Gráficas interactivas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

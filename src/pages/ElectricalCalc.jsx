@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +59,8 @@ export default function ElectricalCalc() {
       { material: 'Tubo corrugado PVC o bandeja', specification: `Longitud instalación ${L}m`, quantity: L, unit: 'm' },
     ];
 
-    setResult({ I: I.toFixed(2), S, mcb, rcd, materials, caida_tension: ((1.78e-8 * (form.system === 'monofasico' ? 2 : Math.sqrt(3)) * I * L) / S).toFixed(2) });
+    const caidaTensionV = (1.78e-8 * (form.system === 'monofasico' ? 2 : Math.sqrt(3)) * I * L) / S;
+    setResult({ I: I.toFixed(2), S, mcb, rcd, materials, caida_tension: caidaTensionV.toFixed(2), caida_tension_val: caidaTensionV, caida_tension_max: V * (dv / 100) });
   };
 
   return (
@@ -118,6 +120,30 @@ export default function ElectricalCalc() {
               <div className="bg-gray-50 p-3 rounded-lg text-sm">
                 <p>Caída de tensión: <strong>{result.caida_tension} V</strong></p>
                 <p className="text-xs text-gray-500 mt-1">Colores: L1={WIRE_COLORS.L1}, L2={WIRE_COLORS.L2}, L3={WIRE_COLORS.L3}, N={WIRE_COLORS.N}, PE={WIRE_COLORS.PE}</p>
+              </div>
+
+              {/* Gráfico: caída de tensión calculada vs límite admisible (imagen del resultado) */}
+              <div className="bg-white border border-gray-200 rounded-lg p-3">
+                <p className="text-sm font-semibold text-gray-700 mb-2">Caída de tensión: calculada vs. límite admisible (V)</p>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={[
+                    { n: 'Calculada', v: parseFloat(result.caida_tension_val.toFixed(2)) },
+                    { n: 'Límite admisible', v: parseFloat(result.caida_tension_max.toFixed(2)) },
+                  ]} margin={{ left: 4, right: 12, top: 4, bottom: 4 }}>
+                    <XAxis dataKey="n" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(v) => [`${v} V`, 'Caída de tensión']} />
+                    <Bar dataKey="v" radius={[4, 4, 0, 0]}>
+                      <Cell fill={result.caida_tension_val > result.caida_tension_max ? '#ef4444' : '#22c55e'} />
+                      <Cell fill="#94a3b8" />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="text-[10px] mt-1" style={{ color: result.caida_tension_val > result.caida_tension_max ? '#dc2626' : '#16a34a' }}>
+                  {result.caida_tension_val > result.caida_tension_max
+                    ? `La caída de tensión supera el límite del ${form.dv_max}% (${result.caida_tension_max.toFixed(2)} V). Aumente la sección del cable.`
+                    : `Dentro del límite del ${form.dv_max}% (${result.caida_tension_max.toFixed(2)} V).`}
+                </p>
               </div>
               <table className="w-full text-xs border-collapse">
                 <thead><tr className="bg-gray-100"><th className="border p-1 text-left">Material</th><th className="border p-1 text-left">Especificación</th><th className="border p-1 text-right">Cant.</th><th className="border p-1">Ud.</th></tr></thead>
