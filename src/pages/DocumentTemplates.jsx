@@ -28,6 +28,16 @@ const FONT_FAMILIES = ['Arial', 'Times New Roman', 'Georgia', 'Verdana', 'Calibr
 
 const EMPTY_TPL = { name: '', doc_type: 'factura', primary_color: '#1e3a5f', secondary_color: '#0ea5e9', show_logo: true, show_iban: true, show_signature_box: false, font_size: 'medium', font_family: 'Arial', iva_rate: 21, is_default: false, header_text: '', footer_text: '', notes_template: '', margin_top: 15, margin_bottom: 15, margin_left: 15, margin_right: 15, zoom: 100, table_style: 'striped', show_work_type_badge: true };
 
+// Modelos profesionales listos para añadir con un clic y luego MODIFICAR a gusto.
+const PRESET_MODELS = [
+  { modelo: 'Técnico Azul Industrial', desc: 'Cabecera marcada, tipografía técnica, tabla con líneas.', tpl: { name: 'Técnico Azul Industrial', primary_color: '#0f2740', secondary_color: '#2563eb', font_family: 'Verdana', font_size: 'medium', table_style: 'bordered', margin_top: 12, margin_bottom: 12, margin_left: 14, margin_right: 14, header_text: 'SERVICIO TÉCNICO', footer_text: 'Trabajo conforme a normativa vigente.' } },
+  { modelo: 'Minimalista Blanco', desc: 'Limpio, líneas finas, mucho espacio en blanco.', tpl: { name: 'Minimalista Blanco', primary_color: '#111827', secondary_color: '#6b7280', font_family: 'Calibri', font_size: 'medium', table_style: 'simple', margin_top: 18, margin_bottom: 18, margin_left: 20, margin_right: 20, header_text: '', footer_text: '' } },
+  { modelo: 'Ingeniería Gris', desc: 'Estilo plano técnico en grises, muy legible.', tpl: { name: 'Ingeniería Gris', primary_color: '#374151', secondary_color: '#9ca3af', font_family: 'Arial', font_size: 'small', table_style: 'striped', margin_top: 12, margin_bottom: 12, margin_left: 14, margin_right: 14, header_text: 'DOCUMENTO TÉCNICO', footer_text: 'Rev. según especificaciones.' } },
+  { modelo: 'Refrigeración Cian', desc: 'Acentos cian, ideal para climatización/frío.', tpl: { name: 'Refrigeración Cian', primary_color: '#0e7490', secondary_color: '#06b6d4', font_family: 'Trebuchet MS', font_size: 'medium', table_style: 'bordered', margin_top: 14, margin_bottom: 14, margin_left: 15, margin_right: 15, header_text: 'CLIMATIZACIÓN Y FRÍO', footer_text: 'Instalación conforme RSIF/F-Gas.' } },
+  { modelo: 'Eléctrico Ámbar', desc: 'Acentos ámbar, para trabajos eléctricos.', tpl: { name: 'Eléctrico Ámbar', primary_color: '#78350f', secondary_color: '#f59e0b', font_family: 'Arial', font_size: 'medium', table_style: 'striped', margin_top: 14, margin_bottom: 14, margin_left: 15, margin_right: 15, header_text: 'INSTALACIÓN ELÉCTRICA', footer_text: 'Conforme REBT.' } },
+  { modelo: 'Corporativo Verde', desc: 'Sobrio y elegante en verde.', tpl: { name: 'Corporativo Verde', primary_color: '#14532d', secondary_color: '#22c55e', font_family: 'Georgia', font_size: 'medium', table_style: 'striped', margin_top: 15, margin_bottom: 15, margin_left: 16, margin_right: 16, header_text: '', footer_text: 'Gracias por su confianza.' } },
+];
+
 const TEMPLATE_DESCRIPTIONS = {
   factura: 'Documento de cobro con datos bancarios y términos de pago',
   presupuesto: 'Oferta con límite de validez y recuadro de firma del cliente',
@@ -49,6 +59,7 @@ export default function DocumentTemplates() {
    const [showPreviewInEdit, setShowPreviewInEdit] = useState(false);
    const printRef = useRef(null);
    const fileUploadRef = useRef(null);
+   const importRef = useRef(null);
    const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -78,6 +89,44 @@ export default function DocumentTemplates() {
     setEditing(null);
     setForm(EMPTY_TPL);
     loadAll();
+  };
+
+  // Añadir un MODELO profesional (luego se puede editar/borrar como cualquiera)
+  const addPreset = async (model) => {
+    const tpl = { ...EMPTY_TPL, ...model.tpl, doc_type: 'factura', is_default: false };
+    const nuevo = await base44.entities.DocumentTemplate.create(tpl);
+    await loadAll();
+    // abrir directamente para modificar
+    setEditing(nuevo && nuevo.id ? nuevo : null);
+    setForm({ ...EMPTY_TPL, ...tpl });
+    setEditDialog(true);
+  };
+
+  // Exportar una plantilla a fichero (.json) para guardarla/compartirla
+  const exportTemplate = (tpl) => {
+    const { id, created_date, updated_date, created_by, ...clean } = tpl;
+    const blob = new Blob([JSON.stringify(clean, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `plantilla-${(tpl.name || 'documento').replace(/\s+/g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // Importar una plantilla desde fichero (.json) — totalmente modificable después
+  const importTemplate = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const { id, created_date, updated_date, created_by, ...clean } = data || {};
+      await base44.entities.DocumentTemplate.create({ ...EMPTY_TPL, ...clean, is_default: false, name: (clean.name || 'Plantilla importada') + '' });
+      await loadAll();
+    } catch {
+      alert('No se pudo importar. El fichero debe ser una plantilla .json válida (exportada desde aquí).');
+    }
+    if (e.target) e.target.value = '';
   };
 
   const handleSetDefault = async (tpl) => {
@@ -256,9 +305,33 @@ export default function DocumentTemplates() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Palette className="w-6 h-6 text-purple-600" />Plantillas de documentos
         </h1>
-        <Button onClick={() => { setEditing(null); setForm(EMPTY_TPL); setEditDialog(true); }} className="bg-purple-600">
-          <Plus className="w-4 h-4 mr-1" />Nueva plantilla
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => importRef.current?.click()}>
+            <Download className="w-4 h-4 mr-1 rotate-180" />Importar
+          </Button>
+          <input ref={importRef} type="file" accept=".json,application/json" className="hidden" onChange={importTemplate} />
+          <Button onClick={() => { setEditing(null); setForm(EMPTY_TPL); setEditDialog(true); }} className="bg-purple-600">
+            <Plus className="w-4 h-4 mr-1" />Nueva plantilla
+          </Button>
+        </div>
+      </div>
+
+      {/* Galería de MODELOS profesionales (añadir con un clic y modificar) */}
+      <div className="bg-white border border-gray-200 rounded-xl p-3">
+        <p className="text-sm font-semibold text-gray-700 mb-2">Modelos profesionales — añade uno y modifícalo a tu gusto</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+          {PRESET_MODELS.map((m) => (
+            <button key={m.modelo} onClick={() => addPreset(m)}
+              className="text-left border rounded-lg p-2 hover:shadow transition-shadow"
+              style={{ borderColor: (m.tpl.secondary_color || '#e5e7eb') + '66' }}>
+              <div className="h-8 rounded mb-1" style={{ background: `linear-gradient(90deg, ${m.tpl.primary_color}, ${m.tpl.secondary_color})` }} />
+              <p className="text-[11px] font-bold leading-tight text-gray-800">{m.modelo}</p>
+              <p className="text-[9px] text-gray-500 leading-tight line-clamp-2">{m.desc}</p>
+              <span className="text-[9px] text-purple-600 font-semibold">+ Añadir</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-gray-400 mt-2">Todas las plantillas son 100% modificables (colores, tipografía, márgenes, cabecera/pie, tabla…). Puedes <b>Exportar</b> una plantilla e <b>Importar</b> otras.</p>
       </div>
 
       {!company?.logo_url && (
@@ -304,10 +377,13 @@ export default function DocumentTemplates() {
                         <button onClick={() => setPreviewTpl(tpl)} className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-purple-50" title="Vista previa">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button onClick={() => { setEditing(tpl); setForm({ ...EMPTY_TPL, ...tpl }); setEditDialog(true); }} className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50">
+                        <button onClick={() => { setEditing(tpl); setForm({ ...EMPTY_TPL, ...tpl }); setEditDialog(true); }} className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="Editar">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button onClick={async () => { if (confirm('¿Eliminar plantilla?')) { await base44.entities.DocumentTemplate.delete(tpl.id); loadAll(); } }} className="p-1.5 text-red-300 hover:text-red-500 rounded hover:bg-red-50">
+                        <button onClick={() => exportTemplate(tpl)} className="p-1.5 text-gray-400 hover:text-green-600 rounded hover:bg-green-50" title="Exportar (.json)">
+                          <Download className="w-4 h-4" />
+                        </button>
+                        <button onClick={async () => { if (confirm('¿Eliminar plantilla?')) { await base44.entities.DocumentTemplate.delete(tpl.id); loadAll(); } }} className="p-1.5 text-red-300 hover:text-red-500 rounded hover:bg-red-50" title="Eliminar">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

@@ -88,6 +88,9 @@ export default function Documents() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [previewDoc, setPreviewDoc] = useState(null);
+  // Ajustes de impresión/PDF (A4): margen y escala para cuadrar en la impresora
+  const [pdfMargin, setPdfMargin] = useState(() => { try { return parseInt(localStorage.getItem('gpt_pdf_margin')) || 10; } catch { return 10; } });
+  const [pdfScale, setPdfScale] = useState(() => { try { return parseInt(localStorage.getItem('gpt_pdf_scale')) || 100; } catch { return 100; } });
   const [supplierSearchOpen, setSupplierSearchOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -495,7 +498,8 @@ export default function Documents() {
     .totals{text-align:right;padding:8px 0;border-top:2px solid #e5e7eb;margin-top:8px}
     .footer{margin-top:20px;border-top:1px solid #e5e7eb;padding-top:8px;font-size:8px;color:#aaa;text-align:center}
     .logo{max-height:50px;max-width:120px;object-fit:contain}
-    @media print{body{padding:10px}@page{margin:10mm;size:A4}}</style></head><body>
+    body{zoom:${(pdfScale||100)/100};} /* escala para cuadrar en la impresora */
+    @media print{body{padding:${pdfMargin||10}px}@page{margin:${pdfMargin||10}mm;size:A4}}</style></head><body>
     <div class="header">
       <div>${cs.logo_url ? `<img src="${cs.logo_url}" class="logo" alt="Logo" /><br/>` : ''}
         <span class="company-name">${cs.company_name||''}</span>
@@ -1179,6 +1183,28 @@ export default function Documents() {
                   <Copy className="w-4 h-4 mr-1" />Duplicar
                 </Button>
               </div>
+              {/* Ajustes de impresión / PDF (cuadrar en A4) */}
+              <div className="mt-3 border-t pt-3">
+                <p className="text-xs font-semibold text-gray-600 mb-1">🖨️ Ajuste de impresión / PDF (A4)</p>
+                <div className="flex items-center gap-4 flex-wrap text-xs">
+                  <label className="flex items-center gap-2">
+                    Margen: <b>{pdfMargin} mm</b>
+                    <input type="range" min="3" max="25" value={pdfMargin}
+                      onChange={(e) => { const v = parseInt(e.target.value); setPdfMargin(v); try { localStorage.setItem('gpt_pdf_margin', String(v)); } catch {} }} />
+                  </label>
+                  <label className="flex items-center gap-2">
+                    Escala: <b>{pdfScale}%</b>
+                    <input type="range" min="60" max="130" step="5" value={pdfScale}
+                      onChange={(e) => { const v = parseInt(e.target.value); setPdfScale(v); try { localStorage.setItem('gpt_pdf_scale', String(v)); } catch {} }} />
+                  </label>
+                  <Button size="sm" variant="outline" className="text-xs"
+                    onClick={() => { setPdfMargin(10); setPdfScale(100); try { localStorage.setItem('gpt_pdf_margin','10'); localStorage.setItem('gpt_pdf_scale','100'); } catch {} }}>
+                    Ajustar a A4 (por defecto)
+                  </Button>
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">Si el documento se sale o queda pequeño en tu impresora, ajusta margen y escala y vuelve a Exportar PDF/Imprimir.</p>
+              </div>
+
               {/* Verificación del documento (QR): caducidad configurable */}
               <div className="mt-3 border-t pt-3">
                 <p className="text-xs font-semibold text-gray-600 mb-1">🔐 Verificación por QR (validez del enlace)</p>
