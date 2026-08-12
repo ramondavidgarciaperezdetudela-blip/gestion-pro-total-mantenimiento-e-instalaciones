@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldCheck, Bot, Send, KeyRound, Loader2, LifeBuoy } from 'lucide-react';
 
 const PWD_KEY = 'gpt_support_pwd';
-const DEFAULT_PWD = 'GestionPro2024';
+const DEFAULT_PWD = 'NiMiXaGa271110';
 const SUPPORT_EMAIL = 'kairigarcia.gestionprototal@gmail.com';
 
 function getStoredPwd() {
@@ -21,6 +21,9 @@ export default function AISupport() {
   const [pwdErr, setPwdErr] = useState('');
   const [recovering, setRecovering] = useState(false);
   const [recoverMsg, setRecoverMsg] = useState('');
+  const [personalEmail, setPersonalEmail] = useState('');
+  const [changeMode, setChangeMode] = useState(false);
+  const [newPwdLogin, setNewPwdLogin] = useState('');
 
   const [tipo, setTipo] = useState('error');
   const [texto, setTexto] = useState('');
@@ -41,16 +44,42 @@ export default function AISupport() {
 
   const recuperar = async () => {
     setRecovering(true); setRecoverMsg('');
+    const destinos = [SUPPORT_EMAIL];
+    if (personalEmail.trim()) destinos.push(personalEmail.trim());
     try {
-      await base44.functions.invoke('soporteEmail', {
-        subject: 'Recuperación de contraseña del panel de soporte',
-        body: `Se ha solicitado recuperar la contraseña del Asistente de Soporte.\n\nContraseña actual: ${getStoredPwd()}`,
-      });
-      setRecoverMsg(`✅ Contraseña enviada a ${SUPPORT_EMAIL}. Revisa ese correo.`);
+      for (const to of destinos) {
+        await base44.functions.invoke('soporteEmail', {
+          subject: 'Recuperación de contraseña del panel de soporte',
+          body: `Se ha solicitado recuperar la contraseña del Asistente de Soporte.\n\nContraseña actual: ${getStoredPwd()}`,
+          to,
+        });
+      }
+      setRecoverMsg(`✅ Contraseña enviada a: ${destinos.join(' y ')}. Revisa el correo.`);
     } catch {
       setRecoverMsg('⚠ No se pudo enviar el correo. Inténtalo de nuevo con conexión a internet.');
     }
     setRecovering(false);
+  };
+
+  // Cambiar la contraseña SIN necesitar la anterior (útil si otro usuario descarga
+  // el programa y no la conoce). Opcionalmente la envía a su correo personal.
+  const cambiarSinAnterior = async () => {
+    if (newPwdLogin.trim().length < 4) { setRecoverMsg('La nueva contraseña debe tener al menos 4 caracteres'); return; }
+    try { localStorage.setItem(PWD_KEY, newPwdLogin.trim()); } catch { /* ignore */ }
+    const nueva = newPwdLogin.trim();
+    let extra = '';
+    if (personalEmail.trim()) {
+      try {
+        await base44.functions.invoke('soporteEmail', {
+          subject: 'Tu nueva contraseña del panel de soporte',
+          body: `Has cambiado la contraseña del Asistente de Soporte.\n\nNueva contraseña: ${nueva}`,
+          to: personalEmail.trim(),
+        });
+        extra = ` y enviada a ${personalEmail.trim()}`;
+      } catch { extra = ' (no se pudo enviar por correo)'; }
+    }
+    setRecoverMsg(`✅ Contraseña cambiada${extra}. Ya puedes entrar con la nueva.`);
+    setChangeMode(false); setNewPwdLogin(''); setPwdInput('');
   };
 
   const preguntarIA = async () => {
@@ -108,10 +137,33 @@ export default function AISupport() {
             />
             {pwdErr && <p className="text-sm text-red-600">{pwdErr}</p>}
             <Button className="w-full" onClick={doLogin}><KeyRound className="w-4 h-4 mr-2" />Entrar</Button>
+
+            <div className="pt-1">
+              <Input type="email" placeholder="Tu correo personal (opcional)" value={personalEmail}
+                onChange={(e) => setPersonalEmail(e.target.value)} />
+              <p className="text-[10px] text-gray-400 mt-1">Se usa para enviarte la contraseña (además del correo de soporte).</p>
+            </div>
+
             <Button variant="outline" className="w-full" onClick={recuperar} disabled={recovering}>
               {recovering ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LifeBuoy className="w-4 h-4 mr-2" />}
-              Recuperar contraseña (enviar al correo de soporte)
+              Recuperar contraseña (enviar por correo)
             </Button>
+
+            {!changeMode ? (
+              <button onClick={() => { setChangeMode(true); setRecoverMsg(''); }} className="w-full text-xs text-blue-600 underline">
+                Cambiar contraseña (sin necesitar la anterior)
+              </button>
+            ) : (
+              <div className="border rounded-lg p-3 space-y-2 bg-slate-50">
+                <p className="text-xs font-semibold text-gray-700">Nueva contraseña</p>
+                <Input type="text" placeholder="Nueva contraseña" value={newPwdLogin} onChange={(e) => setNewPwdLogin(e.target.value)} />
+                <div className="flex gap-2">
+                  <Button size="sm" className="flex-1" onClick={cambiarSinAnterior}>Guardar</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setChangeMode(false); setNewPwdLogin(''); }}>Cancelar</Button>
+                </div>
+                <p className="text-[10px] text-gray-400">Si pones tu correo personal arriba, te la enviaremos también.</p>
+              </div>
+            )}
             {recoverMsg && <p className="text-xs text-gray-600">{recoverMsg}</p>}
             <p className="text-[11px] text-gray-400 text-center">Soporte: {SUPPORT_EMAIL}</p>
           </CardContent>
