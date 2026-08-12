@@ -14,6 +14,26 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - main
+    # Compila el APK automáticamente en CADA cambio de código de la app.
+    # (ignora cambios que no afectan al APK para no gastar minutos de más)
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - 'vite.config.js'
+      - 'android-signing/**'
+      - '.github/workflows/build-apk.yml'
+
+# Si llegan varios cambios seguidos, cancela la compilación anterior y deja solo
+# la última (evita amontonar builds cuando se editan varias cosas seguidas).
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-apk:
@@ -52,6 +72,11 @@ jobs:
 
       - name: Sync Capacitor
         run: npx cap sync android
+
+      - name: Firma estable (clave fija → actualizar sin desinstalar)
+        run: |
+          mkdir -p ~/.android
+          cp android-signing/debug.keystore ~/.android/debug.keystore
 
       - name: Build debug APK
         run: cd android && chmod +x ./gradlew && ./gradlew assembleDebug --no-daemon

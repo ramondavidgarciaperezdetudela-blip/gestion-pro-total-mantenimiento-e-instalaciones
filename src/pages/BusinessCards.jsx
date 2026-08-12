@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreditCard, Plus, Printer, Download, Trash2, Edit, QrCode, Layers } from 'lucide-react';
+import QRCodeLib from 'qrcode';
 
 const EMPTY = {
   name: '', role: '', phone: '', email: '', website: '',
@@ -27,11 +28,20 @@ const SCHEMES = {
   teal:      { bg: '#0f766e', text: '#ffffff', accent: '#2dd4bf', sub: '#99f6e4' },
 };
 
-// Simple QR code using Google Charts API
+// QR generado LOCALMENTE (no depende de webs externas → nunca queda en blanco y
+// se regenera solo cuando cambian los datos de la tarjeta).
 function QRCode({ value, size = 60 }) {
-  if (!value) return null;
-  const url = `https://chart.googleapis.com/chart?cht=qr&chs=${size}x${size}&chl=${encodeURIComponent(value)}&choe=UTF-8`;
-  return <img src={url} alt="QR" width={size} height={size} style={{ display: 'block', borderRadius: 4, background: 'white', padding: 2 }} />;
+  const [dataUrl, setDataUrl] = useState('');
+  useEffect(() => {
+    let cancel = false;
+    if (!value) { setDataUrl(''); return; }
+    QRCodeLib.toDataURL(value, { width: size * 3, margin: 1, errorCorrectionLevel: 'M' })
+      .then((d) => { if (!cancel) setDataUrl(d); })
+      .catch(() => { if (!cancel) setDataUrl(''); });
+    return () => { cancel = true; };
+  }, [value, size]);
+  if (!dataUrl) return null;
+  return <img src={dataUrl} alt="QR vCard" width={size} height={size} style={{ display: 'block', borderRadius: 4, background: 'white', padding: 2 }} />;
 }
 
 function buildVCardString(card, company) {
