@@ -315,3 +315,21 @@ export function getCompatibleOils(code) {
     .filter(([_, oil]) => oil.compatibility.includes(code))
     .map(([key, oil]) => ({ key, ...oil }));
 }
+
+// Estado legal del refrigerante: prohibido y si admite gas reciclado/regenerado.
+// - CFC (R-11/R-12/R-502...): prohibido total, NO se puede usar ni reciclado.
+// - HCFC (R-22): prohibido el gas virgen; solo se permite gas RECICLADO/REGENERADO
+//   para mantener equipos existentes (hasta agotar existencias).
+export function estadoRefrigerante(code) {
+  const r = getRefrigerantInfo(code);
+  if (!r) return { prohibido: false, reciclado: null, motivo: '' };
+  const txt = `${r.name || ''} ${r.fgas_status || ''} ${r.notes || ''}`.toLowerCase();
+  const prohibido = /prohib/.test(txt) || r.type === 'CFC' || r.type === 'HCFC';
+  let reciclado = null; // null = no aplica (gas vigente)
+  let motivo = r.fgas_status || '';
+  if (prohibido) {
+    if (r.type === 'HCFC') { reciclado = 'solo'; motivo = motivo || 'Gas virgen prohibido; solo reciclado/regenerado para equipos existentes.'; }
+    else { reciclado = 'no'; motivo = motivo || 'Prohibido; no se permite ni reciclado.'; }
+  }
+  return { prohibido, reciclado, motivo };
+}

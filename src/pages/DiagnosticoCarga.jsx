@@ -3,7 +3,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import NavBar from '@/components/NavBar';
 import { base44 } from '@/api/base44Client';
-import { Printer, FileDown, Gauge, Snowflake, ArrowRightLeft, Wrench, Loader2, Droplets, Zap } from 'lucide-react';
+import { Printer, FileDown, Gauge, Snowflake, ArrowRightLeft, Wrench, Loader2, Droplets, Zap, AlertTriangle } from 'lucide-react';
+import { REFRIGERANT_DATABASE, estadoRefrigerante, getRefrigerantInfo } from '@/components/refrigerantData';
 
 // Presiones ORIENTATIVAS manométricas (bar) por refrigerante y aplicación.
 const PRES = {
@@ -18,7 +19,12 @@ const PRES = {
   'R-407C': { clima: { baja: 5.0, alta: 20 }, refrigeracion: { baja: 2.2, alta: 19 }, congelacion: { baja: 0.5, alta: 18 } },
   'R-22':   { clima: { baja: 5.0, alta: 18 }, refrigeracion: { baja: 2.0, alta: 17 }, congelacion: { baja: 0.3, alta: 16 } },
   'R-290':  { clima: { baja: 4.5, alta: 15 }, refrigeracion: { baja: 2.0, alta: 15 }, congelacion: { baja: 0.6, alta: 14 } },
+  // Gases prohibidos (para instalaciones antiguas): presiones orientativas
+  'R-12':   { clima: { baja: 2.0, alta: 10 }, refrigeracion: { baja: 0.8, alta: 9 },  congelacion: { baja: 0.2, alta: 8 } },
+  'R-502':  { clima: { baja: 5.5, alta: 19 }, refrigeracion: { baja: 2.6, alta: 18 }, congelacion: { baja: 0.7, alta: 17 } },
 };
+// Lista completa de gases (base de datos), para selectores y tabla — incluye prohibidos.
+const ALL_GASES = REFRIGERANT_DATABASE.map(r => r.code);
 const APPS = [
   { k: 'clima', l: 'Climatización (A/C)' },
   { k: 'refrigeracion', l: 'Refrigeración (positivo)' },
@@ -51,7 +57,7 @@ const N = (v, set, ph) => (
   />
 );
 
-function EsquemaFrig({ alta, baja, colorAlta, colorBaja, titulo, lecturas }) {
+function EsquemaFrig({ alta, baja, colorAlta, colorBaja, titulo, lecturas, variante = 'estandar' }) {
   // lecturas (opcional): { tCond, tLiq, subenf, tEvap, tAsp, recal, tAmb, pBaja, pAlta,
   //                        tFiltroIn, tFiltroOut, dtFiltro, tValvOut, dtValv }
   const L = lecturas || {};
@@ -71,6 +77,15 @@ function EsquemaFrig({ alta, baja, colorAlta, colorBaja, titulo, lecturas }) {
       <polygon points={`${x - 7},${y - 7} ${x},${y} ${x - 7},${y + 7}`} fill="#334155" />
       <polygon points={`${x + 7},${y - 7} ${x},${y} ${x + 7},${y + 7}`} fill="#334155" />
       <text x={x} y={y - 10} fontSize="6.5" textAnchor="middle" fill="#334155">corte</text>
+    </g>
+  );
+  // Válvula de retención (antirretorno): círculo con flecha de un solo sentido
+  const ValvReten = ({ x, y }) => (
+    <g>
+      <circle cx={x} cy={y} r="8" fill="#fff" stroke="#0f2740" strokeWidth="1.5" />
+      <polygon points={`${x - 4},${y - 4} ${x + 4},${y} ${x - 4},${y + 4}`} fill="#0f2740" />
+      <line x1={x + 4} y1={y - 5} x2={x + 4} y2={y + 5} stroke="#0f2740" strokeWidth="1.5" />
+      <text x={x} y={y - 11} fontSize="6" textAnchor="middle" fill="#0f2740">retención</text>
     </g>
   );
   return (
@@ -130,6 +145,30 @@ function EsquemaFrig({ alta, baja, colorAlta, colorBaja, titulo, lecturas }) {
       <ValvCorte x={150} y={380} />
       <ValvCorte x={575} y={185} />
 
+      {/* Bulbo de la válvula de expansión: en el tubo de aspiración a la SALIDA del evaporador */}
+      <ellipse cx="218" cy="380" rx="11" ry="5.5" fill="#fde68a" stroke="#b45309" strokeWidth="1.5" />
+      <text x="218" y="366" fontSize="7" textAnchor="middle" fill="#92400e">bulbo {val(L.tBulbo, '°')} (sal. evap.)</text>
+      <path d="M228,376 Q340,345 560,300" fill="none" stroke="#b45309" strokeWidth="1" strokeDasharray="3 2" />
+      <text x="430" y="338" fontSize="6.5" fill="#b45309">capilar del bulbo → válvula</text>
+
+      {variante === 'retencion' && (
+        <g>
+          {/* Válvulas de retención: entrada del compresor (aspiración) y entrada del condensador (descarga) */}
+          <ValvReten x={112} y={380} />
+          <ValvReten x={195} y={90} />
+        </g>
+      )}
+
+      {variante === 'compensacion' && (
+        <g>
+          {/* Línea de igualación externa: del cuerpo de la válvula al tubo de aspiración, justo tras el bulbo */}
+          <path d="M560,300 Q400,300 250,378" fill="none" stroke="#7c3aed" strokeWidth="1.4" strokeDasharray="5 3" />
+          <circle cx="250" cy="378" r="3" fill="#7c3aed" />
+          <text x="300" y="300" fontSize="7" fill="#7c3aed">igualación externa {val(L.pIgual, ' bar')}</text>
+          <text x="300" y="309" fontSize="6.5" fill="#7c3aed">(tras el bulbo)  {val(L.tIgual, '°')}</text>
+        </g>
+      )}
+
       {/* Manómetro ALTA */}
       <rect x="150" y="120" width="94" height="40" rx="6" fill="#fff" stroke={colorAlta} strokeWidth="2" />
       <text x="197" y="136" fontSize="9" textAnchor="middle" fill="#475569">ALTA (bar)</text>
@@ -142,7 +181,7 @@ function EsquemaFrig({ alta, baja, colorAlta, colorBaja, titulo, lecturas }) {
       {/* Puntos clave de medición */}
       <Punto x={128} y={90} n="1" color={HOT} />
       <Punto x={490} y={90} n="2" color={HOT} />
-      <Punto x={200} y={380} n="3" color={COLD} />
+      <Punto x={175} y={380} n="3" color={COLD} />
       <Punto x={95} y={290} n="4" color={COLD} />
 
       {/* Etiquetas de medida sobre el circuito */}
@@ -199,11 +238,20 @@ export default function DiagnosticoCarga() {
   const [tRecibIn, setTRecibIn] = useState('');     // T entrada recibidor de líquido
   const [tRecibOut, setTRecibOut] = useState('');   // T salida recibidor de líquido
   const [pRecib, setPRecib] = useState('');         // Presión en el recibidor de líquido (bar, opcional)
-  // Compresor: modelo, consumo medido y amperaje nominal (búsqueda en internet)
+  // Compresor: marca, modelo, refrigerantes, consumo medido y amperaje nominal
+  const [compMarca, setCompMarca] = useState('');
   const [compModelo, setCompModelo] = useState('');
+  const [compRefrigs, setCompRefrigs] = useState(new Set());  // refrigerantes admitidos (multi)
   const [compAmp, setCompAmp] = useState('');
   const [compRLA, setCompRLA] = useState(null);     // { rla, lra, info }
   const [compBusy, setCompBusy] = useState(false);
+  const toggleRefrig = (c) => setCompRefrigs(prev => { const n = new Set(prev); n.has(c) ? n.delete(c) : n.add(c); return n; });
+
+  // Variante del esquema: estándar / válvulas de retención / válvula de expansión con compensación
+  const [variante, setVariante] = useState('estandar');
+  const [tBulbo, setTBulbo] = useState('');       // T en el bulbo de la válvula
+  const [pIgual, setPIgual] = useState('');       // Presión de igualación externa (compensación)
+  const [tIgual, setTIgual] = useState('');       // T en la toma de igualación externa
 
   const recal = (tAsp !== '' && tEvap !== '') ? (parseFloat(tAsp) - parseFloat(tEvap)) : null;   // recalentamiento
   const subenf = (tCond !== '' && tLiq !== '') ? (parseFloat(tCond) - parseFloat(tLiq)) : null;   // subenfriamiento
@@ -272,7 +320,14 @@ export default function DiagnosticoCarga() {
   const [compresor, setCompresor] = useState('');
   const [compInfo, setCompInfo] = useState('');
   const [buscComp, setBuscComp] = useState(false);
-  const convList = CONV[convGas] || [];
+  // Sustitutos: de la tabla CONV (con factor/aceite) o, si no hay, de la base de datos.
+  const convList = CONV[convGas] || (getRefrigerantInfo(convGas)?.replacement || '')
+    .split(',').map(s => s.trim()).filter(Boolean)
+    .map(name => {
+      const g = REFRIGERANT_DATABASE.find(r => r.name.includes(name) || r.code === name)?.code || name;
+      const info = getRefrigerantInfo(g);
+      return { g, f: 1.0, aceite: info?.compressor_oil || 'Ver ficha', vaciar: /cambio|poe|cambiar/i.test(info?.retrofit_type || '') };
+    });
   const destInfo = convList.find(x => x.g === convDest);
   const pesoNuevo = (pesoAct && destInfo) ? (parseFloat(pesoAct) * destInfo.f).toFixed(2) : null;
   const buscarCompresor = async () => {
@@ -361,10 +416,10 @@ export default function DiagnosticoCarga() {
         {tab === 'presiones' && (
           <div id="diag-print" className="space-y-3">
             <div className="bg-white rounded-xl shadow p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div><label className="text-xs text-slate-500 mb-1 block">Refrigerante</label>
                   <select value={gas} onChange={(e) => setGas(e.target.value)} className="w-full border border-input rounded-md px-3 py-2 text-sm">
-                    {Object.keys(PRES).map(g => <option key={g} value={g}>{g}</option>)}
+                    {ALL_GASES.map(g => <option key={g} value={g}>{g}{estadoRefrigerante(g).prohibido ? ' ⛔' : ''}</option>)}
                   </select>
                 </div>
                 <div><label className="text-xs text-slate-500 mb-1 block">Aplicación</label>
@@ -372,8 +427,23 @@ export default function DiagnosticoCarga() {
                     {APPS.map(a => <option key={a.k} value={a.k}>{a.l}</option>)}
                   </select>
                 </div>
+                <div><label className="text-xs text-slate-500 mb-1 block">Tipo de esquema</label>
+                  <select value={variante} onChange={(e) => setVariante(e.target.value)} className="w-full border border-input rounded-md px-3 py-2 text-sm">
+                    <option value="estandar">Estándar (válvula termostática)</option>
+                    <option value="retencion">Con válvulas de retención</option>
+                    <option value="compensacion">Válvula de expansión con compensación externa</option>
+                  </select>
+                </div>
               </div>
-              <p className="text-[11px] text-slate-500">Recomendado orientativo — Baja: <b>{rec.baja} bar</b> · Alta: <b>{rec.alta} bar</b></p>
+              {estadoRefrigerante(gas).prohibido && (
+                <div className="flex items-start gap-2 text-[11px] bg-red-50 border border-red-200 text-red-700 rounded-md p-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span><b>{gas} está PROHIBIDO.</b> {estadoRefrigerante(gas).reciclado === 'solo'
+                    ? 'Solo se permite gas reciclado/regenerado para mantener equipos existentes; el gas virgen está prohibido. Valora convertir a un sustituto (pestaña Conversión).'
+                    : 'No se permite ni reciclado. Requiere sustituir el equipo o convertir a un refrigerante permitido (pestaña Conversión).'}</span>
+                </div>
+              )}
+              <p className="text-[11px] text-slate-500">Recomendado orientativo — Baja: <b>{rec.baja} bar</b> · Alta: <b>{rec.alta} bar</b>{PRES[gas] ? '' : ' (sin tabla orientativa para este gas)'}</p>
 
               {/* LADO BAJA (aspiración) — recalentamiento */}
               <div className="rounded-lg border-2 border-sky-200 bg-sky-50/40 p-3 space-y-2">
@@ -420,6 +490,24 @@ export default function DiagnosticoCarga() {
                 </div>
               </div>
 
+              {/* VÁLVULA DE EXPANSIÓN / BULBO (y compensación externa) */}
+              <div className="rounded-lg border-2 border-yellow-300 bg-yellow-50/50 p-3 space-y-2">
+                <p className="text-xs font-bold text-yellow-800 flex items-center gap-1">🔧 VÁLVULA DE EXPANSIÓN — bulbo{variante === 'compensacion' ? ' y compensación externa' : ''}</p>
+                <p className="text-[10px] text-slate-500">El <b>bulbo</b> se coloca en el tubo de <b>aspiración a la salida del evaporador</b>, bien fijado y aislado (a las 4 en punto en tubos &gt; 7/8″). En el esquema se muestra dónde va conectado.</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">T. en el bulbo (°C)<br/><span className="text-[9px] text-slate-400">salida del evaporador</span></label>{N(tBulbo, setTBulbo, 'Ej: 12')}</div>
+                  {variante === 'compensacion' && (
+                    <>
+                      <div><label className="text-[11px] text-slate-500 mb-1 block">Presión igualación (bar)<br/><span className="text-[9px] text-slate-400">toma de compensación externa</span></label>{N(pIgual, setPIgual, 'Ej: 8')}</div>
+                      <div><label className="text-[11px] text-slate-500 mb-1 block">T. igualación (°C)<br/><span className="text-[9px] text-slate-400">en la toma de compensación</span></label>{N(tIgual, setTIgual, 'Ej: 6')}</div>
+                    </>
+                  )}
+                </div>
+                {variante === 'compensacion' && (
+                  <p className="text-[10px] text-slate-500">La <b>línea de igualación externa</b> se conecta al tubo de aspiración <b>justo después del bulbo</b> (aguas abajo), para compensar la caída de presión del evaporador.</p>
+                )}
+              </div>
+
               {/* RECIBIDOR DE LÍQUIDO */}
               <div className="rounded-lg border-2 border-orange-200 bg-orange-50/40 p-3 space-y-2">
                 <p className="text-xs font-bold text-orange-700 flex items-center gap-1">🛢️ RECIBIDOR DE LÍQUIDO</p>
@@ -432,11 +520,30 @@ export default function DiagnosticoCarga() {
 
               {/* COMPRESOR — modelo, amperaje nominal y consumo medido */}
               <div className="rounded-lg border-2 border-slate-300 bg-slate-50 p-3 space-y-2">
-                <p className="text-xs font-bold text-slate-700 flex items-center gap-1"><Zap className="w-3.5 h-3.5" /> COMPRESOR — amperaje y consumo</p>
-                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
-                  <div><label className="text-[11px] text-slate-500 mb-1 block">Modelo del compresor</label>
-                    <input type="text" value={compModelo} onChange={(e) => setCompModelo(e.target.value)} placeholder="Ej: Danfoss NTZ068, Copeland ZB21..." className="w-full border border-input rounded-md px-3 py-2 text-sm" />
+                <p className="text-xs font-bold text-slate-700 flex items-center gap-1"><Zap className="w-3.5 h-3.5" /> COMPRESOR — marca, modelo, refrigerantes y consumo</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">Marca</label>
+                    <input type="text" value={compMarca} onChange={(e) => setCompMarca(e.target.value)} placeholder="Ej: Danfoss, Copeland, Bitzer..." className="w-full border border-input rounded-md px-3 py-2 text-sm" />
                   </div>
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">Modelo</label>
+                    <input type="text" value={compModelo} onChange={(e) => setCompModelo(e.target.value)} placeholder="Ej: NTZ068, ZB21..." className="w-full border border-input rounded-md px-3 py-2 text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] text-slate-500 mb-1 block">Refrigerantes admitidos <span className="text-[9px] text-slate-400">(multirefrigerante: marca los que admita; ⛔ = prohibido)</span></label>
+                  <div className="flex flex-wrap gap-1">
+                    {ALL_GASES.map(g => {
+                      const on = compRefrigs.has(g); const proh = estadoRefrigerante(g).prohibido;
+                      return (
+                        <button key={g} type="button" onClick={() => toggleRefrig(g)}
+                          className={`text-[10px] px-2 py-1 rounded-full border ${on ? 'bg-slate-700 text-white border-slate-700' : proh ? 'bg-red-50 text-red-600 border-red-200' : 'bg-white text-slate-600 border-slate-200'}`}>
+                          {g}{proh ? ' ⛔' : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="flex justify-end">
                   <Button onClick={buscarAmperaje} disabled={compBusy || !compModelo.trim()} className="gap-2 h-9">
                     {compBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}Buscar amperaje
                   </Button>
@@ -462,11 +569,11 @@ export default function DiagnosticoCarga() {
 
             <div id="diag-image-area" className="bg-white rounded-xl shadow p-4" style={{ background: '#ffffff' }}>
               <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"><Snowflake className="w-4 h-4 text-sky-600" />Esquema del circuito con todas las medidas</p>
-              <div className="text-[11px] text-slate-500 mb-2">Refrigerante <b>{gas}</b> · {APPS.find(a => a.k === app)?.l}</div>
-              <EsquemaFrig alta={pAlta || rec.alta} baja={pBaja || rec.baja} colorAlta={cA} colorBaja={cB}
+              <div className="text-[11px] text-slate-500 mb-2">Refrigerante <b>{gas}</b> · {APPS.find(a => a.k === app)?.l} · Esquema: <b>{variante === 'estandar' ? 'estándar' : variante === 'retencion' ? 'con válvulas de retención' : 'válvula de expansión con compensación'}</b></div>
+              <EsquemaFrig alta={pAlta || rec.alta} baja={pBaja || rec.baja} colorAlta={cA} colorBaja={cB} variante={variante}
                 lecturas={{
                   tEvap, tAsp, tCond, tLiq, tAmb, pBaja, pAlta, tFiltroIn, tFiltroOut, tValvOut,
-                  tRecibIn, tRecibOut, pRecib, compAmp,
+                  tRecibIn, tRecibOut, pRecib, compAmp, tBulbo, pIgual, tIgual,
                   compRLA: compRLA?.rla ?? '',
                   recal: recal != null ? recal.toFixed(1) : '',
                   subenf: subenf != null ? subenf.toFixed(1) : '',
@@ -491,7 +598,13 @@ export default function DiagnosticoCarga() {
                   ['T. entrada recibidor', tRecibIn !== '' ? tRecibIn + ' °C' : '—'],
                   ['T. salida recibidor', tRecibOut !== '' ? tRecibOut + ' °C' : '—'],
                   ['Presión recibidor', pRecib !== '' ? pRecib + ' bar' : '—'],
-                  ['Compresor', compModelo || '—'],
+                  ['T. bulbo', tBulbo !== '' ? tBulbo + ' °C' : '—'],
+                  ...(variante === 'compensacion' ? [
+                    ['P. igualación ext.', pIgual !== '' ? pIgual + ' bar' : '—'],
+                    ['T. igualación ext.', tIgual !== '' ? tIgual + ' °C' : '—'],
+                  ] : []),
+                  ['Compresor', [compMarca, compModelo].filter(Boolean).join(' ') || '—'],
+                  ['Refrigerantes', compRefrigs.size ? [...compRefrigs].join(', ') : '—'],
                   ['Consumo medido', compAmp !== '' ? compAmp + ' A' : '—'],
                   ['Amperaje nominal (RLA)', compRLA?.rla != null ? compRLA.rla + ' A' : '—'],
                 ].map(([k, v]) => (
@@ -542,9 +655,9 @@ export default function DiagnosticoCarga() {
           <div id="diag-print" className="space-y-3">
             <div className="bg-white rounded-xl shadow p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-slate-500 mb-1 block">Gas actual</label>
+                <div><label className="text-xs text-slate-500 mb-1 block">Gas actual <span className="text-[9px] text-slate-400">(⛔ = prohibido)</span></label>
                   <select value={convGas} onChange={(e) => { setConvGas(e.target.value); setConvDest(''); }} className="w-full border border-input rounded-md px-3 py-2 text-sm">
-                    {Object.keys(CONV).map(g => <option key={g} value={g}>{g}</option>)}
+                    {ALL_GASES.map(g => <option key={g} value={g}>{g}{estadoRefrigerante(g).prohibido ? ' ⛔' : ''}</option>)}
                   </select>
                 </div>
                 <div><label className="text-xs text-slate-500 mb-1 block">Gas nuevo</label>
@@ -562,7 +675,47 @@ export default function DiagnosticoCarga() {
                 </div>
               </div>
               {compInfo && <div className="bg-gray-50 border rounded-lg p-2 text-xs whitespace-pre-wrap">{compInfo}</div>}
+              {estadoRefrigerante(convGas).prohibido && (
+                <div className="flex items-start gap-2 text-[12px] bg-red-50 border border-red-200 text-red-700 rounded-md p-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span><b>{convGas} está PROHIBIDO.</b> {getRefrigerantInfo(convGas)?.fgas_status || ''}. {estadoRefrigerante(convGas).reciclado === 'solo'
+                    ? 'Solo se permite gas RECICLADO/REGENERADO para mantener equipos existentes (el gas virgen está prohibido). Se recomienda convertir a un sustituto.'
+                    : 'NO se permite ni reciclado: hay que convertir a un refrigerante permitido o sustituir el equipo.'}</span>
+                </div>
+              )}
             </div>
+
+            {/* Tabla completa de refrigerantes (incluidos prohibidos) */}
+            <details className="bg-white rounded-xl shadow p-3">
+              <summary className="cursor-pointer text-sm font-semibold text-slate-700">📋 Ver tabla completa de refrigerantes (incluidos prohibidos)</summary>
+              <div className="overflow-x-auto mt-2">
+                <table className="w-full text-[11px] border-collapse">
+                  <thead>
+                    <tr className="text-left text-slate-500 border-b">
+                      <th className="p-1">Gas</th><th className="p-1">Tipo</th><th className="p-1">Estado</th>
+                      <th className="p-1">Reciclado</th><th className="p-1">GWP</th><th className="p-1">Sustituto</th><th className="p-1">Aceite</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {REFRIGERANT_DATABASE.map(r => {
+                      const e = estadoRefrigerante(r.code);
+                      return (
+                        <tr key={r.code} className={`border-b ${e.prohibido ? 'bg-red-50' : ''}`}>
+                          <td className="p-1 font-bold">{r.code}{e.prohibido ? ' ⛔' : ''}</td>
+                          <td className="p-1">{r.type}</td>
+                          <td className="p-1">{e.prohibido ? <span className="text-red-600 font-semibold">Prohibido</span> : <span className="text-green-700">Permitido</span>}</td>
+                          <td className="p-1">{e.reciclado === 'solo' ? 'Solo reciclado' : e.reciclado === 'no' ? 'No' : '—'}</td>
+                          <td className="p-1">{r.gwp}</td>
+                          <td className="p-1">{r.replacement || '—'}</td>
+                          <td className="p-1">{r.compressor_oil || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">⛔ Prohibido. «Solo reciclado» = únicamente gas recuperado/regenerado para equipos existentes (gas virgen prohibido).</p>
+            </details>
 
             {destInfo && (
               <>

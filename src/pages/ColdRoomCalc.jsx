@@ -131,6 +131,262 @@ function buildResult(form, breakdown) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Componentes eléctricos y de control mínimos de la instalación frigorífica.
+// Función de datos reutilizada por la tarjeta del resultado y por el PDF.
+// ---------------------------------------------------------------------------
+function electricalControlData(result, form) {
+  const loadKW = (result?.loadW || 0) / 1000;
+  const tipo = form.cold_room_type;
+  const temp = parseFloat(form.cold_room_temp);
+  const esNegativa = tipo === 'negativa' || (Number.isFinite(temp) && temp <= -5);
+  const trifasico = loadKW > 5;
+
+  const phase = trifasico
+    ? {
+        label: 'Trifásico 400V (III+N)',
+        magneto: loadKW <= 15 ? 'Magnetotérmico 4P 16–25A curva D' : 'Magnetotérmico 4P 32–40A curva D',
+        dif: 'Diferencial 4P 30–300mA superinmunizado (clase A/Si)',
+        nota: `Potencia calculada ≈ ${loadKW.toFixed(1)} kW ⇒ acometida trifásica.`,
+      }
+    : {
+        label: 'Monofásico 230V (I+N)',
+        magneto: 'Magnetotérmico 2P 10–16A curva C/D',
+        dif: 'Diferencial 2P 25A 30mA clase A',
+        nota: `Potencia calculada ≈ ${loadKW.toFixed(1)} kW ⇒ acometida monofásica.`,
+      };
+
+  const defrost = esNegativa
+    ? {
+        modo: 'Desescarche por resistencias eléctricas',
+        detalle: 'Cámara negativa: el reloj/temporizador (o el propio controlador) activa las resistencias de desescarche del evaporador varias veces al día. El fin de desescarche lo da la sonda de evaporador (típ. +8/+12 °C) o, en su defecto, el tiempo máximo programado.',
+      }
+    : {
+        modo: 'Desescarche por parada de compresor / aire',
+        detalle: 'Cámara positiva: desescarche natural parando el compresor y manteniendo los ventiladores del evaporador (aire ambiente). El fin lo da la sonda de evaporador (típ. +2/+4 °C) o el tiempo programado. No suele necesitar resistencias.',
+      };
+
+  const sensors = [
+    {
+      nombre: 'Sonda de cámara (ambiente)',
+      donde: 'En la pared, a ~1,5 m del suelo, alejada del evaporador y de la puerta.',
+      conecta: 'Entrada de sonda ambiente del controlador. Gobierna el arranque/paro del compresor por temperatura.',
+    },
+    {
+      nombre: 'Sonda de evaporador / fin de desescarche',
+      donde: 'Clipada entre las aletas de la batería del evaporador, en la zona más fría.',
+      conecta: 'Entrada de sonda de desescarche del controlador. Corta el desescarche por temperatura y da el retardo de goteo antes de arrancar ventiladores.',
+    },
+    {
+      nombre: 'Sonda de producto (opcional)',
+      donde: 'Insertada en el producto o en una vaina/simulador de producto.',
+      conecta: 'Tercera entrada del controlador o registrador independiente. Solo registro/trazabilidad (APPCC), no controla nada.',
+    },
+  ];
+
+  const panel = [
+    {
+      comp: 'Controlador / termostato digital (Eliwell ID/IC, Dixell XR, Carel)',
+      conecta: 'Corazón del cuadro. Se alimenta tras el magnetotérmico; sus salidas de relé mandan al contactor del compresor, a los ventiladores del evaporador, a las resistencias de desescarche y a las alarmas. Recibe las sondas.',
+    },
+    {
+      comp: 'Contactor de compresor + relé térmico / guardamotor',
+      conecta: 'La bobina del contactor la gobierna la salida "compresor" del controlador. El relé térmico (o guardamotor) protege el motor del compresor frente a sobreintensidad.',
+    },
+    {
+      comp: 'Presostato de alta (HP)',
+      conecta: 'En la línea de descarga. Corta el compresor por sobrepresión de condensación. Rearme manual recomendado.',
+    },
+    {
+      comp: 'Presostato de baja (LP)',
+      conecta: 'En la línea de aspiración. Para el compresor por baja presión / falta de gas. En equipos pequeños se usa el presostato combinado alta/baja.',
+    },
+    {
+      comp: 'Presostato diferencial de aceite (si aplica)',
+      conecta: 'Solo en compresores semiherméticos con bomba de aceite. Para el compresor si no hay presión diferencial de aceite suficiente.',
+    },
+    {
+      comp: 'Resistencia de cárter',
+      conecta: 'En el cárter del compresor. Alimentación permanente (o por termostato de cárter) para evitar migración/dilución del refrigerante en el aceite en parada.',
+    },
+    {
+      comp: 'Ventiladores del evaporador',
+      conecta: 'Salida de ventiladores del controlador. Paran durante el desescarche y arrancan de nuevo por la sonda de evaporador (retardo de goteo).',
+    },
+    {
+      comp: 'Ventiladores del condensador',
+      conecta: 'Control por presostato de condensación o por variador/regulador de velocidad para mantener la presión de alta estable (sobre todo en frío exterior).',
+    },
+    {
+      comp: 'Resistencias de desescarche del evaporador',
+      conecta: esNegativa
+        ? 'Salida de desescarche del reloj/controlador (vía contactor si la potencia es alta). Activas solo en el ciclo de desescarche.'
+        : 'No suelen instalarse en cámara positiva (desescarche por parada de compresor).',
+    },
+    {
+      comp: 'Resistencia de marco de puerta',
+      conecta: 'Alimentación permanente. Evita la congelación de la junta y del marco (imprescindible en cámaras negativas).',
+    },
+    {
+      comp: 'Resistencia de desagüe / bandeja',
+      conecta: 'Cable calefactor en la bandeja y el tubo de desagüe. Evita el tapón de hielo que bloquearía el drenaje del agua de desescarche.',
+    },
+    {
+      comp: 'Protecciones de cabecera',
+      conecta: `${phase.magneto} + ${phase.dif}. Van al inicio del cuadro protegiendo toda la instalación. ${phase.nota}`,
+    },
+  ];
+
+  return { loadKW, esNegativa, trifasico, phase, defrost, sensors, panel };
+}
+
+// Diagrama SVG simple del cuadro de control (controlador -> cargas / sondas).
+function ControlPanelDiagram() {
+  const box = (x, y, w, h, fill, stroke) => (
+    <rect x={x} y={y} width={w} height={h} rx="6" fill={fill} stroke={stroke} strokeWidth="1.5" />
+  );
+  const txt = (x, y, s, opts = {}) => (
+    <text x={x} y={y} fontSize={opts.size || 11} fontWeight={opts.bold ? 700 : 400}
+      fill={opts.fill || '#334155'} textAnchor={opts.anchor || 'middle'}>{s}</text>
+  );
+  const line = (x1, y1, x2, y2) => (
+    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#94a3b8" strokeWidth="1.5" markerEnd="url(#arr)" />
+  );
+  return (
+    <svg viewBox="0 0 600 270" className="w-full h-auto" role="img" aria-label="Esquema del cuadro de control">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8" />
+        </marker>
+      </defs>
+
+      {/* Sondas (entradas) */}
+      {box(15, 100, 130, 70, '#ecfeff', '#06b6d4')}
+      {txt(80, 122, 'Sondas', { bold: true, fill: '#0e7490' })}
+      {txt(80, 140, 'cámara · evap.', { size: 10, fill: '#155e75' })}
+      {txt(80, 154, 'producto', { size: 10, fill: '#155e75' })}
+      {line(145, 135, 228, 135)}
+
+      {/* Protección (alimentación) */}
+      {box(230, 205, 150, 55, '#fef2f2', '#ef4444')}
+      {txt(305, 227, 'Magnetotérmico', { bold: true, fill: '#b91c1c', size: 10 })}
+      {txt(305, 243, '+ diferencial', { fill: '#b91c1c', size: 10 })}
+      {line(305, 205, 305, 172)}
+
+      {/* Controlador (centro) */}
+      {box(230, 100, 150, 70, '#eff6ff', '#2563eb')}
+      {txt(305, 128, 'Controlador', { bold: true, fill: '#1d4ed8' })}
+      {txt(305, 146, 'digital', { bold: true, fill: '#1d4ed8' })}
+      {txt(305, 161, '(Eliwell/Dixell/Carel)', { size: 8, fill: '#3b82f6' })}
+
+      {/* Salidas (cargas) */}
+      {box(455, 15, 130, 45, '#f0fdf4', '#16a34a')}
+      {txt(520, 34, 'Compresor', { bold: true, fill: '#15803d', size: 10 })}
+      {txt(520, 48, '(contactor+térmico)', { size: 8, fill: '#16a34a' })}
+      {line(380, 128, 453, 45)}
+
+      {box(455, 75, 130, 45, '#f0fdf4', '#16a34a')}
+      {txt(520, 94, 'Ventiladores', { bold: true, fill: '#15803d', size: 10 })}
+      {txt(520, 108, 'evap. / cond.', { size: 8, fill: '#16a34a' })}
+      {line(380, 132, 453, 97)}
+
+      {box(455, 135, 130, 45, '#fff7ed', '#f97316')}
+      {txt(520, 154, 'Desescarche', { bold: true, fill: '#c2410c', size: 10 })}
+      {txt(520, 168, 'resist. evaporador', { size: 8, fill: '#ea580c' })}
+      {line(380, 140, 453, 157)}
+
+      {box(455, 195, 130, 45, '#fff7ed', '#f97316')}
+      {txt(520, 214, 'Resist. puerta', { bold: true, fill: '#c2410c', size: 10 })}
+      {txt(520, 228, 'y desagüe', { size: 8, fill: '#ea580c' })}
+      {line(380, 150, 453, 217)}
+    </svg>
+  );
+}
+
+// Tarjeta con los componentes eléctricos y de control mínimos.
+function ElectricalControlSection(result, form) {
+  const d = electricalControlData(result, form);
+  return (
+    <Card className="border-slate-300">
+      <CardHeader className="bg-slate-50 py-3">
+        <CardTitle className="text-slate-700 text-base flex items-center gap-2">
+          <Calculator className="w-4 h-4 text-slate-500" />
+          Componentes eléctricos y de control mínimos
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-4 space-y-4">
+        <p className="text-xs text-gray-500">
+          Instalación {d.esNegativa ? 'negativa' : 'positiva'} · alimentación <strong>{d.phase.label}</strong> · {d.phase.nota}
+        </p>
+
+        {/* Esquema del cuadro */}
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <p className="text-sm font-semibold text-gray-700 mb-2">Esquema del cuadro de control</p>
+          {ControlPanelDiagram()}
+          <p className="text-[10px] text-gray-400 mt-1">El controlador recibe las sondas y manda a compresor, ventiladores y desescarche. Las protecciones alimentan todo el cuadro.</p>
+        </div>
+
+        {/* 1. Reloj de descarche */}
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+          <p className="text-sm font-semibold text-orange-800 mb-1">1 · Reloj de descarche / temporizador</p>
+          <p className="text-xs font-medium text-orange-700">{d.defrost.modo}</p>
+          <p className="text-xs text-gray-600 mt-1">{d.defrost.detalle}</p>
+          <p className="text-[11px] text-gray-500 mt-1">
+            <strong>Dónde conecta:</strong> el reloj (o la función de desescarche del controlador) va en el cuadro; su salida temporizada corta el compresor y, en negativas, alimenta las resistencias de desescarche vía contactor. La <strong>sonda de fin de desescarche</strong> (sonda de evaporador) corta el ciclo al alcanzar la temperatura fijada.
+          </p>
+        </div>
+
+        {/* 2. Sondas de temperatura */}
+        <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3">
+          <p className="text-sm font-semibold text-cyan-800 mb-2">2 · Sondas de temperatura mínimas</p>
+          <div className="overflow-x-auto -mx-1">
+            <table className="w-full text-xs border-collapse min-w-[420px]">
+              <thead><tr className="bg-cyan-100">
+                <th className="border p-1 text-left">Sonda</th>
+                <th className="border p-1 text-left">Dónde se coloca</th>
+                <th className="border p-1 text-left">Dónde conecta / función</th>
+              </tr></thead>
+              <tbody>
+                {d.sensors.map((s, i) => (
+                  <tr key={i} className="border-b">
+                    <td className="border p-1 font-medium">{s.nombre}</td>
+                    <td className="border p-1 text-gray-600">{s.donde}</td>
+                    <td className="border p-1 text-gray-600">{s.conecta}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 3. Control eléctrico (cuadro) */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p className="text-sm font-semibold text-blue-800 mb-2">3 · Control eléctrico del cuadro — dónde conecta cada componente</p>
+          <div className="overflow-x-auto -mx-1">
+            <table className="w-full text-xs border-collapse min-w-[420px]">
+              <thead><tr className="bg-blue-100">
+                <th className="border p-1 text-left w-1/3">Componente</th>
+                <th className="border p-1 text-left">Dónde conecta</th>
+              </tr></thead>
+              <tbody>
+                {d.panel.map((p, i) => (
+                  <tr key={i} className="border-b">
+                    <td className="border p-1 font-medium">{p.comp}</td>
+                    <td className="border p-1 text-gray-600">{p.conecta}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[10px] text-gray-500 mt-2">
+            Protección de cabecera según potencia: <strong>{d.phase.magneto}</strong> y <strong>{d.phase.dif}</strong>.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function ColdRoomCalc() {
   const [contacts, setContacts] = useState([]);
   const [activeTab, setActiveTab] = useState('camara');
@@ -356,6 +612,25 @@ export default function ColdRoomCalc() {
           ${result.materials.map(m => `<tr><td>${m.material}</td><td style="text-align:right">${m.quantity}</td><td>${m.unit}</td></tr>`).join('')}
         </tbody></table>
       </div>
+      ${(() => {
+        const d = electricalControlData(result, form);
+        return `
+      <div class="section" style="border-left-color:#64748b">
+        <div class="section-title" style="color:#475569">Componentes eléctricos y de control mínimos</div>
+        <div style="font-size:10px;color:#6b7280;margin-bottom:6px">Instalación ${d.esNegativa ? 'negativa' : 'positiva'} · alimentación <b>${d.phase.label}</b>. ${d.phase.nota}</div>
+        <p style="font-weight:700;font-size:10px;margin:6px 0 2px;color:#c2410c">1 · Reloj de descarche / temporizador — ${d.defrost.modo}</p>
+        <div style="font-size:10px;color:#374151">${d.defrost.detalle} La sonda de evaporador actúa como fin de desescarche.</div>
+        <p style="font-weight:700;font-size:10px;margin:8px 0 2px;color:#0e7490">2 · Sondas de temperatura mínimas</p>
+        <table><thead><tr><th>Sonda</th><th>Dónde se coloca</th><th>Dónde conecta / función</th></tr></thead><tbody>
+          ${d.sensors.map(s => `<tr><td><b>${s.nombre}</b></td><td>${s.donde}</td><td>${s.conecta}</td></tr>`).join('')}
+        </tbody></table>
+        <p style="font-weight:700;font-size:10px;margin:8px 0 2px;color:#1d4ed8">3 · Control eléctrico del cuadro — dónde conecta cada componente</p>
+        <table><thead><tr><th>Componente</th><th>Dónde conecta</th></tr></thead><tbody>
+          ${d.panel.map(p => `<tr><td><b>${p.comp}</b></td><td>${p.conecta}</td></tr>`).join('')}
+        </tbody></table>
+        <div style="font-size:9px;color:#6b7280;margin-top:4px">Protección de cabecera: <b>${d.phase.magneto}</b> y <b>${d.phase.dif}</b>.</div>
+      </div>`;
+      })()}
       <div class="footer">Informe generado el ${new Date().toLocaleDateString('es-ES')} — ${cs.company_name||''} · Valores orientativos</div>
     </body></html>`;
 
@@ -614,6 +889,9 @@ export default function ColdRoomCalc() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Componentes eléctricos y de control mínimos */}
+      {ElectricalControlSection(result, form)}
 
       {/* Acciones */}
       <div className="flex gap-2 flex-wrap">
