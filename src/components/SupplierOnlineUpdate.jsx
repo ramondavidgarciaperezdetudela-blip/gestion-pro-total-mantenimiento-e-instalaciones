@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { loadValidChars } from '@/components/ValidCharsConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumberField } from '@/components/ui/number-field';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Globe, RefreshCw, Image as ImageIcon, Loader2, X,
@@ -333,7 +334,7 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated, onFixed, bgState,
       {!running && (
         <div className="flex items-center gap-3">
           <label className="text-xs text-gray-500 whitespace-nowrap">Margen venta (%):</label>
-          <Input type="number" min="0" max="200" value={margin} onChange={e => setMargin(parseInt(e.target.value) || 0)} className="h-8 text-sm w-24" />
+          <NumberField decimals={false} value={margin} onChange={v => setMargin(v)} className="h-8 text-sm w-24" />
         </div>
       )}
 

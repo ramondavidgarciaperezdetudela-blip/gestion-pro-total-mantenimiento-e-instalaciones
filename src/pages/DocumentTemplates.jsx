@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -511,7 +512,7 @@ export default function DocumentTemplates() {
               {[['margin_top', 'Superior'], ['margin_bottom', 'Inferior'], ['margin_left', 'Izquierdo'], ['margin_right', 'Derecho']].map(([k, l]) => (
                 <div key={k}>
                   <label className="text-xs text-gray-500">{l}</label>
-                  <Input type="number" className="mt-1 h-8 text-sm" value={form[k] ?? 15} onChange={e => setForm({ ...form, [k]: parseInt(e.target.value) })} />
+                  <NumberField decimals={false} className="mt-1 h-8 text-sm" value={form[k] ?? 15} onChange={v => setForm({ ...form, [k]: v })} />
                 </div>
               ))}
             </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
+import { NumberField } from '@/components/ui/number-field';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -636,15 +637,15 @@ export default function SupplierTariffs() {
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="text-xs text-gray-500">Precio coste (€)</label>
-                  <Input type="number" step="0.01" value={editForm.cost_price ?? ''} onChange={e => setEditForm(f => ({ ...f, cost_price: parseFloat(e.target.value) || 0 }))} />
+                  <NumberField value={editForm.cost_price ?? ''} onChange={v => setEditForm(f => ({ ...f, cost_price: v }))} />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Precio venta (€)</label>
-                  <Input type="number" step="0.01" value={editForm.sale_price ?? ''} onChange={e => setEditForm(f => ({ ...f, sale_price: parseFloat(e.target.value) || 0 }))} />
+                  <NumberField value={editForm.sale_price ?? ''} onChange={v => setEditForm(f => ({ ...f, sale_price: v }))} />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Margen (%)</label>
-                  <Input type="number" value={editForm.margin ?? ''} onChange={e => setEditForm(f => ({ ...f, margin: parseFloat(e.target.value) || 0 }))} />
+                  <NumberField value={editForm.margin ?? ''} onChange={v => setEditForm(f => ({ ...f, margin: v }))} />
                 </div>
               </div>
               <Input placeholder="Unidad (ud, m, kg...)" value={editForm.unit || ''} onChange={e => setEditForm(f => ({ ...f, unit: e.target.value }))} />

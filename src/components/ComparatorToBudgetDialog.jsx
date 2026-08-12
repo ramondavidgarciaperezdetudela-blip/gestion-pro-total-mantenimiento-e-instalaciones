@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { NumberField } from '@/components/ui/number-field';
 import { Loader2, FileText, Printer, Check, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -33,7 +33,7 @@ export default function ComparatorToBudgetDialog({ open, onClose, selectedItems 
         quantity: 1,
         unit_price: sale,
         cost_price: cost,
-        discount: 0,
+        discount: '',
       };
     }));
   }, [open, selectedItems]);
@@ -160,9 +160,8 @@ export default function ComparatorToBudgetDialog({ open, onClose, selectedItems 
             </div>
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-blue-700 whitespace-nowrap">Margen venta (%)</label>
-              <Input type="number" min="0" max="300" value={margin}
-                onChange={e => {
-                  const m = parseInt(e.target.value) || 0;
+              <NumberField decimals={false} value={margin}
+                onChange={m => {
                   setMargin(m);
                   setLines(prev => prev.map(l => ({
                     ...l,
@@ -206,18 +205,18 @@ export default function ComparatorToBudgetDialog({ open, onClose, selectedItems 
                         )}
                       </td>
                       <td className="p-2">
-                        <Input type="number" min="0.01" step="0.01" value={l.quantity}
-                          onChange={e => updateLine(idx, 'quantity', parseFloat(e.target.value) || 1)}
+                        <NumberField value={l.quantity}
+                          onChange={v => updateLine(idx, 'quantity', v)}
                           className="w-full text-center text-sm h-8" />
                       </td>
                       <td className="p-2">
-                        <Input type="number" min="0" step="0.01" value={l.unit_price}
-                          onChange={e => updateLine(idx, 'unit_price', parseFloat(e.target.value) || 0)}
+                        <NumberField value={l.unit_price}
+                          onChange={v => updateLine(idx, 'unit_price', v)}
                           className="w-full text-right text-sm h-8" />
                       </td>
                       <td className="p-2">
-                        <Input type="number" min="0" max="100" value={l.discount}
-                          onChange={e => updateLine(idx, 'discount', parseFloat(e.target.value) || 0)}
+                        <NumberField value={l.discount}
+                          onChange={v => updateLine(idx, 'discount', v)}
                           className="w-full text-center text-sm h-8" />
                       </td>
                       <td className="p-2 text-right font-semibold text-gray-800 whitespace-nowrap">

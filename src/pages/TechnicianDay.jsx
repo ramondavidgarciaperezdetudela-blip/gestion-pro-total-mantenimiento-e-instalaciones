@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { NumberField } from '@/components/ui/number-field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -34,7 +35,7 @@ export default function TechnicianDay() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [updateForm, setUpdateForm] = useState({});
   const [saving, setSaving] = useState(false);
-  const [newMaterial, setNewMaterial] = useState({ material: '', quantity: 1, unit_price: 0 });
+  const [newMaterial, setNewMaterial] = useState({ material: '', quantity: 1, unit_price: '' });
   const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(null); // 'before' | 'after' | null
   const [viewDate, setViewDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -104,7 +105,7 @@ export default function TechnicianDay() {
       materials_used: [...(order.materials_used || [])],
       photos_before: [...(order.photos_before || [])],
       photos_after: [...(order.photos_after || [])],
-      labor_hours: order.labor_hours || 0,
+      labor_hours: order.labor_hours || '',
     });
     setShowMaterialForm(false);
     setStockSearch('');
@@ -189,7 +190,7 @@ export default function TechnicianDay() {
   const addMaterial = () => {
     if (!newMaterial.material.trim()) return;
     setUpdateForm(f => ({ ...f, materials_used: [...(f.materials_used || []), { ...newMaterial }] }));
-    setNewMaterial({ material: '', quantity: 1, unit_price: 0 });
+    setNewMaterial({ material: '', quantity: 1, unit_price: '' });
     setShowMaterialForm(false);
   };
 
@@ -436,10 +437,9 @@ export default function TechnicianDay() {
               {/* Horas */}
               <div>
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Horas trabajadas</label>
-                <Input
-                  type="number" min={0} step={0.5}
+                <NumberField
                   value={updateForm.labor_hours}
-                  onChange={e => setUpdateForm(f => ({ ...f, labor_hours: parseFloat(e.target.value) || 0 }))}
+                  onChange={v => setUpdateForm(f => ({ ...f, labor_hours: v }))}
                   className="w-28"
                   placeholder="0"
                 />
@@ -492,8 +492,8 @@ export default function TechnicianDay() {
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-2 space-y-2">
                     <Input placeholder="Material *" value={newMaterial.material} onChange={e => setNewMaterial(m => ({ ...m, material: e.target.value }))} className="text-sm h-8" />
                     <div className="grid grid-cols-2 gap-2">
-                      <Input type="number" placeholder="Cant." min={0} step={0.1} value={newMaterial.quantity} onChange={e => setNewMaterial(m => ({ ...m, quantity: parseFloat(e.target.value) || 0 }))} className="text-sm h-8" />
-                      <Input type="number" placeholder="€/ud" min={0} step={0.01} value={newMaterial.unit_price} onChange={e => setNewMaterial(m => ({ ...m, unit_price: parseFloat(e.target.value) || 0 }))} className="text-sm h-8" />
+                      <NumberField placeholder="Cant." value={newMaterial.quantity} onChange={v => setNewMaterial(m => ({ ...m, quantity: v }))} className="text-sm h-8" />
+                      <NumberField placeholder="€/ud" value={newMaterial.unit_price} onChange={v => setNewMaterial(m => ({ ...m, unit_price: v }))} className="text-sm h-8" />
                     </div>
                     <Button size="sm" className="w-full h-8 bg-blue-600 hover:bg-blue-700 text-xs" onClick={addMaterial}>Añadir material</Button>
                   </div>

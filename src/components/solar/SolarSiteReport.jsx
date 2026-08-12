@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Sun, Loader2, Search, RefreshCw, Compass } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
@@ -239,12 +240,12 @@ Usa tablas HTML, formato profesional con <h2>, <h3>, <p>, <table>. En español. 
             </div>
             <div>
               <label className="text-xs text-gray-500">Inclinación (°)</label>
-              <Input className="mt-1" type="number" value={tilt} onChange={e => setTilt(e.target.value)} placeholder={optTilt || '30'} />
+              <NumberField className="mt-1" value={tilt} onChange={v => setTilt(v)} placeholder={optTilt || '30'} />
               {optTilt && <p className="text-[10px] text-amber-600">Óptimo: {optTilt}°</p>}
             </div>
             <div>
               <label className="text-xs text-gray-500">Azimut (°)</label>
-              <Input className="mt-1" type="number" value={azimuth} onChange={e => setAzimuth(e.target.value)} placeholder="180 (Sur)" />
+              <NumberField className="mt-1" value={azimuth} onChange={v => setAzimuth(v)} placeholder="180 (Sur)" />
               <p className="text-[10px] text-gray-400">0=N · 90=E · 180=S · 270=O</p>
             </div>
           </div>

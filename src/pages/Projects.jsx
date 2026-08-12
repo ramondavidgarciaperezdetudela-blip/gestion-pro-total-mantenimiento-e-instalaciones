@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,7 +30,7 @@ const TYPE_COLORS = { clima: 'bg-sky-500', refrigeracion: 'bg-cyan-500', electri
 const EMPTY_FORM = {
   name: '', contact_id: '', contact_name: '', description: '', type: 'clima',
   status: 'planificacion', start_date: format(new Date(), 'yyyy-MM-dd'), end_date: '',
-  budget: 0, progress: 0, tasks: [], notes: '', priority: 'media',
+  budget: '', progress: 0, tasks: [], notes: '', priority: 'media',
 };
 
 function TaskRow({ task, onChange, onDelete }) {
@@ -419,7 +420,7 @@ export default function Projects() {
               </div>
             </div>
 
-            <Input type="number" placeholder="Presupuesto (€)" value={form.budget || ''} onChange={e => setForm({ ...form, budget: parseFloat(e.target.value) || 0 })} />
+            <NumberField placeholder="Presupuesto (€)" value={form.budget || ''} onChange={v => setForm({ ...form, budget: v })} />
 
             <div>
               <label className="text-sm font-medium">Progreso: {form.progress}%</label>

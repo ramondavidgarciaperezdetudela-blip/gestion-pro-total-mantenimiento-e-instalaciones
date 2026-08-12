@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -457,7 +458,7 @@ export default function CompanyConfig() {
                 </div>
                 <div>
                   <label className="text-sm font-medium">Puerto</label>
-                  <Input className="mt-1" type="number" placeholder="587" value={form.email_config?.smtp_port || 587} onChange={e => setForm({...form, email_config: {...form.email_config, smtp_port: parseInt(e.target.value)}})} />
+                  <NumberField className="mt-1" decimals={false} placeholder="587" value={form.email_config?.smtp_port || 587} onChange={v => setForm({...form, email_config: {...form.email_config, smtp_port: v}})} />
                 </div>
               </div>
 
@@ -518,19 +519,19 @@ export default function CompanyConfig() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-sm font-medium">Margen superior (mm)</label>
-                    <Input type="number" min="5" max="50" value={form.printer_config?.margin_top || 15} onChange={e => updatePrinter('margin_top', parseInt(e.target.value))} className="mt-1" />
+                    <NumberField decimals={false} value={form.printer_config?.margin_top || 15} onChange={v => updatePrinter('margin_top', v)} className="mt-1" />
                   </div>
                   <div>
                     <label className="text-sm font-medium">Margen inferior (mm)</label>
-                    <Input type="number" min="5" max="50" value={form.printer_config?.margin_bottom || 15} onChange={e => updatePrinter('margin_bottom', parseInt(e.target.value))} className="mt-1" />
+                    <NumberField decimals={false} value={form.printer_config?.margin_bottom || 15} onChange={v => updatePrinter('margin_bottom', v)} className="mt-1" />
                   </div>
                   <div>
                     <label className="text-sm font-medium">Margen izquierdo (mm)</label>
-                    <Input type="number" min="5" max="50" value={form.printer_config?.margin_left || 15} onChange={e => updatePrinter('margin_left', parseInt(e.target.value))} className="mt-1" />
+                    <NumberField decimals={false} value={form.printer_config?.margin_left || 15} onChange={v => updatePrinter('margin_left', v)} className="mt-1" />
                   </div>
                   <div>
                     <label className="text-sm font-medium">Margen derecho (mm)</label>
-                    <Input type="number" min="5" max="50" value={form.printer_config?.margin_right || 15} onChange={e => updatePrinter('margin_right', parseInt(e.target.value))} className="mt-1" />
+                    <NumberField decimals={false} value={form.printer_config?.margin_right || 15} onChange={v => updatePrinter('margin_right', v)} className="mt-1" />
                   </div>
                 </div>
               </div>
@@ -579,12 +580,12 @@ export default function CompanyConfig() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-sm font-medium">Ancho logo (mm)</label>
-                    <Input type="number" min="10" max="80" value={form.printer_config?.logo_width_mm || 35} onChange={e => updatePrinter('logo_width_mm', parseInt(e.target.value))} className="mt-1" />
+                    <NumberField decimals={false} value={form.printer_config?.logo_width_mm || 35} onChange={v => updatePrinter('logo_width_mm', v)} className="mt-1" />
                     <p className="text-[10px] text-gray-400 mt-1">Máx. recomendado: 35mm</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Alto logo (mm)</label>
-                    <Input type="number" min="5" max="40" value={form.printer_config?.logo_height_mm || 20} onChange={e => updatePrinter('logo_height_mm', parseInt(e.target.value))} className="mt-1" />
+                    <NumberField decimals={false} value={form.printer_config?.logo_height_mm || 20} onChange={v => updatePrinter('logo_height_mm', v)} className="mt-1" />
                     <p className="text-[10px] text-gray-400 mt-1">Máx. recomendado: 20mm</p>
                   </div>
                 </div>

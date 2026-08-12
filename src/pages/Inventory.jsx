@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,7 +21,7 @@ const CM_STATUSES = ['operativo','en_reparacion','fuera_servicio','baja'];
 const EMPTY_CM = { contact_id: '', contact_name: '', name: '', machine_type: 'otro', brand: '', model: '', serial_number: '', installation_date: '', location: '', refrigerant_type: '', power_kw: '', warranty_expiry: '', next_maintenance_date: '', maintenance_interval_months: 12, status: 'operativo', photo_url: '', notes: '' };
 
 const EMPTY_EQ = { name: '', brand: '', model: '', serial_number: '', category: 'herramienta', status: 'operativo', purchase_date: '', purchase_price: '', next_revision_date: '', location: '', assigned_to: '', notes: '', photo_url: '' };
-const EMPTY_STOCK = { name: '', reference: '', barcode: '', category: 'otro', supplier_name: '', quantity: 0, unit: 'uds', min_stock: 0, unit_price: '', location: '', notes: '', photo_url: '' };
+const EMPTY_STOCK = { name: '', reference: '', barcode: '', category: 'otro', supplier_name: '', quantity: '', unit: 'uds', min_stock: '', unit_price: '', location: '', notes: '', photo_url: '' };
 
 function BarcodeImage({ barcode }) {
   if (!barcode || barcode.length < 4) return null;
@@ -445,12 +446,12 @@ export default function Inventory() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <Input placeholder="Gas refrigerante" value={cmForm.refrigerant_type} onChange={e => setCmForm({ ...cmForm, refrigerant_type: e.target.value })} />
-              <Input type="number" placeholder="Potencia (kW)" value={cmForm.power_kw} onChange={e => setCmForm({ ...cmForm, power_kw: parseFloat(e.target.value) || '' })} />
+              <NumberField placeholder="Potencia (kW)" value={cmForm.power_kw} onChange={v => setCmForm({ ...cmForm, power_kw: v })} />
             </div>
             <Input placeholder="Ubicación (ej: planta 1, sala técnica)" value={cmForm.location} onChange={e => setCmForm({ ...cmForm, location: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">
               <div><label className="text-xs text-gray-500">Próximo mantenimiento</label><Input type="date" className="mt-1" value={cmForm.next_maintenance_date} onChange={e => setCmForm({ ...cmForm, next_maintenance_date: e.target.value })} /></div>
-              <div><label className="text-xs text-gray-500">Intervalo mant. (meses)</label><Input type="number" className="mt-1" value={cmForm.maintenance_interval_months} onChange={e => setCmForm({ ...cmForm, maintenance_interval_months: parseInt(e.target.value) || 12 })} /></div>
+              <div><label className="text-xs text-gray-500">Intervalo mant. (meses)</label><NumberField decimals={false} className="mt-1" value={cmForm.maintenance_interval_months} onChange={v => setCmForm({ ...cmForm, maintenance_interval_months: v })} /></div>
             </div>
             <Textarea placeholder="Notas / estado de conservación" value={cmForm.notes} onChange={e => setCmForm({ ...cmForm, notes: e.target.value })} rows={2} />
             <Button onClick={handleSaveCm} className="w-full bg-teal-700">{editingCm ? 'Actualizar equipo' : 'Guardar equipo'}</Button>
@@ -552,7 +553,7 @@ export default function Inventory() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div><label className="text-xs text-gray-500">Fecha compra</label><Input type="date" className="mt-1" value={eqForm.purchase_date} onChange={e => setEqForm({ ...eqForm, purchase_date: e.target.value })} /></div>
-              <div><label className="text-xs text-gray-500">Precio compra (€)</label><Input type="number" className="mt-1" value={eqForm.purchase_price} onChange={e => setEqForm({ ...eqForm, purchase_price: parseFloat(e.target.value) })} /></div>
+              <div><label className="text-xs text-gray-500">Precio compra (€)</label><NumberField className="mt-1" value={eqForm.purchase_price} onChange={v => setEqForm({ ...eqForm, purchase_price: v })} /></div>
             </div>
             <div><label className="text-xs text-gray-500">Próxima revisión</label><Input type="date" className="mt-1" value={eqForm.next_revision_date} onChange={e => setEqForm({ ...eqForm, next_revision_date: e.target.value })} /></div>
             <Input placeholder="Ubicación" value={eqForm.location} onChange={e => setEqForm({ ...eqForm, location: e.target.value })} />
@@ -600,12 +601,12 @@ export default function Inventory() {
               <Input placeholder="Proveedor" value={stockForm.supplier_name} onChange={e => setStockForm({ ...stockForm, supplier_name: e.target.value })} />
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <div><label className="text-xs text-gray-500">Cantidad</label><Input type="number" className="mt-1" value={stockForm.quantity} onChange={e => setStockForm({ ...stockForm, quantity: parseFloat(e.target.value) || 0 })} /></div>
+              <div><label className="text-xs text-gray-500">Cantidad</label><NumberField className="mt-1" value={stockForm.quantity} onChange={v => setStockForm({ ...stockForm, quantity: v })} /></div>
               <div><label className="text-xs text-gray-500">Unidad</label><Input className="mt-1" placeholder="uds" value={stockForm.unit} onChange={e => setStockForm({ ...stockForm, unit: e.target.value })} /></div>
-              <div><label className="text-xs text-gray-500">Stock mín.</label><Input type="number" className="mt-1" value={stockForm.min_stock} onChange={e => setStockForm({ ...stockForm, min_stock: parseFloat(e.target.value) || 0 })} /></div>
+              <div><label className="text-xs text-gray-500">Stock mín.</label><NumberField className="mt-1" value={stockForm.min_stock} onChange={v => setStockForm({ ...stockForm, min_stock: v })} /></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="Precio unitario (€)" type="number" value={stockForm.unit_price} onChange={e => setStockForm({ ...stockForm, unit_price: parseFloat(e.target.value) })} />
+              <NumberField placeholder="Precio unitario (€)" value={stockForm.unit_price} onChange={v => setStockForm({ ...stockForm, unit_price: v })} />
               <Input placeholder="Ubicación" value={stockForm.location} onChange={e => setStockForm({ ...stockForm, location: e.target.value })} />
             </div>
             <Textarea placeholder="Notas" value={stockForm.notes} onChange={e => setStockForm({ ...stockForm, notes: e.target.value })} rows={2} />

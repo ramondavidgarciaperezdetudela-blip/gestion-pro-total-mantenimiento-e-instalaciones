@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -26,7 +27,7 @@ export default function TecniciansRoutes() {
   const [stops, setStops] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStop, setEditingStop] = useState(null);
-  const [form, setForm] = useState({ address: '', lat: 0, lng: 0, duration: 1, description: '', serviceType: 'mantenimiento', cost: 0, contactId: '' });
+  const [form, setForm] = useState({ address: '', lat: '', lng: '', duration: 1, description: '', serviceType: 'mantenimiento', cost: '', contactId: '' });
   const [technicians, setTechnicians] = useState([]);
   const [selectedTech, setSelectedTech] = useState('');
   const [contacts, setContacts] = useState([]);
@@ -109,7 +110,7 @@ export default function TecniciansRoutes() {
       toast.error('Completa la dirección');
       return;
     }
-    if (form.lat === 0 || form.lng === 0) {
+    if (!form.lat || !form.lng) {
       toast.error('Completa coordenadas (lat/lng)');
       return;
     }
@@ -123,7 +124,7 @@ export default function TecniciansRoutes() {
     setStops(updated);
     localStorage.setItem(`route_${selectedRoute}`, JSON.stringify(updated));
     setDialogOpen(false);
-    setForm({ address: '', lat: 0, lng: 0, duration: 1, description: '', serviceType: 'mantenimiento', cost: 0, contactId: '' });
+    setForm({ address: '', lat: '', lng: '', duration: 1, description: '', serviceType: 'mantenimiento', cost: '', contactId: '' });
     setEditingStop(null);
     toast.success('Parada guardada');
   };
@@ -226,7 +227,7 @@ export default function TecniciansRoutes() {
               </>
             )}
           </Button>
-          <Button onClick={() => { setEditingStop(null); setForm({ address: '', lat: 0, lng: 0, duration: 1, description: '', serviceType: 'mantenimiento', cost: 0 }); setDialogOpen(true); }} 
+          <Button onClick={() => { setEditingStop(null); setForm({ address: '', lat: '', lng: '', duration: 1, description: '', serviceType: 'mantenimiento', cost: '' }); setDialogOpen(true); }}
             disabled={!selectedRoute} className="bg-teal-600">
             <Plus className="w-4 h-4 mr-1" /> Nueva parada
           </Button>
@@ -432,22 +433,22 @@ export default function TecniciansRoutes() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-gray-500">Latitud *</label>
-                <Input type="number" step={0.000001} className="mt-1" placeholder="40.4168" value={form.lat} onChange={e => setForm({ ...form, lat: parseFloat(e.target.value) })} />
+                <NumberField className="mt-1" placeholder="40.4168" value={form.lat} onChange={v => setForm({ ...form, lat: v })} />
               </div>
               <div>
                 <label className="text-xs text-gray-500">Longitud *</label>
-                <Input type="number" step={0.000001} className="mt-1" placeholder="-3.7038" value={form.lng} onChange={e => setForm({ ...form, lng: parseFloat(e.target.value) })} />
+                <NumberField className="mt-1" placeholder="-3.7038" value={form.lng} onChange={v => setForm({ ...form, lng: v })} />
               </div>
             </div>
             <p className="text-xs text-gray-400 bg-blue-50 p-2 rounded border border-blue-200">💡 Puedes obtener las coordenadas desde Google Maps haciendo clic derecho en la ubicación</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-gray-500">Duración (horas)</label>
-                <Input type="number" min={0.5} max={24} step={0.5} className="mt-1" value={form.duration} onChange={e => setForm({ ...form, duration: parseFloat(e.target.value) })} />
+                <NumberField className="mt-1" value={form.duration} onChange={v => setForm({ ...form, duration: v })} />
               </div>
               <div>
                 <label className="text-xs text-gray-500">Costo desplazamiento (€)</label>
-                <Input type="number" min={0} step={0.1} className="mt-1" value={form.cost} onChange={e => setForm({ ...form, cost: parseFloat(e.target.value) })} />
+                <NumberField className="mt-1" value={form.cost} onChange={v => setForm({ ...form, cost: v })} />
               </div>
             </div>
             <div>

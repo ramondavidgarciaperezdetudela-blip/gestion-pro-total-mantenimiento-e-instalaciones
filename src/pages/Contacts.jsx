@@ -6,6 +6,7 @@ import { createPageUrl } from '../utils';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,7 +42,7 @@ const EMPTY_FORM = {
   type: 'cliente', category: 'residencial', name: '', surname: '', company_name: '',
   nif: '', email: '', phone: '', phone2: '', address: '', city: '', province: '',
   postal_code: '', country: 'España', notes: '', payment_profile: 'pagador_normal',
-  pending_amount: 0, internal_observations: '', photo_url: ''
+  pending_amount: '', internal_observations: '', photo_url: ''
 };
 
 function ContactCard({ contact, onEdit, onDelete }) {
@@ -446,7 +447,7 @@ export default function Contacts() {
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Importe pendiente (€)</label>
-                  <Input type="number" value={form.pending_amount || 0} onChange={e => setForm({...form, pending_amount: parseFloat(e.target.value)})} />
+                  <NumberField value={form.pending_amount} onChange={v => setForm({...form, pending_amount: v})} />
                 </div>
               </div>
               <Textarea placeholder="Observaciones internas (no aparece en documentos)" value={form.internal_observations} onChange={e => setForm({...form, internal_observations: e.target.value})} rows={2} />

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Droplets, Gauge, Ruler, Activity, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { NumberField } from "@/components/ui/number-field";
 
 // Tabla de presión de saturación (bar) por refrigerante y temperatura (°C)
 const SAT = {
@@ -35,9 +35,9 @@ const DIAMETERS = [0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5, 1.8, 2.0];
 
 export default function CapillaryCalc() {
   const [refrigerant, setRefrigerant] = useState('R-134a');
-  const [Te, setTe] = useState(7);
-  const [Tc, setTc] = useState(50);
-  const [capacity, setCapacity] = useState(3.0); // kW
+  const [Te, setTe] = useState('');
+  const [Tc, setTc] = useState('');
+  const [capacity, setCapacity] = useState(''); // kW
   const [diameter, setDiameter] = useState(1.0); // mm
 
   const data = SAT[refrigerant];
@@ -109,15 +109,15 @@ export default function CapillaryCalc() {
         </div>
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Droplets className="w-3 h-3" /> T evaporación (°C)</label>
-          <Input type="number" value={Te} onChange={e => setTe(parseFloat(e.target.value) || 0)} />
+          <NumberField value={Te} onChange={v => setTe(v)} />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Droplets className="w-3 h-3" /> T condensación (°C)</label>
-          <Input type="number" value={Tc} onChange={e => setTc(parseFloat(e.target.value) || 0)} />
+          <NumberField value={Tc} onChange={v => setTc(v)} />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Activity className="w-3 h-3" /> Potencia frigorífica (kW)</label>
-          <Input type="number" step="0.1" value={capacity} onChange={e => setCapacity(parseFloat(e.target.value) || 0)} />
+          <NumberField value={capacity} onChange={v => setCapacity(v)} />
         </div>
       </div>
 

@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import {
   Shield, Download, Upload, RefreshCw, CheckCircle,
   AlertCircle, Clock, Settings, Archive, Trash2, FileText, RotateCcw, Info, ChevronDown, ChevronRight, Copy
@@ -805,11 +805,10 @@ export default function BackupCenter() {
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Recordatorio de backup cada (días)</label>
                 <div className="flex items-center gap-3">
-                  <Input
-                    type="number"
-                    min="1" max="90"
+                  <NumberField
+                    decimals={false}
                     value={config.reminder_days || 7}
-                    onChange={e => setConfig(c => ({ ...c, reminder_days: parseInt(e.target.value) || 7 }))}
+                    onChange={v => setConfig(c => ({ ...c, reminder_days: v }))}
                     className="w-24"
                   />
                   <span className="text-sm text-gray-500">días entre cada copia recomendada</span>

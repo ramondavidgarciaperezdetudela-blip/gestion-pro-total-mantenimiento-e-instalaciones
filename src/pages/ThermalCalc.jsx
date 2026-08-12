@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Thermometer, Save, Calculator, FileDown, RefreshCw, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
@@ -93,10 +93,10 @@ export default function ThermalCalc() {
   const [contacts, setContacts] = useState([]);
   const [form, setForm] = useState({
     contact_id: '', contact_name: '', calc_type: 'clima',
-    length: 5, width: 4, height: 2.7, orientation: 'sur',
-    num_windows: 1, window_area: 2, num_people: 2, equipment_heat: 200,
-    insulation_type: 'medio', target_temp: 22, exterior_temp: 35,
-    refrigerant_type: 'R-32', pipe_distance: 5, pipe_height_diff: 3,
+    length: '', width: '', height: '', orientation: 'sur',
+    num_windows: 1, window_area: '', num_people: '', equipment_heat: '',
+    insulation_type: 'medio', target_temp: '', exterior_temp: '',
+    refrigerant_type: 'R-32', pipe_distance: '', pipe_height_diff: '',
   });
   const [breakdown, setBreakdown] = useState(null);
   const [result, setResult] = useState(null);
@@ -366,9 +366,9 @@ export default function ThermalCalc() {
           <div className="bg-blue-50 p-3 rounded-lg space-y-2">
             <p className="text-sm font-medium text-blue-700">Dimensiones del local</p>
             <div className="grid grid-cols-3 gap-2">
-              <div><label className="text-[10px] text-gray-500">Largo (m)</label><Input type="number" inputMode="decimal" value={form.length} onChange={e => setForm({...form, length: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Ancho (m)</label><Input type="number" inputMode="decimal" value={form.width} onChange={e => setForm({...form, width: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Alto (m)</label><Input type="number" inputMode="decimal" value={form.height} onChange={e => setForm({...form, height: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Largo (m)</label><NumberField value={form.length} onChange={v => setForm({...form, length: v})} /></div>
+              <div><label className="text-[10px] text-gray-500">Ancho (m)</label><NumberField value={form.width} onChange={v => setForm({...form, width: v})} /></div>
+              <div><label className="text-[10px] text-gray-500">Alto (m)</label><NumberField value={form.height} onChange={v => setForm({...form, height: v})} /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
@@ -394,23 +394,23 @@ export default function ThermalCalc() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><label className="text-[10px] text-gray-500">Sup. ventanas (m²)</label><Input type="number" value={form.window_area} onChange={e => setForm({...form, window_area: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Sup. ventanas (m²)</label><NumberField value={form.window_area} onChange={v => setForm({...form, window_area: v})} /></div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <div><label className="text-[10px] text-gray-500">Nº personas</label><Input type="number" inputMode="numeric" value={form.num_people} onChange={e => setForm({...form, num_people: parseInt(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Calor equipos (W)</label><Input type="number" inputMode="decimal" value={form.equipment_heat} onChange={e => setForm({...form, equipment_heat: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><Input type="number" inputMode="decimal" value={form.exterior_temp} onChange={e => setForm({...form, exterior_temp: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Nº personas</label><NumberField decimals={false} value={form.num_people} onChange={v => setForm({...form, num_people: v})} /></div>
+              <div><label className="text-[10px] text-gray-500">Calor equipos (W)</label><NumberField value={form.equipment_heat} onChange={v => setForm({...form, equipment_heat: v})} /></div>
+              <div><label className="text-[10px] text-gray-500">T. exterior (°C)</label><NumberField value={form.exterior_temp} onChange={v => setForm({...form, exterior_temp: v})} /></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[10px] text-gray-500">T. objetivo interior (°C)</label><Input type="number" inputMode="decimal" value={form.target_temp} onChange={e => setForm({...form, target_temp: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">T. objetivo interior (°C)</label><NumberField value={form.target_temp} onChange={v => setForm({...form, target_temp: v})} /></div>
             </div>
           </div>
 
           <div className="bg-gray-50 p-3 rounded-lg space-y-2">
             <p className="text-sm font-medium">Distancias de instalación</p>
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[10px] text-gray-500">Longitud tubería (m)</label><Input type="number" value={form.pipe_distance} onChange={e => setForm({...form, pipe_distance: parseFloat(e.target.value)||0})} /></div>
-              <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><Input type="number" value={form.pipe_height_diff} onChange={e => setForm({...form, pipe_height_diff: parseFloat(e.target.value)||0})} /></div>
+              <div><label className="text-[10px] text-gray-500">Longitud tubería (m)</label><NumberField value={form.pipe_distance} onChange={v => setForm({...form, pipe_distance: v})} /></div>
+              <div><label className="text-[10px] text-gray-500">Diferencia altura (m)</label><NumberField value={form.pipe_height_diff} onChange={v => setForm({...form, pipe_height_diff: v})} /></div>
             </div>
           </div>
 
