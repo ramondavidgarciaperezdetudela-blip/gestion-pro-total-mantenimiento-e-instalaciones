@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import NavBar from '@/components/NavBar';
 import { base44 } from '@/api/base44Client';
-import { Printer, FileDown, Gauge, Snowflake, ArrowRightLeft, Wrench, Loader2, Droplets } from 'lucide-react';
+import { Printer, FileDown, Gauge, Snowflake, ArrowRightLeft, Wrench, Loader2, Droplets, Zap } from 'lucide-react';
 
 // Presiones ORIENTATIVAS manométricas (bar) por refrigerante y aplicación.
 const PRES = {
@@ -65,93 +65,113 @@ function EsquemaFrig({ alta, baja, colorAlta, colorBaja, titulo, lecturas }) {
       <text x={x} y={y + 3} fontSize="10" fontWeight="bold" textAnchor="middle" fill="#fff">{n}</text>
     </g>
   );
+  // Válvula de corte (símbolo de dos triángulos / pajarita) con etiqueta
+  const ValvCorte = ({ x, y }) => (
+    <g>
+      <polygon points={`${x - 7},${y - 7} ${x},${y} ${x - 7},${y + 7}`} fill="#334155" />
+      <polygon points={`${x + 7},${y - 7} ${x},${y} ${x + 7},${y + 7}`} fill="#334155" />
+      <text x={x} y={y - 10} fontSize="6.5" textAnchor="middle" fill="#334155">corte</text>
+    </g>
+  );
   return (
-    <svg viewBox="0 0 600 400" width="100%" style={{ maxWidth: 600, background: '#f8fafc', borderRadius: 8 }}>
-      {titulo && <text x="300" y="16" fontSize="12" textAnchor="middle" fill="#0f2740" fontWeight="bold">{titulo}</text>}
+    <svg viewBox="0 0 700 470" width="100%" style={{ maxWidth: 700, background: '#f8fafc', borderRadius: 8 }}>
+      {titulo && <text x="350" y="16" fontSize="12" textAnchor="middle" fill="#0f2740" fontWeight="bold">{titulo}</text>}
 
-      {/* Tubería lado ALTA: descarga → condensador → línea de líquido (con filtro) → válvula */}
-      <path d="M90,150 L90,60 L215,60" fill="none" stroke={HOT} strokeWidth="4" />
-      <path d="M375,60 L505,60 L505,214" fill="none" stroke={HOT} strokeWidth="4" />
+      {/* Tubería lado ALTA: descarga → condensador → línea de líquido → válvula */}
+      <path d="M95,198 L95,90 L235,90" fill="none" stroke={HOT} strokeWidth="4" />
+      <path d="M415,90 L575,90 L575,290" fill="none" stroke={HOT} strokeWidth="4" />
       {/* Tubería lado BAJA: válvula → evaporador → aspiración */}
-      <path d="M505,236 L505,306 L375,306" fill="none" stroke={COLD} strokeWidth="4" />
-      <path d="M215,306 L90,306 L90,178" fill="none" stroke={COLD} strokeWidth="4" />
+      <path d="M575,318 L575,380 L415,380" fill="none" stroke={COLD} strokeWidth="4" />
+      <path d="M235,380 L95,380 L95,252" fill="none" stroke={COLD} strokeWidth="4" />
 
       {/* Flechas de sentido del flujo */}
-      <polygon points="150,54 162,60 150,66" fill={HOT} />
-      <polygon points="505,150 499,162 511,162" fill={HOT} />
-      <polygon points="300,312 288,306 300,300" fill={COLD} />
-      <polygon points="90,250 84,262 96,262" fill={COLD} />
+      <polygon points="160,84 172,90 160,96" fill={HOT} />
+      <polygon points="575,230 569,242 581,242" fill={HOT} />
+      <polygon points="320,386 308,380 320,374" fill={COLD} />
+      <polygon points="95,300 89,312 101,312" fill={COLD} />
 
       {/* Compresor */}
-      <circle cx="90" cy="164" r="26" fill="#0f2740" />
-      <text x="90" y="161" fill="#fff" fontSize="9" textAnchor="middle">COMPRE-</text>
-      <text x="90" y="172" fill="#fff" fontSize="9" textAnchor="middle">SOR</text>
+      <circle cx="95" cy="225" r="27" fill="#0f2740" />
+      <text x="95" y="221" fill="#fff" fontSize="9" textAnchor="middle">COMPRE-</text>
+      <text x="95" y="232" fill="#fff" fontSize="9" textAnchor="middle">SOR</text>
+      {(L.compAmp || L.compRLA) && (
+        <text x="95" y="266" fontSize="8" textAnchor="middle" fill="#0f2740">{val(L.compAmp, ' A')}{L.compRLA ? ` / RLA ${L.compRLA} A` : ''}</text>
+      )}
 
       {/* Condensador (alta) */}
-      <rect x="215" y="44" width="160" height="32" rx="6" fill="#fee2e2" stroke={HOT} strokeWidth="2" />
-      <text x="295" y="64" fontSize="11" textAnchor="middle" fill="#991b1b" fontWeight="bold">CONDENSADOR</text>
+      <rect x="235" y="74" width="180" height="32" rx="6" fill="#fee2e2" stroke={HOT} strokeWidth="2" />
+      <text x="325" y="94" fontSize="11" textAnchor="middle" fill="#991b1b" fontWeight="bold">CONDENSADOR</text>
 
-      {/* Filtro deshidratador (en la línea de líquido) */}
-      <rect x="493" y="96" width="24" height="46" rx="12" fill={filtroObstr ? '#fee2e2' : '#fef9c3'} stroke={filtroObstr ? '#dc2626' : '#ca8a04'} strokeWidth="2" />
-      <text x="527" y="112" fontSize="8" fill="#713f12">Filtro</text>
-      <text x="527" y="122" fontSize="8" fill="#713f12">deshidr.</text>
-      <text x="527" y="132" fontSize="7.5" fill="#92400e">(FD)</text>
+      {/* Recibidor de líquido */}
+      <rect x="558" y="118" width="34" height="52" rx="16" fill="#ffedd5" stroke="#ea580c" strokeWidth="2" />
+      <text x="601" y="128" fontSize="8" fill="#7c2d12">Recibidor</text>
+      <text x="601" y="138" fontSize="8" fill="#7c2d12">de líquido</text>
+      <text x="601" y="150" fontSize="7.5" fill="#9a3412">ent {val(L.tRecibIn, '°')}</text>
+      <text x="601" y="160" fontSize="7.5" fill="#9a3412">sal {val(L.tRecibOut, '°')}</text>
+      <text x="601" y="170" fontSize="7.5" fill="#9a3412">P {val(L.pRecib, '')}</text>
+
+      {/* Filtro deshidratador */}
+      <rect x="563" y="205" width="24" height="46" rx="12" fill={filtroObstr ? '#fee2e2' : '#fef9c3'} stroke={filtroObstr ? '#dc2626' : '#ca8a04'} strokeWidth="2" />
+      <text x="601" y="212" fontSize="8" fill="#713f12">Filtro FD</text>
+      <text x="601" y="223" fontSize="7.5" fill="#92400e">ent {val(L.tFiltroIn, '°')}</text>
+      <text x="601" y="233" fontSize="7.5" fill="#92400e">sal {val(L.tFiltroOut, '°')}</text>
 
       {/* Válvula de expansión */}
-      <polygon points="505,214 491,226 505,238 519,226" fill="#f59e0b" stroke="#b45309" strokeWidth="1.5" />
-      <text x="527" y="223" fontSize="8" fill="#92400e">Válvula</text>
-      <text x="527" y="233" fontSize="8" fill="#92400e">expansión</text>
+      <polygon points="575,290 561,302 575,314 589,302" fill="#f59e0b" stroke="#b45309" strokeWidth="1.5" />
+      <text x="601" y="298" fontSize="8" fill="#92400e">V. expansión</text>
+      <text x="601" y="309" fontSize="7.5" fill="#075985">sal {val(L.tValvOut, '°')}</text>
 
       {/* Evaporador (baja) */}
-      <rect x="215" y="290" width="160" height="32" rx="6" fill="#e0f2fe" stroke={COLD} strokeWidth="2" />
-      <text x="295" y="310" fontSize="11" textAnchor="middle" fill="#075985" fontWeight="bold">EVAPORADOR</text>
+      <rect x="235" y="364" width="180" height="32" rx="6" fill="#e0f2fe" stroke={COLD} strokeWidth="2" />
+      <text x="325" y="384" fontSize="11" textAnchor="middle" fill="#075985" fontWeight="bold">EVAPORADOR</text>
+
+      {/* Válvulas de corte del sistema (descarga, aspiración y línea de líquido) */}
+      <ValvCorte x={95} y={150} />
+      <ValvCorte x={150} y={380} />
+      <ValvCorte x={575} y={185} />
 
       {/* Manómetro ALTA */}
-      <rect x="140" y="96" width="96" height="42" rx="6" fill="#fff" stroke={colorAlta} strokeWidth="2" />
-      <text x="188" y="112" fontSize="9" textAnchor="middle" fill="#475569">ALTA (bar)</text>
-      <text x="188" y="130" fontSize="15" fontWeight="bold" textAnchor="middle" fill={colorAlta}>{alta}</text>
+      <rect x="150" y="120" width="94" height="40" rx="6" fill="#fff" stroke={colorAlta} strokeWidth="2" />
+      <text x="197" y="136" fontSize="9" textAnchor="middle" fill="#475569">ALTA (bar)</text>
+      <text x="197" y="153" fontSize="15" fontWeight="bold" textAnchor="middle" fill={colorAlta}>{alta}</text>
       {/* Manómetro BAJA */}
-      <rect x="140" y="214" width="96" height="42" rx="6" fill="#fff" stroke={colorBaja} strokeWidth="2" />
-      <text x="188" y="230" fontSize="9" textAnchor="middle" fill="#475569">BAJA (bar)</text>
-      <text x="188" y="248" fontSize="15" fontWeight="bold" textAnchor="middle" fill={colorBaja}>{baja}</text>
+      <rect x="150" y="290" width="94" height="40" rx="6" fill="#fff" stroke={colorBaja} strokeWidth="2" />
+      <text x="197" y="306" fontSize="9" textAnchor="middle" fill="#475569">BAJA (bar)</text>
+      <text x="197" y="323" fontSize="15" fontWeight="bold" textAnchor="middle" fill={colorBaja}>{baja}</text>
 
-      {/* Puntos de medición numerados */}
-      <Punto x={120} y={60} n="1" color={HOT} />
-      <Punto x={430} y={60} n="2" color={HOT} />
-      <Punto x={505} y={90} n="5" color={HOT} />
-      <Punto x={505} y={148} n="6" color={HOT} />
-      <Punto x={190} y={306} n="3" color={COLD} />
-      <Punto x={90} y={214} n="4" color={COLD} />
+      {/* Puntos clave de medición */}
+      <Punto x={128} y={90} n="1" color={HOT} />
+      <Punto x={490} y={90} n="2" color={HOT} />
+      <Punto x={200} y={380} n="3" color={COLD} />
+      <Punto x={95} y={290} n="4" color={COLD} />
 
       {/* Etiquetas de medida sobre el circuito */}
-      <text x="120" y="40" fontSize="8.5" textAnchor="middle" fill="#991b1b">descarga</text>
-      <text x="295" y="40" fontSize="8" textAnchor="middle" fill="#991b1b">T. cond. {val(L.tCond, '°')}</text>
-      <text x="430" y="42" fontSize="8" textAnchor="middle" fill="#334155">T. líquido {val(L.tLiq, '°')}</text>
-      <text x="527" y="86" fontSize="8" fill="#334155">ent. {val(L.tFiltroIn, '°')}</text>
-      <text x="527" y="152" fontSize="8" fill="#334155">sal. {val(L.tFiltroOut, '°')}</text>
-      <text x="527" y="250" fontSize="8" fill="#075985">sal.válv. {val(L.tValvOut, '°')}</text>
-      <text x="295" y="338" fontSize="8" textAnchor="middle" fill="#075985">T. evap. {val(L.tEvap, '°')}</text>
+      <text x="128" y="72" fontSize="8.5" textAnchor="middle" fill="#991b1b">descarga</text>
+      <text x="325" y="66" fontSize="8" textAnchor="middle" fill="#991b1b">T. cond. {val(L.tCond, '°')}</text>
+      <text x="470" y="74" fontSize="8" textAnchor="middle" fill="#334155">T. líquido {val(L.tLiq, '°')}</text>
+      <text x="325" y="414" fontSize="8" textAnchor="middle" fill="#075985">T. evap. {val(L.tEvap, '°')}</text>
 
       {/* Recuadro SUBENFRIAMIENTO (línea de líquido, punto 2) */}
-      <rect x="392" y="150" width="76" height="30" rx="4" fill="#fef2f2" stroke="#ef4444" />
-      <text x="430" y="162" fontSize="7.5" textAnchor="middle" fill="#991b1b" fontWeight="bold">SUBENFRIAM.</text>
-      <text x="430" y="174" fontSize="10" textAnchor="middle" fill="#dc2626" fontWeight="bold">{val(L.subenf, '°C')}</text>
+      <rect x="415" y="140" width="80" height="30" rx="4" fill="#fef2f2" stroke="#ef4444" />
+      <text x="455" y="152" fontSize="7.5" textAnchor="middle" fill="#991b1b" fontWeight="bold">SUBENFRIAM.</text>
+      <text x="455" y="164" fontSize="10" textAnchor="middle" fill="#dc2626" fontWeight="bold">{val(L.subenf, '°C')}</text>
+      <text x="455" y="182" fontSize="7" textAnchor="middle" fill="#991b1b">medir en la línea de líquido</text>
       {/* Recuadro Δ FILTRO (obstrucción) */}
-      <rect x="392" y="188" width="76" height="30" rx="4" fill={filtroObstr ? '#fee2e2' : '#fefce8'} stroke={filtroObstr ? '#dc2626' : '#ca8a04'} />
-      <text x="430" y="200" fontSize="7.5" textAnchor="middle" fill="#713f12" fontWeight="bold">Δ FILTRO</text>
-      <text x="430" y="212" fontSize="10" textAnchor="middle" fill={filtroObstr ? '#dc2626' : '#a16207'} fontWeight="bold">{val(L.dtFiltro, '°C')}</text>
+      <rect x="415" y="196" width="80" height="30" rx="4" fill={filtroObstr ? '#fee2e2' : '#fefce8'} stroke={filtroObstr ? '#dc2626' : '#ca8a04'} />
+      <text x="455" y="208" fontSize="7.5" textAnchor="middle" fill="#713f12" fontWeight="bold">Δ FILTRO</text>
+      <text x="455" y="220" fontSize="10" textAnchor="middle" fill={filtroObstr ? '#dc2626' : '#a16207'} fontWeight="bold">{val(L.dtFiltro, '°C')}</text>
       {/* Recuadro RECALENTAMIENTO (aspiración, punto 4) */}
-      <rect x="14" y="230" width="76" height="30" rx="4" fill="#eff6ff" stroke="#0ea5e9" />
-      <text x="52" y="242" fontSize="7.5" textAnchor="middle" fill="#075985" fontWeight="bold">RECALENT.</text>
-      <text x="52" y="254" fontSize="10" textAnchor="middle" fill="#0284c7" fontWeight="bold">{val(L.recal, '°C')}</text>
-      <text x="52" y="274" fontSize="7.5" textAnchor="middle" fill="#075985">T. asp. {val(L.tAsp, '°')}</text>
+      <rect x="14" y="300" width="80" height="30" rx="4" fill="#eff6ff" stroke="#0ea5e9" />
+      <text x="54" y="312" fontSize="7.5" textAnchor="middle" fill="#075985" fontWeight="bold">RECALENT.</text>
+      <text x="54" y="324" fontSize="10" textAnchor="middle" fill="#0284c7" fontWeight="bold">{val(L.recal, '°C')}</text>
+      <text x="54" y="342" fontSize="7.5" textAnchor="middle" fill="#075985">T. asp. {val(L.tAsp, '°')} · 15 cm antes comp.</text>
       {/* Tª ambiente */}
-      <text x="90" y="300" fontSize="8" textAnchor="middle" fill="#64748b">T. amb. {val(L.tAmb, '°')}</text>
+      <text x="95" y="360" fontSize="8" textAnchor="middle" fill="#64748b">T. amb. {val(L.tAmb, '°')}</text>
 
-      {/* Referencia de puntos */}
+      {/* Referencia de puntos y símbolos */}
       <g fontSize="7.5" fill="#64748b">
-        <text x="20" y="368">① descarga  ② línea de líquido (subenfriam.)  ③ evaporación  ④ aspiración (recalent.)</text>
-        <text x="20" y="382">⑤ entrada filtro deshidratador  ⑥ salida filtro (si baja mucho → filtro obstruido)</text>
+        <text x="20" y="440">Medir: ① descarga (salida compresor)  ② línea de líquido → SUBENFRIAMIENTO  ③ evaporación (manómetro baja)</text>
+        <text x="20" y="452">④ aspiración → RECALENTAMIENTO  ·  filtro y recibidor: entrada y salida  ·  ▷◁ = válvula de corte</text>
       </g>
     </svg>
   );
@@ -176,6 +196,14 @@ export default function DiagnosticoCarga() {
   const [tFiltroIn, setTFiltroIn] = useState('');   // T entrada filtro deshidratador
   const [tFiltroOut, setTFiltroOut] = useState(''); // T salida filtro deshidratador
   const [tValvOut, setTValvOut] = useState('');     // T salida válvula (entrada evaporador)
+  const [tRecibIn, setTRecibIn] = useState('');     // T entrada recibidor de líquido
+  const [tRecibOut, setTRecibOut] = useState('');   // T salida recibidor de líquido
+  const [pRecib, setPRecib] = useState('');         // Presión en el recibidor de líquido (bar, opcional)
+  // Compresor: modelo, consumo medido y amperaje nominal (búsqueda en internet)
+  const [compModelo, setCompModelo] = useState('');
+  const [compAmp, setCompAmp] = useState('');
+  const [compRLA, setCompRLA] = useState(null);     // { rla, lra, info }
+  const [compBusy, setCompBusy] = useState(false);
 
   const recal = (tAsp !== '' && tEvap !== '') ? (parseFloat(tAsp) - parseFloat(tEvap)) : null;   // recalentamiento
   const subenf = (tCond !== '' && tLiq !== '') ? (parseFloat(tCond) - parseFloat(tLiq)) : null;   // subenfriamiento
@@ -183,6 +211,28 @@ export default function DiagnosticoCarga() {
   const dtFiltro = (tFiltroIn !== '' && tFiltroOut !== '') ? (parseFloat(tFiltroIn) - parseFloat(tFiltroOut)) : null;
   // Salto en la válvula de expansión (línea de líquido → salida válvula)
   const dtValv = (tLiq !== '' && tValvOut !== '') ? (parseFloat(tLiq) - parseFloat(tValvOut)) : null;
+  // Comparación del consumo del compresor con su amperaje nominal (RLA)
+  const ampVerdict = useMemo(() => {
+    if (!compRLA || compRLA.rla == null || compAmp === '') return null;
+    const a = parseFloat(compAmp), rla = parseFloat(compRLA.rla);
+    if (Number.isNaN(a) || Number.isNaN(rla) || rla <= 0) return null;
+    if (a > rla * 1.1) return { t: 'CONSUMO ALTO', c: '#dc2626', m: `Consumo ${a} A por encima del RLA (${rla} A): sobrecarga — condensación alta, compresor forzado, baja tensión o rotor bloqueado.` };
+    if (a < rla * 0.5) return { t: 'CONSUMO BAJO', c: '#d97706', m: `Consumo ${a} A muy por debajo del RLA (${rla} A): posible falta de gas, válvulas internas del compresor o poca carga.` };
+    return { t: 'CONSUMO CORRECTO', c: '#16a34a', m: `Consumo ${a} A dentro del rango del RLA (${rla} A).` };
+  }, [compRLA, compAmp]);
+  const buscarAmperaje = async () => {
+    if (!compModelo.trim()) return;
+    setCompBusy(true); setCompRLA(null);
+    try {
+      const r = await base44.integrations.Core.InvokeLLM({
+        prompt: `Compresor de refrigeración/climatización modelo "${compModelo}". Indica su amperaje nominal a plena carga RLA (Rated Load Amps) y el de rotor bloqueado LRA (Locked Rotor Amps) en amperios, y una nota breve. Si no lo encuentras exacto, da un valor típico orientativo para ese tipo/potencia de compresor. Responde en español.`,
+        add_context_from_internet: true,
+        response_json_schema: { type: 'object', properties: { rla: { type: 'number' }, lra: { type: 'number' }, info: { type: 'string' } } },
+      });
+      setCompRLA({ rla: r?.rla ?? null, lra: r?.lra ?? null, info: r?.info || '' });
+    } catch { setCompRLA({ rla: null, lra: null, info: 'No se pudo buscar (¿sin conexión?). Consulta la placa del compresor.' }); }
+    setCompBusy(false);
+  };
 
   const diag1 = useMemo(() => {
     const mB = pBaja !== '' ? parseFloat(pBaja) : null;
@@ -370,6 +420,43 @@ export default function DiagnosticoCarga() {
                 </div>
               </div>
 
+              {/* RECIBIDOR DE LÍQUIDO */}
+              <div className="rounded-lg border-2 border-orange-200 bg-orange-50/40 p-3 space-y-2">
+                <p className="text-xs font-bold text-orange-700 flex items-center gap-1">🛢️ RECIBIDOR DE LÍQUIDO</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">T. entrada recibidor (°C)<br/><span className="text-[9px] text-slate-400">del condensador al recibidor</span></label>{N(tRecibIn, setTRecibIn, 'Ej: 42')}</div>
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">T. salida recibidor (°C)<br/><span className="text-[9px] text-slate-400">hacia el filtro/válvula</span></label>{N(tRecibOut, setTRecibOut, 'Ej: 41')}</div>
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">Presión recibidor (bar)<br/><span className="text-[9px] text-slate-400">opcional, si tiene toma</span></label>{N(pRecib, setPRecib, 'Ej: 30')}</div>
+                </div>
+              </div>
+
+              {/* COMPRESOR — modelo, amperaje nominal y consumo medido */}
+              <div className="rounded-lg border-2 border-slate-300 bg-slate-50 p-3 space-y-2">
+                <p className="text-xs font-bold text-slate-700 flex items-center gap-1"><Zap className="w-3.5 h-3.5" /> COMPRESOR — amperaje y consumo</p>
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">Modelo del compresor</label>
+                    <input type="text" value={compModelo} onChange={(e) => setCompModelo(e.target.value)} placeholder="Ej: Danfoss NTZ068, Copeland ZB21..." className="w-full border border-input rounded-md px-3 py-2 text-sm" />
+                  </div>
+                  <Button onClick={buscarAmperaje} disabled={compBusy || !compModelo.trim()} className="gap-2 h-9">
+                    {compBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}Buscar amperaje
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">Consumo medido (A)<br/><span className="text-[9px] text-slate-400">pinza amperimétrica en la fase</span></label>{N(compAmp, setCompAmp, 'Ej: 6.5')}</div>
+                  {compRLA && (
+                    <div className="text-[11px] text-slate-600 bg-white border border-slate-200 rounded-md p-2">
+                      <div>Nominal: <b>RLA {compRLA.rla != null ? compRLA.rla + ' A' : '—'}</b>{compRLA.lra != null ? ` · LRA ${compRLA.lra} A` : ''}</div>
+                      {compRLA.info && <div className="text-[10px] text-slate-400 mt-0.5">{compRLA.info}</div>}
+                    </div>
+                  )}
+                </div>
+                {ampVerdict && (
+                  <div className="rounded-md p-2 text-[11px] text-white font-medium" style={{ background: ampVerdict.c }}>
+                    <b>{ampVerdict.t}.</b> {ampVerdict.m}
+                  </div>
+                )}
+              </div>
+
               <div><label className="text-[11px] text-slate-500 mb-1 block">T. ambiente exterior (°C)</label><div className="max-w-[160px]">{N(tAmb, setTAmb, 'Ej: 32')}</div></div>
             </div>
 
@@ -379,6 +466,8 @@ export default function DiagnosticoCarga() {
               <EsquemaFrig alta={pAlta || rec.alta} baja={pBaja || rec.baja} colorAlta={cA} colorBaja={cB}
                 lecturas={{
                   tEvap, tAsp, tCond, tLiq, tAmb, pBaja, pAlta, tFiltroIn, tFiltroOut, tValvOut,
+                  tRecibIn, tRecibOut, pRecib, compAmp,
+                  compRLA: compRLA?.rla ?? '',
                   recal: recal != null ? recal.toFixed(1) : '',
                   subenf: subenf != null ? subenf.toFixed(1) : '',
                   dtFiltro: dtFiltro != null ? dtFiltro.toFixed(1) : '',
@@ -399,6 +488,12 @@ export default function DiagnosticoCarga() {
                   ['T. salida filtro', tFiltroOut !== '' ? tFiltroOut + ' °C' : '—'],
                   ['Salto filtro', dtFiltro != null ? dtFiltro.toFixed(1) + ' °C' : '—'],
                   ['T. salida válvula', tValvOut !== '' ? tValvOut + ' °C' : '—'],
+                  ['T. entrada recibidor', tRecibIn !== '' ? tRecibIn + ' °C' : '—'],
+                  ['T. salida recibidor', tRecibOut !== '' ? tRecibOut + ' °C' : '—'],
+                  ['Presión recibidor', pRecib !== '' ? pRecib + ' bar' : '—'],
+                  ['Compresor', compModelo || '—'],
+                  ['Consumo medido', compAmp !== '' ? compAmp + ' A' : '—'],
+                  ['Amperaje nominal (RLA)', compRLA?.rla != null ? compRLA.rla + ' A' : '—'],
                 ].map(([k, v]) => (
                   <div key={k} className="bg-slate-50 rounded p-1.5 border border-slate-100">
                     <div className="text-slate-400 text-[9px]">{k}</div>
