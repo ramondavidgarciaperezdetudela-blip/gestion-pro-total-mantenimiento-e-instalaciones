@@ -162,6 +162,7 @@ const navItems = [
 { name: 'Activar Licencia', page: 'LicenseActivation', icon: Shield },
 { name: 'Renovar Licencia', page: 'LicenseRenewal', icon: Shield },
 { name: 'Soporte IA', page: 'AISupport', icon: Bot },
+{ name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Droplets },
 ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
 
