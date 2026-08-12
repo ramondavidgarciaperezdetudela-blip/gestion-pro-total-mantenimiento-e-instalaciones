@@ -40,6 +40,7 @@ class ErrorBoundary extends Component {
   }
 }
 const SATPublico = lazy(() => import('./pages/SATPublico'));
+const VerificarDocumento = lazy(() => import('./pages/VerificarDocumento'));
 const SupplierTariffs = lazy(() => import('./pages/SupplierTariffs'));
 const PurchaseSummary = lazy(() => import('./pages/PurchaseSummary'));
 const BackupCenter = lazy(() => import('./pages/BackupCenter'));
@@ -109,6 +110,7 @@ const AuthenticatedApp = () => {
           ))}
           <Route path="/presupuesto-publico" element={<PresupuestoPublico />} />
           <Route path="/sat-publico" element={<SATPublico />} />
+          <Route path="/verificar-documento" element={<VerificarDocumento />} />
           <Route path="/SupplierTariffs" element={<LayoutWrapper currentPageName="SupplierTariffs"><SupplierTariffs /></LayoutWrapper>} />
           <Route path="/PurchaseSummary" element={<LayoutWrapper currentPageName="PurchaseSummary"><PurchaseSummary /></LayoutWrapper>} />
           <Route path="/BackupCenter" element={<LayoutWrapper currentPageName="BackupCenter"><BackupCenter /></LayoutWrapper>} />

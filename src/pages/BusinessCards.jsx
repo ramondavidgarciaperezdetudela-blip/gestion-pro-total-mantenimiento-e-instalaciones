@@ -217,19 +217,23 @@ export default function BusinessCards() {
     const allCards = Array(copies).fill(cardHtml).join('');
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-      @page { size: A4 portrait; margin: 6mm; }
+      @page { size: A4 portrait; margin: 5mm; }
       * { box-sizing: border-box; }
-      body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background: #f0f0f0; }
-      .page { 
-        display: grid; 
-        grid-template-columns: 85mm 85mm; 
-        grid-template-rows: repeat(5, 54mm);
-        gap: 4mm;
-        width: 178mm;
+      html, body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background: #ffffff; }
+      /* 2 columnas x 5 filas = 10 tarjetas que caben COMPLETAS en un A4:
+         altura total = 5*53 + 4*3 = 277mm < 287mm imprimibles (margen 5mm). */
+      .page {
+        display: grid;
+        grid-template-columns: 85mm 85mm;
+        grid-template-rows: repeat(5, 53mm);
+        gap: 3mm;
+        width: 173mm;
         margin: 0 auto;
+        page-break-inside: avoid;
       }
-      .card { 
-        width: 85mm; height: 54mm; 
+      .card {
+        width: 85mm; height: 53mm;
+        break-inside: avoid; page-break-inside: avoid;
         background: ${s.bg} !important; 
         color: ${s.text} !important; 
         padding: 10px 12px; 
