@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -317,6 +318,26 @@ Responde en formato JSON con esta estructura:
                 {result.mpptKw > 0 && <p><span className="text-gray-500">Regulador MPPT solar:</span> <strong>{result.mpptKw} kW / {result.mpptA} A ({result.numPaneles} paneles x {result.totalPanelW/result.numPaneles}W)</strong></p>}
                 <p><span className="text-gray-500">BMS (Battery Management System):</span> <strong>{result.corrienteBmsA} A mínimo</strong></p>
                 <p><span className="text-gray-500">Tipo de instalación:</span> <strong>{result.tipoRed}</strong></p>
+              </div>
+
+              {/* Gráfico comparativo de energía (imagen del resultado) */}
+              <div className="bg-white border border-gray-200 rounded-lg p-3">
+                <p className="text-sm font-semibold text-gray-700 mb-2">Balance de energía del sistema (kWh)</p>
+                <ResponsiveContainer width="100%" height={190}>
+                  <BarChart data={[
+                    { n: 'Consumo diario', kwh: parseFloat(result.consumoDiarioKwh) || 0 },
+                    { n: `Necesaria (${result.autonomiaDias} días)`, kwh: parseFloat(result.energiaNecesariaKwh) || 0 },
+                    { n: 'Banco instalado', kwh: parseFloat(result.energiaTotalKwh) || 0 },
+                  ]} margin={{ left: 4, right: 12, top: 4, bottom: 4 }}>
+                    <XAxis dataKey="n" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(v) => [`${v} kWh`, 'Energía']} />
+                    <Bar dataKey="kwh" radius={[4, 4, 0, 0]}>
+                      {['#f59e0b', '#3b82f6', '#16a34a'].map((c, i) => <Cell key={i} fill={c} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="text-[10px] text-gray-400 mt-1">El banco instalado ({result.numBaterias} × {result.capBateria}Ah) cubre la energía necesaria para {result.autonomiaDias} días de autonomía.</p>
               </div>
 
               {/* Wiring Diagram */}

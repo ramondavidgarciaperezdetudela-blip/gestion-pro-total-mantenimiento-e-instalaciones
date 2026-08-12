@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -821,6 +822,26 @@ export default function SolarBatteryCalc() {
                       </table>
                     </CardContent>
                   </Card>
+
+                  {/* Gráfico: energía del sistema (resultado calculado) */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">📊 Balance energético del sistema (kWh)</p>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={[
+                        { n: 'Consumo diario', kwh: parseFloat(batResult.consumoDiarioKwh) || 0 },
+                        { n: 'Energía necesaria', kwh: parseFloat(batResult.energiaNecesariaKwh) || 0 },
+                        { n: 'Capacidad instalada', kwh: parseFloat(batResult.energiaTotalKwh) || 0 },
+                      ]} margin={{ left: 4, right: 12, top: 4, bottom: 4 }}>
+                        <XAxis dataKey="n" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(v) => [`${v} kWh`, 'Energía']} />
+                        <Bar dataKey="kwh" radius={[4, 4, 0, 0]}>
+                          {['#f59e0b', '#3b82f6', '#16a34a'].map((c, i) => <Cell key={i} fill={c} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <p className="text-[10px] text-gray-400 mt-1">Consumo diario ({batResult.consumoDiarioKwh} kWh) × {batResult.autonomiaDias} días de autonomía → energía necesaria ({batResult.energiaNecesariaKwh} kWh). La capacidad instalada ({batResult.energiaTotalKwh} kWh) debe cubrirla con el banco de {batResult.numBaterias} baterías.</p>
+                  </div>
 
                   <div><p className="font-semibold text-sm mb-2">📐 Esquema de conexionado</p><BatteryWiringDiagram result={batResult} form={batForm} /></div>
 

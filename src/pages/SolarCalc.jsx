@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -208,6 +209,34 @@ export default function SolarCalc() {
                 </table>
               </CardContent>
             </Card>
+
+            {/* Gráfico del balance energético diario (imagen del resultado) */}
+            {result && result.totalKwp > 0 && (() => {
+              const rawConsumo = parseFloat(form.consumption_kwh) || 0;
+              const consumoDiario = rawConsumo > 50 ? rawConsumo / 365 : rawConsumo;
+              const chartData = [
+                { n: 'Consumo diario', kwh: parseFloat(consumoDiario.toFixed(2)) },
+                { n: 'Producción diaria', kwh: parseFloat(result.dailyProduction.toFixed(2)) },
+                { n: 'Capacidad baterías', kwh: parseFloat((result.numBatteries * 2.4).toFixed(2)) },
+              ];
+              const colors = ['#6b7280', '#f59e0b', '#16a34a'];
+              return (
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <p className="text-sm font-semibold text-gray-700 mb-2">Balance energético diario (kWh)</p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={chartData} margin={{ left: 4, right: 12, top: 4, bottom: 4 }}>
+                      <XAxis dataKey="n" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip formatter={(v) => [`${v} kWh/día`, 'Energía']} />
+                      <Bar dataKey="kwh" radius={[4, 4, 0, 0]}>
+                        {chartData.map((d, i) => <Cell key={i} fill={colors[i]} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <p className="text-[10px] text-gray-400 mt-1">Compara el consumo diario introducido con la producción fotovoltaica estimada y la capacidad de almacenamiento en baterías.</p>
+                </div>
+              );
+            })()}
 
             <Card className="border-amber-200">
               <CardHeader className="bg-amber-50 py-2"><CardTitle className="text-amber-700 text-sm">📐 Esquema de conexionado</CardTitle></CardHeader>

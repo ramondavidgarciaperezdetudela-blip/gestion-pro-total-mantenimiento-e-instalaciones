@@ -6,11 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import {
   Upload, Loader2, Thermometer, FileImage, FileText, Zap,
   Package, Trash2, Download, ChevronDown, ChevronRight,
-  AlertCircle, Wind, LayoutGrid, User, CheckCircle
+  AlertCircle, Wind, LayoutGrid, User
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import NavBar from '@/components/NavBar';
+
+// Colores por tipo de maquina (coinciden con el canvas y las tarjetas)
+const MACHINE_COLORS = { split: '#ef4444', mural: '#ef4444', consola: '#3b82f6', suelo: '#3b82f6', cassette: '#8b5cf6', conductos: '#f59e0b' };
 
 const REFRIGERANTES = [
   { key: 'R-32',   label: 'R-32 (Estandar actual)',   gwp: 675  },
@@ -729,6 +733,40 @@ export default function ACPlanAnalysis() {
               <PlanCanvas rooms={result.rooms} />
             </CardContent>
           </Card>
+
+          {/* Grafico: potencia recomendada por estancia */}
+          {result.rooms?.length > 0 && (
+            <Card>
+              <CardHeader className="py-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-red-500" />Potencia recomendada por estancia
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <ResponsiveContainer width="100%" height={Math.max(200, result.rooms.length * 42)}>
+                  <BarChart
+                    layout="vertical"
+                    data={result.rooms.map(r => ({
+                      name: r.name,
+                      power_kw: r.power_kw,
+                      machine_type: r.machine_type,
+                    }))}
+                    margin={{ left: 8, right: 24, top: 4, bottom: 4 }}
+                  >
+                    <XAxis type="number" tick={{ fontSize: 10 }} unit=" kW" />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={110} />
+                    <Tooltip formatter={(v, _n, p) => [`${v} kW`, p?.payload?.machine_type || 'Potencia']} />
+                    <Bar dataKey="power_kw" radius={[0, 4, 4, 0]}>
+                      {result.rooms.map((r, i) => (
+                        <Cell key={i} fill={MACHINE_COLORS[r.machine_type] || '#64748b'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="text-[10px] text-slate-400 mt-1">Color segun el tipo de maquina propuesto para cada estancia.</p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Condensadora exterior */}
           <Card>

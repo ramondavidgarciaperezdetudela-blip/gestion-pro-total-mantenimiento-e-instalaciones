@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -165,6 +166,29 @@ export default function MultiAreaCalc() {
               </div>
             ))}
           </div>
+          {results.res.length > 0 && (
+            <Card>
+              <CardHeader className="py-3"><CardTitle className="text-sm">Carga por zona (W)</CardTitle></CardHeader>
+              <CardContent className="p-3 pt-0">
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart
+                    data={results.res.map(r => ({ name: r.area.name, watios: r.watios }))}
+                    margin={{ left: 4, right: 12, top: 8, bottom: 4 }}
+                  >
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(v) => [`${v.toLocaleString('es-ES')} W`, 'Carga']} />
+                    <Bar dataKey="watios" radius={[4, 4, 0, 0]}>
+                      {results.res.map((r, i) => (
+                        <Cell key={r.area.id} fill={['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6'][i % 5]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="text-[10px] text-gray-400 mt-1">Carga térmica calculada de cada zona en vatios.</p>
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader className="py-3"><CardTitle className="text-sm">Cargas por zona</CardTitle></CardHeader>
             <CardContent className="p-0">
