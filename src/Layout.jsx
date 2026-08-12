@@ -161,6 +161,7 @@ const navItems = [
 { name: 'Actualizaciones', page: 'UpdateCenter', icon: Download },
 { name: 'Activar Licencia', page: 'LicenseActivation', icon: Shield },
 { name: 'Renovar Licencia', page: 'LicenseRenewal', icon: Shield },
+{ name: 'Soporte IA', page: 'AISupport', icon: Bot },
 ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
 

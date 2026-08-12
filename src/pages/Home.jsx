@@ -93,7 +93,8 @@ const quickLinks = [
 { name: 'Exportar', page: 'ExportData', icon: Download, color: 'bg-lime-600' },
 { name: 'Copias Seg.', page: 'BackupCenter', icon: Shield, color: 'bg-blue-700' },
 { name: 'Actualizaciones', page: 'UpdateCenter', icon: RefreshCw, color: 'bg-green-600' },
-{ name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' }];
+{ name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
+{ name: 'Soporte IA', page: 'AISupport', icon: Bot, color: 'bg-blue-500' }];
 
 
 function StatCard({ label, value, sub, icon: Icon, color, linkPage }) {

@@ -106,6 +106,7 @@ const MultiAreaCalc = lazy(() => import('./pages/MultiAreaCalc'));
 const RefrigerantEquiv = lazy(() => import('./pages/RefrigerantEquiv'));
 const SharingWarning = lazy(() => import('./pages/SharingWarning'));
 const UpdateCenter = lazy(() => import('./pages/UpdateCenter'));
+const AISupport = lazy(() => import('./pages/AISupport'));
 import __Layout from './Layout.jsx';
 
 
@@ -167,6 +168,7 @@ export const PAGES = {
     "RefrigerantEquiv": RefrigerantEquiv,
     "SharingWarning": SharingWarning,
     "UpdateCenter": UpdateCenter,
+    "AISupport": AISupport,
 }
 
 export const pagesConfig = {
