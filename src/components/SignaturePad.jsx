@@ -107,7 +107,7 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
       setSignDatetime(dt);
       setShowCanvas(false);
     } catch (err) {
-      setSaveError(err?.message || 'No se pudo guardar la firma. Comprueba tu conexión e inténtalo de nuevo.');
+      setSaveError('No se pudo guardar la firma. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setSaving(false);
     }

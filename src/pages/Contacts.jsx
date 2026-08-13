@@ -235,7 +235,7 @@ export default function Contacts() {
       const file_url = await uploadImage(file);
       setForm(prev => ({ ...prev, photo_url: file_url }));
     } catch (err) {
-      alert(err.message || 'Error al subir la foto');
+      alert('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setPhotoUploading(false);
       e.target.value = '';

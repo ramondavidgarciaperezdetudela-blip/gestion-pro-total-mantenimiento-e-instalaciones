@@ -544,7 +544,7 @@ function MissingImagesSection({ prices, onFixed, onUpdated }) {
       onUpdated && onUpdated();
       toast.success('Imagen subida');
     } catch (err) {
-      toast.error(err.message || 'Error al subir la imagen');
+      toast.error('Error al subir la imagen. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploadingManual(false);
       e.target.value = '';
@@ -798,7 +798,7 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
       onUpdated && onUpdated();
       toast.success('Imagen subida');
     } catch (err) {
-      toast.error(err.message || 'Error al subir la imagen');
+      toast.error('Error al subir la imagen. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploadingManual(false);
       e.target.value = '';

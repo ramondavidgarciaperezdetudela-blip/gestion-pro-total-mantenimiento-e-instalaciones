@@ -129,7 +129,7 @@ export default function Inventory() {
       const file_url = await uploadImage(file);
       setEqForm(prev => ({ ...prev, photo_url: file_url }));
     } catch (err) {
-      alert(err.message || 'Error al subir la foto');
+      alert('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -143,7 +143,7 @@ export default function Inventory() {
       const file_url = await uploadImage(file);
       setStockForm(prev => ({ ...prev, photo_url: file_url }));
     } catch (err) {
-      alert(err.message || 'Error al subir la foto');
+      alert('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploadingStock(false);
       e.target.value = '';
@@ -157,7 +157,7 @@ export default function Inventory() {
       const file_url = await uploadImage(file);
       setCmForm(prev => ({ ...prev, photo_url: file_url }));
     } catch (err) {
-      alert(err.message || 'Error al subir la foto');
+      alert('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploadingCm(false);
       e.target.value = '';

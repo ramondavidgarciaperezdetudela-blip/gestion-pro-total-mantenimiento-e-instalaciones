@@ -162,7 +162,7 @@ export default function SupplierCatalogImport({ onImported }) {
       setStep('preview');
       setProgress('');
     } catch (err) {
-      setError('Error al procesar el archivo: ' + err.message);
+      setError('Error al procesar el archivo. Comprueba que el formato es correcto e inténtalo de nuevo.');
       setStep('idle');
     }
   };

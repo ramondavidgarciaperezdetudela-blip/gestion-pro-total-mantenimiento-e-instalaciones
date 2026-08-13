@@ -188,7 +188,7 @@ export default function Suppliers() {
       setForm((prev) => ({ ...prev, logo_url: file_url }));
       toast.success('Foto guardada correctamente');
     } catch (error) {
-      toast.error(error.message || 'Error al subir la foto');
+      toast.error('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
     }
   };
 

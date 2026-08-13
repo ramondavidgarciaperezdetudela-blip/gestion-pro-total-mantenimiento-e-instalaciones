@@ -29,7 +29,7 @@ export default function SATSharePanel({ sat, company }) {
       });
       alert('Email enviado al cliente');
     } catch (error) {
-      alert('Error al enviar email: ' + error.message);
+      alert('Error al enviar el email. Inténtalo de nuevo.');
     } finally {
       setSending(false);
     }

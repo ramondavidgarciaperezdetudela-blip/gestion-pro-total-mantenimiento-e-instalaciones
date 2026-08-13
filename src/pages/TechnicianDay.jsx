@@ -162,7 +162,7 @@ export default function TechnicianDay() {
       setUpdateForm(f => ({ ...f, [field]: [...(f[field] || []), file_url] }));
       toast.success('Foto añadida');
     } catch (err) {
-      toast.error(err.message || 'Error al subir la foto');
+      toast.error('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploadingPhoto(null);
       e.target.value = '';

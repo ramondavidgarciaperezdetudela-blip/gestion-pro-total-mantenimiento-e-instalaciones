@@ -34,7 +34,7 @@ export default function PhotoInput({ onPhotoUrl, label = 'Foto', multiple = fals
         setShowCamera(false);
       }
     } catch (err) {
-      setError(err.message || 'Error al subir foto');
+      setError('Error al subir foto. Comprueba tu conexión e inténtalo de nuevo.');
       console.error('Upload error:', err);
     } finally {
       setUploading(false);
@@ -61,7 +61,7 @@ export default function PhotoInput({ onPhotoUrl, label = 'Foto', multiple = fals
       }
       if (failed > 0) setError(`${failed} foto(s) no se pudieron subir. Comprueba tu conexión e inténtalo de nuevo.`);
     } catch (err) {
-      setError(err.message || 'Error al subir fotos');
+      setError('Error al subir fotos. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploading(false);
       e.target.value = '';

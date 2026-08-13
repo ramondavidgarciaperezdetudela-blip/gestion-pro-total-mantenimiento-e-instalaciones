@@ -251,7 +251,7 @@ function MyManualsTab() {
       setForm({ title: '', brand: '', model: '', category: 'Manual instalación', notes: '' });
       load();
     } catch (err) {
-      alert(err.message || 'Error al subir el manual');
+      alert('Error al subir el manual. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploading(false);
       e.target.value = '';

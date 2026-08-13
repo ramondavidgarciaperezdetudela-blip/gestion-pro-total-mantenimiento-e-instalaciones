@@ -41,7 +41,7 @@ export default function SendDocumentEmailPanel({
       setShowPanel(false);
       if (onEmailSent) onEmailSent();
     } catch (error) {
-      toast.error('Error al enviar: ' + error.message);
+      toast.error('Error al enviar el email. Inténtalo de nuevo.');
     } finally {
       setSending(false);
     }

@@ -3,6 +3,7 @@ import { compressImage } from './compressImage';
 
 const UPLOAD_TIMEOUT_MS = 45000;
 export const UPLOAD_TIMEOUT_MESSAGE = 'La subida ha tardado demasiado. Comprueba tu conexión e inténtalo de nuevo.';
+const UPLOAD_GENERIC_MESSAGE = 'No se pudo subir el archivo. Comprueba tu conexión e inténtalo de nuevo.';
 
 function withTimeout(promise, ms, message) {
   let timer;
@@ -10,6 +11,14 @@ function withTimeout(promise, ms, message) {
     timer = setTimeout(() => reject(new Error(message)), ms);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+// El navegador o el SDK pueden lanzar errores en inglés (p.ej. "Failed to
+// fetch"). Normalizamos aquí para que quien llame a uploadImage/uploadFile
+// reciba siempre un err.message en español, nunca mezclado con inglés.
+function toSpanishError(err) {
+  if (err instanceof Error && err.message === UPLOAD_TIMEOUT_MESSAGE) return err;
+  return new Error(UPLOAD_GENERIC_MESSAGE);
 }
 
 /**
@@ -22,13 +31,17 @@ function withTimeout(promise, ms, message) {
  * @returns {Promise<string>} file_url
  */
 export async function uploadImage(file, compressOpts) {
-  const compressed = await compressImage(file, compressOpts);
-  const { file_url } = await withTimeout(
-    base44.integrations.Core.UploadFile({ file: compressed }),
-    UPLOAD_TIMEOUT_MS,
-    UPLOAD_TIMEOUT_MESSAGE
-  );
-  return file_url;
+  try {
+    const compressed = await compressImage(file, compressOpts);
+    const { file_url } = await withTimeout(
+      base44.integrations.Core.UploadFile({ file: compressed }),
+      UPLOAD_TIMEOUT_MS,
+      UPLOAD_TIMEOUT_MESSAGE
+    );
+    return file_url;
+  } catch (err) {
+    throw toSpanishError(err);
+  }
 }
 
 /**
@@ -39,10 +52,14 @@ export async function uploadImage(file, compressOpts) {
  * @returns {Promise<string>} file_url
  */
 export async function uploadFile(file) {
-  const { file_url } = await withTimeout(
-    base44.integrations.Core.UploadFile({ file }),
-    UPLOAD_TIMEOUT_MS,
-    UPLOAD_TIMEOUT_MESSAGE
-  );
-  return file_url;
+  try {
+    const { file_url } = await withTimeout(
+      base44.integrations.Core.UploadFile({ file }),
+      UPLOAD_TIMEOUT_MS,
+      UPLOAD_TIMEOUT_MESSAGE
+    );
+    return file_url;
+  } catch (err) {
+    throw toSpanishError(err);
+  }
 }

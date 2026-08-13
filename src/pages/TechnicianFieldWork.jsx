@@ -47,7 +47,7 @@ export default function TechnicianFieldWork() {
       setPhotos(prev => [...prev, file_url]);
       toast.success('Foto adjuntada');
     } catch (err) {
-      toast.error(err.message || 'Error al subir foto');
+      toast.error('Error al subir foto. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploadingPhoto(false);
       e.target.value = '';

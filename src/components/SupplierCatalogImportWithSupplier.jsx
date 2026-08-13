@@ -473,7 +473,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       setProgressPct(0);
 
     } catch (err) {
-      setError('Error al procesar el archivo: ' + (err.message || 'Error desconocido'));
+      setError('Error al procesar el archivo. Inténtalo de nuevo.');
       setStep('idle');
     }
   };

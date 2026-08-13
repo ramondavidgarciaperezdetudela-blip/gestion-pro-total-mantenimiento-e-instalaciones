@@ -342,7 +342,7 @@ export default function EquipmentDiaryPage() {
                       const file_url = await uploadImage(f);
                       setDiaryForm(prev => ({...prev, equipment_photo_url: file_url}));
                     } catch (err) {
-                      toast.error(err.message || 'Error al subir la foto');
+                      toast.error('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
                     } finally {
                       setPhotoUploading(false);
                       e.target.value = '';

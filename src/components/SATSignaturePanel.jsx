@@ -48,7 +48,7 @@ export default function SATSignaturePanel({ order, onUpdate, contactEmail = null
         extra_info: `Cliente: ${order.contact_name} | Tipo: ${order.type || ''}`
       }).catch(() => {});
     } catch (err) {
-      toast.error(err.message || 'Error al guardar la firma');
+      toast.error('Error al guardar la firma. Comprueba tu conexión e inténtalo de nuevo.');
       throw err;
     } finally {
       setSaving(false);
@@ -75,7 +75,7 @@ export default function SATSignaturePanel({ order, onUpdate, contactEmail = null
         extra_info: `Tipo servicio: ${order.type || ''} | ${order.description || ''}`
       }).catch(() => {});
     } catch (err) {
-      toast.error(err.message || 'Error al guardar la firma');
+      toast.error('Error al guardar la firma. Comprueba tu conexión e inténtalo de nuevo.');
       throw err;
     } finally {
       setSaving(false);

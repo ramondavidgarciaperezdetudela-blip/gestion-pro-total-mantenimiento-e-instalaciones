@@ -172,7 +172,7 @@ export default function ContactDetail() {
       const docs = await base44.entities.ClientDocument.filter({ contact_id: contactId });
       setDocuments(docs);
     } catch (err) {
-      alert(err.message || 'Error al subir el documento');
+      alert('Error al subir el documento. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -196,7 +196,7 @@ export default function ContactDetail() {
       setContact(updated);
       setContactForm((prev) => ({ ...prev, photo_url: file_url }));
     } catch (err) {
-      alert(err.message || 'Error al subir la foto');
+      alert('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setPhotoUploading(false);
       e.target.value = '';
@@ -219,7 +219,7 @@ export default function ContactDetail() {
       });
       setEquipmentPhotos([...equipmentPhotos, photoDoc]);
     } catch (err) {
-      alert(err.message || 'Error al subir la foto');
+      alert('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploading(false);
       e.target.value = '';

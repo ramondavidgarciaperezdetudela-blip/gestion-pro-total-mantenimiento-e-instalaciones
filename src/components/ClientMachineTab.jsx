@@ -126,7 +126,7 @@ export default function ClientMachineTab({ contactId, contactName }) {
       const file_url = await uploadImage(file);
       setForm(prev => ({ ...prev, photo_url: file_url }));
     } catch (err) {
-      toast.error(err.message || 'Error al subir la foto');
+      toast.error('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploading(false);
       e.target.value = '';

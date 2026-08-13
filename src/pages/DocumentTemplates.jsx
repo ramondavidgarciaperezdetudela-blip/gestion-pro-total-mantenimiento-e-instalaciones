@@ -237,7 +237,7 @@ Devuelve entre 6 y 8 modelos VARIADOS y elegantes, inspirados en tendencias real
       const file_url = await uploadImage(file);
       setForm({ ...form, example_file_url: file_url, example_file_name: file.name });
     } catch (err) {
-      alert(err.message || 'Error al subir el fichero');
+      alert('Error al subir el fichero. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setUploading(false);
       e.target.value = '';

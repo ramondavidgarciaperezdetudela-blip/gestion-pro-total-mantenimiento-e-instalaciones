@@ -258,7 +258,7 @@ export default function CompanyConfig() {
       const file_url = await uploadImage(file);
       setForm({ ...form, logo_url: file_url });
     } catch (err) {
-      alert(err.message || 'Error al subir el logo');
+      alert('Error al subir el logo. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
       setLogoUploading(false);
       e.target.value = '';
