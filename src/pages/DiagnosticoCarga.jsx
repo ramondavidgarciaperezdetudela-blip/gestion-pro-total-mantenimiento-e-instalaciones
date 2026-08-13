@@ -339,7 +339,21 @@ export default function DiagnosticoCarga() {
   const [fabValores, setFabValores] = useState(null); // { recalentamiento, subenfriamiento, presion_baja, presion_alta, aceite, notas }
   const [fabBusy, setFabBusy] = useState(false);
   const buscarValoresFabricante = async () => {
-    if (!compModelo.trim() && !valvModelo.trim() && !evapModelo.trim()) return;
+    // Sin marca/modelo de compresor, válvula ni evaporador: no hay nada
+    // concreto que buscar, así que usamos directamente los valores de
+    // referencia orientativos (tabla de presiones + aceite del refrigerante)
+    // para que el diagnóstico de averías siga funcionando igualmente.
+    if (!compModelo.trim() && !valvModelo.trim() && !evapModelo.trim()) {
+      setFabValores({
+        recalentamiento: '~5-8 °C (orientativo)',
+        subenfriamiento: '~4-10 °C (orientativo)',
+        presion_baja: rec.baja ? `~${rec.baja} bar` : '—',
+        presion_alta: rec.alta ? `~${rec.alta} bar` : '—',
+        aceite: getRefrigerantInfo(gas)?.compressor_oil || '—',
+        notas: 'Valores de referencia genéricos para este refrigerante y aplicación (sin marca/modelo de compresor). Indica marca y modelo para una búsqueda más precisa del fabricante.',
+      });
+      return;
+    }
     setFabBusy(true); setFabValores(null);
     try {
       const r = await base44.integrations.Core.InvokeLLM({
@@ -817,7 +831,7 @@ export default function DiagnosticoCarga() {
               {/* VÁLVULA DE EXPANSIÓN + EVAPORADOR — búsqueda de valores del fabricante */}
               <div className="rounded-lg border-2 border-teal-300 bg-teal-50/50 p-3 space-y-2">
                 <p className="text-xs font-bold text-teal-800 flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> VÁLVULA DE EXPANSIÓN Y EVAPORADOR — buscar valores del fabricante</p>
-                <p className="text-[10px] text-slate-500">Busca en las fichas técnicas del compresor (y de la válvula/evaporador si los indicas) el recalentamiento, subenfriamiento, presiones de trabajo y aceite <b>recomendados por el fabricante</b> para este sistema.</p>
+                <p className="text-[10px] text-slate-500">Busca en las fichas técnicas del compresor (y de la válvula/evaporador si los indicas) el recalentamiento, subenfriamiento, presiones de trabajo y aceite <b>recomendados por el fabricante</b> para este sistema. Si no indicas marca ni modelo, se usan <b>valores de referencia orientativos</b> para que el diagnóstico funcione igualmente.</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div><label className="text-[11px] text-slate-500 mb-1 block">Válvula de expansión — marca</label>
                     <input type="text" value={valvMarca} onChange={(e) => setValvMarca(e.target.value)} placeholder="Ej: Danfoss, Sporlan, Emerson..." className="w-full border border-input rounded-md px-3 py-2 text-sm" />
@@ -833,7 +847,7 @@ export default function DiagnosticoCarga() {
                   </div>
                 </div>
                 <div className="flex justify-end">
-                  <Button onClick={buscarValoresFabricante} disabled={fabBusy || (!compModelo.trim() && !valvModelo.trim() && !evapModelo.trim())} className="gap-2 h-9 bg-teal-700 hover:bg-teal-800">
+                  <Button onClick={buscarValoresFabricante} disabled={fabBusy} className="gap-2 h-9 bg-teal-700 hover:bg-teal-800">
                     {fabBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}Buscar valores del fabricante
                   </Button>
                 </div>
