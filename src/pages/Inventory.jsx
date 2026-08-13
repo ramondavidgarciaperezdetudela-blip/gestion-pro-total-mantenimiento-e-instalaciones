@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Trash2, Edit, Package, Wrench, AlertTriangle, Upload, Barcode, ScanLine, Users } from 'lucide-react';
 import PrintButton from '../components/PrintButton';
+import { uploadImage } from '@/lib/uploadImage';
 
 const EQ_CATEGORIES = ['herramienta', 'maquinaria', 'vehiculo', 'instrumento_medicion', 'equipo_proteccion', 'otro'];
 const EQ_STATUSES = ['operativo', 'en_revision', 'averiado', 'baja'];
@@ -124,25 +125,43 @@ export default function Inventory() {
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0]; if (!file) return;
     setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setEqForm(prev => ({ ...prev, photo_url: file_url }));
-    setUploading(false);
+    try {
+      const file_url = await uploadImage(file);
+      setEqForm(prev => ({ ...prev, photo_url: file_url }));
+    } catch (err) {
+      alert('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const handleStockPhotoUpload = async (e) => {
     const file = e.target.files[0]; if (!file) return;
     setUploadingStock(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setStockForm(prev => ({ ...prev, photo_url: file_url }));
-    setUploadingStock(false);
+    try {
+      const file_url = await uploadImage(file);
+      setStockForm(prev => ({ ...prev, photo_url: file_url }));
+    } catch (err) {
+      alert('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setUploadingStock(false);
+      e.target.value = '';
+    }
   };
 
   const handleCmPhotoUpload = async (e) => {
     const file = e.target.files[0]; if (!file) return;
     setUploadingCm(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setCmForm(prev => ({ ...prev, photo_url: file_url }));
-    setUploadingCm(false);
+    try {
+      const file_url = await uploadImage(file);
+      setCmForm(prev => ({ ...prev, photo_url: file_url }));
+    } catch (err) {
+      alert('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setUploadingCm(false);
+      e.target.value = '';
+    }
   };
 
   const handleSaveCm = async () => {

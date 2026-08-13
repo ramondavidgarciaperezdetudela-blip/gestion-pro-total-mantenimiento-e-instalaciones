@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Edit, Trash2, Palette, Save, Star, Eye, Download, Search, Loader2, Globe } from 'lucide-react';
 import LineTemplateManager from '../components/LineTemplateManager';
+import { uploadImage } from '@/lib/uploadImage';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo', 'sat', 'mantenimiento', 'informe', 'legalización', 'tarjeta_contacto'];
 const FONT_SIZES = { small: '11px', medium: '13px', large: '15px' };
@@ -206,7 +207,7 @@ Devuelve entre 6 y 8 modelos VARIADOS y elegantes, inspirados en tendencias real
         const { id, created_date, updated_date, created_by, ...clean } = data || {};
         await base44.entities.DocumentTemplate.create({ ...EMPTY_TPL, ...clean, is_default: false, name: (clean.name || 'Plantilla importada') + '' });
       } else {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const file_url = await uploadImage(file);
         await base44.entities.DocumentTemplate.create({
           ...EMPTY_TPL, is_default: false,
           name: file.name.replace(/\.[^.]+$/, ''),
@@ -232,9 +233,15 @@ Devuelve entre 6 y 8 modelos VARIADOS y elegantes, inspirados en tendencias real
     const file = e.target.files?.[0];
     if (!file || !form.doc_type) return;
     setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setForm({ ...form, example_file_url: file_url, example_file_name: file.name });
-    setUploading(false);
+    try {
+      const file_url = await uploadImage(file);
+      setForm({ ...form, example_file_url: file_url, example_file_name: file.name });
+    } catch (err) {
+      alert('Error al subir el fichero. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const handleSaveAsDefault = async () => {

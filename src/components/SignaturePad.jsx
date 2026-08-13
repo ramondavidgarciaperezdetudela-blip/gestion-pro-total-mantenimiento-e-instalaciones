@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Check, PenLine } from 'lucide-react';
+import { RotateCcw, Check, PenLine, AlertCircle, Loader2 } from 'lucide-react';
 
 /**
  * SignatureCanvas — Componente de firma digital táctil/ratón
@@ -12,6 +12,8 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
   const [hasDrawn, setHasDrawn] = useState(false);
   const [showCanvas, setShowCanvas] = useState(!value);
   const [signDatetime, setSignDatetime] = useState(existingDatetime);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const initCanvas = useCallback(() => {
     requestAnimationFrame(() => {
@@ -81,7 +83,7 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
     setHasDrawn(false);
   };
 
-  const save = () => {
+  const save = async () => {
     const canvas = canvasRef.current;
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = 400;
@@ -94,9 +96,21 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const dt = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    setSignDatetime(dt);
-    onSave(dataUrl, dt);
-    setShowCanvas(false);
+
+    setSaving(true);
+    setSaveError('');
+    try {
+      // Esperamos a que la firma se suba/guarde de verdad antes de cerrar
+      // el panel: si onSave falla o se cae la red, el canvas se queda
+      // visible con un aviso en vez de desaparecer sin dejar rastro.
+      await onSave(dataUrl, dt);
+      setSignDatetime(dt);
+      setShowCanvas(false);
+    } catch (err) {
+      setSaveError('No se pudo guardar la firma. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Vista de firma ya guardada
@@ -154,17 +168,24 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
             )}
           </div>
 
+          {saveError && (
+            <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{saveError}
+            </div>
+          )}
+
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={clear} className="flex-1 text-xs">
+            <Button size="sm" variant="outline" onClick={clear} disabled={saving} className="flex-1 text-xs">
               <RotateCcw className="w-3 h-3 mr-1" />Borrar
             </Button>
             <Button
               size="sm"
               onClick={save}
-              disabled={!hasDrawn}
+              disabled={!hasDrawn || saving}
               className="flex-1 text-xs bg-blue-700 hover:bg-blue-800 text-white"
             >
-              <Check className="w-3 h-3 mr-1" />Confirmar firma
+              {saving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}
+              {saving ? 'Guardando...' : 'Confirmar firma'}
             </Button>
           </div>
 

@@ -3,6 +3,8 @@ import { base44 } from '@/api/base44Client';
 import SignatureCanvas from './SignaturePad';
 import { Button } from '@/components/ui/button';
 import { Clock, CheckCircle2, UserCheck } from 'lucide-react';
+import { uploadFile } from '@/lib/uploadImage';
+import { toast } from 'sonner';
 
 const getNowDatetime = () => {
   const now = new Date();
@@ -23,50 +25,61 @@ export default function SATSignaturePanel({ order, onUpdate, contactEmail = null
     const res = await fetch(dataUrl);
     const blob = await res.blob();
     const file = new File([blob], 'firma.jpg', { type: 'image/jpeg' });
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    return file_url;
+    return uploadFile(file);
   };
 
   const handleSaveTechSignature = async (dataUrl, signDt) => {
     setSaving(true);
-    const dt = signDt || getNowDatetime();
-    setTechDatetime(dt);
-    const signUrl = await uploadSignature(dataUrl);
-    const updateData = { signature_technician: signUrl, sign_datetime_technician: dt };
-    await base44.entities.SATOrder.update(order.id, updateData);
-    onUpdate({ ...order, ...updateData });
-    setSaving(false);
-    base44.functions.invoke('enviarCopiaFirmada', {
-      contact_email: null,
-      contact_name: order.technician || order.contact_name,
-      doc_title: `Orden SAT Nº${order.order_number || order.id?.slice(-6)}`,
-      doc_type: 'orden_sat',
-      sign_datetime: dt,
-      signature_url: signUrl,
-      signer_role: 'tecnico',
-      extra_info: `Cliente: ${order.contact_name} | Tipo: ${order.type || ''}`
-    }).catch(() => {});
+    try {
+      const dt = signDt || getNowDatetime();
+      const signUrl = await uploadSignature(dataUrl);
+      const updateData = { signature_technician: signUrl, sign_datetime_technician: dt };
+      await base44.entities.SATOrder.update(order.id, updateData);
+      setTechDatetime(dt);
+      onUpdate({ ...order, ...updateData });
+      base44.functions.invoke('enviarCopiaFirmada', {
+        contact_email: null,
+        contact_name: order.technician || order.contact_name,
+        doc_title: `Orden SAT Nº${order.order_number || order.id?.slice(-6)}`,
+        doc_type: 'orden_sat',
+        sign_datetime: dt,
+        signature_url: signUrl,
+        signer_role: 'tecnico',
+        extra_info: `Cliente: ${order.contact_name} | Tipo: ${order.type || ''}`
+      }).catch(() => {});
+    } catch (err) {
+      toast.error('Error al guardar la firma. Comprueba tu conexión e inténtalo de nuevo.');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveClientSignature = async (dataUrl, signDt) => {
     setSaving(true);
-    const dt = signDt || getNowDatetime();
-    setClientDatetime(dt);
-    const signUrl = await uploadSignature(dataUrl);
-    const updateData = { signature_client: signUrl, sign_datetime_client: dt };
-    await base44.entities.SATOrder.update(order.id, updateData);
-    onUpdate({ ...order, ...updateData });
-    setSaving(false);
-    base44.functions.invoke('enviarCopiaFirmada', {
-      contact_email: contactEmail || null,
-      contact_name: order.contact_name,
-      doc_title: `Orden SAT Nº${order.order_number || order.id?.slice(-6)}`,
-      doc_type: 'orden_sat',
-      sign_datetime: dt,
-      signature_url: signUrl,
-      signer_role: 'cliente',
-      extra_info: `Tipo servicio: ${order.type || ''} | ${order.description || ''}`
-    }).catch(() => {});
+    try {
+      const dt = signDt || getNowDatetime();
+      const signUrl = await uploadSignature(dataUrl);
+      const updateData = { signature_client: signUrl, sign_datetime_client: dt };
+      await base44.entities.SATOrder.update(order.id, updateData);
+      setClientDatetime(dt);
+      onUpdate({ ...order, ...updateData });
+      base44.functions.invoke('enviarCopiaFirmada', {
+        contact_email: contactEmail || null,
+        contact_name: order.contact_name,
+        doc_title: `Orden SAT Nº${order.order_number || order.id?.slice(-6)}`,
+        doc_type: 'orden_sat',
+        sign_datetime: dt,
+        signature_url: signUrl,
+        signer_role: 'cliente',
+        extra_info: `Tipo servicio: ${order.type || ''} | ${order.description || ''}`
+      }).catch(() => {});
+    } catch (err) {
+      toast.error('Error al guardar la firma. Comprueba tu conexión e inténtalo de nuevo.');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
   };
 
   const techSigned = !!(order.signature_technician || techDatetime);

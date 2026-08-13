@@ -34,7 +34,7 @@ export default function PostalCodeSearch({ onSelect, type = 'postal_code' }) {
         setShowResults(true);
       }
     } catch (err) {
-      setError('Error al buscar: ' + err.message);
+      setError('Error al buscar el código postal. Inténtalo de nuevo.');
       setResults([]);
     } finally {
       setLoading(false);

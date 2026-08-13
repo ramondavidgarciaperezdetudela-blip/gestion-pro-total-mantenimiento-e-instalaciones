@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Send, X, Wrench, ChevronRight, Loader2, Camera } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { uploadImage } from '@/lib/uploadImage';
 
 export default function SATChat() {
   const [satOrders, setSatOrders] = useState([]);
@@ -66,14 +67,16 @@ export default function SATChat() {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setUploadingPhotos(true);
-    const urls = [];
-    for (const file of files) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      urls.push(file_url);
+    try {
+      const settled = await Promise.allSettled(files.map(file => uploadImage(file)));
+      const urls = settled.filter(r => r.status === 'fulfilled').map(r => r.value);
+      const failed = settled.length - urls.length;
+      if (urls.length) setPendingPhotos(prev => [...prev, ...urls]);
+      if (failed > 0) alert(`${failed} foto(s) no se pudieron subir. Comprueba tu conexión e inténtalo de nuevo.`);
+    } finally {
+      setUploadingPhotos(false);
+      e.target.value = '';
     }
-    setPendingPhotos(prev => [...prev, ...urls]);
-    setUploadingPhotos(false);
-    e.target.value = '';
   };
 
   const sendMessage = async () => {

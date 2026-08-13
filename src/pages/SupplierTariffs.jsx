@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { uploadImage } from '@/lib/uploadImage';
 import {
   Search, Building2, Package, Image as ImageIcon, ChevronDown, ChevronRight,
   Upload, Trash2, Edit, Loader2, RefreshCw, Check, TrendingDown, AlertTriangle, WifiOff
@@ -288,10 +289,16 @@ export default function SupplierTariffs() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingImage(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setEditForm(f => ({ ...f, image_url: file_url }));
-    setUploadingImage(false);
-    toast.success('Imagen subida');
+    try {
+      const file_url = await uploadImage(file);
+      setEditForm(f => ({ ...f, image_url: file_url }));
+      toast.success('Imagen subida');
+    } catch (err) {
+      toast.error('Error al subir la imagen. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
   };
 
   const handleFetchImage = async () => {

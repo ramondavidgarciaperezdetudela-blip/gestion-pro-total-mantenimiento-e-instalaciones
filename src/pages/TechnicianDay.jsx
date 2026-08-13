@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { compressImage } from '@/lib/compressImage';
+import { uploadImage } from '@/lib/uploadImage';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -157,11 +157,16 @@ export default function TechnicianDay() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingPhoto(field);
-    const compressed = await compressImage(file);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-    setUpdateForm(f => ({ ...f, [field]: [...(f[field] || []), file_url] }));
-    setUploadingPhoto(null);
-    toast.success('Foto añadida');
+    try {
+      const file_url = await uploadImage(file);
+      setUpdateForm(f => ({ ...f, [field]: [...(f[field] || []), file_url] }));
+      toast.success('Foto añadida');
+    } catch (err) {
+      toast.error('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setUploadingPhoto(null);
+      e.target.value = '';
+    }
   };
 
   // Añadir material del stock directamente

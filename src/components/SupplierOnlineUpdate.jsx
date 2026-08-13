@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { loadValidChars } from '@/components/ValidCharsConfig';
+import { uploadImage } from '@/lib/uploadImage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumberField } from '@/components/ui/number-field';
@@ -535,13 +536,19 @@ function MissingImagesSection({ prices, onFixed, onUpdated }) {
     const file = e.target.files?.[0];
     if (!file || !manualItem) return;
     setUploadingManual(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    await base44.entities.SupplierPrice.update(manualItem.id, { image_url: file_url });
-    setLocalImages(prev => ({ ...prev, [manualItem.id]: file_url }));
-    setManualItem(null);
-    onUpdated && onUpdated();
-    setUploadingManual(false);
-    toast.success('Imagen subida');
+    try {
+      const file_url = await uploadImage(file);
+      await base44.entities.SupplierPrice.update(manualItem.id, { image_url: file_url });
+      setLocalImages(prev => ({ ...prev, [manualItem.id]: file_url }));
+      setManualItem(null);
+      onUpdated && onUpdated();
+      toast.success('Imagen subida');
+    } catch (err) {
+      toast.error('Error al subir la imagen. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setUploadingManual(false);
+      e.target.value = '';
+    }
   };
 
   const handleManualUrl = async () => {
@@ -780,16 +787,22 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
     const file = e.target.files?.[0];
     if (!file || !manualItem) return;
     setUploadingManual(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    await base44.entities.SupplierPrice.update(manualItem.id, { image_url: file_url });
-    setBgState(s => ({
-      ...s,
-      imagesResults: s.imagesResults.map(r => r.item.id === manualItem.id ? { ...r, image_url: file_url, ok: true, pending: false } : r),
-    }));
-    setManualItem(null);
-    onUpdated && onUpdated();
-    setUploadingManual(false);
-    toast.success('Imagen subida');
+    try {
+      const file_url = await uploadImage(file);
+      await base44.entities.SupplierPrice.update(manualItem.id, { image_url: file_url });
+      setBgState(s => ({
+        ...s,
+        imagesResults: s.imagesResults.map(r => r.item.id === manualItem.id ? { ...r, image_url: file_url, ok: true, pending: false } : r),
+      }));
+      setManualItem(null);
+      onUpdated && onUpdated();
+      toast.success('Imagen subida');
+    } catch (err) {
+      toast.error('Error al subir la imagen. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setUploadingManual(false);
+      e.target.value = '';
+    }
   };
 
   const handleManualUrl = async () => {

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle2, Camera, Trash2, Plus, MapPin, AlertCircle, Package, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { uploadImage } from '@/lib/uploadImage';
 
 export default function TechnicianFieldWork() {
   const [routes, setRoutes] = useState([]);
@@ -20,6 +20,7 @@ export default function TechnicianFieldWork() {
   const [materials, setMaterials] = useState([]);
   const [materialForm, setMaterialForm] = useState({ name: '', quantity: 1, cost: '' });
   const [photoInput, setPhotoInput] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     // Cargar rutas desde localStorage
@@ -40,15 +41,16 @@ export default function TechnicianFieldWork() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setUploadingPhoto(true);
     try {
-      const response = await base44.integrations.Core.UploadFile({ file });
-      if (response.data?.file_url) {
-        setPhotos([...photos, response.data.file_url]);
-        setPhotoInput(null);
-        toast.success('Foto adjuntada');
-      }
+      const file_url = await uploadImage(file);
+      setPhotos(prev => [...prev, file_url]);
+      toast.success('Foto adjuntada');
     } catch (err) {
-      toast.error('Error al subir foto');
+      toast.error('Error al subir foto. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = '';
     }
   };
 
@@ -258,11 +260,12 @@ export default function TechnicianFieldWork() {
               onChange={handleUploadPhoto}
               className="hidden"
             />
-            <Button 
+            <Button
               onClick={() => photoInput?.click()}
+              disabled={uploadingPhoto}
               className="w-full bg-teal-600"
             >
-              <Camera className="w-4 h-4 mr-2" /> Tomar foto
+              <Camera className="w-4 h-4 mr-2" /> {uploadingPhoto ? 'Subiendo...' : 'Tomar foto'}
             </Button>
             <p className="text-xs text-gray-500 text-center">Las fotos son obligatorias para completar la parada</p>
           </div>

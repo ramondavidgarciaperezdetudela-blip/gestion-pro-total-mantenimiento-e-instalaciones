@@ -14,10 +14,17 @@ export async function compressImage(file, { maxWidth = 1280, maxHeight = 1280, q
   // Si no es imagen o ya es muy pequeño (<100 KB), no comprimir
   if (!file.type.startsWith('image/') || file.size < 100 * 1024) return file;
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
+    // Salvaguarda: si la imagen nunca dispara onload/onerror (fichero
+    // corrupto, bug del navegador...), no dejamos la subida colgada.
+    const safetyTimer = setTimeout(() => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    }, 15000);
     img.onload = () => {
+      clearTimeout(safetyTimer);
       URL.revokeObjectURL(url);
 
       let { width, height } = img;
@@ -46,7 +53,7 @@ export async function compressImage(file, { maxWidth = 1280, maxHeight = 1280, q
         quality
       );
     };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.onerror = () => { clearTimeout(safetyTimer); URL.revokeObjectURL(url); resolve(file); };
     img.src = url;
   });
 }

@@ -53,7 +53,7 @@ export default function CameraCapture({ onCapture, onCancel, label = 'Capturar f
       } else if (err.name === 'NotReadableError') {
         setError('❌ La cámara está siendo usada por otra aplicación.');
       } else {
-        setError('❌ Error al acceder a la cámara. ' + err.message);
+        setError('❌ Error al acceder a la cámara. Comprueba los permisos e inténtalo de nuevo.');
       }
       setCameraSupported(false);
     }

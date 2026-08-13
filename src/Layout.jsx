@@ -8,7 +8,7 @@ import {
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette,
   CreditCard, Download, Bell, History, Search, FileBarChart, Droplets, AlertCircle,
-  MoreHorizontal, MessageSquare } from
+  MoreHorizontal, MessageSquare, ListChecks, AlertTriangle } from
 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 import ThemeToggle from './components/ThemeToggle';
@@ -34,8 +34,8 @@ function MobileBottomBar({ currentPageName }) {
 
   return (
     <>
-      <nav className="flex sm:hidden fixed bottom-0 left-0 right-0 z-40 print:hidden" style={{ background: '#0d0d18', borderTop: '1px solid #1e1e30' }}
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <nav className="flex sm:hidden fixed bottom-0 left-0 right-0 z-40 print:hidden"
+        style={{ background: '#0d0d18', borderTop: '1px solid #1e1e30', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex w-full">
           {MAIN_TABS.map((item) => {
             const Icon = item.icon;
@@ -81,21 +81,26 @@ function MobileBottomBar({ currentPageName }) {
           <button onClick={() => setMoreOpen(false)} className="p-1" style={{ color: '#8890a8' }}><X className="w-5 h-5" /></button>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(75vh - 80px)' }}>
-          <div className="grid grid-cols-3 gap-1 p-3">
-            {moreItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPageName === item.page;
-              return (
-                <Link key={item.page} to={createPageUrl(item.page)}
-                  onClick={() => setMoreOpen(false)}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors"
-                  style={{ background: isActive ? '#00D4FF12' : 'transparent', color: isActive ? '#00D4FF' : '#8890a8' }}>
-                  <Icon className="w-5 h-5" />
-                  <span className="text-[10px] font-medium text-center leading-tight">{item.name}</span>
-                </Link>
-              );
-            })}
-          </div>
+          {groupNav(moreItems).map(({ section, items }) => (
+            <div key={section} className="p-3 pt-2">
+              <div className="px-1 pb-1.5 tech-label" style={{ color: '#5a6178' }}>{section}</div>
+              <div className="grid grid-cols-3 gap-1">
+                {items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentPageName === item.page;
+                  return (
+                    <Link key={item.page} to={createPageUrl(item.page)}
+                      onClick={() => setMoreOpen(false)}
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors"
+                      style={{ background: isActive ? '#00D4FF12' : 'transparent', color: isActive ? '#00D4FF' : '#8890a8' }}>
+                      <Icon className="w-5 h-5" />
+                      <span className="text-[10px] font-medium text-center leading-tight">{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </>
@@ -106,6 +111,7 @@ const navItems = [
 { name: 'Agenda', page: 'Agenda', icon: Calendar },
 { name: 'Asistente IA', page: 'AIAssistant', icon: Bot },
 { name: 'Averías', page: 'EquipmentFailureHistory', icon: AlertCircle },
+{ name: 'Baterías', page: 'BatteryCalc', icon: Zap },
 { name: 'Búsqueda IA', page: 'AISearch', icon: Search },
 { name: 'Cal. SAT', page: 'SATCalendar', icon: Calendar },
 { name: 'Calc. Eléctrico', page: 'ElectricalCalc', icon: Zap },
@@ -124,12 +130,14 @@ const navItems = [
 { name: 'Exportar', page: 'ExportData', icon: Download },
 { name: 'Historial', page: 'AuditLog', icon: History },
 { name: 'Humedad Relativa', page: 'ColdRoomCalc?tab=humedad', icon: Droplets },
+{ name: 'Incidencias', page: 'IncidentManagement', icon: AlertTriangle },
 { name: 'Inicio', page: 'Home', icon: Home },
 { name: 'Informes', page: 'Reports', icon: BarChart3 },
 { name: 'Informes IA', page: 'AIReports', icon: FileBarChart },
 { name: 'Inventario', page: 'Inventory', icon: Package },
 { name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList },
 { name: 'Manuales', page: 'Manuals', icon: BookOpen },
+{ name: 'Plan Mantenim.', page: 'MaintenancePlanning', icon: ListChecks },
 { name: 'Normativas', page: 'Regulations', icon: Shield },
 { name: 'Notas', page: 'Notes', icon: StickyNote },
 { name: 'Plan. IA', page: 'AIPlanning', icon: ClipboardList },
@@ -146,6 +154,7 @@ const navItems = [
 { name: 'Rutas', page: 'TecniciansRoutes', icon: Wrench },
 { name: 'SAT', page: 'SAT', icon: Wrench },
 { name: 'Solar+Bat.', page: 'SolarBatteryCalc', icon: Sun },
+{ name: 'Cálculo Solar', page: 'SolarCalc', icon: Sun },
 { name: 'T. Visita', page: 'BusinessCards', icon: CreditCard },
 { name: 'Tarifas Prov.', page: 'SupplierTariffs', icon: Package },
 { name: 'Timeline', page: 'ProjectTimeline', icon: Calendar },
@@ -187,6 +196,7 @@ const PAGE_SECTION = {
   ColdRoomCalc: 'Cálculo y diagnóstico', ACPotenciaCalc: 'Cálculo y diagnóstico',
   ACPlanAnalysis: 'Cálculo y diagnóstico', MultiAreaCalc: 'Cálculo y diagnóstico',
   SolarBatteryCalc: 'Cálculo y diagnóstico', CapillaryCalc: 'Cálculo y diagnóstico',
+  BatteryCalc: 'Cálculo y diagnóstico', SolarCalc: 'Cálculo y diagnóstico',
   RefrigerantEquiv: 'Cálculo y diagnóstico', DiagnosticoCarga: 'Cálculo y diagnóstico',
   DanfossTools: 'Cálculo y diagnóstico',
   // Proveedores y stock

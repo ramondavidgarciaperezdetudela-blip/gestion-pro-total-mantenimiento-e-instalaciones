@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Camera, X, Plus, FolderOpen, Loader2, Pencil, Check } from "lucide-react";
-import { base44 } from '@/api/base44Client';
+import { Camera, X, Plus, FolderOpen, Loader2, Pencil, Check, AlertCircle } from "lucide-react";
+import { uploadImage } from '@/lib/uploadImage';
 
 /**
  * PhotoGallery — galería con subida y edición de nombre por foto.
@@ -23,6 +23,7 @@ export default function PhotoGallery({
   const cameraInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
+  const [uploadError, setUploadError] = useState('');
   // nombres locales: si el padre no pasa onNamesChange, los mantenemos aquí
   const [localNames, setLocalNames] = useState(photoNames);
   const [editingIndex, setEditingIndex] = useState(null);
@@ -45,25 +46,36 @@ export default function PhotoGallery({
     const toUpload = files.slice(0, remaining);
 
     setUploading(true);
+    setUploadError('');
     setUploadProgress({ done: 0, total: toUpload.length });
 
-    const results = await Promise.all(
-      toUpload.map(async (file) => {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        setUploadProgress(prev => ({ ...prev, done: prev.done + 1 }));
-        return { url: file_url, name: file.name.replace(/\.[^.]+$/, '') };
-      })
-    );
+    try {
+      const settled = await Promise.allSettled(
+        toUpload.map(async (file) => {
+          const file_url = await uploadImage(file);
+          setUploadProgress(prev => ({ ...prev, done: prev.done + 1 }));
+          return { url: file_url, name: file.name.replace(/\.[^.]+$/, '') };
+        })
+      );
 
-    const newUrls = results.map(r => r.url);
-    const newNames = results.map(r => r.name);
+      const results = settled.filter(r => r.status === 'fulfilled').map(r => r.value);
+      const failed = settled.length - results.length;
 
-    onChange([...photos, ...newUrls]);
-    setNames([...names, ...newNames]);
-    setUploading(false);
-    setUploadProgress({ done: 0, total: 0 });
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
+      if (results.length) {
+        const newUrls = results.map(r => r.url);
+        const newNames = results.map(r => r.name);
+        onChange([...photos, ...newUrls]);
+        setNames([...names, ...newNames]);
+      }
+      if (failed > 0) {
+        setUploadError(`${failed} foto(s) no se pudieron subir. Comprueba tu conexión e inténtalo de nuevo.`);
+      }
+    } finally {
+      setUploading(false);
+      setUploadProgress({ done: 0, total: 0 });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
+    }
   };
 
   const handleRemove = (index) => {
@@ -112,6 +124,12 @@ export default function PhotoGallery({
           </div>
         )}
       </div>
+
+      {uploadError && (
+        <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5 mb-2">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{uploadError}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-3">
         {photos.map((url, i) => (
