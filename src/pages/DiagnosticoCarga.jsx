@@ -65,6 +65,7 @@ function EsquemaFrig({ alta, baja, colorAlta, colorBaja, titulo, lecturas, varia
   const COLD = '#0ea5e9';  // lado de baja presión (gas frío / aspiración)
   const val = (x, u = '') => (x !== undefined && x !== null && x !== '' && !Number.isNaN(x) ? `${x}${u}` : '—');
   const filtroObstr = L.dtFiltro != null && L.dtFiltro !== '' && Math.abs(parseFloat(L.dtFiltro)) >= 3;
+  const solNoAbre = L.dpSolen != null && L.dpSolen !== '' && Math.abs(parseFloat(L.dpSolen)) >= 1;
   const Punto = ({ x, y, n, color }) => (
     <g>
       <circle cx={x} cy={y} r="9" fill={color} stroke="#fff" strokeWidth="1.5" />
@@ -130,6 +131,13 @@ function EsquemaFrig({ alta, baja, colorAlta, colorBaja, titulo, lecturas, varia
       <text x="601" y="212" fontSize="8" fill="#713f12">Filtro FD</text>
       <text x="601" y="223" fontSize="7.5" fill="#92400e">ent {val(L.tFiltroIn, '°')}</text>
       <text x="601" y="233" fontSize="7.5" fill="#92400e">sal {val(L.tFiltroOut, '°')}</text>
+
+      {/* Válvula solenoide de línea de líquido (bobina + cuerpo) */}
+      <line x1="575" y1="251" x2="575" y2="258" stroke={solNoAbre ? '#dc2626' : '#7c3aed'} strokeWidth="1.5" />
+      <rect x="568" y="258" width="14" height="9" rx="1" fill={solNoAbre ? '#dc2626' : '#7c3aed'} />
+      <rect x="569" y="267" width="12" height="8" fill="#fff" stroke={solNoAbre ? '#dc2626' : '#7c3aed'} strokeWidth="1.5" />
+      <text x="601" y="263" fontSize="8" fill="#6b21a8">Solenoide</text>
+      <text x="601" y="273" fontSize="7.5" fill="#6b21a8">T {val(L.tSolen, '°')} · Δ {val(L.dpSolen, ' bar')}</text>
 
       {/* Válvula de expansión */}
       <polygon points="575,290 561,302 575,314 589,302" fill="#f59e0b" stroke="#b45309" strokeWidth="1.5" />
@@ -292,6 +300,10 @@ export default function DiagnosticoCarga() {
   const [tRecibIn, setTRecibIn] = useState('');     // T entrada recibidor de líquido
   const [tRecibOut, setTRecibOut] = useState('');   // T salida recibidor de líquido
   const [pRecib, setPRecib] = useState('');         // Presión en el recibidor de líquido (bar, opcional)
+  // Válvula solenoide de línea de líquido (cámaras): control de averías
+  const [tSolen, setTSolen] = useState('');         // T en la válvula solenoide (control de averías)
+  const [pSolIn, setPSolIn] = useState('');         // Presión entrada solenoide
+  const [pSolOut, setPSolOut] = useState('');       // Presión salida solenoide
   // Compresor: marca, modelo, refrigerantes, consumo medido y amperaje nominal
   const [compMarca, setCompMarca] = useState('');
   const [compModelo, setCompModelo] = useState('');
@@ -313,6 +325,8 @@ export default function DiagnosticoCarga() {
   const dtFiltro = (tFiltroIn !== '' && tFiltroOut !== '') ? (parseFloat(tFiltroIn) - parseFloat(tFiltroOut)) : null;
   // Salto en la válvula de expansión (línea de líquido → salida válvula)
   const dtValv = (tLiq !== '' && tValvOut !== '') ? (parseFloat(tLiq) - parseFloat(tValvOut)) : null;
+  // Caída de presión en la válvula solenoide (línea de líquido). Sana ≈ 0.
+  const dpSolen = (pSolIn !== '' && pSolOut !== '') ? (parseFloat(pSolIn) - parseFloat(pSolOut)) : null;
   // Comparación del consumo del compresor con su amperaje nominal (RLA)
   const ampVerdict = useMemo(() => {
     if (!compRLA || compRLA.rla == null || compAmp === '') return null;
@@ -359,10 +373,12 @@ export default function DiagnosticoCarga() {
       items.push({ e: 'COMPRESOR CON POCA COMPRESIÓN', c: '#d97706', t: 'Alta baja y baja también baja: posible compresor gastado (válvulas internas) o fuga interna. Comprueba corriente y relación de compresión.' });
     if (dtFiltro != null && dtFiltro >= 3)
       items.push({ e: 'FILTRO DESHIDRATADOR OBSTRUIDO', c: '#d97706', t: `Salto de ${dtFiltro.toFixed(0)} °C entre la entrada y la salida del filtro deshidratador (frío/escarcha a la salida): filtro parcialmente obstruido que estrangula el paso de líquido. Sustitúyelo y haz vacío. En un filtro sano el salto es casi nulo (<2 °C).` });
+    if (dpSolen != null && dpSolen >= 1)
+      items.push({ e: 'VÁLVULA SOLENOIDE NO ABRE BIEN', c: '#d97706', t: `Caída de ${dpSolen.toFixed(1)} bar entre entrada y salida de la válvula solenoide de líquido: no abre del todo (bobina sin tensión o débil, membrana pegada u obstrucción). Con la solenoide sana la presión de entrada y salida son casi iguales. Comprueba la bobina (tensión y continuidad) y el cuerpo de la válvula.` });
     if (!items.length && mB != null && mA != null)
       items.push({ e: 'PARÁMETROS EN RANGO', c: '#16a34a', t: 'Presiones y recalentamiento/subenfriamiento dentro de lo orientativo. Confirma con la ficha del fabricante.' });
     return items;
-  }, [pBaja, pAlta, recal, subenf, dtFiltro, rec.baja, rec.alta, tAmb]);
+  }, [pBaja, pAlta, recal, subenf, dtFiltro, dpSolen, rec.baja, rec.alta, tAmb]);
 
   const cB = pBaja === '' ? '#64748b' : (parseFloat(pBaja) < rec.baja * 0.9 ? '#dc2626' : parseFloat(pBaja) > rec.baja * 1.1 ? '#d97706' : '#16a34a');
   const cA = pAlta === '' ? '#64748b' : (parseFloat(pAlta) < rec.alta * 0.9 ? '#dc2626' : parseFloat(pAlta) > rec.alta * 1.1 ? '#d97706' : '#16a34a');
@@ -572,6 +588,22 @@ export default function DiagnosticoCarga() {
                 </div>
               </div>
 
+              {/* VÁLVULA SOLENOIDE de línea de líquido (cámaras) */}
+              <div className="rounded-lg border-2 border-purple-200 bg-purple-50/40 p-3 space-y-2">
+                <p className="text-xs font-bold text-purple-700 flex items-center gap-1">🧲 VÁLVULA SOLENOIDE (línea de líquido)</p>
+                <p className="text-[10px] text-slate-500">Habitual en cámaras: corta el paso de líquido según el termostato (pump-down). Con la bobina con tensión debe abrir y la presión de entrada y salida ser casi iguales.</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">T. en la solenoide (°C)<br/><span className="text-[9px] text-slate-400">control de averías</span></label>{N(tSolen, setTSolen, 'Ej: 40')}</div>
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">Presión entrada (bar)<br/><span className="text-[9px] text-slate-400">antes de la solenoide</span></label>{N(pSolIn, setPSolIn, 'Ej: 30')}</div>
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">Presión salida (bar)<br/><span className="text-[9px] text-slate-400">después de la solenoide</span></label>{N(pSolOut, setPSolOut, 'Ej: 30')}</div>
+                </div>
+                <div className="bg-white rounded-md p-2 text-center border border-purple-200">
+                  <span className="text-[11px] text-slate-500">Caída en la solenoide (entrada − salida) = </span>
+                  <span className={`font-bold ${dpSolen != null && dpSolen >= 1 ? 'text-red-600' : 'text-purple-700'}`}>{dpSolen != null ? dpSolen.toFixed(1) + ' bar' : '—'}</span>
+                  <span className="text-[9px] text-slate-400"> · sana ≈ 0; si cae mucho, no abre bien</span>
+                </div>
+              </div>
+
               {/* COMPRESOR — modelo, amperaje nominal y consumo medido */}
               <div className="rounded-lg border-2 border-slate-300 bg-slate-50 p-3 space-y-2">
                 <p className="text-xs font-bold text-slate-700 flex items-center gap-1"><Zap className="w-3.5 h-3.5" /> COMPRESOR — marca, modelo, refrigerantes y consumo</p>
@@ -628,6 +660,7 @@ export default function DiagnosticoCarga() {
                 lecturas={{
                   tEvap, tAsp, tCond, tLiq, tAmb, pBaja, pAlta, tFiltroIn, tFiltroOut, tValvOut,
                   tRecibIn, tRecibOut, pRecib, compAmp, tBulbo, pIgual, tIgual,
+                  tSolen, pSolIn, pSolOut, dpSolen: dpSolen != null ? dpSolen.toFixed(1) : '',
                   compRLA: compRLA?.rla ?? '',
                   recal: recal != null ? recal.toFixed(1) : '',
                   subenf: subenf != null ? subenf.toFixed(1) : '',
@@ -652,6 +685,10 @@ export default function DiagnosticoCarga() {
                   ['T. entrada recibidor', tRecibIn !== '' ? tRecibIn + ' °C' : '—'],
                   ['T. salida recibidor', tRecibOut !== '' ? tRecibOut + ' °C' : '—'],
                   ['Presión recibidor', pRecib !== '' ? pRecib + ' bar' : '—'],
+                  ['T. solenoide', tSolen !== '' ? tSolen + ' °C' : '—'],
+                  ['P. ent. solenoide', pSolIn !== '' ? pSolIn + ' bar' : '—'],
+                  ['P. sal. solenoide', pSolOut !== '' ? pSolOut + ' bar' : '—'],
+                  ['Caída solenoide', dpSolen != null ? dpSolen.toFixed(1) + ' bar' : '—'],
                   ['T. bulbo', tBulbo !== '' ? tBulbo + ' °C' : '—'],
                   ...(variante === 'compensacion' ? [
                     ['P. igualación ext.', pIgual !== '' ? pIgual + ' bar' : '—'],
