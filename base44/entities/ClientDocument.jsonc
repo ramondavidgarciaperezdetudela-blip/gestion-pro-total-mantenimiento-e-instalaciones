@@ -25,6 +25,7 @@
         "informe",
         "nota",
         "foto_equipo",
+        "diagnostico_frigorifico",
         "otro"
       ]
     },

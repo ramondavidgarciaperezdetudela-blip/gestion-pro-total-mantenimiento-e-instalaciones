@@ -88,6 +88,66 @@
       },
       "description": "Fotos despu\u00e9s de reparaci\u00f3n (max 30)"
     },
+    "diagnostic_before": {
+      "type": "object",
+      "description": "Diagn\u00f3stico frigor\u00edfico (Diagn\u00f3stico Carga) guardado ANTES de la reparaci\u00f3n",
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "description": "ID del ClientDocument (doc_type diagnostico_frigorifico) con la ficha completa"
+        },
+        "image_url": {
+          "type": "string",
+          "description": "Imagen del esquema + tabla de medidas"
+        },
+        "date": {
+          "type": "string",
+          "description": "Fecha y hora del guardado (DD/MM/YYYY HH:MM:SS)"
+        },
+        "gas": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string",
+          "description": "Resumen breve: recalentamiento, subenfriamiento, presiones y posibles aver\u00edas detectadas"
+        },
+        "manufacturer_values": {
+          "type": "string",
+          "description": "Valores preferidos por el fabricante (compresor/v\u00e1lvula/evaporador) obtenidos por b\u00fasqueda IA"
+        },
+        "data_json": {
+          "type": "string",
+          "description": "JSON con la tabla completa de medidas, para poder reimprimir/exportar despu\u00e9s"
+        }
+      }
+    },
+    "diagnostic_after": {
+      "type": "object",
+      "description": "Diagn\u00f3stico frigor\u00edfico (Diagn\u00f3stico Carga) guardado DESPU\u00c9S de la reparaci\u00f3n",
+      "properties": {
+        "document_id": {
+          "type": "string"
+        },
+        "image_url": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        },
+        "gas": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "manufacturer_values": {
+          "type": "string"
+        },
+        "data_json": {
+          "type": "string"
+        }
+      }
+    },
     "materials_used": {
       "type": "array",
       "items": {

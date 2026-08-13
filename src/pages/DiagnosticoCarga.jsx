@@ -1,10 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import NavBar from '@/components/NavBar';
 import { base44 } from '@/api/base44Client';
-import { Printer, FileDown, Gauge, Snowflake, ArrowRightLeft, Wrench, Loader2, Droplets, Zap, AlertTriangle } from 'lucide-react';
+import { uploadFile } from '@/lib/uploadImage';
+import { Printer, FileDown, Gauge, Snowflake, ArrowRightLeft, Wrench, Loader2, Droplets, Zap, AlertTriangle, Save, CheckCircle2, BookOpen, ArrowLeft } from 'lucide-react';
 import { REFRIGERANT_DATABASE, estadoRefrigerante, getRefrigerantInfo } from '@/components/refrigerantData';
+import { format } from 'date-fns';
+import { createPageUrl } from '../utils';
 
 // Presiones ORIENTATIVAS manométricas (bar) por refrigerante y aplicación.
 const PRES = {
@@ -281,6 +285,19 @@ function MollierDiagram({ gas, baja, alta, recal, subenf }) {
 export default function DiagnosticoCarga() {
   const [tab, setTab] = useState('presiones');
 
+  // ── Contexto: cliente / orden SAT desde la URL (llegando desde una orden) ──
+  // Permite guardar el diagnóstico en la ficha del cliente y, si viene de una
+  // orden SAT, vincularlo automáticamente a sus apartados antes/después.
+  const urlParams = new URLSearchParams(window.location.search);
+  const ctxContactId = urlParams.get('contact_id');
+  const ctxSatOrderId = urlParams.get('sat_order_id');
+  const [ctxContact, setCtxContact] = useState(null);
+  const [ctxOrder, setCtxOrder] = useState(null);
+  useEffect(() => {
+    if (ctxContactId) base44.entities.Contact.filter({ id: ctxContactId }).then(l => setCtxContact(l?.[0] || null)).catch(() => {});
+    if (ctxSatOrderId) base44.entities.SATOrder.filter({ id: ctxSatOrderId }).then(l => setCtxOrder(l?.[0] || null)).catch(() => {});
+  }, [ctxContactId, ctxSatOrderId]);
+
   // ── comunes ──
   const [gas, setGas] = useState('R-410A');
   const [app, setApp] = useState('clima');
@@ -312,6 +329,38 @@ export default function DiagnosticoCarga() {
   const [compRLA, setCompRLA] = useState(null);     // { rla, lra, info }
   const [compBusy, setCompBusy] = useState(false);
   const toggleRefrig = (c) => setCompRefrigs(prev => { const n = new Set(prev); n.has(c) ? n.delete(c) : n.add(c); return n; });
+
+  // Válvula de expansión y evaporador: marca/modelo, para buscar en sus fichas
+  // técnicas los valores de funcionamiento preferidos por el fabricante.
+  const [valvMarca, setValvMarca] = useState('');
+  const [valvModelo, setValvModelo] = useState('');
+  const [evapMarca, setEvapMarca] = useState('');
+  const [evapModelo, setEvapModelo] = useState('');
+  const [fabValores, setFabValores] = useState(null); // { recalentamiento, subenfriamiento, presion_baja, presion_alta, aceite, notas }
+  const [fabBusy, setFabBusy] = useState(false);
+  const buscarValoresFabricante = async () => {
+    if (!compModelo.trim() && !valvModelo.trim() && !evapModelo.trim()) return;
+    setFabBusy(true); setFabValores(null);
+    try {
+      const r = await base44.integrations.Core.InvokeLLM({
+        prompt: `Eres un técnico frigorista buscando en manuales y fichas técnicas de fabricante. Componentes del sistema — Compresor: ${[compMarca, compModelo].filter(Boolean).join(' ') || 'no especificado'}. Válvula de expansión: ${[valvMarca, valvModelo].filter(Boolean).join(' ') || 'no especificada'}. Evaporador: ${[evapMarca, evapModelo].filter(Boolean).join(' ') || 'no especificado'}. Refrigerante: ${gas}. Aplicación: ${APPS.find(a => a.k === app)?.l || app}. Busca (principalmente en la documentación del FABRICANTE DEL COMPRESOR, complementando con la de la válvula/evaporador si aporta datos) los valores de funcionamiento recomendados para este sistema: recalentamiento objetivo (°C), subenfriamiento objetivo (°C), presión de baja y de alta orientativas para este refrigerante (bar), tipo y carga aproximada de aceite, y cualquier límite de funcionamiento relevante (temperatura ambiente máxima, envolvente de trabajo, etc.). Si no encuentras el modelo exacto, da los valores típicos de esa familia/gama de producto e indícalo. Responde en español, de forma breve y concreta.`,
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            recalentamiento: { type: 'string' },
+            subenfriamiento: { type: 'string' },
+            presion_baja: { type: 'string' },
+            presion_alta: { type: 'string' },
+            aceite: { type: 'string' },
+            notas: { type: 'string' },
+          },
+        },
+      });
+      setFabValores(r || null);
+    } catch { setFabValores({ notas: 'No se pudo buscar (¿sin conexión?). Consulta el manual del fabricante.' }); }
+    setFabBusy(false);
+  };
 
   // Variante del esquema: estándar / válvulas de retención / válvula de expansión con compensación
   const [variante, setVariante] = useState('estandar');
@@ -437,31 +486,128 @@ export default function DiagnosticoCarga() {
   // ── Imagen del diagnóstico (para adjuntar al informe / diario de reparación) ──
   const [imgBusy, setImgBusy] = useState(false);
   const [imgUrl, setImgUrl] = useState('');
-  const generarImagen = async () => {
+
+  // Captura el esquema + tabla de medidas como PNG (dataUrl + File), sin subirlo.
+  const captureDiagImage = async () => {
     const node = document.getElementById('diag-image-area');
-    if (!node) return;
+    if (!node) return null;
+    const html2canvas = (await import('html2canvas')).default;
+    const canvas = await html2canvas(node, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
+    const dataUrl = canvas.toDataURL('image/png');
+    const blob = await (await fetch(dataUrl)).blob();
+    return { dataUrl, file: new File([blob], `diagnostico-${gas}.png`, { type: 'image/png' }) };
+  };
+
+  const generarImagen = async () => {
     setImgBusy(true);
     setImgUrl('');
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(node, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
-      const dataUrl = canvas.toDataURL('image/png');
+      const cap = await captureDiagImage();
+      if (!cap) return;
       // Descargar
       const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = `diagnostico-frigorifico-${gas}.png`;
+      a.href = cap.dataUrl;
+      a.download = cap.file.name;
       a.click();
       // Subir para poder adjuntarla (informe / diario)
       try {
-        const blob = await (await fetch(dataUrl)).blob();
-        const file = new File([blob], `diagnostico-${gas}.png`, { type: 'image/png' });
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        if (file_url) setImgUrl(file_url);
+        const file_url = await uploadFile(cap.file);
+        setImgUrl(file_url);
       } catch { /* si no hay conexión, al menos queda la descarga */ }
     } catch {
       alert('No se pudo generar la imagen. Inténtalo de nuevo.');
     }
     setImgBusy(false);
+  };
+
+  // ── Guardar el diagnóstico en la ficha del cliente (y, si viene de una
+  // orden SAT, vincularlo a "antes" o "después" de la reparación) ──
+  const [savingDiag, setSavingDiag] = useState(false);
+  const [savedStage, setSavedStage] = useState(null); // 'antes' | 'despues' tras guardar con éxito
+
+  const resumenDiagnostico = () => {
+    const partes = [`Gas ${gas} · ${APPS.find(a => a.k === app)?.l || app}`];
+    if (recal != null) partes.push(`Recalent. ${recal.toFixed(1)} °C`);
+    if (subenf != null) partes.push(`Subenf. ${subenf.toFixed(1)} °C`);
+    if (pBaja !== '') partes.push(`P.baja ${pBaja} bar`);
+    if (pAlta !== '') partes.push(`P.alta ${pAlta} bar`);
+    if (diag1.length) partes.push(`Posibles averías: ${diag1.map(d => d.e).join(', ')}`);
+    return partes.join(' · ');
+  };
+
+  const valoresFabricanteTexto = () => {
+    if (!fabValores) return '';
+    return [
+      fabValores.recalentamiento && `Recalent. fabricante: ${fabValores.recalentamiento}`,
+      fabValores.subenfriamiento && `Subenf. fabricante: ${fabValores.subenfriamiento}`,
+      fabValores.presion_baja && `P.baja fabricante: ${fabValores.presion_baja}`,
+      fabValores.presion_alta && `P.alta fabricante: ${fabValores.presion_alta}`,
+      fabValores.aceite && `Aceite: ${fabValores.aceite}`,
+      fabValores.notas,
+    ].filter(Boolean).join(' · ');
+  };
+
+  const datosDiagnosticoJSON = () => JSON.stringify({
+    gas, aplicacion: app, variante,
+    presiones: { baja: pBaja, alta: pAlta },
+    temperaturas: { tEvap, tAsp, tCond, tLiq, tAmb, tFiltroIn, tFiltroOut, tValvOut, tRecibIn, tRecibOut, pRecib, tSolen, pSolIn, pSolOut, tBulbo, pIgual, tIgual },
+    calculados: {
+      recalentamiento: recal != null ? recal.toFixed(1) : null,
+      subenfriamiento: subenf != null ? subenf.toFixed(1) : null,
+      saltoFiltro: dtFiltro != null ? dtFiltro.toFixed(1) : null,
+      caidaSolenoide: dpSolen != null ? dpSolen.toFixed(1) : null,
+    },
+    compresor: { marca: compMarca, modelo: compModelo, refrigerantes: [...compRefrigs], consumoMedido: compAmp, rla: compRLA?.rla ?? null, lra: compRLA?.lra ?? null },
+    valvulaExpansion: { marca: valvMarca, modelo: valvModelo },
+    evaporador: { marca: evapMarca, modelo: evapModelo },
+    valoresFabricante: fabValores,
+    posiblesAverias: diag1.map(d => ({ evento: d.e, detalle: d.t })),
+  });
+
+  const guardarEnFicha = async () => {
+    if (!ctxContactId) return;
+    setSavingDiag(true);
+    setSavedStage(null);
+    try {
+      const cap = await captureDiagImage();
+      if (!cap) throw new Error('No se pudo generar la imagen del diagnóstico.');
+      const file_url = await uploadFile(cap.file);
+
+      // Primera vez que se guarda para esta orden → "antes"; si ya existe un
+      // diagnóstico "antes", el siguiente guardado va a "después".
+      const stage = ctxSatOrderId && ctxOrder?.diagnostic_before?.image_url ? 'despues' : 'antes';
+
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const dt = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      const summary = resumenDiagnostico();
+      const manufacturerValuesText = valoresFabricanteTexto();
+      const dataJson = datosDiagnosticoJSON();
+      const title = `Diagnóstico frigorífico — ${stage === 'antes' ? 'antes' : 'después'} de la reparación — ${format(now, 'dd/MM/yyyy')}`;
+
+      const doc = await base44.entities.ClientDocument.create({
+        contact_id: ctxContactId,
+        contact_name: ctxContact?.name || '',
+        title,
+        doc_type: 'diagnostico_frigorifico',
+        file_url,
+        description: JSON.stringify({ stage, summary, manufacturer_values: manufacturerValuesText, sat_order_id: ctxSatOrderId || null, data: JSON.parse(dataJson) }),
+        date: format(now, 'yyyy-MM-dd'),
+      });
+
+      if (ctxSatOrderId) {
+        const field = stage === 'antes' ? 'diagnostic_before' : 'diagnostic_after';
+        const fieldData = { document_id: doc.id, image_url: file_url, date: dt, gas, summary, manufacturer_values: manufacturerValuesText, data_json: dataJson };
+        await base44.entities.SATOrder.update(ctxSatOrderId, { [field]: fieldData });
+        setCtxOrder(prev => ({ ...(prev || {}), [field]: fieldData }));
+      }
+
+      setSavedStage(stage);
+    } catch (err) {
+      alert('No se pudo guardar el diagnóstico en la ficha del cliente. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setSavingDiag(false);
+    }
   };
 
   const printAll = () => {
@@ -481,6 +627,24 @@ export default function DiagnosticoCarga() {
             <button key={k} onClick={() => setTab(k)} className={`flex-1 py-2.5 font-medium ${tab === k ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>{l}</button>
           ))}
         </div>
+
+        {ctxContactId && (
+          <div className="flex items-start gap-2 text-[11px] bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-md p-2">
+            <BookOpen className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="flex-1">
+              Vinculado a <b>{ctxContact?.name || 'cliente…'}</b>
+              {ctxSatOrderId && <> · Orden SAT <b>{ctxOrder?.order_number ? `#${ctxOrder.order_number}` : '…'}</b></>}
+              {ctxSatOrderId && (ctxOrder?.diagnostic_before?.image_url
+                ? <> · ya hay un diagnóstico guardado como <b>antes de la reparación</b>; el próximo guardado se archivará como <b>después</b>.</>
+                : <> · el primer diagnóstico que guardes aquí se archivará como <b>antes de la reparación</b>.</>)}
+            </span>
+            {ctxSatOrderId && (
+              <Link to={createPageUrl(`SAT?view=${ctxSatOrderId}`)} className="flex items-center gap-1 text-indigo-700 font-semibold hover:underline whitespace-nowrap">
+                <ArrowLeft className="w-3.5 h-3.5" />Volver a la orden
+              </Link>
+            )}
+          </div>
+        )}
 
         {/* refrigerante + aplicación (común a presiones) */}
         {tab === 'presiones' && (
@@ -650,6 +814,41 @@ export default function DiagnosticoCarga() {
                 )}
               </div>
 
+              {/* VÁLVULA DE EXPANSIÓN + EVAPORADOR — búsqueda de valores del fabricante */}
+              <div className="rounded-lg border-2 border-teal-300 bg-teal-50/50 p-3 space-y-2">
+                <p className="text-xs font-bold text-teal-800 flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> VÁLVULA DE EXPANSIÓN Y EVAPORADOR — buscar valores del fabricante</p>
+                <p className="text-[10px] text-slate-500">Busca en las fichas técnicas del compresor (y de la válvula/evaporador si los indicas) el recalentamiento, subenfriamiento, presiones de trabajo y aceite <b>recomendados por el fabricante</b> para este sistema.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">Válvula de expansión — marca</label>
+                    <input type="text" value={valvMarca} onChange={(e) => setValvMarca(e.target.value)} placeholder="Ej: Danfoss, Sporlan, Emerson..." className="w-full border border-input rounded-md px-3 py-2 text-sm" />
+                  </div>
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">Válvula de expansión — modelo</label>
+                    <input type="text" value={valvModelo} onChange={(e) => setValvModelo(e.target.value)} placeholder="Ej: TGE, TEX2..." className="w-full border border-input rounded-md px-3 py-2 text-sm" />
+                  </div>
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">Evaporador — marca</label>
+                    <input type="text" value={evapMarca} onChange={(e) => setEvapMarca(e.target.value)} placeholder="Ej: Güntner, LU-VE..." className="w-full border border-input rounded-md px-3 py-2 text-sm" />
+                  </div>
+                  <div><label className="text-[11px] text-slate-500 mb-1 block">Evaporador — modelo</label>
+                    <input type="text" value={evapModelo} onChange={(e) => setEvapModelo(e.target.value)} placeholder="Ej: GHN..." className="w-full border border-input rounded-md px-3 py-2 text-sm" />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={buscarValoresFabricante} disabled={fabBusy || (!compModelo.trim() && !valvModelo.trim() && !evapModelo.trim())} className="gap-2 h-9 bg-teal-700 hover:bg-teal-800">
+                    {fabBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}Buscar valores del fabricante
+                  </Button>
+                </div>
+                {fabValores && (
+                  <div className="bg-white border border-teal-200 rounded-md p-2 text-[11px] text-slate-700 space-y-1">
+                    {fabValores.recalentamiento && <div>🔵 Recalentamiento recomendado: <b>{fabValores.recalentamiento}</b></div>}
+                    {fabValores.subenfriamiento && <div>🔴 Subenfriamiento recomendado: <b>{fabValores.subenfriamiento}</b></div>}
+                    {fabValores.presion_baja && <div>Presión baja recomendada: <b>{fabValores.presion_baja}</b></div>}
+                    {fabValores.presion_alta && <div>Presión alta recomendada: <b>{fabValores.presion_alta}</b></div>}
+                    {fabValores.aceite && <div className="flex items-center gap-1"><Droplets className="w-3 h-3 text-amber-600" />Aceite: <b>{fabValores.aceite}</b></div>}
+                    {fabValores.notas && <div className="text-slate-500 border-t pt-1 mt-1">{fabValores.notas}</div>}
+                  </div>
+                )}
+              </div>
+
               <div><label className="text-[11px] text-slate-500 mb-1 block">T. ambiente exterior (°C)</label><div className="max-w-[160px]">{N(tAmb, setTAmb, 'Ej: 32')}</div></div>
             </div>
 
@@ -698,6 +897,8 @@ export default function DiagnosticoCarga() {
                   ['Refrigerantes', compRefrigs.size ? [...compRefrigs].join(', ') : '—'],
                   ['Consumo medido', compAmp !== '' ? compAmp + ' A' : '—'],
                   ['Amperaje nominal (RLA)', compRLA?.rla != null ? compRLA.rla + ' A' : '—'],
+                  ['Válvula de expansión', [valvMarca, valvModelo].filter(Boolean).join(' ') || '—'],
+                  ['Evaporador', [evapMarca, evapModelo].filter(Boolean).join(' ') || '—'],
                 ].map(([k, v]) => (
                   <div key={k} className="bg-slate-50 rounded p-1.5 border border-slate-100">
                     <div className="text-slate-400 text-[9px]">{k}</div>
@@ -705,6 +906,11 @@ export default function DiagnosticoCarga() {
                   </div>
                 ))}
               </div>
+              {fabValores && (
+                <div className="mt-2 text-[11px] text-teal-700 border-t pt-2">
+                  <b>Valores del fabricante:</b> {valoresFabricanteTexto()}
+                </div>
+              )}
               {diag1.length > 0 && (
                 <div className="mt-2 text-[11px] text-slate-600 border-t pt-2">
                   <b>Diagnóstico:</b> {diag1.map(d => d.e).join(' · ')}
@@ -751,6 +957,26 @@ export default function DiagnosticoCarga() {
                 </div>
               )}
             </div>
+
+            {/* Guardar en la ficha del cliente (y, si viene de una orden SAT, en antes/después) */}
+            {ctxContactId && (
+              <div className="bg-white rounded-xl shadow p-3 flex flex-wrap items-center gap-2">
+                <Button onClick={guardarEnFicha} disabled={savingDiag} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+                  {savingDiag ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Guardar en ficha del cliente
+                </Button>
+                <span className="text-[11px] text-slate-500">
+                  Guarda la tabla y la imagen de este diagnóstico en la ficha de <b>{ctxContact?.name || 'el cliente'}</b>
+                  {ctxSatOrderId && <>, vinculado a la orden SAT como <b>{ctxOrder?.diagnostic_before?.image_url ? 'después' : 'antes'}</b> de la reparación</>}.
+                </span>
+                {savedStage && (
+                  <div className="w-full mt-1 flex items-center gap-2 text-[11px] text-green-700 bg-green-50 border border-green-200 rounded-md p-2">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                    Diagnóstico guardado correctamente{ctxSatOrderId ? <> como <b>{savedStage === 'antes' ? 'antes' : 'después'} de la reparación</b> en la orden SAT</> : ''} y en la ficha del cliente.
+                  </div>
+                )}
+              </div>
+            )}
 
             {diag1.map((d, i) => (
               <div key={i} className="rounded-xl shadow overflow-hidden">

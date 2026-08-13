@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,13 +8,14 @@ import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import TechnicianSelect from './TechnicianSelect';
-import { Eye, Edit, Save, RefreshCw, Phone, Mail, Trash2, Plus, FileDown } from 'lucide-react';
+import { Eye, Edit, Save, RefreshCw, Phone, Mail, Trash2, Plus, FileDown, Gauge, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import CompanyHeader from './CompanyHeader';
 import PhotoGallery from './PhotoGallery';
 import SATSignaturePanel from './SATSignaturePanel';
 import MaterialAutocomplete from './MaterialAutocomplete';
 import MaterialsExportButton from './MaterialsExportButton';
+import { createPageUrl } from '../utils';
 
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
@@ -124,6 +126,45 @@ function SATPreview({ order, onEdit, onClose, contact, onUpdate }) {
     window.open(`mailto:${contact.email}?subject=${subject}&body=${body}`, '_blank');
   };
 
+  // Imprime / exporta a PDF (vía diálogo de impresión) el diagnóstico frigorífico
+  // guardado como "antes" o "después" de la reparación (desde Diagnóstico Carga).
+  const printDiagnostic = async (diag, etiqueta) => {
+    if (!diag) return;
+    const csArr = await base44.entities.CompanySettings.list();
+    const cs = csArr?.[0] || {};
+    let averias = [];
+    try { averias = JSON.parse(diag.data_json || '{}')?.posiblesAverias || []; } catch { /* ignore */ }
+    const averiasHtml = averias.map(a => `<div class="section" style="border-left-color:#dc2626"><div class="section-title" style="color:#dc2626">${a.evento}</div><p>${a.detalle}</p></div>`).join('');
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Diagnóstico ${etiqueta} — SAT #${order.order_number || ''}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10px;color:#111;padding:20px;max-width:800px;margin:0 auto}
+    .header{display:flex;justify-content:space-between;border-bottom:2px solid #4f46e5;padding-bottom:12px;margin-bottom:16px}
+    .title{font-size:18px;font-weight:800;color:#4f46e5}
+    .section{background:#f9fafb;border-left:3px solid #e5e7eb;padding:8px 12px;border-radius:4px;margin:8px 0}
+    .section-title{font-size:8px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:4px}
+    img.diag{max-width:100%;border:1px solid #e5e7eb;border-radius:6px;margin-top:8px}
+    @media print{body{padding:10px}@page{margin:10mm;size:A4}}</style></head><body>
+    <div class="header">
+      <div>${cs.logo_url ? `<img src="${cs.logo_url}" style="max-height:45px;max-width:100px;object-fit:contain" alt="Logo" /><br/>` : ''}
+        <span style="font-size:13px;font-weight:700;color:#1e3a5f">${cs.company_name || ''}</span>
+      </div>
+      <div style="text-align:right"><div class="title">DIAGNÓSTICO ${etiqueta.toUpperCase()}</div>
+        <div style="font-size:11px;font-weight:700">Orden SAT #${order.order_number || 'S/N'}</div>
+        <div style="font-size:9px;color:#666;margin-top:4px">Cliente: ${order.contact_name || ''}</div>
+        <div style="font-size:9px;color:#666">Guardado: ${diag.date || ''}</div>
+      </div>
+    </div>
+    <div class="section"><div class="section-title">Resumen</div><p>${diag.summary || ''}</p></div>
+    ${diag.manufacturer_values ? `<div class="section" style="border-left-color:#0d9488"><div class="section-title" style="color:#0d9488">Valores del fabricante</div><p>${diag.manufacturer_values}</p></div>` : ''}
+    ${averiasHtml}
+    ${diag.image_url ? `<img class="diag" src="${diag.image_url}" alt="Esquema y medidas" />` : ''}
+    <div style="margin-top:16px;border-top:1px solid #e5e7eb;padding-top:6px;font-size:8px;color:#aaa;text-align:center">${cs.company_name || ''} · ${cs.phone || ''} · ${cs.email || ''}</div>
+    </body></html>`;
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 500);
+  };
+
   return (
     <>
       <div ref={printRef} className="space-y-3">
@@ -199,6 +240,34 @@ function SATPreview({ order, onEdit, onClose, contact, onUpdate }) {
           />
         </div>
 
+        {/* Diagnóstico frigorífico guardado desde Diagnóstico Carga (antes / después) */}
+        {(order.diagnostic_before?.image_url || order.diagnostic_after?.image_url) && (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500 font-medium">Diagnóstico frigorífico:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {[['Antes de la reparación', order.diagnostic_before], ['Después de la reparación', order.diagnostic_after]].map(([etiqueta, diag]) => (
+                diag?.image_url && (
+                  <div key={etiqueta} className="border rounded-lg p-2 bg-indigo-50/50">
+                    <p className="text-[11px] font-semibold text-indigo-700 mb-1">{etiqueta}</p>
+                    <img src={diag.image_url} alt={etiqueta} className="w-full rounded border max-h-40 object-contain bg-white" />
+                    <p className="text-[10px] text-gray-500 mt-1">{diag.date}</p>
+                    {diag.summary && <p className="text-[11px] text-gray-700 mt-1">{diag.summary}</p>}
+                    {diag.manufacturer_values && <p className="text-[10px] text-teal-700 mt-1">{diag.manufacturer_values}</p>}
+                    <div className="flex gap-1 mt-1.5">
+                      <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1" onClick={() => window.open(diag.image_url, '_blank')}>
+                        <Eye className="w-3 h-3" />Ver
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1" onClick={() => printDiagnostic(diag, etiqueta)}>
+                        <Printer className="w-3 h-3" />Imprimir / PDF
+                      </Button>
+                    </div>
+                  </div>
+                )
+              ))}
+            </div>
+          </div>
+        )}
+
         {order.notes && <div className="bg-amber-50 rounded p-3 text-sm"><p className="text-xs font-medium text-amber-600 mb-1">Notas</p>{order.notes}</div>}
 
         {/* Firmas digitales */}
@@ -232,6 +301,13 @@ function SATPreview({ order, onEdit, onClose, contact, onUpdate }) {
         <Button variant="outline" size="sm" onClick={onEdit}><Edit className="w-3.5 h-3.5 mr-1" />Editar</Button>
         <Button variant="outline" size="sm" className="text-green-700" onClick={sendWhatsApp}><Phone className="w-3.5 h-3.5 mr-1" />WA</Button>
         {contact?.email && <Button variant="outline" size="sm" className="text-blue-700" onClick={sendEmail}><Mail className="w-3.5 h-3.5 mr-1" />Email</Button>}
+        {order.contact_id && (
+          <Link to={createPageUrl(`DiagnosticoCarga?contact_id=${order.contact_id}&sat_order_id=${order.id}`)}>
+            <Button variant="outline" size="sm" className="text-teal-700 border-teal-200 hover:bg-teal-50">
+              <Gauge className="w-3.5 h-3.5 mr-1" />Diagnóstico
+            </Button>
+          </Link>
+        )}
       </div>
     </>
   );
