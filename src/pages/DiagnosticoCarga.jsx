@@ -338,20 +338,23 @@ export default function DiagnosticoCarga() {
   const [evapModelo, setEvapModelo] = useState('');
   const [fabValores, setFabValores] = useState(null); // { recalentamiento, subenfriamiento, presion_baja, presion_alta, aceite, notas }
   const [fabBusy, setFabBusy] = useState(false);
+
+  // Valores de referencia orientativos (tabla de presiones + aceite del
+  // refrigerante), para cuando no hay marca/modelo, la búsqueda falla por
+  // falta de acceso, o no se encuentran datos del fabricante: el
+  // diagnóstico de averías sigue funcionando igual con estos valores.
+  const valoresReferencia = (motivo) => ({
+    recalentamiento: '~5-8 °C (orientativo)',
+    subenfriamiento: '~4-10 °C (orientativo)',
+    presion_baja: rec.baja ? `~${rec.baja} bar` : '—',
+    presion_alta: rec.alta ? `~${rec.alta} bar` : '—',
+    aceite: getRefrigerantInfo(gas)?.compressor_oil || '—',
+    notas: motivo,
+  });
+
   const buscarValoresFabricante = async () => {
-    // Sin marca/modelo de compresor, válvula ni evaporador: no hay nada
-    // concreto que buscar, así que usamos directamente los valores de
-    // referencia orientativos (tabla de presiones + aceite del refrigerante)
-    // para que el diagnóstico de averías siga funcionando igualmente.
     if (!compModelo.trim() && !valvModelo.trim() && !evapModelo.trim()) {
-      setFabValores({
-        recalentamiento: '~5-8 °C (orientativo)',
-        subenfriamiento: '~4-10 °C (orientativo)',
-        presion_baja: rec.baja ? `~${rec.baja} bar` : '—',
-        presion_alta: rec.alta ? `~${rec.alta} bar` : '—',
-        aceite: getRefrigerantInfo(gas)?.compressor_oil || '—',
-        notas: 'Valores de referencia genéricos para este refrigerante y aplicación (sin marca/modelo de compresor). Indica marca y modelo para una búsqueda más precisa del fabricante.',
-      });
+      setFabValores(valoresReferencia('Valores de referencia genéricos para este refrigerante y aplicación (sin marca/modelo de compresor). Indica marca y modelo para una búsqueda más precisa del fabricante.'));
       return;
     }
     setFabBusy(true); setFabValores(null);
@@ -371,8 +374,11 @@ export default function DiagnosticoCarga() {
           },
         },
       });
-      setFabValores(r || null);
-    } catch { setFabValores({ notas: 'No se pudo buscar (¿sin conexión?). Consulta el manual del fabricante.' }); }
+      const tieneDatos = r && (r.recalentamiento || r.subenfriamiento || r.presion_baja || r.presion_alta || r.aceite);
+      setFabValores(tieneDatos ? r : valoresReferencia('No se encontraron datos específicos del fabricante para este modelo; se muestran valores de referencia orientativos.'));
+    } catch {
+      setFabValores(valoresReferencia('No se pudo acceder al manual del fabricante (¿sin conexión?); se muestran valores de referencia orientativos.'));
+    }
     setFabBusy(false);
   };
 
