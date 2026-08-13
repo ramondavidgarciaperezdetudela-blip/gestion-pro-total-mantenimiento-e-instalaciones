@@ -108,6 +108,7 @@ const SharingWarning = lazy(() => import('./pages/SharingWarning'));
 const UpdateCenter = lazy(() => import('./pages/UpdateCenter'));
 const AISupport = lazy(() => import('./pages/AISupport'));
 const DiagnosticoCarga = lazy(() => import('./pages/DiagnosticoCarga'));
+const TablasRefrigerantes = lazy(() => import('./pages/TablasRefrigerantes'));
 import __Layout from './Layout.jsx';
 
 
@@ -171,6 +172,7 @@ export const PAGES = {
     "UpdateCenter": UpdateCenter,
     "AISupport": AISupport,
     "DiagnosticoCarga": DiagnosticoCarga,
+    "TablasRefrigerantes": TablasRefrigerantes,
 }
 
 export const pagesConfig = {
