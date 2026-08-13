@@ -32,10 +32,10 @@ export default function SATSignaturePanel({ order, onUpdate, contactEmail = null
     setSaving(true);
     try {
       const dt = signDt || getNowDatetime();
-      setTechDatetime(dt);
       const signUrl = await uploadSignature(dataUrl);
       const updateData = { signature_technician: signUrl, sign_datetime_technician: dt };
       await base44.entities.SATOrder.update(order.id, updateData);
+      setTechDatetime(dt);
       onUpdate({ ...order, ...updateData });
       base44.functions.invoke('enviarCopiaFirmada', {
         contact_email: null,
@@ -59,10 +59,10 @@ export default function SATSignaturePanel({ order, onUpdate, contactEmail = null
     setSaving(true);
     try {
       const dt = signDt || getNowDatetime();
-      setClientDatetime(dt);
       const signUrl = await uploadSignature(dataUrl);
       const updateData = { signature_client: signUrl, sign_datetime_client: dt };
       await base44.entities.SATOrder.update(order.id, updateData);
+      setClientDatetime(dt);
       onUpdate({ ...order, ...updateData });
       base44.functions.invoke('enviarCopiaFirmada', {
         contact_email: contactEmail || null,

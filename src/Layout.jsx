@@ -34,8 +34,8 @@ function MobileBottomBar({ currentPageName }) {
 
   return (
     <>
-      <nav className="flex sm:hidden fixed bottom-0 left-0 right-0 z-40 print:hidden" style={{ background: '#0d0d18', borderTop: '1px solid #1e1e30' }}
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <nav className="flex sm:hidden fixed bottom-0 left-0 right-0 z-40 print:hidden"
+        style={{ background: '#0d0d18', borderTop: '1px solid #1e1e30', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex w-full">
           {MAIN_TABS.map((item) => {
             const Icon = item.icon;
@@ -81,21 +81,26 @@ function MobileBottomBar({ currentPageName }) {
           <button onClick={() => setMoreOpen(false)} className="p-1" style={{ color: '#8890a8' }}><X className="w-5 h-5" /></button>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(75vh - 80px)' }}>
-          <div className="grid grid-cols-3 gap-1 p-3">
-            {moreItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPageName === item.page;
-              return (
-                <Link key={item.page} to={createPageUrl(item.page)}
-                  onClick={() => setMoreOpen(false)}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors"
-                  style={{ background: isActive ? '#00D4FF12' : 'transparent', color: isActive ? '#00D4FF' : '#8890a8' }}>
-                  <Icon className="w-5 h-5" />
-                  <span className="text-[10px] font-medium text-center leading-tight">{item.name}</span>
-                </Link>
-              );
-            })}
-          </div>
+          {groupNav(moreItems).map(({ section, items }) => (
+            <div key={section} className="p-3 pt-2">
+              <div className="px-1 pb-1.5 tech-label" style={{ color: '#5a6178' }}>{section}</div>
+              <div className="grid grid-cols-3 gap-1">
+                {items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentPageName === item.page;
+                  return (
+                    <Link key={item.page} to={createPageUrl(item.page)}
+                      onClick={() => setMoreOpen(false)}
+                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors"
+                      style={{ background: isActive ? '#00D4FF12' : 'transparent', color: isActive ? '#00D4FF' : '#8890a8' }}>
+                      <Icon className="w-5 h-5" />
+                      <span className="text-[10px] font-medium text-center leading-tight">{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </>
