@@ -18,7 +18,7 @@ import ClientRepairGallery from '../components/ClientRepairGallery';
 import SATOrderDialog from '../components/SATOrderDialog';
 import { logChange } from '../components/ChangeLogger';
 import { format } from 'date-fns';
-import { compressImage } from '@/lib/compressImage';
+import { uploadImage } from '@/lib/uploadImage';
 import { es } from 'date-fns/locale';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
@@ -157,21 +157,26 @@ export default function ContactDetail() {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
-    const compressed = await compressImage(file);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-    await base44.entities.ClientDocument.create({
-      contact_id: contactId,
-      contact_name: contact?.name,
-      title: uploadTitle || file.name,
-      doc_type: uploadDocType,
-      file_url,
-      date: format(new Date(), 'yyyy-MM-dd')
-    });
-    setUploading(false);
-    setUploadDialog(false);
-    setUploadTitle('');
-    const docs = await base44.entities.ClientDocument.filter({ contact_id: contactId });
-    setDocuments(docs);
+    try {
+      const file_url = await uploadImage(file);
+      await base44.entities.ClientDocument.create({
+        contact_id: contactId,
+        contact_name: contact?.name,
+        title: uploadTitle || file.name,
+        doc_type: uploadDocType,
+        file_url,
+        date: format(new Date(), 'yyyy-MM-dd')
+      });
+      setUploadDialog(false);
+      setUploadTitle('');
+      const docs = await base44.entities.ClientDocument.filter({ contact_id: contactId });
+      setDocuments(docs);
+    } catch (err) {
+      alert(err.message || 'Error al subir el documento');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const saveContact = async () => {
@@ -184,31 +189,41 @@ export default function ContactDetail() {
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];if (!file) return;
     setPhotoUploading(true);
-    const compressed = await compressImage(file);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-    const updated = { ...contact, photo_url: file_url };
-    await base44.entities.Contact.update(contactId, { photo_url: file_url });
-    setContact(updated);
-    setContactForm((prev) => ({ ...prev, photo_url: file_url }));
-    setPhotoUploading(false);
+    try {
+      const file_url = await uploadImage(file);
+      const updated = { ...contact, photo_url: file_url };
+      await base44.entities.Contact.update(contactId, { photo_url: file_url });
+      setContact(updated);
+      setContactForm((prev) => ({ ...prev, photo_url: file_url }));
+    } catch (err) {
+      alert(err.message || 'Error al subir la foto');
+    } finally {
+      setPhotoUploading(false);
+      e.target.value = '';
+    }
   };
 
   const handleEquipmentPhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
-    const compressed = await compressImage(file);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-    const photoDoc = await base44.entities.ClientDocument.create({
-      contact_id: contactId,
-      contact_name: contact?.name,
-      title: `Equipo instalado - ${format(new Date(), 'dd/MM/yyyy')}`,
-      doc_type: 'foto_equipo',
-      file_url,
-      date: format(new Date(), 'yyyy-MM-dd')
-    });
-    setEquipmentPhotos([...equipmentPhotos, photoDoc]);
-    setUploading(false);
+    try {
+      const file_url = await uploadImage(file);
+      const photoDoc = await base44.entities.ClientDocument.create({
+        contact_id: contactId,
+        contact_name: contact?.name,
+        title: `Equipo instalado - ${format(new Date(), 'dd/MM/yyyy')}`,
+        doc_type: 'foto_equipo',
+        file_url,
+        date: format(new Date(), 'yyyy-MM-dd')
+      });
+      setEquipmentPhotos([...equipmentPhotos, photoDoc]);
+    } catch (err) {
+      alert(err.message || 'Error al subir la foto');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const deleteEquipmentPhoto = async (id) => {

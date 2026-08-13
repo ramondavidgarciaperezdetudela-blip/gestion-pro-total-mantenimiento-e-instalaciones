@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Upload, X, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CameraCapture from './CameraCapture';
-import { compressImage } from '@/lib/compressImage';
+import { uploadImage } from '@/lib/uploadImage';
 
 export default function PhotoInput({ onPhotoUrl, label = 'Foto', multiple = false, maxFiles = 10 }) {
   const [photos, setPhotos] = useState([]);
@@ -21,22 +20,21 @@ export default function PhotoInput({ onPhotoUrl, label = 'Foto', multiple = fals
     setError('');
     
     try {
-      const compressed = await compressImage(blob);
-      const result = await base44.integrations.Core.UploadFile({ file: compressed });
-      const newPhoto = { url: result.file_url, id: Date.now() };
-      
+      const url = await uploadImage(blob);
+      const newPhoto = { url, id: Date.now() };
+
       const updatedPhotos = multiple ? [...photos, newPhoto] : [newPhoto];
       setPhotos(updatedPhotos);
-      
+
       // Callback con URL(s)
       if (multiple) {
         onPhotoUrl(updatedPhotos.map(p => p.url));
       } else {
-        onPhotoUrl(result.file_url);
+        onPhotoUrl(url);
         setShowCamera(false);
       }
     } catch (err) {
-      setError('Error al subir foto');
+      setError(err.message || 'Error al subir foto');
       console.error('Upload error:', err);
     } finally {
       setUploading(false);
@@ -50,22 +48,23 @@ export default function PhotoInput({ onPhotoUrl, label = 'Foto', multiple = fals
     setUploading(true);
     setError('');
     try {
-      const compressed = await Promise.all(files.map(f => compressImage(f)));
-      const results = await Promise.all(
-        compressed.map(file => base44.integrations.Core.UploadFile({ file }))
-      );
-      const newPhotos = results.map(r => ({ url: r.file_url, id: Date.now() + Math.random() }));
-      const updatedPhotos = multiple ? [...photos, ...newPhotos] : [newPhotos[0]];
+      const settled = await Promise.allSettled(files.map(f => uploadImage(f)));
+      const urls = settled.filter(r => r.status === 'fulfilled').map(r => r.value);
+      const failed = settled.length - urls.length;
+      const newPhotos = urls.map(url => ({ url, id: Date.now() + Math.random() }));
+      const updatedPhotos = multiple ? [...photos, ...newPhotos] : (newPhotos[0] ? [newPhotos[0]] : []);
       setPhotos(updatedPhotos);
       if (multiple) {
         onPhotoUrl(updatedPhotos.map(p => p.url));
-      } else {
+      } else if (updatedPhotos[0]) {
         onPhotoUrl(updatedPhotos[0].url);
       }
+      if (failed > 0) setError(`${failed} foto(s) no se pudieron subir. Comprueba tu conexión e inténtalo de nuevo.`);
     } catch (err) {
-      setError('Error al subir fotos');
+      setError(err.message || 'Error al subir fotos');
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   };
 

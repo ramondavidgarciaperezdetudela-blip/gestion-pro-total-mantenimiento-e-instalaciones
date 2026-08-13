@@ -13,7 +13,7 @@ import TechnicianSelect from '../components/TechnicianSelect';
 import { toast } from 'sonner';
 import PhotoGallery from '../components/PhotoGallery';
 import { useRef } from 'react';
-import { compressImage } from '@/lib/compressImage';
+import { uploadImage } from '@/lib/uploadImage';
 
 const MACHINE_TYPES = ['aire_acondicionado','bomba_calor','camara_frigorifica','ventilacion','caldera','aerotermia','solar_fotovoltaico','solar_termico','electrico_cuadro','grupo_frio','otro'];
 const ENTRY_TYPES = ['reparacion','mantenimiento','revision','instalacion','averia','otro'];
@@ -57,6 +57,7 @@ export default function EquipmentDiaryPage() {
   const [expandedDiary, setExpandedDiary] = useState(null);
   const [company, setCompany] = useState(null);
   const [filterContact, setFilterContact] = useState('all');
+  const [photoUploading, setPhotoUploading] = useState(false);
   const printRef = useRef(null);
 
   useEffect(() => {
@@ -332,13 +333,20 @@ export default function EquipmentDiaryPage() {
               <label className="text-xs text-gray-500 flex items-center gap-1"><Image className="w-3 h-3" />Foto del equipo</label>
               <div className="flex gap-2 mt-1">
                 <Input placeholder="URL de la foto" value={diaryForm.equipment_photo_url||''} onChange={e => setDiaryForm({...diaryForm, equipment_photo_url: e.target.value})} className="flex-1" />
-                <label className="cursor-pointer px-3 py-1.5 text-xs border rounded-md bg-gray-50 hover:bg-gray-100 flex items-center gap-1 text-gray-600">
-                  <Camera className="w-3 h-3" />Subir
-                  <input type="file" accept="image/*" className="hidden" onChange={async e => {
+                <label className={`cursor-pointer px-3 py-1.5 text-xs border rounded-md bg-gray-50 hover:bg-gray-100 flex items-center gap-1 text-gray-600 ${photoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <Camera className="w-3 h-3" />{photoUploading ? 'Subiendo...' : 'Subir'}
+                  <input type="file" accept="image/*" className="hidden" disabled={photoUploading} onChange={async e => {
                     const f = e.target.files[0]; if (!f) return;
-                    const compressed = await compressImage(f);
-                    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-                    setDiaryForm({...diaryForm, equipment_photo_url: file_url});
+                    setPhotoUploading(true);
+                    try {
+                      const file_url = await uploadImage(f);
+                      setDiaryForm(prev => ({...prev, equipment_photo_url: file_url}));
+                    } catch (err) {
+                      toast.error(err.message || 'Error al subir la foto');
+                    } finally {
+                      setPhotoUploading(false);
+                      e.target.value = '';
+                    }
                   }} />
                 </label>
               </div>

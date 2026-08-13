@@ -12,7 +12,7 @@ import PostalCodeSearch from '@/components/PostalCodeSearch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ValidCharsConfig from '@/components/ValidCharsConfig';
 import { loadLicense, parseLicense, getDeviceId, clearLicense } from '@/lib/licenseManager';
-import { compressImage } from '@/lib/compressImage';
+import { uploadImage } from '@/lib/uploadImage';
 
 // ── Gestión de la licencia en este equipo ────────────────────────────────────
 function LicenseSection() {
@@ -254,10 +254,15 @@ export default function CompanyConfig() {
     const file = e.target.files[0];
     if (!file) return;
     setLogoUploading(true);
-    const compressed = await compressImage(file);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-    setForm({ ...form, logo_url: file_url });
-    setLogoUploading(false);
+    try {
+      const file_url = await uploadImage(file);
+      setForm({ ...form, logo_url: file_url });
+    } catch (err) {
+      alert(err.message || 'Error al subir el logo');
+    } finally {
+      setLogoUploading(false);
+      e.target.value = '';
+    }
   };
 
   const updatePrinter = (field, value) => {

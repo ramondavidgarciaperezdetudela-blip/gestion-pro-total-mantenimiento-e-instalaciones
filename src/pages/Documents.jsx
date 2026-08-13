@@ -19,6 +19,7 @@ import { format, startOfMonth } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
 import CompanyHeader from '../components/CompanyHeader';
 import SignatureCanvas from '../components/SignaturePad';
+import { uploadFile } from '@/lib/uploadImage';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo'];
 const STATUSES = ['borrador', 'enviado', 'pagado', 'vencido', 'cancelado'];
@@ -1099,7 +1100,7 @@ export default function Documents() {
                           // Subir firma como archivo para evitar límite de tamaño
                           const blob = await fetch(dataUrl).then(r => r.blob());
                           const file = new File([blob], 'firma.jpg', { type: 'image/jpeg' });
-                          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                          const file_url = await uploadFile(file);
                           const updateData = { signature_client: file_url, sign_datetime: signDt };
                           await base44.entities.Invoice.update(previewDoc.id, updateData);
                           const updated = { ...previewDoc, ...updateData };

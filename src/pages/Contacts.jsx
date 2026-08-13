@@ -17,7 +17,7 @@ import {
  } from 'lucide-react';
 import { saveToCache, loadFromCache, formatCacheDate } from '@/lib/offlineCache';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
-import { compressImage } from '@/lib/compressImage';
+import { uploadImage } from '@/lib/uploadImage';
 import PostalCodeSearch from '../components/PostalCodeSearch';
 
 const PAYMENT_PROFILES = {
@@ -231,10 +231,15 @@ export default function Contacts() {
     const file = e.target.files[0];
     if (!file) return;
     setPhotoUploading(true);
-    const compressed = await compressImage(file);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-    setForm(prev => ({ ...prev, photo_url: file_url }));
-    setPhotoUploading(false);
+    try {
+      const file_url = await uploadImage(file);
+      setForm(prev => ({ ...prev, photo_url: file_url }));
+    } catch (err) {
+      alert(err.message || 'Error al subir la foto');
+    } finally {
+      setPhotoUploading(false);
+      e.target.value = '';
+    }
   };
 
   const handleAutoFetchLogo = async () => {

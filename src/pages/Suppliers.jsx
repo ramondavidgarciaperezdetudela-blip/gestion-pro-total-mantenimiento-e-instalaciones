@@ -16,7 +16,7 @@ import { fetchSupplierDataFromAPI, mapCategoryFromSector } from '../components/S
 import SupplierCatalogManager from '../components/SupplierCatalogManager';
 import SupplierPriceManager from '../components/SupplierPriceManager';
 import CityAutocomplete from '../components/CityAutocomplete';
-import { compressImage } from '@/lib/compressImage';
+import { uploadImage } from '@/lib/uploadImage';
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
@@ -184,12 +184,11 @@ export default function Suppliers() {
   const handleUploadLogo = async (file) => {
     if (!file) return;
     try {
-      const compressed = await compressImage(file);
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
+      const file_url = await uploadImage(file);
       setForm((prev) => ({ ...prev, logo_url: file_url }));
       toast.success('Foto guardada correctamente');
     } catch (error) {
-      toast.error('Error al subir la foto');
+      toast.error(error.message || 'Error al subir la foto');
     }
   };
 

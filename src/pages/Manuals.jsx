@@ -10,7 +10,7 @@ import { BookOpen, ExternalLink, Search, Sun, Zap, Copy, Printer, RefreshCw, Glo
 import { saveToCache, formatCacheDate } from '@/lib/offlineCache';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
-import { compressImage } from '@/lib/compressImage';
+import { uploadImage } from '@/lib/uploadImage';
 
 // ─── SOLAR / ENERGÍAS ────────────────────────────────────────────────────────
 const SOLAR_MANUALS = [
@@ -236,22 +236,26 @@ function MyManualsTab() {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
-    const compressed = await compressImage(file);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-    await base44.entities.ClientDocument.create({
-      contact_id: 'MANUAL_LIBRARY',
-      contact_name: form.brand,
-      title: form.title || file.name,
-      doc_type: 'manual',
-      file_url,
-      description: JSON.stringify({ brand: form.brand, model: form.model, category: form.category, notes: form.notes }),
-      date: format(new Date(), 'yyyy-MM-dd'),
-    });
-    setUploading(false);
-    setUploadDialog(false);
-    setForm({ title: '', brand: '', model: '', category: 'Manual instalación', notes: '' });
-    e.target.value = '';
-    load();
+    try {
+      const file_url = await uploadImage(file);
+      await base44.entities.ClientDocument.create({
+        contact_id: 'MANUAL_LIBRARY',
+        contact_name: form.brand,
+        title: form.title || file.name,
+        doc_type: 'manual',
+        file_url,
+        description: JSON.stringify({ brand: form.brand, model: form.model, category: form.category, notes: form.notes }),
+        date: format(new Date(), 'yyyy-MM-dd'),
+      });
+      setUploadDialog(false);
+      setForm({ title: '', brand: '', model: '', category: 'Manual instalación', notes: '' });
+      load();
+    } catch (err) {
+      alert(err.message || 'Error al subir el manual');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const handleDelete = async (id) => {

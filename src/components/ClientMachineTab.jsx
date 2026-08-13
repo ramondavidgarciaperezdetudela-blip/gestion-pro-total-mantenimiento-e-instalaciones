@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Edit, Trash2, Wrench, Camera, BookOpen, ChevronDown, ChevronUp, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { compressImage } from '@/lib/compressImage';
+import { uploadImage } from '@/lib/uploadImage';
 
 const MACHINE_TYPES = [
   { value: 'aire_acondicionado', label: 'Aire Acondicionado' },
@@ -122,10 +122,15 @@ export default function ClientMachineTab({ contactId, contactName }) {
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0]; if (!file) return;
     setUploading(true);
-    const compressed = await compressImage(file);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
-    setForm(prev => ({ ...prev, photo_url: file_url }));
-    setUploading(false);
+    try {
+      const file_url = await uploadImage(file);
+      setForm(prev => ({ ...prev, photo_url: file_url }));
+    } catch (err) {
+      toast.error(err.message || 'Error al subir la foto');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   if (loading) return <p className="text-center text-gray-400 py-6 text-sm">Cargando equipos...</p>;

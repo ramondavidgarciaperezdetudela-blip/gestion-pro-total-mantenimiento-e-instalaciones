@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Search, Trash2, Edit, Image, X, Printer, Mail, StickyNote } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { compressImage } from '@/lib/compressImage';
+import { uploadImage } from '@/lib/uploadImage';
 
 const EMPTY = { title: '', content: '', contact_name: '', contact_id: '', tags: '', date: format(new Date(), 'yyyy-MM-dd'), photos: [] };
 
@@ -62,9 +62,16 @@ export default function Notes() {
     const remaining = 30 - (form.photos?.length || 0);
     const toUpload = files.slice(0, remaining);
     setUploading(true);
-    const urls = await Promise.all(toUpload.map(f => compressImage(f).then(c => base44.integrations.Core.UploadFile({ file: c })).then(r => r.file_url)));
-    setForm(prev => ({ ...prev, photos: [...(prev.photos || []), ...urls] }));
-    setUploading(false);
+    try {
+      const settled = await Promise.allSettled(toUpload.map(f => uploadImage(f)));
+      const urls = settled.filter(r => r.status === 'fulfilled').map(r => r.value);
+      const failed = settled.length - urls.length;
+      if (urls.length) setForm(prev => ({ ...prev, photos: [...(prev.photos || []), ...urls] }));
+      if (failed > 0) alert(`${failed} foto(s) no se pudieron subir. Comprueba tu conexión e inténtalo de nuevo.`);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const removePhoto = (idx) => {
