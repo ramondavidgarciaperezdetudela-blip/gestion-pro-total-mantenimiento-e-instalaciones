@@ -10,6 +10,7 @@ import { BookOpen, ExternalLink, Search, Sun, Zap, Copy, Printer, RefreshCw, Glo
 import { saveToCache, formatCacheDate } from '@/lib/offlineCache';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
+import { compressImage } from '@/lib/compressImage';
 
 // ─── SOLAR / ENERGÍAS ────────────────────────────────────────────────────────
 const SOLAR_MANUALS = [
@@ -235,7 +236,8 @@ function MyManualsTab() {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const compressed = await compressImage(file);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
     await base44.entities.ClientDocument.create({
       contact_id: 'MANUAL_LIBRARY',
       contact_name: form.brand,

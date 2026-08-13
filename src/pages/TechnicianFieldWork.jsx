@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle2, Camera, Trash2, Plus, MapPin, AlertCircle, Package, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { compressImage } from '@/lib/compressImage';
 
 export default function TechnicianFieldWork() {
   const [routes, setRoutes] = useState([]);
@@ -41,7 +42,8 @@ export default function TechnicianFieldWork() {
     if (!file) return;
 
     try {
-      const response = await base44.integrations.Core.UploadFile({ file });
+      const compressed = await compressImage(file);
+      const response = await base44.integrations.Core.UploadFile({ file: compressed });
       if (response.data?.file_url) {
         setPhotos([...photos, response.data.file_url]);
         setPhotoInput(null);

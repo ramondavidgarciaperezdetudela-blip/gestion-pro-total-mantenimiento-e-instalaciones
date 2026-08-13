@@ -19,7 +19,7 @@ import {
   StickyNote, Package, Palette, Bell, Download, Euro, CheckCircle, XCircle, AlertTriangle,
   ArrowRight, ChevronRight, ShoppingCart, Search, Navigation, ChevronDown, ChevronUp,
   Snowflake, Ruler, Gauge, Droplets, Repeat, History, Briefcase, MessageSquare,
-  Calculator, Layers, RefreshCw, ListChecks, Map } from
+  Calculator, Layers, RefreshCw, ListChecks, Map, FileBarChart } from
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
@@ -66,6 +66,9 @@ const quickLinks = [
 { name: 'Análisis Plano', page: 'ACPlanAnalysis', icon: Layers, color: 'bg-indigo-500' },
 { name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500' },
 { name: 'Cálculo Multizona', page: 'MultiAreaCalc', icon: Calculator, color: 'bg-red-400' },
+{ name: 'Cálculo Capilar', page: 'CapillaryCalc', icon: Droplets, color: 'bg-cyan-700' },
+{ name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Gauge, color: 'bg-rose-600' },
+{ name: 'Tablas Gases', page: 'TablasRefrigerantes', icon: FileBarChart, color: 'bg-sky-700' },
 { name: 'Electricidad', page: 'ElectricalCalc', icon: Zap, color: 'bg-yellow-500' },
 { name: 'Baterías', page: 'BatteryCalc', icon: Zap, color: 'bg-yellow-600' },
 { name: 'Solar+Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-amber-500' },
@@ -84,12 +87,14 @@ const quickLinks = [
 { name: 'Repuestos', page: 'SparePartsManager', icon: Package, color: 'bg-teal-700' },
 { name: 'Proveedores', page: 'Suppliers', icon: Building2, color: 'bg-slate-500' },
 { name: 'Tarifas Prov.', page: 'SupplierTariffs', icon: ShoppingCart, color: 'bg-purple-600' },
+{ name: 'Resumen Compras', page: 'PurchaseSummary', icon: BarChart3, color: 'bg-purple-700' },
 { name: 'Proyectos', page: 'Projects', icon: FolderOpen, color: 'bg-pink-500' },
 { name: 'Cronograma', page: 'ProjectTimeline', icon: Clock, color: 'bg-pink-600' },
 { name: 'Informes', page: 'Reports', icon: BarChart3, color: 'bg-fuchsia-500' },
 { name: 'Automatizaciones', page: 'Automations', icon: Repeat, color: 'bg-purple-500' },
 { name: 'Recordatorios', page: 'SmartReminders', icon: Bell, color: 'bg-amber-500' },
 { name: 'Notas', page: 'Notes', icon: StickyNote, color: 'bg-lime-500' },
+{ name: 'Historial Cambios', page: 'AuditLog', icon: History, color: 'bg-slate-600' },
 { name: 'Tarjetas', page: 'BusinessCards', icon: Briefcase, color: 'bg-slate-600' },
 { name: 'Exportar', page: 'ExportData', icon: Download, color: 'bg-lime-600' },
 { name: 'Copias Seg.', page: 'BackupCenter', icon: Shield, color: 'bg-blue-700' },
@@ -102,14 +107,14 @@ const _linkByPage = Object.fromEntries(quickLinks.map(l => [l.page, l]));
 
 // Accesos AGRUPADOS por secciones (como el bloque de Refrigeración y Gases).
 const GRUPOS = [
-  { titulo: 'Proveedores y Tarifas', color: '#f59e0b', pages: ['Suppliers', 'SupplierTariffs', 'SparePartsManager', 'Inventory', 'Catalogs'] },
-  { titulo: 'Cálculos', color: '#ef4444', pages: ['ThermalCalc', 'ElectricalCalc', 'BatteryCalc', 'SolarBatteryCalc', 'SolarCalc', 'ColdRoomCalc', 'ACPotenciaCalc', 'MultiAreaCalc', 'ACPlanAnalysis'] },
+  { titulo: 'Proveedores y Tarifas', color: '#f59e0b', pages: ['Suppliers', 'SupplierTariffs', 'PurchaseSummary', 'SparePartsManager', 'Inventory', 'Catalogs'] },
+  { titulo: 'Cálculos', color: '#ef4444', pages: ['ThermalCalc', 'ElectricalCalc', 'BatteryCalc', 'SolarBatteryCalc', 'SolarCalc', 'ColdRoomCalc', 'ACPotenciaCalc', 'MultiAreaCalc', 'ACPlanAnalysis', 'CapillaryCalc', 'DiagnosticoCarga'] },
   { titulo: 'Documentos', color: '#7C3AED', pages: ['Documents', 'Documents?type=factura', 'Documents?type=presupuesto', 'DocumentTemplates', 'LegalDocs'] },
   { titulo: 'SAT y Trabajo', color: '#F97316', pages: ['SAT', 'SATChat', 'TechnicianFieldWork', 'TecniciansRoutes', 'Maintenance', 'MaintenancePlanning', 'IncidentManagement', 'EquipmentFailureHistory', 'EquipmentDiaryPage'] },
   { titulo: 'Clientes y Agenda', color: '#10B981', pages: ['Contacts', 'ClientPortal', 'Projects', 'ProjectTimeline', 'Agenda', 'SATCalendar', 'TechnicianDay'] },
   { titulo: 'IA y Asistencia', color: '#3B82F6', pages: ['AIAssistant', 'AISearch', 'AIBudget', 'AIReports', 'AIPlanning', 'AISupport'] },
-  { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'Regulations', 'DanfossTools', 'GasSuppliers', 'RefrigerantEquiv'] },
-  { titulo: 'Informes y Sistema', color: '#64748b', pages: ['Reports', 'Automations', 'SmartReminders', 'Notes', 'BusinessCards', 'ExportData', 'BackupCenter', 'UpdateCenter', 'CompanyConfig'] },
+  { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'Regulations', 'DanfossTools', 'GasSuppliers', 'RefrigerantEquiv', 'TablasRefrigerantes'] },
+  { titulo: 'Informes y Sistema', color: '#64748b', pages: ['Reports', 'Automations', 'SmartReminders', 'Notes', 'AuditLog', 'BusinessCards', 'ExportData', 'BackupCenter', 'UpdateCenter', 'CompanyConfig'] },
 ].map(g => ({ ...g, links: g.pages.map(p => _linkByPage[p]).filter(Boolean) }));
 
 

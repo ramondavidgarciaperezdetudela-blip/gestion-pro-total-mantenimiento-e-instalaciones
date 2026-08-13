@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Camera, X, Plus, FolderOpen, Loader2, Pencil, Check } from "lucide-react";
 import { base44 } from '@/api/base44Client';
+import { compressImage } from '@/lib/compressImage';
 
 /**
  * PhotoGallery — galería con subida y edición de nombre por foto.
@@ -49,7 +50,8 @@ export default function PhotoGallery({
 
     const results = await Promise.all(
       toUpload.map(async (file) => {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const compressed = await compressImage(file);
+        const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
         setUploadProgress(prev => ({ ...prev, done: prev.done + 1 }));
         return { url: file_url, name: file.name.replace(/\.[^.]+$/, '') };
       })

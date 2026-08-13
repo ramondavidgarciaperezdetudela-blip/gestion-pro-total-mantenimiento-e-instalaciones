@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { loadValidChars } from '@/components/ValidCharsConfig';
+import { compressImage } from '@/lib/compressImage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumberField } from '@/components/ui/number-field';
@@ -535,7 +536,8 @@ function MissingImagesSection({ prices, onFixed, onUpdated }) {
     const file = e.target.files?.[0];
     if (!file || !manualItem) return;
     setUploadingManual(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const compressed = await compressImage(file);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
     await base44.entities.SupplierPrice.update(manualItem.id, { image_url: file_url });
     setLocalImages(prev => ({ ...prev, [manualItem.id]: file_url }));
     setManualItem(null);
@@ -780,7 +782,8 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
     const file = e.target.files?.[0];
     if (!file || !manualItem) return;
     setUploadingManual(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const compressed = await compressImage(file);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
     await base44.entities.SupplierPrice.update(manualItem.id, { image_url: file_url });
     setBgState(s => ({
       ...s,

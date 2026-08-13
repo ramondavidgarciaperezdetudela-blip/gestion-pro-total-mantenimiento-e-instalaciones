@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { compressImage } from '@/lib/compressImage';
 import {
   Search, Building2, Package, Image as ImageIcon, ChevronDown, ChevronRight,
   Upload, Trash2, Edit, Loader2, RefreshCw, Check, TrendingDown, AlertTriangle, WifiOff
@@ -288,7 +289,8 @@ export default function SupplierTariffs() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingImage(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const compressed = await compressImage(file);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
     setEditForm(f => ({ ...f, image_url: file_url }));
     setUploadingImage(false);
     toast.success('Imagen subida');

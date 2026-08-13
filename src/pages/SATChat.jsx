@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Send, X, Wrench, ChevronRight, Loader2, Camera } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { compressImage } from '@/lib/compressImage';
 
 export default function SATChat() {
   const [satOrders, setSatOrders] = useState([]);
@@ -66,11 +67,11 @@ export default function SATChat() {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setUploadingPhotos(true);
-    const urls = [];
-    for (const file of files) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      urls.push(file_url);
-    }
+    const urls = await Promise.all(files.map(async (file) => {
+      const compressed = await compressImage(file);
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
+      return file_url;
+    }));
     setPendingPhotos(prev => [...prev, ...urls]);
     setUploadingPhotos(false);
     e.target.value = '';

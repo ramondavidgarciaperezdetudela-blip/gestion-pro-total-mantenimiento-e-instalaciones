@@ -13,6 +13,7 @@ import TechnicianSelect from '../components/TechnicianSelect';
 import { toast } from 'sonner';
 import PhotoGallery from '../components/PhotoGallery';
 import { useRef } from 'react';
+import { compressImage } from '@/lib/compressImage';
 
 const MACHINE_TYPES = ['aire_acondicionado','bomba_calor','camara_frigorifica','ventilacion','caldera','aerotermia','solar_fotovoltaico','solar_termico','electrico_cuadro','grupo_frio','otro'];
 const ENTRY_TYPES = ['reparacion','mantenimiento','revision','instalacion','averia','otro'];
@@ -335,7 +336,8 @@ export default function EquipmentDiaryPage() {
                   <Camera className="w-3 h-3" />Subir
                   <input type="file" accept="image/*" className="hidden" onChange={async e => {
                     const f = e.target.files[0]; if (!f) return;
-                    const { file_url } = await base44.integrations.Core.UploadFile({ file: f });
+                    const compressed = await compressImage(f);
+                    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
                     setDiaryForm({...diaryForm, equipment_photo_url: file_url});
                   }} />
                 </label>

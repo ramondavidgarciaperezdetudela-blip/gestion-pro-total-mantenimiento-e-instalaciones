@@ -13,6 +13,7 @@ import { Plus, Wrench, ChevronUp, Trash2, Edit, FileSpreadsheet, Camera, FolderO
 import SignatureCanvas from './SignaturePad';
 import { toast } from 'sonner';
 import PhotoGallery from './PhotoGallery';
+import { compressImage } from '@/lib/compressImage';
 import PhotosWithNames from './PhotosWithNames';
 
 const MACHINE_TYPES = ['aire_acondicionado','bomba_calor','camara_frigorifica','ventilacion','caldera','aerotermia','solar_fotovoltaico','solar_termico','electrico_cuadro','grupo_frio','otro'];
@@ -400,7 +401,8 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
                   <Camera className="w-3 h-3" />Subir
                   <input type="file" accept="image/*" className="hidden" onChange={async e => {
                     const f = e.target.files[0]; if (!f) return;
-                    const { file_url } = await base44.integrations.Core.UploadFile({ file: f });
+                    const compressed = await compressImage(f);
+                    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
                     setDiaryForm({...diaryForm, equipment_photo_url: file_url});
                   }} />
                 </label>
