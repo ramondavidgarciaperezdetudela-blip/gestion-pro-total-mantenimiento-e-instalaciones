@@ -216,6 +216,60 @@ function EsquemaFrig({ alta, baja, colorAlta, colorBaja, titulo, lecturas, varia
   );
 }
 
+// Diagrama de Mollier (presión–entalpía) con el ciclo de refrigeración dibujado.
+// Es ORIENTATIVO: la forma del ciclo se construye con los datos introducidos
+// (presiones, recalentamiento y subenfriamiento) para señalar cada fase.
+function MollierDiagram({ gas, baja, alta, recal, subenf }) {
+  const nb = parseFloat(baja), na = parseFloat(alta);
+  const yLow = 235, yHigh = 120;           // líneas de baja y alta presión
+  const vaporSatX = 400, liqSatX = 220;    // cortes con la campana (baja/alta)
+  const sh = Math.max(0, Math.min(70, (parseFloat(recal) || 0) * 3.5));  // recalentamiento → desplazamiento
+  const sc = Math.max(0, Math.min(55, (parseFloat(subenf) || 0) * 3.5)); // subenfriamiento → desplazamiento
+  const x1 = vaporSatX + sh;   // admisión al compresor (vapor recalentado, baja)
+  const x2 = Math.max(x1 + 20, 445); // descarga (vapor caliente, alta)
+  const x3 = liqSatX - sc;     // salida condensador (líquido subenfriado, alta)
+  const x4 = x3;               // entrada evaporador (misma entalpía)
+  const P = (x, y) => `${x},${y}`;
+  return (
+    <svg viewBox="0 0 560 340" width="100%" style={{ maxWidth: 560, background: '#ffffff', borderRadius: 8 }}>
+      <text x="280" y="18" fontSize="12" textAnchor="middle" fill="#0f2740" fontWeight="bold">Diagrama de Mollier (p–h) · {gas}</text>
+      {/* Ejes */}
+      <line x1="55" y1="40" x2="55" y2="300" stroke="#94a3b8" strokeWidth="1.5" />
+      <line x1="55" y1="300" x2="535" y2="300" stroke="#94a3b8" strokeWidth="1.5" />
+      <text x="20" y="170" fontSize="9" fill="#64748b" transform="rotate(-90 20,170)">Presión (bar)</text>
+      <text x="280" y="322" fontSize="9" textAnchor="middle" fill="#64748b">Entalpía h (kJ/kg) →</text>
+      {/* Campana de saturación */}
+      <path d="M150,300 C170,150 250,60 290,52 C330,60 430,150 470,300" fill="none" stroke="#cbd5e1" strokeWidth="2" />
+      <text x="205" y="120" fontSize="8" fill="#94a3b8">líquido sat.</text>
+      <text x="420" y="120" fontSize="8" fill="#94a3b8">vapor sat.</text>
+      {/* Líneas de presión */}
+      <line x1="55" y1={yHigh} x2="535" y2={yHigh} stroke="#fca5a5" strokeWidth="1" strokeDasharray="4 3" />
+      <line x1="55" y1={yLow} x2="535" y2={yLow} stroke="#93c5fd" strokeWidth="1" strokeDasharray="4 3" />
+      <text x="60" y={yHigh - 4} fontSize="8" fill="#dc2626">Alta {na || '—'} bar</text>
+      <text x="60" y={yLow - 4} fontSize="8" fill="#2563eb">Baja {nb || '—'} bar</text>
+      {/* Ciclo */}
+      <polyline points={`${P(x1, yLow)} ${P(x2, yHigh)} ${P(x3, yHigh)} ${P(x4, yLow)} ${P(x1, yLow)}`} fill="none" stroke="#0f2740" strokeWidth="2.5" />
+      {/* Fases */}
+      <text x={(x1 + x2) / 2 + 8} y={(yLow + yHigh) / 2} fontSize="9" fill="#7c3aed" fontWeight="bold">Compresión</text>
+      <text x={(x2 + x3) / 2} y={yHigh - 6} fontSize="9" textAnchor="middle" fill="#dc2626" fontWeight="bold">Condensación</text>
+      <text x={x3 - 6} y={(yLow + yHigh) / 2} fontSize="9" textAnchor="end" fill="#0891b2" fontWeight="bold">Expansión</text>
+      <text x={(x4 + vaporSatX) / 2} y={yLow + 14} fontSize="9" textAnchor="middle" fill="#2563eb" fontWeight="bold">Evaporación</text>
+      {/* Recalentamiento (vapor sat → 1) */}
+      <line x1={vaporSatX} y1={yLow} x2={x1} y2={yLow} stroke="#0ea5e9" strokeWidth="4" />
+      <text x={(vaporSatX + x1) / 2} y={yLow + 26} fontSize="8" textAnchor="middle" fill="#0369a1">recalent. {recal || '—'}°</text>
+      {/* Subenfriamiento (3 → liquido sat) */}
+      <line x1={x3} y1={yHigh} x2={liqSatX} y2={yHigh} stroke="#ef4444" strokeWidth="4" />
+      <text x={(x3 + liqSatX) / 2} y={yHigh - 16} fontSize="8" textAnchor="middle" fill="#991b1b">subenf. {subenf || '—'}°</text>
+      {/* Puntos del ciclo */}
+      {[[x1, yLow, '1'], [x2, yHigh, '2'], [x3, yHigh, '3'], [x4, yLow, '4']].map(([x, y, n]) => (
+        <g key={n}><circle cx={x} cy={y} r="7" fill="#0f2740" /><text x={x} y={y + 3} fontSize="9" fontWeight="bold" textAnchor="middle" fill="#fff">{n}</text></g>
+      ))}
+      <text x={x1 + 4} y={yLow - 10} fontSize="8" fill="#0f2740">1 · admisión al compresor</text>
+      <text x={x2 + 4} y={yHigh - 6} fontSize="8" fill="#0f2740">2 · descarga</text>
+    </svg>
+  );
+}
+
 export default function DiagnosticoCarga() {
   const [tab, setTab] = useState('presiones');
 
@@ -619,6 +673,31 @@ export default function DiagnosticoCarga() {
                   <b>Diagnóstico:</b> {diag1.map(d => d.e).join(' · ')}
                 </div>
               )}
+
+              {/* Diagrama de Mollier (p–h) con el ciclo dibujado según los datos */}
+              <div className="mt-3 border-t pt-3">
+                <p className="text-sm font-semibold text-slate-700 mb-1 flex items-center gap-2"><Gauge className="w-4 h-4 text-indigo-600" />Ciclo en el diagrama de Mollier</p>
+                <MollierDiagram gas={gas} baja={pBaja || rec.baja} alta={pAlta || rec.alta}
+                  recal={recal != null ? recal.toFixed(1) : ''} subenf={subenf != null ? subenf.toFixed(1) : ''} />
+                {(() => {
+                  const okRecal = recal != null && recal >= 4 && recal <= 9;
+                  const okSubenf = subenf != null && subenf >= 3 && subenf <= 11;
+                  const mejoras = [];
+                  if (recal != null && recal > 9) mejoras.push('bajar el recalentamiento (falta carga o válvula poco abierta)');
+                  if (recal != null && recal < 4) mejoras.push('subir el recalentamiento (riesgo de retorno de líquido; válvula muy abierta o sobrecarga)');
+                  if (subenf != null && subenf < 3) mejoras.push('aumentar el subenfriamiento (falta de carga o condensador insuficiente)');
+                  if (subenf != null && subenf > 11) mejoras.push('reducir el subenfriamiento (exceso de carga o recibidor lleno)');
+                  const dentro = okRecal && okSubenf && mejoras.length === 0;
+                  if (recal == null && subenf == null) return <p className="text-[11px] text-slate-400 mt-1">Introduce las temperaturas para valorar el ciclo.</p>;
+                  return (
+                    <div className={`mt-1 rounded-md p-2 text-[11px] ${dentro ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-amber-50 border border-amber-200 text-amber-800'}`}>
+                      {dentro
+                        ? '✅ Ciclo dentro del margen de funcionamiento (recalentamiento ~5-8 °C y subenfriamiento ~4-10 °C).'
+                        : <><b>⚠ Se puede mejorar el sistema:</b> {mejoras.join('; ')}.</>}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
             {/* Generar imagen para adjuntar al informe / diario de reparación */}

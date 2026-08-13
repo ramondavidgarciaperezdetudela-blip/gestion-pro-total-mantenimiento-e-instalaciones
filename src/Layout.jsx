@@ -163,6 +163,7 @@ const navItems = [
 { name: 'Renovar Licencia', page: 'LicenseRenewal', icon: Shield },
 { name: 'Soporte IA', page: 'AISupport', icon: Bot },
 { name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Droplets },
+{ name: 'Tablas Gases', page: 'TablasRefrigerantes', icon: FileBarChart },
 ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
 // ─── Agrupación técnica de la navegación ──────────────────────────────────────
@@ -174,6 +175,7 @@ const PAGE_SECTION = {
   TechnicianFieldWork: 'Operaciones', TechnicianDay: 'Operaciones', TecniciansRoutes: 'Operaciones',
   Maintenance: 'Operaciones', MaintenancePlanning: 'Operaciones', IncidentManagement: 'Operaciones',
   EquipmentDiaryPage: 'Operaciones', EquipmentFailureHistory: 'Operaciones', Agenda: 'Operaciones',
+  TablasRefrigerantes: 'Operaciones',
   // Clientes y proyectos
   Contacts: 'Clientes', ContactForm: 'Clientes', ClientPortal: 'Clientes',
   Projects: 'Clientes', ProjectTimeline: 'Clientes',
