@@ -41,8 +41,18 @@ export const AuthProvider = ({ children }) => {
         if (appParams.token) {
           await checkUserAuth();
         } else {
+          // Sin token no hay forma de que el backend reconozca al usuario:
+          // en la app instalada (escritorio/APK) no llega ?access_token= en la
+          // URL como en la web servida por Base44. Antes esto dejaba la app
+          // renderizarse igualmente "sin autenticar", y cada subida/lectura
+          // fallaba en silencio con errores confusos ("comprueba tu conexión").
+          // Se trata igual que un token caducado: pedir iniciar sesión.
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
+          setAuthError({
+            type: 'auth_required',
+            message: 'Authentication required'
+          });
         }
         setIsLoadingPublicSettings(false);
       } catch (appError) {
