@@ -16,8 +16,11 @@ function withTimeout(promise, ms, message) {
 // El navegador o el SDK pueden lanzar errores en inglés (p.ej. "Failed to
 // fetch"). Normalizamos aquí para que quien llame a uploadImage/uploadFile
 // reciba siempre un err.message en español, nunca mezclado con inglés.
+// El error real (que puede no ser de red: token caducado, cuota, CORS...) se
+// deja en consola para poder diagnosticarlo sin perder el mensaje amigable.
 function toSpanishError(err) {
   if (err instanceof Error && err.message === UPLOAD_TIMEOUT_MESSAGE) return err;
+  console.error('[uploadImage] Error real al subir el archivo:', err);
   return new Error(UPLOAD_GENERIC_MESSAGE);
 }
 

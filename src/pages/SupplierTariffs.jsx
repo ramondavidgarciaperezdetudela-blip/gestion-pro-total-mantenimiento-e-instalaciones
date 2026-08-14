@@ -75,9 +75,13 @@ export default function SupplierTariffs() {
 
     let supp, firstBatch;
     try {
+      // Paginación SIN ordenar (filter con sort null): con miles de artículos
+      // creados en el mismo instante (importación masiva de catálogo), ordenar
+      // por fecha de creación no es estable y hace que la paginación por
+      // páginas se salte o repita artículos, "perdiendo" parte del catálogo.
       [supp, firstBatch] = await withRetry(() => Promise.all([
         base44.entities.Supplier.list('name', 200),
-        base44.entities.SupplierPrice.list('-created_date', PAGE, 0),
+        base44.entities.SupplierPrice.filter({}, null, PAGE, 0),
       ]));
     } catch (err) {
       setLoading(false);
@@ -102,7 +106,7 @@ export default function SupplierTariffs() {
           const batchRequests = [];
           for (let i = 0; i < 4 && skip < MAX_RECORDS; i++) {
             batchRequests.push(
-              withRetry(() => base44.entities.SupplierPrice.list('-created_date', PAGE, skip))
+              withRetry(() => base44.entities.SupplierPrice.filter({}, null, PAGE, skip))
             );
             skip += PAGE;
           }
@@ -114,6 +118,11 @@ export default function SupplierTariffs() {
               if (batch.length === PAGE) hasMore = true;
             }
           });
+          // Deduplicar por id: al paginar en paralelo sin ordenar, un mismo
+          // artículo podría aparecer en dos páginas si hay escrituras
+          // simultáneas; nos aseguramos de no mostrarlo duplicado.
+          const seen = new Set();
+          allPrices = allPrices.filter(p => (p.id && !seen.has(p.id)) ? (seen.add(p.id), true) : !p.id);
           setPrices([...allPrices]);
           if (!hasMore) break;
         }
