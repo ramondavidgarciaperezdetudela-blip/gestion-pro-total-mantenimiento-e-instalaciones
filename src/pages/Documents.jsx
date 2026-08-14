@@ -19,7 +19,6 @@ import { format, startOfMonth } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
 import CompanyHeader from '../components/CompanyHeader';
 import SignatureCanvas from '../components/SignaturePad';
-import { uploadFile } from '@/lib/uploadImage';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo'];
 const STATUSES = ['borrador', 'enviado', 'pagado', 'vencido', 'cancelado'];
@@ -302,16 +301,39 @@ export default function Documents() {
     setForm((prev) => ({ ...prev, work_type: wt, normative_references: NORMATIVE_MAP[wt] || '' }));
   }, []);
 
+  // Limpia el formulario antes de enviarlo a la API:
+  //  - quita el _id interno de cada línea (sólo para React) y los campos
+  //    built-in del entity (id, created_date, updated_date, created_by_id)
+  //  - fuerza tipos numéricos en las líneas (quantity, unit_price, discount,
+  //    total) para que el valor que se está escribiendo al pulsar "Guardar"
+  //    (aún como string) se envíe como número y no rompa la validación.
+  const sanitizeForm = (f) => {
+    const { id, created_date, updated_date, created_by_id, ...rest } = f || {};
+    const toNum = (v) => {
+      const n = parseFloat(String(v ?? 0).replace(',', '.'));
+      return isFinite(n) ? n : 0;
+    };
+    const items = (rest.items || []).map((it) => ({
+      description: it.description ?? '',
+      quantity: toNum(it.quantity),
+      unit_price: toNum(it.unit_price),
+      discount: toNum(it.discount),
+      total: toNum(it.total),
+    }));
+    return { ...rest, items };
+  };
+
   const handleSave = async () => {
     setSaving(true);
+    const payload = sanitizeForm(form);
     const docLabel = form.doc_type === 'factura' ? 'Factura' : form.doc_type === 'presupuesto' ? 'Presupuesto' : 'Recibo';
     let savedDoc = null;
     const wasEditing = !!editing;
     const editingId = editing?.id;
     if (editing) {
-      savedDoc = await base44.entities.Invoice.update(editing.id, form);
+      savedDoc = await base44.entities.Invoice.update(editing.id, payload);
     } else {
-      savedDoc = await base44.entities.Invoice.create(form);
+      savedDoc = await base44.entities.Invoice.create(payload);
       if (form.contact_id) {
         await base44.entities.ClientDocument.create({
           contact_id: form.contact_id, contact_name: form.contact_name,
@@ -1097,11 +1119,11 @@ export default function Documents() {
                         value={previewDoc.signature_client}
                         existingDatetime={previewDoc.sign_datetime || null}
                         onSave={async (dataUrl, signDt) => {
-                          // Subir firma como archivo para evitar límite de tamaño
-                          const blob = await fetch(dataUrl).then(r => r.blob());
-                          const file = new File([blob], 'firma.jpg', { type: 'image/jpeg' });
-                          const file_url = await uploadFile(file);
-                          const updateData = { signature_client: file_url, sign_datetime: signDt };
+                          // Guardamos el dataURL directamente en el campo de la
+                          // firma (es una imagen pequeña JPEG). Así evitamos la
+                          // subida a la nube (que falla si no hay créditos de
+                          // integración o red) y la firma queda siempre guardada.
+                          const updateData = { signature_client: dataUrl, sign_datetime: signDt };
                           await base44.entities.Invoice.update(previewDoc.id, updateData);
                           const updated = { ...previewDoc, ...updateData };
                           setPreviewDoc(updated);
@@ -1114,7 +1136,7 @@ export default function Documents() {
                             doc_title: `${previewDoc.doc_type?.toUpperCase()} Nº${previewDoc.doc_number}`,
                             doc_type: previewDoc.doc_type,
                             sign_datetime: signDt,
-                            signature_url: file_url,
+                            signature_url: dataUrl,
                             signer_role: 'cliente',
                             extra_info: `Total: ${previewDoc.total?.toFixed(2)} € | Fecha doc: ${previewDoc.date}`
                           }).catch(() => {});

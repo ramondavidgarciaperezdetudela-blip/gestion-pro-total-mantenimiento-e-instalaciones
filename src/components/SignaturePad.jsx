@@ -84,6 +84,11 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
   };
 
   const save = async () => {
+    // Validación: no dejar confirmar sin haber firmado.
+    if (!hasDrawn) {
+      setSaveError('Debes firmar antes de continuar.');
+      return;
+    }
     const canvas = canvasRef.current;
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = 400;
@@ -127,6 +132,20 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
         </div>
         <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => { setShowCanvas(true); setSignDatetime(null); }}>
           <PenLine className="w-3 h-3 mr-1" />Volver a firmar
+        </Button>
+      </div>
+    );
+  }
+
+  // Si el cuadro de firma se cerró sin firmar (p.ej. Cancelar), mostramos un
+  // botón para volver a abrirlo. Los datos del documento no se tocan.
+  if (!showCanvas && !value) {
+    return (
+      <div className="border rounded-xl p-3 bg-gray-50 space-y-2 text-center">
+        {label && <p className="text-xs font-semibold text-gray-700">{label}</p>}
+        <p className="text-[10px] text-gray-400">Aún sin firmar</p>
+        <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => { setSaveError(''); setShowCanvas(true); }}>
+          <PenLine className="w-3 h-3 mr-1" />Firmar
         </Button>
       </div>
     );
@@ -180,25 +199,23 @@ export default function SignatureCanvas({ label, value, onSave, onCancel, showCa
             </Button>
             <Button
               size="sm"
+              variant="outline"
+              onClick={() => { setSaveError(''); setShowCanvas(false); onCancel?.(); }}
+              disabled={saving}
+              className="flex-1 text-xs text-gray-500"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
               onClick={save}
-              disabled={!hasDrawn || saving}
+              disabled={saving}
               className="flex-1 text-xs bg-blue-700 hover:bg-blue-800 text-white"
             >
               {saving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}
               {saving ? 'Guardando...' : 'Confirmar firma'}
             </Button>
           </div>
-
-          {showCancelIfSigned && value && (
-            <Button size="sm" variant="ghost" className="w-full text-xs text-gray-400" onClick={() => setShowCanvas(false)}>
-              Cancelar
-            </Button>
-          )}
-          {!value && onCancel && (
-            <Button size="sm" variant="ghost" className="w-full text-xs text-gray-400" onClick={() => { setShowCanvas(false); onCancel?.(); }}>
-              Cancelar
-            </Button>
-          )}
         </div>
       </div>
     </>
