@@ -24,8 +24,11 @@ export const AuthProvider = ({ children }) => {
       
       // First, check app public settings (with token if available)
       // This will tell us if auth is required, user not registered, etc.
+      // baseURL absoluta (no relativa): en la app instalada (file://,
+      // https://localhost) una ruta relativa no llega al backend real de
+      // Base44 y esta comprobación fallaría siempre.
       const appClient = createAxiosClient({
-        baseURL: `/api/apps/public`,
+        baseURL: `${appParams.appBaseUrl}/api/apps/public`,
         headers: {
           'X-App-Id': appParams.appId
         },
@@ -38,21 +41,15 @@ export const AuthProvider = ({ children }) => {
         setAppPublicSettings(publicSettings);
         
         // If we got the app public settings successfully, check if user is authenticated
+        // NOTA: el programa se distribuye/vende para que cada cliente lo use sin
+        // ninguna cuenta de Base44 (solo el creador tiene login ahí). Sin token no
+        // se debe exigir iniciar sesión: la app funciona en modo app-level
+        // (requiresAuth: false en base44Client.js) usando solo el appId.
         if (appParams.token) {
           await checkUserAuth();
         } else {
-          // Sin token no hay forma de que el backend reconozca al usuario:
-          // en la app instalada (escritorio/APK) no llega ?access_token= en la
-          // URL como en la web servida por Base44. Antes esto dejaba la app
-          // renderizarse igualmente "sin autenticar", y cada subida/lectura
-          // fallaba en silencio con errores confusos ("comprueba tu conexión").
-          // Se trata igual que un token caducado: pedir iniciar sesión.
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
-          setAuthError({
-            type: 'auth_required',
-            message: 'Authentication required'
-          });
         }
         setIsLoadingPublicSettings(false);
       } catch (appError) {
