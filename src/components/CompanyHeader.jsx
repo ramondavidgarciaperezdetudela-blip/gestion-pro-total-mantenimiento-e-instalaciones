@@ -7,7 +7,7 @@ export default function CompanyHeader({ className = "" }) {
   useEffect(() => {
     base44.entities.CompanySettings.list().then(data => {
       if (data.length > 0) setCompany(data[0]);
-    });
+    }).catch(() => {/* CompanySettings puede no estar disponible (404): cabecera queda oculta */});
   }, []);
 
   if (!company) return null;
