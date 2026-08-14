@@ -1,141 +1,61 @@
 import UpdateChecker from '@/components/UpdateChecker';
 import { useState, useEffect } from 'react';
-import { RefreshCw, CheckCircle2, AlertCircle, Clock, ChevronDown, ChevronRight, Download, Wifi } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle, Clock, ChevronDown, ChevronRight, Wifi, Plus, X, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import NavBar from '@/components/NavBar';
-import { base44 } from '@/api/base44Client';
-
-// ── Categorías de actualización ───────────────────────────────────────────────
-const CATEGORIAS = [
-  {
-    id: 'normativas',
-    icon: '📋',
-    label: 'Normativas Vigentes',
-    subtipo: [
-      { id: 'rite',    label: 'RITE 2007 (RD 1027/2007 y modif.)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2007-15820' },
-      { id: 'rsif',    label: 'RSIF (RD 552/2019)',                 url: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2019-7781' },
-      { id: 'fgas',    label: 'Reglamento F-Gas (EU 517/2014)',     url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32014R0517' },
-      { id: 'bt',      label: 'Reglamento BT (RD 842/2002)',        url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2002-18099' },
-      { id: 'prl',     label: 'PRL Frigoristas (RD 216/1999)',      url: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-1999-4433' },
-      { id: 'cte',     label: 'CTE DB-HE (Ahorro energía)',         url: 'https://www.codigotecnico.org' },
-    ]
-  },
-  {
-    id: 'precios',
-    icon: '💰',
-    label: 'Precios de Proveedores',
-    subtipo: [
-      { id: 'daikin',      label: 'Daikin — Tarifa Oficial'            },
-      { id: 'mitsubishi',  label: 'Mitsubishi Electric — Tarifa'       },
-      { id: 'samsung',     label: 'Samsung — Tarifa AC'                },
-      { id: 'lg',          label: 'LG — Tarifa HVAC'                   },
-      { id: 'vaillant',    label: 'Vaillant — Aerotermia'              },
-      { id: 'carrier',     label: 'Carrier — Chillers y VRF'           },
-      { id: 'trane',       label: 'Trane — Climatización'              },
-      { id: 'copeland',    label: 'Copeland/Emerson — Compresores'     },
-      { id: 'bitzer',      label: 'Bitzer — Compresores frigoríficos'  },
-      { id: 'danfoss',     label: 'Danfoss — Componentes'              },
-      { id: 'refrigerantes', label: 'Gas Refrigerante (cotización)'    },
-    ]
-  },
-  {
-    id: 'catalogos',
-    icon: '📦',
-    label: 'Catálogos de Equipos',
-    subtipo: [
-      { id: 'ac',         label: 'Aire Acondicionado (split/multi/VRF)' },
-      { id: 'frigorifico',label: 'Equipos Frigoríficos (evaporadores/condensadoras)' },
-      { id: 'solar',      label: 'Instalaciones Solares (paneles/inversores)' },
-      { id: 'aerotermia', label: 'Aerotermia y Bomba de Calor'           },
-      { id: 'conductos',  label: 'Conductos y Difusores'                 },
-      { id: 'control',    label: 'Control y Automatización'              },
-    ]
-  },
-  {
-    id: 'homologacion',
-    icon: '🏅',
-    label: 'Documentos de Homologación',
-    subtipo: [
-      { id: 'proyecto',   label: 'Plantillas de Proyecto Técnico'        },
-      { id: 'certificado',label: 'Modelos de Certificado de Instalación'  },
-      { id: 'memoria',    label: 'Modelos de Memoria Técnica'            },
-      { id: 'mantenimiento', label: 'Contratos de Mantenimiento tipo'    },
-      { id: 'riesgo',     label: 'Evaluaciones de Riesgo (RSIF)'         },
-      { id: 'ccaa',       label: 'Modelos por Comunidad Autónoma'        },
-    ]
-  },
-  {
-    id: 'tarifas',
-    icon: '🔢',
-    label: 'Tarifas y Aranceles',
-    subtipo: [
-      { id: 'mano_obra',  label: 'Baremo de Mano de Obra (convenio)'    },
-      { id: 'desplaz',    label: 'Tasas de Desplazamiento'              },
-      { id: 'legaliz',    label: 'Tasas de Legalización por CCAA'       },
-      { id: 'iva',        label: 'IVA y Tipos Reducidos Aplicables'     },
-    ]
-  },
-];
+import {
+  CATEGORIES, updateCategoryData, loadSavedUpdates, getCustomSources, saveCustomSources,
+} from '@/lib/dailyAutoUpdate';
 
 export default function UpdateCenter() {
   const [updating, setUpdating]     = useState(false);
   const [progress, setProgress]     = useState({});
   const [lastUpdate, setLastUpdate] = useState({});
+  const [results, setResults]       = useState({});
   const [expanded, setExpanded]     = useState({});
   const [done, setDone]             = useState(false);
   const [log, setLog]               = useState([]);
+  const [sources, setSources]       = useState({});
+  const [newSourceUrl, setNewSourceUrl] = useState({});
 
   useEffect(() => {
-    // Cargar fechas de última actualización de cada categoría
     loadUpdateDates();
   }, []);
 
   const loadUpdateDates = async () => {
-    try {
-      const records = await base44.entities.SystemSettings.list();
-      const dates = {};
-      records.forEach(r => {
-        if (r.key?.startsWith('update_')) dates[r.key.replace('update_', '')] = r.value;
-      });
-      setLastUpdate(dates);
-    } catch(e) { /* Sin datos previos */ }
-  };
-
-  const saveUpdateDate = async (id) => {
-    try {
-      const now = new Date().toISOString();
-      const existing = await base44.entities.SystemSettings.list({ filters: { key: `update_${id}` } });
-      if (existing.length > 0) {
-        await base44.entities.SystemSettings.update(existing[0].id, { value: now });
-      } else {
-        await base44.entities.SystemSettings.create({ key: `update_${id}`, value: now });
-      }
-    } catch(e) {}
+    const { dates, data } = await loadSavedUpdates();
+    setLastUpdate(dates);
+    setResults(data);
+    const src = {};
+    for (const cat of CATEGORIES) src[cat.id] = await getCustomSources(cat.id);
+    setSources(src);
   };
 
   const formatDate = (iso) => {
     if (!iso) return 'Nunca actualizado';
     const d = new Date(iso);
-    return d.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   const updateCategory = async (cat) => {
-    setProgress(p => ({ ...p, [cat.id]: 'loading' }));
-    addLog(`🔄 Actualizando ${cat.label}...`);
-    // Simular verificación de actualizaciones (en producción: llamada a API)
-    await new Promise(r => setTimeout(r, 800 + Math.random() * 1200));
-    for (const sub of cat.subtipo) {
-      setProgress(p => ({ ...p, [`${cat.id}_${sub.id}`]: 'loading' }));
-      await new Promise(r => setTimeout(r, 200 + Math.random() * 400));
-      setProgress(p => ({ ...p, [`${cat.id}_${sub.id}`]: 'done' }));
+    setProgress((p) => ({ ...p, [cat.id]: 'loading' }));
+    addLog(`🔄 Consultando ${cat.label} (IA + internet)...`);
+    try {
+      const result = await updateCategoryData(cat);
+      setResults((prev) => ({ ...prev, [cat.id]: result }));
+      const now = new Date().toISOString();
+      setLastUpdate((prev) => ({ ...prev, [cat.id]: now }));
+      setProgress((p) => ({ ...p, [cat.id]: 'done' }));
+      addLog(`✅ ${cat.label} — actualizado (${result?.novedades?.length || 0} elementos revisados)`);
+    } catch (e) {
+      console.error('[UpdateCenter] Error real al actualizar', cat.id, e);
+      setProgress((p) => ({ ...p, [cat.id]: 'error' }));
+      addLog(`⚠️ ${cat.label} — no se pudo consultar (revisa la conexión)`);
     }
-    setProgress(p => ({ ...p, [cat.id]: 'done' }));
-    await saveUpdateDate(cat.id);
-    setLastUpdate(prev => ({ ...prev, [cat.id]: new Date().toISOString() }));
-    addLog(`✅ ${cat.label} — actualizado`);
   };
 
-  const addLog = (msg) => setLog(prev => [...prev, { time: new Date().toLocaleTimeString('es-ES'), msg }]);
+  const addLog = (msg) => setLog((prev) => [...prev, { time: new Date().toLocaleTimeString('es-ES'), msg }]);
 
   const updateAll = async () => {
     setUpdating(true);
@@ -143,7 +63,7 @@ export default function UpdateCenter() {
     setProgress({});
     setLog([]);
     addLog('🚀 Iniciando actualización completa...');
-    for (const cat of CATEGORIAS) {
+    for (const cat of CATEGORIES) {
       await updateCategory(cat);
     }
     addLog('🎉 Actualización completa finalizada');
@@ -151,7 +71,22 @@ export default function UpdateCenter() {
     setDone(true);
   };
 
-  const toggleExpand = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleExpand = (id) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const addSource = async (catId) => {
+    const url = (newSourceUrl[catId] || '').trim();
+    if (!url) return;
+    const next = [...(sources[catId] || []), { url, note: '' }];
+    setSources((prev) => ({ ...prev, [catId]: next }));
+    setNewSourceUrl((prev) => ({ ...prev, [catId]: '' }));
+    await saveCustomSources(catId, next);
+  };
+
+  const removeSource = async (catId, idx) => {
+    const next = (sources[catId] || []).filter((_, i) => i !== idx);
+    setSources((prev) => ({ ...prev, [catId]: next }));
+    await saveCustomSources(catId, next);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -173,6 +108,9 @@ export default function UpdateCenter() {
           <h1 className="text-xl font-bold text-slate-800">Actualizar Todo</h1>
           <p className="text-sm text-slate-500">
             Normativas · Precios · Catálogos · Homologación · Tarifas
+          </p>
+          <p className="text-xs text-slate-400">
+            Estas 5 secciones también se actualizan solas, una vez al día, en segundo plano.
           </p>
           <Button
             onClick={updateAll}
@@ -204,7 +142,7 @@ export default function UpdateCenter() {
         </div>
 
         {/* Categorías individuales */}
-        {CATEGORIAS.map(cat => (
+        {CATEGORIES.map((cat) => (
           <div key={cat.id} className="bg-white rounded-xl shadow overflow-hidden">
             <div
               className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50"
@@ -223,10 +161,11 @@ export default function UpdateCenter() {
               <div className="flex items-center gap-2">
                 {progress[cat.id] === 'loading' && <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />}
                 {progress[cat.id] === 'done' && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                {progress[cat.id] === 'error' && <AlertCircle className="w-4 h-4 text-red-500" />}
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={e => { e.stopPropagation(); updateCategory(cat); }}
+                  onClick={(e) => { e.stopPropagation(); updateCategory(cat); }}
                   disabled={updating || progress[cat.id] === 'loading'}
                   className="text-xs"
                 >
@@ -235,21 +174,36 @@ export default function UpdateCenter() {
                 </Button>
                 {expanded[cat.id]
                   ? <ChevronDown className="w-4 h-4 text-slate-400" />
-                  : <ChevronRight className="w-4 h-4 text-slate-400" />
-                }
+                  : <ChevronRight className="w-4 h-4 text-slate-400" />}
               </div>
             </div>
 
             {expanded[cat.id] && (
               <div className="border-t divide-y">
-                {cat.subtipo.map(sub => (
+                {/* Resultado de la última consulta a la IA */}
+                {results[cat.id] && (
+                  <div className="p-3 bg-slate-50 space-y-2">
+                    {results[cat.id].resumen_general && (
+                      <p className="text-sm text-slate-700">{results[cat.id].resumen_general}</p>
+                    )}
+                    {(results[cat.id].novedades || []).map((n, i) => (
+                      <div key={i} className="text-xs bg-white border rounded-lg p-2">
+                        <p className="font-semibold text-slate-700">{n.titulo}</p>
+                        {n.descripcion && <p className="text-slate-500 mt-0.5">{n.descripcion}</p>}
+                        {n.url && (
+                          <a href={n.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline flex items-center gap-1 mt-1">
+                            <Link2 className="w-3 h-3" /> Ver fuente
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Referencias generales de la categoría */}
+                {cat.subtipo.map((sub) => (
                   <div key={sub.id} className="flex items-center justify-between px-4 py-2.5">
-                    <div className="flex items-center gap-2">
-                      {progress[`${cat.id}_${sub.id}`] === 'loading' && <RefreshCw className="w-3 h-3 animate-spin text-blue-500" />}
-                      {progress[`${cat.id}_${sub.id}`] === 'done' && <CheckCircle2 className="w-3 h-3 text-green-500" />}
-                      {!progress[`${cat.id}_${sub.id}`] && <div className="w-3 h-3 rounded-full border-2 border-slate-300" />}
-                      <span className="text-sm text-slate-700">{sub.label}</span>
-                    </div>
+                    <span className="text-sm text-slate-700">{sub.label}</span>
                     {sub.url && (
                       <a href={sub.url} target="_blank" rel="noopener noreferrer"
                         className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1">
@@ -258,6 +212,36 @@ export default function UpdateCenter() {
                     )}
                   </div>
                 ))}
+
+                {/* Fuentes propias añadidas por el usuario */}
+                <div className="px-4 py-3 bg-slate-50">
+                  <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Tus fuentes/páginas concretas</p>
+                  <div className="space-y-1 mb-2">
+                    {(sources[cat.id] || []).map((s, i) => (
+                      <div key={i} className="flex items-center justify-between bg-white border rounded-lg px-2 py-1.5 text-xs">
+                        <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">{s.url}</a>
+                        <button onClick={() => removeSource(cat.id, i)} className="text-slate-400 hover:text-red-500 ml-2">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {(sources[cat.id] || []).length === 0 && (
+                      <p className="text-xs text-slate-400">Sin páginas propias añadidas todavía.</p>
+                    )}
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Input
+                      placeholder="https://pagina-oficial-del-proveedor.com/tarifas"
+                      value={newSourceUrl[cat.id] || ''}
+                      onChange={(e) => setNewSourceUrl((prev) => ({ ...prev, [cat.id]: e.target.value }))}
+                      onKeyDown={(e) => { if (e.key === 'Enter') addSource(cat.id); }}
+                      className="text-xs h-8"
+                    />
+                    <Button size="sm" variant="outline" className="h-8 px-2" onClick={() => addSource(cat.id)}>
+                      <Plus className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

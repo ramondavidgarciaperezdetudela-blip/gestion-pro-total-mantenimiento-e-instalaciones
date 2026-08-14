@@ -18,7 +18,7 @@ const ALL_ENTITIES = [
   'AIConsultation', 'SATChatMessage', 'EquipmentDiary',
   // Añadidas para cubrir TODOS los apartados del programa:
   'ChangeOpinionRequest', 'ClientMachine', 'DocumentTemplate',
-  'EquipmentFailure', 'SATWorkTemplate', 'SupplierCatalog',
+  'EquipmentFailure', 'SATWorkTemplate', 'SupplierCatalog', 'SystemSettings',
 ];
 
 // Lee TODOS los registros de una entidad de forma robusta (paginado y con
@@ -73,6 +73,7 @@ const KEYERS = {
   DocumentTemplate:   (r) => _s(r.name) || null,
   SATWorkTemplate:    (r) => _s(r.name) || null,
   SupplierCatalog:    (r) => (_s(r.supplier_id) && `${_s(r.supplier_id)}|${_s(r.name)}`) || _s(r.name) || null,
+  SystemSettings:     (r) => _s(r.key) || null,
   // ChangeLog, AIConsultation, SATChatMessage, EquipmentDiary, ChangeOpinionRequest,
   // EquipmentFailure → histórico: sin clave (solo añadir lo que falte)
 };
@@ -106,6 +107,7 @@ const ENTITY_LABELS = {
   EquipmentFailure: 'Averías de Equipos',
   SATWorkTemplate: 'Plantillas de Trabajo SAT',
   SupplierCatalog: 'Catálogos de Proveedor',
+  SystemSettings: 'Ajustes del Sistema',
 };
 
 const STORAGE_KEY = 'backupConfig';
