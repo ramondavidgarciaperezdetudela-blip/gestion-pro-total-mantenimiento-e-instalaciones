@@ -1,7 +1,12 @@
 import { base44 } from '@/api/base44Client';
-import { compressImage } from './compressImage';
+import { compressImage, compressImageToDataURL } from './compressImage';
 
 const UPLOAD_TIMEOUT_MS = 45000;
+// Si UploadFile falla (créditos de integración agotados, red caída...),
+// se usa un Data URL comprimido como fallback para que la foto quede
+// guardada igualmente. Esto no aumenta coste porque solo ocurre cuando
+// la subida a la nube ya ha fallado.
+const FALLBACK_ENABLED = true;
 export const UPLOAD_TIMEOUT_MESSAGE = 'La subida ha tardado demasiado. Comprueba tu conexión e inténtalo de nuevo.';
 const UPLOAD_GENERIC_MESSAGE = 'No se pudo subir el archivo. Comprueba tu conexión e inténtalo de nuevo.';
 
@@ -43,6 +48,17 @@ export async function uploadImage(file, compressOpts) {
     );
     return file_url;
   } catch (err) {
+    // Fallback: si UploadFile no está disponible (créditos agotados, red
+    // caída, cuota...), comprimir la imagen a Data URL y devolverla para
+    // que se guarde directamente en la entidad. Así las fotos siempre
+    // terminan estando disponibles, incluso sin servicio de subida.
+    if (FALLBACK_ENABLED && file && file.type?.startsWith('image/')) {
+      try {
+        return await compressImageToDataURL(file);
+      } catch {
+        // si el fallback también falla, relanzar el error original
+      }
+    }
     throw toSpanishError(err);
   }
 }

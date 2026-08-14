@@ -57,3 +57,33 @@ export async function compressImage(file, { maxWidth = 1280, maxHeight = 1280, q
     img.src = url;
   });
 }
+
+/**
+ * Comprime una imagen y la devuelve como Data URL (base64) lista para guardar
+ * directamente en una entidad cuando UploadFile no está disponible (p.ej.
+ * créditos de integración agotados) o como fallback de red.
+ *
+ * @param {File|Blob} file
+ * @param {number} maxDim   - máxima dimensión en px (por defecto 1280)
+ * @param {number} quality  - calidad JPEG 0-1 (por defecto 0.72)
+ * @returns {Promise<string>} dataURL (image/jpeg)
+ */
+export const compressImageToDataURL = (file, maxDim = 1280, quality = 0.72) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Formato no compatible'));
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });

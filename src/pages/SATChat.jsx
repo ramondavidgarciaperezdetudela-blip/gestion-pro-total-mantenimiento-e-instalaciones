@@ -6,6 +6,7 @@ import { MessageSquare, Send, X, Wrench, ChevronRight, Loader2, Camera } from 'l
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { uploadImage } from '@/lib/uploadImage';
+import { uploadPhotosSequential } from '@/lib/uploadPhotosSequential';
 
 export default function SATChat() {
   const [satOrders, setSatOrders] = useState([]);
@@ -18,6 +19,9 @@ export default function SATChat() {
   const [user, setUser] = useState(null);
   const [pendingPhotos, setPendingPhotos] = useState([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [photoProgress, setPhotoProgress] = useState({ actual: 0, total: 0 });
+  const [failedPhotos, setFailedPhotos] = useState([]);
+  const [photoError, setPhotoError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -63,21 +67,31 @@ export default function SATChat() {
     setLoadingMessages(false);
   };
 
-  const handlePhotoUpload = async (e) => {
-    const files = Array.from(e.target.files);
+  const runPhotoUpload = async (files) => {
     if (!files.length) return;
     setUploadingPhotos(true);
-    try {
-      const settled = await Promise.allSettled(files.map(file => uploadImage(file)));
-      const urls = settled.filter(r => r.status === 'fulfilled').map(r => r.value);
-      const failed = settled.length - urls.length;
-      if (urls.length) setPendingPhotos(prev => [...prev, ...urls]);
-      if (failed > 0) alert(`${failed} foto(s) no se pudieron subir. Comprueba tu conexión e inténtalo de nuevo.`);
-    } finally {
-      setUploadingPhotos(false);
-      e.target.value = '';
+    setPhotoError('');
+    setFailedPhotos([]);
+    setPhotoProgress({ actual: 0, total: files.length });
+    const acc = [...pendingPhotos];
+    const { failed } = await uploadPhotosSequential(files, {
+      onPhoto: async (url) => {
+        acc.push(url);
+        setPendingPhotos([...acc]); // incremental
+      },
+      onProgress: (actual, total) => setPhotoProgress({ actual, total }),
+    });
+    setUploadingPhotos(false);
+    setPhotoProgress({ actual: 0, total: 0 });
+    if (failed.length) {
+      setFailedPhotos(failed);
+      setPhotoError(`${failed.length} foto(s) no se pudieron subir.`);
     }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  const handlePhotoUpload = (e) => runPhotoUpload(Array.from(e.target.files || []));
+  const handleRetryPhotos = () => runPhotoUpload(failedPhotos);
 
   const sendMessage = async () => {
     if (!newMessage.trim() && pendingPhotos.length === 0) return;
@@ -271,6 +285,15 @@ export default function SATChat() {
               >
                 {uploadingPhotos ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
               </button>
+              {uploadingPhotos && (
+                <span className="text-xs text-blue-600 self-center">Subiendo foto {photoProgress.actual} de {photoProgress.total}…</span>
+              )}
+              {photoError && !uploadingPhotos && (
+                <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1 self-center">
+                  <span>{photoError}</span>
+                  <button type="button" onClick={handleRetryPhotos} className="text-red-700 bg-white border border-red-300 rounded px-2 py-0.5 hover:bg-red-100 font-medium">Reintentar</button>
+                </div>
+              )}
               <textarea
                 value={newMessage}
                 onChange={e => setNewMessage(e.target.value)}

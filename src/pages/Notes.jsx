@@ -10,6 +10,7 @@ import { Plus, Search, Trash2, Edit, Image, X, Printer, Mail, StickyNote } from 
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { uploadImage } from '@/lib/uploadImage';
+import { uploadPhotosSequential } from '@/lib/uploadPhotosSequential';
 
 const EMPTY = { title: '', content: '', contact_name: '', contact_id: '', tags: '', date: format(new Date(), 'yyyy-MM-dd'), photos: [] };
 
@@ -21,6 +22,9 @@ export default function Notes() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [uploading, setUploading] = useState(false);
+  const [photoProgress, setPhotoProgress] = useState({ actual: 0, total: 0 });
+  const [failedPhotos, setFailedPhotos] = useState([]);
+  const [photoError, setPhotoError] = useState('');
   const [previewNote, setPreviewNote] = useState(null);
   const fileRef = useRef(null);
   const printRef = useRef(null);
@@ -56,23 +60,34 @@ export default function Notes() {
     load();
   };
 
-  const handlePhotoUpload = async (e) => {
-    const files = Array.from(e.target.files);
+  const runPhotoUpload = async (files) => {
     if (!files.length) return;
     const remaining = 30 - (form.photos?.length || 0);
     const toUpload = files.slice(0, remaining);
+    if (!toUpload.length) return;
     setUploading(true);
-    try {
-      const settled = await Promise.allSettled(toUpload.map(f => uploadImage(f)));
-      const urls = settled.filter(r => r.status === 'fulfilled').map(r => r.value);
-      const failed = settled.length - urls.length;
-      if (urls.length) setForm(prev => ({ ...prev, photos: [...(prev.photos || []), ...urls] }));
-      if (failed > 0) alert(`${failed} foto(s) no se pudieron subir. Comprueba tu conexión e inténtalo de nuevo.`);
-    } finally {
-      setUploading(false);
-      e.target.value = '';
+    setPhotoError('');
+    setFailedPhotos([]);
+    setPhotoProgress({ actual: 0, total: toUpload.length });
+    const acc = [...(form.photos || [])];
+    const { failed } = await uploadPhotosSequential(toUpload, {
+      onPhoto: async (url) => {
+        acc.push(url);
+        setForm(prev => ({ ...prev, photos: [...acc] })); // incremental
+      },
+      onProgress: (actual, total) => setPhotoProgress({ actual, total }),
+    });
+    setUploading(false);
+    setPhotoProgress({ actual: 0, total: 0 });
+    if (failed.length) {
+      setFailedPhotos(failed);
+      setPhotoError(`${failed.length} foto(s) no se pudieron subir.`);
     }
+    if (fileRef.current) fileRef.current.value = '';
   };
+
+  const handlePhotoUpload = (e) => runPhotoUpload(Array.from(e.target.files || []));
+  const handleRetryPhotos = () => runPhotoUpload(failedPhotos);
 
   const removePhoto = (idx) => {
     setForm(prev => ({ ...prev, photos: prev.photos.filter((_, i) => i !== idx) }));
@@ -172,11 +187,20 @@ export default function Notes() {
                 <label className="text-sm font-medium">Fotos adjuntas ({form.photos?.length || 0}/30)</label>
                 {(form.photos?.length || 0) < 30 && (
                   <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                    <Image className="w-3.5 h-3.5 mr-1" />{uploading ? 'Subiendo...' : 'Añadir fotos'}
+                    <Image className="w-3.5 h-3.5 mr-1" />{uploading ? `Subiendo ${photoProgress.actual}/${photoProgress.total}…` : 'Añadir fotos'}
                   </Button>
                 )}
               </div>
               <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
+              {uploading && (
+                <div className="text-xs text-blue-600 mb-1">Subiendo foto {photoProgress.actual} de {photoProgress.total}…</div>
+              )}
+              {photoError && !uploading && (
+                <div className="flex items-center justify-between gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1 mb-1">
+                  <span>{photoError}</span>
+                  <button type="button" onClick={handleRetryPhotos} className="text-red-700 bg-white border border-red-300 rounded px-2 py-0.5 hover:bg-red-100 font-medium">Reintentar</button>
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
                 {(form.photos || []).map((url, i) => (
                   <div key={i} className="relative group">

@@ -1,14 +1,24 @@
 import React, { useRef, useState } from 'react';
-import { Camera, X, Plus, FolderOpen, Loader2, Pencil, Check, AlertCircle } from "lucide-react";
-import { uploadImage } from '@/lib/uploadImage';
+import { Camera, X, Plus, FolderOpen, Loader2, Pencil, Check, AlertCircle, RotateCw } from "lucide-react";
+import { uploadPhotosSequential } from '@/lib/uploadPhotosSequential';
 
 /**
- * PhotoGallery — galería con subida y edición de nombre por foto.
+ * PhotoGallery — galería con subida SECUENCIAL de fotos y edición de nombre.
+ *
+ * - Subida en SERIE (for...of + await), nunca en paralelo.
+ * - Si UploadFile falla (créditos agotados), usa Data URL comprimido como
+ *   fallback para que la foto quede guardada igualmente.
+ * - Incremental: llama `onChange` tras CADA foto, añadiendo la miniatura en
+ *   cuanto está lista y avanzando el contador X/30 en vivo.
+ * - Error por foto: continúa con las siguientes; al final, si hubo fallos
+ *   muestra "N foto(s) no se pudieron subir" y un botón "Reintentar".
+ * - Límite maxPhotos (30 por sección) y diseño de botones Cámara/Archivo.
+ *
  * Props:
- *   photos: string[]              — array de URLs
- *   onChange(urls): void          — cuando cambian las fotos
- *   photoNames: string[]          — (opcional) nombres para cada foto
- *   onNamesChange(names): void    — (opcional) cuando cambian los nombres
+ *   photos: string[]              — array de URLs/DataURLs
+ *   onChange(urls): void          — se llama tras cada foto (incremental)
+ *   photoNames: string[]          — (opcional) nombres por foto
+ *   onNamesChange(names): void    — (opcional)
  *   label, maxPhotos
  */
 export default function PhotoGallery({
@@ -22,9 +32,9 @@ export default function PhotoGallery({
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
+  const [progress, setProgress] = useState({ actual: 0, total: 0 });
+  const [failedFiles, setFailedFiles] = useState([]);
   const [uploadError, setUploadError] = useState('');
-  // nombres locales: si el padre no pasa onNamesChange, los mantenemos aquí
   const [localNames, setLocalNames] = useState(photoNames);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editingValue, setEditingValue] = useState('');
@@ -39,43 +49,47 @@ export default function PhotoGallery({
     }
   };
 
-  const handleUpload = async (e) => {
-    const files = Array.from(e.target.files);
+  const runUpload = async (files) => {
     if (!files.length) return;
     const remaining = maxPhotos - photos.length;
     const toUpload = files.slice(0, remaining);
+    if (!toUpload.length) return;
 
     setUploading(true);
     setUploadError('');
-    setUploadProgress({ done: 0, total: toUpload.length });
+    setFailedFiles([]);
+    setProgress({ actual: 0, total: toUpload.length });
 
-    try {
-      const settled = await Promise.allSettled(
-        toUpload.map(async (file) => {
-          const file_url = await uploadImage(file);
-          setUploadProgress(prev => ({ ...prev, done: prev.done + 1 }));
-          return { url: file_url, name: file.name.replace(/\.[^.]+$/, '') };
-        })
-      );
+    const acc = [...photos];
+    const accNames = [...names];
 
-      const results = settled.filter(r => r.status === 'fulfilled').map(r => r.value);
-      const failed = settled.length - results.length;
+    const { failed } = await uploadPhotosSequential(toUpload, {
+      onPhoto: async (url, file) => {
+        acc.push(url);
+        accNames.push(file.name.replace(/\.[^.]+$/, ''));
+        onChange([...acc]);      // incremental: miniatura visible en cuanto está
+        setNames([...accNames]);
+      },
+      onProgress: (actual, total) => setProgress({ actual, total }),
+    });
 
-      if (results.length) {
-        const newUrls = results.map(r => r.url);
-        const newNames = results.map(r => r.name);
-        onChange([...photos, ...newUrls]);
-        setNames([...names, ...newNames]);
-      }
-      if (failed > 0) {
-        setUploadError(`${failed} foto(s) no se pudieron subir. Comprueba tu conexión e inténtalo de nuevo.`);
-      }
-    } finally {
-      setUploading(false);
-      setUploadProgress({ done: 0, total: 0 });
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      if (cameraInputRef.current) cameraInputRef.current.value = '';
+    setUploading(false);
+    setProgress({ actual: 0, total: 0 });
+    if (failed.length) {
+      setFailedFiles(failed);
+      setUploadError(`${failed.length} foto(s) no se pudieron subir.`);
     }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
+  const handleUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length) runUpload(files);
+  };
+
+  const handleRetry = () => {
+    if (failedFiles.length) runUpload(failedFiles);
   };
 
   const handleRemove = (index) => {
@@ -119,22 +133,38 @@ export default function PhotoGallery({
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-1 text-xs text-blue-600 border border-blue-300 rounded px-2 py-1 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <FolderOpen className="w-3 h-3" />{uploading ? `Subiendo ${uploadProgress.done}/${uploadProgress.total}...` : 'Archivo'}
+              <FolderOpen className="w-3 h-3" />{uploading ? `Subiendo ${progress.actual}/${progress.total}...` : 'Archivo'}
             </button>
           </div>
         )}
       </div>
 
-      {uploadError && (
-        <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5 mb-2">
-          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{uploadError}
+      {uploading && (
+        <div className="flex items-center gap-1.5 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1.5 mb-2">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Subiendo foto {progress.actual} de {progress.total}…
+        </div>
+      )}
+
+      {uploadError && !uploading && (
+        <div className="flex items-center justify-between gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5 mb-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="truncate">{uploadError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="flex items-center gap-1 text-red-700 bg-white border border-red-300 rounded px-2 py-0.5 hover:bg-red-100 flex-shrink-0 font-medium"
+          >
+            <RotateCw className="w-3 h-3" />Reintentar
+          </button>
         </div>
       )}
 
       <div className="flex flex-wrap gap-3">
         {photos.map((url, i) => (
           <div key={i} className="flex flex-col items-center gap-1" style={{ width: 88 }}>
-            {/* Miniatura */}
             <div className="relative w-20 h-20 rounded-lg overflow-hidden border bg-gray-100">
               <img src={url} alt={names[i] || `Foto ${i + 1}`} className="w-full h-full object-cover" />
               <button
@@ -146,7 +176,6 @@ export default function PhotoGallery({
               </button>
             </div>
 
-            {/* Nombre editable */}
             {editingIndex === i ? (
               <div className="flex items-center gap-0.5 w-full">
                 <input
@@ -186,7 +215,7 @@ export default function PhotoGallery({
         {uploading && (
           <div className="w-20 h-20 rounded-lg border-2 border-blue-300 bg-blue-50 flex flex-col items-center justify-center gap-1">
             <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-            <span className="text-[10px] text-blue-600 font-medium">{uploadProgress.done}/{uploadProgress.total}</span>
+            <span className="text-[10px] text-blue-600 font-medium">{progress.actual}/{progress.total}</span>
           </div>
         )}
 
