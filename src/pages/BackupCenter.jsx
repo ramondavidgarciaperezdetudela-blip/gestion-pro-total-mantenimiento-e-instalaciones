@@ -269,6 +269,12 @@ export default function BackupCenter() {
     const entitiesToRestore = ALL_ENTITIES.filter(e => restoreSelectedEntities.has(e) && restoreData[e]?.length > 0);
     setRestoring(true);
     let total = 0;
+    // Antes los fallos de escritura se ignoraban en silencio y el mensaje
+    // final decía "restauración completa" aunque ningún registro se hubiera
+    // guardado de verdad (p.ej. sin conexión con el backend). Se cuentan
+    // aquí para avisar honestamente si algo no se ha podido guardar.
+    let failed = 0;
+    const trackFail = (err) => { failed++; console.error('[BackupCenter] Error real al restaurar:', err); };
 
     for (let i = 0; i < entitiesToRestore.length; i++) {
       const ent = entitiesToRestore[i];
@@ -278,7 +284,7 @@ export default function BackupCenter() {
         setRestoreProgress(`Limpiando ${ENTITY_LABELS[ent] || ent}... (${i + 1}/${entitiesToRestore.length})`);
         const existing = await fetchAllRecords(ent);
         for (const rec of (existing || [])) {
-          await base44.entities[ent]?.delete(rec.id).catch(() => {});
+          await base44.entities[ent]?.delete(rec.id).catch(trackFail);
         }
       }
 
@@ -307,7 +313,7 @@ export default function BackupCenter() {
           }
           // Crear lo que falta (por lotes)
           for (let j = 0; j < toCreate.length; j += 100) {
-            await base44.entities[ent]?.bulkCreate(toCreate.slice(j, j + 100)).catch(() => {});
+            await base44.entities[ent]?.bulkCreate(toCreate.slice(j, j + 100)).catch(trackFail);
             await new Promise(r => setTimeout(r, 80));
           }
           // Actualizar lo existente (en paralelo con límite, sin duplicar)
@@ -316,7 +322,7 @@ export default function BackupCenter() {
           const runners = Array.from({ length: Math.min(POOL, toUpdate.length) }, async () => {
             while (u < toUpdate.length) {
               const it = toUpdate[u++];
-              await base44.entities[ent]?.update(it.id, it.data).catch(() => {});
+              await base44.entities[ent]?.update(it.id, it.data).catch(trackFail);
             }
           });
           await Promise.all(runners);
@@ -326,7 +332,7 @@ export default function BackupCenter() {
           const existingSignatures = new Set((existing || []).map(r => JSON.stringify(strip(r))));
           const toInsert = rows.map(strip).filter(r => !existingSignatures.has(JSON.stringify(r)));
           for (let j = 0; j < toInsert.length; j += 100) {
-            await base44.entities[ent]?.bulkCreate(toInsert.slice(j, j + 100)).catch(() => {});
+            await base44.entities[ent]?.bulkCreate(toInsert.slice(j, j + 100)).catch(trackFail);
             await new Promise(r => setTimeout(r, 80));
           }
           total += toInsert.length;
@@ -338,13 +344,15 @@ export default function BackupCenter() {
           return rest;
         });
         for (let j = 0; j < clean.length; j += 100) {
-          await base44.entities[ent]?.bulkCreate(clean.slice(j, j + 100)).catch(() => {});
+          await base44.entities[ent]?.bulkCreate(clean.slice(j, j + 100)).catch(trackFail);
           await new Promise(r => setTimeout(r, 100));
         }
         total += clean.length;
       }
     }
-    setRestoreProgress(`✅ Restauración completa: ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.`);
+    const okMsg = `✅ Restauración completa: ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.`;
+    const failMsg = `⚠️ ${failed.toLocaleString()} operaciones fallaron al guardar en el servidor (revisa la conexión y vuelve a intentarlo). Consulta la consola para más detalle.`;
+    setRestoreProgress(failed > 0 ? `${okMsg}\n${failMsg}` : okMsg);
     setRestoring(false);
     loadCounts();
   };
