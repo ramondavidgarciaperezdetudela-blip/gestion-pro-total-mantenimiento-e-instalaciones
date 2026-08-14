@@ -1,6 +1,6 @@
 /* global __APP_VERSION__ */
-import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Download, X, AlertCircle, CheckCircle2, ArrowUpCircle } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { RefreshCw, Download, X, AlertCircle, CheckCircle2, ArrowUpCircle, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // ── Configuración del repositorio PÚBLICO de descargas ───────────────────────
@@ -24,17 +24,60 @@ function isNewer(remote, current) {
 }
 
 // Detectar plataforma
-const isAPK  = typeof window !== 'undefined' && typeof window.GPTPrint !== 'undefined';
-const isIOS  = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isAPK      = typeof window !== 'undefined' && typeof window.GPTPrint !== 'undefined';
+const isIOS      = /iPad|iPhone|iPod/.test(navigator.userAgent);
+// En escritorio (Electron), preload.cjs expone window.gptUpdater: la descarga
+// y la instalación se hacen dentro de la propia app (electron-updater), con
+// un botón "Instalar actualización" en vez de un enlace de descarga manual.
+const isElectron = typeof window !== 'undefined' && typeof window.gptUpdater !== 'undefined';
 
 export default function UpdateChecker({ compact = false, headless = false }) {
-  const [state, setState] = useState('idle'); // idle | checking | update | uptodate | error
+  // idle | checking | update | uptodate | error | downloading | downloaded
+  const [state, setState] = useState('idle');
   const [info,  setInfo]  = useState(null);
   const [show,  setShow]  = useState(false);
+  const [percent, setPercent] = useState(0);
+  const unsubscribers = useRef([]);
+
+  // ── Flujo de escritorio (Electron): todo por IPC con el proceso principal ──
+  useEffect(() => {
+    if (!isElectron) return;
+    const offs = [
+      window.gptUpdater.on('gpt-update-checking', () => setState('checking')),
+      window.gptUpdater.on('gpt-update-available', (payload) => {
+        setInfo((prev) => ({ ...prev, version: payload?.version }));
+        setState('downloading');
+        setPercent(0);
+        setShow(true);
+      }),
+      window.gptUpdater.on('gpt-update-not-available', () => {
+        setState('uptodate');
+      }),
+      window.gptUpdater.on('gpt-update-download-progress', (payload) => {
+        setPercent(payload?.percent || 0);
+      }),
+      window.gptUpdater.on('gpt-update-downloaded', (payload) => {
+        setInfo((prev) => ({ ...prev, version: payload?.version || prev?.version }));
+        setState('downloaded');
+        setShow(true);
+      }),
+      window.gptUpdater.on('gpt-update-error', () => {
+        setState('error');
+      }),
+    ];
+    unsubscribers.current = offs;
+    return () => offs.forEach((off) => off && off());
+  }, []);
 
   // Comprobar actualizaciones. isAuto=true → solo molesta si HAY actualización
   // (no muestra el aviso si está al día o si no hay conexión).
   const check = useCallback(async (isAuto = false) => {
+    if (isElectron) {
+      setState('checking');
+      if (!isAuto) setShow(true);
+      window.gptUpdater.check();
+      return;
+    }
     setState('checking');
     try {
       // Intentar primero el version.json del repo (más rápido)
@@ -94,6 +137,7 @@ export default function UpdateChecker({ compact = false, headless = false }) {
 
   const downloadURL = isAPK ? info?.apk_url : info?.zip_url;
   const downloadLabel = isAPK ? 'Descargar APK actualizado' : 'Descargar actualización';
+  const hasUpdateBadge = state === 'update' || state === 'downloading' || state === 'downloaded';
 
   // Badge compacto para el header/navbar
   if (compact) {
@@ -104,7 +148,7 @@ export default function UpdateChecker({ compact = false, headless = false }) {
         title="Comprobar actualizaciones"
       >
         <RefreshCw className={`w-4 h-4 text-white ${state === 'checking' ? 'animate-spin' : ''}`} />
-        {state === 'update' && (
+        {hasUpdateBadge && (
           <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-400 rounded-full border border-blue-800" />
         )}
       </button>
@@ -123,12 +167,14 @@ export default function UpdateChecker({ compact = false, headless = false }) {
       >
         {state === 'checking' ? (
           <RefreshCw className="w-4 h-4 animate-spin" />
-        ) : state === 'update' ? (
+        ) : hasUpdateBadge ? (
           <ArrowUpCircle className="w-4 h-4 text-amber-500" />
         ) : (
           <RefreshCw className="w-4 h-4" />
         )}
-        {state === 'checking' ? 'Comprobando...'
+        {state === 'checking'    ? 'Comprobando...'
+          : state === 'downloaded' ? `Actualización lista v${info?.version}`
+          : state === 'downloading' ? `Descargando actualización... ${percent}%`
           : state === 'update'   ? `Actualización disponible v${info?.version}`
           : 'Comprobar actualizaciones'}
       </Button>
@@ -140,25 +186,29 @@ export default function UpdateChecker({ compact = false, headless = false }) {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             {/* Header */}
             <div className={`px-6 py-4 flex items-center justify-between ${
-              state === 'update'   ? 'bg-amber-50 border-b border-amber-200'
+              hasUpdateBadge        ? 'bg-amber-50 border-b border-amber-200'
             : state === 'uptodate'? 'bg-green-50 border-b border-green-200'
             : state === 'error'   ? 'bg-red-50 border-b border-red-200'
             : 'bg-slate-50 border-b'}`}
             >
               <div className="flex items-center gap-3">
+                {state === 'downloaded' && <CheckCircle2  className="w-7 h-7 text-amber-500" />}
+                {state === 'downloading' && <RotateCw     className="w-7 h-7 text-amber-500 animate-spin" />}
                 {state === 'update'    && <ArrowUpCircle className="w-7 h-7 text-amber-500" />}
                 {state === 'uptodate' && <CheckCircle2  className="w-7 h-7 text-green-500" />}
                 {state === 'error'    && <AlertCircle   className="w-7 h-7 text-red-500" />}
                 <div>
                   <p className="font-bold text-slate-800 text-base">
-                    {state === 'update'    ? '🚀 Nueva versión disponible'
+                    {state === 'downloaded'  ? '✅ Actualización lista para instalar'
+                   : state === 'downloading' ? '⬇️ Descargando actualización...'
+                   : state === 'update'    ? '🚀 Nueva versión disponible'
                    : state === 'uptodate' ? '✅ El programa está actualizado'
                    : state === 'error'    ? '⚠️ Sin conexión al repositorio'
                    : 'Comprobando...'}
                   </p>
                   <p className="text-xs text-slate-500">
                     Versión instalada: {CURRENT_VERSION}
-                    {info?.version && state === 'update' && ` → Nueva: ${info.version}`}
+                    {info?.version && hasUpdateBadge && ` → Nueva: ${info.version}`}
                   </p>
                 </div>
               </div>
@@ -170,6 +220,35 @@ export default function UpdateChecker({ compact = false, headless = false }) {
 
             {/* Cuerpo */}
             <div className="p-6 space-y-4">
+              {state === 'downloading' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600">
+                    Descargando la versión {info?.version || 'nueva'} en segundo plano. Se instalará ENCIMA de la actual, sin desinstalar y sin perder ninguno de tus datos.
+                  </p>
+                  <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-500 transition-all" style={{ width: `${percent}%` }} />
+                  </div>
+                  <p className="text-xs text-slate-500 text-right">{percent}%</p>
+                </div>
+              )}
+
+              {state === 'downloaded' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600">
+                    La actualización a la versión {info?.version || 'nueva'} ya está descargada. Se instalará ENCIMA de la actual, sin desinstalar y sin perder ninguno de tus datos. El programa se reiniciará.
+                  </p>
+                  <Button
+                    onClick={() => window.gptUpdater?.install()}
+                    className="w-full bg-amber-600 hover:bg-amber-700 flex items-center justify-center gap-2"
+                  >
+                    <ArrowUpCircle className="w-5 h-5" /> Instalar actualización
+                  </Button>
+                  <button onClick={() => setShow(false)} className="w-full text-xs text-slate-500 hover:underline py-1">
+                    Instalar más tarde
+                  </button>
+                </div>
+              )}
+
               {state === 'update' && info && (
                 <>
                   {info.date && (

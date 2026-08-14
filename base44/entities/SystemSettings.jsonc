@@ -1,0 +1,17 @@
+{
+  "name": "SystemSettings",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Clave única del ajuste (p.ej. update_normativas, update_data_normativas)"
+    },
+    "value": {
+      "type": "string",
+      "description": "Valor del ajuste. Para los resultados de auto-actualización, JSON serializado."
+    }
+  },
+  "required": [
+    "key"
+  ]
+}

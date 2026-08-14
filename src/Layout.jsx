@@ -287,6 +287,16 @@ export default function Layout({ children, currentPageName }) {
     });
   }, []);
 
+  useEffect(() => {
+    // Normativas, precios de proveedores, catálogos, homologación y
+    // aranceles: se comprueban solas una vez al día (al cruzar las 00:00,
+    // la primera vez que se abre la app ese día) sin interrumpir a nadie.
+    const t = setTimeout(() => {
+      import('@/lib/dailyAutoUpdate').then(({ maybeRunDailyBackground }) => maybeRunDailyBackground());
+    }, 3000);
+    return () => clearTimeout(t);
+  }, []);
+
   const handleLogout = () => {
     base44.auth.logout();
   };
