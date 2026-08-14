@@ -9,6 +9,7 @@ import { Printer, FileDown, Gauge, Snowflake, ArrowRightLeft, Wrench, Loader2, D
 import { REFRIGERANT_DATABASE, estadoRefrigerante, getRefrigerantInfo } from '@/components/refrigerantData';
 import { format } from 'date-fns';
 import { createPageUrl } from '../utils';
+import DiagnosticFailuresDiagram from '@/components/DiagnosticFailuresDiagram';
 
 // Presiones ORIENTATIVAS manométricas (bar) por refrigerante y aplicación.
 const PRES = {
@@ -960,6 +961,11 @@ export default function DiagnosticoCarga() {
                     </div>
                   );
                 })()}
+              </div>
+
+              {/* Situación de las posibles averías (rojo / amarillo / verde) */}
+              <div className="mt-3 border-t pt-3">
+                <DiagnosticFailuresDiagram items={diag1} />
               </div>
             </div>
 

@@ -19,6 +19,7 @@ import { format, startOfMonth } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
 import CompanyHeader from '../components/CompanyHeader';
 import SignatureCanvas from '../components/SignaturePad';
+import { useToast } from "@/components/ui/use-toast";
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo'];
 const STATUSES = ['borrador', 'enviado', 'pagado', 'vencido', 'cancelado'];
@@ -94,11 +95,13 @@ export default function Documents() {
   const [supplierSearchOpen, setSupplierSearchOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [autoSaved, setAutoSaved] = useState(false);
   const autoSaveTimer = useRef(null);
   const [form, setForm] = useState({ ...EMPTY_FORM, doc_type: preType || 'presupuesto', contact_id: preContactId || '' });
   const [activeTab, setActiveTab] = useState('all'); // all | facturas | presupuestos
   const printRef = useRef(null);
+  const { toast } = useToast();
 
   // Suscripción en tiempo real: si el cliente firma, actualiza automáticamente
   useEffect(() => {
@@ -325,34 +328,42 @@ export default function Documents() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError('');
     const payload = sanitizeForm(form);
     const docLabel = form.doc_type === 'factura' ? 'Factura' : form.doc_type === 'presupuesto' ? 'Presupuesto' : 'Recibo';
     let savedDoc = null;
     const wasEditing = !!editing;
     const editingId = editing?.id;
-    if (editing) {
-      savedDoc = await base44.entities.Invoice.update(editing.id, payload);
-    } else {
-      savedDoc = await base44.entities.Invoice.create(payload);
-      if (form.contact_id) {
-        await base44.entities.ClientDocument.create({
-          contact_id: form.contact_id, contact_name: form.contact_name,
-          title: `${docLabel} ${form.doc_number || ''}`,
-          doc_type: form.doc_type, date: form.date,
-          description: `Total: ${form.total?.toFixed(2)} € | Estado: ${form.status}`
-        });
+    try {
+      if (editing) {
+        savedDoc = await base44.entities.Invoice.update(editing.id, payload);
+      } else {
+        savedDoc = await base44.entities.Invoice.create(payload);
+        if (form.contact_id) {
+          await base44.entities.ClientDocument.create({
+            contact_id: form.contact_id, contact_name: form.contact_name,
+            title: `${docLabel} ${form.doc_number || ''}`,
+            doc_type: form.doc_type, date: form.date,
+            description: `Total: ${form.total?.toFixed(2)} € | Estado: ${form.status}`
+          });
+        }
       }
+      clearDraft();
+      setDialogOpen(false);setEditing(null);
+      toast({ title: wasEditing ? 'Documento actualizado' : 'Documento guardado', description: `${docLabel} ${form.doc_number || ''}`, duration: 2500 });
+      const d = await base44.entities.Invoice.list('-date', 500);
+      setDocs(d);
+      const savedId = savedDoc?.id || editingId;
+      const fresh = (savedId && d.find(x => x.id === savedId)) || savedDoc || (!wasEditing ? d[0] : null);
+      if (fresh) setPreviewDoc(fresh);
+    } catch (err) {
+      console.error('[Documents] Error al guardar:', err);
+      const msg = err?.message || 'No se pudo guardar el documento. Inténtalo de nuevo.';
+      setSaveError(msg);
+      toast({ variant: 'destructive', title: 'Error al guardar', description: msg, duration: 4000 });
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    clearDraft();
-    setDialogOpen(false);setEditing(null);
-    const d = await base44.entities.Invoice.list('-date', 500);
-    setDocs(d);
-    // Abrir la vista previa del documento guardado para poder enviarlo,
-    // imprimirlo o exportarlo a PDF al momento (y en cualquier momento).
-    const savedId = savedDoc?.id || editingId;
-    const fresh = (savedId && d.find(x => x.id === savedId)) || savedDoc || (!wasEditing ? d[0] : null);
-    if (fresh) setPreviewDoc(fresh);
   };
 
   const handleDelete = async (id) => {
@@ -996,7 +1007,13 @@ export default function Documents() {
               </div>
             }
 
-            <div className="pt-2 border-t mt-2">
+            <div className="pt-2 border-t mt-2 space-y-2">
+              {saveError && (
+                <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span className="flex-1">No se pudo guardar: {saveError}. Revisa los datos e inténtalo de nuevo.</span>
+                </div>
+              )}
               <Button onClick={handleSave} disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 gap-2 h-11 text-base font-semibold">
                 <Save className="w-4 h-4" />
                 {saving ? 'Guardando...' : editing ? '💾 Actualizar documento' : '💾 Guardar documento'}

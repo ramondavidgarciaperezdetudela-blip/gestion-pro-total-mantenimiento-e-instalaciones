@@ -8,6 +8,7 @@ import { Thermometer, Calculator, Save, Trash2, User, Wind, CheckCircle, Loader2
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import NavBar from '@/components/NavBar';
+import ACSystemDiagram from '@/components/ACSystemDiagram';
 import MollierDiagram from '@/components/MollierDiagram';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 
@@ -883,6 +884,16 @@ EXCLUYE SIEMPRE: baños, aseos, garajes, jardines, terrazas.`;
               </div>
             ))}
           </div>
+
+          {/* Esquema de la instalación de climatización con los valores calculados */}
+          <ACSystemDiagram
+            power_kw={resultado.power_kw_coef}
+            frigorias={resultado.frigoriasConCoef}
+            gas={resultado.refrigerante}
+            superficie={resultado.superficie}
+            uso={resultado.uso}
+            tipo={tipoMaquina}
+          />
 
           {/* Gráfico comparativo: potencia necesaria vs recomendada vs equipos candidatos */}
           <Card>

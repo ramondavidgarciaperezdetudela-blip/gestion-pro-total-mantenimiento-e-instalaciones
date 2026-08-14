@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
+import ColdRoomCycleDiagram from '../components/ColdRoomCycleDiagram';
 import ColdRoomHumidityCalc from '../components/ColdRoomHumidityCalc';
 import RefrigerantSelector from '../components/RefrigerantSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -764,6 +765,19 @@ export default function ColdRoomCalc() {
           <p className="text-xs text-green-500">Equipo sugerido</p>
         </div>
       </div>
+
+      {/* Esquema del ciclo frigorífico con los valores calculados */}
+      <ColdRoomCycleDiagram
+        loadW={result.loadW}
+        evapPressure={result.evapPressure}
+        condPressure={result.condPressure}
+        refCharge={result.refCharge}
+        refrigerant={form.refrigerant_type}
+        evapTemp={(form.cold_room_temp || 0) - 8}
+        condTemp={(form.exterior_temp || 0) + 15}
+        equipPowerKW={result.equip.power_kw}
+        extraGrams={result.extraGrams || 0}
+      />
 
       {/* Gráfico del desglose de la carga frigorífica (imagen del resultado) */}
       {breakdown && (
