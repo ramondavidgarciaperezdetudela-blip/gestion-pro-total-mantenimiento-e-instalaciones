@@ -74,11 +74,16 @@ export default function SAT() {
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    const [o, c, comp] = await Promise.all([
+    // allSettled: si una entidad falla (p.ej. CompanySettings 404) no bloquea
+    // la carga de órdenes y contactos.
+    const results = await Promise.allSettled([
       base44.entities.SATOrder.list('-date', 200),
       base44.entities.Contact.list('name', 200),
-      base44.entities.CompanySettings.list().then(x => x[0]),
+      base44.entities.CompanySettings.list(),
     ]);
+    const o = results[0].status === 'fulfilled' ? results[0].value : [];
+    const c = results[1].status === 'fulfilled' ? results[1].value : [];
+    const comp = results[2].status === 'fulfilled' ? (results[2].value?.[0] || null) : null;
     setOrders(o);
     setContacts(c);
     setCompany(comp);
