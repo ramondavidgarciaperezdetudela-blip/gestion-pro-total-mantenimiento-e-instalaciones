@@ -3,6 +3,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { Droplets, Gauge, Ruler, Activity, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NumberField } from "@/components/ui/number-field";
+import { Printer, ShieldCheck } from 'lucide-react';
+import CapillarySchematic from '@/components/CapillarySchematic';
 
 // Tabla de presión de saturación (bar) por refrigerante y temperatura (°C)
 const SAT = {
@@ -67,6 +69,29 @@ export default function CapillaryCalc() {
     const Re = rho_l * v * d_m / mu;
     return { Pe, Pc, dP, mDot, L, v, Re };
   }, [data, Te, Tc, capacity, diameter]);
+
+  const imprimirFicha = () => {
+    const node = document.getElementById('capillary-ficha');
+    if (!node) return;
+    const w = window.open('', '_blank', 'width=820,height=640');
+    if (!w) return;
+    w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ficha capilar ${refrigerant}</title>
+      <style>
+        body{font-family:Inter,Segoe UI,system-ui,sans-serif;padding:24px;color:#0b1220}
+        h1{font-size:18px;margin:0 0 4px} .muted{color:#64748b;font-size:12px}
+        table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px}
+        td,th{border:1px solid #cbd5e1;padding:6px 8px;text-align:left}
+        th{background:#f1f5f9;font-weight:600}
+        svg{max-width:100%;height:auto}
+        .row{display:flex;gap:24px;flex-wrap:wrap}
+        .card{border:1px solid #cbd5e1;border-radius:10px;padding:10px 14px;min-width:140px}
+        .val{font-size:18px;font-weight:700}
+        @media print{body{padding:0}}
+      </style></head><body>${node.innerHTML}</body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 250);
+  };
 
   // Tabla de longitudes para varios diámetros
   const table = useMemo(() => {
@@ -211,6 +236,57 @@ export default function CapillaryCalc() {
           <p className="text-[10px] text-muted-foreground mt-1">
             La barra resaltada corresponde al diámetro seleccionado (Ø {diameter.toFixed(2)} mm → {num(result.L, 2)} m). La longitud crece con la cuarta potencia del diámetro.
           </p>
+        </div>
+      )}
+
+      {/* Esquema técnico + ficha de datos */}
+      {result && (
+        <div className="rounded-2xl border border-border bg-card p-5 print-area" id="capillary-ficha">
+          <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Ruler className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">Esquema y ficha técnica del capilar</span>
+            </div>
+            <Button size="sm" variant="outline" onClick={imprimirFicha}>
+              <Printer className="w-3.5 h-3.5 mr-1" /> Imprimir / PDF
+            </Button>
+          </div>
+
+          <div className="rounded-xl border border-border bg-muted/30 p-2">
+            <CapillarySchematic
+              refrigerant={refrigerant}
+              color={data.color}
+              lengthLabel={`L = ${num(result.L, 2)} m`}
+              diameterLabel={`Ø int. = ${diameter.toFixed(2)} mm`}
+              pcLabel={`Pc = ${num(result.Pc, 2)} bar`}
+              peLabel={`Pe = ${num(result.Pe, 2)} bar`}
+              dpLabel={`ΔP = ${num(result.dP, 2)} bar`}
+              flowLabel={`Flujo: ${num(result.mDot * 1000, 2)} g/s`}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-4">
+            {[
+              { k: 'Longitud (L)', v: `${num(result.L, 2)} m` },
+              { k: 'Ø interno', v: `${diameter.toFixed(2)} mm` },
+              { k: 'ΔP', v: `${num(result.dP, 2)} bar` },
+              { k: 'Caudal másico', v: `${num(result.mDot * 1000, 2)} g/s` },
+              { k: 'Velocidad', v: `${num(result.v, 2)} m/s` },
+              { k: 'Reynolds', v: num(result.Re, 0) },
+            ].map(m => (
+              <div key={m.k} className="rounded-lg border border-border bg-background p-2">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{m.k}</p>
+                <p className="text-base font-bold text-foreground">{m.v}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 text-xs text-muted-foreground grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+            <p><span className="text-foreground font-medium">Refrigerante:</span> {refrigerant}</p>
+            <p><span className="text-foreground font-medium">T. evaporación:</span> {num(Te, 1)} °C · <span className="text-foreground font-medium">T. condensación:</span> {num(Tc, 1)} °C</p>
+            <p><span className="text-foreground font-medium">Potencia frigorífica:</span> {num(capacity, 2)} kW</p>
+            <p><span className="text-foreground font-medium">Calor latente (hfg):</span> {data.hfg} kJ/kg</p>
+          </div>
         </div>
       )}
 
