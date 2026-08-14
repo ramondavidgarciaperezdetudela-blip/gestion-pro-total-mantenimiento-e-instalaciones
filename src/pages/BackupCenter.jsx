@@ -9,6 +9,7 @@ import {
   AlertCircle, Clock, Settings, Archive, Trash2, FileText, RotateCcw, Info, ChevronDown, ChevronRight, Copy
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { fetchAllRecordsFast, runBackupJob, runRestoreJob } from '@/lib/backupEngine';
 
 const ALL_ENTITIES = [
   'Contact', 'Invoice', 'SATOrder', 'MaintenanceSheet', 'StockItem',
@@ -21,30 +22,13 @@ const ALL_ENTITIES = [
   'EquipmentFailure', 'SATWorkTemplate', 'SupplierCatalog', 'SystemSettings',
 ];
 
-// Lee TODOS los registros de una entidad de forma robusta (paginado y con
-// reintento sin orden). Evita que una sección quede vacía en la copia por un
-// fallo de ordenación o por superar un límite.
-async function fetchAllRecords(ent) {
-  const E = base44.entities[ent];
-  if (!E) return [];
-  const PAGE = 1000;
-  let all = [], skip = 0;
-  for (let guard = 0; guard < 1000; guard++) {
-    let batch = null;
-    try {
-      batch = await E.filter({}, null, PAGE, skip);
-    } catch {
-      // Reintento sin paginación/orden si filter no está disponible
-      try { batch = await E.list('', 10000); } catch { batch = []; }
-      return batch || [];
-    }
-    if (!batch || batch.length === 0) break;
-    all = all.concat(batch);
-    if (batch.length < PAGE) break;
-    skip += PAGE;
-  }
-  return all;
-}
+// Lee TODOS los registros de una entidad de forma robusta y rápida (paginado
+// EN PARALELO por rondas, con reintento sin orden si falla). Evita que una
+// sección quede vacía en la copia por un fallo de ordenación o por superar
+// un límite. Implementación real en src/lib/backupEngine.js, compartida con
+// la copia de seguridad y la restauración para que todas usen el mismo
+// motor rápido.
+const fetchAllRecords = fetchAllRecordsFast;
 
 // Clave natural por sección para el UPSERT al restaurar (actualizar en vez de
 // duplicar). Devuelve una cadena estable o null (si null → se usa el cotejo por
@@ -161,15 +145,22 @@ export default function BackupCenter() {
 
   const loadCounts = async () => {
     const c = {};
-    for (const e of ALL_ENTITIES) {
-      try {
-        const data = await fetchAllRecords(e);
-        c[e] = data?.length || 0;
-      } catch {
-        c[e] = 0;
+    // En paralelo (con límite) en vez de una entidad cada 200ms: en cuentas
+    // con muchas secciones esto pasaba de tardar varios segundos a menos de uno.
+    const CONCURRENCY = 5;
+    let idx = 0;
+    const worker = async () => {
+      while (idx < ALL_ENTITIES.length) {
+        const e = ALL_ENTITIES[idx++];
+        try {
+          const data = await fetchAllRecords(e);
+          c[e] = data?.length || 0;
+        } catch {
+          c[e] = 0;
+        }
       }
-      await new Promise(r => setTimeout(r, 200));
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, ALL_ENTITIES.length) }, worker));
     setCounts(c);
   };
 
@@ -182,21 +173,20 @@ export default function BackupCenter() {
     setProgressPct(5);
 
     const entitiesToBackup = ALL_ENTITIES.filter(e => selectedEntities.has(e));
+
+    // Varias secciones a la vez (no una a una): en cuentas con muchos datos
+    // (documentos, fotos, órdenes SAT...) la copia tarda mucho menos.
+    const exported = await runBackupJob(entitiesToBackup, ENTITY_LABELS, (msg, pct) => {
+      setProgress(msg);
+      setProgressPct(pct);
+    });
     const allData = {
       exported_at: new Date().toISOString(),
       version: '3.0',
       app: 'TechManager Pro',
       entities_count: entitiesToBackup.length,
+      ...exported,
     };
-
-    for (let i = 0; i < entitiesToBackup.length; i++) {
-      const ent = entitiesToBackup[i];
-      setProgress(`Exportando ${ENTITY_LABELS[ent] || ent}... (${i + 1}/${entitiesToBackup.length})`);
-      setProgressPct(Math.round(5 + (i / entitiesToBackup.length) * 85));
-      const data = await fetchAllRecords(ent);
-      allData[ent] = data || [];
-      await new Promise(r => setTimeout(r, 50));
-    }
 
     setProgress('Generando archivo...');
     setProgressPct(95);
@@ -268,88 +258,16 @@ export default function BackupCenter() {
     }
     const entitiesToRestore = ALL_ENTITIES.filter(e => restoreSelectedEntities.has(e) && restoreData[e]?.length > 0);
     setRestoring(true);
-    let total = 0;
-    // Antes los fallos de escritura se ignoraban en silencio y el mensaje
-    // final decía "restauración completa" aunque ningún registro se hubiera
-    // guardado de verdad (p.ej. sin conexión con el backend). Se cuentan
-    // aquí para avisar honestamente si algo no se ha podido guardar.
-    let failed = 0;
-    const trackFail = (err) => { failed++; console.error('[BackupCenter] Error real al restaurar:', err); };
 
-    for (let i = 0; i < entitiesToRestore.length; i++) {
-      const ent = entitiesToRestore[i];
+    // Varias secciones a la vez (no una a una): mucho más rápido con copias
+    // grandes. El motor compartido (backupEngine.js) sigue corriendo aunque
+    // se navegue a otra pantalla, y cuenta los fallos reales en vez de dar
+    // un falso "completado" si algo no se guarda.
+    const { total, failed } = await runRestoreJob(
+      restoreData, entitiesToRestore, restoreMode, KEYERS, ENTITY_LABELS,
+      (msg) => setRestoreProgress(msg)
+    );
 
-      // Modo limpio: borrar todos los registros existentes primero
-      if (restoreMode === 'clean') {
-        setRestoreProgress(`Limpiando ${ENTITY_LABELS[ent] || ent}... (${i + 1}/${entitiesToRestore.length})`);
-        const existing = await fetchAllRecords(ent);
-        for (const rec of (existing || [])) {
-          await base44.entities[ent]?.delete(rec.id).catch(trackFail);
-        }
-      }
-
-      setRestoreProgress(`Restaurando ${ENTITY_LABELS[ent] || ent}... (${i + 1}/${entitiesToRestore.length})`);
-      const rows = restoreData[ent] || [];
-
-      if (restoreMode === 'update') {
-        // Modo ACTUALIZAR (upsert): no duplica. Si el registro ya existe (por su
-        // clave natural: NIF, referencia, nº de documento...) se ACTUALIZA; si no,
-        // se crea. Para secciones de tipo histórico (sin clave) solo se añade lo
-        // que falte, cotejando por contenido exacto.
-        const strip = (r) => { const { id, created_date, updated_date, created_by, ...rest } = r; return rest; };
-        const existing = await fetchAllRecords(ent);
-        const keyer = KEYERS[ent];
-
-        if (keyer) {
-          const byKey = {};
-          (existing || []).forEach(r => { const k = keyer(r); if (k) byKey[k] = r; });
-          const toCreate = [];
-          const toUpdate = [];
-          for (const r of rows) {
-            const k = keyer(r);
-            const data = strip(r);
-            if (k && byKey[k]) toUpdate.push({ id: byKey[k].id, data });
-            else toCreate.push(data);
-          }
-          // Crear lo que falta (por lotes)
-          for (let j = 0; j < toCreate.length; j += 100) {
-            await base44.entities[ent]?.bulkCreate(toCreate.slice(j, j + 100)).catch(trackFail);
-            await new Promise(r => setTimeout(r, 80));
-          }
-          // Actualizar lo existente (en paralelo con límite, sin duplicar)
-          let u = 0;
-          const POOL = 6;
-          const runners = Array.from({ length: Math.min(POOL, toUpdate.length) }, async () => {
-            while (u < toUpdate.length) {
-              const it = toUpdate[u++];
-              await base44.entities[ent]?.update(it.id, it.data).catch(trackFail);
-            }
-          });
-          await Promise.all(runners);
-          total += toCreate.length + toUpdate.length;
-        } else {
-          // Sin clave natural (histórico): añadir solo lo que no exista exactamente
-          const existingSignatures = new Set((existing || []).map(r => JSON.stringify(strip(r))));
-          const toInsert = rows.map(strip).filter(r => !existingSignatures.has(JSON.stringify(r)));
-          for (let j = 0; j < toInsert.length; j += 100) {
-            await base44.entities[ent]?.bulkCreate(toInsert.slice(j, j + 100)).catch(trackFail);
-            await new Promise(r => setTimeout(r, 80));
-          }
-          total += toInsert.length;
-        }
-      } else {
-        // Modo limpio: insertar todo
-        const clean = rows.map(r => {
-          const { id, created_date, updated_date, created_by, ...rest } = r;
-          return rest;
-        });
-        for (let j = 0; j < clean.length; j += 100) {
-          await base44.entities[ent]?.bulkCreate(clean.slice(j, j + 100)).catch(trackFail);
-          await new Promise(r => setTimeout(r, 100));
-        }
-        total += clean.length;
-      }
-    }
     const okMsg = `✅ Restauración completa: ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.`;
     const failMsg = `⚠️ ${failed.toLocaleString()} operaciones fallaron al guardar en el servidor (revisa la conexión y vuelve a intentarlo). Consulta la consola para más detalle.`;
     setRestoreProgress(failed > 0 ? `${okMsg}\n${failMsg}` : okMsg);

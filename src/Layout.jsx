@@ -16,6 +16,7 @@ import SectionBackground from './components/SectionBackground';
 import GlobalSearch from './components/GlobalSearch';
 import AIChat from './components/AIChat';
 import QuickPriceDBAccess from './components/QuickPriceDBAccess';
+import BackupProgressIndicator from './components/BackupProgressIndicator';
 
 // ─── Mobile Bottom Bar ────────────────────────────────────────────────────────
 const MAIN_TABS = [
@@ -305,6 +306,7 @@ export default function Layout({ children, currentPageName }) {
     <div className="min-h-screen flex" dir="ltr" style={{ background: 'hsl(var(--background))', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <AIChat />
       <QuickPriceDBAccess />
+      <BackupProgressIndicator />
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <style>{`
         body { background: hsl(var(--background)); color: hsl(var(--foreground)); }
