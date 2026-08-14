@@ -44,20 +44,20 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Gestión Pro Total
-  artifactName: ${productName}-${version}-Windows-Instalador.${ext}
+  artifactName: Gestion-Pro-Total-${version}-Windows-Instalador.${ext}
   # NSIS genera automáticamente el desinstalador (Unins000.exe) y la entrada en
   # "Aplicaciones y características" de Windows.
 
 # Portable: un único .exe que el usuario ejecuta directamente, sin instalar.
 portable:
-  artifactName: ${productName}-${version}-Windows-Portable.${ext}
+  artifactName: Gestion-Pro-Total-${version}-Windows-Portable.${ext}
 
 # ---------- macOS ----------
 mac:
   target:
     - dmg         # Imagen de disco para instalar arrastrando a Aplicaciones
   category: public.app-category.business
-  artifactName: ${productName}-${version}-Mac.${ext}
+  artifactName: Gestion-Pro-Total-${version}-Mac.${ext}
 
 dmg:
   title: Gestión Pro Total
@@ -69,4 +69,4 @@ linux:
     - deb         # Paquete instalable/desinstalable con apt/dpkg
   category: Office
   maintainer: Ramón David García Pérez de Tudela
-  artifactName: ${productName}-${version}-Linux.${ext}
+  artifactName: Gestion-Pro-Total-${version}-Linux.${ext}
