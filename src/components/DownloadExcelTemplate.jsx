@@ -17,24 +17,25 @@ export default function DownloadExcelTemplate({ size = 'sm' }) {
       'unidad',
       'categoria',
       'notas',
+      'imagen_url',
     ];
 
     const ejemplos = [
-      ['CAB-001',  'Cable eléctrico flexible 1.5mm² negro',           'Prysmian', 0.85,   'm',     'electrico',      'Disponible en rollo de 100m'],
-      ['CAB-002',  'Cable eléctrico flexible 2.5mm² negro',           'Prysmian', 1.20,   'm',     'electrico',      ''],
-      ['CLI-204',  'Split mural inverter 2250 frigorías',              'Daikin',   649.00, 'ud',    'clima',          'Mod. FTXC25C – incluye control remoto'],
-      ['CLI-205',  'Split mural inverter 3500 frigorías',              'Daikin',   749.00, 'ud',    'clima',          'Mod. FTXC35C'],
-      ['CLI-401',  'Unidad exterior inverter R-32 3,5kW',             'Mitsubishi',580.00,'ud',    'clima',          'Compresor rotativo'],
-      ['REF-R32',  'Gas refrigerante R-32 10kg',                      'Dupont',    72.50, 'bote',  'refrigeracion',  'Cilindro recargable'],
-      ['REF-R410', 'Gas refrigerante R-410A 10kg',                    'Honeywell', 68.00, 'bote',  'refrigeracion',  ''],
-      ['TUB-14',   'Tubería cobre 14mm rollo 50m',                    'Wieland',   88.00, 'rollo', 'clima',          'Recocida, pared 0.8mm'],
-      ['TUB-22',   'Tubería cobre 22mm rollo 25m',                    'Wieland',  112.00, 'rollo', 'clima',          ''],
-      ['SOL-300',  'Panel solar monocristalino 300W',                 'Jinko',     95.00, 'ud',    'solar',          'Garantía 25 años rendimiento'],
-      ['SOL-INV',  'Inversor solar monofásico 3kW',                   'Huawei',   420.00, 'ud',    'solar',          'Con monitorización WiFi'],
-      ['BAT-5K',   'Batería litio 5kWh para autoconsumo',             'BYD',      1850.00,'ud',    'solar',          'Ciclos: 6000'],
-      ['AIST-50',  'Aislamiento armaflex 13mm rollo 10m',             'Armacell',  18.50, 'rollo', 'clima',          ''],
-      ['FONT-15',  'Tubería PEX 15mm rollo 50m',                      'Uponor',    42.00, 'rollo', 'fontaneria',     ''],
-      ['ELEC-DIF', 'Diferencial 40A 30mA 2P',                         'Schneider', 28.90, 'ud',    'electrico',      'Curva AC'],
+      ['CAB-001',  'Cable eléctrico flexible 1.5mm² negro',           'Prysmian', 0.85,   'm',     'electrico',      'Disponible en rollo de 100m', ''],
+      ['CAB-002',  'Cable eléctrico flexible 2.5mm² negro',           'Prysmian', 1.20,   'm',     'electrico',      '', ''],
+      ['CLI-204',  'Split mural inverter 2250 frigorías',              'Daikin',   649.00, 'ud',    'clima',          'Mod. FTXC25C – incluye control remoto', 'https://ejemplo.com/fotos/ftxc25c.jpg'],
+      ['CLI-205',  'Split mural inverter 3500 frigorías',              'Daikin',   749.00, 'ud',    'clima',          'Mod. FTXC35C', ''],
+      ['CLI-401',  'Unidad exterior inverter R-32 3,5kW',             'Mitsubishi',580.00,'ud',    'clima',          'Compresor rotativo', ''],
+      ['REF-R32',  'Gas refrigerante R-32 10kg',                      'Dupont',    72.50, 'bote',  'refrigeracion',  'Cilindro recargable', ''],
+      ['REF-R410', 'Gas refrigerante R-410A 10kg',                    'Honeywell', 68.00, 'bote',  'refrigeracion',  '', ''],
+      ['TUB-14',   'Tubería cobre 14mm rollo 50m',                    'Wieland',   88.00, 'rollo', 'clima',          'Recocida, pared 0.8mm', ''],
+      ['TUB-22',   'Tubería cobre 22mm rollo 25m',                    'Wieland',  112.00, 'rollo', 'clima',          '', ''],
+      ['SOL-300',  'Panel solar monocristalino 300W',                 'Jinko',     95.00, 'ud',    'solar',          'Garantía 25 años rendimiento', ''],
+      ['SOL-INV',  'Inversor solar monofásico 3kW',                   'Huawei',   420.00, 'ud',    'solar',          'Con monitorización WiFi', ''],
+      ['BAT-5K',   'Batería litio 5kWh para autoconsumo',             'BYD',      1850.00,'ud',    'solar',          'Ciclos: 6000', ''],
+      ['AIST-50',  'Aislamiento armaflex 13mm rollo 10m',             'Armacell',  18.50, 'rollo', 'clima',          '', ''],
+      ['FONT-15',  'Tubería PEX 15mm rollo 50m',                      'Uponor',    42.00, 'rollo', 'fontaneria',     '', ''],
+      ['ELEC-DIF', 'Diferencial 40A 30mA 2P',                         'Schneider', 28.90, 'ud',    'electrico',      'Curva AC', ''],
     ];
 
     const wsData = [headers, ...ejemplos];
@@ -49,6 +50,7 @@ export default function DownloadExcelTemplate({ size = 'sm' }) {
       { wch: 8  }, // unidad
       { wch: 16 }, // categoria
       { wch: 35 }, // notas
+      { wch: 40 }, // imagen_url
     ];
 
     // ── Hoja 2: Instrucciones ─────────────────────────────────────────────
@@ -63,6 +65,7 @@ export default function DownloadExcelTemplate({ size = 'sm' }) {
       ['unidad',         'No',          'Unidad de medida',                                          'ud · m · m2 · kg · l · rollo · bote'],
       ['categoria',      'No',          'Categoría del producto',                                    'clima · refrigeracion · electrico · solar · fontaneria · material · otro'],
       ['notas',          'No',          'Descripción técnica adicional (máx. 150 caracteres)',       'Modelo FTXC25C · Pared 0.8mm'],
+      ['imagen_url',     'No',          'Enlace directo a una foto del producto (si la tienes)',    'https://mitienda.com/fotos/producto.jpg'],
       [''],
       ['CONSEJOS IMPORTANTES'],
       ['1. El precio debe ser un número puro: usa punto (.) como decimal, NO coma. Ejemplo correcto: 649.00  ❌ Incorrecto: 649,00 €'],
