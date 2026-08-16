@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -448,12 +449,12 @@ Usa tablas HTML, formato profesional con <h2>, <h3>, <p>, <table>. En español. 
               className="text-xs"
               style={{ lineHeight: '1.6' }}
               dangerouslySetInnerHTML={{
-                __html: aiReport
+                __html: sanitizeHtml(aiReport
                   .replace(/<table/g, '<table style="border-collapse:collapse;width:100%;margin:8px 0"')
                   .replace(/<td/g, '<td style="border:1px solid #ccc;padding:4px 6px;vertical-align:top"')
                   .replace(/<th/g, '<th style="border:1px solid #ccc;padding:4px 6px;background:#f59e0b;color:white;font-weight:600"')
                   .replace(/<h2/g, '<h2 style="font-size:13px;font-weight:700;margin:14px 0 6px;color:#92400e;border-bottom:2px solid #f59e0b;padding-bottom:3px"')
-                  .replace(/<h3/g, '<h3 style="font-size:11px;font-weight:600;margin:10px 0 4px;color:#374151"')
+                  .replace(/<h3/g, '<h3 style="font-size:11px;font-weight:600;margin:10px 0 4px;color:#374151"'))
               }}
             />
           </CardContent>

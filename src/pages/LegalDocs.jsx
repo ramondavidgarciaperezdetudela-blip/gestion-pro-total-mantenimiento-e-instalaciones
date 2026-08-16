@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -870,24 +871,24 @@ export default function LegalDocs() {
                       contentEditable
                       suppressContentEditableWarning
                       onInput={e => setEditContent(e.currentTarget.innerHTML)}
-                      dangerouslySetInnerHTML={{ __html: editContent
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(editContent
                         .replace(/<table(?![^>]*style)/g, '<table style="border-collapse:collapse;width:100%;margin:8px 0"')
                         .replace(/<td(?![^>]*style)/g, '<td style="border:1px solid #ccc;padding:4px 6px;vertical-align:top"')
                         .replace(/<th(?![^>]*style)/g, '<th style="border:1px solid #ccc;padding:4px 6px;background:#f3f4f6;font-weight:600;text-align:left"')
                         .replace(/<h2(?![^>]*style)/g, '<h2 style="font-size:14px;font-weight:700;margin:16px 0 6px;color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:4px"')
-                        .replace(/<h3(?![^>]*style)/g, '<h3 style="font-size:12px;font-weight:600;margin:12px 0 4px;color:#374151"')
+                        .replace(/<h3(?![^>]*style)/g, '<h3 style="font-size:12px;font-weight:600;margin:12px 0 4px;color:#374151"'))
                       }}
                     />
                   ) : (
                     <div
                       className="text-xs"
                       style={{ lineHeight: '1.6' }}
-                      dangerouslySetInnerHTML={{ __html: docContent
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(docContent
                         .replace(/<table(?![^>]*style)/g, '<table style="border-collapse:collapse;width:100%;margin:8px 0"')
                         .replace(/<td(?![^>]*style)/g, '<td style="border:1px solid #ccc;padding:4px 6px;vertical-align:top"')
                         .replace(/<th(?![^>]*style)/g, '<th style="border:1px solid #ccc;padding:4px 6px;background:#f3f4f6;font-weight:600;text-align:left"')
                         .replace(/<h2(?![^>]*style)/g, '<h2 style="font-size:14px;font-weight:700;margin:16px 0 6px;color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:4px"')
-                        .replace(/<h3(?![^>]*style)/g, '<h3 style="font-size:12px;font-weight:600;margin:12px 0 4px;color:#374151"')
+                        .replace(/<h3(?![^>]*style)/g, '<h3 style="font-size:12px;font-weight:600;margin:12px 0 4px;color:#374151"'))
                       }}
                     />
                   )}

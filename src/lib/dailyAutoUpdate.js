@@ -191,10 +191,18 @@ export function maybeRunDailyBackground() {
   const last = localStorage.getItem(DAILY_KEY);
   if (last === todayStr) return;
   localStorage.setItem(DAILY_KEY, todayStr);
+  // Espera aleatoria (0-20 min) antes de empezar: cada persona la calcula en
+  // su propio dispositivo, así que si mucha gente abre la app a la misma
+  // hora (p.ej. las 9:00 de la oficina), las peticiones a la IA no salen
+  // todas en el mismo segundo — se reparten en el tiempo y no sobrecargan
+  // el backend con un pico de tráfico simultáneo.
+  const jitterMs = Math.floor(Math.random() * 20 * 60 * 1000);
   // No usar await: es una tarea de fondo, no debe bloquear el arranque de la app.
-  (async () => {
-    for (const cat of CATEGORIES) {
-      try { await updateCategoryData(cat); } catch { /* una categoría fallida no debe frenar las demás */ }
-    }
-  })();
+  setTimeout(() => {
+    (async () => {
+      for (const cat of CATEGORIES) {
+        try { await updateCategoryData(cat); } catch { /* una categoría fallida no debe frenar las demás */ }
+      }
+    })();
+  }, jitterMs);
 }
