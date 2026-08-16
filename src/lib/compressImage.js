@@ -69,6 +69,14 @@ export async function compressImage(file, { maxWidth = 1280, maxHeight = 1280, q
  * @returns {Promise<string>} dataURL (image/jpeg)
  * @remarks Exporta también la función nombrada compressImageToDataURL.
  */
+// Límite de tamaño del Data URL de fallback: si se incrusta entero en el
+// campo de la entidad (porque UploadFile no está disponible), un Data URL
+// grande puede hacer que el guardado del documento falle por payload
+// demasiado grande — y ese fallo se ve como "revisa tu conexión" aunque no
+// tenga nada que ver con la red. Reintentamos con menos calidad/tamaño
+// hasta quedar por debajo del límite.
+const MAX_FALLBACK_DATA_URL_LENGTH = 350 * 1024; // ~350 KB de texto base64
+
 export const compressImageToDataURL = (file, maxDim = 1280, quality = 0.72) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -77,12 +85,21 @@ export const compressImageToDataURL = (file, maxDim = 1280, quality = 0.72) =>
       const img = new Image();
       img.onerror = () => reject(new Error('Formato no compatible'));
       img.onload = () => {
-        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
+        let dim = maxDim;
+        let q = quality;
+        let dataUrl;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const scale = Math.min(1, dim / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          dataUrl = canvas.toDataURL('image/jpeg', q);
+          if (dataUrl.length <= MAX_FALLBACK_DATA_URL_LENGTH) break;
+          q = Math.max(0.35, q - 0.15);
+          dim = Math.round(dim * 0.75);
+        }
+        resolve(dataUrl);
       };
       img.src = e.target.result;
     };
