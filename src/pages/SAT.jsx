@@ -22,6 +22,7 @@ import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
 import PriceItemSelector from '../components/PriceItemSelector';
 import SATTemplateSelector from '../components/SATTemplateSelector';
+import { withTimeout } from '@/lib/uploadImage';
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
 const STATUSES = ['pendiente', 'en_curso', 'completada', 'cancelada'];
@@ -63,6 +64,7 @@ export default function SAT() {
   const [editing, setEditing] = useState(null);
   const [previewOrder, setPreviewOrder] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [form, setForm] = useState({ ...EMPTY_FORM, ...(preContactId ? { contact_id: preContactId } : {}) });
   const [activeTab, setActiveTab] = useState('lista');
   const [autoGenerateInvoice, setAutoGenerateInvoice] = useState(false);
@@ -112,10 +114,13 @@ export default function SAT() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError('');
     const total = calcTotal(form);
     const data = { ...form, total, materials_used: (form.materials_used || []).filter(m => m.material?.trim()) };
     let savedOrder = null;
 
+    try {
+    await withTimeout((async () => {
     if (editing) {
       await base44.entities.SATOrder.update(editing.id, data);
       savedOrder = { ...data, id: editing.id };
@@ -182,8 +187,8 @@ export default function SAT() {
         console.log('Auto-invoice creation skipped');
       }
     }
+    })(), 30000, 'El guardado ha tardado demasiado. Comprueba tu conexión e inténtalo de nuevo.');
 
-    setSaving(false);
     setDialogOpen(false);
     setEditing(null);
     setAutoGenerateInvoice(false);
@@ -194,6 +199,16 @@ export default function SAT() {
       setOrders(prev => [savedOrder, ...prev]);
     }
     if (savedOrder) setPreviewOrder(savedOrder);
+    } catch (err) {
+      // Antes, si esta llamada fallaba o se quedaba colgada (sin internet,
+      // servidor lento...), el diálogo se quedaba "pensando" para siempre:
+      // no había timeout ni captura de errores. Ahora se avisa y se puede
+      // reintentar en vez de quedarse bloqueado.
+      console.error('[SAT] Error real al guardar la orden:', err);
+      setSaveError(err?.message?.includes('tardado') ? err.message : 'No se pudo guardar la orden. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getNextSATNumber = (currentOrders) => {
@@ -713,6 +728,9 @@ export default function SAT() {
               </div>
             )}
 
+            {saveError && (
+              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5">{saveError}</p>
+            )}
             <div className="flex gap-2">
               <Button onClick={handleSave} disabled={saving} className="flex-1 bg-orange-600 hover:bg-orange-700 gap-2">
                 {saving ? <><RefreshCw className="w-4 h-4 animate-spin" />Guardando...</> : <><Save className="w-4 h-4" />{editing ? 'Actualizar orden' : 'Guardar orden'}</>}

@@ -16,6 +16,7 @@ import SATSignaturePanel from './SATSignaturePanel';
 import MaterialAutocomplete from './MaterialAutocomplete';
 import MaterialsExportButton from './MaterialsExportButton';
 import { createPageUrl } from '../utils';
+import { withTimeout } from '@/lib/uploadImage';
 
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
@@ -317,6 +318,7 @@ function SATPreview({ order, onEdit, onClose, contact, onUpdate }) {
 function SATForm({ order, contact, onSave, onCancel }) {
   const [form, setForm] = useState({ ...EMPTY_FORM, ...order, materials_used: order?.materials_used || [], photos_before: order?.photos_before || [], photos_after: order?.photos_after || [] });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const calcTotal = (f) => (f.labor_hours || 0) * (f.labor_rate || 0) + (f.materials_used || []).reduce((s, m) => s + (m.quantity || 0) * (m.unit_price || 0), 0);
 
@@ -326,13 +328,23 @@ function SATForm({ order, contact, onSave, onCancel }) {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError('');
     const total = calcTotal(form);
     const data = { ...form, total };
-    if (order?.id) {
-      await base44.entities.SATOrder.update(order.id, data);
+    try {
+      if (order?.id) {
+        await withTimeout(base44.entities.SATOrder.update(order.id, data), 30000, 'El guardado ha tardado demasiado. Comprueba tu conexión e inténtalo de nuevo.');
+      }
+      onSave({ ...data, id: order?.id });
+    } catch (err) {
+      // Antes, si esto fallaba o se quedaba colgado, el diálogo se quedaba
+      // "pensando" para siempre sin avisar. Ahora se muestra el error y se
+      // puede reintentar.
+      console.error('[SATOrderDialog] Error real al guardar:', err);
+      setSaveError(err?.message?.includes('tardado') ? err.message : 'No se pudo guardar. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    onSave({ ...data, id: order?.id });
   };
 
   return (
@@ -413,6 +425,9 @@ function SATForm({ order, contact, onSave, onCancel }) {
       {/* Firmas en modo edición también */}
       {order?.id && <SATSignaturePanel order={{ ...order, ...form }} onUpdate={(updated) => setForm(prev => ({ ...prev, signature_technician: updated.signature_technician, signature_client: updated.signature_client }))} />}
 
+      {saveError && (
+        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5">{saveError}</p>
+      )}
       <div className="flex gap-2">
         <Button onClick={handleSave} disabled={saving} className="flex-1 bg-orange-600 hover:bg-orange-700">
           {saving ? <><RefreshCw className="w-4 h-4 mr-1 animate-spin" />Guardando...</> : <><Save className="w-4 h-4 mr-1" />Actualizar orden</>}
