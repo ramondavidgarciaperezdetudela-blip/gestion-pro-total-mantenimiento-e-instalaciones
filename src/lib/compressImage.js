@@ -67,6 +67,7 @@ export async function compressImage(file, { maxWidth = 1280, maxHeight = 1280, q
  * @param {number} maxDim   - máxima dimensión en px (por defecto 1280)
  * @param {number} quality  - calidad JPEG 0-1 (por defecto 0.72)
  * @returns {Promise<string>} dataURL (image/jpeg)
+ * @remarks Exporta también la función nombrada compressImageToDataURL.
  */
 export const compressImageToDataURL = (file, maxDim = 1280, quality = 0.72) =>
   new Promise((resolve, reject) => {
