@@ -3,7 +3,7 @@ import { registrarIntentoComparticion, desactivarEnEsteDispositivo, clearLicense
 
 const LIMITE_REVOCACION = 2; // Al 2.º intento se revocan ambas
 
-export default function SharingWarning({ sharingInfo, onContinue, onDesactivar }) {
+export default function SharingWarning({ sharingInfo = {}, onContinue = () => {}, onDesactivar = () => {} }) {
   const [contador,  setContador]  = useState(90);
   const [accion,    setAccion]    = useState(null); // null | 'desactivar' | 'revocar'
   const intentos = sharingInfo.intentos || 1;
