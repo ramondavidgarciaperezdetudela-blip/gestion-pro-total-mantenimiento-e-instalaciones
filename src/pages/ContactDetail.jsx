@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { Card, CardContent } from "@/components/ui/card";
@@ -583,12 +584,12 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
                   className="text-xs"
                   style={{ lineHeight: '1.6' }}
                   dangerouslySetInnerHTML={{
-                    __html: editDocForm.description.
+                    __html: sanitizeHtml(editDocForm.description.
                     replace(/<table/g, '<table style="border-collapse:collapse;width:100%;margin:8px 0"').
                     replace(/<td/g, '<td style="border:1px solid #ccc;padding:4px 8px;vertical-align:top"').
                     replace(/<th/g, '<th style="border:1px solid #ccc;padding:4px 8px;background:#f3f4f6;font-weight:600;text-align:left"').
                     replace(/<h2/g, '<h2 style="font-size:14px;font-weight:700;margin:16px 0 6px;color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:4px"').
-                    replace(/<h3/g, '<h3 style="font-size:12px;font-weight:600;margin:12px 0 4px;color:#374151"')
+                    replace(/<h3/g, '<h3 style="font-size:12px;font-weight:600;margin:12px 0 4px;color:#374151"'))
                   }} />
                 
                     <div className="mt-6 pt-3 border-t text-[10px] text-gray-400">
