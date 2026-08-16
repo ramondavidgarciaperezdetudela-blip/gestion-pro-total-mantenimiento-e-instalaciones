@@ -25,6 +25,13 @@ const ALIASES_PRICE = ['pvp', 'precio', 'price', 'tarifa', 'importe', 'coste', '
 const ALIASES_CODE  = ['codigo', 'código', 'ref', 'referencia', 'sku', 'cod', 'art'];
 const ALIASES_BRAND = ['marca', 'brand', 'fabricante'];
 const ALIASES_UNIT  = ['unidad', 'unit', 'ud', 'um', 'medida'];
+// Columnas opcionales de imagen/descripción larga: si la tarifa las trae, se
+// capturan directamente al importar (antes se perdían siempre, había que
+// rellenarlas a mano o con la búsqueda por IA después). Palabras distintas de
+// ALIASES_NAME para no confundir la columna de descripción larga con la del
+// nombre del producto (que también suele llamarse "Descripción").
+const ALIASES_DESC  = ['descripcion larga', 'descripcion completa', 'descripcion detallada', 'observaciones', 'notas', 'caracteristicas', 'especificaciones', 'comentarios', 'notes'];
+const ALIASES_IMAGE = ['imagen', 'foto', 'image', 'photo', 'picture', 'url imagen', 'link imagen', 'foto url', 'img'];
 
 /**
  * Parsea Excel/CSV de proveedores.
@@ -64,7 +71,7 @@ function parseExcel(file) {
         console.log('[Parser] Fila 2:', JSON.stringify(raw[2]));
 
         let hRow = -1;
-        let iCode = -1, iName = -1, iPrice = -1, iBrand = -1, iUnit = -1;
+        let iCode = -1, iName = -1, iPrice = -1, iBrand = -1, iUnit = -1, iDesc = -1, iImage = -1;
 
         // ── Paso 1: buscar fila de cabecera (primeras 20 filas) ───────────────
         // Para cada fila, inspeccionamos CADA celda buscando alias
@@ -72,7 +79,7 @@ function parseExcel(file) {
           const row = raw[r];
           if (!row || row.length === 0) continue;
 
-          let fName = -1, fPrice = -1, fCode = -1, fBrand = -1, fUnit = -1;
+          let fName = -1, fPrice = -1, fCode = -1, fBrand = -1, fUnit = -1, fDesc = -1, fImage = -1;
           row.forEach((cell, idx) => {
             const n = norm(cell);
             if (fName  === -1 && ALIASES_NAME.some(a  => n === a || n.includes(a))) fName  = idx;
@@ -80,11 +87,17 @@ function parseExcel(file) {
             if (fCode  === -1 && ALIASES_CODE.some(a  => n === a || n.includes(a))) fCode  = idx;
             if (fBrand === -1 && ALIASES_BRAND.some(a => n === a || n.includes(a))) fBrand = idx;
             if (fUnit  === -1 && ALIASES_UNIT.some(a  => n === a || n.includes(a))) fUnit  = idx;
+            if (fDesc  === -1 && ALIASES_DESC.some(a  => n === a || n.includes(a))) fDesc  = idx;
+            if (fImage === -1 && ALIASES_IMAGE.some(a => n === a || n.includes(a))) fImage = idx;
           });
 
           if (fName !== -1 && fPrice !== -1) {
             hRow = r; iName = fName; iPrice = fPrice; iCode = fCode; iBrand = fBrand; iUnit = fUnit;
-            console.log('[Parser] Cabecera en fila', r, '→ col nombre:', iName, '| col precio:', iPrice, '| col código:', iCode);
+            // Columnas de imagen/descripción: solo si no chocan con otra ya detectada.
+            const taken = new Set([iName, iPrice, iCode, iBrand, iUnit]);
+            iDesc  = (fDesc  !== -1 && !taken.has(fDesc))  ? fDesc  : -1;
+            iImage = (fImage !== -1 && !taken.has(fImage)) ? fImage : -1;
+            console.log('[Parser] Cabecera en fila', r, '→ col nombre:', iName, '| col precio:', iPrice, '| col código:', iCode, '| col descripción:', iDesc, '| col imagen:', iImage);
             break;
           }
         }
@@ -179,8 +192,11 @@ function parseExcel(file) {
             brand:        iBrand >= 0 ? String(row[iBrand] ?? '').trim() : '',
             unit:         iUnit  >= 0 ? String(row[iUnit]  ?? '').trim() : 'ud',
             category:     'material',
-            notes:        '',
-            image_url:    '',
+            // Si la tarifa trae columna de descripción larga o de imagen, se
+            // capturan aquí mismo; si no, quedan vacías para rellenar luego
+            // (a mano o con "Rellenar imágenes"/"Actualizar desde la web").
+            notes:        iDesc  >= 0 ? String(row[iDesc]  ?? '').trim() : '',
+            image_url:    iImage >= 0 ? String(row[iImage] ?? '').trim() : '',
           });
         }
 
@@ -384,6 +400,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                   cost_price: { type: 'number' },
                   unit: { type: 'string' },
                   category: { type: 'string' },
+                  notes: { type: 'string' },
                 },
               },
             },
@@ -393,8 +410,11 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
         // ── Función que analiza un chunk con reintentos automáticos ──────────
         const analyzeChunk = async (chunk, attempt = 0) => {
           const rangeLabel = totalChunks > 1 ? `, páginas ${chunk.pageFrom} a ${chunk.pageTo}` : '';
+          // Modo rápido: sigue ignorando descripciones largas a propósito (más
+          // veloz). Modo completo: además del precio, pide una descripción
+          // breve por producto si el catálogo la trae junto a la tabla.
           const fastPrompt = `SOLO extrae filas de tablas de precios de este PDF${totalChunks > 1 ? `, céntrate en las páginas ${chunk.pageFrom} a ${chunk.pageTo}` : ''}. Ignora imágenes, logos y texto descriptivo. Para cada fila de tabla devuelve: product_code (referencia/código), product_name (descripción/nombre), cost_price (precio numérico sin €, obligatorio), unit (unidad). Omite filas sin precio. Sé exhaustivo.`;
-          const fullPrompt = `Extrae TODOS los productos del catálogo PDF del proveedor "${selectedSupplier?.name || ''}"${totalChunks > 1 ? `, analizando las páginas ${chunk.pageFrom} a ${chunk.pageTo}` : ''}. Para cada producto devuelve: product_name, product_code, brand, cost_price (número sin €), unit, category (clima/refrigeracion/electrico/solar/fontaneria/material/otro). No omitas ningún producto.`;
+          const fullPrompt = `Extrae TODOS los productos del catálogo PDF del proveedor "${selectedSupplier?.name || ''}"${totalChunks > 1 ? `, analizando las páginas ${chunk.pageFrom} a ${chunk.pageTo}` : ''}. Para cada producto devuelve: product_name, product_code, brand, cost_price (número sin €), unit, category (clima/refrigeracion/electrico/solar/fontaneria/material/otro), y notes (descripción breve del producto si el catálogo la incluye junto al precio; si no hay, déjalo vacío). No omitas ningún producto.`;
           try {
             const result = await base44.integrations.Core.InvokeLLM({
               model: 'gemini_3_flash',
