@@ -138,6 +138,8 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx cap add android && npx cap sync android
+      - name: Generate Android app icon (same icon as desktop installers)
+        run: npx @capacitor/assets generate --android
       - name: Firma estable (clave fija → actualizar sin desinstalar)
         # Usamos SIEMPRE la misma clave de firma para que cada APK nueva se
         # instale ENCIMA de la anterior sin tener que desinstalar. Sin esto,

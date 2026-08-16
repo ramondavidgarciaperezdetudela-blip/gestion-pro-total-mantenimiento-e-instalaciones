@@ -73,6 +73,9 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Generate Android app icon (same icon as desktop installers)
+        run: npx @capacitor/assets generate --android
+
       - name: Firma estable (clave fija → actualizar sin desinstalar)
         run: |
           mkdir -p ~/.android
