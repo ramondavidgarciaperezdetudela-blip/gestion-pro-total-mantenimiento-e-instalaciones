@@ -59,23 +59,33 @@ npm run cap:open:android      # 4) abre Android Studio para compilar/ejecutar
 npm run android:build         # genera android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### Opción C — APK/AAB firmado para Google Play
+### Opción C — APK/AAB firmado para Google Play (automatizado)
 
-1. Genera una clave de firma:
+Ya hay un workflow dedicado: **`.github/workflows/build-playstore-aab.yml`**.
+A diferencia de `build-apk.yml` (que genera un APK *debug* para descarga
+directa), este compila un **AAB firmado con la clave de release real** y
+también un APK firmado para probarlo antes de subirlo — Play Store rechaza
+cualquier build firmado en modo *debug*.
+
+1. Genera una clave de firma (una sola vez, guárdala para siempre):
    ```bash
-   keytool -genkey -v -keystore release.keystore -alias gestionprototal \
+   keytool -genkeypair -v -keystore release.keystore -alias gestionprototal \
      -keyalg RSA -keysize 2048 -validity 10000
    ```
-2. Configura la firma en `android/app/build.gradle` (`signingConfigs`) y crea
-   `android/keystore.properties` (no lo subas al repositorio).
-3. Compila el *release*:
-   ```bash
-   cd android && ./gradlew assembleRelease   # APK firmado
-   cd android && ./gradlew bundleRelease      # AAB para Play Store
-   ```
+2. Crea estos *secrets* en **Settings → Secrets and variables → Actions**:
+   - `ANDROID_KEYSTORE_BASE64` — el `.keystore` codificado en base64 (`base64 -w0 release.keystore`)
+   - `ANDROID_KEYSTORE_PASSWORD` — contraseña del keystore (y de la clave, es la misma)
+   - `ANDROID_KEY_ALIAS` — alias usado al generar la clave
+3. Ve a **Actions → Build Android AAB (Google Play) → Run workflow**.
+4. Descarga el artefacto `gestion-pro-total-playstore` (contiene `app-release.aab`
+   y `app-release.apk`) y sube el `.aab` a Play Console.
 
-> Para automatizar el firmado en CI, guarda el keystore (en base64) y sus
-> contraseñas como *secrets* de GitHub y añade un paso de firma al workflow.
+El workflow toma automáticamente `versionCode`/`versionName` de la versión en
+`package.json`, así que cada subida a Play sube de versión sola.
+
+> ⚠️ Guarda el `.keystore` y sus contraseñas fuera del repositorio (gestor de
+> contraseñas, disco cifrado). Si se pierde, no se podrán publicar más
+> actualizaciones sobre la misma ficha de Play Store.
 
 ---
 
