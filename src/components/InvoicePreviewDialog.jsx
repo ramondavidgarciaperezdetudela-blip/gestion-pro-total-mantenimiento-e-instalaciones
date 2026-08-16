@@ -317,9 +317,10 @@ export default function InvoicePreviewDialog({ doc, open, onClose, onSaved, cont
               <SignatureCanvas
                 label="✍️ Firma de conformidad del cliente"
                 value={doc.signature_client}
-                onSave={async (dataUrl) => {
-                  await base44.entities.Invoice.update(doc.id, { signature_client: dataUrl });
-                  if (onSaved) onSaved({ ...doc, signature_client: dataUrl });
+                existingDatetime={doc.sign_datetime}
+                onSave={async (dataUrl, dt) => {
+                  await base44.entities.Invoice.update(doc.id, { signature_client: dataUrl, sign_datetime: dt });
+                  if (onSaved) onSaved({ ...doc, signature_client: dataUrl, sign_datetime: dt });
                 }}
               />
             </div>

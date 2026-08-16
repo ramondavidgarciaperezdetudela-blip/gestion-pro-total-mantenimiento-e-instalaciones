@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, ClipboardList, Trash2, PenLine, Eye, Phone, FileDown } from 'lucide-react';
+import { Plus, ClipboardList, Trash2, Eye, Phone, FileDown } from 'lucide-react';
 import TechnicianSelect from '../components/TechnicianSelect';
 import { format } from 'date-fns';
 import { getNextAvailableNumber } from '../components/autoNumber';
@@ -35,7 +35,7 @@ const EMPTY_FORM = {
   general_tasks: '',
   observations: '', recommendations: '',
   photos_before: [], photos_after: [], photos_evaporator_plate: [], photos_condenser_plate: [],
-  signature_technician: '', signature_client: '', status: 'completada'
+  signature_technician: '', signature_client: '', sign_datetime_technician: '', sign_datetime_client: '', status: 'completada'
 };
 
 export default function Maintenance() {
@@ -45,8 +45,6 @@ export default function Maintenance() {
   const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [sigTechOpen, setSigTechOpen] = useState(false);
-  const [sigClientOpen, setSigClientOpen] = useState(false);
   const printRef = useRef(null);
 
   useEffect(() => {
@@ -110,6 +108,8 @@ export default function Maintenance() {
       photos_condenser_plate: sheet.photos_condenser_plate || [],
       signature_technician: sheet.signature_technician || '',
       signature_client: sheet.signature_client || '',
+      sign_datetime_technician: sheet.sign_datetime_technician || '',
+      sign_datetime_client: sheet.sign_datetime_client || '',
       status: sheet.status || 'completada'
     });
     setDialogOpen(true);
@@ -414,39 +414,25 @@ export default function Maintenance() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Técnico: {form.technician_name}</p>
-                    {form.signature_technician ? (
-                      <div>
-                        <img src={form.signature_technician} alt="Firma técnico" className="border rounded h-16 w-full object-contain bg-white" />
-                        <Button size="sm" variant="outline" className="mt-1 w-full text-xs" onClick={() => setForm({ ...form, signature_technician: '' })}>Borrar firma</Button>
-                      </div>
-                    ) : (
-                      <Button size="sm" variant="outline" className="w-full" onClick={() => setSigTechOpen(true)}>
-                        <PenLine className="w-3 h-3 mr-1" />Firmar técnico
-                      </Button>
-                    )}
+                    <SignaturePad
+                      value={form.signature_technician}
+                      existingDatetime={form.sign_datetime_technician}
+                      onSave={(sig, dt) => setForm({ ...form, signature_technician: sig, sign_datetime_technician: dt })}
+                    />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Cliente: {form.contact_name}</p>
-                    {form.signature_client ? (
-                      <div>
-                        <img src={form.signature_client} alt="Firma cliente" className="border rounded h-16 w-full object-contain bg-white" />
-                        <Button size="sm" variant="outline" className="mt-1 w-full text-xs" onClick={() => setForm({ ...form, signature_client: '' })}>Borrar firma</Button>
-                      </div>
-                    ) : (
-                      <Button size="sm" variant="outline" className="w-full" onClick={() => setSigClientOpen(true)}>
-                        <PenLine className="w-3 h-3 mr-1" />Firmar cliente
-                      </Button>
-                    )}
+                    <SignaturePad
+                      value={form.signature_client}
+                      existingDatetime={form.sign_datetime_client}
+                      onSave={(sig, dt) => setForm({ ...form, signature_client: sig, sign_datetime_client: dt })}
+                    />
                   </div>
                 </div>
               </div>
               )}
 
               <Button onClick={handleSave} className="w-full bg-cyan-600">{editing ? 'Actualizar' : 'Guardar ficha'}</Button>
-
-              {/* Signature modals — solo dentro del diálogo abierto */}
-              <SignaturePad open={sigTechOpen} onClose={() => setSigTechOpen(false)} title="Firma del técnico" onSave={sig => setForm({ ...form, signature_technician: sig })} />
-              <SignaturePad open={sigClientOpen} onClose={() => setSigClientOpen(false)} title="Firma del cliente" onSave={sig => setForm({ ...form, signature_client: sig })} />
             </div>
         </DialogContent>
       </Dialog>
