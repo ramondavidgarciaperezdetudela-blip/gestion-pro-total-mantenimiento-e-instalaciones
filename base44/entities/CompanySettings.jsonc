@@ -37,6 +37,30 @@
     "iban": {
       "type": "string"
     },
+    "storage_config": {
+      "type": "object",
+      "description": "Almacén externo de fotos y documentos (Cloudinary). Permite subirlos en calidad completa sin gastar crédito de Base44.",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "Proveedor. Por ahora solo 'cloudinary'.",
+          "default": "cloudinary"
+        },
+        "cloud_name": {
+          "type": "string",
+          "description": "Cloud name de la cuenta de Cloudinary"
+        },
+        "upload_preset": {
+          "type": "string",
+          "description": "Nombre del upload preset SIN FIRMAR (unsigned) creado en Cloudinary"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Si está activo, las fotos y documentos se suben aquí en vez de a Base44",
+          "default": false
+        }
+      }
+    },
     "printer_config": {
       "type": "object",
       "properties": {

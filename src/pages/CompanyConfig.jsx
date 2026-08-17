@@ -7,12 +7,13 @@ import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, AlertTriangle, Type } from 'lucide-react';
+import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, AlertTriangle, Type, Image as ImageIcon } from 'lucide-react';
 import PostalCodeSearch from '@/components/PostalCodeSearch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ValidCharsConfig from '@/components/ValidCharsConfig';
 import { loadLicense, parseLicense, getDeviceId, clearLicense } from '@/lib/licenseManager';
 import { uploadImage } from '@/lib/uploadImage';
+import { resetStorageConfig } from '@/lib/externalStorage';
 
 // ── Gestión de la licencia en este equipo ────────────────────────────────────
 function LicenseSection() {
@@ -192,6 +193,7 @@ export default function CompanyConfig() {
       fit_to_page: true, avoid_table_breaks: true,
     },
     email_config: { smtp_host: '', smtp_port: 587, smtp_user: '', smtp_pass: '', from_name: '', use_ssl: true },
+    storage_config: { provider: 'cloudinary', cloud_name: '', upload_preset: '', enabled: false },
     technicians: [],
     payment_terms: 'Forma de pago: Máximo 3 pagos.\n1º Pago: 100% material + 50% mano de obra (al aceptar presupuesto)\n2º Pago: 25% mano de obra (al iniciar trabajos)\n3º Pago: 25% mano de obra restante (al finalizar)',
     observations_climate: 'Instalación realizada según normativa RITE (RD 1027/2007) y Reglamento F-Gas (RD 115/2017). Gases fluorados según normativa UE 517/2014.',
@@ -229,6 +231,7 @@ export default function CompanyConfig() {
             ...d.printer_config
           } : { margin_top: 15, margin_bottom: 15, margin_left: 15, margin_right: 15, paper_size: 'A4', font_family: 'Segoe UI', font_size: 'normal', header_text: '', footer_text: '', logo_width_mm: 35, logo_height_mm: 20, fit_to_page: true, avoid_table_breaks: true },
           email_config: d.email_config || { smtp_host: '', smtp_port: 587, smtp_user: '', smtp_pass: '', from_name: '', use_ssl: true },
+          storage_config: d.storage_config || { provider: 'cloudinary', cloud_name: '', upload_preset: '', enabled: false },
           technicians: d.technicians || [],
           payment_terms: d.payment_terms || form.payment_terms,
           observations_climate: d.observations_climate || form.observations_climate,
@@ -246,6 +249,9 @@ export default function CompanyConfig() {
       const created = await base44.entities.CompanySettings.create(form);
       setRecordId(created.id);
     }
+    // El almacén externo cachea su configuración: sin esto habría que cerrar y
+    // abrir la app para que los cambios surtieran efecto.
+    resetStorageConfig();
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -267,6 +273,13 @@ export default function CompanyConfig() {
 
   const updatePrinter = (field, value) => {
     setForm({ ...form, printer_config: { ...form.printer_config, [field]: value } });
+  };
+
+  const updateStorage = (field, value) => {
+    setForm(prev => ({
+      ...prev,
+      storage_config: { provider: 'cloudinary', ...prev.storage_config, [field]: value },
+    }));
   };
 
   return (
@@ -500,6 +513,7 @@ export default function CompanyConfig() {
               </Button>
             </CardContent>
           </Card>
+
         </TabsContent>
 
         <TabsContent value="impresion">
@@ -648,6 +662,77 @@ export default function CompanyConfig() {
         </TabsContent>
 
         <TabsContent value="documentos">
+          {/* Almacén externo de fotos y documentos */}
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon className="w-5 h-5" />Almacén de fotos y documentos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 space-y-1">
+                <p className="font-medium">¿Para qué sirve?</p>
+                <p>
+                  Sin esto, las fotos y documentos se guardan dentro de la propia ficha,
+                  comprimidos y con límite de tamaño, porque las subidas de Base44 gastan
+                  crédito de la cuenta. Con un almacén externo se suben en calidad completa,
+                  las fichas quedan ligeras y no se gasta crédito.
+                </p>
+                <p className="font-medium pt-1">Cómo configurarlo (una sola vez, gratis):</p>
+                <ol className="list-decimal ml-4 space-y-0.5">
+                  <li>Crea una cuenta gratuita en cloudinary.com</li>
+                  <li>En el panel verás el <strong>Cloud name</strong>: cópialo abajo</li>
+                  <li>Ve a Settings → Upload → Upload presets → Add upload preset</li>
+                  <li>Pon <strong>Signing Mode: Unsigned</strong> y guarda</li>
+                  <li>Copia el nombre del preset abajo y activa la casilla</li>
+                </ol>
+                <p className="pt-1">
+                  El preset debe ser <strong>sin firmar (unsigned)</strong>: es el modo que
+                  permite subir desde el móvil sin meter contraseñas dentro del programa.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium">Cloud name</label>
+                  <Input
+                    className="mt-1"
+                    placeholder="ej: dxxxxxxxx"
+                    value={form.storage_config?.cloud_name || ''}
+                    onChange={e => updateStorage('cloud_name', e.target.value.trim())}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Upload preset (sin firmar)</label>
+                  <Input
+                    className="mt-1"
+                    placeholder="ej: gestion_pro_total"
+                    value={form.storage_config?.upload_preset || ''}
+                    onChange={e => updateStorage('upload_preset', e.target.value.trim())}
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={!!form.storage_config?.enabled}
+                  onChange={e => updateStorage('enabled', e.target.checked)}
+                />
+                Usar este almacén para fotos y documentos
+              </label>
+
+              {form.storage_config?.enabled && (!form.storage_config?.cloud_name || !form.storage_config?.upload_preset) && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  Faltan datos: hasta que rellenes los dos campos se seguirán guardando dentro de la ficha.
+                </p>
+              )}
+
+              <Button onClick={handleSave} className={`w-full ${saved ? 'bg-green-600' : 'bg-blue-600'}`}>
+                <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar configuración'}
+              </Button>
+            </CardContent>
+          </Card>
           <Card>
             <CardContent className="p-5 space-y-4">
               <div>

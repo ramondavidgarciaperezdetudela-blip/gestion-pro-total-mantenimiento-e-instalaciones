@@ -1,5 +1,6 @@
 import { base44 } from '@/api/base44Client';
 import { compressImage, compressImageToDataURL } from './compressImage';
+import { isExternalStorageEnabled, uploadToExternalStorage } from './externalStorage';
 
 const UPLOAD_TIMEOUT_MS = 45000;
 // Si UploadFile falla (créditos de integración agotados, red caída...),
@@ -43,6 +44,16 @@ let cloudUploadUnavailable = !!persisted;
 // "revisa tu conexión" aunque la causa real sea otra (sesión no iniciada,
 // cuota agotada, permisos...), y es imposible saber qué arreglar.
 let cloudUploadFailureReason = persisted?.reason || '';
+
+// Motivo del fallo del almacén externo, si está configurado y falla. Se
+// muestra aparte del de Base44 porque la solución es distinta: aquí suele ser
+// que el "cloud name" o el "upload preset" están mal escritos.
+let externalStorageFailureReason = '';
+
+/** Motivo del último fallo del almacén externo ('' si no ha fallado). */
+export function getExternalStorageFailureReason() {
+  return externalStorageFailureReason;
+}
 
 /** Motivo del último fallo de subida a la nube ('' si no ha fallado). */
 export function getCloudUploadFailureReason() {
@@ -134,6 +145,17 @@ function toSpanishError(err) {
  * @returns {Promise<string>} file_url
  */
 export async function uploadImage(file, compressOpts) {
+  // 1º almacén externo si está configurado: sube en calidad completa y no
+  // gasta crédito de Base44, así que es la mejor opción cuando existe.
+  if (await isExternalStorageEnabled()) {
+    try {
+      const compressed = await compressImage(file, compressOpts);
+      return await uploadToExternalStorage(compressed);
+    } catch (err) {
+      console.error('[uploadImage] Falló el almacén externo, se prueba Base44:', err);
+      if (!externalStorageFailureReason) externalStorageFailureReason = err?.message || 'error desconocido';
+    }
+  }
   // Si ya sabemos que UploadFile no responde, vamos directos al Data URL
   // comprimido sin perder tiempo reintentando la subida en cada foto.
   if (cloudUploadUnavailable && file && file.type?.startsWith('image/')) {
@@ -198,6 +220,15 @@ function fileToDataURL(file) {
  * @returns {Promise<string>} file_url (o Data URL local si no hay nube)
  */
 export async function uploadFile(file) {
+  // Igual que en uploadImage: el almacén externo va primero cuando existe.
+  if (await isExternalStorageEnabled()) {
+    try {
+      return await uploadToExternalStorage(file);
+    } catch (err) {
+      console.error('[uploadFile] Falló el almacén externo, se prueba Base44:', err);
+      if (!externalStorageFailureReason) externalStorageFailureReason = err?.message || 'error desconocido';
+    }
+  }
   if (!cloudUploadUnavailable) {
     try {
       const { file_url } = await withTimeout(
