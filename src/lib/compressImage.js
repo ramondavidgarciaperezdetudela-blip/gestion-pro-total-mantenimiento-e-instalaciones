@@ -82,7 +82,25 @@ export async function compressImage(file, { maxWidth = 1280, maxHeight = 1280, q
 // de sobra para documentar una reparación e imprimirla en un parte.
 const MAX_FALLBACK_DATA_URL_LENGTH = 90 * 1024; // ~90 KB de texto base64
 
-export const compressImageToDataURL = (file, maxDim = 1100, quality = 0.72) =>
+/**
+ * Tamaño máximo por foto según cuántas lleve ya la ficha.
+ *
+ * Un tope fijo no vale: 90 KB por foto está muy bien con 5 fotos (0,45 MB),
+ * pero con 30 fotos suma 2,7 MB y el guardado vuelve a fallar. Cuantas más
+ * fotos tenga la ficha, más se aprieta cada una, para que el total quepa
+ * siempre. Con pocas fotos se conserva la mejor calidad posible.
+ *
+ * @param {number} fotasYaPresentes
+ * @returns {number} límite en caracteres del Data URL
+ */
+export function limiteFotoSegunCantidad(fotasYaPresentes = 0) {
+  if (fotasYaPresentes < 6) return 120 * 1024;  // hasta 6 fotos: ~0,7 MB total
+  if (fotasYaPresentes < 12) return 90 * 1024;  // hasta 12 fotos: ~1,1 MB
+  if (fotasYaPresentes < 20) return 60 * 1024;  // hasta 20 fotos: ~1,2 MB
+  return 40 * 1024;                             // 30 fotos: ~1,2 MB
+}
+
+export const compressImageToDataURL = (file, maxDim = 1100, quality = 0.72, limite = MAX_FALLBACK_DATA_URL_LENGTH) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
@@ -105,7 +123,7 @@ export const compressImageToDataURL = (file, maxDim = 1100, quality = 0.72) =>
           canvas.height = Math.max(1, Math.round(img.height * scale));
           canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
           dataUrl = canvas.toDataURL('image/jpeg', q);
-          if (dataUrl.length <= MAX_FALLBACK_DATA_URL_LENGTH) break;
+          if (dataUrl.length <= limite) break;
           // Si ya estamos en el mínimo de calidad y tamaño, no seguir girando.
           if (q <= 0.35 && dim <= 400) break;
           q = Math.max(0.35, q - 0.1);

@@ -1,5 +1,5 @@
 import { uploadImage } from './uploadImage';
-import { compressImageToDataURL } from './compressImage';
+import { compressImageToDataURL, limiteFotoSegunCantidad } from './compressImage';
 
 /**
  * Sube una lista de fotos EN SECUENCIA (nunca en paralelo).
@@ -23,19 +23,22 @@ import { compressImageToDataURL } from './compressImage';
  * @param {(actual: number, total: number) => void} [opts.onProgress]
  * @returns {Promise<{ failed: File[] }>}
  */
-export async function uploadPhotosSequential(files, { onPhoto, onProgress } = {}) {
+export async function uploadPhotosSequential(files, { onPhoto, onProgress, fotosYaPresentes = 0 } = {}) {
   const failed = [];
   const total = files.length;
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     if (onProgress) onProgress(i + 1, total);
+    // Cuantas más fotos acumule la ficha, más se aprieta cada una: con un tope
+    // fijo, una ficha de 30 fotos volvía a superar el tamaño admitido.
+    const limite = limiteFotoSegunCantidad(fotosYaPresentes + i);
     try {
       let url;
       try {
-        url = await uploadImage(file);
+        url = await uploadImage(file, undefined, limite);
       } catch {
         // Fallback: comprimir a Data URL y usarlo directamente.
-        url = await compressImageToDataURL(file);
+        url = await compressImageToDataURL(file, 1100, 0.72, limite);
       }
       await onPhoto?.(url, file);
     } catch {

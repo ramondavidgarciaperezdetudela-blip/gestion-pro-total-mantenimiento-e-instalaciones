@@ -19,6 +19,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import UpdateChecker from '@/components/UpdateChecker';
+import StorageSetupNotice from '@/components/StorageSetupNotice';
 const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
 
 class ErrorBoundary extends Component {
@@ -120,6 +121,8 @@ const AuthenticatedApp = () => {
       </AnimatedRoutes>
       {/* Aviso automático de nueva versión (escritorio usa además electron-updater) */}
       <UpdateChecker headless />
+      {/* Aviso de primera instalación: dónde se guardan fotos y documentos */}
+      <StorageSetupNotice />
     </Suspense>
   );
 };

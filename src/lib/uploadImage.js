@@ -144,7 +144,7 @@ function toSpanishError(err) {
  * @param {object} [compressOpts] - ver compressImage
  * @returns {Promise<string>} file_url
  */
-export async function uploadImage(file, compressOpts) {
+export async function uploadImage(file, compressOpts, limiteLocal) {
   // 1º almacén externo si está configurado: sube en calidad completa y no
   // gasta crédito de Base44, así que es la mejor opción cuando existe.
   if (await isExternalStorageEnabled()) {
@@ -160,7 +160,7 @@ export async function uploadImage(file, compressOpts) {
   // comprimido sin perder tiempo reintentando la subida en cada foto.
   if (cloudUploadUnavailable && file && file.type?.startsWith('image/')) {
     try {
-      return await compressImageToDataURL(file);
+      return await compressImageToDataURL(file, 1100, 0.72, limiteLocal);
     } catch { /* sigue abajo */ }
   }
   try {
@@ -182,7 +182,7 @@ export async function uploadImage(file, compressOpts) {
     // Fallback: comprimir a Data URL y devolver para que se guarde igual.
     if (FALLBACK_ENABLED && file && file.type?.startsWith('image/')) {
       try {
-        return await compressImageToDataURL(file);
+        return await compressImageToDataURL(file, 1100, 0.72, limiteLocal);
       } catch {
         // si el fallback también falla, relanzar el error original
       }

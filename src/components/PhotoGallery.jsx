@@ -68,6 +68,8 @@ export default function PhotoGallery({
     const accNames = [...names];
 
     const { failed } = await uploadPhotosSequential(toUpload, {
+      // Para que cada foto se apriete más según cuántas lleve ya la ficha.
+      fotosYaPresentes: photos.length,
       onPhoto: async (url, file) => {
         acc.push(url);
         accNames.push(file.name.replace(/\.[^.]+$/, ''));
