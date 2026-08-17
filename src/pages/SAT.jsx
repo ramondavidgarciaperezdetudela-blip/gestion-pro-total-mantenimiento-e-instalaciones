@@ -22,7 +22,7 @@ import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
 import PriceItemSelector from '../components/PriceItemSelector';
 import SATTemplateSelector from '../components/SATTemplateSelector';
-import { withTimeout } from '@/lib/uploadImage';
+import { withTimeout, getFallbackPhotosSize, MAX_TOTAL_FALLBACK_PAYLOAD, PHOTOS_TOO_LARGE_MESSAGE } from '@/lib/uploadImage';
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
 const STATUSES = ['pendiente', 'en_curso', 'completada', 'cancelada'];
@@ -113,8 +113,16 @@ export default function SAT() {
     (f.materials_used || []).reduce((s, m) => s + (m.quantity || 0) * (m.unit_price || 0), 0);
 
   const handleSave = async () => {
-    setSaving(true);
     setSaveError('');
+    // Antes de intentar guardar: si varias fotos cayeron en el fallback local
+    // (subida a la nube no disponible), su suma puede superar lo que admite
+    // el guardado del documento en una sola petición. Avisamos con un mensaje
+    // real en vez de dejar que falle tras 30s pareciendo un problema de red.
+    if (getFallbackPhotosSize(form.photos_before, form.photos_after) > MAX_TOTAL_FALLBACK_PAYLOAD) {
+      setSaveError(PHOTOS_TOO_LARGE_MESSAGE);
+      return;
+    }
+    setSaving(true);
     const total = calcTotal(form);
     const data = { ...form, total, materials_used: (form.materials_used || []).filter(m => m.material?.trim()) };
     let savedOrder = null;

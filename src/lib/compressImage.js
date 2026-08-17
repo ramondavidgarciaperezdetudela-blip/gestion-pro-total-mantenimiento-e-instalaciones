@@ -75,7 +75,11 @@ export async function compressImage(file, { maxWidth = 1280, maxHeight = 1280, q
 // demasiado grande — y ese fallo se ve como "revisa tu conexión" aunque no
 // tenga nada que ver con la red. Reintentamos con menos calidad/tamaño
 // hasta quedar por debajo del límite.
-const MAX_FALLBACK_DATA_URL_LENGTH = 350 * 1024; // ~350 KB de texto base64
+// Bajado de 350 KB a 150 KB: cuando varias fotos de la misma orden caen en
+// fallback (p.ej. subida a la nube caída durante un rato), la suma de todas
+// también tiene que caber en el payload del guardado — no solo cada foto
+// individual. Ver MAX_TOTAL_FALLBACK_PAYLOAD en uploadImage.js.
+const MAX_FALLBACK_DATA_URL_LENGTH = 150 * 1024; // ~150 KB de texto base64
 
 export const compressImageToDataURL = (file, maxDim = 1280, quality = 0.72) =>
   new Promise((resolve, reject) => {

@@ -16,6 +16,30 @@ let cloudUploadUnavailable = false;
 export const UPLOAD_TIMEOUT_MESSAGE = 'La subida ha tardado demasiado. Comprueba tu conexión e inténtalo de nuevo.';
 const UPLOAD_GENERIC_MESSAGE = 'No se pudo subir el archivo. Comprueba tu conexión e inténtalo de nuevo.';
 
+// Cuando la subida a la nube no está disponible, las fotos de una orden se
+// guardan como Data URL incrustados directamente en el documento. Cada foto
+// individual ya está acotada (ver MAX_FALLBACK_DATA_URL_LENGTH en
+// compressImage.js), pero varias fotos juntas pueden seguir sumando más de
+// lo que el guardado del documento admite en una sola petición. Antes de
+// intentar guardar comprobamos el total y avisamos con un mensaje real en
+// vez de dejar que la petición falle y se muestre "revisa tu conexión".
+export const MAX_TOTAL_FALLBACK_PAYLOAD = 2.5 * 1024 * 1024; // ~2.5 MB de texto base64
+export const PHOTOS_TOO_LARGE_MESSAGE =
+  'Las fotos ocupan demasiado espacio porque no se pudieron subir a la nube y se guardaron como copia local. Elimina alguna foto (o inténtalo de nuevo más tarde, cuando la subida a la nube esté disponible) antes de guardar.';
+
+/**
+ * Suma el tamaño de los Data URL (fotos guardadas como fallback local, sin
+ * subir a la nube) presentes en uno o varios arrays de fotos. Las URLs
+ * normales (subidas a la nube) no cuentan porque no viajan en el payload.
+ * @param  {...string[]} photoArrays
+ * @returns {number} tamaño total en caracteres (~bytes de base64)
+ */
+export function getFallbackPhotosSize(...photoArrays) {
+  return photoArrays
+    .flat()
+    .reduce((sum, p) => sum + (typeof p === 'string' && p.startsWith('data:') ? p.length : 0), 0);
+}
+
 export function withTimeout(promise, ms, message) {
   let timer;
   const timeout = new Promise((_, reject) => {

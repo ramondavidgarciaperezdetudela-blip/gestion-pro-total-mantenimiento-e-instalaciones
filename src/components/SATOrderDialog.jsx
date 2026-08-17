@@ -16,7 +16,7 @@ import SATSignaturePanel from './SATSignaturePanel';
 import MaterialAutocomplete from './MaterialAutocomplete';
 import MaterialsExportButton from './MaterialsExportButton';
 import { createPageUrl } from '../utils';
-import { withTimeout } from '@/lib/uploadImage';
+import { withTimeout, getFallbackPhotosSize, MAX_TOTAL_FALLBACK_PAYLOAD, PHOTOS_TOO_LARGE_MESSAGE } from '@/lib/uploadImage';
 
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
@@ -327,8 +327,15 @@ function SATForm({ order, contact, onSave, onCancel }) {
   const removeMaterial = (i) => setForm(prev => ({ ...prev, materials_used: prev.materials_used.filter((_, idx) => idx !== i) }));
 
   const handleSave = async () => {
-    setSaving(true);
     setSaveError('');
+    // Ver comentario equivalente en pages/SAT.jsx: si varias fotos cayeron en
+    // el fallback local (subida a la nube no disponible), su suma puede
+    // superar lo que admite el guardado en una sola petición.
+    if (getFallbackPhotosSize(form.photos_before, form.photos_after) > MAX_TOTAL_FALLBACK_PAYLOAD) {
+      setSaveError(PHOTOS_TOO_LARGE_MESSAGE);
+      return;
+    }
+    setSaving(true);
     const total = calcTotal(form);
     const data = { ...form, total };
     try {
