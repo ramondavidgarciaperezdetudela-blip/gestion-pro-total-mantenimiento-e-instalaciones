@@ -13,6 +13,31 @@ const FALLBACK_ENABLED = true;
 // volver a esperar una subida que va a fallar. Así el guardado por
 // lotes va mucho más rápido cuando no hay crédito de integración.
 let cloudUploadUnavailable = false;
+// Motivo por el que la nube dejó de estar disponible. Se expone para poder
+// enseñárselo al usuario: sin esto, una subida que falla siempre acaba en
+// "revisa tu conexión" aunque la causa real sea otra (sesión no iniciada,
+// cuota agotada, permisos...), y es imposible saber qué arreglar.
+let cloudUploadFailureReason = '';
+
+/** Motivo del último fallo de subida a la nube ('' si no ha fallado). */
+export function getCloudUploadFailureReason() {
+  return cloudUploadFailureReason;
+}
+
+/** Describe el fallo de subida usando el código HTTP cuando existe. */
+function describeUploadFailure(err) {
+  const status = err?.status ?? err?.statusCode ?? err?.response?.status ?? null;
+  if (status === 401 || status === 403) return 'no hay sesión iniciada o falta permiso para subir archivos';
+  if (status === 402) return 'la cuenta de Base44 no tiene crédito para subir archivos';
+  if (status === 413) return 'el archivo es demasiado grande para el servidor';
+  if (status === 429) return 'se ha superado el límite de subidas por ahora';
+  if (status >= 500) return `error del servidor al subir (${status})`;
+  if (err?.message === UPLOAD_TIMEOUT_MESSAGE) return 'la subida tardó demasiado';
+  if (err instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(err?.message || '')) {
+    return 'no hay conexión con el servidor';
+  }
+  return [status && `HTTP ${status}`, err?.message].filter(Boolean).join(' — ') || 'motivo desconocido';
+}
 export const UPLOAD_TIMEOUT_MESSAGE = 'La subida ha tardado demasiado. Comprueba tu conexión e inténtalo de nuevo.';
 const UPLOAD_GENERIC_MESSAGE = 'No se pudo subir el archivo. Comprueba tu conexión e inténtalo de nuevo.';
 
@@ -88,6 +113,7 @@ export async function uploadImage(file, compressOpts) {
     // Fallo no recuperable (no timeout): marcar el servicio como no
     // disponible para el resto de la sesión — acelera el lote.
     if (err?.message !== UPLOAD_TIMEOUT_MESSAGE) cloudUploadUnavailable = true;
+    if (!cloudUploadFailureReason) cloudUploadFailureReason = describeUploadFailure(err);
     // Fallback: comprimir a Data URL y devolver para que se guarde igual.
     if (FALLBACK_ENABLED && file && file.type?.startsWith('image/')) {
       try {

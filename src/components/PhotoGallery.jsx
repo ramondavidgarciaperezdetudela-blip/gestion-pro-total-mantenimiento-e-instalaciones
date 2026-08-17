@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Camera, X, Plus, FolderOpen, Loader2, Pencil, Check, AlertCircle, RotateCw } from "lucide-react";
 import { uploadPhotosSequential } from '@/lib/uploadPhotosSequential';
+import { getCloudUploadFailureReason } from '@/lib/uploadImage';
 
 /**
  * PhotoGallery — galería con subida SECUENCIAL de fotos y edición de nombre.
@@ -160,7 +161,8 @@ export default function PhotoGallery({
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
           <span>
             {localPhotoCount} foto(s) no se pudieron subir a la nube y se han guardado como copia local.
-            Ocupan mucho más y pueden impedir guardar la ficha. Si el problema sigue, quita alguna foto o inténtalo más tarde.
+            {getCloudUploadFailureReason() ? ` Motivo: ${getCloudUploadFailureReason()}.` : ''}
+            {' '}Ocupan mucho más y pueden impedir guardar la ficha. Si el problema sigue, quita alguna foto o inténtalo más tarde.
           </span>
         </div>
       )}
