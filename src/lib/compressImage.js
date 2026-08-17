@@ -75,13 +75,14 @@ export async function compressImage(file, { maxWidth = 1280, maxHeight = 1280, q
 // demasiado grande — y ese fallo se ve como "revisa tu conexión" aunque no
 // tenga nada que ver con la red. Reintentamos con menos calidad/tamaño
 // hasta quedar por debajo del límite.
-// Bajado de 350 KB a 150 KB: cuando varias fotos de la misma orden caen en
-// fallback (p.ej. subida a la nube caída durante un rato), la suma de todas
-// también tiene que caber en el payload del guardado — no solo cada foto
-// individual. Ver MAX_TOTAL_FALLBACK_PAYLOAD en uploadImage.js.
-const MAX_FALLBACK_DATA_URL_LENGTH = 150 * 1024; // ~150 KB de texto base64
+// Bajado a 90 KB. La foto guardada en local viaja DENTRO de la ficha cada vez
+// que se guarda, así que su tamaño es lo que decide si el guardado entra o no.
+// Con 90 KB por foto, una orden con 10 fotos ronda 0,9 MB (antes, con 350 KB,
+// se iba a 3,5 MB y el servidor la rechazaba). A 1100 px sigue siendo nítida
+// de sobra para documentar una reparación e imprimirla en un parte.
+const MAX_FALLBACK_DATA_URL_LENGTH = 90 * 1024; // ~90 KB de texto base64
 
-export const compressImageToDataURL = (file, maxDim = 1280, quality = 0.72) =>
+export const compressImageToDataURL = (file, maxDim = 1100, quality = 0.72) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
@@ -92,16 +93,23 @@ export const compressImageToDataURL = (file, maxDim = 1280, quality = 0.72) =>
         let dim = maxDim;
         let q = quality;
         let dataUrl;
-        for (let attempt = 0; attempt < 5; attempt++) {
+        // Antes eran 5 intentos y, si al agotarlos la foto seguía pasándose,
+        // se devolvía igualmente: es decir, el límite no se garantizaba y una
+        // foto enorme podía tumbar el guardado de toda la ficha. Ahora se
+        // insiste hasta cumplirlo (bajando resolución y calidad), con un
+        // mínimo razonable para no acabar con una foto ilegible.
+        for (let attempt = 0; attempt < 10; attempt++) {
           const scale = Math.min(1, dim / Math.max(img.width, img.height));
           const canvas = document.createElement('canvas');
-          canvas.width = Math.round(img.width * scale);
-          canvas.height = Math.round(img.height * scale);
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
           canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
           dataUrl = canvas.toDataURL('image/jpeg', q);
           if (dataUrl.length <= MAX_FALLBACK_DATA_URL_LENGTH) break;
-          q = Math.max(0.35, q - 0.15);
-          dim = Math.round(dim * 0.75);
+          // Si ya estamos en el mínimo de calidad y tamaño, no seguir girando.
+          if (q <= 0.35 && dim <= 400) break;
+          q = Math.max(0.35, q - 0.1);
+          dim = Math.max(400, Math.round(dim * 0.8));
         }
         resolve(dataUrl);
       };
