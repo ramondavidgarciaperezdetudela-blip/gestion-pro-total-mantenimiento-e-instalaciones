@@ -17,7 +17,7 @@ import MaterialAutocomplete from './MaterialAutocomplete';
 import MaterialsExportButton from './MaterialsExportButton';
 import { createPageUrl } from '../utils';
 import { withTimeout, getFallbackPhotosSize, MAX_TOTAL_FALLBACK_PAYLOAD, PHOTOS_TOO_LARGE_MESSAGE } from '@/lib/uploadImage';
-import { describeSaveError } from '@/lib/saveErrorMessage';
+import { describeSaveError, esErrorDeFotoDemasiadoGrande, reducirFotos, tamanoFotoMayor, guardarLimiteAprendido } from '@/lib/saveErrorMessage';
 
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
@@ -327,27 +327,47 @@ function SATForm({ order, contact, onSave, onCancel }) {
   const updateMaterial = (i, field, val) => setForm(prev => ({ ...prev, materials_used: prev.materials_used.map((m, idx) => idx === i ? { ...m, [field]: val } : m) }));
   const removeMaterial = (i) => setForm(prev => ({ ...prev, materials_used: prev.materials_used.filter((_, idx) => idx !== i) }));
 
-  const handleSave = async () => {
+  const handleSave = async (fotosReducidas = null, intento = 0) => {
     setSaveError('');
     // Ver comentario equivalente en pages/SAT.jsx: si varias fotos cayeron en
     // el fallback local (subida a la nube no disponible), su suma puede
     // superar lo que admite el guardado en una sola petición.
-    if (getFallbackPhotosSize(form.photos_before, form.photos_after) > MAX_TOTAL_FALLBACK_PAYLOAD) {
+    if (!fotosReducidas &&
+        getFallbackPhotosSize(form.photos_before, form.photos_after) > MAX_TOTAL_FALLBACK_PAYLOAD) {
       setSaveError(PHOTOS_TOO_LARGE_MESSAGE);
       return;
     }
     setSaving(true);
     const total = calcTotal(form);
-    const data = { ...form, total };
+    const base = fotosReducidas ? { ...form, ...fotosReducidas } : form;
+    const data = { ...base, total };
     try {
       if (order?.id) {
         await withTimeout(base44.entities.SATOrder.update(order.id, data), 30000, 'El guardado ha tardado demasiado. Comprueba tu conexión e inténtalo de nuevo.');
       }
+      if (fotosReducidas) {
+        setForm(prev => ({ ...prev, ...fotosReducidas }));
+        guardarLimiteAprendido(
+          Math.max(20 * 1024, tamanoFotoMayor(fotosReducidas.photos_before, fotosReducidas.photos_after))
+        );
+      }
       onSave({ ...data, id: order?.id });
     } catch (err) {
-      // Antes, si esto fallaba o se quedaba colgado, el diálogo se quedaba
-      // "pensando" para siempre sin avisar. Ahora se muestra el error y se
-      // puede reintentar.
+      // El servidor limita el tamaño de CADA foto por separado. En vez de dar
+      // el error y perder el trabajo, se reduce la foto y se reintenta.
+      if (esErrorDeFotoDemasiadoGrande(err) && intento < 3) {
+        const mayor = tamanoFotoMayor(
+          (fotosReducidas || form).photos_before, (fotosReducidas || form).photos_after
+        );
+        const nuevoLimite = Math.max(20 * 1024, Math.round((mayor || 48 * 1024) * 0.6));
+        setSaveError(`Las fotos eran demasiado grandes para el servidor. Reduciéndolas e intentándolo de nuevo (${intento + 1}/3)…`);
+        const [antes, despues] = await Promise.all([
+          reducirFotos((fotosReducidas || form).photos_before, nuevoLimite),
+          reducirFotos((fotosReducidas || form).photos_after, nuevoLimite),
+        ]);
+        setSaving(false);
+        return handleSave({ photos_before: antes, photos_after: despues }, intento + 1);
+      }
       console.error('[SATOrderDialog] Error real al guardar:', err);
       setSaveError(describeSaveError(err, 'la orden'));
     } finally {
@@ -437,7 +457,7 @@ function SATForm({ order, contact, onSave, onCancel }) {
         <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5">{saveError}</p>
       )}
       <div className="flex gap-2">
-        <Button onClick={handleSave} disabled={saving} className="flex-1 bg-orange-600 hover:bg-orange-700">
+        <Button onClick={() => handleSave()} disabled={saving} className="flex-1 bg-orange-600 hover:bg-orange-700">
           {saving ? <><RefreshCw className="w-4 h-4 mr-1 animate-spin" />Guardando...</> : <><Save className="w-4 h-4 mr-1" />Actualizar orden</>}
         </Button>
         <Button variant="outline" onClick={onCancel}>Cancelar</Button>

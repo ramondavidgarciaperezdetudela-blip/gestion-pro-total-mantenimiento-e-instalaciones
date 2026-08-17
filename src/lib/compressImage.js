@@ -94,10 +94,84 @@ const MAX_FALLBACK_DATA_URL_LENGTH = 90 * 1024; // ~90 KB de texto base64
  * @returns {number} límite en caracteres del Data URL
  */
 export function limiteFotoSegunCantidad(fotasYaPresentes = 0) {
-  if (fotasYaPresentes < 6) return 120 * 1024;  // hasta 6 fotos: ~0,7 MB total
-  if (fotasYaPresentes < 12) return 90 * 1024;  // hasta 12 fotos: ~1,1 MB
-  if (fotasYaPresentes < 20) return 60 * 1024;  // hasta 20 fotos: ~1,2 MB
-  return 40 * 1024;                             // 30 fotos: ~1,2 MB
+  // El servidor rechaza CADA campo por separado ("Field 'photos_before[0]'
+  // exceeds the maximum allowed size"), no por el total de la ficha. Ese tope
+  // por campo no está documentado, así que el programa lo va aprendiendo: si
+  // un guardado se rechaza por tamaño, recomprime más pequeño, reintenta y
+  // guarda aquí el valor que sí entró, para no volver a tropezar.
+  const aprendido = leerLimiteAprendido();
+  const base = aprendido || 48 * 1024;
+  if (fotasYaPresentes < 12) return base;
+  if (fotasYaPresentes < 20) return Math.round(base * 0.75);
+  return Math.round(base * 0.6);
+}
+
+const LIMITE_KEY = 'gpt_limite_foto_aprendido';
+
+/** Tope por foto que ya se comprobó que el servidor acepta (0 si no se sabe). */
+export function leerLimiteAprendido() {
+  try {
+    const v = parseInt(localStorage.getItem(LIMITE_KEY) || '0', 10);
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  } catch { return 0; }
+}
+
+/** Recuerda el tope por foto que el servidor ha aceptado. */
+export function guardarLimiteAprendido(limite) {
+  try { localStorage.setItem(LIMITE_KEY, String(limite)); } catch { /* ignorar */ }
+}
+
+/**
+ * Recomprime una foto YA guardada (Data URL) para que quepa en `limite`.
+ * Se usa cuando el servidor rechaza el guardado por tamaño: en vez de dar el
+ * error y perder el trabajo, la foto se reduce y se reintenta.
+ *
+ * @param {string} dataUrl
+ * @param {number} limite
+ * @returns {Promise<string>} Data URL más pequeño (o el original si no es data:)
+ */
+export function recomprimirDataURL(dataUrl, limite) {
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) {
+    return Promise.resolve(dataUrl);
+  }
+  if (dataUrl.length <= limite) return Promise.resolve(dataUrl);
+  return new Promise((resolve) => {
+    const img = new Image();
+    // Si la foto no se puede releer, devolverla tal cual: mejor conservarla
+    // que romper el guardado entero.
+    img.onerror = () => resolve(dataUrl);
+    img.onload = () => resolve(ajustarACabida(img, limite));
+    img.src = dataUrl;
+  });
+}
+
+/**
+ * Reduce una imagen ya cargada hasta que su Data URL quepa en `limite`.
+ * @param {HTMLImageElement} img
+ * @param {number} limite
+ * @param {number} [maxDim]
+ * @param {number} [quality]
+ */
+function ajustarACabida(img, limite, maxDim = 1100, quality = 0.72) {
+  let dim = maxDim;
+  let q = quality;
+  let dataUrl;
+  // Antes eran 5 intentos y, si al agotarlos la foto seguía pasándose, se
+  // devolvía igualmente: el límite no se garantizaba de verdad. Ahora se
+  // insiste hasta cumplirlo, con un mínimo para no dejarla ilegible.
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const scale = Math.min(1, dim / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    dataUrl = canvas.toDataURL('image/jpeg', q);
+    if (dataUrl.length <= limite) break;
+    if (q <= 0.3 && dim <= 320) break;
+    q = Math.max(0.3, q - 0.1);
+    dim = Math.max(320, Math.round(dim * 0.8));
+  }
+  return dataUrl;
 }
 
 export const compressImageToDataURL = (file, maxDim = 1100, quality = 0.72, limite = MAX_FALLBACK_DATA_URL_LENGTH) =>
@@ -107,30 +181,7 @@ export const compressImageToDataURL = (file, maxDim = 1100, quality = 0.72, limi
     reader.onload = (e) => {
       const img = new Image();
       img.onerror = () => reject(new Error('Formato no compatible'));
-      img.onload = () => {
-        let dim = maxDim;
-        let q = quality;
-        let dataUrl;
-        // Antes eran 5 intentos y, si al agotarlos la foto seguía pasándose,
-        // se devolvía igualmente: es decir, el límite no se garantizaba y una
-        // foto enorme podía tumbar el guardado de toda la ficha. Ahora se
-        // insiste hasta cumplirlo (bajando resolución y calidad), con un
-        // mínimo razonable para no acabar con una foto ilegible.
-        for (let attempt = 0; attempt < 10; attempt++) {
-          const scale = Math.min(1, dim / Math.max(img.width, img.height));
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.max(1, Math.round(img.width * scale));
-          canvas.height = Math.max(1, Math.round(img.height * scale));
-          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-          dataUrl = canvas.toDataURL('image/jpeg', q);
-          if (dataUrl.length <= limite) break;
-          // Si ya estamos en el mínimo de calidad y tamaño, no seguir girando.
-          if (q <= 0.35 && dim <= 400) break;
-          q = Math.max(0.35, q - 0.1);
-          dim = Math.max(400, Math.round(dim * 0.8));
-        }
-        resolve(dataUrl);
-      };
+      img.onload = () => resolve(ajustarACabida(img, limite, maxDim, quality));
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);

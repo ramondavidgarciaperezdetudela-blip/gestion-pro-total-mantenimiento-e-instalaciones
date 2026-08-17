@@ -23,7 +23,7 @@ import PhotoGallery from '../components/PhotoGallery';
 import PriceItemSelector from '../components/PriceItemSelector';
 import SATTemplateSelector from '../components/SATTemplateSelector';
 import { withTimeout, getFallbackPhotosSize, MAX_TOTAL_FALLBACK_PAYLOAD, PHOTOS_TOO_LARGE_MESSAGE } from '@/lib/uploadImage';
-import { describeSaveError } from '@/lib/saveErrorMessage';
+import { describeSaveError, esErrorDeFotoDemasiadoGrande, reducirFotos, tamanoFotoMayor, guardarLimiteAprendido } from '@/lib/saveErrorMessage';
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
 const STATUSES = ['pendiente', 'en_curso', 'completada', 'cancelada'];
@@ -113,19 +113,21 @@ export default function SAT() {
     (f.labor_hours || 0) * (f.labor_rate || 0) +
     (f.materials_used || []).reduce((s, m) => s + (m.quantity || 0) * (m.unit_price || 0), 0);
 
-  const handleSave = async () => {
+  const handleSave = async (fotosReducidas = null, intento = 0) => {
     setSaveError('');
     // Antes de intentar guardar: si varias fotos cayeron en el fallback local
     // (subida a la nube no disponible), su suma puede superar lo que admite
     // el guardado del documento en una sola petición. Avisamos con un mensaje
     // real en vez de dejar que falle tras 30s pareciendo un problema de red.
-    if (getFallbackPhotosSize(form.photos_before, form.photos_after) > MAX_TOTAL_FALLBACK_PAYLOAD) {
+    if (!fotosReducidas &&
+        getFallbackPhotosSize(form.photos_before, form.photos_after) > MAX_TOTAL_FALLBACK_PAYLOAD) {
       setSaveError(PHOTOS_TOO_LARGE_MESSAGE);
       return;
     }
     setSaving(true);
     const total = calcTotal(form);
-    const data = { ...form, total, materials_used: (form.materials_used || []).filter(m => m.material?.trim()) };
+    const base = fotosReducidas ? { ...form, ...fotosReducidas } : form;
+    const data = { ...base, total, materials_used: (base.materials_used || []).filter(m => m.material?.trim()) };
     let savedOrder = null;
 
     try {
@@ -208,11 +210,32 @@ export default function SAT() {
       setOrders(prev => [savedOrder, ...prev]);
     }
     if (savedOrder) setPreviewOrder(savedOrder);
+    // Si hubo que reducir las fotos para que entraran, dejar la ficha con las
+    // fotos ya reducidas (son las que están guardadas) y recordar el tamaño
+    // que el servidor ha aceptado, para no repetir el tropiezo.
+    if (fotosReducidas) {
+      setForm(prev => ({ ...prev, ...fotosReducidas }));
+      guardarLimiteAprendido(
+        Math.max(20 * 1024, tamanoFotoMayor(fotosReducidas.photos_before, fotosReducidas.photos_after))
+      );
+    }
     } catch (err) {
-      // Antes, si esta llamada fallaba o se quedaba colgada (sin internet,
-      // servidor lento...), el diálogo se quedaba "pensando" para siempre:
-      // no había timeout ni captura de errores. Ahora se avisa y se puede
-      // reintentar en vez de quedarse bloqueado.
+      // El servidor limita el tamaño de CADA foto por separado, y ese tope no
+      // está documentado. En vez de dar el error y perder el trabajo, se
+      // reduce la foto y se reintenta, hasta 3 veces, bajando cada vez.
+      if (esErrorDeFotoDemasiadoGrande(err) && intento < 3) {
+        const mayor = tamanoFotoMayor(
+          (fotosReducidas || form).photos_before, (fotosReducidas || form).photos_after
+        );
+        const nuevoLimite = Math.max(20 * 1024, Math.round((mayor || 48 * 1024) * 0.6));
+        setSaveError(`Las fotos eran demasiado grandes para el servidor. Reduciéndolas e intentándolo de nuevo (${intento + 1}/3)…`);
+        const [antes, despues] = await Promise.all([
+          reducirFotos((fotosReducidas || form).photos_before, nuevoLimite),
+          reducirFotos((fotosReducidas || form).photos_after, nuevoLimite),
+        ]);
+        setSaving(false);
+        return handleSave({ photos_before: antes, photos_after: despues }, intento + 1);
+      }
       console.error('[SAT] Error real al guardar la orden:', err);
       setSaveError(describeSaveError(err, 'la orden'));
     } finally {
@@ -741,7 +764,7 @@ export default function SAT() {
               <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5">{saveError}</p>
             )}
             <div className="flex gap-2">
-              <Button onClick={handleSave} disabled={saving} className="flex-1 bg-orange-600 hover:bg-orange-700 gap-2">
+              <Button onClick={() => handleSave()} disabled={saving} className="flex-1 bg-orange-600 hover:bg-orange-700 gap-2">
                 {saving ? <><RefreshCw className="w-4 h-4 animate-spin" />Guardando...</> : <><Save className="w-4 h-4" />{editing ? 'Actualizar orden' : 'Guardar orden'}</>}
               </Button>
               {editing && (

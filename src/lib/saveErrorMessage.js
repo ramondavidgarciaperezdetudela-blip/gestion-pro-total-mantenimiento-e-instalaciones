@@ -10,6 +10,42 @@
  * si no se reconoce, se muestra el mensaje real del error en vez de ocultarlo.
  */
 
+import { recomprimirDataURL, guardarLimiteAprendido } from './compressImage';
+
+/**
+ * ¿El servidor ha rechazado el guardado porque UNA FOTO concreta es demasiado
+ * grande? El mensaje típico es:
+ *   Field 'photos_before[0]' exceeds the maximum allowed size.
+ * Ojo: el límite es POR CAMPO, no por el total de la ficha, y no está
+ * documentado, así que hay que descubrirlo probando.
+ */
+export function esErrorDeFotoDemasiadoGrande(err) {
+  const m = String(err?.message || '') + ' ' + String(err?.response?.data?.message || '');
+  return /exceeds the maximum allowed size/i.test(m);
+}
+
+/**
+ * Reduce todas las fotos guardadas dentro de la ficha (Data URL) a `limite`,
+ * para reintentar el guardado. Las que ya son URL de la nube no se tocan.
+ *
+ * @param {string[]} fotos
+ * @param {number} limite
+ * @returns {Promise<string[]>}
+ */
+export async function reducirFotos(fotos, limite) {
+  if (!Array.isArray(fotos) || !fotos.length) return fotos;
+  return Promise.all(fotos.map(f => recomprimirDataURL(f, limite)));
+}
+
+/** Tamaño de la foto más grande guardada dentro de la ficha. */
+export function tamanoFotoMayor(...listas) {
+  return listas
+    .flat()
+    .reduce((max, f) => (typeof f === 'string' && f.startsWith('data:') ? Math.max(max, f.length) : max), 0);
+}
+
+export { guardarLimiteAprendido };
+
 /** Extrae el código HTTP de un error del SDK, venga en el campo que venga. */
 function getStatus(err) {
   return (
