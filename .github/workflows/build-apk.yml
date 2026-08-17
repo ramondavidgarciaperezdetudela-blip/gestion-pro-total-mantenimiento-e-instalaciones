@@ -76,6 +76,20 @@ jobs:
       - name: Generate Android app icon (same icon as desktop installers)
         run: npx @capacitor/assets generate --android
 
+      - name: Poner la versión real en el APK (para que Android la instale ENCIMA)
+        # cap add android regenera build.gradle con versionCode 1 / versionName
+        # "1.0" SIEMPRE. Con el mismo versionCode en todas las compilaciones,
+        # Android no reconoce la nueva APK como una actualización y obliga a
+        # desinstalar la anterior. Aquí se escribe la versión real:
+        # versionCode = mayor*10000 + menor*100 + parche (1.7.1 -> 10701),
+        # que crece con cada versión, y versionName con el número visible.
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          CODE=$(node -p "const [a,b,c]=require('./package.json').version.split('.').map(Number); a*10000+b*100+c")
+          sed -i "s/versionCode 1$/versionCode $CODE/; s/versionName \"1.0\"/versionName \"$VER\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
+          grep -q "versionCode $CODE" android/app/build.gradle
+
       - name: Firma estable (clave fija → actualizar sin desinstalar)
         run: |
           mkdir -p ~/.android

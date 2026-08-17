@@ -140,6 +140,15 @@ jobs:
       - run: npx cap add android && npx cap sync android
       - name: Generate Android app icon (same icon as desktop installers)
         run: npx @capacitor/assets generate --android
+      - name: Poner la versión real en el APK (para que Android la instale ENCIMA)
+        # Ver explicación en build-apk.yml: sin esto todas las APK salen con
+        # versionCode 1 y Android no las trata como actualización.
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          CODE=$(node -p "const [a,b,c]=require('./package.json').version.split('.').map(Number); a*10000+b*100+c")
+          sed -i "s/versionCode 1$/versionCode $CODE/; s/versionName \"1.0\"/versionName \"$VER\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
+          grep -q "versionCode $CODE" android/app/build.gradle
       - name: Firma estable (clave fija → actualizar sin desinstalar)
         # Usamos SIEMPRE la misma clave de firma para que cada APK nueva se
         # instale ENCIMA de la anterior sin tener que desinstalar. Sin esto,
