@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Camera, X, Plus, FolderOpen, Loader2, Pencil, Check, AlertCircle, RotateCw } from "lucide-react";
 import { uploadPhotosSequential } from '@/lib/uploadPhotosSequential';
-import { getCloudUploadFailureReason } from '@/lib/uploadImage';
+import { getCloudUploadFailureReason, resetCloudUploadState } from '@/lib/uploadImage';
 
 /**
  * PhotoGallery — galería con subida SECUENCIAL de fotos y edición de nombre.
@@ -159,11 +159,20 @@ export default function PhotoGallery({
       {localPhotoCount > 0 && !uploading && (
         <div className="flex items-start gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-2">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-          <span>
-            {localPhotoCount} foto(s) no se pudieron subir a la nube y se han guardado como copia local.
-            {getCloudUploadFailureReason() ? ` Motivo: ${getCloudUploadFailureReason()}.` : ''}
-            {' '}Ocupan mucho más y pueden impedir guardar la ficha. Si el problema sigue, quita alguna foto o inténtalo más tarde.
-          </span>
+          <div className="min-w-0">
+            <p>
+              {localPhotoCount} foto(s) se han guardado en el propio parte en vez de subirse a la nube.
+              {getCloudUploadFailureReason() ? ` Motivo: ${getCloudUploadFailureReason()}.` : ''}
+              {' '}Se guardan y se ven igual en todos los dispositivos; solo ocupan más espacio.
+            </p>
+            <button
+              type="button"
+              onClick={() => { resetCloudUploadState(); setLocalPhotoCount(0); }}
+              className="mt-1 underline text-amber-900 hover:text-amber-950"
+            >
+              Ya he recargado el crédito: volver a subir a la nube
+            </button>
+          </div>
         </div>
       )}
 

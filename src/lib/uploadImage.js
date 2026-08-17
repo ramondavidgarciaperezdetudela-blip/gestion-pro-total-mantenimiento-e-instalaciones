@@ -12,16 +12,56 @@ const FALLBACK_ENABLED = true;
 // de la sesión: las siguientes imágenes van directas al Data URL sin
 // volver a esperar una subida que va a fallar. Así el guardado por
 // lotes va mucho más rápido cuando no hay crédito de integración.
-let cloudUploadUnavailable = false;
+// El estado se recuerda ENTRE SESIONES (no solo dentro de una): si la cuenta
+// se quedó sin crédito, no tiene sentido que cada vez que se abre la app se
+// vuelva a intentar subir foto por foto, esperando y fallando cada vez. Se
+// reintenta pasado RECHECK_MS, para que cuando el crédito vuelva la app se
+// recupere sola sin tener que tocar nada.
+const CLOUD_STATE_KEY = 'gpt_cloud_upload_state';
+const RECHECK_MS = 6 * 60 * 60 * 1000; // 6 horas
+
+function readCloudState() {
+  try {
+    const raw = localStorage.getItem(CLOUD_STATE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s?.ts || Date.now() - s.ts > RECHECK_MS) return null; // caducado: reintentar
+    return s;
+  } catch { return null; }
+}
+
+function writeCloudState(reason) {
+  try {
+    localStorage.setItem(CLOUD_STATE_KEY, JSON.stringify({ ts: Date.now(), reason }));
+  } catch { /* almacenamiento lleno o bloqueado: seguir sin recordar */ }
+}
+
+const persisted = typeof localStorage !== 'undefined' ? readCloudState() : null;
+let cloudUploadUnavailable = !!persisted;
 // Motivo por el que la nube dejó de estar disponible. Se expone para poder
 // enseñárselo al usuario: sin esto, una subida que falla siempre acaba en
 // "revisa tu conexión" aunque la causa real sea otra (sesión no iniciada,
 // cuota agotada, permisos...), y es imposible saber qué arreglar.
-let cloudUploadFailureReason = '';
+let cloudUploadFailureReason = persisted?.reason || '';
 
 /** Motivo del último fallo de subida a la nube ('' si no ha fallado). */
 export function getCloudUploadFailureReason() {
   return cloudUploadFailureReason;
+}
+
+/** true si las subidas a la nube están desactivadas por fallos previos. */
+export function isCloudUploadUnavailable() {
+  return cloudUploadUnavailable;
+}
+
+/**
+ * Vuelve a permitir subidas a la nube (p. ej. tras recargar el crédito de
+ * Base44). Sin esto habría que esperar a que caduque el estado guardado.
+ */
+export function resetCloudUploadState() {
+  cloudUploadUnavailable = false;
+  cloudUploadFailureReason = '';
+  try { localStorage.removeItem(CLOUD_STATE_KEY); } catch { /* ignorar */ }
 }
 
 /** Describe el fallo de subida usando el código HTTP cuando existe. */
@@ -112,8 +152,11 @@ export async function uploadImage(file, compressOpts) {
   } catch (err) {
     // Fallo no recuperable (no timeout): marcar el servicio como no
     // disponible para el resto de la sesión — acelera el lote.
-    if (err?.message !== UPLOAD_TIMEOUT_MESSAGE) cloudUploadUnavailable = true;
-    if (!cloudUploadFailureReason) cloudUploadFailureReason = describeUploadFailure(err);
+    if (err?.message !== UPLOAD_TIMEOUT_MESSAGE) {
+      cloudUploadUnavailable = true;
+      if (!cloudUploadFailureReason) cloudUploadFailureReason = describeUploadFailure(err);
+      writeCloudState(cloudUploadFailureReason);
+    }
     // Fallback: comprimir a Data URL y devolver para que se guarde igual.
     if (FALLBACK_ENABLED && file && file.type?.startsWith('image/')) {
       try {
@@ -126,22 +169,70 @@ export async function uploadImage(file, compressOpts) {
   }
 }
 
+// Tope del fichero guardado en local (firmas, PDFs...). Va incrustado en la
+// ficha, así que por encima de esto el guardado empieza a peligrar y es mejor
+// avisar que dejar que falle luego sin explicación.
+const MAX_LOCAL_FILE_LENGTH = 700 * 1024; // ~700 KB de texto base64
+
+/** Lee un fichero como Data URL, para guardarlo sin pasar por la nube. */
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.onload = (e) => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
+}
+
 /**
  * Sube un fichero sin comprimir (firmas, PDFs, catálogos...) pero con el
  * mismo timeout de red que uploadImage, para que una conexión caída no deje
  * el formulario esperando indefinidamente.
+ *
+ * Si la nube no está disponible (p. ej. sin crédito en la cuenta de Base44),
+ * el fichero se guarda en local dentro de la propia ficha en vez de fallar.
+ * Antes esto reventaba sin red de seguridad, así que sin crédito no se podía
+ * ni firmar un parte ni adjuntar un documento.
+ *
  * @param {File|Blob} file
- * @returns {Promise<string>} file_url
+ * @returns {Promise<string>} file_url (o Data URL local si no hay nube)
  */
 export async function uploadFile(file) {
+  if (!cloudUploadUnavailable) {
+    try {
+      const { file_url } = await withTimeout(
+        base44.integrations.Core.UploadFile({ file }),
+        UPLOAD_TIMEOUT_MS,
+        UPLOAD_TIMEOUT_MESSAGE
+      );
+      return file_url;
+    } catch (err) {
+      if (err?.message !== UPLOAD_TIMEOUT_MESSAGE) {
+        cloudUploadUnavailable = true;
+        if (!cloudUploadFailureReason) cloudUploadFailureReason = describeUploadFailure(err);
+        writeCloudState(cloudUploadFailureReason);
+      }
+      console.error('[uploadFile] Subida a la nube no disponible, se guarda en local:', err);
+    }
+  }
+
+  // Sin nube: guardar el fichero dentro de la ficha.
+  let dataUrl;
   try {
-    const { file_url } = await withTimeout(
-      base44.integrations.Core.UploadFile({ file }),
-      UPLOAD_TIMEOUT_MS,
-      UPLOAD_TIMEOUT_MESSAGE
-    );
-    return file_url;
+    // Las imágenes se comprimen; el resto (PDF, firmas ya reducidas) va tal cual.
+    dataUrl = file?.type?.startsWith('image/')
+      ? await compressImageToDataURL(file)
+      : await fileToDataURL(file);
   } catch (err) {
     throw toSpanishError(err);
   }
+  // Fuera del try: este aviso es explicativo y no debe acabar convertido en el
+  // mensaje genérico "no se pudo subir, comprueba tu conexión".
+  if (dataUrl.length > MAX_LOCAL_FILE_LENGTH) {
+    throw new Error(
+      `El archivo es demasiado grande para guardarlo sin subirlo a la nube (${Math.round(dataUrl.length / 1024)} KB). ` +
+      'Usa un archivo más pequeño, o recarga el crédito de Base44 para poder subirlo.'
+    );
+  }
+  return dataUrl;
 }
