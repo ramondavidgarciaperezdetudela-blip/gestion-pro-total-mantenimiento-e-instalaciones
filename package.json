@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.4.7",
+  "version": "1.4.8",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -24,6 +24,9 @@
     "@base44/vite-plugin": "^1.0.30",
     "@capacitor/android": "^8.4.0",
     "@capacitor/core": "^8.4.0",
+    "@capacitor/file-transfer": "^2.0.5",
+    "@capacitor/filesystem": "^8.1.2",
+    "@capawesome-team/capacitor-file-opener": "^8.0.2",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",

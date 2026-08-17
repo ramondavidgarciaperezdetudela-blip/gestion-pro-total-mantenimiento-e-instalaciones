@@ -2,6 +2,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw, Download, X, AlertCircle, CheckCircle2, ArrowUpCircle, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { FileTransfer } from '@capacitor/file-transfer';
+import { FileOpener } from '@capawesome-team/capacitor-file-opener';
 
 // ── Configuración del repositorio PÚBLICO de descargas ───────────────────────
 // Las versiones nuevas se publican aquí (instaladores de escritorio + APK).
@@ -68,6 +71,49 @@ export default function UpdateChecker({ compact = false, headless = false }) {
     unsubscribers.current = offs;
     return () => offs.forEach((off) => off && off());
   }, []);
+
+  // ── Flujo Android (APK): descarga dentro de la app y lanza el instalador ──
+  // directamente, en vez de abrir el navegador y tener que buscar el archivo
+  // a mano. Android sigue pidiendo UNA confirmación del sistema (inevitable,
+  // ninguna app puede saltársela por seguridad), pero todo lo demás es
+  // automático. Si algo falla (plugin no disponible, sin permiso, etc.) se
+  // cae al enlace de descarga manual de siempre, para no dejar al usuario sin
+  // forma de actualizar.
+  const [apkLocalPath, setApkLocalPath] = useState(null);
+  const apkProgressListener = useRef(null);
+
+  const downloadAndInstallApk = async (url) => {
+    if (!url) return;
+    setState('apk-downloading');
+    setPercent(0);
+    setShow(true);
+    try {
+      const { uri } = await Filesystem.getUri({ path: 'gestion-pro-total-actualizacion.apk', directory: Directory.Cache });
+      apkProgressListener.current = await FileTransfer.addListener('progress', (status) => {
+        if (status?.lengthComputable && status.contentLength > 0) {
+          setPercent(Math.round((status.bytes / status.contentLength) * 100));
+        }
+      });
+      await FileTransfer.downloadFile({ url, path: uri, progress: true });
+      setApkLocalPath(uri);
+      setState('apk-ready');
+    } catch (err) {
+      console.error('[UpdateChecker] No se pudo descargar el APK dentro de la app, usa el enlace manual:', err);
+      setState('apk-error');
+    } finally {
+      if (apkProgressListener.current) { apkProgressListener.current.remove(); apkProgressListener.current = null; }
+    }
+  };
+
+  const installApk = async () => {
+    if (!apkLocalPath) return;
+    try {
+      await FileOpener.openFile({ path: apkLocalPath, mimeType: 'application/vnd.android.package-archive' });
+    } catch (err) {
+      console.error('[UpdateChecker] No se pudo abrir el instalador del APK:', err);
+      setState('apk-error');
+    }
+  };
 
   // Comprobar actualizaciones. isAuto=true → solo molesta si HAY actualización
   // (no muestra el aviso si está al día o si no hay conexión).
@@ -137,7 +183,8 @@ export default function UpdateChecker({ compact = false, headless = false }) {
 
   const downloadURL = isAPK ? info?.apk_url : info?.zip_url;
   const downloadLabel = isAPK ? 'Descargar APK actualizado' : 'Descargar actualización';
-  const hasUpdateBadge = state === 'update' || state === 'downloading' || state === 'downloaded';
+  const hasUpdateBadge = state === 'update' || state === 'downloading' || state === 'downloaded'
+    || state === 'apk-downloading' || state === 'apk-ready' || state === 'apk-error';
 
   // Badge compacto para el header/navbar
   if (compact) {
@@ -175,6 +222,9 @@ export default function UpdateChecker({ compact = false, headless = false }) {
         {state === 'checking'    ? 'Comprobando...'
           : state === 'downloaded' ? `Actualización lista v${info?.version}`
           : state === 'downloading' ? `Descargando actualización... ${percent}%`
+          : state === 'apk-downloading' ? `Descargando actualización... ${percent}%`
+          : state === 'apk-ready' ? `Actualización lista v${info?.version}`
+          : state === 'apk-error' ? 'No se pudo descargar'
           : state === 'update'   ? `Actualización disponible v${info?.version}`
           : 'Comprobar actualizaciones'}
       </Button>
@@ -186,21 +236,25 @@ export default function UpdateChecker({ compact = false, headless = false }) {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             {/* Header */}
             <div className={`px-6 py-4 flex items-center justify-between ${
-              hasUpdateBadge        ? 'bg-amber-50 border-b border-amber-200'
+              (state === 'error' || state === 'apk-error') ? 'bg-red-50 border-b border-red-200'
+            : hasUpdateBadge      ? 'bg-amber-50 border-b border-amber-200'
             : state === 'uptodate'? 'bg-green-50 border-b border-green-200'
-            : state === 'error'   ? 'bg-red-50 border-b border-red-200'
             : 'bg-slate-50 border-b'}`}
             >
               <div className="flex items-center gap-3">
                 {state === 'downloaded' && <CheckCircle2  className="w-7 h-7 text-amber-500" />}
-                {state === 'downloading' && <RotateCw     className="w-7 h-7 text-amber-500 animate-spin" />}
+                {(state === 'downloading' || state === 'apk-downloading') && <RotateCw className="w-7 h-7 text-amber-500 animate-spin" />}
+                {state === 'apk-ready' && <CheckCircle2  className="w-7 h-7 text-amber-500" />}
                 {state === 'update'    && <ArrowUpCircle className="w-7 h-7 text-amber-500" />}
                 {state === 'uptodate' && <CheckCircle2  className="w-7 h-7 text-green-500" />}
-                {state === 'error'    && <AlertCircle   className="w-7 h-7 text-red-500" />}
+                {(state === 'error' || state === 'apk-error') && <AlertCircle className="w-7 h-7 text-red-500" />}
                 <div>
                   <p className="font-bold text-slate-800 text-base">
                     {state === 'downloaded'  ? '✅ Actualización lista para instalar'
                    : state === 'downloading' ? '⬇️ Descargando actualización...'
+                   : state === 'apk-downloading' ? '⬇️ Descargando actualización...'
+                   : state === 'apk-ready' ? '✅ Actualización lista para instalar'
+                   : state === 'apk-error' ? '⚠️ No se pudo descargar automáticamente'
                    : state === 'update'    ? '🚀 Nueva versión disponible'
                    : state === 'uptodate' ? '✅ El programa está actualizado'
                    : state === 'error'    ? '⚠️ Sin conexión al repositorio'
@@ -261,7 +315,14 @@ export default function UpdateChecker({ compact = false, headless = false }) {
                     </div>
                   )}
                   <div className="space-y-2">
-                    {downloadURL && (
+                    {isAPK && downloadURL ? (
+                      <button
+                        onClick={() => downloadAndInstallApk(downloadURL)}
+                        className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors"
+                      >
+                        <Download className="w-5 h-5" /> Actualizar ahora
+                      </button>
+                    ) : downloadURL && (
                       <a href={downloadURL} target="_blank" rel="noopener noreferrer"
                         className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors">
                         <Download className="w-5 h-5" />
@@ -277,11 +338,56 @@ export default function UpdateChecker({ compact = false, headless = false }) {
                   </div>
                   {isAPK && (
                     <p className="text-xs text-slate-500 bg-blue-50 p-2 rounded">
-                      💡 Descargue el APK y ábralo para instalar la actualización.
-                      Android lo reconoce automáticamente como actualización del mismo programa.
+                      💡 Android pedirá una única confirmación para instalar (medida de seguridad del propio sistema, no se puede evitar).
                     </p>
                   )}
                 </>
+              )}
+
+              {state === 'apk-downloading' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600">
+                    Descargando la versión {info?.version || 'nueva'} dentro de la app. Al terminar podrás instalarla con un toque.
+                  </p>
+                  <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-500 transition-all" style={{ width: `${percent}%` }} />
+                  </div>
+                  <p className="text-xs text-slate-500 text-right">{percent}%</p>
+                </div>
+              )}
+
+              {state === 'apk-ready' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600">
+                    La actualización a la versión {info?.version || 'nueva'} ya está descargada. Se instalará ENCIMA de la actual, sin desinstalar y sin perder ninguno de tus datos.
+                  </p>
+                  <Button
+                    onClick={installApk}
+                    className="w-full bg-amber-600 hover:bg-amber-700 flex items-center justify-center gap-2"
+                  >
+                    <ArrowUpCircle className="w-5 h-5" /> Instalar actualización
+                  </Button>
+                  <button onClick={() => setShow(false)} className="w-full text-xs text-slate-500 hover:underline py-1">
+                    Instalar más tarde
+                  </button>
+                </div>
+              )}
+
+              {state === 'apk-error' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600">
+                    No se pudo descargar la actualización automáticamente. Descárgala manualmente y ábrela para instalarla.
+                  </p>
+                  {downloadURL && (
+                    <a href={downloadURL} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors">
+                      <Download className="w-5 h-5" /> Descargar APK actualizado
+                    </a>
+                  )}
+                  <button onClick={() => downloadAndInstallApk(downloadURL)} className="w-full text-xs text-slate-500 hover:underline py-1">
+                    Reintentar descarga automática
+                  </button>
+                </div>
               )}
 
               {state === 'uptodate' && (

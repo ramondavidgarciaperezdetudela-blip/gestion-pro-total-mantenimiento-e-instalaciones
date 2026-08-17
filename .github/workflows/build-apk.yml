@@ -76,6 +76,14 @@ jobs:
       - name: Generate Android app icon (same icon as desktop installers)
         run: npx @capacitor/assets generate --android
 
+      - name: Add REQUEST_INSTALL_PACKAGES permission (in-app self-update)
+        # cap add android regenera el manifiesto desde cero cada vez, así que
+        # este permiso (necesario para que la propia app pueda lanzar el
+        # instalador del APK descargado) hay que volver a añadirlo aquí.
+        run: |
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />#' android/app/src/main/AndroidManifest.xml
+          grep -q REQUEST_INSTALL_PACKAGES android/app/src/main/AndroidManifest.xml
+
       - name: Firma estable (clave fija → actualizar sin desinstalar)
         run: |
           mkdir -p ~/.android
