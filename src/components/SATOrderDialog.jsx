@@ -17,6 +17,7 @@ import MaterialAutocomplete from './MaterialAutocomplete';
 import MaterialsExportButton from './MaterialsExportButton';
 import { createPageUrl } from '../utils';
 import { withTimeout, getFallbackPhotosSize, MAX_TOTAL_FALLBACK_PAYLOAD, PHOTOS_TOO_LARGE_MESSAGE } from '@/lib/uploadImage';
+import { describeSaveError } from '@/lib/saveErrorMessage';
 
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
@@ -348,7 +349,7 @@ function SATForm({ order, contact, onSave, onCancel }) {
       // "pensando" para siempre sin avisar. Ahora se muestra el error y se
       // puede reintentar.
       console.error('[SATOrderDialog] Error real al guardar:', err);
-      setSaveError(err?.message?.includes('tardado') ? err.message : 'No se pudo guardar. Comprueba tu conexión e inténtalo de nuevo.');
+      setSaveError(describeSaveError(err, 'la orden'));
     } finally {
       setSaving(false);
     }

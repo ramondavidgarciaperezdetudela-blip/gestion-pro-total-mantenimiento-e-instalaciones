@@ -35,6 +35,9 @@ export default function PhotoGallery({
   const [progress, setProgress] = useState({ actual: 0, total: 0 });
   const [failedFiles, setFailedFiles] = useState([]);
   const [uploadError, setUploadError] = useState('');
+  const [localPhotoCount, setLocalPhotoCount] = useState(
+    () => photos.filter(u => typeof u === 'string' && u.startsWith('data:')).length
+  );
   const [localNames, setLocalNames] = useState(photoNames);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editingValue, setEditingValue] = useState('');
@@ -79,6 +82,12 @@ export default function PhotoGallery({
       setFailedFiles(failed);
       setUploadError(`${failed.length} foto(s) no se pudieron subir.`);
     }
+    // Hasta ahora, si la subida a la nube fallaba, la foto se guardaba como
+    // copia local (Data URL) SIN avisar: parecía que todo había ido bien y el
+    // fallo aparecía después, al guardar, como un confuso "revisa tu conexión".
+    // Avisamos en cuanto ocurre, que es cuando se puede hacer algo.
+    const enLocal = acc.filter(u => typeof u === 'string' && u.startsWith('data:')).length;
+    setLocalPhotoCount(enLocal);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
@@ -143,6 +152,16 @@ export default function PhotoGallery({
         <div className="flex items-center gap-1.5 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1.5 mb-2">
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
           Subiendo foto {progress.actual} de {progress.total}…
+        </div>
+      )}
+
+      {localPhotoCount > 0 && !uploading && (
+        <div className="flex items-start gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-2">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          <span>
+            {localPhotoCount} foto(s) no se pudieron subir a la nube y se han guardado como copia local.
+            Ocupan mucho más y pueden impedir guardar la ficha. Si el problema sigue, quita alguna foto o inténtalo más tarde.
+          </span>
         </div>
       )}
 

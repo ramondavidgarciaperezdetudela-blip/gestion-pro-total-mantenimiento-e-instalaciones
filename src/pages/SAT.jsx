@@ -23,6 +23,7 @@ import PhotoGallery from '../components/PhotoGallery';
 import PriceItemSelector from '../components/PriceItemSelector';
 import SATTemplateSelector from '../components/SATTemplateSelector';
 import { withTimeout, getFallbackPhotosSize, MAX_TOTAL_FALLBACK_PAYLOAD, PHOTOS_TOO_LARGE_MESSAGE } from '@/lib/uploadImage';
+import { describeSaveError } from '@/lib/saveErrorMessage';
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
 const STATUSES = ['pendiente', 'en_curso', 'completada', 'cancelada'];
@@ -213,7 +214,7 @@ export default function SAT() {
       // no había timeout ni captura de errores. Ahora se avisa y se puede
       // reintentar en vez de quedarse bloqueado.
       console.error('[SAT] Error real al guardar la orden:', err);
-      setSaveError(err?.message?.includes('tardado') ? err.message : 'No se pudo guardar la orden. Comprueba tu conexión e inténtalo de nuevo.');
+      setSaveError(describeSaveError(err, 'la orden'));
     } finally {
       setSaving(false);
     }
