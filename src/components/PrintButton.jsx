@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { printDocument } from '@/lib/printHelper';
 
 function getPdfStyles(cfg = {}) {
   const mt = cfg.margin_top || 15;
@@ -163,13 +164,8 @@ export default function PrintButton({ contentRef, title = "Documento", className
       const settings = await base44.entities.CompanySettings.list();
       if (settings.length > 0) cfg = settings[0].printer_config || {};
     } catch(e) {}
-    const win = window.open('', '_blank');
     const html = buildPrintHTML(title, el.innerHTML, cfg);
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); }, 900);
+    printDocument(html, title);
   };
 
   return (

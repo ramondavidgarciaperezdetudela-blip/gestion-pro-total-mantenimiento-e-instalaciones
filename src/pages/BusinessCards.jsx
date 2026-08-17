@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreditCard, Plus, Printer, Download, Trash2, Edit, QrCode, Layers } from 'lucide-react';
 import QRCodeLib from 'qrcode';
+import { printDocument } from '@/lib/printHelper';
 
 const EMPTY = {
   name: '', role: '', phone: '', email: '', website: '',
@@ -261,10 +262,8 @@ export default function BusinessCards() {
       .contact span { display: block; }
     </style></head><body>
     <div class="page">${allCards}</div>
-    <script>window.onload=()=>{ setTimeout(()=>window.print(), 500); }</script>
     </body></html>`;
-    const w = window.open('', '_blank');
-    if (w) { w.document.write(html); w.document.close(); }
+    printDocument(html, `Tarjetas de visita - ${card.name}`);
   };
 
   const handlePrint = async (card) => {
@@ -310,9 +309,8 @@ export default function BusinessCards() {
         ${card.show_address && (card.address || company?.address) ? `<span>📍 ${card.address || company?.address}${company?.city ? ', ' + company.city : ''}</span>` : ''}
       </div>
     </div>
-    <script>window.onload=()=>{window.print();}</script></body></html>`;
-    const w = window.open('', '_blank', 'width=400,height=320');
-    if (w) { w.document.write(html); w.document.close(); }
+    </body></html>`;
+    printDocument(html, `Tarjeta - ${card.name}`);
   };
 
   const F = (key, label, placeholder, type = 'text') => (
