@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Camera, X, Plus, FolderOpen, Loader2, Pencil, Check, AlertCircle, RotateCw } from "lucide-react";
 import { uploadPhotosSequential } from '@/lib/uploadPhotosSequential';
-import { getCloudUploadFailureReason, resetCloudUploadState } from '@/lib/uploadImage';
+import { MAX_TOTAL_FALLBACK_PAYLOAD } from '@/lib/uploadImage';
 
 /**
  * PhotoGallery — galería con subida SECUENCIAL de fotos y edición de nombre.
@@ -36,9 +36,10 @@ export default function PhotoGallery({
   const [progress, setProgress] = useState({ actual: 0, total: 0 });
   const [failedFiles, setFailedFiles] = useState([]);
   const [uploadError, setUploadError] = useState('');
-  const [localPhotoCount, setLocalPhotoCount] = useState(
-    () => photos.filter(u => typeof u === 'string' && u.startsWith('data:')).length
-  );
+  // Cuánto del máximo admitido ocupan ya las fotos guardadas dentro del parte.
+  const ocupacion = photos.reduce(
+    (t, u) => t + (typeof u === 'string' && u.startsWith('data:') ? u.length : 0), 0
+  ) / MAX_TOTAL_FALLBACK_PAYLOAD;
   const [localNames, setLocalNames] = useState(photoNames);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editingValue, setEditingValue] = useState('');
@@ -85,12 +86,6 @@ export default function PhotoGallery({
       setFailedFiles(failed);
       setUploadError(`${failed.length} foto(s) no se pudieron subir.`);
     }
-    // Hasta ahora, si la subida a la nube fallaba, la foto se guardaba como
-    // copia local (Data URL) SIN avisar: parecía que todo había ido bien y el
-    // fallo aparecía después, al guardar, como un confuso "revisa tu conexión".
-    // Avisamos en cuanto ocurre, que es cuando se puede hacer algo.
-    const enLocal = acc.filter(u => typeof u === 'string' && u.startsWith('data:')).length;
-    setLocalPhotoCount(enLocal);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
@@ -158,23 +153,18 @@ export default function PhotoGallery({
         </div>
       )}
 
-      {localPhotoCount > 0 && !uploading && (
+      {/* Guardar las fotos dentro del parte es el funcionamiento normal, así que
+          no se avisa de ello. Solo se avisa cuando el conjunto se acerca al
+          límite que admite el guardado, que es cuando se puede hacer algo:
+          quitar alguna foto antes de que el parte deje de poder guardarse. */}
+      {ocupacion >= 0.75 && !uploading && (
         <div className="flex items-start gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-2">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-          <div className="min-w-0">
-            <p>
-              {localPhotoCount} foto(s) se han guardado en el propio parte en vez de subirse a la nube.
-              {getCloudUploadFailureReason() ? ` Motivo: ${getCloudUploadFailureReason()}.` : ''}
-              {' '}Se guardan y se ven igual en todos los dispositivos; solo ocupan más espacio.
-            </p>
-            <button
-              type="button"
-              onClick={() => { resetCloudUploadState(); setLocalPhotoCount(0); }}
-              className="mt-1 underline text-amber-900 hover:text-amber-950"
-            >
-              Ya he recargado el crédito: volver a subir a la nube
-            </button>
-          </div>
+          <span>
+            Las fotos de este parte ocupan ya el {Math.round(ocupacion * 100)}% del máximo que
+            admite el guardado. Si añades muchas más, no se podrá guardar: quita alguna de
+            las que no sean necesarias.
+          </span>
         </div>
       )}
 

@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { ImageIcon, X, ArrowRight } from 'lucide-react';
+import { ImageIcon, X } from 'lucide-react';
 import { getStorageConfig } from '@/lib/externalStorage';
 
 /**
- * StorageSetupNotice — aviso de primera instalación sobre dónde se guardan
- * las fotos y los documentos.
+ * StorageSetupNotice — aviso informativo, una sola vez, sobre cómo guarda el
+ * programa las fotos y los documentos.
  *
- * Por qué existe: recién instalado, el programa guarda las fotos DENTRO de
- * cada ficha, reducidas para que quepan. Funciona sin configurar nada, pero
- * la foto pierde calidad y un documento grande no se puede adjuntar. Quien
- * quiera calidad completa necesita una cuenta de almacenamiento (gratuita).
+ * Por qué existe: las fotos se optimizan automáticamente para que quepan
+ * dentro de la ficha (y así se guarden y se sincronicen sin depender de
+ * ningún servicio externo ni de ningún crédito). El efecto visible es que la
+ * foto no conserva la resolución original, y sin explicarlo el usuario lo
+ * interpreta como un fallo del programa.
  *
- * Sin este aviso, el usuario no tenía forma de enterarse: veía fotos algo
- * borrosas sin saber por qué ni que se podía evitar.
+ * No empuja a contratar ni configurar nada: el funcionamiento por defecto es
+ * el previsto. Solo menciona que existe la opción de conectar almacenamiento
+ * propio para quien necesite calidad completa.
  *
  * Se muestra una sola vez. Si ya hay almacén configurado, no aparece nunca.
  */
@@ -30,7 +32,6 @@ export default function StorageSetupNotice() {
       try {
         if (localStorage.getItem(DISMISSED_KEY) === 'true') return;
         const cfg = await getStorageConfig();
-        // Si ya está configurado y activo, no hay nada que avisar.
         const yaConfigurado = !!(cfg?.enabled && cfg?.cloud_name && cfg?.upload_preset);
         if (!cancelado && !yaConfigurado) setVisible(true);
       } catch {
@@ -54,8 +55,8 @@ export default function StorageSetupNotice() {
           <div className="flex items-center gap-3">
             <ImageIcon className="w-7 h-7 text-blue-600 flex-shrink-0" />
             <div>
-              <p className="font-bold text-slate-800">Dónde se guardan tus fotos</p>
-              <p className="text-xs text-slate-500">Puedes cambiarlo cuando quieras</p>
+              <p className="font-bold text-slate-800">Sobre las fotos y documentos</p>
+              <p className="text-xs text-slate-500">Solo para que lo sepas: no hay que configurar nada</p>
             </div>
           </div>
           <button onClick={cerrar} className="text-slate-400 hover:text-slate-600 p-1 flex-shrink-0">
@@ -65,43 +66,41 @@ export default function StorageSetupNotice() {
 
         <div className="p-6 space-y-4 text-sm text-slate-700">
           <p>
-            Ahora mismo, las fotos y los documentos se guardan <strong>dentro de cada ficha</strong>.
-            Funciona sin configurar nada y se ven en el móvil, el ordenador y la web, pero:
+            Las fotos que añadas a los partes se <strong>optimizan automáticamente</strong> y
+            se guardan dentro de la propia ficha. Así se conservan y se ven igual en el
+            móvil, en el ordenador y en la web, sin depender de ningún servicio externo.
           </p>
-          <ul className="list-disc ml-5 space-y-1 text-slate-600">
-            <li>Las fotos se reducen de tamaño, así que pierden algo de calidad.</li>
-            <li>Un documento grande (un PDF de varias páginas) no se podrá adjuntar.</li>
-          </ul>
 
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">
-            <p className="font-semibold text-green-800">Para guardarlas en calidad completa</p>
-            <p className="text-green-900 text-xs">
-              Crea una cuenta <strong>gratuita</strong> en un servicio de almacenamiento
-              (por ejemplo <strong>cloudinary.com</strong>) y añádela en la configuración.
-              Es cosa de cinco minutos y solo se hace una vez: a partir de ahí las fotos
-              se suben en calidad completa, sin límite de tamaño, y las fichas quedan ligeras.
-            </p>
+          <div className="bg-slate-50 border rounded-lg p-3 space-y-1 text-xs text-slate-600">
+            <p><strong>Qué significa en la práctica:</strong></p>
+            <ul className="list-disc ml-4 space-y-0.5">
+              <li>Las fotos se ven con buena calidad para documentar e imprimir un parte, pero no conservan la resolución original de la cámara.</li>
+              <li>Cuantas más fotos lleve un parte, un poco más se ajusta cada una, para que siempre se pueda guardar.</li>
+              <li>Un documento muy grande (un PDF de muchas páginas) puede no admitirse; el programa te avisará si ocurre.</li>
+            </ul>
           </div>
 
+          <p className="text-xs text-slate-500">
+            Si en algún momento necesitas guardar las fotos en su calidad original, puedes
+            conectar tu propio almacenamiento en Configuración → Documentos. Es opcional:
+            el programa funciona perfectamente sin ello.
+          </p>
+
           <div className="flex flex-col sm:flex-row gap-2 pt-1">
+            <button
+              onClick={cerrar}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition-colors"
+            >
+              Entendido
+            </button>
             <Link
               to={createPageUrl('CompanyConfig')}
               onClick={cerrar}
-              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition-colors"
+              className="flex-1 flex items-center justify-center border border-slate-300 text-slate-600 hover:bg-slate-50 py-2.5 rounded-xl transition-colors"
             >
-              Configurarlo ahora <ArrowRight className="w-4 h-4" />
+              Ver opciones
             </Link>
-            <button
-              onClick={cerrar}
-              className="flex-1 border border-slate-300 text-slate-600 hover:bg-slate-50 py-2.5 rounded-xl transition-colors"
-            >
-              Seguir así de momento
-            </button>
           </div>
-
-          <p className="text-xs text-slate-400 text-center">
-            Lo tienes en Configuración → Documentos → Almacén de fotos y documentos
-          </p>
         </div>
       </div>
     </div>
