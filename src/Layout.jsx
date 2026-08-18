@@ -8,7 +8,7 @@ import {
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette,
   CreditCard, Download, Bell, History, Search, FileBarChart, Droplets, AlertCircle,
-  MoreHorizontal, MessageSquare, ListChecks, AlertTriangle, CalendarCheck } from
+  MoreHorizontal, MessageSquare, ListChecks, AlertTriangle, CalendarCheck, Ruler } from
 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 import ThemeToggle from './components/ThemeToggle';
@@ -143,6 +143,7 @@ const navItems = [
 { name: 'Normativas', page: 'Regulations', icon: Shield },
 { name: 'Notas', page: 'Notes', icon: StickyNote },
 { name: 'Plan. IA', page: 'AIPlanning', icon: ClipboardList },
+{ name: 'Plano y presupuesto', page: 'PlanoIA', icon: Ruler },
 { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette },
 { name: 'Portal Cliente', page: 'ClientPortal', icon: Users },
 { name: 'Presup. IA', page: 'AIBudget', icon: Bot },
@@ -198,6 +199,7 @@ const PAGE_SECTION = {
   ThermalCalc: 'Cálculo y diagnóstico', ElectricalCalc: 'Cálculo y diagnóstico',
   ColdRoomCalc: 'Cálculo y diagnóstico', ACPotenciaCalc: 'Cálculo y diagnóstico',
   ACPlanAnalysis: 'Cálculo y diagnóstico', MultiAreaCalc: 'Cálculo y diagnóstico',
+  PlanoIA: 'Cálculo y diagnóstico',
   SolarBatteryCalc: 'Cálculo y diagnóstico', CapillaryCalc: 'Cálculo y diagnóstico',
   BatteryCalc: 'Cálculo y diagnóstico', SolarCalc: 'Cálculo y diagnóstico',
   RefrigerantEquiv: 'Cálculo y diagnóstico', DiagnosticoCarga: 'Cálculo y diagnóstico',

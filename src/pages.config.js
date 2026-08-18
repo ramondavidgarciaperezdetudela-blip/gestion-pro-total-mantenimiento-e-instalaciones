@@ -110,6 +110,7 @@ const UpdateCenter = lazy(() => import('./pages/UpdateCenter'));
 const AISupport = lazy(() => import('./pages/AISupport'));
 const DiagnosticoCarga = lazy(() => import('./pages/DiagnosticoCarga'));
 const TablasRefrigerantes = lazy(() => import('./pages/TablasRefrigerantes'));
+const PlanoIA = lazy(() => import('./pages/PlanoIA'));
 import __Layout from './Layout.jsx';
 
 
@@ -175,6 +176,7 @@ export const PAGES = {
     "AISupport": AISupport,
     "DiagnosticoCarga": DiagnosticoCarga,
     "TablasRefrigerantes": TablasRefrigerantes,
+    "PlanoIA": PlanoIA,
 }
 
 export const pagesConfig = {
