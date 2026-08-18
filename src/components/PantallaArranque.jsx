@@ -62,21 +62,52 @@ export default function PantallaArranque() {
   );
 }
 
-/** Error de sesión que no sabemos tratar: mejor decirlo que quedarse en blanco. */
-export function PantallaErrorSesion({ error }) {
+/**
+ * Error de sesión que no sabemos tratar.
+ *
+ * Aquí NUNCA se deja al usuario encerrado. Un fallo de red al arrancar es
+ * normalísimo en una obra con mala cobertura, y el programa sirve para muchas
+ * cosas sin servidor (calculadoras, plano, diagnóstico, consultar lo que ya
+ * está descargado). Por eso, además de reintentar, siempre se puede entrar.
+ */
+export function PantallaErrorSesion({ error, onContinuar }) {
+  const esDeRed = /network|timeout|failed|fetch|conexi|502|503|504/i.test(
+    String(error?.message || '')
+  );
+
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center bg-white">
       <AlertTriangle className="w-10 h-10 text-amber-500" />
-      <p className="text-slate-800 font-medium">No se ha podido iniciar la sesión</p>
-      <p className="text-sm text-slate-600 max-w-md">
-        {error?.message || 'El servidor no ha aceptado la sesión. Comprueba la conexión y que la cuenta siga activa.'}
+      <p className="text-slate-800 font-medium">
+        {esDeRed ? 'No se ha podido conectar con el servidor' : 'No se ha podido iniciar la sesión'}
       </p>
-      <button
-        onClick={() => window.location.reload()}
-        className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
-      >
-        <RefreshCw className="w-4 h-4" />Reintentar
-      </button>
+      <p className="text-sm text-slate-600 max-w-md">
+        {esDeRed
+          ? 'Puede ser la cobertura, que la cuenta se haya quedado sin créditos, o que el servidor esté caído.'
+          : (error?.message || 'El servidor no ha aceptado la sesión. Comprueba la conexión y que la cuenta siga activa.')}
+      </p>
+
+      <div className="flex flex-wrap gap-2 justify-center">
+        <button
+          onClick={() => window.location.reload()}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+        >
+          <RefreshCw className="w-4 h-4" />Reintentar
+        </button>
+        {onContinuar && (
+          <button
+            onClick={onContinuar}
+            className="inline-flex items-center gap-2 px-5 py-2.5 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50"
+          >
+            Entrar de todas formas
+          </button>
+        )}
+      </div>
+
+      <p className="text-xs text-slate-400 max-w-md">
+        Entrando sin conexión funcionan las calculadoras, el plano y el diagnóstico.
+        Lo que necesite servidor dará error hasta que vuelva la conexión.
+      </p>
     </div>
   );
 }

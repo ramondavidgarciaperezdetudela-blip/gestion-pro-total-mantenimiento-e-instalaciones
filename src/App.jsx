@@ -1,6 +1,6 @@
 import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
-import { Component } from 'react';
+import { Component, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
@@ -69,6 +69,10 @@ function AnimatedRoutes({ children }) {
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  // Permite entrar aunque la sesión no se haya podido comprobar (sin cobertura,
+  // servidor caído). Sin esto, un fallo de red dejaba el programa encerrado en
+  // la pantalla de error, que es peor que el problema que venía a resolver.
+  const [entrarIgual, setEntrarIgual] = useState(false);
 
   // Mientras se comprueba la sesión. Si el servidor no contesta esto no
   // termina nunca, así que la pantalla avisa a los pocos segundos en vez de
@@ -86,9 +90,12 @@ const AuthenticatedApp = () => {
       navigateToLogin();
       return null;
     }
-    // Cualquier otro error (red, servidor caído, cuenta sin créditos): antes
-    // se seguía adelante como si nada y la aplicación quedaba a medias.
-    return <PantallaErrorSesion error={authError} />;
+    // Cualquier otro error (red, servidor caído, cuenta sin créditos): se
+    // explica lo que pasa, pero se deja entrar igualmente, que hay medio
+    // programa que funciona sin servidor.
+    if (!entrarIgual) {
+      return <PantallaErrorSesion error={authError} onContinuar={() => setEntrarIgual(true)} />;
+    }
   }
 
   // Render the main app

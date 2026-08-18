@@ -6,16 +6,25 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarCheck, Clock, RefreshCw, CheckCircle2, AlertCircle, Phone, User } from 'lucide-react';
+import {
+  CalendarCheck, Clock, RefreshCw, CheckCircle2, AlertCircle, Phone, User, Info, Ban,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { disponibilidadProximosDias, HORARIO_POR_DEFECTO } from '@/lib/availability';
+import {
+  disponibilidadProximosDias, HORARIO_POR_DEFECTO,
+  TIPOS_TRABAJO, tipoTrabajo, cabeTrabajo,
+} from '@/lib/availability';
 
 /**
  * Disponibilidad — qué días y horas quedan libres.
  *
- * Pensada para usarla con el cliente al teléfono: se ve de un vistazo qué
- * huecos hay, se pulsa uno y queda la cita creada con los datos del cliente.
- * Al reservar se envía un aviso al correo de la empresa con todos esos datos.
+ * Pensada para usarla con el cliente al teléfono: se elige el tipo de trabajo,
+ * se ve de un vistazo en qué horas cabe entero, se pulsa una y queda la cita
+ * creada con los datos del cliente. Al reservar se avisa por correo.
+ *
+ * Lo importante: cada trabajo ocupa lo suyo. Un montaje se lleva la mañana y
+ * una revisión son dos horas, así que la pantalla no ofrece una hora suelta,
+ * ofrece las horas donde CABE el trabajo entero descontando lo ya apuntado.
  *
  * Los huecos se calculan descontando las citas de la agenda Y las órdenes SAT
  * ya programadas, para que no se ofrezca una hora en la que ya hay trabajo.
@@ -38,11 +47,18 @@ export default function Availability() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
 
+  // Trabajo elegido: manda sobre cuántas horas se reservan.
+  const [tipoId, setTipoId] = useState('revision');
+  const [horas, setHoras] = useState(tipoTrabajo('revision').horas);
+
   // Reserva
-  const [hueco, setHueco] = useState(null); // { fecha, inicio, fin }
+  const [hueco, setHueco] = useState(null); // { fecha, inicio }
   const [form, setForm] = useState({ contact_id: '', contact_name: '', phone: '', title: '', notes: '' });
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState('');
+
+  const trabajo = tipoTrabajo(tipoId);
+  const minutos = Math.max(15, Math.round((Number(horas) || 1) * 60));
 
   const cargar = async () => {
     setCargando(true);
@@ -69,15 +85,24 @@ export default function Availability() {
   const horario = empresa?.availability_config || HORARIO_POR_DEFECTO;
 
   const dias = useMemo(
-    () => disponibilidadProximosDias(horario, citas, ordenes),
-    [horario, citas, ordenes]
+    () => disponibilidadProximosDias(horario, citas, ordenes, new Date(), minutos),
+    [horario, citas, ordenes, minutos]
   );
 
-  const totalLibres = dias.reduce((s, d) => s + d.libres, 0);
+  const totalCaben = dias.reduce((s, d) => s + (d.caben || 0), 0);
+
+  const elegirTipo = (id) => {
+    setTipoId(id);
+    setHoras(tipoTrabajo(id).horas); // se propone su duración; se puede cambiar
+  };
 
   const abrirReserva = (fecha, h) => {
-    setHueco({ fecha, inicio: h.inicio, fin: h.fin });
-    setForm({ contact_id: '', contact_name: '', phone: '', title: '', notes: '' });
+    setHueco({ fecha, inicio: h.inicio });
+    setForm({
+      contact_id: '', contact_name: '', phone: '',
+      title: trabajo.bloquea ? trabajo.nombre : '',
+      notes: '',
+    });
     setAviso('');
   };
 
@@ -91,50 +116,72 @@ export default function Availability() {
     }));
   };
 
+  // Comprobación en vivo de la reserva que se está a punto de hacer.
+  const revision = hueco
+    ? cabeTrabajo(hueco.fecha, hueco.inicio, minutos, horario, citas, ordenes)
+    : null;
+
   const reservar = async () => {
-    if (!form.contact_name.trim()) { setAviso('Pon al menos el nombre del cliente.'); return; }
+    // Los bloqueos son horas propias: no hace falta cliente.
+    if (!trabajo.bloquea && !form.contact_name.trim()) {
+      setAviso('Pon al menos el nombre del cliente.');
+      return;
+    }
+    if (revision && !revision.cabe) {
+      setAviso(revision.motivo || 'A esa hora ya hay trabajo apuntado.');
+      return;
+    }
     setGuardando(true);
     setAviso('');
     try {
+      const esBloqueo = !!trabajo.bloquea;
       const cita = {
-        title: form.title.trim() || 'Cita concertada por teléfono',
+        title: form.title.trim() || (esBloqueo ? trabajo.nombre : `${trabajo.nombre} · ${form.contact_name.trim()}`),
         description: form.notes || '',
         contact_id: form.contact_id || '',
-        contact_name: form.contact_name.trim(),
+        contact_name: esBloqueo ? trabajo.nombre : form.contact_name.trim(),
         date: hueco.fecha,
         time_start: hueco.inicio,
-        time_end: hueco.fin,
-        type: 'otro',
+        time_end: revision.fin,
+        type: trabajo.tipoAgenda || 'otro',
         status: 'pendiente',
-        priority: 'media',
-        notes: form.phone ? `Teléfono: ${form.phone}\n${form.notes || ''}`.trim() : (form.notes || ''),
+        priority: tipoId === 'urgencia' ? 'urgente' : 'media',
+        notes: [
+          `Trabajo: ${trabajo.nombre} (${horas} h)`,
+          form.phone ? `Teléfono: ${form.phone}` : '',
+          form.notes || '',
+        ].filter(Boolean).join('\n'),
       };
       const creada = await base44.entities.Appointment.create(cita);
       setCitas(prev => [creada, ...prev]);
 
-      // El aviso va DESPUÉS de guardar y no bloquea: si el correo falla, la
-      // cita ya está registrada y se avisa de que hay que apuntarla a mano.
+      const cuando = `${fechaBonita(hueco.fecha).diaMes} de ${hueco.inicio} a ${revision.fin}`;
+
+      // Un bloqueo propio no necesita que llegue aviso de "cliente nuevo".
       let avisoOk = true;
-      try {
-        await base44.functions.invoke('avisoNuevaCita', {
-          fecha: hueco.fecha,
-          hora_inicio: hueco.inicio,
-          hora_fin: hueco.fin,
-          contact_name: cita.contact_name,
-          phone: form.phone || '',
-          title: cita.title,
-          notes: form.notes || '',
-        });
-      } catch (e) {
-        console.error('[Disponibilidad] No se pudo enviar el aviso:', e);
-        avisoOk = false;
+      if (!esBloqueo) {
+        try {
+          await base44.functions.invoke('avisoNuevaCita', {
+            fecha: hueco.fecha,
+            hora_inicio: hueco.inicio,
+            hora_fin: revision.fin,
+            contact_name: cita.contact_name,
+            phone: form.phone || '',
+            title: `${trabajo.nombre} (${horas} h)`,
+            notes: form.notes || '',
+          });
+        } catch (e) {
+          console.error('[Disponibilidad] No se pudo enviar el aviso:', e);
+          avisoOk = false;
+        }
       }
 
-      const cuando = `${fechaBonita(hueco.fecha).diaMes} a las ${hueco.inicio}`;
       setHueco(null);
       setAviso('');
-      if (avisoOk) {
-        toast.success(`Cita reservada el ${cuando} para ${cita.contact_name}`);
+      if (esBloqueo) {
+        toast.success(`Horas bloqueadas el ${cuando}`);
+      } else if (avisoOk) {
+        toast.success(`Reservado el ${cuando} para ${cita.contact_name}`);
       } else {
         // La cita SÍ está guardada: se dice, para que no se vuelva a reservar.
         toast.warning('Cita guardada, pero el aviso por correo no salió');
@@ -157,7 +204,9 @@ export default function Availability() {
             Disponibilidad
           </h1>
           <p className="text-sm text-slate-500">
-            {cargando ? 'Calculando huecos…' : `${totalLibres} huecos libres en los próximos ${dias.length} días`}
+            {cargando
+              ? 'Calculando huecos…'
+              : `${totalCaben} horas donde cabe un ${trabajo.nombre.toLowerCase()} de ${horas} h`}
           </p>
         </div>
         <Button variant="outline" onClick={cargar} disabled={cargando} className="gap-2">
@@ -173,34 +222,107 @@ export default function Availability() {
         </div>
       )}
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
-        Horario: {horario.hora_inicio}–{horario.hora_fin}
-        {horario.descanso_inicio ? ` (pausa ${horario.descanso_inicio}–${horario.descanso_fin})` : ''},
-        citas de {horario.duracion_cita} min.
-        Se descuentan las citas de la agenda y las órdenes SAT ya programadas.
-        Puedes cambiarlo en Configuración → Horario.
+      {/* Qué trabajo es: manda sobre las horas que se reservan */}
+      <Card>
+        <CardContent className="p-3 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2">
+              <label className="text-xs font-medium text-slate-600">Tipo de trabajo</label>
+              <Select value={tipoId} onValueChange={elegirTipo}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TIPOS_TRABAJO.filter(t => !t.bloquea).map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.nombre} · {t.horas} h</SelectItem>
+                  ))}
+                  {TIPOS_TRABAJO.filter(t => t.bloquea).map(t => (
+                    <SelectItem key={t.id} value={t.id}>🚫 {t.nombre} · {t.horas} h</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-600">Horas que ocupa</label>
+              <Input
+                type="number" min="0.5" step="0.5" className="mt-1"
+                value={horas}
+                onChange={e => setHoras(Number(e.target.value) || 1)}
+              />
+            </div>
+          </div>
+
+          {Number(horas) < trabajo.minimo && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+              Para un <strong>{trabajo.nombre.toLowerCase()}</strong> normalmente no bajes
+              de <strong>{trabajo.minimo} h</strong>. Puedes dejarlo así si sabes que este
+              va más rápido.
+            </p>
+          )}
+
+          {trabajo.bloquea && (
+            <p className="text-xs text-slate-700 bg-slate-100 border border-slate-200 rounded p-2 flex items-start gap-2">
+              <Ban className="w-4 h-4 flex-shrink-0 mt-0.5 text-slate-500" />
+              <span>
+                Esto no es un cliente: aparta esas horas de la agenda para que no se
+                ofrezcan a nadie. No hace falta poner nombre ni sale aviso por correo.
+              </span>
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Aviso de que todo esto es orientativo */}
+      <div className="flex items-start gap-2 text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p>
+            <strong>Los horarios son orientativos.</strong> Cada trabajo es distinto y
+            puede alargarse o acabar antes de lo previsto: las horas que se ven aquí son
+            una previsión para poder dar una cita por teléfono, no un compromiso exacto.
+          </p>
+          <p>
+            <strong>La hora de comer también es orientativa.</strong> Hay días que no se
+            para y se termina antes, así que un trabajo puede pasar por encima de ella
+            sin problema: si lo hace, se avisa al reservar, pero no impide reservar.
+          </p>
+          <p className="text-blue-700">
+            Horario de referencia: {horario.hora_inicio}–{horario.hora_fin}
+            {horario.descanso_inicio ? ` (comida ${horario.descanso_inicio}–${horario.descanso_fin})` : ''}.
+            Se puede cambiar en Configuración → Horario.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {dias.filter(d => d.laborable).map(dia => {
           const { diaNombre, diaMes } = fechaBonita(dia.fecha);
+          const caben = dia.caben ?? dia.libres;
           return (
-            <Card key={dia.fecha} className={dia.libres === 0 ? 'opacity-60' : ''}>
+            <Card key={dia.fecha} className={caben === 0 ? 'opacity-60' : ''}>
               <CardContent className="p-3">
                 <div className="flex items-baseline justify-between mb-2">
-                  <p className="font-semibold text-slate-800">{diaNombre} <span className="text-slate-400 font-normal">{diaMes}</span></p>
-                  <span className={`text-xs font-medium ${dia.libres > 0 ? 'text-green-600' : 'text-slate-400'}`}>
-                    {dia.libres > 0 ? `${dia.libres} libres` : 'completo'}
+                  <p className="font-semibold text-slate-800">
+                    {diaNombre} <span className="text-slate-400 font-normal">{diaMes}</span>
+                  </p>
+                  <span className={`text-xs font-medium ${caben > 0 ? 'text-green-600' : 'text-slate-400'}`}>
+                    {caben > 0 ? `${caben} para empezar` : 'no cabe'}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {dia.huecos.map(h => (
-                    h.libre ? (
+                    h.cabeTrabajo ? (
                       <button
                         key={h.inicio}
                         onClick={() => abrirReserva(dia.fecha, h)}
-                        className="text-xs px-2 py-1 rounded border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 font-medium"
-                        title="Pulsa para reservar este hueco"
+                        className={`text-xs px-2 py-1 rounded border font-medium ${
+                          h.cruzaDescanso || h.terminaTarde
+                            ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                            : 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100'
+                        }`}
+                        title={
+                          `${h.inicio}–${h.finTrabajo}` +
+                          (h.cruzaDescanso ? ' · pasa por la hora de comer' : '') +
+                          (h.terminaTarde ? ' · termina después de la hora de salida' : '')
+                        }
                       >
                         {h.inicio}
                       </button>
@@ -208,7 +330,7 @@ export default function Availability() {
                       <span
                         key={h.inicio}
                         className="text-xs px-2 py-1 rounded border border-slate-200 bg-slate-100 text-slate-400 line-through"
-                        title={h.motivo || 'Ocupado'}
+                        title={h.motivo || 'No cabe el trabajo entero'}
                       >
                         {h.inicio}
                       </span>
@@ -227,50 +349,78 @@ export default function Availability() {
         </p>
       )}
 
-      {/* Reservar hueco */}
+      {/* Reservar */}
       <Dialog open={!!hueco} onOpenChange={(o) => !o && setHueco(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-base">
               <Clock className="w-5 h-5 text-blue-600" />
-              Reservar {hueco && fechaBonita(hueco.fecha).diaNombre} {hueco?.fecha.split('-').reverse().slice(0, 2).join('/')} · {hueco?.inicio}–{hueco?.fin}
+              {hueco && `${fechaBonita(hueco.fecha).diaNombre} ${fechaBonita(hueco.fecha).diaMes}`}
+              {' · '}{hueco?.inicio}–{revision?.fin}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-3">
-            <div>
-              <label className="text-xs font-medium text-slate-600">Cliente ya registrado</label>
-              <Select value={form.contact_id} onValueChange={elegirContacto}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Buscar cliente…" /></SelectTrigger>
-                <SelectContent>
-                  {contactos.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {`${c.name || ''} ${c.surname || ''}`.trim()}{c.phone ? ` · ${c.phone}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-slate-400 mt-1">O escribe los datos abajo si es un cliente nuevo.</p>
-            </div>
+            <p className="text-xs bg-slate-50 border rounded p-2">
+              <strong>{trabajo.nombre}</strong> · {horas} h
+            </p>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs font-medium text-slate-600 flex items-center gap-1"><User className="w-3 h-3" />Nombre</label>
-                <Input className="mt-1" value={form.contact_name}
-                  onChange={e => setForm({ ...form, contact_name: e.target.value })} placeholder="Nombre del cliente" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-600 flex items-center gap-1"><Phone className="w-3 h-3" />Teléfono</label>
-                <Input className="mt-1" value={form.phone}
-                  onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Teléfono" />
-              </div>
-            </div>
+            {revision?.cruzaDescanso && (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+                Este trabajo pasa por encima de la hora de comer. Se puede reservar
+                igual: la comida es orientativa.
+              </p>
+            )}
+            {revision?.terminaTarde && (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+                Termina a las {revision.fin}, después de la hora de salida habitual.
+              </p>
+            )}
+            {revision && !revision.cabe && (
+              <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">
+                {revision.motivo}
+              </p>
+            )}
+
+            {!trabajo.bloquea && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-slate-600">Cliente ya registrado</label>
+                  <Select value={form.contact_id} onValueChange={elegirContacto}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Buscar cliente…" /></SelectTrigger>
+                    <SelectContent>
+                      {contactos.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {`${c.name || ''} ${c.surname || ''}`.trim()}{c.phone ? ` · ${c.phone}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-slate-400 mt-1">O escribe los datos abajo si es un cliente nuevo.</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 flex items-center gap-1"><User className="w-3 h-3" />Nombre</label>
+                    <Input className="mt-1" value={form.contact_name}
+                      onChange={e => setForm({ ...form, contact_name: e.target.value })} placeholder="Nombre del cliente" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 flex items-center gap-1"><Phone className="w-3 h-3" />Teléfono</label>
+                    <Input className="mt-1" value={form.phone}
+                      onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Teléfono" />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div>
-              <label className="text-xs font-medium text-slate-600">Motivo</label>
+              <label className="text-xs font-medium text-slate-600">
+                {trabajo.bloquea ? 'Motivo' : 'Detalle del trabajo'}
+              </label>
               <Input className="mt-1" value={form.title}
                 onChange={e => setForm({ ...form, title: e.target.value })}
-                placeholder="Avería aire acondicionado, revisión…" />
+                placeholder={trabajo.bloquea ? 'Clase, examen, asunto propio…' : 'Marca y modelo, planta, lo que sea…'} />
             </div>
 
             <div>
@@ -284,10 +434,13 @@ export default function Availability() {
               <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">{aviso}</p>
             )}
 
-            <Button onClick={reservar} disabled={guardando} className="w-full bg-blue-600 hover:bg-blue-700 gap-2">
+            <Button onClick={reservar} disabled={guardando || (revision && !revision.cabe)}
+              className="w-full bg-blue-600 hover:bg-blue-700 gap-2">
               {guardando
-                ? <><RefreshCw className="w-4 h-4 animate-spin" />Reservando…</>
-                : <><CheckCircle2 className="w-4 h-4" />Reservar y avisarme</>}
+                ? <><RefreshCw className="w-4 h-4 animate-spin" />Guardando…</>
+                : trabajo.bloquea
+                  ? <><Ban className="w-4 h-4" />Bloquear estas horas</>
+                  : <><CheckCircle2 className="w-4 h-4" />Reservar y avisarme</>}
             </Button>
           </div>
         </DialogContent>
