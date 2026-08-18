@@ -91,15 +91,32 @@ jobs:
           grep -q "versionCode $CODE" android/app/build.gradle
 
       - name: Firma estable (clave fija → actualizar sin desinstalar)
+        # Copiar la clave a ~/.android/debug.keystore NO bastaba: se comprobó
+        # descargando el APK ya publicado y su firma era una clave inventada por
+        # Gradle en cada compilación (CN=Android Debug, con la fecha del día).
+        # Por eso cada APK obligaba a desinstalar el anterior. Ahora la firma se
+        # declara explícitamente en build.gradle.
         run: |
           mkdir -p ~/.android
           cp android-signing/debug.keystore ~/.android/debug.keystore
+          cp android-signing/debug.keystore android/app/debug.keystore
+          python3 scripts/firmar-apk-con-clave-fija.py android/app/build.gradle
+          grep -A 8 'signingConfigs' android/app/build.gradle
 
       - name: Build debug APK
         run: cd android && chmod +x ./gradlew && ./gradlew assembleDebug --no-daemon
 
       - name: Rename APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk gestion-pro-total.apk
+
+      - name: Comprobar que el APK lleva la clave del repositorio
+        # Si la firma no es la esperada, ese APK obligaría a desinstalar la
+        # versión anterior y el usuario perdería los datos. Mejor que falle aquí
+        # y no se publique nada, a publicarlo y que lo descubra al instalarlo.
+        run: |
+          HUELLA=$(keytool -list -keystore android-signing/debug.keystore -storepass android 2>/dev/null | grep -oE '([0-9A-F]{2}:){31}[0-9A-F]{2}')
+          echo "Huella esperada: $HUELLA"
+          python3 scripts/verificar-firma-apk.py gestion-pro-total.apk "$HUELLA"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
