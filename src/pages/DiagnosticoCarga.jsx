@@ -10,6 +10,8 @@ import { REFRIGERANT_DATABASE, estadoRefrigerante, getRefrigerantInfo } from '@/
 import { format } from 'date-fns';
 import { createPageUrl } from '../utils';
 import DiagnosticFailuresDiagram from '@/components/DiagnosticFailuresDiagram';
+import EsquemaCircuito from '@/components/EsquemaCircuito';
+import CodigosAveriaSplit from '@/components/CodigosAveriaSplit';
 
 // Presiones ORIENTATIVAS manométricas (bar) por refrigerante y aplicación.
 const PRES = {
@@ -644,7 +646,7 @@ export default function DiagnosticoCarga() {
       <NavBar title="Diagnóstico frigorífico" />
       <div className="max-w-2xl mx-auto px-3 py-3 space-y-3">
         <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white shadow text-sm">
-          {[['presiones', '📟 Presiones/Temp.'], ['conversion', '🔄 Conversión'], ['averia', '🛠️ Avería']].map(([k, l]) => (
+          {[['presiones', '📟 Presiones/Temp.'], ['codigos', '🔢 Códigos'], ['conversion', '🔄 Conversión'], ['averia', '🛠️ Avería']].map(([k, l]) => (
             <button key={k} onClick={() => setTab(k)} className={`flex-1 py-2.5 font-medium ${tab === k ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>{l}</button>
           ))}
         </div>
@@ -938,6 +940,17 @@ export default function DiagnosticoCarga() {
                 </div>
               )}
 
+              {/* El circuito dibujado con las medidas puestas en su sitio */}
+              <div className="mt-3 border-t pt-3">
+                <p className="text-sm font-semibold text-slate-700 mb-1 flex items-center gap-2"><Snowflake className="w-4 h-4 text-sky-600" />Circuito frigorífico con tus medidas</p>
+                <EsquemaCircuito
+                  gas={gas} pBaja={pBaja} pAlta={pAlta}
+                  tEvap={tEvap} tAsp={tAsp} tCond={tCond} tLiq={tLiq}
+                  tFiltroIn={tFiltroIn} tFiltroOut={tFiltroOut} tValvOut={tValvOut}
+                  tBulbo={tBulbo} tAmb={tAmb} variante={variante}
+                />
+              </div>
+
               {/* Diagrama de Mollier (p–h) con el ciclo dibujado según los datos */}
               <div className="mt-3 border-t pt-3">
                 <p className="text-sm font-semibold text-slate-700 mb-1 flex items-center gap-2"><Gauge className="w-4 h-4 text-indigo-600" />Ciclo en el diagrama de Mollier</p>
@@ -1019,6 +1032,21 @@ export default function DiagnosticoCarga() {
         )}
 
         {/* TAB 2: conversión */}
+        {tab === 'codigos' && (
+          <div className="space-y-3">
+            <div className="bg-white rounded-xl shadow p-3">
+              <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-blue-600" />Códigos de avería de splits
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Los más habituales, para descifrar rápido lo que marca el display sin
+                buscar el manual en la furgoneta.
+              </p>
+            </div>
+            <CodigosAveriaSplit />
+          </div>
+        )}
+
         {tab === 'conversion' && (
           <div id="diag-print" className="space-y-3">
             <div className="bg-white rounded-xl shadow p-4 space-y-3">

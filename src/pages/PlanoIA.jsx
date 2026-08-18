@@ -12,8 +12,11 @@ import {
 import { toast } from 'sonner';
 import {
   TIPOS_MAQUINA, FACTOR_USO, FACTOR_ORIENTACION, FACTOR_AISLAMIENTO,
+  EQUIPOS_SUELTOS,
   resumenPlano, listaMateriales, totalMateriales, planoComoTexto,
 } from '@/lib/planoCalculos';
+import { dibujarEquipo, nombreEquipo, colorEquipo, radioAproximado } from '@/lib/planoSimbolos';
+import PaletaEquipos from '@/components/PaletaEquipos';
 
 /**
  * Plano IA — dibujar la planta, colocar las máquinas y sacar el presupuesto.
@@ -33,8 +36,8 @@ const ALTO_M = 18;
 
 const HERRAMIENTAS = [
   { id: 'estancia', nombre: 'Dibujar estancia', icono: Pencil },
-  { id: 'maquina', nombre: 'Poner máquina', icono: Wind },
-  { id: 'exterior', nombre: 'Unidad exterior', icono: Wrench },
+  { id: 'maquina', nombre: 'Poner equipo', icono: Wind },
+  { id: 'exterior', nombre: 'Exterior / condensadora', icono: Wrench },
   { id: 'mover', nombre: 'Seleccionar', icono: Move },
   { id: 'borrar', nombre: 'Borrar', icono: Trash2 },
 ];
@@ -51,6 +54,8 @@ export default function PlanoIA() {
   const canvasRef = useRef(null);
 
   const [herramienta, setHerramienta] = useState('estancia');
+  // Qué equipo se coloca al pulsar con la herramienta "Poner equipo".
+  const [equipoElegido, setEquipoElegido] = useState('mural');
   const [estancias, setEstancias] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
   const [exterior, setExterior] = useState(null);
@@ -133,20 +138,13 @@ export default function PlanoIA() {
       ctx.fillText(`${e.ancho}×${e.alto} m · ${(e.ancho * e.alto).toFixed(1)} m²`, x + 6, y + 30);
     }
 
-    // Máquinas interiores
+    // Equipos colocados
     for (const mq of maquinas) {
-      const color = TIPOS_MAQUINA.find(t => t.id === mq.tipo)?.color || '#ef4444';
       const x = mq.x * METRO_PX, y = mq.y * METRO_PX;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(x, y, 9, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
 
-      // Recorrido de la tubería hasta la exterior, a trazos y por rincones.
-      if (exterior) {
+      // La tubería va primero, para que el símbolo quede encima y se lea.
+      // Los equipos sueltos (vitrina, arcón, puerta) no llevan este trazado.
+      if (exterior && !EQUIPOS_SUELTOS.includes(mq.tipo)) {
         ctx.strokeStyle = 'rgba(15,118,110,0.55)';
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 4]);
@@ -157,19 +155,26 @@ export default function PlanoIA() {
         ctx.stroke();
         ctx.setLineDash([]);
       }
+
+      dibujarEquipo(ctx, mq.tipo, x, y, 1, mq.estancia_id && mq.estancia_id === seleccion);
+
+      ctx.fillStyle = '#475569';
+      ctx.font = '9px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(nombreEquipo(mq.tipo), x, y + 26);
+      ctx.textAlign = 'left';
     }
 
-    // Unidad exterior
+    // Unidad exterior / condensadora
     if (exterior) {
       const x = exterior.x * METRO_PX, y = exterior.y * METRO_PX;
-      ctx.fillStyle = '#0f766e';
-      ctx.fillRect(x - 11, y - 8, 22, 16);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x - 11, y - 8, 22, 16);
-      ctx.fillStyle = '#0f766e';
-      ctx.font = 'bold 10px system-ui, sans-serif';
-      ctx.fillText('EXT', x - 10, y + 22);
+      const tipoExt = resumen.es_refrigeracion ? 'unidad_condensadora' : 'exterior';
+      dibujarEquipo(ctx, tipoExt, x, y, 1.1, false);
+      ctx.fillStyle = colorEquipo(tipoExt);
+      ctx.font = 'bold 9px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(resumen.es_refrigeracion ? 'CONDENSADORA' : 'EXTERIOR', x, y + 30);
+      ctx.textAlign = 'left';
     }
 
     // Rectángulo que se está dibujando ahora mismo
@@ -190,7 +195,7 @@ export default function PlanoIA() {
         x + 4, y - 4
       );
     }
-  }, [estancias, maquinas, exterior, seleccion, arrastre]);
+  }, [estancias, maquinas, exterior, seleccion, arrastre, resumen.es_refrigeracion]);
 
   useEffect(() => { pintar(); }, [pintar]);
 
@@ -227,17 +232,27 @@ export default function PlanoIA() {
       return;
     }
     if (herramienta === 'maquina') {
+      // Vitrinas, arcones y puertas se ponen donde haga falta: son mobiliario,
+      // no van ligados a la carga de una estancia.
+      if (EQUIPOS_SUELTOS.includes(equipoElegido)) {
+        setMaquinas(prev => [...prev, { id: nuevoId(), tipo: equipoElegido, x, y }]);
+        return;
+      }
       const est = estanciaEn(x, y);
-      if (!est) { toast.error('Pon la máquina dentro de una estancia dibujada'); return; }
+      if (!est) { toast.error('Pon el equipo dentro de una estancia dibujada'); return; }
       setMaquinas(prev => [
-        ...prev.filter(m => m.estancia_id !== est.id), // una por estancia
-        { id: nuevoId(), estancia_id: est.id, tipo: 'mural', x, y },
+        // Una unidad interior por estancia: si ya había, se sustituye.
+        ...prev.filter(m => m.estancia_id !== est.id),
+        { id: nuevoId(), estancia_id: est.id, tipo: equipoElegido, x, y },
       ]);
       setSeleccion(est.id);
       return;
     }
     if (herramienta === 'borrar') {
-      const maq = maquinas.find(m => Math.abs(m.x - x) < 0.75 && Math.abs(m.y - y) < 0.75);
+      const maq = [...maquinas].reverse().find(m => {
+        const r = radioAproximado(m.tipo);
+        return Math.abs(m.x - x) <= r && Math.abs(m.y - y) <= r;
+      });
       if (maq) { setMaquinas(prev => prev.filter(m => m.id !== maq.id)); return; }
       if (exterior && Math.abs(exterior.x - x) < 0.75 && Math.abs(exterior.y - y) < 0.75) {
         setExterior(null); return;
@@ -489,6 +504,22 @@ export default function PlanoIA() {
 
         {/* Panel lateral */}
         <div className="space-y-4">
+          {herramienta === 'maquina' && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Qué equipo pones</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PaletaEquipos valor={equipoElegido} onChange={setEquipoElegido} />
+                <p className="text-[10px] text-slate-400 mt-2">
+                  Los de climatización y el evaporador de cámara van dentro de una
+                  estancia (una por estancia). Vitrinas, arcones y puertas se ponen
+                  donde haga falta.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Totales</CardTitle>
@@ -512,6 +543,15 @@ export default function PlanoIA() {
                   onChange={e => setAlturaDefecto(Number(e.target.value) || 2.5)}
                 />
               </div>
+
+              {resumen.camaras.length > 0 && (
+                <p className="text-xs text-sky-800 bg-sky-50 border border-sky-200 rounded p-2 mt-2">
+                  Hay cámaras dibujadas ({resumen.camaras.join(', ')}). Aquí sale un
+                  primer dimensionado para presupuestar; para el cálculo fino (producto,
+                  entradas diarias, renovaciones y horas de funcionamiento) usa la
+                  pantalla de <strong>Cámara Frigorífica</strong>.
+                </p>
+              )}
 
               {resumen.sin_maquina.length > 0 && (
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mt-2">
@@ -555,7 +595,8 @@ export default function PlanoIA() {
                 {maquinaSel && (
                   <Desplegable
                     etiqueta="Tipo de máquina" valor={maquinaSel.tipo}
-                    opciones={TIPOS_MAQUINA.filter(t => t.id !== 'exterior').map(t => t.id)}
+                    opciones={TIPOS_MAQUINA.filter(t => t.id !== 'exterior' && t.id !== 'unidad_condensadora').map(t => t.id)}
+                    nombres={Object.fromEntries(TIPOS_MAQUINA.map(t => [t.id, t.nombre]))}
                     onChange={v => actualizarMaquina(estanciaSel.id, v)}
                   />
                 )}
@@ -747,8 +788,8 @@ function Medida({ etiqueta, valor, onChange }) {
   );
 }
 
-function Desplegable({ etiqueta, valor, opciones, onChange }) {
-  const bonito = (s) => s.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+function Desplegable({ etiqueta, valor, opciones, onChange, nombres }) {
+  const bonito = (s) => (nombres?.[s]) || s.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
   return (
     <div>
       <label className="text-xs font-medium text-slate-600">{etiqueta}</label>

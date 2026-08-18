@@ -29,7 +29,18 @@ export const FACTOR_USO = {
   restauracion: 180,
   sala_servidores: 300,
   almacen: 70,
+  // Cámaras: la carga por m² no tiene nada que ver con la de un local
+  // climatizado, porque se mantiene un salto de temperatura enorme todo el día.
+  // Estos números son un PRIMER DIMENSIONADO para presupuestar; para el
+  // cálculo fino (producto, entradas diarias, renovaciones, tiempo de
+  // funcionamiento) está la pantalla de Cámara Frigorífica.
+  obrador: 160,
+  camara_refrigeracion: 200,
+  camara_congelacion: 380,
 };
+
+/** Usos que son cámara, para avisar de que conviene el cálculo detallado. */
+export const USOS_CAMARA = ['camara_refrigeracion', 'camara_congelacion'];
 
 /** Corrección por orientación de la fachada principal. */
 export const FACTOR_ORIENTACION = {
@@ -47,14 +58,35 @@ export const FACTOR_AISLAMIENTO = {
   malo: 1.15,
 };
 
-/** Tipos de máquina que se pueden colocar en el plano. */
+/**
+ * Equipos que se pueden colocar en el plano, con su dibujo y su precio.
+ *
+ * `categoria` separa climatización de refrigeración porque no se presupuestan
+ * igual: en clima hay una exterior común para varias interiores, y en
+ * refrigeración cada mueble o cámara lleva lo suyo.
+ */
 export const TIPOS_MAQUINA = [
-  { id: 'mural', nombre: 'Split mural', color: '#ef4444' },
-  { id: 'cassette', nombre: 'Cassette', color: '#8b5cf6' },
-  { id: 'conductos', nombre: 'Conductos', color: '#f59e0b' },
-  { id: 'suelo', nombre: 'Suelo / consola', color: '#3b82f6' },
-  { id: 'exterior', nombre: 'Unidad exterior', color: '#0f766e' },
+  // ── Climatización ──────────────────────────────────────────────────────
+  { id: 'mural', nombre: 'Split mural', color: '#ef4444', categoria: 'clima' },
+  { id: 'cassette', nombre: 'Cassette', color: '#8b5cf6', categoria: 'clima' },
+  { id: 'conductos', nombre: 'Conductos', color: '#f59e0b', categoria: 'clima' },
+  { id: 'suelo', nombre: 'Suelo / consola', color: '#3b82f6', categoria: 'clima' },
+  { id: 'exterior', nombre: 'Unidad exterior', color: '#0f766e', categoria: 'clima' },
+  // ── Refrigeración ──────────────────────────────────────────────────────
+  { id: 'evaporador_camara', nombre: 'Evaporador de cámara', color: '#0891b2', categoria: 'refrigeracion' },
+  { id: 'unidad_condensadora', nombre: 'Unidad condensadora', color: '#0f766e', categoria: 'refrigeracion' },
+  { id: 'vitrina', nombre: 'Vitrina / mural refrigerado', color: '#7c3aed', categoria: 'refrigeracion' },
+  { id: 'arcon', nombre: 'Arcón / isla congelación', color: '#1d4ed8', categoria: 'refrigeracion' },
+  { id: 'camara_puerta', nombre: 'Puerta de cámara', color: '#64748b', categoria: 'refrigeracion' },
 ];
+
+/** Equipos que van dentro de una estancia y se dimensionan con su carga. */
+export const EQUIPOS_INTERIORES = [
+  'mural', 'cassette', 'conductos', 'suelo', 'evaporador_camara',
+];
+
+/** Equipos sueltos: se presupuestan por unidad, no por la carga de la sala. */
+export const EQUIPOS_SUELTOS = ['vitrina', 'arcon', 'camara_puerta'];
 
 /** Superficie de una estancia rectangular, en m². */
 export function areaEstancia(estancia) {
@@ -132,9 +164,14 @@ export function metrosTuberia(maquina, exterior, desnivel = 3, margen = 2) {
 export function resumenPlano(plano) {
   const { estancias = [], maquinas = [], unidad_exterior = null, altura_defecto = 2.5 } = plano || {};
 
+  // Vitrinas, arcones y puertas se presupuestan por unidad: no dependen de la
+  // carga de la sala donde estén, así que se apartan antes de repartir.
+  const sueltos = maquinas.filter(m => EQUIPOS_SUELTOS.includes(m.tipo));
+  const interiores = maquinas.filter(m => !EQUIPOS_SUELTOS.includes(m.tipo));
+
   const detalle = estancias.map(est => {
     const carga = cargaEstancia(est, altura_defecto);
-    const maquina = maquinas.find(m => m.estancia_id === est.id) || null;
+    const maquina = interiores.find(m => m.estancia_id === est.id) || null;
     const tuberia = maquina && unidad_exterior
       ? metrosTuberia(maquina, unidad_exterior, altura_defecto)
       : 0;
@@ -156,8 +193,15 @@ export function resumenPlano(plano) {
   // nunca funcionan todas a tope a la vez. Se aplica un factor de simultaneidad.
   const simultaneidad = detalle.length > 1 ? 0.85 : 1;
 
+  // Si lo que hay colocado son evaporadores de cámara, la máquina de fuera es
+  // una unidad condensadora, no la exterior de un split: se nombra y se
+  // valora distinto.
+  const esRefrigeracion = detalle.some(d => d.maquina?.tipo === 'evaporador_camara');
+
   return {
     detalle,
+    sueltos,
+    es_refrigeracion: esRefrigeracion,
     area_total: areaTotal,
     frigorias_total: frigoriasTotal,
     kw_total: kwTotal,
@@ -166,6 +210,10 @@ export function resumenPlano(plano) {
     simultaneidad,
     metros_tuberia_total: tuberiaTotal,
     sin_maquina: detalle.filter(d => !d.maquina).map(d => d.estancia.nombre || 'Sin nombre'),
+    // Cámaras dibujadas: se avisa de que el cálculo fino va en su pantalla.
+    camaras: detalle
+      .filter(d => USOS_CAMARA.includes(d.estancia.uso))
+      .map(d => d.estancia.nombre || 'Cámara'),
   };
 }
 
@@ -188,6 +236,12 @@ export const PRECIOS_REFERENCIA = {
   soporte: 35,
   vacio_carga: 60,       // por máquina
   mano_obra_maquina: 180,
+  // Refrigeración
+  evaporador_camara: 620,
+  unidad_condensadora_kw: 210,   // € por kW de condensadora (más cara que una exterior de clima)
+  vitrina: 2400,
+  arcon: 1500,
+  camara_puerta: 850,
 };
 
 /**
@@ -222,16 +276,36 @@ export function listaMateriales(resumen, precios = PRECIOS_REFERENCIA) {
     }));
   }
 
+  // Equipos sueltos (vitrinas, arcones, puertas): por unidad, agrupados.
+  const porSuelto = {};
+  for (const eq of (resumen.sueltos || [])) {
+    porSuelto[eq.tipo] = (porSuelto[eq.tipo] || 0) + 1;
+  }
+  for (const [tipo, cantidad] of Object.entries(porSuelto)) {
+    lineas.push(crearLinea({
+      descripcion: `${TIPOS_MAQUINA.find(t => t.id === tipo)?.nombre || tipo}, instalado`,
+      unidad: 'ud',
+      cantidad,
+      precio_ud: p[tipo] ?? 0,
+      categoria: 'maquinaria',
+    }));
+  }
+
   const hayMaquinas = resumen.detalle.some(d => d.maquina);
 
   // Sin ninguna interior colocada no se presupuesta exterior: el escalón
   // comercial mínimo haría aparecer una máquina de la nada en un plano vacío.
   if (hayMaquinas && resumen.kw_exterior_comercial > 0) {
+    const esRefri = resumen.es_refrigeracion;
     lineas.push(crearLinea({
-      descripcion: `Unidad exterior ${resumen.kw_exterior_comercial} kW`,
+      descripcion: esRefri
+        ? `Unidad condensadora ${resumen.kw_exterior_comercial} kW`
+        : `Unidad exterior ${resumen.kw_exterior_comercial} kW`,
       unidad: 'ud',
       cantidad: 1,
-      precio_ud: redondear(resumen.kw_exterior_comercial * p.exterior_kw, 2),
+      precio_ud: redondear(
+        resumen.kw_exterior_comercial * (esRefri ? p.unidad_condensadora_kw : p.exterior_kw), 2
+      ),
       categoria: 'maquinaria',
     }));
   }
