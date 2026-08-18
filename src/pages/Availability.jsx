@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarCheck, Clock, RefreshCw, CheckCircle2, AlertCircle, Phone, User } from 'lucide-react';
+import { toast } from 'sonner';
 import { disponibilidadProximosDias, HORARIO_POR_DEFECTO } from '@/lib/availability';
 
 /**
@@ -129,10 +130,15 @@ export default function Availability() {
         avisoOk = false;
       }
 
+      const cuando = `${fechaBonita(hueco.fecha).diaMes} a las ${hueco.inicio}`;
       setHueco(null);
       setAviso('');
-      if (!avisoOk) {
-        setError(`Cita guardada para el ${hueco.fecha} a las ${hueco.inicio}, pero NO se pudo enviar el aviso por correo. Compruébalo en la agenda.`);
+      if (avisoOk) {
+        toast.success(`Cita reservada el ${cuando} para ${cita.contact_name}`);
+      } else {
+        // La cita SÍ está guardada: se dice, para que no se vuelva a reservar.
+        toast.warning('Cita guardada, pero el aviso por correo no salió');
+        setError(`Cita guardada para el ${cuando}, pero NO se pudo enviar el aviso por correo. Está en la agenda, compruébalo.`);
       }
     } catch (err) {
       console.error('[Disponibilidad] Error al crear la cita:', err);

@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster"
+import { Toaster as SonnerToaster } from "@/components/ui/sonner"
 import { Component } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -139,6 +140,11 @@ function App() {
             <AuthenticatedApp />
           </Router>
           <Toaster />
+          {/* Media aplicación avisa con toast de sonner (presupuestos, cálculos,
+              plano, disponibilidad…) y este Toaster no estaba montado, así que
+              esos avisos no se veían nunca. Con los dos montados, cada uno
+              muestra los suyos. */}
+          <SonnerToaster position="top-center" richColors />
         </QueryClientProvider>
       </AuthProvider>
     </ErrorBoundary>
