@@ -37,6 +37,23 @@
     "iban": {
       "type": "string"
     },
+    "availability_config": {
+      "type": "object",
+      "description": "Horario de trabajo para calcular los huecos libres en la pantalla de Disponibilidad.",
+      "properties": {
+        "dias_laborables": {
+          "type": "array",
+          "description": "Días laborables: 1=lunes … 7=domingo",
+          "items": { "type": "number" }
+        },
+        "hora_inicio": { "type": "string", "description": "Hora de inicio de jornada (HH:MM)" },
+        "hora_fin": { "type": "string", "description": "Hora de fin de jornada (HH:MM)" },
+        "descanso_inicio": { "type": "string", "description": "Inicio de la pausa (HH:MM). Vacío = sin pausa" },
+        "descanso_fin": { "type": "string", "description": "Fin de la pausa (HH:MM)" },
+        "duracion_cita": { "type": "number", "description": "Duración de cada hueco en minutos" },
+        "dias_vista": { "type": "number", "description": "Días de antelación que se muestran" }
+      }
+    },
     "storage_config": {
       "type": "object",
       "description": "Almacén externo de fotos y documentos (Cloudinary). Permite subirlos en calidad completa sin gastar crédito de Base44.",

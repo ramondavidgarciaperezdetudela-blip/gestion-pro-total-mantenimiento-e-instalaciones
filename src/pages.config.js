@@ -57,6 +57,7 @@ const AISearch = lazy(() => import('./pages/AISearch'));
 const Agenda = lazy(() => import('./pages/Agenda'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
 const Automations = lazy(() => import('./pages/Automations'));
+const Availability = lazy(() => import('./pages/Availability'));
 const BatteryCalc = lazy(() => import('./pages/BatteryCalc'));
 const BusinessCards = lazy(() => import('./pages/BusinessCards'));
 const Catalogs = lazy(() => import('./pages/Catalogs'));
@@ -121,6 +122,7 @@ export const PAGES = {
     "Agenda": Agenda,
     "AuditLog": AuditLog,
     "Automations": Automations,
+    "Availability": Availability,
     "BatteryCalc": BatteryCalc,
     "BusinessCards": BusinessCards,
     "Catalogs": Catalogs,

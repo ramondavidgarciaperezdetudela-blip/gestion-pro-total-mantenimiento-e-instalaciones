@@ -7,13 +7,25 @@ import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, AlertTriangle, Type, Image as ImageIcon } from 'lucide-react';
+import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, AlertTriangle, Type, Image as ImageIcon, CalendarClock } from 'lucide-react';
 import PostalCodeSearch from '@/components/PostalCodeSearch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ValidCharsConfig from '@/components/ValidCharsConfig';
 import { loadLicense, parseLicense, getDeviceId, clearLicense } from '@/lib/licenseManager';
 import { uploadImage } from '@/lib/uploadImage';
 import { resetStorageConfig } from '@/lib/externalStorage';
+
+// Días de la semana con la misma numeración que usa src/lib/availability.js:
+// 1 = lunes … 7 = domingo, para que el domingo no rompa el orden de la fila.
+const DIAS_SEMANA = [
+  { valor: 1, nombre: 'Lunes' },
+  { valor: 2, nombre: 'Martes' },
+  { valor: 3, nombre: 'Miércoles' },
+  { valor: 4, nombre: 'Jueves' },
+  { valor: 5, nombre: 'Viernes' },
+  { valor: 6, nombre: 'Sábado' },
+  { valor: 7, nombre: 'Domingo' },
+];
 
 // ── Gestión de la licencia en este equipo ────────────────────────────────────
 function LicenseSection() {
@@ -194,6 +206,7 @@ export default function CompanyConfig() {
     },
     email_config: { smtp_host: '', smtp_port: 587, smtp_user: '', smtp_pass: '', from_name: '', use_ssl: true },
     storage_config: { provider: 'cloudinary', cloud_name: '', upload_preset: '', enabled: false },
+    availability_config: { dias_laborables: [1,2,3,4,5], hora_inicio: '09:00', hora_fin: '18:00', descanso_inicio: '14:00', descanso_fin: '15:00', duracion_cita: 60, dias_vista: 14 },
     technicians: [],
     payment_terms: 'Forma de pago: Máximo 3 pagos.\n1º Pago: 100% material + 50% mano de obra (al aceptar presupuesto)\n2º Pago: 25% mano de obra (al iniciar trabajos)\n3º Pago: 25% mano de obra restante (al finalizar)',
     observations_climate: 'Instalación realizada según normativa RITE (RD 1027/2007) y Reglamento F-Gas (RD 115/2017). Gases fluorados según normativa UE 517/2014.',
@@ -232,6 +245,7 @@ export default function CompanyConfig() {
           } : { margin_top: 15, margin_bottom: 15, margin_left: 15, margin_right: 15, paper_size: 'A4', font_family: 'Segoe UI', font_size: 'normal', header_text: '', footer_text: '', logo_width_mm: 35, logo_height_mm: 20, fit_to_page: true, avoid_table_breaks: true },
           email_config: d.email_config || { smtp_host: '', smtp_port: 587, smtp_user: '', smtp_pass: '', from_name: '', use_ssl: true },
           storage_config: d.storage_config || { provider: 'cloudinary', cloud_name: '', upload_preset: '', enabled: false },
+          availability_config: d.availability_config || { dias_laborables: [1,2,3,4,5], hora_inicio: '09:00', hora_fin: '18:00', descanso_inicio: '14:00', descanso_fin: '15:00', duracion_cita: 60, dias_vista: 14 },
           technicians: d.technicians || [],
           payment_terms: d.payment_terms || form.payment_terms,
           observations_climate: d.observations_climate || form.observations_climate,
@@ -275,6 +289,18 @@ export default function CompanyConfig() {
     setForm({ ...form, printer_config: { ...form.printer_config, [field]: value } });
   };
 
+  const updateHorario = (field, value) => {
+    setForm(prev => ({ ...prev, availability_config: { ...prev.availability_config, [field]: value } }));
+  };
+
+  const alternarDia = (dia) => {
+    setForm(prev => {
+      const actuales = prev.availability_config?.dias_laborables || [];
+      const nuevos = actuales.includes(dia) ? actuales.filter(d => d !== dia) : [...actuales, dia].sort();
+      return { ...prev, availability_config: { ...prev.availability_config, dias_laborables: nuevos } };
+    });
+  };
+
   const updateStorage = (field, value) => {
     setForm(prev => ({
       ...prev,
@@ -302,6 +328,7 @@ export default function CompanyConfig() {
           <TabsTrigger value="empresa" className="flex-1 text-xs">Datos empresa</TabsTrigger>
           <TabsTrigger value="tecnicos" className="flex-1 text-xs">Técnicos</TabsTrigger>
           <TabsTrigger value="correo" className="flex-1 text-xs">Correo</TabsTrigger>
+          <TabsTrigger value="horario" className="flex-1 text-xs">Horario</TabsTrigger>
           <TabsTrigger value="impresion" className="flex-1 text-xs">Impresión</TabsTrigger>
           <TabsTrigger value="documentos" className="flex-1 text-xs">Documentos</TabsTrigger>
           <TabsTrigger value="escaner" className="flex-1 text-xs">Escáner</TabsTrigger>
@@ -514,6 +541,124 @@ export default function CompanyConfig() {
             </CardContent>
           </Card>
 
+        </TabsContent>
+
+        <TabsContent value="horario">
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarClock className="w-5 h-5" />Horario de trabajo
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                Con este horario la pantalla <strong>Disponibilidad</strong> calcula qué días y
+                qué horas quedan libres, descontando las citas y las órdenes SAT ya programadas.
+                Así, cuando un cliente llame, se ve de un vistazo qué hueco ofrecerle.
+              </p>
+
+              <div>
+                <label className="text-sm font-medium">Días laborables</label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {DIAS_SEMANA.map(d => {
+                    const activo = (form.availability_config?.dias_laborables || []).includes(d.valor);
+                    return (
+                      <button
+                        key={d.valor}
+                        type="button"
+                        onClick={() => alternarDia(d.valor)}
+                        className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+                          activo
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : 'bg-white border-slate-300 text-slate-600'
+                        }`}
+                      >
+                        {d.nombre}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="text-sm font-medium">Entrada</label>
+                  <Input
+                    type="time"
+                    className="mt-1"
+                    value={form.availability_config?.hora_inicio || '09:00'}
+                    onChange={e => updateHorario('hora_inicio', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Salida</label>
+                  <Input
+                    type="time"
+                    className="mt-1"
+                    value={form.availability_config?.hora_fin || '18:00'}
+                    onChange={e => updateHorario('hora_fin', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Inicio comida</label>
+                  <Input
+                    type="time"
+                    className="mt-1"
+                    value={form.availability_config?.descanso_inicio || ''}
+                    onChange={e => updateHorario('descanso_inicio', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Fin comida</label>
+                  <Input
+                    type="time"
+                    className="mt-1"
+                    value={form.availability_config?.descanso_fin || ''}
+                    onChange={e => updateHorario('descanso_fin', e.target.value)}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 -mt-2">
+                Deja la comida en blanco si no quieres pausa al mediodía.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium">Duración de cada visita (minutos)</label>
+                  <Input
+                    type="number"
+                    min="15"
+                    step="15"
+                    className="mt-1"
+                    value={form.availability_config?.duracion_cita ?? 60}
+                    onChange={e => updateHorario('duracion_cita', Number(e.target.value) || 60)}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Días que se muestran por adelantado</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="60"
+                    className="mt-1"
+                    value={form.availability_config?.dias_vista ?? 14}
+                    onChange={e => updateHorario('dias_vista', Number(e.target.value) || 14)}
+                  />
+                </div>
+              </div>
+
+              {!form.email && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  No tienes correo de empresa en la pestaña «Datos empresa». Sin él no se puede
+                  enviar el aviso automático con los datos del cliente al reservar una cita.
+                </p>
+              )}
+
+              <Button onClick={handleSave} className={`w-full ${saved ? 'bg-green-600' : 'bg-blue-600'}`}>
+                <Save className="w-4 h-4 mr-2" /> {saved ? '¡Guardado!' : 'Guardar horario'}
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="impresion">

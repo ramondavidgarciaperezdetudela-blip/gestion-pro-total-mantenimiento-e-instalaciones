@@ -8,7 +8,7 @@ import {
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette,
   CreditCard, Download, Bell, History, Search, FileBarChart, Droplets, AlertCircle,
-  MoreHorizontal, MessageSquare, ListChecks, AlertTriangle } from
+  MoreHorizontal, MessageSquare, ListChecks, AlertTriangle, CalendarCheck } from
 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 import ThemeToggle from './components/ThemeToggle';
@@ -126,6 +126,7 @@ const navItems = [
 { name: 'Configuración', page: 'CompanyConfig', icon: Settings },
 { name: 'Copias Seg.', page: 'BackupCenter', icon: Shield },
 { name: 'Diario Rep.', page: 'EquipmentDiaryPage', icon: ClipboardList },
+{ name: 'Disponibilidad', page: 'Availability', icon: CalendarCheck },
 { name: 'Docs Legal.', page: 'LegalDocs', icon: FileText },
 { name: 'Documentos', page: 'Documents', icon: FileText },
 { name: 'Exportar', page: 'ExportData', icon: Download },
@@ -185,6 +186,7 @@ const PAGE_SECTION = {
   TechnicianFieldWork: 'Operaciones', TechnicianDay: 'Operaciones', TecniciansRoutes: 'Operaciones',
   Maintenance: 'Operaciones', MaintenancePlanning: 'Operaciones', IncidentManagement: 'Operaciones',
   EquipmentDiaryPage: 'Operaciones', EquipmentFailureHistory: 'Operaciones', Agenda: 'Operaciones',
+  Availability: 'Operaciones',
   TablasRefrigerantes: 'Operaciones',
   // Clientes y proyectos
   Contacts: 'Clientes', ContactForm: 'Clientes', ClientPortal: 'Clientes',
