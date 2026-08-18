@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   Pencil, Move, Trash2, Wind, Sparkles, FileText, Loader2,
   RotateCcw, AlertCircle, Ruler, Wrench, Euro, Layers, Plus, X,
+  Spline, Box, Map, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -17,6 +18,10 @@ import {
 } from '@/lib/planoCalculos';
 import { dibujarEquipo, nombreEquipo, colorEquipo, radioAproximado } from '@/lib/planoSimbolos';
 import PaletaEquipos from '@/components/PaletaEquipos';
+import Vista3DPlano from '@/components/Vista3DPlano';
+import {
+  evaluarRecorrido, evaluarConducto, caudalDeKw, LIMITES,
+} from '@/lib/planoRecorrido';
 
 /**
  * Plano IA — dibujar la planta, colocar las máquinas y sacar el presupuesto.
@@ -38,6 +43,8 @@ const HERRAMIENTAS = [
   { id: 'estancia', nombre: 'Dibujar estancia', icono: Pencil },
   { id: 'maquina', nombre: 'Poner equipo', icono: Wind },
   { id: 'exterior', nombre: 'Exterior / condensadora', icono: Wrench },
+  { id: 'recorrido', nombre: 'Trazar tubería', icono: Spline },
+  { id: 'conducto', nombre: 'Trazar conducto', icono: Map },
   { id: 'mover', nombre: 'Seleccionar', icono: Move },
   { id: 'borrar', nombre: 'Borrar', icono: Trash2 },
 ];
@@ -124,6 +131,14 @@ export default function PlanoIA() {
     setPlantaActiva(a => (a >= indice && a > 0 ? a - 1 : a));
     setSeleccion(null);
   };
+  // Recorridos dibujados a mano: por dónde va DE VERDAD la instalación.
+  // Se guardan por planta (cada uno lleva su cota) y son lo que manda sobre
+  // los metros del presupuesto: el trazado real siempre gana a la estimación.
+  const [recorridos, setRecorridos] = useState([]);   // [{id, tipo, planta, cota, puntos:[], caudal}]
+  const [trazando, setTrazando] = useState(null);     // recorrido en curso
+  const [vista, setVista] = useState('plano');        // 'plano' | '3d'
+  const [tipoInstalacion, setTipoInstalacion] = useState('split_1x1');
+
   const [alturaDefecto, setAlturaDefecto] = useState(2.5);
   const [seleccion, setSeleccion] = useState(null); // id de estancia
   const [arrastre, setArrastre] = useState(null);   // {x0,y0,x1,y1} en metros
@@ -172,7 +187,49 @@ export default function PlanoIA() {
     };
   }, [plantas, exterior, alturaDefecto]);
   const resumen = useMemo(() => resumenPlano(plano), [plano]);
-  const materiales = useMemo(() => listaMateriales(resumen, precios), [resumen, precios]);
+
+  // Cada recorrido, revisado: metros, codos, gas que hay que añadir y avisos.
+  const recorridosRevisados = useMemo(() => recorridos.map(r => {
+    if (r.tipo === 'conducto') {
+      return { ...r, revision: evaluarConducto(r.puntos, r.caudal || 0, 'principal'), esConducto: true };
+    }
+    const primero = r.puntos[0];
+    const ultimo = r.puntos[r.puntos.length - 1];
+    // El desnivel es la cota de su planta más la bajada normal hasta la exterior.
+    const desnivel = (Number(r.cota) || 0) + (Number(alturaDefecto) || 2.5);
+    return {
+      ...r,
+      revision: evaluarRecorrido(r.puntos, desnivel, tipoInstalacion, primero,
+        exterior || ultimo),
+      esConducto: false,
+    };
+  }), [recorridos, exterior, alturaDefecto, tipoInstalacion]);
+
+  // Caudal que hay que mover si hay máquinas de conductos, para proponerlo
+  // al dimensionar el conducto en vez de tener que buscarlo en una tabla.
+  const caudalSugerido = useMemo(() => {
+    const kw = resumen.detalle
+      .filter(d => d.maquina?.tipo === 'conductos')
+      .reduce((s, d) => s + d.kw_comercial, 0);
+    return caudalDeKw(kw);
+  }, [resumen]);
+
+  // Metros de tubería realmente trazados: si los hay, mandan sobre la estimación.
+  const metrosTrazados = useMemo(
+    () => recorridosRevisados
+      .filter(r => !r.esConducto)
+      .reduce((s, r) => s + r.revision.metros, 0),
+    [recorridosRevisados]
+  );
+
+  // Si se ha trazado la instalación a mano, el presupuesto va con ESOS metros:
+  // el recorrido real siempre manda sobre la estimación por recorrido de pared.
+  const materiales = useMemo(() => {
+    const base = metrosTrazados > 0
+      ? { ...resumen, metros_tuberia_total: Number(metrosTrazados.toFixed(1)) }
+      : resumen;
+    return listaMateriales(base, precios);
+  }, [resumen, precios, metrosTrazados]);
   const totalCoste = useMemo(() => totalMateriales(materiales), [materiales]);
 
   useEffect(() => {
@@ -268,6 +325,52 @@ export default function PlanoIA() {
       ctx.textAlign = 'left';
     }
 
+    // Recorridos trazados a mano en esta planta
+    for (const rec of recorridos) {
+      if (rec.planta !== planta?.nombre) continue;
+      const esConducto = rec.tipo === 'conducto';
+      ctx.strokeStyle = esConducto ? '#f59e0b' : '#0f766e';
+      ctx.lineWidth = esConducto ? 7 : 4;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = esConducto ? 0.55 : 0.9;
+      ctx.beginPath();
+      rec.puntos.forEach((pt, i) => {
+        const px = pt.x * METRO_PX, py = pt.y * METRO_PX;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // Puntos de paso, para ver dónde se hizo cada codo
+      ctx.fillStyle = esConducto ? '#b45309' : '#0f766e';
+      for (const pt of rec.puntos) {
+        ctx.beginPath();
+        ctx.arc(pt.x * METRO_PX, pt.y * METRO_PX, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // El trazado que se está haciendo ahora
+    if (trazando && trazando.planta === planta?.nombre) {
+      ctx.strokeStyle = trazando.tipo === 'conducto' ? '#f59e0b' : '#0f766e';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([7, 5]);
+      ctx.beginPath();
+      trazando.puntos.forEach((pt, i) => {
+        const px = pt.x * METRO_PX, py = pt.y * METRO_PX;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#0f766e';
+      for (const pt of trazando.puntos) {
+        ctx.beginPath();
+        ctx.arc(pt.x * METRO_PX, pt.y * METRO_PX, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     // Rectángulo que se está dibujando ahora mismo
     if (arrastre) {
       const x = Math.min(arrastre.x0, arrastre.x1) * METRO_PX;
@@ -286,7 +389,8 @@ export default function PlanoIA() {
         x + 4, y - 4
       );
     }
-  }, [estancias, maquinas, exterior, seleccion, arrastre, resumen.es_refrigeracion]);
+  }, [estancias, maquinas, exterior, seleccion, arrastre, resumen.es_refrigeracion,
+      recorridos, trazando, planta?.nombre]);
 
   useEffect(() => { pintar(); }, [pintar]);
 
@@ -320,6 +424,29 @@ export default function PlanoIA() {
     }
     if (herramienta === 'exterior') {
       setExterior({ x, y });
+      return;
+    }
+    if (herramienta === 'recorrido' || herramienta === 'conducto') {
+      // Se va marcando punto a punto por dónde pasa. Se cierra con el botón
+      // "Terminar trazado" (o pulsando encima del último punto).
+      setTrazando(prev => {
+        if (!prev) {
+          return {
+            id: nuevoId(),
+            tipo: herramienta === 'conducto' ? 'conducto' : 'tuberia',
+            planta: planta?.nombre,
+            cota: planta?.cota || 0,
+            puntos: [{ x, y }],
+          };
+        }
+        const ultimo = prev.puntos[prev.puntos.length - 1];
+        // Pulsar dos veces en el mismo sitio cierra el trazado.
+        if (Math.abs(ultimo.x - x) < 0.3 && Math.abs(ultimo.y - y) < 0.3) {
+          terminarTrazado(prev);
+          return null;
+        }
+        return { ...prev, puntos: [...prev.puntos, { x, y }] };
+      });
       return;
     }
     if (herramienta === 'maquina') {
@@ -389,6 +516,23 @@ export default function PlanoIA() {
     setSeleccion(id);
   };
 
+  /** Guarda el trazado que se estaba dibujando (si tiene al menos dos puntos). */
+  const terminarTrazado = (enCurso) => {
+    const t = enCurso || trazando;
+    if (!t) return;
+    if (t.puntos.length < 2) {
+      toast.error('Marca al menos dos puntos para trazar el recorrido');
+      setTrazando(null);
+      return;
+    }
+    setRecorridos(prev => [...prev, t]);
+    setTrazando(null);
+    toast.success(t.tipo === 'conducto' ? 'Conducto trazado' : 'Recorrido de tubería trazado');
+  };
+
+  const borrarRecorrido = (id) => setRecorridos(prev => prev.filter(r => r.id !== id));
+
+
   const actualizarEstancia = (id, campo, valor) => {
     setEstancias(prev => prev.map(e => (e.id === id ? { ...e, [campo]: valor } : e)));
   };
@@ -420,13 +564,31 @@ export default function PlanoIA() {
           '',
           planoComoTexto(plano, resumen),
           '',
+          // El recorrido dibujado a mano es lo que más se agradece que revise:
+          // es donde el instalador duda y donde se va el dinero.
+          ...(recorridosRevisados.length ? [
+            'RECORRIDOS DE LA INSTALACIÓN YA TRAZADOS:',
+            ...recorridosRevisados.map((r, i) => (
+              r.esConducto
+                ? `- Conducto ${i + 1} (${r.planta}): ${r.revision.metros} m, ${r.revision.codos} codos, caudal ${r.revision.caudal} m³/h, sección propuesta ${r.revision.lado_cm} cm.`
+                : `- Tubería ${i + 1} (${r.planta}): ${r.revision.metros} m reales (${r.revision.horizontal} m de trazado y ${r.revision.desnivel} m de desnivel), ${r.revision.codos} codos, ${r.revision.metros_equivalentes} m equivalentes. El camino más corto serían ${r.revision.minimo} m.`
+            )),
+            `Tipo de instalación: ${LIMITES[tipoInstalacion]?.nombre}.`,
+            '',
+          ] : ['Aún no se ha trazado por dónde pasa la instalación.', '']),
           'Devuelve SOLO un JSON con esta forma:',
           '{',
           '  "maquinas_recomendadas": [{ "estancia": string, "marca": string, "modelo": string, "kw": numero, "seer": numero, "precio_estimado": numero }],',
+          '  "recorrido_alternativo": [{ "cual": string, "propuesta": string, "por_que": string, "ahorro_estimado_m": numero }],',
           '  "materiales_extra": [{ "descripcion": string, "unidad": string, "cantidad": numero, "precio_ud": numero, "categoria": string }],',
           '  "avisos": [string],',
           '  "notas_tecnicas": string',
           '}',
+          '',
+          'En "recorrido_alternativo" propón otra forma de pasar la instalación si',
+          'la ves mejor: por dónde llevarla, por qué (menos metros, menos codos,',
+          'menos obra, mejor acceso para mantenimiento) y cuántos metros se',
+          'ahorrarían. Si el trazado ya está bien, dilo y deja la lista vacía.',
           '',
           'En "materiales_extra" pon SOLO lo que falte y no esté ya contemplado',
           '(máquinas, tubería, desagüe, cable, soportes, vacío y mano de obra ya están).',
@@ -438,6 +600,7 @@ export default function PlanoIA() {
           type: 'object',
           properties: {
             maquinas_recomendadas: { type: 'array' },
+            recorrido_alternativo: { type: 'array' },
             materiales_extra: { type: 'array' },
             avisos: { type: 'array' },
             notas_tecnicas: { type: 'string' },
@@ -631,7 +794,36 @@ export default function PlanoIA() {
             </CardContent>
           </Card>
 
-          <Card>
+          {/* Ver en planta o en 3D */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex rounded-lg overflow-hidden border border-slate-300">
+              <button onClick={() => setVista('plano')}
+                className={`px-3 py-1.5 text-xs font-medium ${vista === 'plano' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'}`}>
+                Planta
+              </button>
+              <button onClick={() => setVista('3d')}
+                className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1 ${vista === '3d' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'}`}>
+                <Box className="w-3.5 h-3.5" />Vista 3D
+              </button>
+            </div>
+
+            {trazando && (
+              <>
+                <span className="text-xs text-slate-500">
+                  {trazando.puntos.length} punto{trazando.puntos.length === 1 ? '' : 's'} ·
+                  sigue marcando por dónde pasa
+                </span>
+                <Button size="sm" onClick={() => terminarTrazado()} className="gap-1 h-7">
+                  <Check className="w-3.5 h-3.5" />Terminar trazado
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setTrazando(null)} className="h-7">
+                  Cancelar
+                </Button>
+              </>
+            )}
+          </div>
+
+          <Card className={vista === '3d' ? 'hidden' : ''}>
             <CardContent className="p-2 overflow-x-auto">
               <canvas
                 ref={canvasRef}
@@ -652,6 +844,19 @@ export default function PlanoIA() {
               />
             </CardContent>
           </Card>
+
+          {vista === '3d' && (
+            <Card>
+              <CardContent className="p-2">
+                <Vista3DPlano
+                  plantas={plantas}
+                  exterior={exterior}
+                  alturaDefecto={alturaDefecto}
+                  recorridos={recorridos.filter(r => r.tipo !== 'conducto')}
+                />
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Panel lateral */}
@@ -768,6 +973,115 @@ export default function PlanoIA() {
             </Card>
           )}
 
+          {/* Recorridos trazados: metros reales, gas y avisos */}
+          {recorridosRevisados.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Spline className="w-4 h-4" />Instalación trazada
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div>
+                  <label className="text-xs font-medium text-slate-600">Tipo de instalación</label>
+                  <Select value={tipoInstalacion} onValueChange={setTipoInstalacion}>
+                    <SelectTrigger className="mt-1 h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(LIMITES).map(([id, l]) => (
+                        <SelectItem key={id} value={id}>{l.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Marca los límites con los que se avisa (longitud, desnivel y gas).
+                  </p>
+                </div>
+
+                {recorridosRevisados.map((r, i) => (
+                  <div key={r.id} className="border rounded-lg p-2 space-y-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-slate-800 text-xs">
+                        {r.esConducto ? '🟠 Conducto' : '🟢 Tubería'} {i + 1}
+                        <span className="font-normal text-slate-400"> · {r.planta}</span>
+                      </p>
+                      <button onClick={() => borrarRecorrido(r.id)}
+                        className="text-slate-300 hover:text-red-600">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {r.esConducto ? (
+                      <div className="text-[11px] text-slate-600 space-y-0.5">
+                        <p>{r.revision.metros} m · {r.revision.codos} codos</p>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span>Caudal:</span>
+                          <Input type="number" min="0" step="50" className="h-6 w-24 text-xs"
+                            value={r.caudal || ''}
+                            placeholder="m³/h"
+                            onChange={e => setRecorridos(prev => prev.map(x =>
+                              x.id === r.id ? { ...x, caudal: Number(e.target.value) || 0 } : x))} />
+                          <span>m³/h</span>
+                          {caudalSugerido > 0 && (
+                            <button
+                              onClick={() => setRecorridos(prev => prev.map(x =>
+                                x.id === r.id ? { ...x, caudal: caudalSugerido } : x))}
+                              className="text-[10px] text-blue-600 hover:underline"
+                              title="Calculado con la potencia de las máquinas de conductos"
+                            >
+                              usar {caudalSugerido}
+                            </button>
+                          )}
+                        </div>
+                        {r.revision.lado_cm > 0 && (
+                          <p className="font-medium text-amber-700">
+                            Sección: {r.revision.lado_cm} cm de lado (o ⌀ {r.revision.diametro_cm} cm)
+                            a {r.revision.velocidad} m/s
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-slate-600 space-y-0.5">
+                        <p>
+                          {r.revision.metros} m reales ({r.revision.horizontal} m de trazado
+                          + {r.revision.desnivel} m de bajada) · {r.revision.codos} codos
+                        </p>
+                        <p>{r.revision.metros_equivalentes} m equivalentes con los codos</p>
+                        {r.revision.gas_adicional_g > 0 && (
+                          <p className="font-medium text-slate-700">
+                            Gas a añadir: {r.revision.gas_adicional_g} g
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {r.revision.avisos.map((a, j) => (
+                      <p key={j} className={`text-[11px] rounded p-1.5 border ${
+                        a.nivel === 'error' ? 'bg-red-50 border-red-200 text-red-700'
+                          : a.nivel === 'aviso' ? 'bg-amber-50 border-amber-200 text-amber-800'
+                          : 'bg-blue-50 border-blue-200 text-blue-800'
+                      }`}>
+                        {a.texto}
+                      </p>
+                    ))}
+
+                    {r.revision.avisos.length === 0 && (
+                      <p className="text-[11px] text-green-700 bg-green-50 border border-green-200 rounded p-1.5">
+                        Recorrido correcto, sin pegas.
+                      </p>
+                    )}
+                  </div>
+                ))}
+
+                {metrosTrazados > 0 && (
+                  <p className="text-xs bg-slate-50 border rounded p-2">
+                    <strong>{metrosTrazados.toFixed(1)} m</strong> de tubería trazada a mano.
+                    El presupuesto usa estos metros en vez de la estimación.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Precios: los de referencia son un punto de partida, no un dogma */}
           <Card>
             <CardHeader className="pb-2">
@@ -875,6 +1189,25 @@ export default function PlanoIA() {
                 </ul>
               </div>
             )}
+            {(sugerenciaIA.recorrido_alternativo || []).length > 0 && (
+              <div className="bg-teal-50 border border-teal-200 rounded p-2">
+                <p className="font-medium text-teal-800 mb-1 flex items-center gap-1">
+                  <Spline className="w-3.5 h-3.5" />Otra forma de pasar la instalación
+                </p>
+                <ul className="space-y-1.5 text-teal-900">
+                  {sugerenciaIA.recorrido_alternativo.map((p, i) => (
+                    <li key={i}>
+                      <strong>{p.cual}:</strong> {p.propuesta}
+                      {p.por_que && <span className="text-teal-700"> — {p.por_que}</span>}
+                      {p.ahorro_estimado_m > 0 && (
+                        <span className="font-medium"> (ahorra unos {p.ahorro_estimado_m} m)</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {(sugerenciaIA.avisos || []).length > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded p-2">
                 <p className="font-medium text-amber-800 mb-1">A tener en cuenta</p>
