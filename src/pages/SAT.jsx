@@ -113,6 +113,34 @@ export default function SAT() {
     (f.labor_hours || 0) * (f.labor_rate || 0) +
     (f.materials_used || []).reduce((s, m) => s + (m.quantity || 0) * (m.unit_price || 0), 0);
 
+  // Campos que se guardan por su cuenta (firmas) y que el formulario de
+  // edición NO debe pisar al actualizar la orden.
+  const CAMPOS_FIRMA = [
+    'signature_technician', 'sign_datetime_technician',
+    'signature_client', 'sign_datetime_client',
+  ];
+
+  /**
+   * Propaga a TODA la pantalla una orden actualizada desde fuera del
+   * formulario (al firmar, por ejemplo).
+   *
+   * Antes solo se refrescaba la vista previa: la lista y el formulario de
+   * edición se quedaban con la versión anterior, así que la orden seguía
+   * apareciendo sin firmar y, al pulsar "Actualizar orden", se enviaba un
+   * formulario sin la firma y se perdía.
+   */
+  const aplicarActualizacionOrden = (updated) => {
+    setPreviewOrder(prev => (prev && prev.id === updated.id ? updated : prev));
+    setOrders(prev => prev.map(o => (o.id === updated.id ? { ...o, ...updated } : o)));
+    setEditing(prev => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+    setForm(prev => {
+      if (!editing || editing.id !== updated.id) return prev;
+      const soloFirmas = {};
+      for (const k of CAMPOS_FIRMA) if (k in updated) soloFirmas[k] = updated[k];
+      return { ...prev, ...soloFirmas };
+    });
+  };
+
   const handleSave = async (fotosReducidas = null, intento = 0) => {
     setSaveError('');
     // Antes de intentar guardar: si varias fotos cayeron en el fallback local
@@ -128,6 +156,14 @@ export default function SAT() {
     const total = calcTotal(form);
     const base = fotosReducidas ? { ...form, ...fotosReducidas } : form;
     const data = { ...base, total, materials_used: (base.materials_used || []).filter(m => m.material?.trim()) };
+    // Las firmas se guardan por su cuenta desde el panel de firma. Si el
+    // formulario se abrió antes de firmar, no las tiene, y enviarlo vacías
+    // borraba la firma recién hecha. Se conserva siempre el valor conocido
+    // más reciente en lugar de mandar un hueco.
+    for (const k of CAMPOS_FIRMA) {
+      const actual = data[k] ?? editing?.[k];
+      if (actual) data[k] = actual; else delete data[k];
+    }
     let savedOrder = null;
 
     try {
@@ -835,7 +871,7 @@ export default function SAT() {
                 {/* Firmas digitales interactivas */}
                 <SATSignaturePanel
                     order={previewOrder}
-                    onUpdate={(updated) => setPreviewOrder(updated)}
+                    onUpdate={aplicarActualizacionOrden}
                     contactEmail={contacts.find(c => c.id === previewOrder.contact_id)?.email || null}
                   />
 

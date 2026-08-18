@@ -4,6 +4,7 @@ import SignatureCanvas from './SignaturePad';
 import { Button } from '@/components/ui/button';
 import { Clock, CheckCircle2, UserCheck } from 'lucide-react';
 import { uploadFile } from '@/lib/uploadImage';
+import { describeSaveError } from '@/lib/saveErrorMessage';
 import { toast } from 'sonner';
 
 const getNowDatetime = () => {
@@ -48,7 +49,7 @@ export default function SATSignaturePanel({ order, onUpdate, contactEmail = null
         extra_info: `Cliente: ${order.contact_name} | Tipo: ${order.type || ''}`
       }).catch(() => {});
     } catch (err) {
-      toast.error('Error al guardar la firma. Comprueba tu conexión e inténtalo de nuevo.');
+      toast.error(describeSaveError(err, 'la firma'));
       throw err;
     } finally {
       setSaving(false);
@@ -75,7 +76,7 @@ export default function SATSignaturePanel({ order, onUpdate, contactEmail = null
         extra_info: `Tipo servicio: ${order.type || ''} | ${order.description || ''}`
       }).catch(() => {});
     } catch (err) {
-      toast.error('Error al guardar la firma. Comprueba tu conexión e inténtalo de nuevo.');
+      toast.error(describeSaveError(err, 'la firma'));
       throw err;
     } finally {
       setSaving(false);

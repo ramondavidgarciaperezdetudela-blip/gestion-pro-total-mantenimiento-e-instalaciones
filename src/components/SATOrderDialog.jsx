@@ -38,6 +38,13 @@ const EMPTY_FORM = {
   materials_used: [], labor_hours: '', labor_rate: 35, total: 0, technician: '', notes: ''
 };
 
+// Campos que gestiona el panel de firma por su cuenta. El formulario no debe
+// enviarlos vacíos al actualizar la orden, o borraría una firma ya hecha.
+const CAMPOS_FIRMA = [
+  'signature_technician', 'sign_datetime_technician',
+  'signature_client', 'sign_datetime_client',
+];
+
 // ─── VISTA PREVIA ────────────────────────────────────────────────────────────
 function SATPreview({ order, onEdit, onClose, contact, onUpdate }) {
   const printRef = useRef(null);
@@ -341,6 +348,11 @@ function SATForm({ order, contact, onSave, onCancel }) {
     const total = calcTotal(form);
     const base = fotosReducidas ? { ...form, ...fotosReducidas } : form;
     const data = { ...base, total };
+    // No pisar una firma existente con un hueco (ver CAMPOS_FIRMA).
+    for (const k of CAMPOS_FIRMA) {
+      const actual = data[k] ?? order?.[k];
+      if (actual) data[k] = actual; else delete data[k];
+    }
     try {
       if (order?.id) {
         await withTimeout(base44.entities.SATOrder.update(order.id, data), 30000, 'El guardado ha tardado demasiado. Comprueba tu conexión e inténtalo de nuevo.');
@@ -451,7 +463,19 @@ function SATForm({ order, contact, onSave, onCancel }) {
       <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Notas internas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
 
       {/* Firmas en modo edición también */}
-      {order?.id && <SATSignaturePanel order={{ ...order, ...form }} onUpdate={(updated) => setForm(prev => ({ ...prev, signature_technician: updated.signature_technician, signature_client: updated.signature_client }))} />}
+      {/* Se propagan TODOS los campos de firma, incluidas la fecha y la hora:
+          antes solo se copiaban las dos imágenes y el momento de la firma se
+          perdía al guardar la orden. */}
+      {order?.id && (
+        <SATSignaturePanel
+          order={{ ...order, ...form }}
+          onUpdate={(updated) => setForm(prev => {
+            const firmas = {};
+            for (const k of CAMPOS_FIRMA) if (updated[k]) firmas[k] = updated[k];
+            return { ...prev, ...firmas };
+          })}
+        />
+      )}
 
       {saveError && (
         <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5">{saveError}</p>
