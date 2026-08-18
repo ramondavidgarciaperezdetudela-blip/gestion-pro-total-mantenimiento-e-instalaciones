@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw, Download, X, AlertCircle, CheckCircle2, ArrowUpCircle, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Capacitor } from '@capacitor/core';
 
 // ── Configuración del repositorio PÚBLICO de descargas ───────────────────────
 // Las versiones nuevas se publican aquí (instaladores de escritorio + APK).
@@ -23,8 +24,12 @@ function isNewer(remote, current) {
   return false;
 }
 
-// Detectar plataforma
-const isAPK      = typeof window !== 'undefined' && typeof window.GPTPrint !== 'undefined';
+// Detectar plataforma.
+// Antes el APK se detectaba con `typeof window.GPTPrint !== 'undefined'`, un
+// puente que NUNCA llegó a existir en el proyecto: la comprobación era siempre
+// falsa, así que en el móvil se ofrecía la descarga del ZIP de escritorio en
+// vez del APK. Ahora se usa la detección real de Capacitor.
+const isAPK      = typeof window !== 'undefined' && Capacitor?.isNativePlatform?.() === true;
 const isIOS      = /iPad|iPhone|iPod/.test(navigator.userAgent);
 // En escritorio (Electron), preload.cjs expone window.gptUpdater: la descarga
 // y la instalación se hacen dentro de la propia app (electron-updater), con

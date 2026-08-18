@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.7.4",
+  "version": "1.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,6 +22,7 @@
   "dependencies": {
     "@base44/sdk": "^0.8.42",
     "@base44/vite-plugin": "^1.0.30",
+    "@bcyesil/capacitor-plugin-printer": "^0.0.6",
     "@capacitor/android": "^8.4.0",
     "@capacitor/core": "^8.4.0",
     "@hello-pangea/dnd": "^17.0.0",
