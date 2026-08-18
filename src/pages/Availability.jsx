@@ -8,12 +8,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   CalendarCheck, Clock, RefreshCw, CheckCircle2, AlertCircle, Phone, User, Info, Ban,
+  MessageCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   disponibilidadProximosDias, HORARIO_POR_DEFECTO,
   TIPOS_TRABAJO, tipoTrabajo, cabeTrabajo,
 } from '@/lib/availability';
+import { abrirWhatsApp, enlaceWhatsApp, mensajeConfirmacionCita } from '@/lib/whatsapp';
 
 /**
  * Disponibilidad — qué días y horas quedan libres.
@@ -56,6 +58,9 @@ export default function Availability() {
   const [form, setForm] = useState({ contact_id: '', contact_name: '', phone: '', title: '', notes: '' });
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState('');
+  // Cita recién reservada: se guarda para ofrecer mandarle la confirmación
+  // por WhatsApp sin tener que ir a buscarla a la agenda.
+  const [recienReservada, setRecienReservada] = useState(null);
 
   const trabajo = tipoTrabajo(tipoId);
   const minutos = Math.max(15, Math.round((Number(horas) || 1) * 60));
@@ -178,6 +183,17 @@ export default function Availability() {
 
       setHueco(null);
       setAviso('');
+      // Solo tiene sentido ofrecer WhatsApp si hay a quién escribir.
+      if (!esBloqueo && form.phone.trim()) {
+        setRecienReservada({
+          cliente: cita.contact_name,
+          telefono: form.phone.trim(),
+          fecha: hueco.fecha,
+          horaInicio: hueco.inicio,
+          horaFin: revision.fin,
+          trabajo: `${trabajo.nombre} (${horas} h)`,
+        });
+      }
       if (esBloqueo) {
         toast.success(`Horas bloqueadas el ${cuando}`);
       } else if (avisoOk) {
@@ -349,6 +365,55 @@ export default function Availability() {
         </p>
       )}
 
+      {/* Tras reservar: mandarle la confirmación al cliente */}
+      <Dialog open={!!recienReservada} onOpenChange={(o) => !o && setRecienReservada(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              Cita guardada
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">
+              ¿Le mandas la confirmación a <strong>{recienReservada?.cliente}</strong> por
+              WhatsApp? Se le pide que conteste <strong>SÍ</strong> o <strong>NO</strong>,
+              y así sabes si mantienes el hueco o lo vuelves a ofrecer.
+            </p>
+            <div className="text-xs bg-slate-50 border rounded p-2 whitespace-pre-wrap text-slate-600 max-h-44 overflow-y-auto">
+              {recienReservada && mensajeConfirmacionCita({
+                cliente: recienReservada.cliente,
+                empresa: empresa?.company_name,
+                fecha: recienReservada.fecha,
+                horaInicio: recienReservada.horaInicio,
+                horaFin: recienReservada.horaFin,
+                trabajo: recienReservada.trabajo,
+              })}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 gap-2 bg-[#25D366] hover:bg-[#1da851] text-white"
+                onClick={() => {
+                  const ok = abrirWhatsApp(recienReservada.telefono, mensajeConfirmacionCita({
+                    cliente: recienReservada.cliente,
+                    empresa: empresa?.company_name,
+                    fecha: recienReservada.fecha,
+                    horaInicio: recienReservada.horaInicio,
+                    horaFin: recienReservada.horaFin,
+                    trabajo: recienReservada.trabajo,
+                  }));
+                  if (!ok) toast.error('Ese teléfono no vale para WhatsApp');
+                  else setRecienReservada(null);
+                }}
+              >
+                <MessageCircle className="w-4 h-4" />Enviar por WhatsApp
+              </Button>
+              <Button variant="outline" onClick={() => setRecienReservada(null)}>Ahora no</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Reservar */}
       <Dialog open={!!hueco} onOpenChange={(o) => !o && setHueco(null)}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
@@ -407,8 +472,27 @@ export default function Availability() {
                   </div>
                   <div>
                     <label className="text-xs font-medium text-slate-600 flex items-center gap-1"><Phone className="w-3 h-3" />Teléfono</label>
-                    <Input className="mt-1" value={form.phone}
-                      onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Teléfono" />
+                    <div className="flex gap-1 mt-1">
+                      <Input value={form.phone}
+                        onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Teléfono" />
+                      {/* Escribir ANTES de reservar, por si hay que consultarle la hora */}
+                      <button
+                        type="button"
+                        title="Escribir por WhatsApp"
+                        disabled={!enlaceWhatsApp(form.phone)}
+                        onClick={() => abrirWhatsApp(form.phone, mensajeConfirmacionCita({
+                          cliente: form.contact_name,
+                          empresa: empresa?.company_name,
+                          fecha: hueco?.fecha,
+                          horaInicio: hueco?.inicio,
+                          horaFin: revision?.fin,
+                          trabajo: `${trabajo.nombre} (${horas} h)`,
+                        }))}
+                        className="px-2.5 rounded-md bg-[#25D366] text-white disabled:bg-slate-200 disabled:text-slate-400"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </>

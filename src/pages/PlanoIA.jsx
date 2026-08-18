@@ -7,12 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Pencil, Move, Trash2, Wind, Sparkles, FileText, Loader2,
-  RotateCcw, AlertCircle, Ruler, Wrench,
+  RotateCcw, AlertCircle, Ruler, Wrench, Euro, Layers, Plus, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   TIPOS_MAQUINA, FACTOR_USO, FACTOR_ORIENTACION, FACTOR_AISLAMIENTO,
-  EQUIPOS_SUELTOS,
+  EQUIPOS_SUELTOS, PRECIOS_REFERENCIA,
   resumenPlano, listaMateriales, totalMateriales, planoComoTexto,
 } from '@/lib/planoCalculos';
 import { dibujarEquipo, nombreEquipo, colorEquipo, radioAproximado } from '@/lib/planoSimbolos';
@@ -44,6 +44,20 @@ const HERRAMIENTAS = [
 
 const nuevoId = () => Math.random().toString(36).slice(2, 9);
 
+// Los precios se guardan en este equipo. Cambian con el tiempo y cada uno
+// tiene los suyos, así que no tiene sentido que haya que reescribirlos en
+// cada presupuesto.
+const CLAVE_PRECIOS = 'gpt_precios_plano';
+
+function cargarPrecios() {
+  try {
+    const guardado = JSON.parse(localStorage.getItem(CLAVE_PRECIOS) || '{}');
+    return { ...PRECIOS_REFERENCIA, ...guardado };
+  } catch {
+    return { ...PRECIOS_REFERENCIA };
+  }
+}
+
 /** Redondeo a céntimos, para que las sumas del presupuesto cuadren. */
 const aCentimos = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
@@ -56,9 +70,60 @@ export default function PlanoIA() {
   const [herramienta, setHerramienta] = useState('estancia');
   // Qué equipo se coloca al pulsar con la herramienta "Poner equipo".
   const [equipoElegido, setEquipoElegido] = useState('mural');
-  const [estancias, setEstancias] = useState([]);
-  const [maquinas, setMaquinas] = useState([]);
+
+  // Plantas del edificio. Un chalet o un local de dos alturas no se puede
+  // dibujar en una sola hoja: cada planta lleva sus estancias y sus equipos,
+  // y el presupuesto suma todas. La unidad exterior es UNA para el edificio.
+  const [plantas, setPlantas] = useState([
+    { id: nuevoId(), nombre: 'Planta baja', cota: 0, estancias: [], maquinas: [] },
+  ]);
+  const [plantaActiva, setPlantaActiva] = useState(0);
   const [exterior, setExterior] = useState(null);
+
+  const planta = plantas[plantaActiva] || plantas[0];
+  const estancias = planta?.estancias || [];
+  const maquinas = planta?.maquinas || [];
+
+  /** Cambia algo de la planta que se está dibujando. */
+  const actualizarPlanta = (cambio) => {
+    setPlantas(prev => prev.map((pl, i) => (i === plantaActiva ? { ...pl, ...cambio } : pl)));
+  };
+  const setEstancias = (valor) => {
+    setPlantas(prev => prev.map((pl, i) => (
+      i === plantaActiva
+        ? { ...pl, estancias: typeof valor === 'function' ? valor(pl.estancias) : valor }
+        : pl
+    )));
+  };
+  const setMaquinas = (valor) => {
+    setPlantas(prev => prev.map((pl, i) => (
+      i === plantaActiva
+        ? { ...pl, maquinas: typeof valor === 'function' ? valor(pl.maquinas) : valor }
+        : pl
+    )));
+  };
+
+  const anadirPlanta = () => {
+    setPlantas(prev => {
+      const n = prev.length;
+      return [...prev, {
+        id: nuevoId(),
+        nombre: n === 0 ? 'Planta baja' : `Planta ${n}`,
+        // Cota orientativa: cada planta, una altura de techo por encima.
+        cota: Number((n * (Number(alturaDefecto) || 2.5)).toFixed(2)),
+        estancias: [], maquinas: [],
+      }];
+    });
+    setPlantaActiva(plantas.length);
+    setSeleccion(null);
+  };
+
+  const borrarPlanta = (indice) => {
+    if (plantas.length === 1) { toast.error('Tiene que quedar al menos una planta'); return; }
+    setPlantas(prev => prev.filter((_, i) => i !== indice));
+    setPlantaActiva(a => (a >= indice && a > 0 ? a - 1 : a));
+    setSeleccion(null);
+  };
   const [alturaDefecto, setAlturaDefecto] = useState(2.5);
   const [seleccion, setSeleccion] = useState(null); // id de estancia
   const [arrastre, setArrastre] = useState(null);   // {x0,y0,x1,y1} en metros
@@ -76,12 +141,38 @@ export default function PlanoIA() {
   const [iva, setIva] = useState(21);
   const [guardando, setGuardando] = useState(false);
 
-  const plano = useMemo(
-    () => ({ estancias, maquinas, unidad_exterior: exterior, altura_defecto: alturaDefecto }),
-    [estancias, maquinas, exterior, alturaDefecto]
-  );
+  // Precios
+  const [precios, setPrecios] = useState(cargarPrecios);
+  const [verPrecios, setVerPrecios] = useState(false);
+
+  const cambiarPrecio = (clave, valor) => {
+    setPrecios(prev => {
+      const nuevos = { ...prev, [clave]: Number(valor) || 0 };
+      try { localStorage.setItem(CLAVE_PRECIOS, JSON.stringify(nuevos)); } catch { /* sin guardar */ }
+      return nuevos;
+    });
+  };
+
+  // Para calcular y presupuestar se juntan TODAS las plantas, no solo la que
+  // se está dibujando: el presupuesto es del edificio entero. A cada estancia
+  // y equipo se le pega la cota de su planta, que es lo que hace que la
+  // tubería de un segundo piso salga más larga que la de la planta baja.
+  const plano = useMemo(() => {
+    const todasEstancias = [];
+    const todasMaquinas = [];
+    for (const pl of plantas) {
+      for (const e of pl.estancias) todasEstancias.push({ ...e, planta: pl.nombre, cota: pl.cota });
+      for (const m of pl.maquinas) todasMaquinas.push({ ...m, planta: pl.nombre, cota: pl.cota });
+    }
+    return {
+      estancias: todasEstancias,
+      maquinas: todasMaquinas,
+      unidad_exterior: exterior,
+      altura_defecto: alturaDefecto,
+    };
+  }, [plantas, exterior, alturaDefecto]);
   const resumen = useMemo(() => resumenPlano(plano), [plano]);
-  const materiales = useMemo(() => listaMateriales(resumen), [resumen]);
+  const materiales = useMemo(() => listaMateriales(resumen, precios), [resumen, precios]);
   const totalCoste = useMemo(() => totalMateriales(materiales), [materiales]);
 
   useEffect(() => {
@@ -307,7 +398,9 @@ export default function PlanoIA() {
   };
 
   const limpiar = () => {
-    setEstancias([]); setMaquinas([]); setExterior(null);
+    setPlantas([{ id: nuevoId(), nombre: 'Planta baja', cota: 0, estancias: [], maquinas: [] }]);
+    setPlantaActiva(0);
+    setExterior(null);
     setSeleccion(null); setSugerenciaIA(null); setErrorIA('');
   };
 
@@ -478,7 +571,66 @@ export default function PlanoIA() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Lienzo */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-2">
+          {/* Plantas del edificio */}
+          <Card>
+            <CardContent className="p-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                  <Layers className="w-3.5 h-3.5" />Plantas
+                </span>
+                {plantas.map((pl, i) => (
+                  <div key={pl.id} className="flex items-center">
+                    <button
+                      onClick={() => { setPlantaActiva(i); setSeleccion(null); }}
+                      className={`px-2.5 py-1 text-xs rounded-l-lg border transition-colors ${
+                        i === plantaActiva
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+                      }`}
+                      title={`Cota ${pl.cota} m · ${pl.estancias.length} estancias`}
+                    >
+                      {pl.nombre}
+                      <span className={i === plantaActiva ? 'text-blue-100' : 'text-slate-400'}>
+                        {' '}· {pl.estancias.length}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => borrarPlanta(i)}
+                      title="Quitar esta planta"
+                      className={`px-1.5 py-1 rounded-r-lg border border-l-0 ${
+                        i === plantaActiva
+                          ? 'bg-blue-600 border-blue-600 text-blue-100 hover:text-white'
+                          : 'bg-white border-slate-300 text-slate-300 hover:text-red-600'
+                      }`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={anadirPlanta}
+                  className="px-2.5 py-1 text-xs rounded-lg border border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />Añadir planta
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 mt-2 pt-2 border-t">
+                <label className="text-[11px] text-slate-500">Nombre</label>
+                <Input className="h-7 text-xs w-40" value={planta?.nombre || ''}
+                  onChange={e => actualizarPlanta({ nombre: e.target.value })} />
+                <label className="text-[11px] text-slate-500">Cota (m)</label>
+                <Input type="number" step="0.1" className="h-7 text-xs w-20"
+                  value={planta?.cota ?? 0}
+                  onChange={e => actualizarPlanta({ cota: Number(e.target.value) || 0 })} />
+                <span className="text-[10px] text-slate-400">
+                  altura del suelo de esta planta; alarga la tubería hasta la exterior
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardContent className="p-2 overflow-x-auto">
               <canvas
@@ -615,6 +767,69 @@ export default function PlanoIA() {
               </CardContent>
             </Card>
           )}
+
+          {/* Precios: los de referencia son un punto de partida, no un dogma */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2"><Euro className="w-4 h-4" />Precios</span>
+                <button onClick={() => setVerPrecios(v => !v)}
+                  className="text-xs font-normal text-blue-600 hover:underline">
+                  {verPrecios ? 'ocultar' : 'cambiar'}
+                </button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div>
+                <label className="text-xs font-medium text-slate-600">Mano de obra (€/hora)</label>
+                <Input type="number" min="0" step="1" className="mt-1 h-8"
+                  value={precios.mano_obra_hora}
+                  onChange={e => cambiarPrecio('mano_obra_hora', e.target.value)} />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Pon aquí lo que cobras tú. Se guarda en este equipo y se aplica a
+                  todos los presupuestos.
+                </p>
+              </div>
+
+              {verPrecios && (
+                <div className="space-y-2 pt-2 border-t">
+                  {[
+                    ['mural', 'Split mural (€/ud)'],
+                    ['cassette', 'Cassette (€/ud)'],
+                    ['conductos', 'Conductos (€/ud)'],
+                    ['suelo', 'Consola de suelo (€/ud)'],
+                    ['exterior_kw', 'Unidad exterior (€/kW)'],
+                    ['evaporador_camara', 'Evaporador de cámara (€/ud)'],
+                    ['unidad_condensadora_kw', 'Condensadora (€/kW)'],
+                    ['vitrina', 'Vitrina (€/ud)'],
+                    ['arcon', 'Arcón (€/ud)'],
+                    ['camara_puerta', 'Puerta de cámara (€/ud)'],
+                    ['tuberia_m', 'Tubería frigorífica (€/m)'],
+                    ['desague_m', 'Desagüe (€/m)'],
+                    ['cable_m', 'Cable (€/m)'],
+                    ['soporte', 'Soportes (€/ud)'],
+                    ['vacio_carga', 'Vacío y carga (€/ud)'],
+                  ].map(([clave, etiqueta]) => (
+                    <div key={clave} className="flex items-center gap-2">
+                      <label className="text-[11px] text-slate-600 flex-1">{etiqueta}</label>
+                      <Input type="number" min="0" step="0.5" className="h-7 w-24 text-right"
+                        value={precios[clave]}
+                        onChange={e => cambiarPrecio(clave, e.target.value)} />
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      try { localStorage.removeItem(CLAVE_PRECIOS); } catch { /* nada */ }
+                      setPrecios({ ...PRECIOS_REFERENCIA });
+                    }}
+                    className="text-xs text-red-600 hover:underline"
+                  >
+                    Volver a los precios de referencia
+                  </button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <div className="space-y-2">
             <Button onClick={afinarConIA} disabled={analizando || !estancias.length}

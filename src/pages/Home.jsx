@@ -42,6 +42,7 @@ const refrigerationLinks = [
 // ── Accesos directos a TODOS los módulos ─────────────────────────────────────
 const quickLinks = [
 { name: 'Agenda', page: 'Agenda', icon: Calendar, color: 'bg-blue-500' },
+{ name: 'Disponibilidad', page: 'Availability', icon: Calendar, color: 'bg-emerald-600' },
 { name: 'Calendario SAT', page: 'SATCalendar', icon: Calendar, color: 'bg-blue-400' },
 { name: 'Día Técnico', page: 'TechnicianDay', icon: Calendar, color: 'bg-sky-500' },
 { name: 'Asistente IA', page: 'AIAssistant', icon: Bot, color: 'bg-green-500' },
@@ -64,6 +65,7 @@ const quickLinks = [
 { name: 'Cálculo Cámara', page: 'ColdRoomCalc', icon: Snowflake, color: 'bg-blue-600' },
 { name: 'Potencia A/C', page: 'ACPotenciaCalc', icon: Gauge, color: 'bg-teal-600' },
 { name: 'Análisis Plano', page: 'ACPlanAnalysis', icon: Layers, color: 'bg-indigo-500' },
+{ name: 'Plano y Presupuesto', page: 'PlanoIA', icon: Ruler, color: 'bg-indigo-400' },
 { name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500' },
 { name: 'Cálculo Multizona', page: 'MultiAreaCalc', icon: Calculator, color: 'bg-red-400' },
 { name: 'Cálculo Capilar', page: 'CapillaryCalc', icon: Droplets, color: 'bg-cyan-700' },
@@ -108,10 +110,10 @@ const _linkByPage = Object.fromEntries(quickLinks.map(l => [l.page, l]));
 // Accesos AGRUPADOS por secciones (como el bloque de Refrigeración y Gases).
 const GRUPOS = [
   { titulo: 'Proveedores y Tarifas', color: '#f59e0b', pages: ['Suppliers', 'SupplierTariffs', 'PurchaseSummary', 'SparePartsManager', 'Inventory', 'Catalogs'] },
-  { titulo: 'Cálculos', color: '#ef4444', pages: ['ThermalCalc', 'ElectricalCalc', 'BatteryCalc', 'SolarBatteryCalc', 'SolarCalc', 'ColdRoomCalc', 'ACPotenciaCalc', 'MultiAreaCalc', 'ACPlanAnalysis', 'CapillaryCalc', 'DiagnosticoCarga'] },
+  { titulo: 'Cálculos', color: '#ef4444', pages: ['ThermalCalc', 'ElectricalCalc', 'BatteryCalc', 'SolarBatteryCalc', 'SolarCalc', 'ColdRoomCalc', 'ACPotenciaCalc', 'MultiAreaCalc', 'ACPlanAnalysis', 'PlanoIA', 'CapillaryCalc', 'DiagnosticoCarga'] },
   { titulo: 'Documentos', color: '#7C3AED', pages: ['Documents', 'Documents?type=factura', 'Documents?type=presupuesto', 'DocumentTemplates', 'LegalDocs'] },
   { titulo: 'SAT y Trabajo', color: '#F97316', pages: ['SAT', 'SATChat', 'TechnicianFieldWork', 'TecniciansRoutes', 'Maintenance', 'MaintenancePlanning', 'IncidentManagement', 'EquipmentFailureHistory', 'EquipmentDiaryPage'] },
-  { titulo: 'Clientes y Agenda', color: '#10B981', pages: ['Contacts', 'ClientPortal', 'Projects', 'ProjectTimeline', 'Agenda', 'SATCalendar', 'TechnicianDay'] },
+  { titulo: 'Clientes y Agenda', color: '#10B981', pages: ['Contacts', 'ClientPortal', 'Projects', 'ProjectTimeline', 'Agenda', 'Availability', 'SATCalendar', 'TechnicianDay'] },
   { titulo: 'IA y Asistencia', color: '#3B82F6', pages: ['AIAssistant', 'AISearch', 'AIBudget', 'AIReports', 'AIPlanning', 'AISupport'] },
   { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'Regulations', 'DanfossTools', 'GasSuppliers', 'RefrigerantEquiv', 'TablasRefrigerantes'] },
   { titulo: 'Informes y Sistema', color: '#64748b', pages: ['Reports', 'Automations', 'SmartReminders', 'Notes', 'AuditLog', 'BusinessCards', 'ExportData', 'BackupCenter', 'UpdateCenter', 'CompanyConfig'] },

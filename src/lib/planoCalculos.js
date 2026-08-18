@@ -172,8 +172,11 @@ export function resumenPlano(plano) {
   const detalle = estancias.map(est => {
     const carga = cargaEstancia(est, altura_defecto);
     const maquina = interiores.find(m => m.estancia_id === est.id) || null;
+    // El desnivel cuenta la planta: una máquina en un segundo piso lleva la
+    // tubería de esa altura, además de la bajada normal hasta la exterior.
+    const desnivel = (Number(maquina?.cota) || 0) + altura_defecto;
     const tuberia = maquina && unidad_exterior
-      ? metrosTuberia(maquina, unidad_exterior, altura_defecto)
+      ? metrosTuberia(maquina, unidad_exterior, desnivel)
       : 0;
     return {
       estancia: est,
@@ -235,13 +238,33 @@ export const PRECIOS_REFERENCIA = {
   cable_m: 2.8,
   soporte: 35,
   vacio_carga: 60,       // por máquina
-  mano_obra_maquina: 180,
+  // Mano de obra POR HORA, que es como se cobra de verdad y como se puede
+  // actualizar cuando suban los precios sin tener que repasar equipo por
+  // equipo. Referencia de oficial instalador/frigorista en España, 2026.
+  mano_obra_hora: 45,
   // Refrigeración
   evaporador_camara: 620,
   unidad_condensadora_kw: 210,   // € por kW de condensadora (más cara que una exterior de clima)
   vitrina: 2400,
   arcon: 1500,
   camara_puerta: 850,
+};
+
+/**
+ * Horas de montaje por equipo, puesto y funcionando.
+ *
+ * Incluye lo que de verdad se tarda: subir el material, taladrar, colgar,
+ * pasar tubería, hacer el vacío y probar. No es solo "colgar la máquina".
+ */
+export const HORAS_MONTAJE = {
+  mural: 6,
+  suelo: 6,
+  cassette: 10,          // falso techo, más lío
+  conductos: 12,         // más el trabajo de conductos y rejillas
+  evaporador_camara: 8,
+  vitrina: 4,
+  arcon: 3,
+  camara_puerta: 4,
 };
 
 /**
@@ -337,10 +360,20 @@ export function listaMateriales(resumen, precios = PRECIOS_REFERENCIA) {
       descripcion: 'Vacío, estanqueidad y carga de gas',
       unidad: 'ud', cantidad: nMaquinas, precio_ud: p.vacio_carga, categoria: 'accesorios',
     }));
-    lineas.push(crearLinea({
-      descripcion: 'Mano de obra de instalación y puesta en marcha',
-      unidad: 'ud', cantidad: nMaquinas, precio_ud: p.mano_obra_maquina, categoria: 'mano_obra',
-    }));
+    // Mano de obra por horas: se suma lo que lleva cada equipo colocado.
+    let horas = 0;
+    for (const d of resumen.detalle) {
+      if (d.maquina) horas += HORAS_MONTAJE[d.maquina.tipo] ?? HORAS_MONTAJE.mural;
+    }
+    for (const eq of (resumen.sueltos || [])) {
+      horas += HORAS_MONTAJE[eq.tipo] ?? 4;
+    }
+    if (horas > 0) {
+      lineas.push(crearLinea({
+        descripcion: 'Mano de obra de instalación y puesta en marcha',
+        unidad: 'h', cantidad: horas, precio_ud: p.mano_obra_hora, categoria: 'mano_obra',
+      }));
+    }
   }
 
   return lineas;
