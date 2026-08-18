@@ -98,9 +98,11 @@ function CardPreview({ card, company, size = 'normal' }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {card.show_logo && (
+            // El tamaño debe coincidir con el de la plantilla de impresión
+            // (58 px), o la vista previa engañaría sobre cómo saldrá impresa.
             company?.logo_url
-              ? <img src={company.logo_url} alt="logo" style={{ height: isSmall ? 22 : 36, width: isSmall ? 22 : 36, objectFit: 'contain', background: 'white', borderRadius: 4, padding: '2px', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', flexShrink: 0 }} />
-              : <div style={{ width: isSmall ? 22 : 36, height: isSmall ? 22 : 36, background: s.accent, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: isSmall ? 11 : 16, color: s.bg, flexShrink: 0 }}>
+              ? <img src={company.logo_url} alt="logo" style={{ height: isSmall ? 34 : 58, width: isSmall ? 34 : 58, objectFit: 'contain', background: 'white', borderRadius: 5, padding: '3px', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', flexShrink: 0 }} />
+              : <div style={{ width: isSmall ? 34 : 58, height: isSmall ? 34 : 58, background: s.accent, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: isSmall ? 16 : 26, color: s.bg, flexShrink: 0 }}>
                   {companyName[0] || 'E'}
                 </div>
           )}
@@ -191,8 +193,8 @@ export default function BusinessCards() {
     const vcard = buildVCardString(card, company);
     const qrUrl = card.show_qr ? await QRCodeLib.toDataURL(vcard, { width: 240, margin: 1 }).catch(() => '') : '';
     const logoHtml = card.show_logo && company?.logo_url
-      ? `<img src="${company.logo_url}" style="height:36px;width:36px;object-fit:contain;background:white;border-radius:4px;padding:2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);flex-shrink:0;" />`
-      : `<div style="width:36px;height:36px;background:${s.accent};border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px;color:${s.bg};line-height:1;flex-shrink:0;">${companyName[0] || 'E'}</div>`;
+      ? `<img src="${company.logo_url}" style="height:58px;width:58px;object-fit:contain;background:white;border-radius:5px;padding:3px;box-shadow:0 1px 3px rgba(0,0,0,0.2);flex-shrink:0;" />`
+      : `<div style="width:58px;height:58px;background:${s.accent};border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:26px;color:${s.bg};line-height:1;flex-shrink:0;">${companyName[0] || 'E'}</div>`;
 
     const cardHtml = `
       <div class="card">
@@ -275,8 +277,8 @@ export default function BusinessCards() {
     const vcard = buildVCardString(card, company);
     const qrUrl = card.show_qr ? await QRCodeLib.toDataURL(vcard, { width: 200, margin: 1 }).catch(() => '') : '';
     const logoHtml = card.show_logo && company?.logo_url
-      ? `<img src="${company.logo_url}" style="height:36px;width:36px;object-fit:contain;background:white;border-radius:4px;padding:2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);flex-shrink:0;" />`
-      : `<div style="width:36px;height:36px;background:${s.accent};border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px;color:${s.bg};flex-shrink:0;">${companyName[0] || 'E'}</div>`;
+      ? `<img src="${company.logo_url}" style="height:58px;width:58px;object-fit:contain;background:white;border-radius:5px;padding:3px;box-shadow:0 1px 3px rgba(0,0,0,0.2);flex-shrink:0;" />`
+      : `<div style="width:58px;height:58px;background:${s.accent};border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:26px;color:${s.bg};flex-shrink:0;">${companyName[0] || 'E'}</div>`;
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
       @page { size: 85mm 54mm; margin: 0; }
