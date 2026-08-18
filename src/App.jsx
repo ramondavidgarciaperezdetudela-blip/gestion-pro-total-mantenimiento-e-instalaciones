@@ -18,6 +18,7 @@ import { Suspense, lazy } from 'react';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import PantallaArranque, { PantallaErrorSesion } from '@/components/PantallaArranque';
 
 import UpdateChecker from '@/components/UpdateChecker';
 import StorageSetupNotice from '@/components/StorageSetupNotice';
@@ -69,24 +70,25 @@ function AnimatedRoutes({ children }) {
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
+  // Mientras se comprueba la sesión. Si el servidor no contesta esto no
+  // termina nunca, así que la pantalla avisa a los pocos segundos en vez de
+  // dejar la ruedecita girando sin decir nada (parecía que no abría).
   if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
-      </div>
-    );
+    return <PantallaArranque />;
   }
 
-  // Handle authentication errors
+  // Errores de sesión
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
+      // Al login directamente
       navigateToLogin();
       return null;
     }
+    // Cualquier otro error (red, servidor caído, cuenta sin créditos): antes
+    // se seguía adelante como si nada y la aplicación quedaba a medias.
+    return <PantallaErrorSesion error={authError} />;
   }
 
   // Render the main app
