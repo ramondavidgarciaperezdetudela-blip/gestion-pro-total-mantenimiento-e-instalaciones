@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   Pencil, Move, Trash2, Wind, Sparkles, FileText, Loader2,
   RotateCcw, AlertCircle, Ruler, Wrench, Euro, Layers, Plus, X,
-  Spline, Box, Map, Check,
+  Spline, Box, Map, Check, Image as ImageIcon, Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -22,6 +22,9 @@ import Vista3DPlano from '@/components/Vista3DPlano';
 import {
   evaluarRecorrido, evaluarConducto, caudalDeKw, LIMITES,
 } from '@/lib/planoRecorrido';
+import {
+  genericasDeTipo, sugerirMaquina, fichaEstancia, diametrosDeKw,
+} from '@/lib/catalogoMaquinas';
 
 /**
  * Plano IA — dibujar la planta, colocar las máquinas y sacar el presupuesto.
@@ -138,6 +141,17 @@ export default function PlanoIA() {
   const [trazando, setTrazando] = useState(null);     // recorrido en curso
   const [vista, setVista] = useState('plano');        // 'plano' | '3d'
   const [tipoInstalacion, setTipoInstalacion] = useState('split_1x1');
+  // Marca y modelo elegidos por estancia: { [estanciaId]: maquina }
+  const [maquinasElegidas, setMaquinasElegidas] = useState({});
+  const [verResumen, setVerResumen] = useState(false);
+
+  // Plano de fondo para calcar: foto, escaneo o dibujo a mano. Se lee en el
+  // propio equipo, NO se sube a ningún sitio: así funciona en la obra sin
+  // cobertura y sin gastar crédito de la cuenta.
+  const [fondo, setFondo] = useState(null);        // { imagen, nombre }
+  const [fondoOpacidad, setFondoOpacidad] = useState(0.45);
+  const [fondoEscala, setFondoEscala] = useState(1);
+  const [fondoDesplaza, setFondoDesplaza] = useState({ x: 0, y: 0 });
 
   const [alturaDefecto, setAlturaDefecto] = useState(2.5);
   const [seleccion, setSeleccion] = useState(null); // id de estancia
@@ -222,6 +236,27 @@ export default function PlanoIA() {
     [recorridosRevisados]
   );
 
+  // Ficha técnica de cada estancia: superficie, máquina, lo que cubre esa
+  // máquina, diámetros de tubería y gas a añadir. Es el resumen que hace falta
+  // para comprar el material y para explicárselo al cliente.
+  const fichas = useMemo(() => resumen.detalle
+    .filter(d => d.maquina)
+    .map(d => {
+      const factorUso = FACTOR_USO[d.estancia.uso] ?? FACTOR_USO.vivienda;
+      // Si hay recorrido trazado para esa planta se usa; si no, el estimado.
+      const trazado = recorridosRevisados.find(
+        r => !r.esConducto && r.planta === d.estancia.planta
+      );
+      const metros = trazado ? trazado.revision.metros : d.metros_tuberia;
+      // Si no se ha elegido máquina a mano, se usa la del catálogo que le
+      // toca a ese TIPO de equipo. El escalón teórico no vale: no existe una
+      // máquina de conductos de 2 kW, y presupuestarla es prometer algo que
+      // luego no se puede comprar.
+      const maquina = maquinasElegidas[d.estancia.id]
+        || sugerirMaquina(d.kw, d.maquina.tipo);
+      return fichaEstancia(d, factorUso, metros, maquina);
+    }), [resumen, maquinasElegidas, recorridosRevisados]);
+
   // Si se ha trazado la instalación a mano, el presupuesto va con ESOS metros:
   // el recorrido real siempre manda sobre la estimación por recorrido de pared.
   const materiales = useMemo(() => {
@@ -248,6 +283,16 @@ export default function PlanoIA() {
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
+
+    // El plano de fondo va lo primero, para dibujar encima de él.
+    if (fondo?.imagen) {
+      ctx.save();
+      ctx.globalAlpha = fondoOpacidad;
+      const ancho = fondo.imagen.width * fondoEscala;
+      const alto = fondo.imagen.height * fondoEscala;
+      ctx.drawImage(fondo.imagen, fondoDesplaza.x, fondoDesplaza.y, ancho, alto);
+      ctx.restore();
+    }
 
     // Cuadrícula de 1 m, con línea marcada cada 5 m para poder contar de un vistazo.
     for (let m = 0; m <= ANCHO_M; m++) {
@@ -390,7 +435,7 @@ export default function PlanoIA() {
       );
     }
   }, [estancias, maquinas, exterior, seleccion, arrastre, resumen.es_refrigeracion,
-      recorridos, trazando, planta?.nombre]);
+      recorridos, trazando, planta?.nombre, fondo, fondoOpacidad, fondoEscala, fondoDesplaza]);
 
   useEffect(() => { pintar(); }, [pintar]);
 
@@ -514,6 +559,38 @@ export default function PlanoIA() {
       aislamiento: 'normal',
     }]);
     setSeleccion(id);
+  };
+
+  /** Carga un plano de fondo desde el equipo, sin subirlo a ningún servidor. */
+  const cargarFondo = (ev) => {
+    const fichero = ev.target.files?.[0];
+    ev.target.value = '';
+    if (!fichero) return;
+
+    const nombre = fichero.name.toLowerCase();
+    // Los ficheros de CAD no son imágenes: hay que decirlo claro en vez de
+    // dejar que el usuario espere a que aparezca algo que no va a aparecer.
+    if (nombre.endsWith('.dwg') || nombre.endsWith('.dxf')) {
+      toast.error('Los ficheros de CAD (.dwg/.dxf) no se pueden calcar directamente. Expórtalo a PDF o imagen desde el programa de CAD y súbelo así.');
+      return;
+    }
+    if (!fichero.type.startsWith('image/')) {
+      toast.error('Sube una foto o imagen del plano (JPG, PNG…). Si es un PDF, exporta la página como imagen.');
+      return;
+    }
+
+    const lector = new FileReader();
+    lector.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        setFondo({ imagen: img, nombre: fichero.name });
+        toast.success('Plano cargado: ajusta la escala y dibuja encima');
+      };
+      img.onerror = () => toast.error('No se pudo leer esa imagen');
+      img.src = lector.result;
+    };
+    lector.onerror = () => toast.error('No se pudo leer el fichero');
+    lector.readAsDataURL(fichero);
   };
 
   /** Guarda el trazado que se estaba dibujando (si tiene al menos dos puntos). */
@@ -823,8 +900,58 @@ export default function PlanoIA() {
             )}
           </div>
 
+          {/* Plano de fondo para calcar */}
           <Card className={vista === '3d' ? 'hidden' : ''}>
-            <CardContent className="p-2 overflow-x-auto">
+            <CardContent className="p-2 space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white hover:bg-slate-50 cursor-pointer flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  {fondo ? 'Cambiar plano' : 'Subir plano para calcar'}
+                  <input type="file" accept="image/*" className="hidden" onChange={cargarFondo} />
+                </label>
+
+                {fondo && (
+                  <>
+                    <span className="text-[11px] text-slate-500 max-w-[160px] truncate">{fondo.nombre}</span>
+                    <label className="text-[11px] text-slate-500 flex items-center gap-1">
+                      <Eye className="w-3 h-3" />
+                      <input type="range" min="0.1" max="1" step="0.05" className="w-20"
+                        value={fondoOpacidad}
+                        onChange={e => setFondoOpacidad(Number(e.target.value))} />
+                    </label>
+                    <label className="text-[11px] text-slate-500 flex items-center gap-1">
+                      Escala
+                      <input type="range" min="0.05" max="3" step="0.05" className="w-24"
+                        value={fondoEscala}
+                        onChange={e => setFondoEscala(Number(e.target.value))} />
+                      <span className="w-8">{fondoEscala.toFixed(2)}</span>
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setFondoDesplaza(d => ({ ...d, x: d.x - 20 }))}
+                        className="px-1.5 py-0.5 text-xs border rounded">←</button>
+                      <button onClick={() => setFondoDesplaza(d => ({ ...d, x: d.x + 20 }))}
+                        className="px-1.5 py-0.5 text-xs border rounded">→</button>
+                      <button onClick={() => setFondoDesplaza(d => ({ ...d, y: d.y - 20 }))}
+                        className="px-1.5 py-0.5 text-xs border rounded">↑</button>
+                      <button onClick={() => setFondoDesplaza(d => ({ ...d, y: d.y + 20 }))}
+                        className="px-1.5 py-0.5 text-xs border rounded">↓</button>
+                    </div>
+                    <button onClick={() => { setFondo(null); setFondoEscala(1); setFondoDesplaza({ x: 0, y: 0 }); }}
+                      className="text-[11px] text-red-600 hover:underline">quitar</button>
+                  </>
+                )}
+              </div>
+
+              {fondo && (
+                <p className="text-[11px] text-blue-800 bg-blue-50 border border-blue-200 rounded p-2">
+                  Ajusta la <strong>escala</strong> hasta que una medida conocida del plano
+                  (una pared, una puerta de 0,8 m) coincida con los cuadros de la rejilla,
+                  que son de 1 metro. Después dibuja las estancias encima y ya tendrás el
+                  plano pasado a ordenador, con sus medidas de verdad.
+                </p>
+              )}
+
+              <div className="overflow-x-auto">
               <canvas
                 ref={canvasRef}
                 width={ANCHO_M * METRO_PX}
@@ -842,6 +969,7 @@ export default function PlanoIA() {
                   cursor: herramienta === 'borrar' ? 'not-allowed' : 'crosshair',
                 }}
               />
+              </div>
             </CardContent>
           </Card>
 
@@ -957,15 +1085,82 @@ export default function PlanoIA() {
                     onChange={v => actualizarMaquina(estanciaSel.id, v)}
                   />
                 )}
+                {maquinaSel && (() => {
+                  const opciones = genericasDeTipo(maquinaSel.tipo);
+                  const d = resumen.detalle.find(x => x.estancia.id === estanciaSel.id);
+                  const sugerida = d ? sugerirMaquina(d.kw, maquinaSel.tipo) : null;
+                  const elegida = maquinasElegidas[estanciaSel.id];
+                  if (!opciones.length) return null;
+                  return (
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Máquina</label>
+                      <Select
+                        value={elegida?.id || sugerida?.id || ''}
+                        onValueChange={id => {
+                          const m = opciones.find(o => o.id === id);
+                          setMaquinasElegidas(prev => ({ ...prev, [estanciaSel.id]: m || null }));
+                        }}
+                      >
+                        <SelectTrigger className="mt-1 h-8"><SelectValue placeholder="Elegir…" /></SelectTrigger>
+                        <SelectContent>
+                          {opciones.map(o => (
+                            <SelectItem key={o.id} value={o.id}>
+                              {o.kw} kW · líq {o.liquido} / gas {o.gas} · SEER {o.seer}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {sugerida && !elegida && (
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          Propuesta según la carga: {sugerida.kw} kW.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {(() => {
                   const d = resumen.detalle.find(x => x.estancia.id === estanciaSel.id);
                   if (!d) return null;
+                  const factorUso = FACTOR_USO[estanciaSel.uso] ?? FACTOR_USO.vivienda;
+                  const ficha = d.maquina
+                    ? fichaEstancia(d, factorUso, d.metros_tuberia,
+                        maquinasElegidas[estanciaSel.id] || sugerirMaquina(d.kw, d.maquina.tipo))
+                    : null;
+                  const dia = diametrosDeKw(d.kw_comercial);
                   return (
                     <div className="text-xs bg-slate-50 border rounded p-2 space-y-0.5">
-                      <p>{d.area} m² · {d.volumen} m³</p>
+                      <p><strong>{d.area} m²</strong> · {d.volumen} m³</p>
                       <p>{d.frigorias} frig/h ({d.kw} kW)</p>
-                      <p className="font-medium">Máquina: {d.kw_comercial} kW</p>
-                      {d.metros_tuberia > 0 && <p>{d.metros_tuberia} m de tubería</p>}
+                      {ficha ? (
+                        <>
+                          <p className="font-medium">Máquina: {ficha.maquina} ({ficha.maquina_kw} kW)</p>
+                          <p className={ficha.suficiente ? 'text-green-700' : 'text-red-600 font-medium'}>
+                            Cubre {ficha.superficie_cubierta} m²
+                            {ficha.suficiente
+                              ? ` (sobran ${ficha.holgura} m²)`
+                              : ` — SE QUEDA CORTA para ${d.area} m²`}
+                          </p>
+                          <p>Tubería: líquido {ficha.tuberia_liquido} · gas {ficha.tuberia_gas}</p>
+                          {ficha.metros_tuberia > 0 && (
+                            <>
+                              <p>{ficha.metros_tuberia} m de tubería</p>
+                              <p>
+                                Gas extra: <strong>{ficha.gas_extra_g} g</strong>
+                                <span className="text-slate-400"> ({ficha.gramos_por_metro} g/m
+                                  desde {ficha.precarga_m} m)</span>
+                              </p>
+                            </>
+                          )}
+                          {ficha.seer && <p>SEER {ficha.seer}</p>}
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-medium">Máquina propuesta: {d.kw_comercial} kW</p>
+                          <p className="text-slate-400">Tubería: líquido {dia.liquido} · gas {dia.gas}</p>
+                          <p className="text-amber-700">Pon un equipo en la estancia para el detalle.</p>
+                        </>
+                      )}
                     </div>
                   );
                 })()}
@@ -1223,6 +1418,78 @@ export default function PlanoIA() {
               Sugerencia orientativa: contrasta modelos y precios con tu proveedor antes de enviar el presupuesto.
             </p>
           </CardContent>
+        </Card>
+      )}
+
+      {/* Resumen técnico: todo lo que hay que saber, estancia por estancia */}
+      {fichas.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center justify-between">
+              <span>Resumen técnico de la instalación</span>
+              <button onClick={() => setVerResumen(v => !v)}
+                className="text-xs font-normal text-blue-600 hover:underline">
+                {verResumen ? 'ocultar' : 'ver'}
+              </button>
+            </CardTitle>
+          </CardHeader>
+          {verResumen && (
+            <CardContent className="overflow-x-auto p-0">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left uppercase text-slate-500 bg-slate-50">
+                    <th className="p-2">Estancia</th>
+                    <th className="p-2 text-right">Superficie</th>
+                    <th className="p-2 text-right">Carga</th>
+                    <th className="p-2">Máquina</th>
+                    <th className="p-2 text-right">Cubre</th>
+                    <th className="p-2">Tubería</th>
+                    <th className="p-2 text-right">Metros</th>
+                    <th className="p-2 text-right">Gas extra</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fichas.map((f, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="p-2 font-medium">{f.estancia}</td>
+                      <td className="p-2 text-right">{f.superficie} m²</td>
+                      <td className="p-2 text-right">{f.carga_frigorias} frig/h</td>
+                      <td className="p-2">{f.maquina}</td>
+                      <td className={`p-2 text-right ${f.suficiente ? 'text-green-700' : 'text-red-600 font-semibold'}`}>
+                        {f.superficie_cubierta} m²
+                      </td>
+                      <td className="p-2">{f.tuberia_liquido} / {f.tuberia_gas}</td>
+                      <td className="p-2 text-right">{f.metros_tuberia} m</td>
+                      <td className="p-2 text-right">
+                        {f.gas_extra_g > 0 ? `${f.gas_extra_g} g` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t bg-slate-50 font-semibold">
+                    <td className="p-2" colSpan={6}>Gas adicional total</td>
+                    <td className="p-2 text-right">
+                      {fichas.reduce((s, f) => s + f.metros_tuberia, 0).toFixed(1)} m
+                    </td>
+                    <td className="p-2 text-right">
+                      {fichas.reduce((s, f) => s + f.gas_extra_g, 0)} g
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+              {fichas.some(f => !f.suficiente) && (
+                <p className="text-xs text-red-700 bg-red-50 border-t border-red-200 p-2">
+                  Hay máquinas que no cubren la superficie de su estancia. Sube un
+                  escalón de potencia o repasa el uso y el aislamiento.
+                </p>
+              )}
+              <p className="text-[10px] text-slate-400 p-2 border-t">
+                Los diámetros y los gramos por metro son los estándar del sector.
+                Si la ficha de tu máquina dice otra cosa, manda la ficha.
+              </p>
+            </CardContent>
+          )}
         </Card>
       )}
 

@@ -220,6 +220,19 @@ export function resumenPlano(plano) {
   };
 }
 
+/** Precios de las piezas sueltas por equipo. */
+export const PRECIOS_EXTRAS = {
+  soporte: 35,
+  bomba_condensados: 95,
+  varilla_techo: 8,
+  plenum: 120,
+  rejilla_impulsion: 45,
+  rejilla_retorno: 60,
+  desague_calefactado: 55,
+  conexion_electrica: 60,
+  resistencia_marco: 80,
+};
+
 /**
  * Precios de referencia del material, en euros.
  *
@@ -242,12 +255,86 @@ export const PRECIOS_REFERENCIA = {
   // actualizar cuando suban los precios sin tener que repasar equipo por
   // equipo. Referencia de oficial instalador/frigorista en España, 2026.
   mano_obra_hora: 45,
+  conducto_m2: 38,       // conducto montado, por m²
+  ...PRECIOS_EXTRAS,
   // Refrigeración
   evaporador_camara: 620,
   unidad_condensadora_kw: 210,   // € por kW de condensadora (más cara que una exterior de clima)
   vitrina: 2400,
   arcon: 1500,
   camara_puerta: 850,
+};
+
+/**
+ * Qué material lleva cada tipo de equipo.
+ *
+ * No todos llevan lo mismo y presupuestarlos igual es lo que hace que falte
+ * material en la furgoneta: un split solo pide tubería frigorífica y desagüe,
+ * mientras que uno de conductos pide además conducto, rejillas y plenum, y un
+ * evaporador de cámara lleva desagüe calefactado porque si no se congela.
+ *
+ *  - `tuberia`  par de tubería frigorífica, por metro de recorrido
+ *  - `desague`  tubería de condensados, por metro
+ *  - `cable`    cable de interconexión, por metro
+ *  - `conducto` m² de conducto (solo en máquinas de conductos)
+ *  - `rejillas` unidades de rejilla de impulsión y retorno
+ *  - `extras`   piezas sueltas propias de ese equipo
+ */
+export const MATERIAL_POR_EQUIPO = {
+  mural: {
+    nombre: 'Split mural',
+    tuberia: true, desague: true, cable: true,
+    extras: [{ clave: 'soporte', descripcion: 'Soporte de pared', cantidad: 1 }],
+  },
+  suelo: {
+    nombre: 'Consola de suelo',
+    tuberia: true, desague: true, cable: true,
+    extras: [{ clave: 'soporte', descripcion: 'Soporte / anclaje', cantidad: 1 }],
+  },
+  cassette: {
+    nombre: 'Cassette',
+    tuberia: true, desague: true, cable: true,
+    extras: [
+      { clave: 'bomba_condensados', descripcion: 'Bomba de condensados', cantidad: 1 },
+      { clave: 'varilla_techo', descripcion: 'Varillas roscadas y anclajes a forjado', cantidad: 4 },
+    ],
+  },
+  conductos: {
+    nombre: 'Conductos',
+    tuberia: true, desague: true, cable: true, conducto: true,
+    extras: [
+      { clave: 'bomba_condensados', descripcion: 'Bomba de condensados', cantidad: 1 },
+      { clave: 'plenum', descripcion: 'Plenum de impulsión y retorno', cantidad: 1 },
+      { clave: 'rejilla_impulsion', descripcion: 'Rejilla de impulsión', cantidad: 2 },
+      { clave: 'rejilla_retorno', descripcion: 'Rejilla de retorno con filtro', cantidad: 1 },
+      { clave: 'varilla_techo', descripcion: 'Varillas roscadas y anclajes a forjado', cantidad: 4 },
+    ],
+  },
+  evaporador_camara: {
+    nombre: 'Evaporador de cámara',
+    tuberia: true, desague: true, cable: true,
+    extras: [
+      { clave: 'desague_calefactado', descripcion: 'Resistencia de desagüe (anticongelación)', cantidad: 1 },
+      { clave: 'soporte', descripcion: 'Anclajes a panel de cámara', cantidad: 1 },
+    ],
+  },
+  vitrina: {
+    nombre: 'Vitrina / mural refrigerado',
+    // Los muebles suelen venir con su equipo o van a central: no llevan par
+    // de tubería propio salvo que se conecten a una condensadora remota.
+    tuberia: false, desague: true, cable: true,
+    extras: [{ clave: 'conexion_electrica', descripcion: 'Conexión eléctrica y puesta en marcha', cantidad: 1 }],
+  },
+  arcon: {
+    nombre: 'Arcón / isla',
+    tuberia: false, desague: false, cable: true,
+    extras: [{ clave: 'conexion_electrica', descripcion: 'Conexión eléctrica y puesta en marcha', cantidad: 1 }],
+  },
+  camara_puerta: {
+    nombre: 'Puerta de cámara',
+    tuberia: false, desague: false, cable: false,
+    extras: [{ clave: 'resistencia_marco', descripcion: 'Resistencia de marco y burlete', cantidad: 1 }],
+  },
 };
 
 /**
@@ -336,26 +423,71 @@ export function listaMateriales(resumen, precios = PRECIOS_REFERENCIA) {
   const nMaquinas = resumen.detalle.filter(d => d.maquina).length;
   const metros = resumen.metros_tuberia_total;
 
-  if (metros > 0) {
+  // ── Material según lo que lleva CADA tipo de equipo ──────────────────────
+  // Un split solo pide tubería frigorífica y desagüe; uno de conductos pide
+  // además conducto y rejillas; un arcón no pide ninguna de las dos. Meterlo
+  // todo a bulto es lo que hace que falte material en la obra.
+  const equiposColocados = [
+    ...resumen.detalle.filter(d => d.maquina).map(d => d.maquina),
+    ...(resumen.sueltos || []),
+  ];
+
+  const conTuberia = equiposColocados.filter(e => MATERIAL_POR_EQUIPO[e.tipo]?.tuberia).length;
+  const conDesague = equiposColocados.filter(e => MATERIAL_POR_EQUIPO[e.tipo]?.desague).length;
+  const conCable = equiposColocados.filter(e => MATERIAL_POR_EQUIPO[e.tipo]?.cable).length;
+  const total = equiposColocados.length || 1;
+
+  if (metros > 0 && conTuberia > 0) {
     lineas.push(crearLinea({
       descripcion: 'Par de tubería frigorífica aislada, instalada',
       unidad: 'm', cantidad: metros, precio_ud: p.tuberia_m, categoria: 'tuberia',
     }));
+  }
+  if (metros > 0 && conDesague > 0) {
     lineas.push(crearLinea({
       descripcion: 'Tubería de desagüe de condensados',
-      unidad: 'm', cantidad: metros, precio_ud: p.desague_m, categoria: 'tuberia',
+      // Solo los metros de los equipos que llevan desagüe.
+      unidad: 'm', cantidad: redondear(metros * (conDesague / total), 1),
+      precio_ud: p.desague_m, categoria: 'tuberia',
     }));
+  }
+  if (metros > 0 && conCable > 0) {
     lineas.push(crearLinea({
       descripcion: 'Cable de interconexión 4x1,5 mm²',
-      unidad: 'm', cantidad: metros, precio_ud: p.cable_m, categoria: 'electrico',
+      unidad: 'm', cantidad: redondear(metros * (conCable / total), 1),
+      precio_ud: p.cable_m, categoria: 'electrico',
+    }));
+  }
+
+  // Conducto y rejillas: solo si hay máquinas de conductos.
+  const nConductos = equiposColocados.filter(e => MATERIAL_POR_EQUIPO[e.tipo]?.conducto).length;
+  if (nConductos > 0 && metros > 0) {
+    // Metro cuadrado de conducto: se estima por los metros de recorrido.
+    const m2 = redondear(metros * 0.9, 1);
+    lineas.push(crearLinea({
+      descripcion: 'Conducto de fibra/chapa, montado',
+      unidad: 'm²', cantidad: m2, precio_ud: p.conducto_m2, categoria: 'conductos',
+    }));
+  }
+
+  // Piezas propias de cada equipo, agrupadas.
+  const extras = {};
+  for (const eq of equiposColocados) {
+    for (const ex of (MATERIAL_POR_EQUIPO[eq.tipo]?.extras || [])) {
+      if (!extras[ex.clave]) extras[ex.clave] = { ...ex, cantidad: 0 };
+      extras[ex.clave].cantidad += ex.cantidad;
+    }
+  }
+  for (const ex of Object.values(extras)) {
+    lineas.push(crearLinea({
+      descripcion: ex.descripcion,
+      unidad: 'ud', cantidad: ex.cantidad,
+      precio_ud: p[ex.clave] ?? PRECIOS_EXTRAS[ex.clave] ?? 0,
+      categoria: 'accesorios',
     }));
   }
 
   if (nMaquinas > 0) {
-    lineas.push(crearLinea({
-      descripcion: 'Soportes y anclajes',
-      unidad: 'ud', cantidad: nMaquinas + 1, precio_ud: p.soporte, categoria: 'accesorios',
-    }));
     lineas.push(crearLinea({
       descripcion: 'Vacío, estanqueidad y carga de gas',
       unidad: 'ud', cantidad: nMaquinas, precio_ud: p.vacio_carga, categoria: 'accesorios',
