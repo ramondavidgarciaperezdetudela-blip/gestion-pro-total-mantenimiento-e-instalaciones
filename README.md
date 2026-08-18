@@ -19,7 +19,7 @@
 
 **Gestión Pro Total** reúne en una sola aplicación todo lo que necesita una empresa de **mantenimiento, instalaciones y servicio de asistencia técnica (SAT)**: clientes, proyectos, mantenimientos, inventario, proveedores, técnicos en campo, calculadoras técnicas especializadas y asistentes de inteligencia artificial. Funciona en el navegador, como app de Android y como programa de escritorio.
 
-> 55 pantallas · calculadoras eléctricas/climatización/solar · asistentes IA · portal del cliente · copias de seguridad · auditoría.
+> 62 pantallas · calculadoras eléctricas/climatización/solar · asistentes IA · portal del cliente · copias de seguridad · auditoría.
 
 ## ⬇️ Descargas
 
@@ -35,10 +35,12 @@ Ve a la **[última versión (Releases)](../../releases/latest)** y descarga:
 ## 🚀 Funcionalidades
 
 - **Gestión:** contactos (clientes/proveedores), agenda, proyectos y cronograma.
+- **Disponibilidad:** qué días y horas quedan libres descontando citas y órdenes SAT; se reserva el hueco con el cliente al teléfono y llega el aviso por correo con todos sus datos.
 - **Operativa:** mantenimientos preventivos/correctivos, **SAT** (partes, calendario, chat y portal público), incidencias.
 - **Inventario y compras:** stock, repuestos, proveedores, tarifas y catálogos.
 - **Técnicos en campo:** jornada, partes de trabajo, rutas; diario e historial de averías por equipo.
 - **Calculadoras técnicas:** eléctrica, climatización (potencia y análisis), térmica, cámaras frigoríficas, multi-área, baterías y **solar fotovoltaica con PVGIS**.
+- **Plano y presupuesto:** se dibuja la planta a escala, se colocan las máquinas y la unidad exterior, y salen cargas, metros de tubería, lista de material y presupuesto; la IA afina marcas, modelos y precios.
 - **Inteligencia artificial:** asistente, presupuestos, planificación, informes y búsqueda inteligente.
 - **Documentos:** plantillas, presupuestos públicos, tarjetas de visita, normativa y manuales.
 - **Administración:** configuración de empresa, actualizaciones, copias de seguridad, auditoría y exportación de datos.
