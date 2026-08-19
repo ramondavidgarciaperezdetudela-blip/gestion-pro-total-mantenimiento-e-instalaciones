@@ -13,7 +13,7 @@
  * píxeles; aquí no se sabe nada de pantallas.
  */
 
-import { factorCerramientos, cargaVentanas } from './cerramientos.js';
+import { factorCerramientos, cargaVentanas, SUELO_CAMARA } from './cerramientos.js';
 
 /** 1 kW = 860 frigorías/hora. */
 export const FRIGORIAS_POR_KW = 860;
@@ -80,6 +80,7 @@ export const TIPOS_MAQUINA = [
   { id: 'vitrina', nombre: 'Vitrina / mural refrigerado', color: '#7c3aed', categoria: 'refrigeracion' },
   { id: 'arcon', nombre: 'Arcón / isla congelación', color: '#1d4ed8', categoria: 'refrigeracion' },
   { id: 'camara_puerta', nombre: 'Puerta de cámara', color: '#64748b', categoria: 'refrigeracion' },
+  { id: 'control_temperatura', nombre: 'Control de temperatura', color: '#059669', categoria: 'refrigeracion' },
 ];
 
 /** Equipos que van dentro de una estancia y se dimensionan con su carga. */
@@ -88,7 +89,7 @@ export const EQUIPOS_INTERIORES = [
 ];
 
 /** Equipos sueltos: se presupuestan por unidad, no por la carga de la sala. */
-export const EQUIPOS_SUELTOS = ['vitrina', 'arcon', 'camara_puerta'];
+export const EQUIPOS_SUELTOS = ['vitrina', 'arcon', 'camara_puerta', 'control_temperatura'];
 
 /** Superficie de una estancia rectangular, en m². */
 export function areaEstancia(estancia) {
@@ -124,7 +125,12 @@ export function cargaEstancia(estancia, alturaPorDefecto = 2.5) {
   // piden lo mismo aunque midan igual.
   const fCerr = factorCerramientos(estancia);
 
-  const frigoriasBase = area * base * fo * fa * fAltura * fCerr;
+  // En una cámara, cómo se apoya en el suelo cambia bastante el consumo.
+  const fSueloCamara = USOS_CAMARA.includes(estancia?.uso)
+    ? (SUELO_CAMARA[estancia?.suelo_camara]?.factor ?? 1)
+    : 1;
+
+  const frigoriasBase = area * base * fo * fa * fAltura * fCerr * fSueloCamara;
 
   // Las ventanas van APARTE y en vatios reales: es la parte que más cambia el
   // resultado y la que peor se estima con un factor por metro cuadrado.
@@ -251,6 +257,8 @@ export const PRECIOS_EXTRAS = {
   desague_calefactado: 55,
   conexion_electrica: 60,
   resistencia_marco: 80,
+  sonda_camara: 28,
+  registrador: 190,
 };
 
 /**
@@ -283,6 +291,7 @@ export const PRECIOS_REFERENCIA = {
   vitrina: 2400,
   arcon: 1500,
   camara_puerta: 850,
+  control_temperatura: 320,
 };
 
 /**
@@ -355,6 +364,14 @@ export const MATERIAL_POR_EQUIPO = {
     tuberia: false, desague: false, cable: false,
     extras: [{ clave: 'resistencia_marco', descripcion: 'Resistencia de marco y burlete', cantidad: 1 }],
   },
+  control_temperatura: {
+    nombre: 'Control de temperatura',
+    tuberia: false, desague: false, cable: true,
+    extras: [
+      { clave: 'sonda_camara', descripcion: 'Sonda de temperatura con cable', cantidad: 2 },
+      { clave: 'registrador', descripcion: 'Registrador de temperaturas (trazabilidad)', cantidad: 1 },
+    ],
+  },
 };
 
 /**
@@ -372,6 +389,7 @@ export const HORAS_MONTAJE = {
   vitrina: 4,
   arcon: 3,
   camara_puerta: 4,
+  control_temperatura: 3,
 };
 
 /**

@@ -6,18 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
-  Pencil, Move, Trash2, Wind, Sparkles, FileText, Loader2,
+  Pencil, Trash2, Wind, Sparkles, FileText, Loader2,
   RotateCcw, AlertCircle, Ruler, Wrench, Euro, Layers, Plus, X,
   Spline, Box, Map, Check, Image as ImageIcon, Eye,
+  Undo2, Redo2, PenLine, Hand,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   TIPOS_MAQUINA, FACTOR_USO, FACTOR_ORIENTACION, FACTOR_AISLAMIENTO,
-  EQUIPOS_SUELTOS, PRECIOS_REFERENCIA,
+  EQUIPOS_SUELTOS, PRECIOS_REFERENCIA, USOS_CAMARA,
   resumenPlano, listaMateriales, totalMateriales, planoComoTexto,
 } from '@/lib/planoCalculos';
 import { dibujarEquipo, nombreEquipo, colorEquipo, radioAproximado } from '@/lib/planoSimbolos';
 import PaletaEquipos from '@/components/PaletaEquipos';
+import { useHistorial } from '@/hooks/useHistorial';
 import Vista3DPlano from '@/components/Vista3DPlano';
 import {
   evaluarRecorrido, evaluarConducto, caudalDeKw, LIMITES,
@@ -28,6 +30,7 @@ import {
 import {
   REVESTIMIENTO_PARED, TIPO_SUELO, SUELO_DEBAJO, TIPO_TECHO, TECHO_ENCIMA,
   VENTANA_MARCO, VENTANA_VIDRIO, PROTECCION_SOLAR, cargaVentana,
+  SUELO_CAMARA, PANEL_CAMARA, panelRecomendado,
 } from '@/lib/cerramientos';
 
 /**
@@ -52,7 +55,9 @@ const HERRAMIENTAS = [
   { id: 'exterior', nombre: 'Exterior / condensadora', icono: Wrench },
   { id: 'recorrido', nombre: 'Trazar tubería', icono: Spline },
   { id: 'conducto', nombre: 'Trazar conducto', icono: Map },
-  { id: 'mover', nombre: 'Seleccionar', icono: Move },
+  { id: 'mover', nombre: 'Mover / seleccionar', icono: Hand },
+  { id: 'libre', nombre: 'Dibujo a mano', icono: PenLine },
+  { id: 'cota', nombre: 'Acotar', icono: Ruler },
   { id: 'borrar', nombre: 'Borrar', icono: Trash2 },
 ];
 
@@ -93,6 +98,38 @@ export default function PlanoIA() {
   ]);
   const [plantaActiva, setPlantaActiva] = useState(0);
   const [exterior, setExterior] = useState(null);
+
+  // Deshacer / rehacer
+  const historial = useHistorial();
+
+  /** Todo lo que se puede deshacer, en un solo objeto. */
+  const capturarEstado = () => ({
+    plantas, exterior, recorridos, trazosLibres, cotas,
+  });
+
+  const aplicarEstado = (e) => {
+    if (!e) return;
+    setPlantas(e.plantas);
+    setExterior(e.exterior);
+    setRecorridos(e.recorridos || []);
+    setTrazosLibres(e.trazosLibres || []);
+    setCotas(e.cotas || []);
+    setSeleccion(null);
+  };
+
+  /** Se llama ANTES de cada cambio, para poder volver atrás. */
+  const antesDeCambiar = () => historial.guardar(capturarEstado());
+
+  const deshacer = () => {
+    const anterior = historial.deshacer(capturarEstado());
+    if (anterior) aplicarEstado(anterior);
+    else toast('No hay nada que deshacer');
+  };
+
+  const rehacer = () => {
+    const siguiente = historial.rehacer(capturarEstado());
+    if (siguiente) aplicarEstado(siguiente);
+  };
 
   const planta = plantas[plantaActiva] || plantas[0];
   const estancias = planta?.estancias || [];
@@ -159,6 +196,17 @@ export default function PlanoIA() {
   const [fondoOpacidad, setFondoOpacidad] = useState(0.45);
   const [fondoEscala, setFondoEscala] = useState(1);
   const [fondoDesplaza, setFondoDesplaza] = useState({ x: 0, y: 0 });
+
+  // Trazos a mano alzada y cotas puestas a mano, por planta.
+  const [trazosLibres, setTrazosLibres] = useState([]);  // [{id, planta, puntos, color}]
+  const [cotas, setCotas] = useState([]);                // [{id, planta, a, b, texto}]
+  const [dibujandoLibre, setDibujandoLibre] = useState(null);
+  const [cotaEnCurso, setCotaEnCurso] = useState(null);
+  const [colorLapiz, setColorLapiz] = useState('#1d4ed8');
+  // Estancia que se está moviendo con la mano.
+  const [moviendo, setMoviendo] = useState(null);
+  // Crear estancias escribiendo las medidas, sin tener que acertar con el ratón.
+  const [medidas, setMedidas] = useState({ nombre: '', ancho: 4, largo: 3, alto: 2.5 });
 
   const [alturaDefecto, setAlturaDefecto] = useState(2.5);
   const [seleccion, setSeleccion] = useState(null); // id de estancia
@@ -273,6 +321,19 @@ export default function PlanoIA() {
     return listaMateriales(base, precios);
   }, [resumen, precios, metrosTrazados]);
   const totalCoste = useMemo(() => totalMateriales(materiales), [materiales]);
+
+  // Ctrl+Z y Ctrl+Y, que es lo que todo el mundo pulsa sin pensar.
+  useEffect(() => {
+    const alPulsar = (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const enCampo = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target?.tagName);
+      if (enCampo) return;
+      if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); deshacer(); }
+      if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); rehacer(); }
+    };
+    window.addEventListener('keydown', alPulsar);
+    return () => window.removeEventListener('keydown', alPulsar);
+  });
 
   useEffect(() => {
     base44.entities.Contact.list('name', 500)
@@ -423,6 +484,69 @@ export default function PlanoIA() {
       }
     }
 
+    // ── Dibujo a mano alzada de esta planta ──────────────────────────────
+    const pintarTrazo = (t) => {
+      if (!t?.puntos?.length) return;
+      ctx.strokeStyle = t.color || '#1d4ed8';
+      ctx.lineWidth = 2.5;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      t.puntos.forEach((pt, i) => {
+        const px = pt.x * METRO_PX, py = pt.y * METRO_PX;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+    };
+    for (const t of trazosLibres) {
+      if (t.planta === planta?.nombre) pintarTrazo(t);
+    }
+    if (dibujandoLibre) pintarTrazo(dibujandoLibre);
+
+    // ── Cotas puestas a mano ─────────────────────────────────────────────
+    for (const co of cotas) {
+      if (co.planta !== planta?.nombre) continue;
+      const ax = co.a.x * METRO_PX, ay = co.a.y * METRO_PX;
+      const bx = co.b.x * METRO_PX, by = co.b.y * METRO_PX;
+      const metros = Math.hypot(co.b.x - co.a.x, co.b.y - co.a.y);
+
+      ctx.strokeStyle = '#be123c';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      ctx.stroke();
+
+      // Marcas en los extremos, como en un plano de verdad
+      for (const [px, py] of [[ax, ay], [bx, by]]) {
+        ctx.beginPath();
+        ctx.arc(px, py, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#be123c';
+        ctx.fill();
+      }
+
+      const mx = (ax + bx) / 2, my = (ay + by) / 2;
+      const texto = `${metros.toFixed(2)} m`;
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      const ancho = ctx.measureText(texto).width + 8;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(mx - ancho / 2, my - 16, ancho, 15);
+      ctx.strokeStyle = '#fecdd3';
+      ctx.strokeRect(mx - ancho / 2, my - 16, ancho, 15);
+      ctx.fillStyle = '#be123c';
+      ctx.textAlign = 'center';
+      ctx.fillText(texto, mx, my - 5);
+      ctx.textAlign = 'left';
+    }
+
+    // Cota a medio poner
+    if (cotaEnCurso) {
+      const ax = cotaEnCurso.a.x * METRO_PX, ay = cotaEnCurso.a.y * METRO_PX;
+      ctx.fillStyle = '#be123c';
+      ctx.beginPath();
+      ctx.arc(ax, ay, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     // Rectángulo que se está dibujando ahora mismo
     if (arrastre) {
       const x = Math.min(arrastre.x0, arrastre.x1) * METRO_PX;
@@ -442,7 +566,8 @@ export default function PlanoIA() {
       );
     }
   }, [estancias, maquinas, exterior, seleccion, arrastre, resumen.es_refrigeracion,
-      recorridos, trazando, planta?.nombre, fondo, fondoOpacidad, fondoEscala, fondoDesplaza]);
+      recorridos, trazando, planta?.nombre, fondo, fondoOpacidad, fondoEscala, fondoDesplaza,
+      trazosLibres, dibujandoLibre, cotas, cotaEnCurso]);
 
   useEffect(() => { pintar(); }, [pintar]);
 
@@ -474,7 +599,35 @@ export default function PlanoIA() {
       setArrastre({ x0: x, y0: y, x1: x, y1: y });
       return;
     }
+    if (herramienta === 'libre') {
+      antesDeCambiar();
+      setDibujandoLibre({ id: nuevoId(), planta: planta?.nombre, color: colorLapiz, puntos: [{ x, y }] });
+      return;
+    }
+    if (herramienta === 'cota') {
+      if (!cotaEnCurso) {
+        setCotaEnCurso({ a: { x, y } });
+      } else {
+        antesDeCambiar();
+        setCotas(prev => [...prev, {
+          id: nuevoId(), planta: planta?.nombre, a: cotaEnCurso.a, b: { x, y },
+        }]);
+        setCotaEnCurso(null);
+      }
+      return;
+    }
+    if (herramienta === 'mover') {
+      const est = estanciaEn(x, y);
+      setSeleccion(est?.id || null);
+      if (est) {
+        antesDeCambiar();
+        // Se guarda de dónde se ha agarrado, para que no salte al pulsar.
+        setMoviendo({ id: est.id, dx: x - est.x, dy: y - est.y });
+      }
+      return;
+    }
     if (herramienta === 'exterior') {
+      antesDeCambiar();
       setExterior({ x, y });
       return;
     }
@@ -505,11 +658,13 @@ export default function PlanoIA() {
       // Vitrinas, arcones y puertas se ponen donde haga falta: son mobiliario,
       // no van ligados a la carga de una estancia.
       if (EQUIPOS_SUELTOS.includes(equipoElegido)) {
+        antesDeCambiar();
         setMaquinas(prev => [...prev, { id: nuevoId(), tipo: equipoElegido, x, y }]);
         return;
       }
       const est = estanciaEn(x, y);
       if (!est) { toast.error('Pon el equipo dentro de una estancia dibujada'); return; }
+      antesDeCambiar();
       setMaquinas(prev => [
         // Una unidad interior por estancia: si ya había, se sustituye.
         ...prev.filter(m => m.estancia_id !== est.id),
@@ -519,33 +674,70 @@ export default function PlanoIA() {
       return;
     }
     if (herramienta === 'borrar') {
+      // Primero lo dibujado a mano y las cotas, que suelen estar encima.
+      const trazo = [...trazosLibres].reverse().find(t => t.planta === planta?.nombre &&
+        t.puntos.some(pt => Math.abs(pt.x - x) < 0.4 && Math.abs(pt.y - y) < 0.4));
+      if (trazo) {
+        antesDeCambiar();
+        setTrazosLibres(prev => prev.filter(t => t.id !== trazo.id));
+        return;
+      }
+      const cota = [...cotas].reverse().find(cc => cc.planta === planta?.nombre &&
+        [cc.a, cc.b].some(pt => Math.abs(pt.x - x) < 0.5 && Math.abs(pt.y - y) < 0.5));
+      if (cota) {
+        antesDeCambiar();
+        setCotas(prev => prev.filter(cc => cc.id !== cota.id));
+        return;
+      }
       const maq = [...maquinas].reverse().find(m => {
         const r = radioAproximado(m.tipo);
         return Math.abs(m.x - x) <= r && Math.abs(m.y - y) <= r;
       });
-      if (maq) { setMaquinas(prev => prev.filter(m => m.id !== maq.id)); return; }
+      if (maq) { antesDeCambiar(); setMaquinas(prev => prev.filter(m => m.id !== maq.id)); return; }
       if (exterior && Math.abs(exterior.x - x) < 0.75 && Math.abs(exterior.y - y) < 0.75) {
-        setExterior(null); return;
+        antesDeCambiar(); setExterior(null); return;
       }
       const est = estanciaEn(x, y);
       if (est) {
+        antesDeCambiar();
         setEstancias(prev => prev.filter(e => e.id !== est.id));
         setMaquinas(prev => prev.filter(m => m.estancia_id !== est.id));
         if (seleccion === est.id) setSeleccion(null);
       }
       return;
     }
-    // Seleccionar
     setSeleccion(estanciaEn(x, y)?.id || null);
   };
 
   const onPointerMove = (ev) => {
-    if (!arrastre) return;
     const { x, y } = posicionEnMetros(ev);
+
+    if (moviendo) {
+      setEstancias(prev => prev.map(e => (
+        e.id === moviendo.id
+          ? { ...e, x: Math.max(0, x - moviendo.dx), y: Math.max(0, y - moviendo.dy) }
+          : e
+      )));
+      return;
+    }
+    if (dibujandoLibre) {
+      // A mano alzada no se redondea a la rejilla: se sigue el trazo tal cual.
+      setDibujandoLibre(d => (d ? { ...d, puntos: [...d.puntos, { x, y }] } : null));
+      return;
+    }
+    if (!arrastre) return;
     setArrastre(a => (a ? { ...a, x1: x, y1: y } : null));
   };
 
   const onPointerUp = () => {
+    if (moviendo) { setMoviendo(null); return; }
+    if (dibujandoLibre) {
+      if (dibujandoLibre.puntos.length > 2) {
+        setTrazosLibres(prev => [...prev, dibujandoLibre]);
+      }
+      setDibujandoLibre(null);
+      return;
+    }
     if (!arrastre) return;
     const ancho = Math.abs(arrastre.x1 - arrastre.x0);
     const alto = Math.abs(arrastre.y1 - arrastre.y0);
@@ -553,6 +745,7 @@ export default function PlanoIA() {
     // Un toque suelto no es una estancia: hace falta arrastrar de verdad.
     if (ancho < 1 || alto < 1) { toast.error('Arrastra para marcar la estancia (mínimo 1×1 m)'); return; }
 
+    antesDeCambiar();
     const id = nuevoId();
     setEstancias(prev => [...prev, {
       id,
@@ -616,6 +809,7 @@ export default function PlanoIA() {
       setTrazando(null);
       return;
     }
+    antesDeCambiar();
     setRecorridos(prev => [...prev, t]);
     setTrazando(null);
     toast.success(t.tipo === 'conducto' ? 'Conducto trazado' : 'Recorrido de tubería trazado');
@@ -626,6 +820,41 @@ export default function PlanoIA() {
 
   const actualizarEstancia = (id, campo, valor) => {
     setEstancias(prev => prev.map(e => (e.id === id ? { ...e, [campo]: valor } : e)));
+  };
+
+  /**
+   * Crea una estancia con las medidas escritas a mano.
+   *
+   * Dibujar con el ratón nunca sale exacto, y en una obra las medidas se
+   * tienen apuntadas. Se coloca a la derecha de lo ya dibujado para que no
+   * se monte encima, y luego se mueve con la mano donde toque.
+   */
+  const crearPorMedidas = () => {
+    const ancho = Number(medidas.ancho) || 0;
+    const largo = Number(medidas.largo) || 0;
+    if (ancho < 0.5 || largo < 0.5) {
+      toast.error('Pon un ancho y un largo de al menos 0,5 m');
+      return;
+    }
+    antesDeCambiar();
+    // A la derecha de lo que ya haya, con un metro de separación.
+    const x = estancias.length
+      ? Math.min(ANCHO_M - ancho, Math.max(...estancias.map(e => e.x + e.ancho)) + 1)
+      : 0.5;
+    const id = nuevoId();
+    setEstancias(prev => [...prev, {
+      id,
+      nombre: medidas.nombre.trim() || `Estancia ${prev.length + 1}`,
+      x: Math.max(0, x), y: 0.5,
+      ancho, alto: largo,
+      altura: Number(medidas.alto) || planta?.altura || alturaDefecto,
+      uso: 'vivienda', orientacion: 'este', aislamiento: 'normal',
+      pared_revestimiento: 'pintura', suelo_tipo: 'gres', suelo_debajo: 'terreno',
+      techo_tipo: 'directo', techo_encima: 'climatizado', ventanas: [],
+    }]);
+    setSeleccion(id);
+    setMedidas(m => ({ ...m, nombre: '' }));
+    toast.success(`Estancia de ${ancho} × ${largo} m añadida`);
   };
 
   const anadirVentana = (estanciaId) => {
@@ -660,7 +889,9 @@ export default function PlanoIA() {
     setPlantas([{ id: nuevoId(), nombre: 'Planta baja', cota: 0, altura: 2.5, estancias: [], maquinas: [] }]);
     setPlantaActiva(0);
     setExterior(null);
+    setTrazosLibres([]); setCotas([]);
     setSeleccion(null); setSugerenciaIA(null); setErrorIA('');
+    historial.limpiar();
   };
 
   // ── Afinar con IA ──────────────────────────────────────────────────────────
@@ -836,6 +1067,27 @@ export default function PlanoIA() {
             </Button>
           );
         })}
+        <div className="flex items-center gap-1 border-l pl-2 ml-1">
+          <Button size="sm" variant="outline" onClick={deshacer}
+            disabled={!historial.puedeDeshacer} title="Deshacer (Ctrl+Z)" className="gap-1">
+            <Undo2 className="w-4 h-4" />Deshacer
+          </Button>
+          <Button size="sm" variant="outline" onClick={rehacer}
+            disabled={!historial.puedeRehacer} title="Rehacer (Ctrl+Y)">
+            <Redo2 className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {herramienta === 'libre' && (
+          <div className="flex items-center gap-1 border-l pl-2">
+            {['#1d4ed8', '#dc2626', '#16a34a', '#000000', '#ea580c'].map(col => (
+              <button key={col} onClick={() => setColorLapiz(col)}
+                className={`w-6 h-6 rounded-full border-2 ${colorLapiz === col ? 'border-slate-800' : 'border-white'}`}
+                style={{ background: col }} title="Color del lápiz" />
+            ))}
+          </div>
+        )}
+
         <Button size="sm" variant="outline" onClick={limpiar} className="gap-1.5 text-red-600">
           <RotateCcw className="w-4 h-4" />Empezar de nuevo
         </Button>
@@ -942,6 +1194,45 @@ export default function PlanoIA() {
               </>
             )}
           </div>
+
+          {/* Crear estancia escribiendo las medidas */}
+          <Card>
+            <CardContent className="p-2">
+              <div className="flex items-end gap-2 flex-wrap">
+                <span className="text-xs font-medium text-slate-500 pb-1.5">Añadir por medidas</span>
+                <div>
+                  <label className="text-[10px] text-slate-500 block">Nombre</label>
+                  <Input className="h-7 text-xs w-28" placeholder="Salón"
+                    value={medidas.nombre}
+                    onChange={e => setMedidas({ ...medidas, nombre: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 block">Ancho (m)</label>
+                  <Input type="number" step="0.1" min="0.5" className="h-7 text-xs w-20"
+                    value={medidas.ancho}
+                    onChange={e => setMedidas({ ...medidas, ancho: Number(e.target.value) || 0 })} />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 block">Largo (m)</label>
+                  <Input type="number" step="0.1" min="0.5" className="h-7 text-xs w-20"
+                    value={medidas.largo}
+                    onChange={e => setMedidas({ ...medidas, largo: Number(e.target.value) || 0 })} />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 block">Alto (m)</label>
+                  <Input type="number" step="0.1" min="2" className="h-7 text-xs w-20"
+                    value={medidas.alto}
+                    onChange={e => setMedidas({ ...medidas, alto: Number(e.target.value) || 2.5 })} />
+                </div>
+                <Button size="sm" onClick={crearPorMedidas} className="h-7 gap-1 text-xs">
+                  <Plus className="w-3 h-3" />Añadir estancia
+                </Button>
+                <span className="text-[10px] text-slate-400 pb-1.5">
+                  se coloca al lado; luego muévela con la mano
+                </span>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Plano de fondo para calcar */}
           <Card className={vista === '3d' ? 'hidden' : ''}>
@@ -1145,6 +1436,61 @@ export default function PlanoIA() {
                     </p>
                   </div>
                 </details>
+
+                {/* Cámara frigorífica: lo suyo propio */}
+                {USOS_CAMARA.includes(estanciaSel.uso) && (
+                  <details className="border-2 border-sky-200 bg-sky-50/40 rounded-lg p-2" open>
+                    <summary className="text-xs font-medium text-sky-800 cursor-pointer">
+                      Cámara frigorífica
+                    </summary>
+                    <div className="space-y-2 mt-2">
+                      <div>
+                        <label className="text-[11px] font-medium text-slate-600">
+                          Temperatura de trabajo (°C)
+                        </label>
+                        <Input type="number" step="1" className="mt-1 h-8 text-xs"
+                          value={estanciaSel.temp_camara ?? (estanciaSel.uso === 'camara_congelacion' ? -20 : 2)}
+                          onChange={e => actualizarEstancia(estanciaSel.id, 'temp_camara', Number(e.target.value))} />
+                      </div>
+
+                      <DesplegableObj etiqueta="Cómo apoya en el suelo"
+                        valor={estanciaSel.suelo_camara || 'aislado'} opciones={SUELO_CAMARA}
+                        onChange={v => actualizarEstancia(estanciaSel.id, 'suelo_camara', v)} />
+                      {SUELO_CAMARA[estanciaSel.suelo_camara || 'aislado']?.nota && (
+                        <p className={`text-[10px] rounded p-1.5 border ${
+                          (estanciaSel.suelo_camara || 'aislado') === 'directo_solera'
+                            ? 'bg-amber-50 border-amber-200 text-amber-800'
+                            : 'bg-slate-50 border-slate-200 text-slate-600'
+                        }`}>
+                          {SUELO_CAMARA[estanciaSel.suelo_camara || 'aislado'].nota}
+                        </p>
+                      )}
+
+                      <DesplegableObj etiqueta="Panel de la cámara"
+                        valor={estanciaSel.panel_camara || panelRecomendado(estanciaSel.temp_camara ?? 2)}
+                        opciones={PANEL_CAMARA}
+                        onChange={v => actualizarEstancia(estanciaSel.id, 'panel_camara', v)} />
+                      {(() => {
+                        const rec = panelRecomendado(estanciaSel.temp_camara ?? 2);
+                        const puesto = estanciaSel.panel_camara || rec;
+                        if (puesto === rec) {
+                          return <p className="text-[10px] text-green-700">
+                            Es el panel que toca para {estanciaSel.temp_camara ?? 2} °C ({PANEL_CAMARA[rec].uso}).
+                          </p>;
+                        }
+                        return <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-1.5">
+                          Para {estanciaSel.temp_camara ?? 2} °C se recomienda {PANEL_CAMARA[rec].nombre} ({PANEL_CAMARA[rec].uso}).
+                        </p>;
+                      })()}
+
+                      <p className="text-[10px] text-sky-800">
+                        Coloca dentro el evaporador, la condensadora y el control de
+                        temperatura desde «Poner equipo». Para el cálculo fino (producto,
+                        entradas diarias, renovaciones) usa la pantalla de Cámara Frigorífica.
+                      </p>
+                    </div>
+                  </details>
+                )}
 
                 {/* Ventanas: lo que más pesa en la carga */}
                 <details className="border rounded-lg p-2" open>

@@ -223,6 +223,58 @@ export function describeCerramientos(estancia = {}) {
   return partes.join(' · ');
 }
 
+// ─── Cámaras frigoríficas ───────────────────────────────────────────────────
+
+/**
+ * Cómo se apoya la cámara en el suelo.
+ *
+ * Es una decisión de obra que cambia mucho el consumo y que se olvida a
+ * menudo: una cámara de congelación puesta directamente sobre la solera
+ * acaba helando el terreno de debajo, levantando el suelo y gastando de más.
+ */
+export const SUELO_CAMARA = {
+  aislado: {
+    nombre: 'Panel aislante bajo la cámara',
+    factor: 1.00,
+    nota: 'Lo correcto. El suelo va aislado igual que las paredes.',
+  },
+  aislado_reforzado: {
+    nombre: 'Panel aislante reforzado (paso de carretilla)',
+    factor: 0.97,
+    nota: 'Para cámaras con tránsito de transpaleta o carretilla.',
+  },
+  directo_solera: {
+    nombre: 'Directamente sobre la solera, sin aislar',
+    factor: 1.25,
+    nota: 'Se pierde bastante por el suelo. En congelación puede helar el terreno y levantar la solera: valora aislar o poner resistencia perimetral.',
+  },
+  ventilado: {
+    nombre: 'Sobre solera ventilada o cámara de aire',
+    factor: 1.08,
+    nota: 'Mejor que apoyar directamente, pero peor que aislar bien.',
+  },
+};
+
+/** Paneles de cámara habituales, con su espesor y transmitancia. */
+export const PANEL_CAMARA = {
+  p60: { nombre: 'Panel 60 mm', espesor: 60, u: 0.36, uso: 'Refrigeración 0/+4 °C' },
+  p80: { nombre: 'Panel 80 mm', espesor: 80, u: 0.28, uso: 'Refrigeración exigente' },
+  p100: { nombre: 'Panel 100 mm', espesor: 100, u: 0.22, uso: 'Congelación −18 °C' },
+  p120: { nombre: 'Panel 120 mm', espesor: 120, u: 0.19, uso: 'Congelación exigente' },
+  p150: { nombre: 'Panel 150 mm', espesor: 150, u: 0.15, uso: 'Túnel de congelación' },
+};
+
+/** Panel que se recomienda según la temperatura de trabajo. */
+export function panelRecomendado(temperatura) {
+  const t = Number(temperatura);
+  if (!Number.isFinite(t)) return 'p80';
+  if (t <= -25) return 'p150';
+  if (t <= -18) return 'p120';
+  if (t < 0) return 'p100';
+  if (t <= 4) return 'p80';
+  return 'p60';
+}
+
 function redondear(n, decimales) {
   const f = 10 ** decimales;
   return Math.round((Number(n) || 0) * f) / f;

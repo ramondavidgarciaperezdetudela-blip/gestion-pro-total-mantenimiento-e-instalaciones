@@ -123,6 +123,16 @@ export function dibujarEquipo(ctx, tipo, x, y, escala = 1, resaltado = false) {
       linea(ctx, 0, -s * 0.55, 0, s * 0.55);
       break;
 
+    case 'control_temperatura':
+      // Cuadro de control con su pantallita.
+      rect(ctx, -s * 0.6, -s * 0.8, s * 1.2, s * 1.6, 2 * escala);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-s * 0.38, -s * 0.55, s * 0.76, s * 0.5);
+      ctx.strokeStyle = '#ffffff';
+      linea(ctx, -s * 0.3, s * 0.2, s * 0.3, s * 0.2);
+      linea(ctx, -s * 0.3, s * 0.45, s * 0.3, s * 0.45);
+      break;
+
     case 'camara_puerta':
       // Puerta con su barrido, como en un plano de obra.
       ctx.fillRect(-s * 0.18, -s, s * 0.36, s * 2);
