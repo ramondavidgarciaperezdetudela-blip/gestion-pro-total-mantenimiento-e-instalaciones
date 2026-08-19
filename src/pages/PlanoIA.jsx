@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import {
   Pencil, Trash2, Wind, Sparkles, FileText, Loader2,
   RotateCcw, AlertCircle, Ruler, Wrench, Euro, Layers, Plus, X,
   Spline, Box, Map, Check, Image as ImageIcon, Eye,
-  Undo2, Redo2, PenLine, Hand,
+  Undo2, Redo2, PenLine, Hand, Maximize2, Printer,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -20,6 +21,8 @@ import {
 import { dibujarEquipo, nombreEquipo, colorEquipo, radioAproximado } from '@/lib/planoSimbolos';
 import PaletaEquipos from '@/components/PaletaEquipos';
 import { useHistorial } from '@/hooks/useHistorial';
+import { informeHtml } from '@/lib/informePlano';
+import { printDocument } from '@/lib/printHelper';
 import Vista3DPlano from '@/components/Vista3DPlano';
 import {
   evaluarRecorrido, evaluarConducto, caudalDeKw, LIMITES,
@@ -45,9 +48,7 @@ import {
  * Los cálculos viven en src/lib/planoCalculos.js, aparte y comprobados.
  */
 
-const METRO_PX = 40;   // píxeles por metro al zoom 1
-const ANCHO_M = 24;    // tamaño del lienzo en metros
-const ALTO_M = 18;
+const METRO_PX_BASE = 40;   // píxeles por metro al zoom normal
 
 const HERRAMIENTAS = [
   { id: 'estancia', nombre: 'Dibujar estancia', icono: Pencil },
@@ -85,6 +86,19 @@ const aRejilla = (m) => Math.round(m * 2) / 2;
 
 export default function PlanoIA() {
   const canvasRef = useRef(null);
+  const contenedorRef = useRef(null);
+
+  // Pantalla completa de dibujo: el lienzo ocupa todo el dispositivo y las
+  // herramientas van dentro, que es como se dibuja de verdad. En un móvil, un
+  // lienzo metido en una columna al lado de los paneles no sirve para nada.
+  const [pantallaCompleta, setPantallaCompleta] = useState(false);
+  const [zoomPlano, setZoomPlano] = useState(1);
+  // Tamaño del lienzo en píxeles: se mide del contenedor de verdad.
+  const [lienzo, setLienzo] = useState({ w: 960, h: 720 });
+
+  const metroPx = METRO_PX_BASE * zoomPlano;
+  const ANCHO_M = lienzo.w / metroPx;
+  const ALTO_M = lienzo.h / metroPx;
 
   const [herramienta, setHerramienta] = useState('estancia');
   // Qué equipo se coloca al pulsar con la herramienta "Poner equipo".
@@ -203,6 +217,8 @@ export default function PlanoIA() {
   const [dibujandoLibre, setDibujandoLibre] = useState(null);
   const [cotaEnCurso, setCotaEnCurso] = useState(null);
   const [colorLapiz, setColorLapiz] = useState('#1d4ed8');
+  const [grosorLapiz, setGrosorLapiz] = useState(2.5);
+  const [tipoLinea, setTipoLinea] = useState('solida');
   // Estancia que se está moviendo con la mano.
   const [moviendo, setMoviendo] = useState(null);
   // Crear estancias escribiendo las medidas, sin tener que acertar con el ratón.
@@ -220,6 +236,7 @@ export default function PlanoIA() {
   // Presupuesto
   const [dialogoPresu, setDialogoPresu] = useState(false);
   const [contactos, setContactos] = useState([]);
+  const [empresa, setEmpresa] = useState(null);   // para la cabecera del informe
   const [contactoId, setContactoId] = useState('');
   const [margen, setMargen] = useState(30);
   const [iva, setIva] = useState(21);
@@ -322,6 +339,28 @@ export default function PlanoIA() {
   }, [resumen, precios, metrosTrazados]);
   const totalCoste = useMemo(() => totalMateriales(materiales), [materiales]);
 
+  // El lienzo se adapta al hueco que tiene de verdad, en pantalla completa o
+  // dentro de la página, y se vuelve a medir si se gira el móvil.
+  useEffect(() => {
+    const medir = () => {
+      const caja = contenedorRef.current?.getBoundingClientRect();
+      if (!caja || caja.width < 50) return;
+      // El alto nunca puede pasar de la ventana, o el lienzo se sale y hay
+      // que hacer scroll para ver lo que se está dibujando.
+      const altoMax = window.innerHeight - caja.top - 12;
+      setLienzo({
+        w: Math.round(caja.width),
+        h: Math.round(pantallaCompleta
+          ? Math.max(280, Math.min(caja.height || altoMax, altoMax))
+          : 720),
+      });
+    };
+    medir();
+    window.addEventListener('resize', medir);
+    const t = setTimeout(medir, 250);   // tras pintar los paneles
+    return () => { window.removeEventListener('resize', medir); clearTimeout(t); };
+  }, [pantallaCompleta, vista]);
+
   // Ctrl+Z y Ctrl+Y, que es lo que todo el mundo pulsa sin pensar.
   useEffect(() => {
     const alPulsar = (e) => {
@@ -331,14 +370,22 @@ export default function PlanoIA() {
       if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); deshacer(); }
       if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); rehacer(); }
     };
+    const alEscape = (e) => { if (e.key === 'Escape' && pantallaCompleta) setPantallaCompleta(false); };
+    window.addEventListener('keydown', alEscape);
     window.addEventListener('keydown', alPulsar);
-    return () => window.removeEventListener('keydown', alPulsar);
+    return () => {
+      window.removeEventListener('keydown', alPulsar);
+      window.removeEventListener('keydown', alEscape);
+    };
   });
 
   useEffect(() => {
     base44.entities.Contact.list('name', 500)
       .then(setContactos)
       .catch(() => setContactos([])); // sin clientes se puede presupuestar igual
+    base44.entities.CompanySettings.list()
+      .then(d => setEmpresa(d?.[0] || null))
+      .catch(() => setEmpresa(null));  // el informe sale igual, sin membrete
   }, []);
 
   // ── Dibujo del lienzo ──────────────────────────────────────────────────────
@@ -367,22 +414,22 @@ export default function PlanoIA() {
       ctx.strokeStyle = m % 5 === 0 ? '#cbd5e1' : '#eef2f7';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(m * METRO_PX, 0);
-      ctx.lineTo(m * METRO_PX, H);
+      ctx.moveTo(m * metroPx, 0);
+      ctx.lineTo(m * metroPx, H);
       ctx.stroke();
     }
     for (let m = 0; m <= ALTO_M; m++) {
       ctx.strokeStyle = m % 5 === 0 ? '#cbd5e1' : '#eef2f7';
       ctx.beginPath();
-      ctx.moveTo(0, m * METRO_PX);
-      ctx.lineTo(W, m * METRO_PX);
+      ctx.moveTo(0, m * metroPx);
+      ctx.lineTo(W, m * metroPx);
       ctx.stroke();
     }
 
     // Estancias
     for (const e of estancias) {
-      const x = e.x * METRO_PX, y = e.y * METRO_PX;
-      const w = e.ancho * METRO_PX, h = e.alto * METRO_PX;
+      const x = e.x * metroPx, y = e.y * metroPx;
+      const w = e.ancho * metroPx, h = e.alto * metroPx;
       const activa = e.id === seleccion;
 
       ctx.fillStyle = activa ? 'rgba(37,99,235,0.12)' : 'rgba(100,116,139,0.08)';
@@ -401,7 +448,7 @@ export default function PlanoIA() {
 
     // Equipos colocados
     for (const mq of maquinas) {
-      const x = mq.x * METRO_PX, y = mq.y * METRO_PX;
+      const x = mq.x * metroPx, y = mq.y * metroPx;
 
       // La tubería va primero, para que el símbolo quede encima y se lea.
       // Los equipos sueltos (vitrina, arcón, puerta) no llevan este trazado.
@@ -411,8 +458,8 @@ export default function PlanoIA() {
         ctx.setLineDash([5, 4]);
         ctx.beginPath();
         ctx.moveTo(x, y);
-        ctx.lineTo(exterior.x * METRO_PX, y);
-        ctx.lineTo(exterior.x * METRO_PX, exterior.y * METRO_PX);
+        ctx.lineTo(exterior.x * metroPx, y);
+        ctx.lineTo(exterior.x * metroPx, exterior.y * metroPx);
         ctx.stroke();
         ctx.setLineDash([]);
       }
@@ -428,7 +475,7 @@ export default function PlanoIA() {
 
     // Unidad exterior / condensadora
     if (exterior) {
-      const x = exterior.x * METRO_PX, y = exterior.y * METRO_PX;
+      const x = exterior.x * metroPx, y = exterior.y * metroPx;
       const tipoExt = resumen.es_refrigeracion ? 'unidad_condensadora' : 'exterior';
       dibujarEquipo(ctx, tipoExt, x, y, 1.1, false);
       ctx.fillStyle = colorEquipo(tipoExt);
@@ -449,7 +496,7 @@ export default function PlanoIA() {
       ctx.globalAlpha = esConducto ? 0.55 : 0.9;
       ctx.beginPath();
       rec.puntos.forEach((pt, i) => {
-        const px = pt.x * METRO_PX, py = pt.y * METRO_PX;
+        const px = pt.x * metroPx, py = pt.y * metroPx;
         if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       });
       ctx.stroke();
@@ -459,7 +506,7 @@ export default function PlanoIA() {
       ctx.fillStyle = esConducto ? '#b45309' : '#0f766e';
       for (const pt of rec.puntos) {
         ctx.beginPath();
-        ctx.arc(pt.x * METRO_PX, pt.y * METRO_PX, 3, 0, Math.PI * 2);
+        ctx.arc(pt.x * metroPx, pt.y * metroPx, 3, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -471,7 +518,7 @@ export default function PlanoIA() {
       ctx.setLineDash([7, 5]);
       ctx.beginPath();
       trazando.puntos.forEach((pt, i) => {
-        const px = pt.x * METRO_PX, py = pt.y * METRO_PX;
+        const px = pt.x * metroPx, py = pt.y * metroPx;
         if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       });
       ctx.stroke();
@@ -479,7 +526,7 @@ export default function PlanoIA() {
       ctx.fillStyle = '#0f766e';
       for (const pt of trazando.puntos) {
         ctx.beginPath();
-        ctx.arc(pt.x * METRO_PX, pt.y * METRO_PX, 4, 0, Math.PI * 2);
+        ctx.arc(pt.x * metroPx, pt.y * metroPx, 4, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -488,15 +535,19 @@ export default function PlanoIA() {
     const pintarTrazo = (t) => {
       if (!t?.puntos?.length) return;
       ctx.strokeStyle = t.color || '#1d4ed8';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = t.grosor || 2.5;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
+      ctx.setLineDash(
+        t.linea === 'discontinua' ? [10, 6] : t.linea === 'punteada' ? [2, 5] : []
+      );
       ctx.beginPath();
       t.puntos.forEach((pt, i) => {
-        const px = pt.x * METRO_PX, py = pt.y * METRO_PX;
+        const px = pt.x * metroPx, py = pt.y * metroPx;
         if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       });
       ctx.stroke();
+      ctx.setLineDash([]);
     };
     for (const t of trazosLibres) {
       if (t.planta === planta?.nombre) pintarTrazo(t);
@@ -506,8 +557,8 @@ export default function PlanoIA() {
     // ── Cotas puestas a mano ─────────────────────────────────────────────
     for (const co of cotas) {
       if (co.planta !== planta?.nombre) continue;
-      const ax = co.a.x * METRO_PX, ay = co.a.y * METRO_PX;
-      const bx = co.b.x * METRO_PX, by = co.b.y * METRO_PX;
+      const ax = co.a.x * metroPx, ay = co.a.y * metroPx;
+      const bx = co.b.x * metroPx, by = co.b.y * metroPx;
       const metros = Math.hypot(co.b.x - co.a.x, co.b.y - co.a.y);
 
       ctx.strokeStyle = '#be123c';
@@ -540,7 +591,7 @@ export default function PlanoIA() {
 
     // Cota a medio poner
     if (cotaEnCurso) {
-      const ax = cotaEnCurso.a.x * METRO_PX, ay = cotaEnCurso.a.y * METRO_PX;
+      const ax = cotaEnCurso.a.x * metroPx, ay = cotaEnCurso.a.y * metroPx;
       ctx.fillStyle = '#be123c';
       ctx.beginPath();
       ctx.arc(ax, ay, 5, 0, Math.PI * 2);
@@ -549,10 +600,10 @@ export default function PlanoIA() {
 
     // Rectángulo que se está dibujando ahora mismo
     if (arrastre) {
-      const x = Math.min(arrastre.x0, arrastre.x1) * METRO_PX;
-      const y = Math.min(arrastre.y0, arrastre.y1) * METRO_PX;
-      const w = Math.abs(arrastre.x1 - arrastre.x0) * METRO_PX;
-      const h = Math.abs(arrastre.y1 - arrastre.y0) * METRO_PX;
+      const x = Math.min(arrastre.x0, arrastre.x1) * metroPx;
+      const y = Math.min(arrastre.y0, arrastre.y1) * metroPx;
+      const w = Math.abs(arrastre.x1 - arrastre.x0) * metroPx;
+      const h = Math.abs(arrastre.y1 - arrastre.y0) * metroPx;
       ctx.strokeStyle = '#2563eb';
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 4]);
@@ -567,7 +618,10 @@ export default function PlanoIA() {
     }
   }, [estancias, maquinas, exterior, seleccion, arrastre, resumen.es_refrigeracion,
       recorridos, trazando, planta?.nombre, fondo, fondoOpacidad, fondoEscala, fondoDesplaza,
-      trazosLibres, dibujandoLibre, cotas, cotaEnCurso]);
+      trazosLibres, dibujandoLibre, cotas, cotaEnCurso,
+      // Al cambiar de tamaño, el navegador BORRA el contenido del lienzo:
+      // sin esto, al salir de pantalla completa el plano se quedaba en blanco.
+      lienzo.w, lienzo.h, metroPx]);
 
   useEffect(() => { pintar(); }, [pintar]);
 
@@ -582,8 +636,8 @@ export default function PlanoIA() {
     const px = (ev.clientX - r.left) * escalaX;
     const py = (ev.clientY - r.top) * escalaY;
     return {
-      x: Math.max(0, Math.min(ANCHO_M, aRejilla(px / METRO_PX))),
-      y: Math.max(0, Math.min(ALTO_M, aRejilla(py / METRO_PX))),
+      x: Math.max(0, Math.min(ANCHO_M, aRejilla(px / metroPx))),
+      y: Math.max(0, Math.min(ALTO_M, aRejilla(py / metroPx))),
     };
   };
 
@@ -601,7 +655,10 @@ export default function PlanoIA() {
     }
     if (herramienta === 'libre') {
       antesDeCambiar();
-      setDibujandoLibre({ id: nuevoId(), planta: planta?.nombre, color: colorLapiz, puntos: [{ x, y }] });
+      setDibujandoLibre({
+        id: nuevoId(), planta: planta?.nombre, color: colorLapiz,
+        grosor: grosorLapiz, linea: tipoLinea, puntos: [{ x, y }],
+      });
       return;
     }
     if (herramienta === 'cota') {
@@ -984,6 +1041,28 @@ export default function PlanoIA() {
     return { coste, subtotal, ivaImporte, total: aCentimos(subtotal + ivaImporte) };
   }, [lineasPresupuesto, margen, iva]);
 
+  /** Imprime o guarda en PDF el informe técnico y el presupuesto. */
+  const imprimirInforme = async () => {
+    if (!fichas.length && !materiales.length) {
+      toast.error('Dibuja el plano y coloca los equipos antes de imprimir');
+      return;
+    }
+    const contacto = contactos.find(c => c.id === contactoId);
+    // El dibujo se mete como imagen: el informe se entrega y se archiva.
+    let planoImg = '';
+    try { planoImg = canvasRef.current?.toDataURL('image/png') || ''; } catch { /* sin plano */ }
+
+    const html = informeHtml({
+      empresa: empresa || {},
+      cliente: contacto ? `${contacto.name || ''} ${contacto.surname || ''}`.trim() : '',
+      fichas, resumen, lineas: lineasPresupuesto,
+      totales: { ...totales, margen, iva },
+      recorridos: recorridosRevisados,
+      planoImg, plantas,
+    });
+    await printDocument(html, 'Informe técnico y presupuesto');
+  };
+
   const crearPresupuesto = async () => {
     const contacto = contactos.find(c => c.id === contactoId);
     const nombre = contacto ? `${contacto.name || ''} ${contacto.surname || ''}`.trim() : 'Cliente';
@@ -1040,8 +1119,8 @@ export default function PlanoIA() {
   const maquinaSel = maquinas.find(m => m.estancia_id === seleccion) || null;
 
   return (
-    <div className="p-4 space-y-4 max-w-7xl mx-auto">
-      <div>
+    <div className={pantallaCompleta ? '' : 'p-4 space-y-4 max-w-7xl mx-auto'}>
+      <div className={pantallaCompleta ? 'hidden' : ''}>
         <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
           <Ruler className="w-6 h-6 text-blue-600" />
           Plano y presupuesto
@@ -1052,7 +1131,7 @@ export default function PlanoIA() {
       </div>
 
       {/* Herramientas */}
-      <div className="flex flex-wrap gap-2">
+      <div className={`flex flex-wrap gap-2 ${pantallaCompleta ? 'hidden' : ''}`}>
         {HERRAMIENTAS.map(h => {
           const Icono = h.icono;
           return (
@@ -1093,17 +1172,92 @@ export default function PlanoIA() {
         </Button>
       </div>
 
-      <p className="text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+      <p className={`text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg p-2.5 ${pantallaCompleta ? 'hidden' : ''}`}>
         Cada cuadro de la rejilla es <strong>1 metro</strong> (las líneas gruesas, 5 m).
         Arrastra para marcar cada estancia, luego pon una máquina dentro de cada una
         y la unidad exterior donde vaya a ir de verdad: de ahí salen los metros de tubería.
       </p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Lienzo */}
-        <div className="lg:col-span-2 space-y-2">
+      <div className={pantallaCompleta ? '' : 'grid grid-cols-1 lg:grid-cols-3 gap-4'}>
+        {/* Lienzo (a pantalla completa ocupa todo el dispositivo).
+            Va en un portal sobre el body: dentro de la página, el menú y los
+            fondos de la aplicación crean contextos que impiden que un
+            position:fixed tape la pantalla de verdad. */}
+        <EnvoltorioLienzo pantallaCompleta={pantallaCompleta}>
+
+          {pantallaCompleta && (
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              {HERRAMIENTAS.map(h => {
+                const Icono = h.icono;
+                return (
+                  <Button key={h.id} size="sm"
+                    variant={herramienta === h.id ? 'default' : 'outline'}
+                    onClick={() => setHerramienta(h.id)} className="gap-1 h-8 text-xs">
+                    <Icono className="w-3.5 h-3.5" />{h.nombre}
+                  </Button>
+                );
+              })}
+              <div className="flex items-center gap-1 border-l pl-2">
+                <Button size="sm" variant="outline" onClick={deshacer}
+                  disabled={!historial.puedeDeshacer} className="h-8" title="Deshacer">
+                  <Undo2 className="w-4 h-4" />
+                </Button>
+                <Button size="sm" variant="outline" onClick={rehacer}
+                  disabled={!historial.puedeRehacer} className="h-8" title="Rehacer">
+                  <Redo2 className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-1 border-l pl-2">
+                <Button size="sm" variant="outline" className="h-8 px-2"
+                  onClick={() => setZoomPlano(z => Math.max(0.35, z - 0.15))}>−</Button>
+                <span className="text-xs text-slate-500 w-12 text-center">
+                  {Math.round(zoomPlano * 100)} %
+                </span>
+                <Button size="sm" variant="outline" className="h-8 px-2"
+                  onClick={() => setZoomPlano(z => Math.min(2.5, z + 0.15))}>+</Button>
+              </div>
+              <Button size="sm" onClick={() => setPantallaCompleta(false)}
+                className="h-8 gap-1 text-xs ml-auto bg-green-600 hover:bg-green-700">
+                <Check className="w-3.5 h-3.5" />Confirmar plano
+              </Button>
+            </div>
+          )}
+
+          {/* Paleta de equipos y opciones de dibujo, dentro de la pantalla */}
+          {pantallaCompleta && (herramienta === 'maquina' || herramienta === 'libre') && (
+            <div className="shrink-0 border rounded-lg p-2 bg-slate-50 max-h-32 overflow-y-auto">
+              {herramienta === 'maquina' && (
+                <PaletaEquipos valor={equipoElegido} onChange={setEquipoElegido} />
+              )}
+              {herramienta === 'libre' && (
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-xs text-slate-500">Color</span>
+                  {['#1d4ed8', '#dc2626', '#16a34a', '#000000', '#ea580c', '#9333ea'].map(col => (
+                    <button key={col} onClick={() => setColorLapiz(col)}
+                      className={`w-7 h-7 rounded-full border-2 ${colorLapiz === col ? 'border-slate-800 scale-110' : 'border-white'}`}
+                      style={{ background: col }} />
+                  ))}
+                  <span className="text-xs text-slate-500 ml-2">Grosor</span>
+                  {[2, 3.5, 6].map(g => (
+                    <button key={g} onClick={() => setGrosorLapiz(g)}
+                      className={`px-2 py-1 rounded border text-xs ${grosorLapiz === g ? 'bg-blue-600 text-white border-blue-600' : 'bg-white'}`}>
+                      {g === 2 ? 'Fino' : g === 3.5 ? 'Medio' : 'Grueso'}
+                    </button>
+                  ))}
+                  <span className="text-xs text-slate-500 ml-2">Línea</span>
+                  {[['solida', 'Continua'], ['discontinua', 'Discontinua'], ['punteada', 'Punteada']].map(([id, et]) => (
+                    <button key={id} onClick={() => setTipoLinea(id)}
+                      className={`px-2 py-1 rounded border text-xs ${tipoLinea === id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white'}`}>
+                      {et}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Plantas del edificio */}
-          <Card>
+          <Card className={pantallaCompleta ? 'hidden' : ''}>
             <CardContent className="p-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
@@ -1167,7 +1321,7 @@ export default function PlanoIA() {
           </Card>
 
           {/* Ver en planta o en 3D */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className={`flex items-center gap-2 flex-wrap ${pantallaCompleta ? 'hidden' : ''}`}>
             <div className="flex rounded-lg overflow-hidden border border-slate-300">
               <button onClick={() => setVista('plano')}
                 className={`px-3 py-1.5 text-xs font-medium ${vista === 'plano' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'}`}>
@@ -1178,6 +1332,13 @@ export default function PlanoIA() {
                 <Box className="w-3.5 h-3.5" />Vista 3D
               </button>
             </div>
+
+            {vista === 'plano' && (
+              <Button size="sm" onClick={() => setPantallaCompleta(true)}
+                className="h-7 gap-1 text-xs bg-slate-800 hover:bg-slate-700">
+                <Maximize2 className="w-3.5 h-3.5" />Dibujar a pantalla completa
+              </Button>
+            )}
 
             {trazando && (
               <>
@@ -1196,7 +1357,7 @@ export default function PlanoIA() {
           </div>
 
           {/* Crear estancia escribiendo las medidas */}
-          <Card>
+          <Card className={pantallaCompleta ? 'hidden' : ''}>
             <CardContent className="p-2">
               <div className="flex items-end gap-2 flex-wrap">
                 <span className="text-xs font-medium text-slate-500 pb-1.5">Añadir por medidas</span>
@@ -1235,9 +1396,9 @@ export default function PlanoIA() {
           </Card>
 
           {/* Plano de fondo para calcar */}
-          <Card className={vista === '3d' ? 'hidden' : ''}>
-            <CardContent className="p-2 space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
+          <Card className={`${vista === '3d' ? 'hidden' : ''} ${pantallaCompleta ? 'flex-1 min-h-0 flex flex-col' : ''}`}>
+            <CardContent className={`p-2 space-y-2 ${pantallaCompleta ? 'flex-1 min-h-0 flex flex-col' : ''}`}>
+              <div className={`flex items-center gap-2 flex-wrap ${pantallaCompleta ? 'hidden' : ''}`}>
                 <label className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white hover:bg-slate-50 cursor-pointer flex items-center gap-1.5">
                   <ImageIcon className="w-3.5 h-3.5" />
                   {fondo ? 'Cambiar plano' : 'Subir plano para calcar'}
@@ -1276,7 +1437,7 @@ export default function PlanoIA() {
                 )}
               </div>
 
-              {fondo && (
+              {fondo && !pantallaCompleta && (
                 <p className="text-[11px] text-blue-800 bg-blue-50 border border-blue-200 rounded p-2">
                   Ajusta la <strong>escala</strong> hasta que una medida conocida del plano
                   (una pared, una puerta de 0,8 m) coincida con los cuadros de la rejilla,
@@ -1285,22 +1446,21 @@ export default function PlanoIA() {
                 </p>
               )}
 
-              <div className="overflow-x-auto">
+              <div ref={contenedorRef} className={pantallaCompleta ? 'flex-1 min-h-0' : ''}>
               <canvas
                 ref={canvasRef}
-                width={ANCHO_M * METRO_PX}
-                height={ALTO_M * METRO_PX}
+                width={lienzo.w}
+                height={lienzo.h}
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
-                className="border border-slate-200 rounded touch-none"
+                className="border border-slate-200 rounded touch-none block"
                 style={{
-                  // Ancho mínimo para que en el móvil el metro no quede tan
-                  // pequeño que no se pueda dibujar: la tarjeta hace scroll.
-                  minWidth: 640,
                   width: '100%',
-                  cursor: herramienta === 'borrar' ? 'not-allowed' : 'crosshair',
+                  height: pantallaCompleta ? '100%' : 'auto',
+                  cursor: herramienta === 'borrar' ? 'not-allowed'
+                    : herramienta === 'mover' ? 'grab' : 'crosshair',
                 }}
               />
               </div>
@@ -1319,10 +1479,10 @@ export default function PlanoIA() {
               </CardContent>
             </Card>
           )}
-        </div>
+        </EnvoltorioLienzo>
 
         {/* Panel lateral */}
-        <div className="space-y-4">
+        <div className={`space-y-4 ${pantallaCompleta ? 'hidden' : ''}`}>
           {herramienta === 'maquina' && (
             <Card>
               <CardHeader className="pb-2">
@@ -1820,6 +1980,10 @@ export default function PlanoIA() {
               className="w-full gap-2 bg-blue-600 hover:bg-blue-700">
               <FileText className="w-4 h-4" />Pasar a presupuesto
             </Button>
+            <Button onClick={imprimirInforme} disabled={!materiales.length}
+              variant="outline" className="w-full gap-2">
+              <Printer className="w-4 h-4" />Imprimir / guardar en PDF
+            </Button>
           </div>
         </div>
       </div>
@@ -1903,50 +2067,53 @@ export default function PlanoIA() {
             </CardTitle>
           </CardHeader>
           {verResumen && (
-            <CardContent className="overflow-x-auto p-0">
-              <table className="w-full text-xs">
+            <CardContent className="p-0">
+              {/* La tabla hace scroll dentro de su caja, no rompe la página */}
+              <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse min-w-[860px]">
                 <thead>
-                  <tr className="text-left uppercase text-slate-500 bg-slate-50">
-                    <th className="p-2">Estancia</th>
-                    <th className="p-2 text-right">Superficie</th>
-                    <th className="p-2 text-right">Carga</th>
-                    <th className="p-2">Máquina</th>
-                    <th className="p-2 text-right">Cubre</th>
-                    <th className="p-2">Tubería</th>
-                    <th className="p-2 text-right">Metros</th>
-                    <th className="p-2 text-right">Gas extra</th>
+                  <tr className="text-left text-[11px] uppercase tracking-wide text-slate-600 bg-slate-100">
+                    <th className="p-2.5 border-b-2 border-slate-300">Estancia</th>
+                    <th className="p-2.5 border-b-2 border-slate-300 text-right">Superficie</th>
+                    <th className="p-2.5 border-b-2 border-slate-300 text-right">Carga</th>
+                    <th className="p-2.5 border-b-2 border-slate-300">Máquina</th>
+                    <th className="p-2.5 border-b-2 border-slate-300 text-right">Cubre</th>
+                    <th className="p-2.5 border-b-2 border-slate-300">Tubería</th>
+                    <th className="p-2.5 border-b-2 border-slate-300 text-right">Metros</th>
+                    <th className="p-2.5 border-b-2 border-slate-300 text-right">Gas extra</th>
                   </tr>
                 </thead>
                 <tbody>
                   {fichas.map((f, i) => (
-                    <tr key={i} className="border-t">
-                      <td className="p-2 font-medium">{f.estancia}</td>
-                      <td className="p-2 text-right">{f.superficie} m²</td>
-                      <td className="p-2 text-right">{f.carga_frigorias} frig/h</td>
-                      <td className="p-2">{f.maquina}</td>
-                      <td className={`p-2 text-right ${f.suficiente ? 'text-green-700' : 'text-red-600 font-semibold'}`}>
+                    <tr key={i} className={i % 2 ? 'bg-slate-50' : 'bg-white'}>
+                      <td className="p-2.5 font-medium border-b whitespace-nowrap">{f.estancia}</td>
+                      <td className="p-2.5 text-right border-b whitespace-nowrap">{f.superficie} m²</td>
+                      <td className="p-2.5 text-right border-b whitespace-nowrap">{f.carga_frigorias} frig/h</td>
+                      <td className="p-2.5 border-b whitespace-nowrap">{f.maquina}</td>
+                      <td className={`p-2.5 text-right border-b whitespace-nowrap ${f.suficiente ? 'text-green-700' : 'text-red-600 font-bold'}`}>
                         {f.superficie_cubierta} m²
                       </td>
-                      <td className="p-2">{f.tuberia_liquido} / {f.tuberia_gas}</td>
-                      <td className="p-2 text-right">{f.metros_tuberia} m</td>
-                      <td className="p-2 text-right">
+                      <td className="p-2.5 border-b whitespace-nowrap">{f.tuberia_liquido} / {f.tuberia_gas}</td>
+                      <td className="p-2.5 text-right border-b whitespace-nowrap">{f.metros_tuberia} m</td>
+                      <td className="p-2.5 text-right border-b whitespace-nowrap">
                         {f.gas_extra_g > 0 ? `${f.gas_extra_g} g` : '—'}
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t bg-slate-50 font-semibold">
-                    <td className="p-2" colSpan={6}>Gas adicional total</td>
-                    <td className="p-2 text-right">
+                  <tr className="bg-slate-100 font-semibold border-t-2 border-slate-300">
+                    <td className="p-2.5" colSpan={6}>Totales</td>
+                    <td className="p-2.5 text-right whitespace-nowrap">
                       {fichas.reduce((s, f) => s + f.metros_tuberia, 0).toFixed(1)} m
                     </td>
-                    <td className="p-2 text-right">
+                    <td className="p-2.5 text-right whitespace-nowrap">
                       {fichas.reduce((s, f) => s + f.gas_extra_g, 0)} g
                     </td>
                   </tr>
                 </tfoot>
               </table>
+              </div>
               {fichas.some(f => !f.suficiente) && (
                 <p className="text-xs text-red-700 bg-red-50 border-t border-red-200 p-2">
                   Hay máquinas que no cubren la superficie de su estancia. Sube un
@@ -1968,33 +2135,35 @@ export default function PlanoIA() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Lista de material y mano de obra</CardTitle>
           </CardHeader>
-          <CardContent className="overflow-x-auto p-0">
-            <table className="w-full text-sm">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse min-w-[560px]">
               <thead>
-                <tr className="text-left text-xs uppercase text-slate-500 bg-slate-50">
-                  <th className="p-2">Concepto</th>
-                  <th className="p-2 text-center">Cant.</th>
-                  <th className="p-2 text-right">Precio</th>
-                  <th className="p-2 text-right">Total</th>
+                <tr className="text-left text-[11px] uppercase tracking-wide text-slate-600 bg-slate-100">
+                  <th className="p-2.5 border-b-2 border-slate-300">Concepto</th>
+                  <th className="p-2.5 border-b-2 border-slate-300 text-right">Cantidad</th>
+                  <th className="p-2.5 border-b-2 border-slate-300 text-right">Precio</th>
+                  <th className="p-2.5 border-b-2 border-slate-300 text-right">Importe</th>
                 </tr>
               </thead>
               <tbody>
                 {lineasPresupuesto.map((l, i) => (
-                  <tr key={i} className="border-t">
-                    <td className="p-2">{l.descripcion}</td>
-                    <td className="p-2 text-center">{l.cantidad} {l.unidad}</td>
-                    <td className="p-2 text-right">{l.precio_ud.toFixed(2)} €</td>
-                    <td className="p-2 text-right font-medium">{l.total.toFixed(2)} €</td>
+                  <tr key={i} className={i % 2 ? 'bg-slate-50' : 'bg-white'}>
+                    <td className="p-2.5 border-b">{l.descripcion}</td>
+                    <td className="p-2.5 text-right border-b whitespace-nowrap">{l.cantidad} {l.unidad}</td>
+                    <td className="p-2.5 text-right border-b whitespace-nowrap">{l.precio_ud.toFixed(2)} €</td>
+                    <td className="p-2.5 text-right border-b font-medium whitespace-nowrap">{l.total.toFixed(2)} €</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t bg-slate-50 font-semibold">
-                  <td className="p-2" colSpan={3}>Coste total</td>
-                  <td className="p-2 text-right">{totales.coste.toFixed(2)} €</td>
+                <tr className="bg-slate-100 font-bold border-t-2 border-slate-300 text-base">
+                  <td className="p-3" colSpan={3}>Coste total</td>
+                  <td className="p-3 text-right whitespace-nowrap">{totales.coste.toFixed(2)} €</td>
                 </tr>
               </tfoot>
             </table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -2069,6 +2238,22 @@ function Medida({ etiqueta, valor, onChange }) {
       <Input type="number" step="0.5" min="0.5" className="mt-1 h-8"
         value={valor} onChange={e => onChange(Number(e.target.value) || 0)} />
     </div>
+  );
+}
+
+/**
+ * Envoltorio del lienzo: normal dentro de la página, y sobre el body cuando
+ * se dibuja a pantalla completa.
+ */
+function EnvoltorioLienzo({ pantallaCompleta, children }) {
+  if (!pantallaCompleta) {
+    return <div className="lg:col-span-2 space-y-2">{children}</div>;
+  }
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-white flex flex-col p-2 gap-2 overflow-hidden">
+      {children}
+    </div>,
+    document.body
   );
 }
 
