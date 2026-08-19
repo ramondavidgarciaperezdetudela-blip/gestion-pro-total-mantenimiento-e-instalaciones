@@ -13,6 +13,8 @@
  * píxeles; aquí no se sabe nada de pantallas.
  */
 
+import { factorCerramientos, cargaVentanas } from './cerramientos.js';
+
 /** 1 kW = 860 frigorías/hora. */
 export const FRIGORIAS_POR_KW = 860;
 
@@ -118,12 +120,30 @@ export function cargaEstancia(estancia, alturaPorDefecto = 2.5) {
   const fa = FACTOR_AISLAMIENTO[estancia?.aislamiento] ?? FACTOR_AISLAMIENTO.normal;
   const fAltura = altura / 2.5;
 
-  const frigorias = area * base * fo * fa * fAltura;
+  // Paredes, suelo y techo: un ático bajo cubierta y un piso entre vecinos no
+  // piden lo mismo aunque midan igual.
+  const fCerr = factorCerramientos(estancia);
+
+  const frigoriasBase = area * base * fo * fa * fAltura * fCerr;
+
+  // Las ventanas van APARTE y en vatios reales: es la parte que más cambia el
+  // resultado y la que peor se estima con un factor por metro cuadrado.
+  const ventanas = cargaVentanas(estancia?.ventanas, estancia?.orientacion);
+  const frigoriasVentanas = (ventanas.vatios / 1000) * FRIGORIAS_POR_KW;
+
+  const frigorias = frigoriasBase + frigoriasVentanas;
+
   return {
     area,
     volumen: redondear(area * altura, 2),
     frigorias: Math.round(frigorias),
     kw: redondear(frigorias / FRIGORIAS_POR_KW, 2),
+    // Desglose, para poder enseñar de dónde sale el número.
+    frigorias_base: Math.round(frigoriasBase),
+    frigorias_ventanas: Math.round(frigoriasVentanas),
+    factor_cerramientos: fCerr,
+    ventanas_m2: ventanas.area_total,
+    ventanas_solar_w: ventanas.solar,
   };
 }
 

@@ -25,6 +25,10 @@ import {
 import {
   genericasDeTipo, sugerirMaquina, fichaEstancia, diametrosDeKw,
 } from '@/lib/catalogoMaquinas';
+import {
+  REVESTIMIENTO_PARED, TIPO_SUELO, SUELO_DEBAJO, TIPO_TECHO, TECHO_ENCIMA,
+  VENTANA_MARCO, VENTANA_VIDRIO, PROTECCION_SOLAR, cargaVentana,
+} from '@/lib/cerramientos';
 
 /**
  * Plano IA — dibujar la planta, colocar las máquinas y sacar el presupuesto.
@@ -85,7 +89,7 @@ export default function PlanoIA() {
   // dibujar en una sola hoja: cada planta lleva sus estancias y sus equipos,
   // y el presupuesto suma todas. La unidad exterior es UNA para el edificio.
   const [plantas, setPlantas] = useState([
-    { id: nuevoId(), nombre: 'Planta baja', cota: 0, estancias: [], maquinas: [] },
+    { id: nuevoId(), nombre: 'Planta baja', cota: 0, altura: 2.5, estancias: [], maquinas: [] },
   ]);
   const [plantaActiva, setPlantaActiva] = useState(0);
   const [exterior, setExterior] = useState(null);
@@ -116,11 +120,14 @@ export default function PlanoIA() {
   const anadirPlanta = () => {
     setPlantas(prev => {
       const n = prev.length;
+      // La cota de la nueva planta sale de sumar las alturas de las de abajo,
+      // que es como está el edificio de verdad.
+      const cota = prev.reduce((s2, pl) => s2 + (Number(pl.altura) || 2.5), 0);
       return [...prev, {
         id: nuevoId(),
         nombre: n === 0 ? 'Planta baja' : `Planta ${n}`,
-        // Cota orientativa: cada planta, una altura de techo por encima.
-        cota: Number((n * (Number(alturaDefecto) || 2.5)).toFixed(2)),
+        cota: Number(cota.toFixed(2)),
+        altura: Number(alturaDefecto) || 2.5,
         estancias: [], maquinas: [],
       }];
     });
@@ -553,10 +560,17 @@ export default function PlanoIA() {
       x: Math.min(arrastre.x0, arrastre.x1),
       y: Math.min(arrastre.y0, arrastre.y1),
       ancho, alto,
-      altura: alturaDefecto,
+      altura: planta?.altura || alturaDefecto,
       uso: 'vivienda',
       orientacion: 'este',
       aislamiento: 'normal',
+      // Cerramientos: lo más habitual, para no dejarlo en blanco.
+      pared_revestimiento: 'pintura',
+      suelo_tipo: 'gres',
+      suelo_debajo: 'terreno',
+      techo_tipo: 'directo',
+      techo_encima: 'climatizado',
+      ventanas: [],
     }]);
     setSeleccion(id);
   };
@@ -614,12 +628,36 @@ export default function PlanoIA() {
     setEstancias(prev => prev.map(e => (e.id === id ? { ...e, [campo]: valor } : e)));
   };
 
+  const anadirVentana = (estanciaId) => {
+    setEstancias(prev => prev.map(e => (e.id === estanciaId ? {
+      ...e,
+      ventanas: [...(e.ventanas || []), {
+        id: nuevoId(), ancho: 1.2, alto: 1.2, cantidad: 1,
+        marco: 'aluminio_rpt', vidrio: 'doble',
+        orientacion: e.orientacion || 'este', proteccion: 'persiana',
+      }],
+    } : e)));
+  };
+
+  const actualizarVentana = (estanciaId, ventanaId, campo, valor) => {
+    setEstancias(prev => prev.map(e => (e.id === estanciaId ? {
+      ...e,
+      ventanas: (e.ventanas || []).map(v => (v.id === ventanaId ? { ...v, [campo]: valor } : v)),
+    } : e)));
+  };
+
+  const borrarVentana = (estanciaId, ventanaId) => {
+    setEstancias(prev => prev.map(e => (e.id === estanciaId ? {
+      ...e, ventanas: (e.ventanas || []).filter(v => v.id !== ventanaId),
+    } : e)));
+  };
+
   const actualizarMaquina = (estanciaId, tipo) => {
     setMaquinas(prev => prev.map(m => (m.estancia_id === estanciaId ? { ...m, tipo } : m)));
   };
 
   const limpiar = () => {
-    setPlantas([{ id: nuevoId(), nombre: 'Planta baja', cota: 0, estancias: [], maquinas: [] }]);
+    setPlantas([{ id: nuevoId(), nombre: 'Planta baja', cota: 0, altura: 2.5, estancias: [], maquinas: [] }]);
     setPlantaActiva(0);
     setExterior(null);
     setSeleccion(null); setSugerenciaIA(null); setErrorIA('');
@@ -864,8 +902,13 @@ export default function PlanoIA() {
                 <Input type="number" step="0.1" className="h-7 text-xs w-20"
                   value={planta?.cota ?? 0}
                   onChange={e => actualizarPlanta({ cota: Number(e.target.value) || 0 })} />
+                <label className="text-[11px] text-slate-500">Altura techo (m)</label>
+                <Input type="number" step="0.1" min="2" max="8" className="h-7 text-xs w-20"
+                  value={planta?.altura ?? 2.5}
+                  onChange={e => actualizarPlanta({ altura: Number(e.target.value) || 2.5 })} />
                 <span className="text-[10px] text-slate-400">
-                  altura del suelo de esta planta; alarga la tubería hasta la exterior
+                  la cota es a qué altura está el suelo de esta planta (alarga la tubería);
+                  la altura de techo se aplica a las estancias nuevas
                 </span>
               </div>
             </CardContent>
@@ -1077,6 +1120,86 @@ export default function PlanoIA() {
                   onChange={v => actualizarEstancia(estanciaSel.id, 'orientacion', v)} />
                 <Desplegable etiqueta="Aislamiento" valor={estanciaSel.aislamiento} opciones={Object.keys(FACTOR_AISLAMIENTO)}
                   onChange={v => actualizarEstancia(estanciaSel.id, 'aislamiento', v)} />
+
+                {/* Cerramientos: lo que hay de verdad en la obra */}
+                <details className="border rounded-lg p-2" open>
+                  <summary className="text-xs font-medium text-slate-700 cursor-pointer">
+                    Paredes, suelo y techo
+                  </summary>
+                  <div className="space-y-2 mt-2">
+                    <DesplegableObj etiqueta="Revestimiento de paredes"
+                      valor={estanciaSel.pared_revestimiento} opciones={REVESTIMIENTO_PARED}
+                      onChange={v => actualizarEstancia(estanciaSel.id, 'pared_revestimiento', v)} />
+                    <DesplegableObj etiqueta="Suelo" valor={estanciaSel.suelo_tipo} opciones={TIPO_SUELO}
+                      onChange={v => actualizarEstancia(estanciaSel.id, 'suelo_tipo', v)} />
+                    <DesplegableObj etiqueta="Debajo del suelo hay" valor={estanciaSel.suelo_debajo} opciones={SUELO_DEBAJO}
+                      onChange={v => actualizarEstancia(estanciaSel.id, 'suelo_debajo', v)} />
+                    <DesplegableObj etiqueta="Techo" valor={estanciaSel.techo_tipo} opciones={TIPO_TECHO}
+                      onChange={v => actualizarEstancia(estanciaSel.id, 'techo_tipo', v)} />
+                    <DesplegableObj etiqueta="Encima del techo hay" valor={estanciaSel.techo_encima} opciones={TECHO_ENCIMA}
+                      onChange={v => actualizarEstancia(estanciaSel.id, 'techo_encima', v)} />
+                    <p className="text-[10px] text-slate-400">
+                      Lo que más cambia el resultado es qué hay encima del techo y debajo del
+                      suelo. El acabado (gres, terrazo…) apenas mueve la potencia: se guarda
+                      para la memoria del trabajo.
+                    </p>
+                  </div>
+                </details>
+
+                {/* Ventanas: lo que más pesa en la carga */}
+                <details className="border rounded-lg p-2" open>
+                  <summary className="text-xs font-medium text-slate-700 cursor-pointer flex items-center justify-between">
+                    <span>Ventanas ({(estanciaSel.ventanas || []).length})</span>
+                  </summary>
+                  <div className="space-y-2 mt-2">
+                    {(estanciaSel.ventanas || []).map(v => {
+                      const cv = cargaVentana(v, estanciaSel.orientacion);
+                      return (
+                        <div key={v.id} className="border rounded p-2 space-y-1.5 bg-slate-50">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-medium text-slate-600">
+                              {cv.area} m² · {cv.total} W
+                            </span>
+                            <button onClick={() => borrarVentana(estanciaSel.id, v.id)}
+                              className="text-slate-300 hover:text-red-600">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <Medida etiqueta="Ancho (m)" valor={v.ancho}
+                              onChange={n => actualizarVentana(estanciaSel.id, v.id, 'ancho', n)} />
+                            <Medida etiqueta="Alto (m)" valor={v.alto}
+                              onChange={n => actualizarVentana(estanciaSel.id, v.id, 'alto', n)} />
+                            <Medida etiqueta="Cantidad" valor={v.cantidad}
+                              onChange={n => actualizarVentana(estanciaSel.id, v.id, 'cantidad', n)} />
+                          </div>
+                          <DesplegableObj etiqueta="Marco" valor={v.marco} opciones={VENTANA_MARCO}
+                            onChange={n => actualizarVentana(estanciaSel.id, v.id, 'marco', n)} />
+                          <DesplegableObj etiqueta="Acristalamiento" valor={v.vidrio} opciones={VENTANA_VIDRIO}
+                            onChange={n => actualizarVentana(estanciaSel.id, v.id, 'vidrio', n)} />
+                          <Desplegable etiqueta="Orientación" valor={v.orientacion}
+                            opciones={Object.keys(FACTOR_ORIENTACION)}
+                            onChange={n => actualizarVentana(estanciaSel.id, v.id, 'orientacion', n)} />
+                          <DesplegableObj etiqueta="Protección solar" valor={v.proteccion} opciones={PROTECCION_SOLAR}
+                            onChange={n => actualizarVentana(estanciaSel.id, v.id, 'proteccion', n)} />
+                          <p className="text-[10px] text-slate-500">
+                            Transmisión {cv.transmision} W · sol {cv.solar} W (U {cv.u} W/m²K)
+                          </p>
+                        </div>
+                      );
+                    })}
+                    <Button size="sm" variant="outline" onClick={() => anadirVentana(estanciaSel.id)}
+                      className="w-full h-7 gap-1 text-xs">
+                      <Plus className="w-3 h-3" />Añadir ventana
+                    </Button>
+                    {(estanciaSel.ventanas || []).length === 0 && (
+                      <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-1.5">
+                        Sin ventanas la carga sale corta. Un ventanal al oeste puede ser
+                        la mitad de la potencia que hace falta.
+                      </p>
+                    )}
+                  </div>
+                </details>
                 {maquinaSel && (
                   <Desplegable
                     etiqueta="Tipo de máquina" valor={maquinaSel.tipo}
@@ -1599,6 +1722,23 @@ function Medida({ etiqueta, valor, onChange }) {
       <label className="text-[11px] font-medium text-slate-600">{etiqueta}</label>
       <Input type="number" step="0.5" min="0.5" className="mt-1 h-8"
         value={valor} onChange={e => onChange(Number(e.target.value) || 0)} />
+    </div>
+  );
+}
+
+/** Desplegable para catálogos con forma { clave: { nombre } }. */
+function DesplegableObj({ etiqueta, valor, opciones, onChange }) {
+  return (
+    <div>
+      <label className="text-[11px] font-medium text-slate-600">{etiqueta}</label>
+      <Select value={valor || ''} onValueChange={onChange}>
+        <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue placeholder="Elegir…" /></SelectTrigger>
+        <SelectContent>
+          {Object.entries(opciones).map(([clave, o]) => (
+            <SelectItem key={clave} value={clave}>{o.nombre}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
