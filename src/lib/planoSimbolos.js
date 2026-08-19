@@ -155,6 +155,80 @@ export function dibujarEquipo(ctx, tipo, x, y, escala = 1, resaltado = false) {
   ctx.restore();
 }
 
+/**
+ * Soporte de la unidad exterior, dibujado debajo de ella.
+ *
+ * En el plano importa: no es lo mismo colgarla de la pared con escuadras que
+ * dejarla en el suelo sobre tacos o subirla a una bancada en la cubierta, ni
+ * en trabajo ni en precio, y hay que verlo en el dibujo.
+ *
+ * @param {string} tipo  'pared' | 'suelo' | 'bancada' | 'tejado' | 'ninguno'
+ */
+export function dibujarSoporte(ctx, tipo, x, y, escala = 1) {
+  if (!tipo || tipo === 'ninguno') return;
+  const s = 15 * escala;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = '#475569';
+  ctx.fillStyle = '#94a3b8';
+  ctx.lineWidth = Math.max(1.5, 2 * escala);
+
+  switch (tipo) {
+    case 'pared':
+      // Escuadras: dos triángulos apoyados en la pared, debajo de la máquina.
+      for (const lado of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(lado * s * 0.75, s * 0.8);
+        ctx.lineTo(lado * s * 0.75, s * 1.45);
+        ctx.lineTo(lado * s * 0.15, s * 0.8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+      break;
+
+    case 'suelo':
+      // Tacos antivibratorios: dos patas cortas.
+      for (const lado of [-1, 1]) {
+        ctx.fillRect(lado * s * 0.7 - s * 0.12, s * 0.8, s * 0.24, s * 0.5);
+        ctx.strokeRect(lado * s * 0.7 - s * 0.12, s * 0.8, s * 0.24, s * 0.5);
+      }
+      break;
+
+    case 'bancada':
+      // Bancada corrida bajo toda la máquina.
+      ctx.fillRect(-s * 1.15, s * 0.8, s * 2.3, s * 0.55);
+      ctx.strokeRect(-s * 1.15, s * 0.8, s * 2.3, s * 0.55);
+      break;
+
+    case 'tejado':
+      // Estructura elevada, con las patas más largas.
+      ctx.fillRect(-s * 1.1, s * 0.8, s * 2.2, s * 0.3);
+      ctx.strokeRect(-s * 1.1, s * 0.8, s * 2.2, s * 0.3);
+      for (const lado of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(lado * s * 0.85, s * 1.1);
+        ctx.lineTo(lado * s * 0.85, s * 1.75);
+        ctx.stroke();
+      }
+      break;
+
+    default:
+      break;
+  }
+  ctx.restore();
+}
+
+/** Los soportes que se pueden poner, con su nombre. */
+export const SOPORTES_EXTERIOR = {
+  pared: { nombre: 'Escuadras de pared', clave: 'soporte_pared' },
+  suelo: { nombre: 'Tacos antivibratorios en suelo', clave: 'soporte_suelo' },
+  bancada: { nombre: 'Bancada de obra o metálica', clave: 'soporte_bancada' },
+  tejado: { nombre: 'Estructura elevada (cubierta)', clave: 'soporte_tejado' },
+  ninguno: { nombre: 'Sin soporte (ya instalado)', clave: null },
+};
+
 /** Rectángulo relleno con borde blanco y esquinas redondeadas. */
 function rect(ctx, x, y, w, h, r) {
   const radio = Math.min(r, w / 2, h / 2);

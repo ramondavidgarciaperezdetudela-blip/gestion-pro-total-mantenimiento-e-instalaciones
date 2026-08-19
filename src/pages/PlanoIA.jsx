@@ -10,15 +10,16 @@ import {
   Pencil, Trash2, Wind, Sparkles, FileText, Loader2,
   RotateCcw, AlertCircle, Ruler, Wrench, Euro, Layers, Plus, X,
   Spline, Box, Map, Check, Image as ImageIcon, Eye,
-  Undo2, Redo2, PenLine, Hand, Maximize2, Printer,
+  Undo2, Redo2, PenLine, Hand, Maximize2, Printer, Crosshair,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   TIPOS_MAQUINA, FACTOR_USO, FACTOR_ORIENTACION, FACTOR_AISLAMIENTO,
-  EQUIPOS_SUELTOS, PRECIOS_REFERENCIA, USOS_CAMARA,
+  EQUIPOS_SUELTOS, PRECIOS_REFERENCIA, USOS_CAMARA, SOPORTES_SOPORTE,
   resumenPlano, listaMateriales, totalMateriales, planoComoTexto,
 } from '@/lib/planoCalculos';
-import { dibujarEquipo, nombreEquipo, colorEquipo, radioAproximado } from '@/lib/planoSimbolos';
+import { dibujarEquipo, nombreEquipo, colorEquipo, radioAproximado, dibujarSoporte } from '@/lib/planoSimbolos';
+import BotonHerramienta from '@/components/BotonHerramienta';
 import PaletaEquipos from '@/components/PaletaEquipos';
 import { useHistorial } from '@/hooks/useHistorial';
 import { informeHtml } from '@/lib/informePlano';
@@ -52,11 +53,13 @@ const METRO_PX_BASE = 40;   // píxeles por metro al zoom normal
 
 const HERRAMIENTAS = [
   { id: 'estancia', nombre: 'Dibujar estancia', icono: Pencil },
-  { id: 'maquina', nombre: 'Poner equipo', icono: Wind },
-  { id: 'exterior', nombre: 'Exterior / condensadora', icono: Wrench },
+  // Estas dos enseñan el símbolo de la máquina de verdad, no un icono
+  // cualquiera: así se ve lo que se va a dibujar sin leer.
+  { id: 'maquina', nombre: 'Poner equipo', icono: Wind, equipoDinamico: true },
+  { id: 'exterior', nombre: 'Exterior / condensadora', icono: Wrench, equipo: 'exterior' },
   { id: 'recorrido', nombre: 'Trazar tubería', icono: Spline },
   { id: 'conducto', nombre: 'Trazar conducto', icono: Map },
-  { id: 'mover', nombre: 'Mover / seleccionar', icono: Hand },
+  { id: 'mover', nombre: 'Mover / mover el papel', icono: Hand },
   { id: 'libre', nombre: 'Dibujo a mano', icono: PenLine },
   { id: 'cota', nombre: 'Acotar', icono: Ruler },
   { id: 'borrar', nombre: 'Borrar', icono: Trash2 },
@@ -95,6 +98,13 @@ export default function PlanoIA() {
   const [zoomPlano, setZoomPlano] = useState(1);
   // Tamaño del lienzo en píxeles: se mide del contenedor de verdad.
   const [lienzo, setLienzo] = useState({ w: 960, h: 720 });
+  // Desplazamiento del papel, en metros. Sirve para tener todo el área de
+  // dibujo que haga falta: la pantalla es una ventana que se mueve sobre él.
+  const [origen, setOrigen] = useState({ x: 0, y: 0 });
+  const [arrastrandoLienzo, setArrastrandoLienzo] = useState(null);
+  // En pantallas estrechas los botones van solo con icono: con el nombre
+  // puesto, la barra se comía media pantalla del móvil.
+  const [compacto, setCompacto] = useState(false);
 
   const metroPx = METRO_PX_BASE * zoomPlano;
   const ANCHO_M = lienzo.w / metroPx;
@@ -199,6 +209,7 @@ export default function PlanoIA() {
   const [trazando, setTrazando] = useState(null);     // recorrido en curso
   const [vista, setVista] = useState('plano');        // 'plano' | '3d'
   const [tipoInstalacion, setTipoInstalacion] = useState('split_1x1');
+  const [soporteExterior, setSoporteExterior] = useState('pared');
   // Marca y modelo elegidos por estancia: { [estanciaId]: maquina }
   const [maquinasElegidas, setMaquinasElegidas] = useState({});
   const [verResumen, setVerResumen] = useState(false);
@@ -270,8 +281,9 @@ export default function PlanoIA() {
       maquinas: todasMaquinas,
       unidad_exterior: exterior,
       altura_defecto: alturaDefecto,
+      soporte_exterior: soporteExterior,
     };
-  }, [plantas, exterior, alturaDefecto]);
+  }, [plantas, exterior, alturaDefecto, soporteExterior]);
   const resumen = useMemo(() => resumenPlano(plano), [plano]);
 
   // Cada recorrido, revisado: metros, codos, gas que hay que añadir y avisos.
@@ -343,6 +355,7 @@ export default function PlanoIA() {
   // dentro de la página, y se vuelve a medir si se gira el móvil.
   useEffect(() => {
     const medir = () => {
+      setCompacto(window.innerWidth < 780);
       const caja = contenedorRef.current?.getBoundingClientRect();
       if (!caja || caja.width < 50) return;
       // El alto nunca puede pasar de la ventana, o el lienzo se sale y hay
@@ -399,6 +412,11 @@ export default function PlanoIA() {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
 
+    // Se mueve el papel bajo la ventana: a partir de aquí se dibuja en
+    // coordenadas del plano y el desplazamiento lo aplica el propio lienzo.
+    ctx.save();
+    ctx.translate(-origen.x * metroPx, -origen.y * metroPx);
+
     // El plano de fondo va lo primero, para dibujar encima de él.
     if (fondo?.imagen) {
       ctx.save();
@@ -409,20 +427,23 @@ export default function PlanoIA() {
       ctx.restore();
     }
 
-    // Cuadrícula de 1 m, con línea marcada cada 5 m para poder contar de un vistazo.
-    for (let m = 0; m <= ANCHO_M; m++) {
+    // Cuadrícula de 1 m, con línea marcada cada 5 m. Se dibuja solo la parte
+    // que se ve, esté donde esté el papel: así el área de dibujo no se acaba.
+    const m0x = Math.floor(origen.x) - 1, m1x = Math.ceil(origen.x + ANCHO_M) + 1;
+    const m0y = Math.floor(origen.y) - 1, m1y = Math.ceil(origen.y + ALTO_M) + 1;
+    for (let m = m0x; m <= m1x; m++) {
       ctx.strokeStyle = m % 5 === 0 ? '#cbd5e1' : '#eef2f7';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(m * metroPx, 0);
-      ctx.lineTo(m * metroPx, H);
+      ctx.moveTo(m * metroPx, m0y * metroPx);
+      ctx.lineTo(m * metroPx, m1y * metroPx);
       ctx.stroke();
     }
-    for (let m = 0; m <= ALTO_M; m++) {
+    for (let m = m0y; m <= m1y; m++) {
       ctx.strokeStyle = m % 5 === 0 ? '#cbd5e1' : '#eef2f7';
       ctx.beginPath();
-      ctx.moveTo(0, m * metroPx);
-      ctx.lineTo(W, m * metroPx);
+      ctx.moveTo(m0x * metroPx, m * metroPx);
+      ctx.lineTo(m1x * metroPx, m * metroPx);
       ctx.stroke();
     }
 
@@ -477,6 +498,8 @@ export default function PlanoIA() {
     if (exterior) {
       const x = exterior.x * metroPx, y = exterior.y * metroPx;
       const tipoExt = resumen.es_refrigeracion ? 'unidad_condensadora' : 'exterior';
+      // El soporte se dibuja debajo, para que se vea cómo va montada.
+      dibujarSoporte(ctx, soporteExterior, x, y, 1.1);
       dibujarEquipo(ctx, tipoExt, x, y, 1.1, false);
       ctx.fillStyle = colorEquipo(tipoExt);
       ctx.font = 'bold 9px system-ui, sans-serif';
@@ -616,9 +639,21 @@ export default function PlanoIA() {
         x + 4, y - 4
       );
     }
+
+    ctx.restore();   // fin del desplazamiento del papel
+
+    // Referencia de dónde estamos, para no perderse al mover el lienzo.
+    if (origen.x !== 0 || origen.y !== 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillRect(6, H - 24, 132, 18);
+      ctx.fillStyle = '#64748b';
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.fillText(`origen: ${origen.x.toFixed(1)} , ${origen.y.toFixed(1)} m`, 10, H - 11);
+    }
   }, [estancias, maquinas, exterior, seleccion, arrastre, resumen.es_refrigeracion,
+      origen,
       recorridos, trazando, planta?.nombre, fondo, fondoOpacidad, fondoEscala, fondoDesplaza,
-      trazosLibres, dibujandoLibre, cotas, cotaEnCurso,
+      trazosLibres, dibujandoLibre, cotas, cotaEnCurso, soporteExterior,
       // Al cambiar de tamaño, el navegador BORRA el contenido del lienzo:
       // sin esto, al salir de pantalla completa el plano se quedaba en blanco.
       lienzo.w, lienzo.h, metroPx]);
@@ -635,9 +670,11 @@ export default function PlanoIA() {
     const escalaY = canvas.height / r.height;
     const px = (ev.clientX - r.left) * escalaX;
     const py = (ev.clientY - r.top) * escalaY;
+    // Se suma el desplazamiento del papel: lo que se ve es una ventana que
+    // se mueve, así que el punto real está más allá de la esquina.
     return {
-      x: Math.max(0, Math.min(ANCHO_M, aRejilla(px / metroPx))),
-      y: Math.max(0, Math.min(ALTO_M, aRejilla(py / metroPx))),
+      x: aRejilla(px / metroPx + origen.x),
+      y: aRejilla(py / metroPx + origen.y),
     };
   };
 
@@ -680,6 +717,10 @@ export default function PlanoIA() {
         antesDeCambiar();
         // Se guarda de dónde se ha agarrado, para que no salte al pulsar.
         setMoviendo({ id: est.id, dx: x - est.x, dy: y - est.y });
+      } else {
+        // En zona vacía se arrastra el papel: así hay todo el área de dibujo
+        // que haga falta sin tener que encoger nada.
+        setArrastrandoLienzo({ x0: ev.clientX, y0: ev.clientY, origen: { ...origen } });
       }
       return;
     }
@@ -767,6 +808,17 @@ export default function PlanoIA() {
   };
 
   const onPointerMove = (ev) => {
+    if (arrastrandoLienzo) {
+      const canvas = canvasRef.current;
+      const r = canvas.getBoundingClientRect();
+      const escala = canvas.width / r.width;
+      setOrigen({
+        x: arrastrandoLienzo.origen.x - ((ev.clientX - arrastrandoLienzo.x0) * escala) / metroPx,
+        y: arrastrandoLienzo.origen.y - ((ev.clientY - arrastrandoLienzo.y0) * escala) / metroPx,
+      });
+      return;
+    }
+
     const { x, y } = posicionEnMetros(ev);
 
     if (moviendo) {
@@ -787,6 +839,7 @@ export default function PlanoIA() {
   };
 
   const onPointerUp = () => {
+    if (arrastrandoLienzo) { setArrastrandoLienzo(null); return; }
     if (moviendo) { setMoviendo(null); return; }
     if (dibujandoLibre) {
       if (dibujandoLibre.puntos.length > 2) {
@@ -1186,41 +1239,60 @@ export default function PlanoIA() {
         <EnvoltorioLienzo pantallaCompleta={pantallaCompleta}>
 
           {pantallaCompleta && (
-            <div className="flex items-center gap-2 flex-wrap shrink-0">
-              {HERRAMIENTAS.map(h => {
-                const Icono = h.icono;
-                return (
-                  <Button key={h.id} size="sm"
-                    variant={herramienta === h.id ? 'default' : 'outline'}
-                    onClick={() => setHerramienta(h.id)} className="gap-1 h-8 text-xs">
-                    <Icono className="w-3.5 h-3.5" />{h.nombre}
-                  </Button>
-                );
-              })}
-              <div className="flex items-center gap-1 border-l pl-2">
+            <>
+            <div className={`flex items-center gap-1.5 shrink-0 ${
+              compacto ? 'overflow-x-auto pb-1' : 'flex-wrap'
+            }`}>
+              {HERRAMIENTAS.map(h => (
+                <BotonHerramienta
+                  key={h.id}
+                  activo={herramienta === h.id}
+                  onClick={() => setHerramienta(h.id)}
+                  nombre={h.nombre}
+                  icono={h.icono}
+                  equipo={h.equipoDinamico ? equipoElegido : h.equipo}
+                  compacto={compacto}
+                />
+              ))}
+            </div>
+
+            {/* Segunda fila: deshacer, zoom y confirmar */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1">
                 <Button size="sm" variant="outline" onClick={deshacer}
-                  disabled={!historial.puedeDeshacer} className="h-8" title="Deshacer">
-                  <Undo2 className="w-4 h-4" />
+                  disabled={!historial.puedeDeshacer}
+                  className={compacto ? 'w-10 h-10 p-0' : 'h-9 px-2'} title="Deshacer">
+                  <Undo2 className="w-5 h-5" />
                 </Button>
                 <Button size="sm" variant="outline" onClick={rehacer}
-                  disabled={!historial.puedeRehacer} className="h-8" title="Rehacer">
-                  <Redo2 className="w-4 h-4" />
+                  disabled={!historial.puedeRehacer}
+                  className={compacto ? 'w-10 h-10 p-0' : 'h-9 px-2'} title="Rehacer">
+                  <Redo2 className="w-5 h-5" />
                 </Button>
               </div>
-              <div className="flex items-center gap-1 border-l pl-2">
-                <Button size="sm" variant="outline" className="h-8 px-2"
-                  onClick={() => setZoomPlano(z => Math.max(0.35, z - 0.15))}>−</Button>
-                <span className="text-xs text-slate-500 w-12 text-center">
-                  {Math.round(zoomPlano * 100)} %
+              <div className="flex items-center gap-1 border-l pl-1.5">
+                <Button size="sm" variant="outline"
+                  className={compacto ? 'w-9 h-10 p-0 text-lg' : 'h-9 px-2'}
+                  onClick={() => setZoomPlano(z => Math.max(0.3, z - 0.15))}>−</Button>
+                <span className="text-[11px] text-slate-500 w-10 text-center">
+                  {Math.round(zoomPlano * 100)}%
                 </span>
-                <Button size="sm" variant="outline" className="h-8 px-2"
-                  onClick={() => setZoomPlano(z => Math.min(2.5, z + 0.15))}>+</Button>
+                <Button size="sm" variant="outline"
+                  className={compacto ? 'w-9 h-10 p-0 text-lg' : 'h-9 px-2'}
+                  onClick={() => setZoomPlano(z => Math.min(3, z + 0.15))}>+</Button>
+                <Button size="sm" variant="outline"
+                  className={compacto ? 'w-10 h-10 p-0' : 'h-9 px-2'}
+                  title="Centrar el papel"
+                  onClick={() => { setOrigen({ x: 0, y: 0 }); setZoomPlano(1); }}>
+                  <Crosshair className="w-5 h-5" />
+                </Button>
               </div>
               <Button size="sm" onClick={() => setPantallaCompleta(false)}
-                className="h-8 gap-1 text-xs ml-auto bg-green-600 hover:bg-green-700">
-                <Check className="w-3.5 h-3.5" />Confirmar plano
+                className={`gap-1 ml-auto bg-green-600 hover:bg-green-700 ${compacto ? 'h-10 px-3 text-xs' : 'h-9 text-xs'}`}>
+                <Check className="w-4 h-4" />{compacto ? 'Confirmar' : 'Confirmar plano'}
               </Button>
             </div>
+            </>
           )}
 
           {/* Paleta de equipos y opciones de dibujo, dentro de la pantalla */}
@@ -1807,6 +1879,23 @@ export default function PlanoIA() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div>
+                  <label className="text-xs font-medium text-slate-600">
+                    Soporte de la unidad exterior
+                  </label>
+                  <Select value={soporteExterior} onValueChange={setSoporteExterior}>
+                    <SelectTrigger className="mt-1 h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(SOPORTES_SOPORTE).map(([id, sp]) => (
+                        <SelectItem key={id} value={id}>{sp.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Se dibuja debajo de la máquina en el plano y entra en el presupuesto.
+                  </p>
+                </div>
+
+                <div>
                   <label className="text-xs font-medium text-slate-600">Tipo de instalación</label>
                   <Select value={tipoInstalacion} onValueChange={setTipoInstalacion}>
                     <SelectTrigger className="mt-1 h-8"><SelectValue /></SelectTrigger>
@@ -2250,7 +2339,17 @@ function EnvoltorioLienzo({ pantallaCompleta, children }) {
     return <div className="lg:col-span-2 space-y-2">{children}</div>;
   }
   return createPortal(
-    <div className="fixed inset-0 z-[9999] bg-white flex flex-col p-2 gap-2 overflow-hidden">
+    <div
+      className="fixed inset-0 z-[9999] bg-white flex flex-col gap-1.5 overflow-hidden"
+      style={{
+        // Sin esto los botones se meten debajo del reloj y la batería del
+        // móvil, y no se pueden ni pulsar.
+        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 6px)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+        paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 6px)',
+        paddingRight: 'calc(env(safe-area-inset-right, 0px) + 6px)',
+      }}
+    >
       {children}
     </div>,
     document.body

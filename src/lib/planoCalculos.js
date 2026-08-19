@@ -88,6 +88,18 @@ export const EQUIPOS_INTERIORES = [
   'mural', 'cassette', 'conductos', 'suelo', 'evaporador_camara',
 ];
 
+/**
+ * Soportes de la unidad exterior, con su precio.
+ * El dibujo de cada uno está en planoSimbolos.js.
+ */
+export const SOPORTES_SOPORTE = {
+  pared: { nombre: 'Soporte de escuadras a pared, montado', clave: 'soporte_pared' },
+  suelo: { nombre: 'Tacos antivibratorios y apoyo en suelo', clave: 'soporte_suelo' },
+  bancada: { nombre: 'Bancada para unidad exterior', clave: 'soporte_bancada' },
+  tejado: { nombre: 'Estructura elevada en cubierta', clave: 'soporte_tejado' },
+  ninguno: { nombre: 'Sin soporte', clave: null },
+};
+
 /** Equipos sueltos: se presupuestan por unidad, no por la carga de la sala. */
 export const EQUIPOS_SUELTOS = ['vitrina', 'arcon', 'camara_puerta', 'control_temperatura'];
 
@@ -188,7 +200,10 @@ export function metrosTuberia(maquina, exterior, desnivel = 3, margen = 2) {
  * los totales. Es lo que se enseña en pantalla y lo que se manda a la IA.
  */
 export function resumenPlano(plano) {
-  const { estancias = [], maquinas = [], unidad_exterior = null, altura_defecto = 2.5 } = plano || {};
+  const {
+    estancias = [], maquinas = [], unidad_exterior = null,
+    altura_defecto = 2.5, soporte_exterior = 'pared',
+  } = plano || {};
 
   // Vitrinas, arcones y puertas se presupuestan por unidad: no dependen de la
   // carga de la sala donde estén, así que se apartan antes de repartir.
@@ -230,6 +245,7 @@ export function resumenPlano(plano) {
   return {
     detalle,
     sueltos,
+    soporte_exterior: unidad_exterior ? soporte_exterior : null,
     es_refrigeracion: esRefrigeracion,
     area_total: areaTotal,
     frigorias_total: frigoriasTotal,
@@ -259,6 +275,11 @@ export const PRECIOS_EXTRAS = {
   resistencia_marco: 80,
   sonda_camara: 28,
   registrador: 190,
+  // Soportes de la unidad exterior: cada uno es otro trabajo distinto.
+  soporte_pared: 65,
+  soporte_suelo: 40,
+  soporte_bancada: 145,
+  soporte_tejado: 220,
 };
 
 /**
@@ -456,6 +477,18 @@ export function listaMateriales(resumen, precios = PRECIOS_REFERENCIA) {
       ),
       categoria: 'maquinaria',
     }));
+
+    // El soporte de la exterior va aparte: colgarla de la pared, dejarla en el
+    // suelo o subirla a una bancada no cuesta lo mismo ni de lejos.
+    const soporte = SOPORTES_SOPORTE[resumen.soporte_exterior];
+    if (soporte?.clave) {
+      lineas.push(crearLinea({
+        descripcion: soporte.nombre,
+        unidad: 'ud', cantidad: 1,
+        precio_ud: p[soporte.clave] ?? 0,
+        categoria: 'accesorios',
+      }));
+    }
   }
 
   const nMaquinas = resumen.detalle.filter(d => d.maquina).length;
