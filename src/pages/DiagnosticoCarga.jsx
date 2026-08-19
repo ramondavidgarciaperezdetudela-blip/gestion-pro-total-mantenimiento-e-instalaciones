@@ -12,6 +12,8 @@ import { createPageUrl } from '../utils';
 import DiagnosticFailuresDiagram from '@/components/DiagnosticFailuresDiagram';
 import EsquemaCircuito from '@/components/EsquemaCircuito';
 import CodigosAveriaSplit from '@/components/CodigosAveriaSplit';
+import EsquemaSplit from '@/components/EsquemaSplit';
+import { diagnosticoClima, GASES_CLIMA, tempSaturacion, RANGOS_CLIMA, nivelRango } from '@/lib/diagnosticoClima';
 
 // Presiones ORIENTATIVAS manométricas (bar) por refrigerante y aplicación.
 const PRES = {
@@ -288,6 +290,41 @@ function MollierDiagram({ gas, baja, alta, recal, subenf }) {
 export default function DiagnosticoCarga() {
   const [tab, setTab] = useState('presiones');
 
+  // ── Diagnóstico de split (pestaña Clima) ────────────────────────────────
+  // Va aparte del de refrigeración a propósito: en un split casi nunca hay
+  // toma de alta, así que aquí el peso lo llevan el recalentamiento y el
+  // salto de temperatura del aire, no las dos presiones.
+  const [clGas, setClGas] = useState('R-410A');
+  const [clModo, setClModo] = useState('frio');
+  const [clExpansion, setClExpansion] = useState('capilar');
+  const [clPBaja, setClPBaja] = useState('');
+  const [clTEvap, setClTEvap] = useState('');
+  const [clPAlta, setClPAlta] = useState('');
+  const [clTAsp, setClTAsp] = useState('');
+  const [clTDesc, setClTDesc] = useState('');
+  const [clTLiq, setClTLiq] = useState('');
+  const [clAireIntEntra, setClAireIntEntra] = useState('');
+  const [clAireIntSale, setClAireIntSale] = useState('');
+  const [clAireExtEntra, setClAireExtEntra] = useState('');
+  const [clAireExtSale, setClAireExtSale] = useState('');
+
+  const datosClima = {
+    gas: clGas, modo: clModo, expansion: clExpansion,
+    pBaja: clPBaja, tEvapManual: clTEvap, pAlta: clPAlta,
+    tAspiracion: clTAsp, tDescarga: clTDesc, tLiquido: clTLiq,
+    aireIntEntra: clAireIntEntra, aireIntSale: clAireIntSale,
+    aireExtEntra: clAireExtEntra, aireExtSale: clAireExtSale,
+  };
+  const diagClima = useMemo(() => diagnosticoClima(datosClima),
+    [clGas, clModo, clExpansion, clPBaja, clTEvap, clPAlta, clTAsp, clTDesc,
+      clTLiq, clAireIntEntra, clAireIntSale, clAireExtEntra, clAireExtSale]);
+
+  const limpiarClima = () => {
+    setClPBaja(''); setClTEvap(''); setClPAlta(''); setClTAsp(''); setClTDesc('');
+    setClTLiq(''); setClAireIntEntra(''); setClAireIntSale('');
+    setClAireExtEntra(''); setClAireExtSale('');
+  };
+
   // ── Contexto: cliente / orden SAT desde la URL (llegando desde una orden) ──
   // Permite guardar el diagnóstico en la ficha del cliente y, si viene de una
   // orden SAT, vincularlo automáticamente a sus apartados antes/después.
@@ -518,7 +555,8 @@ export default function DiagnosticoCarga() {
     const canvas = await html2canvas(node, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
     const dataUrl = canvas.toDataURL('image/png');
     const blob = await (await fetch(dataUrl)).blob();
-    return { dataUrl, file: new File([blob], `diagnostico-${gas}.png`, { type: 'image/png' }) };
+    const nombre = tab === 'clima' ? `diagnostico-split-${clGas}` : `diagnostico-${gas}`;
+    return { dataUrl, file: new File([blob], `${nombre}.png`, { type: 'image/png' }) };
   };
 
   const generarImagen = async () => {
@@ -548,7 +586,23 @@ export default function DiagnosticoCarga() {
   const [savingDiag, setSavingDiag] = useState(false);
   const [savedStage, setSavedStage] = useState(null); // 'antes' | 'despues' tras guardar con éxito
 
+  /** Resumen del diagnóstico de un split, para la ficha del cliente. */
+  const resumenClima = () => {
+    const d = diagClima;
+    const partes = [`Split ${clGas} · modo ${clModo} · expansión ${clExpansion}`];
+    if (d.recalentamiento != null) partes.push(`Recalent. ${d.recalentamiento} K`);
+    if (d.dtAireInterior != null) partes.push(`Salto aire interior ${d.dtAireInterior} K`);
+    if (d.dtAireExterior != null) partes.push(`Salto aire exterior ${d.dtAireExterior} K`);
+    if (clPBaja !== '') partes.push(`P.baja ${clPBaja} bar`);
+    partes.push(d.hayAlta ? `P.alta ${clPAlta} bar` : 'sin toma de alta');
+    if (d.tDescarga != null) partes.push(`Descarga ${d.tDescarga} °C`);
+    const graves = d.avisos.filter(a => a.nivel === 'mal' || a.nivel === 'aviso');
+    if (graves.length) partes.push(`Hallazgos: ${graves.map(a => a.titulo).join(', ')}`);
+    return partes.join(' · ');
+  };
+
   const resumenDiagnostico = () => {
+    if (tab === 'clima') return resumenClima();
     const partes = [`Gas ${gas} · ${APPS.find(a => a.k === app)?.l || app}`];
     if (recal != null) partes.push(`Recalent. ${recal.toFixed(1)} °C`);
     if (subenf != null) partes.push(`Subenf. ${subenf.toFixed(1)} °C`);
@@ -570,7 +624,29 @@ export default function DiagnosticoCarga() {
     ].filter(Boolean).join(' · ');
   };
 
-  const datosDiagnosticoJSON = () => JSON.stringify({
+  const datosDiagnosticoJSON = () => (tab === 'clima' ? JSON.stringify({
+    tipo: 'split_clima',
+    gas: clGas, modo: clModo, expansion: clExpansion,
+    presiones: { baja: clPBaja, alta: clPAlta || null },
+    temperaturas: {
+      evaporacion: diagClima.tEvap, aspiracion: clTAsp, descarga: clTDesc,
+      linea_liquido: clTLiq || null, condensacion: diagClima.tCond,
+    },
+    aire: {
+      interior: { aspiracion: clAireIntEntra, impulsion: clAireIntSale, salto: diagClima.dtAireInterior },
+      exterior: { entrada: clAireExtEntra, salida: clAireExtSale, salto: diagClima.dtAireExterior },
+    },
+    calculados: {
+      recalentamiento: diagClima.recalentamiento,
+      subenfriamiento: diagClima.subenfriamiento,
+      relacion_compresion: diagClima.relacionCompresion,
+      condensacion_estimada: diagClima.condensacionEstimada,
+      hay_toma_alta: diagClima.hayAlta,
+    },
+    hallazgos: diagClima.avisos
+      .filter(a => a.nivel !== 'info')
+      .map(a => ({ nivel: a.nivel, titulo: a.titulo, detalle: a.texto })),
+  }) : JSON.stringify({
     gas, aplicacion: app, variante,
     presiones: { baja: pBaja, alta: pAlta },
     temperaturas: { tEvap, tAsp, tCond, tLiq, tAmb, tFiltroIn, tFiltroOut, tValvOut, tRecibIn, tRecibOut, pRecib, tSolen, pSolIn, pSolOut, tBulbo, pIgual, tIgual },
@@ -585,7 +661,7 @@ export default function DiagnosticoCarga() {
     evaporador: { marca: evapMarca, modelo: evapModelo },
     valoresFabricante: fabValores,
     posiblesAverias: diag1.map(d => ({ evento: d.e, detalle: d.t })),
-  });
+  }));
 
   const guardarEnFicha = async () => {
     if (!ctxContactId) return;
@@ -645,9 +721,11 @@ export default function DiagnosticoCarga() {
     <div className="min-h-screen bg-slate-50">
       <NavBar title="Diagnóstico frigorífico" />
       <div className="max-w-2xl mx-auto px-3 py-3 space-y-3">
-        <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white shadow text-sm">
-          {[['presiones', '📟 Presiones/Temp.'], ['codigos', '🔢 Códigos'], ['conversion', '🔄 Conversión'], ['averia', '🛠️ Avería']].map(([k, l]) => (
-            <button key={k} onClick={() => setTab(k)} className={`flex-1 py-2.5 font-medium ${tab === k ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>{l}</button>
+        {/* Cinco pestañas no caben en una fila en el móvil: en pantalla
+            estrecha van en rejilla de tres y se parten en dos filas. */}
+        <div className="grid grid-cols-3 sm:grid-cols-5 rounded-xl overflow-hidden border border-slate-200 bg-white shadow text-[12px] sm:text-sm">
+          {[['presiones', '📟 Presiones'], ['clima', '❄️ Clima (split)'], ['codigos', '🔢 Códigos'], ['conversion', '🔄 Conversión'], ['averia', '🛠️ Avería']].map(([k, l]) => (
+            <button key={k} onClick={() => setTab(k)} className={`py-2.5 px-1 font-medium border-b border-slate-100 ${tab === k ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>{l}</button>
           ))}
         </div>
 
@@ -1032,6 +1110,222 @@ export default function DiagnosticoCarga() {
         )}
 
         {/* TAB 2: conversión */}
+        {tab === 'clima' && (
+          <div id="diag-print" className="space-y-3">
+            <div className="flex items-start gap-2 text-[11px] bg-sky-50 border border-sky-200 text-sky-800 rounded-md p-2.5">
+              <Snowflake className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>
+                Diagnóstico pensado para <b>splits</b>, donde casi nunca hay toma de alta.
+                Aquí manda lo que sí se puede medir siempre: la <b>presión de baja</b>, la
+                <b> temperatura del tubo de aspiración</b> y, sobre todo, el <b>salto de
+                temperatura del aire</b> en la evaporadora y en la condensadora. Con eso se
+                separa la falta de gas de una restricción, de un problema de caudal de aire
+                o de un compresor que no bombea.
+              </span>
+            </div>
+
+            {/* ── Máquina ──────────────────────────────────────────────── */}
+            <div className="bg-white rounded-xl shadow p-4 space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Refrigerante</label>
+                  <select value={clGas} onChange={(e) => setClGas(e.target.value)}
+                    className="w-full border border-input rounded-md px-3 py-2 text-sm">
+                    {GASES_CLIMA.map(g => <option key={g} value={g}>{g}{estadoRefrigerante(g).prohibido ? ' ⛔' : ''}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Está trabajando en</label>
+                  <select value={clModo} onChange={(e) => setClModo(e.target.value)}
+                    className="w-full border border-input rounded-md px-3 py-2 text-sm">
+                    <option value="frio">Frío</option>
+                    <option value="calor">Calor (bomba de calor)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Expansión</label>
+                  <select value={clExpansion} onChange={(e) => setClExpansion(e.target.value)}
+                    className="w-full border border-input rounded-md px-3 py-2 text-sm">
+                    <option value="capilar">Capilar / tubo fijo</option>
+                    <option value="valvula">Válvula o EEV</option>
+                  </select>
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400">
+                La expansión cambia el recalentamiento que se espera: un capilar trabaja más
+                alto que una válvula. Confundirlos hace cargar de más una máquina que está sana.
+              </p>
+            </div>
+
+            {/* ── Lo que se mide en el circuito ─────────────────────────── */}
+            <div className="bg-white rounded-xl shadow p-4 space-y-3">
+              <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <Gauge className="w-4 h-4 text-sky-600" />En el circuito
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Presión de baja (bar)</label>
+                  {N(clPBaja, setClPBaja, 'p. ej. 9,8')}
+                  {tempSaturacion(clGas, clPBaja) != null && (
+                    <p className="text-[10px] text-sky-700 mt-1">
+                      ≈ {tempSaturacion(clGas, clPBaja)} °C de evaporación en la tabla
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">T. evaporación del manómetro (°C)</label>
+                  {N(clTEvap, setClTEvap, 'la de la escala')}
+                  <p className="text-[10px] text-slate-400 mt-1">Si la pones, manda esta.</p>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">T. tubo de aspiración (°C)</label>
+                  {N(clTAsp, setClTAsp, 'tubo gordo')}
+                  <p className="text-[10px] text-slate-400 mt-1">En la exterior, junto a la toma.</p>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">T. tubo de descarga (°C)</label>
+                  {N(clTDesc, setClTDesc, 'salida compresor')}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-3">
+                <p className="text-[11px] font-semibold text-slate-600 mb-2">
+                  Solo si la máquina trae toma de alta (muchos splits no la tienen)
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Presión de alta (bar)</label>
+                    {N(clPAlta, setClPAlta, 'opcional')}
+                    {tempSaturacion(clGas, clPAlta) != null && (
+                      <p className="text-[10px] text-red-700 mt-1">
+                        ≈ {tempSaturacion(clGas, clPAlta)} °C de condensación
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">T. línea de líquido (°C)</label>
+                    {N(clTLiq, setClTLiq, 'opcional')}
+                    <p className="text-[10px] text-slate-400 mt-1">Para el subenfriamiento.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Aire en las dos unidades ──────────────────────────────── */}
+            <div className="bg-white rounded-xl shadow p-4 space-y-3">
+              <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <ArrowRightLeft className="w-4 h-4 text-sky-600" />En el aire
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Es medio diagnóstico: mide con la sonda en la rejilla, a unos centímetros,
+                y con la máquina llevando ya diez minutos en marcha.
+              </p>
+
+              <div>
+                <p className="text-[11px] font-semibold text-slate-600 mb-1.5">Evaporadora (unidad interior)</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 items-end">
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Aire aspiración (°C)</label>
+                    {N(clAireIntEntra, setClAireIntEntra, 'retorno')}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Aire impulsión (°C)</label>
+                    {N(clAireIntSale, setClAireIntSale, 'salida')}
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <ValorSalto valor={diagClima.dtAireInterior}
+                      rango={RANGOS_CLIMA.dtAireInterior[clModo]} etiqueta="Salto del aire" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-3">
+                <p className="text-[11px] font-semibold text-slate-600 mb-1.5">Condensadora (unidad exterior)</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 items-end">
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Aire entrada (°C)</label>
+                    {N(clAireExtEntra, setClAireExtEntra, 'batería')}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Aire salida (°C)</label>
+                    {N(clAireExtSale, setClAireExtSale, 'ventilador')}
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <ValorSalto valor={diagClima.dtAireExterior}
+                      rango={RANGOS_CLIMA.dtAireExterior[clModo]} etiqueta="Salto del aire" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Lo que sale ──────────────────────────────────────────── */}
+            {/* Este bloque es el que se convierte en imagen para la ficha del
+                cliente y para el diario de reparación. */}
+            <div id="diag-image-area" className="space-y-3 bg-white rounded-xl p-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <ValorSalto valor={diagClima.recalentamiento} etiqueta="Recalentamiento"
+                rango={RANGOS_CLIMA.recalentamiento[clExpansion]} />
+              <ValorSalto valor={diagClima.subenfriamiento} etiqueta="Subenfriamiento"
+                rango={RANGOS_CLIMA.subenfriamiento}
+                vacio={diagClima.hayAlta ? '—' : 'sin alta'} />
+              <ValorSalto valor={diagClima.tEvap} etiqueta="T. evaporación" unidad="°C" />
+              <ValorSalto
+                valor={diagClima.hayAlta ? diagClima.tCond : diagClima.condensacionEstimada}
+                etiqueta={diagClima.hayAlta ? 'T. condensación' : 'T. cond. estimada'}
+                unidad="°C" estimado={!diagClima.hayAlta} />
+            </div>
+
+            <EsquemaSplit {...datosClima} />
+
+            {/* ── Qué mirar ────────────────────────────────────────────── */}
+            <div className="bg-white rounded-xl shadow p-4 space-y-2">
+              <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-sky-600" />Qué mirar
+              </p>
+              {diagClima.avisos.map((a, i) => <Aviso key={i} {...a} />)}
+            </div>
+            </div>
+
+            {/* Guardar en la ficha del cliente, igual que el resto */}
+            {ctxContactId && (
+              <div className="bg-white rounded-xl shadow p-3 flex flex-wrap items-center gap-2">
+                <Button onClick={guardarEnFicha} disabled={savingDiag} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+                  {savingDiag ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Guardar en ficha del cliente
+                </Button>
+                <span className="text-[11px] text-slate-500">
+                  Guarda las medidas y el esquema en la ficha de <b>{ctxContact?.name || 'el cliente'}</b>
+                  {ctxSatOrderId && <>, vinculado a la orden SAT como <b>{ctxOrder?.diagnostic_before?.image_url ? 'después' : 'antes'}</b> de la reparación</>}.
+                </span>
+                {savedStage && (
+                  <div className="w-full mt-1 flex items-center gap-2 text-[11px] text-green-700 bg-green-50 border border-green-200 rounded-md p-2">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                    Diagnóstico guardado correctamente{ctxSatOrderId ? <> como <b>{savedStage === 'antes' ? 'antes' : 'después'} de la reparación</b> en la orden SAT</> : ''} y en la ficha del cliente.
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-2 flex-wrap">
+              <Button onClick={printAll} className="gap-2"><Printer className="w-4 h-4" />Imprimir</Button>
+              <Button onClick={printAll} variant="outline" className="gap-2"><FileDown className="w-4 h-4" />Exportar PDF</Button>
+              <Button onClick={limpiarClima} variant="outline" className="gap-2 text-red-600">Limpiar medidas</Button>
+            </div>
+
+            {/* Los códigos, aquí mismo: en un split es lo primero que se mira */}
+            <div className="bg-white rounded-xl shadow p-3">
+              <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />Códigos de avería del display
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Si la máquina está marcando un código, empieza por aquí: te dice la familia de
+                avería y por dónde tirar antes de sacar los manómetros.
+              </p>
+            </div>
+            <CodigosAveriaSplit />
+          </div>
+        )}
+
         {tab === 'codigos' && (
           <div className="space-y-3">
             <div className="bg-white rounded-xl shadow p-3">
@@ -1165,6 +1459,49 @@ export default function DiagnosticoCarga() {
           <span>Herramienta de <b>ayuda al diagnóstico</b>. Presiones y valores son <b>orientativos</b> (dependen de temperaturas reales); confirma siempre con la ficha del fabricante, el recalentamiento/subenfriamiento y las mediciones eléctricas. Para P-T exactas usa la <b>Regla de Refrigerantes (Danfoss)</b>.</span>
         </div>
       </div>
+    </div>
+  );
+}
+/**
+ * ValorSalto — un número medido, con su color según el rango.
+ *
+ * En obra se mira el color antes que la cifra: verde sigo, ámbar me fijo,
+ * rojo ahí está el problema. Sin dato queda en gris, que no es lo mismo que
+ * estar mal.
+ */
+function ValorSalto({ valor, etiqueta, rango, unidad = 'K', vacio = '—', estimado = false }) {
+  const nivel = rango ? nivelRango(valor, rango) : null;
+  const fondo = nivel === 'ok' ? 'bg-green-50 border-green-300 text-green-700'
+    : nivel === 'aviso' ? 'bg-amber-50 border-amber-300 text-amber-700'
+      : nivel === 'mal' ? 'bg-red-50 border-red-300 text-red-700'
+        : 'bg-slate-50 border-slate-200 text-slate-500';
+  return (
+    <div className={`rounded-lg border px-2 py-1.5 text-center ${fondo} ${estimado ? 'border-dashed' : ''}`}>
+      <p className="text-[10px] opacity-80 leading-tight">{etiqueta}</p>
+      <p className="text-base font-bold leading-tight">
+        {valor != null ? `${valor} ${unidad}` : vacio}
+      </p>
+      {rango && (
+        <p className="text-[9px] opacity-70 leading-tight">{rango.min}–{rango.max} {unidad}</p>
+      )}
+      {estimado && valor != null && <p className="text-[9px] opacity-70 leading-tight">estimada</p>}
+    </div>
+  );
+}
+
+/** Un aviso del diagnóstico, con su color y qué hay que ir a comprobar. */
+function Aviso({ nivel, titulo, texto }) {
+  const estilo = nivel === 'mal' ? 'bg-red-50 border-red-200 text-red-800'
+    : nivel === 'aviso' ? 'bg-amber-50 border-amber-200 text-amber-800'
+      : nivel === 'ok' ? 'bg-green-50 border-green-200 text-green-800'
+        : 'bg-slate-50 border-slate-200 text-slate-600';
+  const icono = nivel === 'mal' ? '⛔' : nivel === 'aviso' ? '⚠️' : nivel === 'ok' ? '✅' : 'ℹ️';
+  return (
+    <div className={`rounded-lg border p-2.5 text-[12px] ${estilo}`}>
+      <p className="font-semibold flex items-start gap-1.5">
+        <span aria-hidden="true">{icono}</span>{titulo}
+      </p>
+      <p className="mt-0.5 leading-snug opacity-95">{texto}</p>
     </div>
   );
 }
