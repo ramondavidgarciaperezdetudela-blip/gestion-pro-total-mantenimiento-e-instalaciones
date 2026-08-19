@@ -10,7 +10,7 @@ import {
   Pencil, Trash2, Wind, Sparkles, FileText, Loader2,
   RotateCcw, AlertCircle, Ruler, Wrench, Euro, Layers, Plus, X,
   Spline, Box, Map, Check, Image as ImageIcon, Eye,
-  Undo2, Redo2, PenLine, Hand, Maximize2, Printer, Crosshair,
+  Undo2, Redo2, PenLine, Hand, Maximize2, Printer, Crosshair, Shapes,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -18,9 +18,17 @@ import {
   EQUIPOS_SUELTOS, PRECIOS_REFERENCIA, USOS_CAMARA, SOPORTES_SOPORTE,
   resumenPlano, listaMateriales, totalMateriales, planoComoTexto,
 } from '@/lib/planoCalculos';
-import { dibujarEquipo, nombreEquipo, colorEquipo, radioAproximado, dibujarSoporte } from '@/lib/planoSimbolos';
+import {
+  dibujarEquipo, nombreEquipo, colorEquipo, radioAproximado, dibujarSoporte, altoSoporte,
+} from '@/lib/planoSimbolos';
 import BotonHerramienta from '@/components/BotonHerramienta';
-import PaletaEquipos from '@/components/PaletaEquipos';
+import PaletaEquipos, { SubmenuVariantes } from '@/components/PaletaEquipos';
+import LeyendaPlano, { entradasLeyenda } from '@/components/LeyendaPlano';
+import { varianteDefecto, cortoVariante } from '@/lib/planoVariantes';
+import {
+  DIRECCIONES, puntoDesde, longitudTramo, areaPoligono, perimetroPoligono,
+  estanciaDesdeForma, moverPoligono, dentroDelPoligono,
+} from '@/lib/planoFormas';
 import { useHistorial } from '@/hooks/useHistorial';
 import { informeHtml } from '@/lib/informePlano';
 import { printDocument } from '@/lib/printHelper';
@@ -53,10 +61,13 @@ const METRO_PX_BASE = 40;   // píxeles por metro al zoom normal
 
 const HERRAMIENTAS = [
   { id: 'estancia', nombre: 'Dibujar estancia', icono: Pencil },
+  // Para lo que no es un rectángulo: se va poniendo tramo a tramo con la
+  // medida escrita, que es como se levanta un plano de verdad en obra.
+  { id: 'forma', nombre: 'Forma a medida', icono: Shapes },
   // Estas dos enseñan el símbolo de la máquina de verdad, no un icono
   // cualquiera: así se ve lo que se va a dibujar sin leer.
-  { id: 'maquina', nombre: 'Poner equipo', icono: Wind, equipoDinamico: true },
-  { id: 'exterior', nombre: 'Exterior / condensadora', icono: Wrench, equipo: 'exterior' },
+  { id: 'maquina', nombre: 'Poner equipo', icono: Wind, equipoDinamico: true, submenu: true },
+  { id: 'exterior', nombre: 'Exterior / condensadora', icono: Wrench, equipo: 'exterior', submenu: true },
   { id: 'recorrido', nombre: 'Trazar tubería', icono: Spline },
   { id: 'conducto', nombre: 'Trazar conducto', icono: Map },
   { id: 'mover', nombre: 'Mover / mover el papel', icono: Hand },
@@ -113,6 +124,15 @@ export default function PlanoIA() {
   const [herramienta, setHerramienta] = useState('estancia');
   // Qué equipo se coloca al pulsar con la herramienta "Poner equipo".
   const [equipoElegido, setEquipoElegido] = useState('mural');
+  // Y dentro del equipo, su versión: cassette de 4 o de 2 vías, hacia dónde
+  // abre la puerta de la cámara... Se guarda con cada máquina que se coloca.
+  const [varianteElegida, setVarianteElegida] = useState(() => varianteDefecto('mural'));
+
+  /** Al cambiar de equipo, su versión vuelve a la primera de su submenú. */
+  const elegirEquipo = (tipo) => {
+    setEquipoElegido(tipo);
+    setVarianteElegida(varianteDefecto(tipo));
+  };
 
   // Plantas del edificio. Un chalet o un local de dos alturas no se puede
   // dibujar en una sola hoja: cada planta lleva sus estancias y sus equipos,
@@ -128,7 +148,7 @@ export default function PlanoIA() {
 
   /** Todo lo que se puede deshacer, en un solo objeto. */
   const capturarEstado = () => ({
-    plantas, exterior, recorridos, trazosLibres, cotas,
+    plantas, exterior, recorridos, trazosLibres, cotas, formas,
   });
 
   const aplicarEstado = (e) => {
@@ -138,6 +158,7 @@ export default function PlanoIA() {
     setRecorridos(e.recorridos || []);
     setTrazosLibres(e.trazosLibres || []);
     setCotas(e.cotas || []);
+    setFormas(e.formas || []);
     setSeleccion(null);
   };
 
@@ -231,6 +252,12 @@ export default function PlanoIA() {
   const [grosorLapiz, setGrosorLapiz] = useState(2.5);
   const [tipoLinea, setTipoLinea] = useState('solida');
   // Estancia que se está moviendo con la mano.
+  // Formas levantadas tramo a tramo con la medida puesta a mano.
+  const [formas, setFormas] = useState([]);        // [{id, planta, puntos, cerrada}]
+  const [formaEnCurso, setFormaEnCurso] = useState(null);
+  const [tramoLargo, setTramoLargo] = useState(3);
+  const [tramoDir, setTramoDir] = useState('derecha');
+
   const [moviendo, setMoviendo] = useState(null);
   // Crear estancias escribiendo las medidas, sin tener que acertar con el ratón.
   const [medidas, setMedidas] = useState({ nombre: '', ancho: 4, largo: 3, alto: 2.5 });
@@ -454,17 +481,77 @@ export default function PlanoIA() {
       const activa = e.id === seleccion;
 
       ctx.fillStyle = activa ? 'rgba(37,99,235,0.12)' : 'rgba(100,116,139,0.08)';
-      ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = activa ? '#2563eb' : '#475569';
       ctx.lineWidth = activa ? 3 : 2;
-      ctx.strokeRect(x, y, w, h);
 
+      if (e.poligono?.length >= 3) {
+        // Estancia levantada con la forma a medida: se dibuja su contorno
+        // real, no el rectángulo, y se acota tramo a tramo.
+        ctx.beginPath();
+        e.poligono.forEach((pt, i) => {
+          const px = pt.x * metroPx, py = pt.y * metroPx;
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        });
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        acotarTramos(ctx, e.poligono, metroPx, true);
+      } else {
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeRect(x, y, w, h);
+      }
+
+      // En las estancias acotadas el nombre baja: arriba está la cota de la
+      // pared y si no se montan el uno encima del otro y no se lee ninguno.
+      const yTexto = e.poligono?.length >= 3 ? y + 32 : y + 16;
       ctx.fillStyle = '#0f172a';
       ctx.font = 'bold 12px system-ui, sans-serif';
-      ctx.fillText(e.nombre || 'Estancia', x + 6, y + 16);
+      ctx.fillText(e.nombre || 'Estancia', x + 6, yTexto);
       ctx.fillStyle = '#64748b';
       ctx.font = '11px system-ui, sans-serif';
-      ctx.fillText(`${e.ancho}×${e.alto} m · ${(e.ancho * e.alto).toFixed(1)} m²`, x + 6, y + 30);
+      // Si la estancia viene de una forma acotada manda su superficie medida:
+      // el ancho×alto de la envolvente daría metros que no existen. Ahí se
+      // pone solo el dato, sin más texto: las medidas ya están acotadas pared
+      // por pared y una línea larga se cruza con las cotas y no se lee nada.
+      ctx.fillText(e.area_manual > 0
+        ? `${e.area_manual} m²`
+        : `${e.ancho}×${e.alto} m · ${(e.ancho * e.alto).toFixed(1)} m²`, x + 6, yTexto + 14);
+    }
+
+    // Formas a medida todavía sueltas (aún no convertidas en estancia).
+    for (const fm of [...formas.filter(f2 => f2.planta === planta?.nombre),
+      ...(formaEnCurso && formaEnCurso.planta === planta?.nombre ? [formaEnCurso] : [])]) {
+      const enCurso = fm === formaEnCurso;
+      ctx.strokeStyle = enCurso ? '#2563eb' : (fm.color || '#0f172a');
+      ctx.lineWidth = enCurso ? 2.5 : 2;
+      ctx.setLineDash(enCurso ? [7, 4] : []);
+      ctx.beginPath();
+      fm.puntos.forEach((pt, i) => {
+        const px = pt.x * metroPx, py = pt.y * metroPx;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      });
+      if (fm.cerrada) ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Los vértices, para poder verlos y borrarlos.
+      ctx.fillStyle = enCurso ? '#2563eb' : '#334155';
+      for (const pt of fm.puntos) {
+        ctx.beginPath();
+        ctx.arc(pt.x * metroPx, pt.y * metroPx, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      acotarTramos(ctx, fm.puntos, metroPx, fm.cerrada);
+
+      if (fm.cerrada) {
+        const cx = (fm.puntos.reduce((a2, pt) => a2 + pt.x, 0) / fm.puntos.length) * metroPx;
+        const cy = (fm.puntos.reduce((a2, pt) => a2 + pt.y, 0) / fm.puntos.length) * metroPx;
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 12px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${areaPoligono(fm.puntos)} m²`, cx, cy);
+        ctx.textAlign = 'left';
+      }
     }
 
     // Equipos colocados
@@ -485,12 +572,21 @@ export default function PlanoIA() {
         ctx.setLineDash([]);
       }
 
-      dibujarEquipo(ctx, mq.tipo, x, y, 1, mq.estancia_id && mq.estancia_id === seleccion);
+      dibujarEquipo(ctx, mq.tipo, x, y, 1,
+        mq.estancia_id && mq.estancia_id === seleccion, mq.variante);
 
       ctx.fillStyle = '#475569';
       ctx.font = '9px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(nombreEquipo(mq.tipo), x, y + 26);
+      // Debajo, la versión concreta: hacia dónde abre la puerta, cuántas vías
+      // tiene el cassette... Es lo que se pregunta al mirar el plano.
+      const corto = cortoVariante(mq.tipo, mq.variante);
+      if (corto) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '8.5px system-ui, sans-serif';
+        ctx.fillText(corto, x, y + 36);
+      }
       ctx.textAlign = 'left';
     }
 
@@ -504,7 +600,16 @@ export default function PlanoIA() {
       ctx.fillStyle = colorEquipo(tipoExt);
       ctx.font = 'bold 9px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(resumen.es_refrigeracion ? 'CONDENSADORA' : 'EXTERIOR', x, y + 30);
+      // El rótulo va por DEBAJO del soporte: sobre una bancada o el techo de
+      // la cámara el dibujo baja bastante y el texto se montaba encima.
+      const bajo = y + altoSoporte(soporteExterior) * 15 * 1.1 + 12;
+      ctx.fillText(resumen.es_refrigeracion ? 'CONDENSADORA' : 'EXTERIOR', x, bajo);
+      const montaje = cortoVariante('exterior', soporteExterior);
+      if (montaje) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '8.5px system-ui, sans-serif';
+        ctx.fillText(montaje, x, bajo + 10);
+      }
       ctx.textAlign = 'left';
     }
 
@@ -654,6 +759,7 @@ export default function PlanoIA() {
       origen,
       recorridos, trazando, planta?.nombre, fondo, fondoOpacidad, fondoEscala, fondoDesplaza,
       trazosLibres, dibujandoLibre, cotas, cotaEnCurso, soporteExterior,
+      formas, formaEnCurso,
       // Al cambiar de tamaño, el navegador BORRA el contenido del lienzo:
       // sin esto, al salir de pantalla completa el plano se quedaba en blanco.
       lienzo.w, lienzo.h, metroPx]);
@@ -680,7 +786,14 @@ export default function PlanoIA() {
 
   const estanciaEn = (x, y) =>
     // De atrás hacia delante: si se solapan, gana la dibujada encima.
-    [...estancias].reverse().find(e => x >= e.x && x <= e.x + e.ancho && y >= e.y && y <= e.y + e.alto) || null;
+    // Las que vienen de una forma acotada se comprueban contra su polígono:
+    // en una L, el hueco de la esquina NO es parte de la estancia aunque
+    // caiga dentro del rectángulo que la envuelve.
+    [...estancias].reverse().find(e => (
+      e.poligono?.length >= 3
+        ? dentroDelPoligono(e.poligono, x, y)
+        : x >= e.x && x <= e.x + e.ancho && y >= e.y && y <= e.y + e.alto
+    )) || null;
 
   const onPointerDown = (ev) => {
     ev.currentTarget.setPointerCapture?.(ev.pointerId);
@@ -688,6 +801,20 @@ export default function PlanoIA() {
 
     if (herramienta === 'estancia') {
       setArrastre({ x0: x, y0: y, x1: x, y1: y });
+      return;
+    }
+    if (herramienta === 'forma') {
+      // El primer toque marca por dónde arranca la forma; a partir de ahí
+      // los tramos se ponen con la medida escrita, no arrastrando.
+      if (!formaEnCurso) {
+        setFormaEnCurso({
+          id: nuevoId(), planta: planta?.nombre, puntos: [{ x, y }], cerrada: false,
+          color: colorLapiz, grosor: grosorLapiz,
+        });
+      } else {
+        // Volver a pulsar mueve el punto de arranque, por si se falló al dar.
+        setFormaEnCurso(f => ({ ...f, puntos: [{ x, y }, ...f.puntos.slice(1)] }));
+      }
       return;
     }
     if (herramienta === 'libre') {
@@ -757,7 +884,9 @@ export default function PlanoIA() {
       // no van ligados a la carga de una estancia.
       if (EQUIPOS_SUELTOS.includes(equipoElegido)) {
         antesDeCambiar();
-        setMaquinas(prev => [...prev, { id: nuevoId(), tipo: equipoElegido, x, y }]);
+        setMaquinas(prev => [...prev, {
+          id: nuevoId(), tipo: equipoElegido, variante: varianteElegida, x, y,
+        }]);
         return;
       }
       const est = estanciaEn(x, y);
@@ -766,13 +895,24 @@ export default function PlanoIA() {
       setMaquinas(prev => [
         // Una unidad interior por estancia: si ya había, se sustituye.
         ...prev.filter(m => m.estancia_id !== est.id),
-        { id: nuevoId(), estancia_id: est.id, tipo: equipoElegido, x, y },
+        {
+          id: nuevoId(), estancia_id: est.id, tipo: equipoElegido,
+          variante: varianteElegida, x, y,
+        },
       ]);
       setSeleccion(est.id);
       return;
     }
     if (herramienta === 'borrar') {
-      // Primero lo dibujado a mano y las cotas, que suelen estar encima.
+      // Las formas acotadas se borran por cualquiera de sus vértices.
+      const forma = [...formas].reverse().find(fm => fm.planta === planta?.nombre &&
+        fm.puntos.some(pt => Math.abs(pt.x - x) < 0.4 && Math.abs(pt.y - y) < 0.4));
+      if (forma) {
+        antesDeCambiar();
+        setFormas(prev => prev.filter(fm => fm.id !== forma.id));
+        return;
+      }
+      // Luego lo dibujado a mano y las cotas, que suelen estar encima.
       const trazo = [...trazosLibres].reverse().find(t => t.planta === planta?.nombre &&
         t.puntos.some(pt => Math.abs(pt.x - x) < 0.4 && Math.abs(pt.y - y) < 0.4));
       if (trazo) {
@@ -822,11 +962,17 @@ export default function PlanoIA() {
     const { x, y } = posicionEnMetros(ev);
 
     if (moviendo) {
-      setEstancias(prev => prev.map(e => (
-        e.id === moviendo.id
-          ? { ...e, x: Math.max(0, x - moviendo.dx), y: Math.max(0, y - moviendo.dy) }
-          : e
-      )));
+      setEstancias(prev => prev.map(e => {
+        if (e.id !== moviendo.id) return e;
+        const nx = Math.max(0, x - moviendo.dx);
+        const ny = Math.max(0, y - moviendo.dy);
+        // Si viene de una forma acotada, el contorno se lleva el mismo
+        // desplazamiento: si no, la estancia se movería y su dibujo no.
+        const poligono = e.poligono
+          ? moverPoligono(e.poligono, nx - e.x, ny - e.y)
+          : undefined;
+        return { ...e, x: nx, y: ny, ...(poligono ? { poligono } : {}) };
+      }));
       return;
     }
     if (dibujandoLibre) {
@@ -911,6 +1057,68 @@ export default function PlanoIA() {
   };
 
   /** Guarda el trazado que se estaba dibujando (si tiene al menos dos puntos). */
+  // ── Forma a medida: el plano levantado tramo a tramo ──────────────────────
+  // Se marca el punto de arranque en el lienzo y a partir de ahí cada tramo
+  // se añade escribiendo cuánto mide y hacia dónde va. Nada de estirar con
+  // el dedo y esperar que salga: la medida es la que se pone.
+
+  const anadirTramo = () => {
+    const largo = Number(tramoLargo);
+    if (!(largo > 0)) { toast.error('Pon cuántos metros mide el tramo'); return; }
+    if (!formaEnCurso) { toast.error('Pulsa antes en el plano para marcar por dónde empieza'); return; }
+    setFormaEnCurso(f => ({
+      ...f,
+      puntos: [...f.puntos, puntoDesde(f.puntos[f.puntos.length - 1], largo, tramoDir)],
+    }));
+  };
+
+  const quitarUltimoTramo = () => {
+    setFormaEnCurso(f => {
+      if (!f || f.puntos.length <= 1) return f;
+      return { ...f, puntos: f.puntos.slice(0, -1) };
+    });
+  };
+
+  /** Cierra la forma volviendo al punto de partida. */
+  const cerrarForma = () => {
+    if (!formaEnCurso || formaEnCurso.puntos.length < 3) {
+      toast.error('Hacen falta al menos tres tramos para cerrar una forma');
+      return;
+    }
+    antesDeCambiar();
+    const forma = { ...formaEnCurso, cerrada: true };
+    setFormas(prev => [...prev, forma]);
+    setFormaEnCurso(null);
+    toast.success(`Forma cerrada: ${areaPoligono(forma.puntos)} m²`);
+  };
+
+  /**
+   * Convierte la forma cerrada en una estancia de verdad, con su superficie
+   * medida del polígono. Es lo que hace que una nave en L no se calcule con
+   * los metros de más del rectángulo que la envuelve.
+   */
+  const formaComoEstancia = () => {
+    const f = formaEnCurso && formaEnCurso.puntos.length >= 3
+      ? { ...formaEnCurso, cerrada: true }
+      : [...formas].reverse().find(x => x.planta === planta?.nombre && x.cerrada);
+    if (!f) { toast.error('Cierra antes una forma, o levanta al menos tres tramos'); return; }
+
+    antesDeCambiar();
+    const est = estanciaDesdeForma(f, {
+      id: nuevoId(),
+      nombre: medidas.nombre || `Estancia ${estancias.length + 1}`,
+      altura: Number(medidas.alto) || alturaDefecto,
+      uso: 'salon', orientacion: 'norte', aislamiento: 'normal',
+    });
+    setEstancias(prev => [...prev, est]);
+    // La forma ya está representada por la estancia: se quita para no tener
+    // el mismo contorno dibujado dos veces.
+    setFormas(prev => prev.filter(x => x.id !== f.id));
+    setFormaEnCurso(null);
+    setSeleccion(est.id);
+    toast.success(`Estancia de ${est.area_manual} m² añadida al cálculo`);
+  };
+
   const terminarTrazado = (enCurso) => {
     const t = enCurso || trazando;
     if (!t) return;
@@ -1000,6 +1208,7 @@ export default function PlanoIA() {
     setPlantaActiva(0);
     setExterior(null);
     setTrazosLibres([]); setCotas([]);
+    setFormas([]); setFormaEnCurso(null);
     setSeleccion(null); setSugerenciaIA(null); setErrorIA('');
     historial.limpiar();
   };
@@ -1105,13 +1314,21 @@ export default function PlanoIA() {
     let planoImg = '';
     try { planoImg = canvasRef.current?.toDataURL('image/png') || ''; } catch { /* sin plano */ }
 
+    // La leyenda va con el plano en papel: el que lo recibe no tiene la
+    // aplicación delante para pulsar en un símbolo y ver qué era.
+    const leyenda = entradasLeyenda(
+      plano.maquinas, exterior,
+      resumen.es_refrigeracion ? 'unidad_condensadora' : 'exterior',
+      soporteExterior,
+    ).map(e => ({ ...e, img: simboloComoImagen(e) }));
+
     const html = informeHtml({
       empresa: empresa || {},
       cliente: contacto ? `${contacto.name || ''} ${contacto.surname || ''}`.trim() : '',
       fichas, resumen, lineas: lineasPresupuesto,
       totales: { ...totales, margen, iva },
       recorridos: recorridosRevisados,
-      planoImg, plantas,
+      planoImg, plantas, leyenda,
     });
     await printDocument(html, 'Informe técnico y presupuesto');
   };
@@ -1251,6 +1468,8 @@ export default function PlanoIA() {
                   nombre={h.nombre}
                   icono={h.icono}
                   equipo={h.equipoDinamico ? equipoElegido : h.equipo}
+                  variante={h.equipoDinamico ? varianteElegida : null}
+                  conSubmenu={!!h.submenu}
                   compacto={compacto}
                 />
               ))}
@@ -1296,10 +1515,32 @@ export default function PlanoIA() {
           )}
 
           {/* Paleta de equipos y opciones de dibujo, dentro de la pantalla */}
-          {pantallaCompleta && (herramienta === 'maquina' || herramienta === 'libre') && (
-            <div className="shrink-0 border rounded-lg p-2 bg-slate-50 max-h-32 overflow-y-auto">
+          {pantallaCompleta && ['maquina', 'libre', 'exterior', 'forma'].includes(herramienta) && (
+            <div className={`shrink-0 border rounded-lg p-2 bg-slate-50 overflow-y-auto ${
+              herramienta === 'forma' ? 'max-h-52' : 'max-h-40'
+            }`}>
               {herramienta === 'maquina' && (
-                <PaletaEquipos valor={equipoElegido} onChange={setEquipoElegido} />
+                <PaletaEquipos
+                  valor={equipoElegido} onChange={elegirEquipo}
+                  variante={varianteElegida} onVariante={setVarianteElegida}
+                />
+              )}
+              {/* Submenú de la exterior: cómo va montada. Es lo que cambia el
+                  dibujo del soporte y la línea del presupuesto. */}
+              {herramienta === 'exterior' && (
+                <SubmenuVariantes
+                  tipo="exterior" valor={soporteExterior} onChange={setSoporteExterior}
+                />
+              )}
+              {herramienta === 'forma' && (
+                <PanelTramos
+                  compacto={compacto}
+                  forma={formaEnCurso}
+                  largo={tramoLargo} setLargo={setTramoLargo}
+                  direccion={tramoDir} setDireccion={setTramoDir}
+                  onAnadir={anadirTramo} onQuitar={quitarUltimoTramo}
+                  onCerrar={cerrarForma} onEstancia={formaComoEstancia}
+                />
               )}
               {herramienta === 'libre' && (
                 <div className="flex items-center gap-3 flex-wrap">
@@ -1536,6 +1777,16 @@ export default function PlanoIA() {
                 }}
               />
               </div>
+
+              {/* Leyenda: qué es cada dibujo del plano. Va debajo del lienzo
+                  porque es donde se mira, sin salir de la pantalla de dibujo. */}
+              <LeyendaPlano
+                maquinas={maquinas}
+                exterior={exterior}
+                tipoExterior={resumen.es_refrigeracion ? 'unidad_condensadora' : 'exterior'}
+                soporteExterior={soporteExterior}
+                compacto={compacto}
+              />
             </CardContent>
           </Card>
 
@@ -1561,7 +1812,10 @@ export default function PlanoIA() {
                 <CardTitle className="text-base">Qué equipo pones</CardTitle>
               </CardHeader>
               <CardContent>
-                <PaletaEquipos valor={equipoElegido} onChange={setEquipoElegido} />
+                <PaletaEquipos
+                  valor={equipoElegido} onChange={elegirEquipo}
+                  variante={varianteElegida} onVariante={setVarianteElegida}
+                />
                 <p className="text-[10px] text-slate-400 mt-2">
                   Los de climatización y el evaporador de cámara van dentro de una
                   estancia (una por estancia). Vitrinas, arcones y puertas se ponen
@@ -2309,6 +2563,135 @@ export default function PlanoIA() {
       </Dialog>
     </div>
   );
+}
+
+/**
+ * Escribe la medida de cada tramo encima de su lado.
+ *
+ * Un plano sin cotas no sirve para pedir material ni para replantear en obra:
+ * lo primero que se busca al mirarlo es cuánto mide cada pared.
+ */
+/**
+ * PanelTramos — levantar la forma escribiendo cada medida.
+ *
+ * Se pone cuánto mide el tramo y hacia dónde va, y el punto siguiente sale
+ * exacto. Es la diferencia entre un plano que sirve para pedir material y un
+ * garabato: aquí las cotas son las que se han medido en la obra, no las que
+ * han salido de arrastrar el dedo.
+ */
+function PanelTramos({
+  forma, largo, setLargo, direccion, setDireccion,
+  onAnadir, onQuitar, onCerrar, onEstancia, compacto = false,
+}) {
+  const puntos = forma?.puntos || [];
+  const tramos = Math.max(0, puntos.length - 1);
+
+  return (
+    <div className="space-y-2">
+      {!forma ? (
+        <p className="text-[11px] text-blue-800 bg-blue-50 border border-blue-200 rounded p-1.5">
+          Pulsa en el plano para marcar <strong>por dónde empieza</strong> la forma.
+          A partir de ahí, cada pared se añade con su medida.
+        </p>
+      ) : (
+        <p className="text-[11px] text-slate-500">
+          {tramos} tramo{tramos === 1 ? '' : 's'}
+          {tramos >= 2 && ` · ${perimetroPoligono(puntos, false)} m recorridos`}
+          {tramos >= 2 && ` · cerrada serían ${areaPoligono(puntos)} m²`}
+        </p>
+      )}
+
+      <div className="flex items-end gap-2 flex-wrap">
+        <div>
+          <label className="block text-[10px] text-slate-500 mb-0.5">Mide (m)</label>
+          <Input
+            type="number" step="0.05" min="0" value={largo}
+            onChange={(e) => setLargo(e.target.value)}
+            className="h-9 w-20 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] text-slate-500 mb-0.5">Hacia</label>
+          <div className="grid grid-cols-4 gap-0.5">
+            {DIRECCIONES.map(d => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => setDireccion(d.id)}
+                title={d.nombre}
+                className={`w-8 h-8 rounded border text-sm leading-none ${
+                  direccion === d.id
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                {d.flecha}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Button size="sm" onClick={onAnadir} className="h-9 gap-1 px-2">
+          <Plus className="w-4 h-4" />{compacto ? 'Tramo' : 'Añadir tramo'}
+        </Button>
+        <Button size="sm" variant="outline" onClick={onQuitar}
+          disabled={tramos < 1} className="h-9 gap-1 px-2">
+          <Undo2 className="w-4 h-4" />Quitar
+        </Button>
+        <Button size="sm" variant="outline" onClick={onCerrar}
+          disabled={tramos < 2} className="h-9 gap-1 px-2">
+          <Check className="w-4 h-4" />{compacto ? 'Cerrar' : 'Cerrar forma'}
+        </Button>
+        <Button size="sm" onClick={onEstancia} disabled={tramos < 2}
+          className="h-9 gap-1 px-2 bg-green-600 hover:bg-green-700">
+          <Shapes className="w-4 h-4" />{compacto ? 'Estancia' : 'Usarla como estancia'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * El símbolo de un equipo convertido en imagen, para meterlo en el informe.
+ * Se pinta en un lienzo suelto (no el del plano) para no ensuciar el dibujo.
+ */
+function simboloComoImagen(entrada) {
+  try {
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 48;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    const cy = c.height / 2 - (entrada.soporte ? 4 : 0);
+    if (entrada.soporte) dibujarSoporte(ctx, entrada.soporte, c.width / 2, cy, 0.7);
+    dibujarEquipo(ctx, entrada.tipo, c.width / 2, cy, 0.7, false, entrada.variante);
+    return c.toDataURL('image/png');
+  } catch {
+    return '';   // sin dibujo, la leyenda sale igual con el nombre
+  }
+}
+
+function acotarTramos(ctx, puntos, metroPx, cerrada) {
+  if (!puntos || puntos.length < 2) return;
+  ctx.save();
+  ctx.font = 'bold 10px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const hasta = cerrada ? puntos.length : puntos.length - 1;
+  for (let i = 0; i < hasta; i++) {
+    const a = puntos[i];
+    const b = puntos[(i + 1) % puntos.length];
+    const largo = longitudTramo(a, b);
+    if (largo < 0.3) continue;   // tramos diminutos: la cota no cabe
+    const mx = ((a.x + b.x) / 2) * metroPx;
+    const my = ((a.y + b.y) / 2) * metroPx;
+    const texto = `${largo} m`;
+    const ancho = ctx.measureText(texto).width + 6;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillRect(mx - ancho / 2, my - 7, ancho, 14);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText(texto, mx, my);
+  }
+  ctx.restore();
 }
 
 function Fila({ etiqueta, valor }) {

@@ -27,10 +27,11 @@ const euros = (n) => `${(Number(n) || 0).toFixed(2)} €`;
  * @param {Array}  datos.recorridos  recorridos revisados
  * @param {string} datos.planoImg    dataURL del dibujo (opcional)
  * @param {Array}  datos.plantas
+ * @param {Array}  datos.leyenda     símbolos usados en el plano, con su imagen
  */
 export function informeHtml({
   empresa = {}, cliente = '', fichas = [], resumen = {}, lineas = [],
-  totales = {}, recorridos = [], planoImg = '', plantas = [],
+  totales = {}, recorridos = [], planoImg = '', plantas = [], leyenda = [],
 }) {
   const hoy = new Date().toLocaleDateString('es-ES');
 
@@ -161,8 +162,26 @@ export function informeHtml({
       <tr class="final"><td>TOTAL</td><td class="num">${euros(totales.total)}</td></tr>
     </table>` : '';
 
-  const dibujo = planoImg
-    ? `<h2>Plano</h2><div class="plano"><img src="${planoImg}" alt="Plano de la instalación"></div>`
+  // La leyenda va pegada al plano: quien lo recibe en papel no tiene la
+  // aplicación delante para preguntarle qué es cada dibujo.
+  const tablaLeyenda = leyenda.length ? `
+    <div class="leyenda">
+      ${leyenda.map(e => `
+        <div class="simbolo">
+          ${e.img ? `<img src="${e.img}" alt="">` : ''}
+          <div>
+            <b>${escapar(e.nombre)}${e.cantidad > 1 ? ` ×${e.cantidad}` : ''}</b>
+            ${e.detalle ? `<div class="detalle">${escapar(e.detalle)}</div>` : ''}
+          </div>
+        </div>`).join('')}
+    </div>` : '';
+
+  const dibujo = planoImg || tablaLeyenda
+    ? `<h2>Plano</h2>
+       <div class="plano">
+         ${planoImg ? `<img src="${planoImg}" alt="Plano de la instalación">` : ''}
+         ${tablaLeyenda}
+       </div>`
     : '';
 
   return `<!DOCTYPE html>
@@ -226,6 +245,15 @@ export function informeHtml({
 
   .plano { text-align: center; page-break-inside: avoid; }
   .plano img { max-width: 100%; border: 1px solid #cbd5e1; }
+
+  .leyenda {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 12px;
+    margin-top: 8px; text-align: left; page-break-inside: avoid;
+  }
+  .leyenda .simbolo { display: flex; align-items: center; gap: 6px; }
+  .leyenda .simbolo img { width: 42px; height: 32px; border: none; object-fit: contain; }
+  .leyenda b { font-size: 9pt; }
+  .leyenda .detalle { font-size: 8pt; color: #64748b; }
 
   .pie {
     margin-top: 22px; padding-top: 8px; border-top: 1px solid #cbd5e1;

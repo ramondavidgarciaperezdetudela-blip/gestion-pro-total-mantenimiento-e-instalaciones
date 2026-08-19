@@ -95,6 +95,7 @@ export const EQUIPOS_INTERIORES = [
 export const SOPORTES_SOPORTE = {
   pared: { nombre: 'Soporte de escuadras a pared, montado', clave: 'soporte_pared' },
   suelo: { nombre: 'Tacos antivibratorios y apoyo en suelo', clave: 'soporte_suelo' },
+  techo_camara: { nombre: 'Bastidor sobre el techo de la cámara', clave: 'soporte_techo_camara' },
   bancada: { nombre: 'Bancada para unidad exterior', clave: 'soporte_bancada' },
   tejado: { nombre: 'Estructura elevada en cubierta', clave: 'soporte_tejado' },
   ninguno: { nombre: 'Sin soporte', clave: null },
@@ -103,8 +104,18 @@ export const SOPORTES_SOPORTE = {
 /** Equipos sueltos: se presupuestan por unidad, no por la carga de la sala. */
 export const EQUIPOS_SUELTOS = ['vitrina', 'arcon', 'camara_puerta', 'control_temperatura'];
 
-/** Superficie de una estancia rectangular, en m². */
+/**
+ * Superficie de una estancia, en m².
+ *
+ * Lo normal es un rectángulo: ancho por largo. Pero cuando la estancia se ha
+ * levantado con la herramienta de forma acotada (una L, un pasillo con un
+ * recodo...), la superficie real la trae ya calculada del polígono y es esa
+ * la que manda: el rectángulo que la envuelve sobraría metros y el cálculo
+ * saldría con más potencia de la que hace falta.
+ */
 export function areaEstancia(estancia) {
+  const medida = Number(estancia?.area_manual);
+  if (medida > 0) return redondear(medida, 2);
   const ancho = Number(estancia?.ancho) || 0;
   const alto = Number(estancia?.alto) || 0;
   return redondear(ancho * alto, 2);
@@ -280,6 +291,9 @@ export const PRECIOS_EXTRAS = {
   soporte_suelo: 40,
   soporte_bancada: 145,
   soporte_tejado: 220,
+  // Encima del techo de la cámara hace falta bastidor que reparta el peso
+  // sobre los perfiles del panel: no se puede apoyar en el panel a pelo.
+  soporte_techo_camara: 175,
 };
 
 /**
