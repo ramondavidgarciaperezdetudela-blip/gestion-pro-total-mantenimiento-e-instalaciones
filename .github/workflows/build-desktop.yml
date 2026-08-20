@@ -30,11 +30,19 @@ jobs:
           tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest') }}
           name: ${{ (inputs.version != '' || startsWith(github.ref, 'refs/tags/')) && format('Gestión Pro Total {0}', inputs.version != '' && inputs.version || github.ref_name) || 'Gestión Pro Total — Instaladores de escritorio' }}
           body: |
-            Instaladores de escritorio generados automáticamente.
+            Gestión Pro Total — descargas de esta versión.
 
-            - Windows: `*-Windows-Setup.exe` (instalador con desinstalador) o portable.
-            - macOS: `*-Mac.dmg`.
-            - Linux / Chromebook (contenedor Linux): `*-Linux.AppImage` o `*-Linux.deb`.
+            **Móvil (Android)**
+            - `gestion-pro-total.apk` — se instala encima de la versión anterior sin desinstalar.
+
+            **Escritorio**
+            - Windows: `*-Windows-Instalador.exe` (instalador con desinstalador)
+              o `*-Windows-Portable.exe` (un solo fichero, sin instalar).
+            - macOS: `*-Mac.dmg`. Al no estar firmado con certificado de Apple, la
+              primera vez hay que abrirlo con botón derecho → Abrir.
+            - Linux y contenedor Linux de Chromebook: `*-Linux.AppImage` (portable,
+              hay que darle permiso de ejecución) o `*-Linux.deb` (se instala con
+              `sudo dpkg -i` y se desinstala con `apt remove`).
           make_latest: ${{ inputs.version != '' || startsWith(github.ref, 'refs/tags/') }}
 
   # 2) Compila en cada sistema operativo y sube los instaladores a la Release.
