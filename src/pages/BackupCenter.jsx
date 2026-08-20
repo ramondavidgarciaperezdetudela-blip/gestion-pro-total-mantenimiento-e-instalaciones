@@ -15,7 +15,7 @@ import {
   abrirCarpetaCopias, leerDestino, guardarDestino, DESTINOS_MOVIL,
   SUBCARPETA_POR_DEFECTO, limpiarCarpeta, compartirCopia, sePuedeCompartir,
   leerCarpetaPC, guardarCarpetaPC, elegirCarpetaPC,
-  listarCarpetasMovil, crearCarpetaMovil,
+  listarCarpetasMovil, crearCarpetaMovil, elegirCarpetaMovil,
 } from '@/lib/guardarCopia';
 
 const ALL_ENTITIES = [
@@ -138,6 +138,23 @@ export default function BackupCenter() {
   const [errorCarpeta, setErrorCarpeta] = useState('');
   const [ultimaCopia, setUltimaCopia] = useState(null);
   const [compartirError, setCompartirError] = useState('');
+  // En el móvil, al terminar la copia se abre el cuadro del sistema para
+  // decir dónde va. Es lo único que Android permite sin pelearse con los
+  // permisos: la aplicación no puede escribir donde quiera, pero el usuario
+  // sí puede mandar el fichero donde quiera.
+  const [preguntarDonde, setPreguntarDonde] = useState(() => {
+    try { return localStorage.getItem('gpt_copias_preguntar') !== 'no'; } catch { return true; }
+  });
+  const cambiarPreguntarDonde = (valor) => {
+    setPreguntarDonde(valor);
+    try { localStorage.setItem('gpt_copias_preguntar', valor ? 'si' : 'no'); } catch { /* sin guardar */ }
+  };
+
+  /** Abre el cuadro del sistema para elegir dónde dejar la copia. */
+  const elegirDondeDejarla = async (copia) => {
+    const r = await elegirCarpetaMovil({ uri: copia.uri, nombre: copia.nombre });
+    if (!r.ok && r.motivo) setCompartirError(r.motivo);
+  };
 
   const refrescarCarpeta = React.useCallback(async (ruta) => {
     const r = await listarCopias(ruta !== undefined ? ruta : carpetaPC);
@@ -258,7 +275,9 @@ export default function BackupCenter() {
       return;   // sin fichero no hay copia: no se apunta en el historial
     }
 
-    setUltimaCopia({ ...guardado, nombre: fileName, contenido });
+    const copia = { ...guardado, nombre: fileName, contenido };
+    setUltimaCopia(copia);
+    setCompartirError('');
     if (guardado.entorno === 'escritorio') refrescarCarpeta();
 
     // Guardar en historial
@@ -284,6 +303,13 @@ export default function BackupCenter() {
     setProgress(`✅ Copia completada: ${totalExported.toLocaleString()} registros en ${entitiesToBackup.length} secciones`);
     setLoading(false);
     setTimeout(() => { setProgress(''); setProgressPct(0); }, 4000);
+
+    // El fichero YA está escrito. Ahora se pregunta dónde quiere dejarlo, con
+    // el cuadro del sistema. Si lo cierra sin elegir, la copia sigue estando
+    // donde se escribió: no se pierde por cancelar.
+    if (guardado.entorno === 'movil' && preguntarDonde && guardado.uri) {
+      elegirDondeDejarla(copia);
+    }
   };
 
   // ─── RESTAURAR BACKUP ────────────────────────────────────────────────────
@@ -512,7 +538,14 @@ export default function BackupCenter() {
                     )}
                     {/* Sacar la copia del aparato es media copia de seguridad:
                         si se pierde el móvil, se pierde lo que hay dentro. */}
-                    {sePuedeCompartir() && (
+                    {ultimaCopia.entorno === 'movil' && ultimaCopia.uri && (
+                      <button
+                        onClick={() => elegirDondeDejarla(ultimaCopia)}
+                        className="text-blue-700 hover:underline font-medium">
+                        Elegir otra carpeta o enviarla a Drive
+                      </button>
+                    )}
+                    {ultimaCopia.entorno !== 'movil' && sePuedeCompartir() && (
                       <button
                         onClick={async () => {
                           const r = await compartirCopia({
@@ -543,6 +576,8 @@ export default function BackupCenter() {
             destino={destinoMovil}
             onDestino={cambiarDestino}
             onAbrir={() => abrirCarpetaCopias(carpetaPC)}
+            preguntarDonde={preguntarDonde}
+            onPreguntarDonde={cambiarPreguntarDonde}
           />
 
           {/* Selección de secciones */}
@@ -957,6 +992,7 @@ export default function BackupCenter() {
 function DondeSeGuarda({
   entorno, carpeta, destino, onDestino, onAbrir,
   carpetaPropia, errorCarpeta, onElegir, onRestablecer,
+  preguntarDonde, onPreguntarDonde,
 }) {
   if (entorno === 'escritorio') {
     return (
@@ -1065,6 +1101,25 @@ function DondeSeGuarda({
           </div>
 
           <ExploradorCarpetas destino={destino} onDestino={onDestino} />
+
+          <label className="flex items-start gap-2 text-sm text-gray-700 bg-blue-50 border border-blue-200 rounded-lg p-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={preguntarDonde}
+              onChange={(e) => onPreguntarDonde(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <b>Preguntarme dónde dejarla al terminar</b>
+              <span className="block text-[11px] text-gray-600 leading-snug mt-0.5">
+                Al acabar la copia se abre el cuadro de Android para que elijas la carpeta:
+                Archivos, Drive, WhatsApp, correo… Es la forma segura de dejarla donde tú
+                quieras, porque Android no deja que la aplicación escriba en cualquier sitio
+                por su cuenta pero sí te deja a ti mandar el fichero donde quieras.
+                El fichero se guarda igual antes de preguntar: si cierras el cuadro, no se pierde.
+              </span>
+            </span>
+          </label>
 
           <p className="text-[11px] text-gray-500">
             Después de hacer la copia se enseña la ruta exacta del fichero. Si el

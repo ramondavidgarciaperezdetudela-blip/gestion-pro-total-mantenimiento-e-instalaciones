@@ -264,13 +264,13 @@ async function guardarEnMovil({ nombre, contenido, destino, bytes }) {
       } catch { /* en Android moderno no hace falta y el método puede no existir */ }
     }
     const uri = await escribir(elegido);
-    return { ok: true, entorno: 'movil', ruta: decodeURI(uri), carpeta: ruta, bytes };
+    return { ok: true, entorno: 'movil', ruta: decodeURI(uri), uri, carpeta: ruta, bytes };
   } catch (err) {
     // Segundo intento donde siempre se puede escribir, avisando del cambio.
     try {
       const uri = await escribir('External');
       return {
-        ok: true, entorno: 'movil', ruta: decodeURI(uri), carpeta: ruta, bytes,
+        ok: true, entorno: 'movil', ruta: decodeURI(uri), uri, carpeta: ruta, bytes,
         aviso: `No se pudo guardar en ${nombreDestino(elegido)} (${err?.message || 'permiso denegado'}). `
           + 'La copia está en el almacenamiento de la aplicación. Ojo: esa carpeta se borra si desinstalas la aplicación.',
       };
@@ -280,6 +280,43 @@ async function guardarEnMovil({ nombre, contenido, destino, bytes }) {
         error: `No se pudo guardar el fichero: ${err2?.message || err?.message || 'error desconocido'}`,
       };
     }
+  }
+}
+
+/**
+ * Abre el cuadro del sistema para decir dónde va la copia.
+ *
+ * Es lo que de verdad resuelve el lío de las carpetas en Android. El sistema
+ * restringe dónde puede escribir una aplicación por su cuenta, pero NO
+ * restringe lo que el usuario elige a mano: al abrir este cuadro se puede
+ * mandar la copia a "Archivos" (y ahí elegir la carpeta que sea), a Drive, a
+ * WhatsApp o al correo, sin permisos raros y sin que Android se queje.
+ *
+ * Se llama con el fichero YA escrito: si el usuario cierra el cuadro sin
+ * elegir nada, la copia sigue guardada donde estaba. Nunca se pierde por
+ * cancelar.
+ *
+ * @param {string} uri  file:// del fichero ya escrito
+ */
+export async function elegirCarpetaMovil({ uri, nombre }) {
+  try {
+    const { Share } = await import('@capacitor/share');
+    const puede = await Share.canShare();
+    if (!puede?.value) {
+      return { ok: false, motivo: 'Este teléfono no permite elegir carpeta desde la aplicación. La copia está guardada donde indica la ruta de arriba.' };
+    }
+    await Share.share({
+      title: nombre,
+      text: `Copia de seguridad de Gestión Pro Total (${nombre})`,
+      files: [uri],
+      dialogTitle: 'Guardar la copia de seguridad en…',
+    });
+    return { ok: true };
+  } catch (err) {
+    // Cerrar el cuadro sin elegir no es un fallo que haya que enseñar.
+    const m = String(err?.message || '');
+    if (/cancel/i.test(m) || err?.name === 'AbortError') return { ok: false, motivo: null };
+    return { ok: false, motivo: `No se pudo abrir el cuadro para elegir carpeta: ${m || 'error desconocido'}` };
   }
 }
 
