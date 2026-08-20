@@ -17,9 +17,11 @@ const EVENTS = [
 // pide "guarda esto" y recibe la ruta real donde ha quedado.
 contextBridge.exposeInMainWorld('gptCopias', {
   disponible: true,
-  guardar: (nombre, contenido) => ipcRenderer.invoke('gpt-guardar-copia', { nombre, contenido }),
-  carpeta: () => ipcRenderer.invoke('gpt-carpeta-copias'),
-  abrirCarpeta: () => ipcRenderer.invoke('gpt-abrir-carpeta-copias'),
+  guardar: (nombre, contenido, carpeta) =>
+    ipcRenderer.invoke('gpt-guardar-copia', { nombre, contenido, carpeta }),
+  carpeta: (elegida) => ipcRenderer.invoke('gpt-carpeta-copias', elegida),
+  abrirCarpeta: (elegida) => ipcRenderer.invoke('gpt-abrir-carpeta-copias', elegida),
+  elegirCarpeta: () => ipcRenderer.invoke('gpt-elegir-carpeta-copias'),
 });
 
 contextBridge.exposeInMainWorld('gptUpdater', {

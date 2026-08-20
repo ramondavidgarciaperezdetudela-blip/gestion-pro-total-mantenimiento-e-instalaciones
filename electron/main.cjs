@@ -1,6 +1,6 @@
 // Proceso principal de Electron para Gestión Pro Total (escritorio).
 // Carga la aplicación web ya compilada (carpeta dist) en una ventana nativa.
-const { app, BrowserWindow, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -102,8 +102,25 @@ function sePuedeEscribir(dir) {
   }
 }
 
-/** La carpeta de copias que toque, ya creada y comprobada. */
-function carpetaDeCopias() {
+/**
+ * La carpeta de copias que toque, ya creada y comprobada.
+ *
+ * Manda la que haya elegido el usuario. Si no ha elegido ninguna (o la que
+ * eligió ya no vale: disco desconectado, carpeta borrada, USB fuera), se usa
+ * la de junto al programa, y si esa tampoco admite escritura, Documentos.
+ * Nunca se deja de guardar por no poder usar la carpeta preferida.
+ */
+function carpetaDeCopias(elegida) {
+  if (elegida) {
+    if (sePuedeEscribir(elegida)) return { ruta: elegida, alternativa: false, propia: true };
+    // La eligió el usuario y ya no sirve: hay que decirlo, no cambiar a
+    // escondidas y que se pase medio año haciendo copias en otro sitio.
+    const respaldoPropio = path.join(carpetaDelPrograma(), 'Copias de seguridad');
+    if (sePuedeEscribir(respaldoPropio)) {
+      return { ruta: respaldoPropio, alternativa: true, perdida: elegida };
+    }
+  }
+
   const preferida = path.join(carpetaDelPrograma(), 'Copias de seguridad');
   if (sePuedeEscribir(preferida)) return { ruta: preferida, alternativa: false };
 
@@ -116,22 +133,46 @@ function carpetaDeCopias() {
   return { ruta: ultimo, alternativa: true };
 }
 
-ipcMain.handle('gpt-guardar-copia', async (_evt, { nombre, contenido }) => {
+ipcMain.handle('gpt-guardar-copia', async (_evt, { nombre, contenido, carpeta }) => {
   try {
-    const { ruta, alternativa } = carpetaDeCopias();
+    const { ruta, alternativa, perdida } = carpetaDeCopias(carpeta);
     const fichero = path.join(ruta, String(nombre || 'copia.json').replace(/[/\\]/g, '_'));
     fs.writeFileSync(fichero, contenido, 'utf8');
     const { size } = fs.statSync(fichero);
-    return { ok: true, ruta: fichero, carpeta: ruta, bytes: size, alternativa };
+    return { ok: true, ruta: fichero, carpeta: ruta, bytes: size, alternativa, perdida };
   } catch (err) {
     return { ok: false, error: err?.message || 'No se pudo escribir el fichero' };
   }
 });
 
-/** Dónde van a ir las copias, para poder enseñarlo antes de hacer ninguna. */
-ipcMain.handle('gpt-carpeta-copias', async () => {
+/**
+ * Abre el selector de carpetas del sistema para elegir dónde van las copias.
+ * Se comprueba que se pueda escribir ANTES de darla por buena: no vale
+ * descubrirlo el día que haga falta la copia.
+ */
+ipcMain.handle('gpt-elegir-carpeta-copias', async () => {
   try {
-    const { ruta, alternativa } = carpetaDeCopias();
+    const ventana = BrowserWindow.getAllWindows()[0];
+    const r = await dialog.showOpenDialog(ventana, {
+      title: 'Elige dónde guardar las copias de seguridad',
+      properties: ['openDirectory', 'createDirectory'],
+      buttonLabel: 'Guardar aquí las copias',
+    });
+    if (r.canceled || !r.filePaths?.length) return { ok: false, cancelado: true };
+    const elegida = r.filePaths[0];
+    if (!sePuedeEscribir(elegida)) {
+      return { ok: false, error: 'En esa carpeta no se puede escribir. Elige otra o cámbiale los permisos.' };
+    }
+    return { ok: true, carpeta: elegida };
+  } catch (err) {
+    return { ok: false, error: err?.message || 'No se pudo abrir el selector de carpetas' };
+  }
+});
+
+/** Dónde van a ir las copias, para poder enseñarlo antes de hacer ninguna. */
+ipcMain.handle('gpt-carpeta-copias', async (_evt, elegida) => {
+  try {
+    const { ruta, alternativa, propia, perdida } = carpetaDeCopias(elegida);
     let copias = [];
     try {
       copias = fs.readdirSync(ruta)
@@ -142,16 +183,16 @@ ipcMain.handle('gpt-carpeta-copias', async () => {
         })
         .sort((a, b) => b.fecha.localeCompare(a.fecha));
     } catch { /* carpeta recién creada */ }
-    return { ok: true, carpeta: ruta, alternativa, copias };
+    return { ok: true, carpeta: ruta, alternativa, propia, perdida, copias };
   } catch (err) {
     return { ok: false, error: err?.message || 'No se pudo leer la carpeta' };
   }
 });
 
 /** Abre la carpeta de copias en el explorador de archivos del sistema. */
-ipcMain.handle('gpt-abrir-carpeta-copias', async () => {
+ipcMain.handle('gpt-abrir-carpeta-copias', async (_evt, elegida) => {
   try {
-    const { ruta } = carpetaDeCopias();
+    const { ruta } = carpetaDeCopias(elegida);
     await shell.openPath(ruta);
     return { ok: true, carpeta: ruta };
   } catch (err) {

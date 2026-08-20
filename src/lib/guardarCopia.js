@@ -45,6 +45,7 @@ export const DESTINOS_MOVIL = [
 
 export const SUBCARPETA_POR_DEFECTO = 'Copias de seguridad';
 const CLAVE_DESTINO = 'gpt_copias_destino';
+const CLAVE_CARPETA_PC = 'gpt_copias_carpeta_pc';
 
 /** Preferencia guardada: dónde quiere el usuario sus copias en el móvil. */
 export function leerDestino(almacen = globalThis.localStorage) {
@@ -70,6 +71,28 @@ export function guardarDestino(destino, almacen = globalThis.localStorage) {
   return limpio;
 }
 
+/** Carpeta elegida a mano en el ordenador (vacío = la del programa). */
+export function leerCarpetaPC(almacen = globalThis.localStorage) {
+  try { return almacen?.getItem(CLAVE_CARPETA_PC) || ''; } catch { return ''; }
+}
+
+export function guardarCarpetaPC(ruta, almacen = globalThis.localStorage) {
+  try {
+    if (ruta) almacen?.setItem(CLAVE_CARPETA_PC, ruta);
+    else almacen?.removeItem(CLAVE_CARPETA_PC);
+  } catch { /* sin guardar */ }
+  return ruta || '';
+}
+
+/**
+ * Abre el selector de carpetas del sistema (solo en el programa de escritorio).
+ * @returns {Promise<{ok:boolean, carpeta?:string, cancelado?:boolean, error?:string}>}
+ */
+export async function elegirCarpetaPC(win = globalThis.window) {
+  if (detectarEntorno(win) !== 'escritorio') return { ok: false, error: 'Solo en el programa de escritorio' };
+  return win.gptCopias.elegirCarpeta();
+}
+
 /**
  * Deja el nombre de una carpeta en algo que Android acepte.
  * Se quitan las barras (que crearían carpetas de más sin querer) y los
@@ -90,11 +113,65 @@ export function nombreCopia(fecha = new Date()) {
     + `_${dos(fecha.getHours())}-${dos(fecha.getMinutes())}.json`;
 }
 
-/** Ruta relativa dentro del directorio elegido. */
+/**
+ * Ruta relativa dentro del directorio elegido.
+ * La subcarpeta puede llevar varios niveles ("Copias/2026") porque en el móvil
+ * se navega por las carpetas: cada nivel se limpia por separado, para que un
+ * nombre raro no se coma la barra ni cree carpetas de más.
+ */
 export function rutaRelativa(subcarpeta, nombre) {
-  const carpeta = limpiarCarpeta(subcarpeta);
+  const carpeta = String(subcarpeta ?? '')
+    .split('/')
+    .map(limpiarCarpeta)
+    .filter(Boolean)
+    .join('/');
   const fichero = String(nombre || 'copia.json').replace(/[/\\]/g, '_');
   return carpeta ? `${carpeta}/${fichero}` : fichero;
+}
+
+/**
+ * Lista las carpetas que hay dentro de una ruta del móvil, para poder
+ * navegarlas y elegir dónde van las copias. En Android no hay selector de
+ * carpetas del sistema como en el ordenador, así que se hace aquí dentro.
+ *
+ * @returns {Promise<{ok:boolean, carpetas?:string[], error?:string}>}
+ */
+export async function listarCarpetasMovil(directorio, ruta = '') {
+  try {
+    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+    const dir = Directory[directorio] ? directorio : 'Documents';
+    const { files } = await Filesystem.readdir({
+      path: rutaRelativa(ruta, '').replace(/\/$/, ''),
+      directory: Directory[dir],
+    });
+    const carpetas = (files || [])
+      .filter(f => (typeof f === 'object' ? f.type === 'directory' : true))
+      .map(f => (typeof f === 'object' ? f.name : f))
+      .filter(n => !String(n).startsWith('.'))
+      .sort((a, b) => String(a).localeCompare(String(b), 'es'));
+    return { ok: true, carpetas };
+  } catch (err) {
+    return { ok: false, error: err?.message || 'No se pudo leer esa carpeta', carpetas: [] };
+  }
+}
+
+/** Crea una carpeta nueva dentro del móvil, para poder elegirla. */
+export async function crearCarpetaMovil(directorio, ruta, nombre) {
+  const limpio = limpiarCarpeta(nombre);
+  if (!limpio) return { ok: false, error: 'Pon un nombre para la carpeta' };
+  try {
+    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+    const dir = Directory[directorio] ? directorio : 'Documents';
+    const destino = [ruta, limpio].filter(Boolean).join('/');
+    await Filesystem.mkdir({
+      path: rutaRelativa(destino, '').replace(/\/$/, ''),
+      directory: Directory[dir],
+      recursive: true,
+    });
+    return { ok: true, carpeta: limpio };
+  } catch (err) {
+    return { ok: false, error: err?.message || 'No se pudo crear la carpeta' };
+  }
 }
 
 /**
@@ -114,19 +191,23 @@ export function detectarEntorno(win = globalThis.window) {
  *                    bytes?:number, aviso?:string, error?:string}>}
  */
 export async function guardarCopiaSeguridad({
-  nombre, contenido, destino, win = globalThis.window,
+  nombre, contenido, destino, carpetaPC, win = globalThis.window,
 }) {
   const entorno = detectarEntorno(win);
   const bytes = new TextEncoder().encode(contenido).length;
 
   if (entorno === 'escritorio') {
-    const r = await win.gptCopias.guardar(nombre, contenido);
+    const r = await win.gptCopias.guardar(nombre, contenido, carpetaPC || undefined);
     if (!r?.ok) return { ok: false, entorno, error: r?.error || 'No se pudo escribir el fichero' };
     return {
       ok: true, entorno, ruta: r.ruta, carpeta: r.carpeta, bytes: r.bytes ?? bytes,
-      aviso: r.alternativa
-        ? 'La carpeta del programa no admitía escritura, así que la copia se ha guardado en Documentos.'
-        : undefined,
+      aviso: r.perdida
+        ? `La carpeta que elegiste (${r.perdida}) ya no está disponible —disco desconectado, `
+          + 'carpeta borrada o sin permisos—, así que la copia se ha guardado junto al programa. '
+          + 'Vuelve a elegir carpeta cuando puedas.'
+        : r.alternativa
+          ? 'La carpeta del programa no admitía escritura, así que la copia se ha guardado en Documentos.'
+          : undefined,
     };
   }
 
@@ -243,14 +324,14 @@ export function nombreDestino(id) {
 }
 
 /** Copias ya guardadas (solo en escritorio, que es donde se pueden listar). */
-export async function listarCopias(win = globalThis.window) {
+export async function listarCopias(carpetaPC, win = globalThis.window) {
   if (detectarEntorno(win) !== 'escritorio') return null;
-  const r = await win.gptCopias.carpeta();
+  const r = await win.gptCopias.carpeta(carpetaPC || undefined);
   return r?.ok ? r : null;
 }
 
 /** Abre la carpeta de copias en el explorador (solo escritorio). */
-export async function abrirCarpetaCopias(win = globalThis.window) {
+export async function abrirCarpetaCopias(carpetaPC, win = globalThis.window) {
   if (detectarEntorno(win) !== 'escritorio') return null;
-  return win.gptCopias.abrirCarpeta();
+  return win.gptCopias.abrirCarpeta(carpetaPC || undefined);
 }

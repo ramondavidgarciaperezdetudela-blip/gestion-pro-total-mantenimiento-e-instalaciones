@@ -14,6 +14,8 @@ import {
   guardarCopiaSeguridad, detectarEntorno, nombreCopia, listarCopias,
   abrirCarpetaCopias, leerDestino, guardarDestino, DESTINOS_MOVIL,
   SUBCARPETA_POR_DEFECTO, limpiarCarpeta, compartirCopia, sePuedeCompartir,
+  leerCarpetaPC, guardarCarpetaPC, elegirCarpetaPC,
+  listarCarpetasMovil, crearCarpetaMovil,
 } from '@/lib/guardarCopia';
 
 const ALL_ENTITIES = [
@@ -132,15 +134,36 @@ export default function BackupCenter() {
   const entornoCopias = detectarEntorno();
   const [destinoMovil, setDestinoMovil] = useState(() => leerDestino());
   const [carpetaEscritorio, setCarpetaEscritorio] = useState(null);
+  const [carpetaPC, setCarpetaPC] = useState(() => leerCarpetaPC());
+  const [errorCarpeta, setErrorCarpeta] = useState('');
   const [ultimaCopia, setUltimaCopia] = useState(null);
   const [compartirError, setCompartirError] = useState('');
 
-  const refrescarCarpeta = React.useCallback(async () => {
-    const r = await listarCopias();
+  const refrescarCarpeta = React.useCallback(async (ruta) => {
+    const r = await listarCopias(ruta !== undefined ? ruta : carpetaPC);
     if (r) setCarpetaEscritorio(r);
-  }, []);
+  }, [carpetaPC]);
 
   useEffect(() => { refrescarCarpeta(); }, [refrescarCarpeta]);
+
+  /** Abre el selector de carpetas del sistema y se queda con la elegida. */
+  const elegirCarpetaDelPC = async () => {
+    setErrorCarpeta('');
+    const r = await elegirCarpetaPC();
+    if (r?.cancelado) return;
+    if (!r?.ok) { setErrorCarpeta(r?.error || 'No se pudo elegir la carpeta'); return; }
+    guardarCarpetaPC(r.carpeta);
+    setCarpetaPC(r.carpeta);
+    refrescarCarpeta(r.carpeta);
+  };
+
+  /** Vuelve a la carpeta de al lado del programa. */
+  const volverACarpetaDelPrograma = () => {
+    guardarCarpetaPC('');
+    setCarpetaPC('');
+    setErrorCarpeta('');
+    refrescarCarpeta('');
+  };
 
   const cambiarDestino = (cambio) => {
     setDestinoMovil(prev => guardarDestino({ ...prev, ...cambio }));
@@ -224,7 +247,7 @@ export default function BackupCenter() {
     // pulsaba un enlace de descarga y se daba por hecho que había salido: en
     // el móvil no salía nunca y la pantalla decía "copia completada" igual.
     const guardado = await guardarCopiaSeguridad({
-      nombre: fileName, contenido, destino: destinoMovil,
+      nombre: fileName, contenido, destino: destinoMovil, carpetaPC,
     });
 
     if (!guardado.ok) {
@@ -427,7 +450,9 @@ export default function BackupCenter() {
                 <div className="flex-1">
                   <h2 className="text-lg font-bold text-gray-900">Copia de seguridad completa</h2>
                   <p className="text-sm text-gray-600 mt-0.5">
-                    Genera un archivo JSON con <strong>todos tus datos</strong>: clientes, facturas, SATs, presupuestos, configuración, etc. Guárdalo en tu PC, disco externo o nube.
+                    Genera un archivo JSON con <strong>todos tus datos</strong>: clientes, facturas,
+                    SATs, presupuestos, configuración, etc. Se guarda solo en la carpeta que tengas
+                    elegida aquí abajo, y al terminar se te dice la ruta exacta del fichero.
                   </p>
                 </div>
                 <Button
@@ -438,7 +463,7 @@ export default function BackupCenter() {
                   {loading
                     ? <RefreshCw className="w-5 h-5 animate-spin" />
                     : <Download className="w-5 h-5" />}
-                  {loading ? 'Generando...' : 'Descargar backup ahora'}
+                  {loading ? 'Generando...' : 'Hacer copia ahora'}
                 </Button>
               </div>
 
@@ -480,7 +505,7 @@ export default function BackupCenter() {
                   )}
                   <div className="mt-1.5 flex items-center gap-3 flex-wrap">
                     {ultimaCopia.entorno === 'escritorio' && (
-                      <button onClick={() => abrirCarpetaCopias()}
+                      <button onClick={() => abrirCarpetaCopias(carpetaPC)}
                         className="text-blue-700 hover:underline font-medium">
                         Abrir la carpeta
                       </button>
@@ -511,9 +536,13 @@ export default function BackupCenter() {
           <DondeSeGuarda
             entorno={entornoCopias}
             carpeta={carpetaEscritorio}
+            carpetaPropia={carpetaPC}
+            errorCarpeta={errorCarpeta}
+            onElegir={elegirCarpetaDelPC}
+            onRestablecer={volverACarpetaDelPrograma}
             destino={destinoMovil}
             onDestino={cambiarDestino}
-            onAbrir={() => abrirCarpetaCopias()}
+            onAbrir={() => abrirCarpetaCopias(carpetaPC)}
           />
 
           {/* Selección de secciones */}
@@ -564,12 +593,12 @@ export default function BackupCenter() {
           {/* Instrucciones */}
           <Card className="bg-amber-50 border-amber-200">
             <CardContent className="p-4 space-y-2">
-              <p className="text-sm font-semibold text-amber-800 flex items-center gap-2"><Info className="w-4 h-4" />¿Dónde guardar el backup?</p>
+              <p className="text-sm font-semibold text-amber-800 flex items-center gap-2"><Info className="w-4 h-4" />Ten la copia en dos sitios</p>
               <ul className="text-xs text-amber-700 space-y-1">
-                <li>📁 <strong>PC local:</strong> Crea una carpeta "Backups TechManager" en el escritorio o en Documentos</li>
-                <li>☁️ <strong>Google Drive / OneDrive:</strong> Sube el archivo .json a tu carpeta de nube</li>
-                <li>💾 <strong>Disco externo / USB:</strong> Copia el archivo al disco de seguridad</li>
-                <li>📧 <strong>Email:</strong> Envíate el archivo como adjunto para tenerlo en dos sitios</li>
+                <li>💾 <strong>Disco externo o pendrive:</strong> elígelo como carpeta de copias y se escribe directamente ahí</li>
+                <li>☁️ <strong>Google Drive / OneDrive:</strong> elige la carpeta que ya tengas sincronizada y sube sola</li>
+                <li>📱 <strong>En el móvil:</strong> con el botón de enviar que sale al terminar, mándatela a Drive, WhatsApp o correo</li>
+                <li>⚠️ <strong>Lo importante:</strong> una copia guardada solo en el aparato se pierde con el aparato</li>
               </ul>
               <p className="text-xs text-amber-600 font-medium mt-2">💡 Recomendamos hacer una copia cada {config.reminder_days || 7} días y después de cada trabajo importante.</p>
             </CardContent>
@@ -925,7 +954,10 @@ export default function BackupCenter() {
  * el botón, y hasta ahora no había respuesta: en el ordenador el fichero se
  * perdía entre las descargas y en el móvil directamente no se creaba.
  */
-function DondeSeGuarda({ entorno, carpeta, destino, onDestino, onAbrir }) {
+function DondeSeGuarda({
+  entorno, carpeta, destino, onDestino, onAbrir,
+  carpetaPropia, errorCarpeta, onElegir, onRestablecer,
+}) {
   if (entorno === 'escritorio') {
     return (
       <Card>
@@ -936,19 +968,39 @@ function DondeSeGuarda({ entorno, carpeta, destino, onDestino, onAbrir }) {
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-sm text-gray-600">
-            En la carpeta del programa, dentro de <strong>Copias de seguridad</strong>:
+            {carpetaPropia
+              ? <>En la carpeta que has elegido tú:</>
+              : <>En la carpeta del programa, dentro de <strong>Copias de seguridad</strong>:</>}
           </p>
           <p className="font-mono text-[11px] break-all bg-gray-50 border rounded p-2 text-gray-700">
             {carpeta?.carpeta || 'calculando…'}
           </p>
-          {carpeta?.alternativa && (
+          {carpeta?.perdida && (
+            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">
+              La carpeta que elegiste (<span className="font-mono">{carpeta.perdida}</span>) no
+              está disponible ahora mismo: disco desconectado, carpeta borrada o sin permisos.
+              Las copias se están guardando junto al programa. Vuelve a elegir carpeta.
+            </p>
+          )}
+          {carpeta?.alternativa && !carpeta?.perdida && (
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
               La carpeta del programa no admite escritura en este equipo (suele pasar
               cuando está instalado en Archivos de programa), así que las copias van a
               Documentos. Se guardan igual.
             </p>
           )}
+          {errorCarpeta && (
+            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">{errorCarpeta}</p>
+          )}
           <div className="flex items-center gap-3 flex-wrap">
+            <Button size="sm" onClick={onElegir} className="gap-1.5">
+              <Archive className="w-3.5 h-3.5" />Elegir carpeta
+            </Button>
+            {carpetaPropia && (
+              <Button size="sm" variant="outline" onClick={onRestablecer} className="gap-1.5">
+                <RotateCcw className="w-3.5 h-3.5" />Usar la del programa
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={onAbrir} className="gap-1.5">
               <Archive className="w-3.5 h-3.5" />Abrir la carpeta
             </Button>
@@ -973,8 +1025,10 @@ function DondeSeGuarda({ entorno, carpeta, destino, onDestino, onAbrir }) {
             </div>
           )}
           <p className="text-[11px] text-gray-500">
-            Aun así, saca de vez en cuando una copia a un disco externo o a la nube: si
-            se estropea este ordenador, la copia que está dentro de él se pierde con él.
+            Puedes poner aquí un disco externo, un pendrive o una carpeta sincronizada
+            con Drive o OneDrive: la copia se escribe directamente ahí. Y aunque la
+            guardes en el propio ordenador, saca una fuera de vez en cuando: si se
+            estropea este equipo, la copia que está dentro de él se pierde con él.
           </p>
         </CardContent>
       </Card>
@@ -1010,19 +1064,7 @@ function DondeSeGuarda({ entorno, carpeta, destino, onDestino, onAbrir }) {
             })}
           </div>
 
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Carpeta dentro de ese sitio</label>
-            <input
-              value={destino.subcarpeta}
-              onChange={(e) => onDestino({ subcarpeta: limpiarCarpeta(e.target.value) })}
-              placeholder={SUBCARPETA_POR_DEFECTO}
-              className="w-full border border-input rounded-md px-3 py-2 text-sm"
-            />
-            <p className="text-[11px] text-gray-500 mt-1">
-              Se crea sola la primera vez. Quedará en{' '}
-              <span className="font-mono">{destino.subcarpeta || SUBCARPETA_POR_DEFECTO}/</span>
-            </p>
-          </div>
+          <ExploradorCarpetas destino={destino} onDestino={onDestino} />
 
           <p className="text-[11px] text-gray-500">
             Después de hacer la copia se enseña la ruta exacta del fichero. Si el
@@ -1053,5 +1095,131 @@ function DondeSeGuarda({ entorno, carpeta, destino, onDestino, onAbrir }) {
         </span>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * ExploradorCarpetas — elegir la carpeta del móvil moviéndose por ella.
+ *
+ * Android no tiene un selector de carpetas que se pueda abrir desde dentro de
+ * la aplicación como el del ordenador, así que se navega aquí: se listan las
+ * carpetas que hay, se entra y se sale, y se puede crear una nueva. También
+ * se puede escribir la ruta a mano, que para el que ya sabe dónde la quiere
+ * es más rápido que ir pulsando.
+ */
+function ExploradorCarpetas({ destino, onDestino }) {
+  const [abierto, setAbierto] = useState(false);
+  const [ruta, setRuta] = useState(destino.subcarpeta || '');
+  const [carpetas, setCarpetas] = useState([]);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState('');
+  const [nueva, setNueva] = useState('');
+  const [creando, setCreando] = useState(false);
+
+  const cargar = React.useCallback(async (destinoRuta) => {
+    setCargando(true);
+    setError('');
+    const r = await listarCarpetasMovil(destino.directorio, destinoRuta);
+    setCarpetas(r.carpetas || []);
+    if (!r.ok) setError(r.error);
+    setCargando(false);
+  }, [destino.directorio]);
+
+  useEffect(() => {
+    if (abierto) cargar(ruta);
+  }, [abierto, ruta, cargar]);
+
+  const partes = ruta.split('/').filter(Boolean);
+
+  const crear = async () => {
+    setCreando(true);
+    const r = await crearCarpetaMovil(destino.directorio, ruta, nueva);
+    setCreando(false);
+    if (!r.ok) { setError(r.error); return; }
+    setNueva('');
+    setRuta(p => [p, r.carpeta].filter(Boolean).join('/'));
+  };
+
+  return (
+    <div>
+      <label className="text-xs text-gray-500 mb-1 block">Carpeta dentro de ese sitio</label>
+      <div className="flex gap-2">
+        <input
+          value={destino.subcarpeta}
+          onChange={(e) => onDestino({ subcarpeta: e.target.value })}
+          placeholder={SUBCARPETA_POR_DEFECTO}
+          className="flex-1 border border-input rounded-md px-3 py-2 text-sm min-w-0"
+        />
+        <Button size="sm" variant="outline" onClick={() => { setRuta(destino.subcarpeta || ''); setAbierto(v => !v); }}
+          className="gap-1.5 shrink-0">
+          <Archive className="w-3.5 h-3.5" />{abierto ? 'Cerrar' : 'Explorar'}
+        </Button>
+      </div>
+      <p className="text-[11px] text-gray-500 mt-1">
+        Se crea sola la primera vez. Quedará en{' '}
+        <span className="font-mono">{limpiarCarpeta(destino.subcarpeta) || SUBCARPETA_POR_DEFECTO}/</span>
+      </p>
+
+      {abierto && (
+        <div className="mt-2 border rounded-lg p-2 bg-gray-50 space-y-2">
+          {/* Migas de pan: dónde estoy y cómo volver atrás */}
+          <div className="flex items-center gap-1 flex-wrap text-xs">
+            <button onClick={() => setRuta('')} className="text-blue-700 hover:underline font-medium">
+              inicio
+            </button>
+            {partes.map((p, i) => (
+              <span key={i} className="flex items-center gap-1">
+                <span className="text-gray-400">/</span>
+                <button onClick={() => setRuta(partes.slice(0, i + 1).join('/'))}
+                  className="text-blue-700 hover:underline">{p}</button>
+              </span>
+            ))}
+          </div>
+
+          {cargando && <p className="text-xs text-gray-500">Leyendo carpetas…</p>}
+          {error && (
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+              {error}. Puedes escribir la ruta a mano en el cuadro de arriba: la carpeta
+              se crea sola al hacer la copia.
+            </p>
+          )}
+
+          {!cargando && !carpetas.length && !error && (
+            <p className="text-xs text-gray-500">Aquí dentro no hay ninguna carpeta todavía.</p>
+          )}
+
+          {!!carpetas.length && (
+            <div className="max-h-40 overflow-y-auto border rounded bg-white divide-y">
+              {carpetas.map(c => (
+                <button key={c} onClick={() => setRuta(r => [r, c].filter(Boolean).join('/'))}
+                  className="w-full text-left px-2.5 py-1.5 text-sm hover:bg-blue-50 flex items-center gap-2">
+                  <Archive className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                  <span className="truncate">{c}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <input
+              value={nueva}
+              onChange={(e) => setNueva(e.target.value)}
+              placeholder="Crear una carpeta nueva aquí"
+              className="flex-1 border border-input rounded-md px-2.5 py-1.5 text-sm min-w-0"
+            />
+            <Button size="sm" variant="outline" onClick={crear} disabled={!nueva.trim() || creando}
+              className="shrink-0">
+              {creando ? '…' : 'Crear'}
+            </Button>
+          </div>
+
+          <Button size="sm" onClick={() => { onDestino({ subcarpeta: ruta }); setAbierto(false); }}
+            className="w-full gap-1.5 bg-blue-700 hover:bg-blue-800">
+            <CheckCircle className="w-3.5 h-3.5" />
+            Guardar las copias en {ruta ? `…/${partes[partes.length - 1]}` : 'esta carpeta'}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
