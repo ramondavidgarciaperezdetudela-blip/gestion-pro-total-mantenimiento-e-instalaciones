@@ -25,10 +25,40 @@ publish:
   # en /releases/latest y la auto-actualización la detecte sin pasos manuales.
   releaseType: release
 
+# Lo que se empaqueta dentro de la aplicación.
+#
+# OJO con node_modules: electron-builder mete SIEMPRE las dependencias de
+# producción, y aquí eso son React, Radix, los iconos... 171 MB de librerías
+# que la aplicación de escritorio NO usa nunca, porque Vite ya las ha metido
+# dentro de dist/ al compilar. El resultado eran instaladores de 120-160 MB
+# para una aplicación que ocupa 6.
+#
+# Así que se excluyen todas y se vuelve a meter SOLO el árbol de
+# electron-updater, que es lo único que se carga en tiempo de ejecución
+# (electron/main.cjs lo pide con require). Si faltara alguno de estos, la
+# actualización automática dejaría de funcionar en silencio, porque el require
+# va dentro de un try: por eso están puestos uno a uno y comprobados.
 files:
   - dist/**/*
   - electron/**/*
   - package.json
+  - '!node_modules/**/*'
+  - node_modules/electron-updater/**/*
+  - node_modules/builder-util-runtime/**/*
+  - node_modules/fs-extra/**/*
+  - node_modules/graceful-fs/**/*
+  - node_modules/jsonfile/**/*
+  - node_modules/universalify/**/*
+  - node_modules/js-yaml/**/*
+  - node_modules/argparse/**/*
+  - node_modules/lazy-val/**/*
+  - node_modules/lodash.escaperegexp/**/*
+  - node_modules/lodash.isequal/**/*
+  - node_modules/semver/**/*
+  - node_modules/tiny-typed-emitter/**/*
+  - node_modules/debug/**/*
+  - node_modules/ms/**/*
+  - node_modules/sax/**/*
 
 # ---------- Windows ----------
 win:
