@@ -15,7 +15,7 @@ import {
   abrirCarpetaCopias, leerDestino, guardarDestino, DESTINOS_MOVIL,
   SUBCARPETA_POR_DEFECTO, limpiarCarpeta, compartirCopia, sePuedeCompartir,
   leerCarpetaPC, guardarCarpetaPC, elegirCarpetaPC,
-  listarCarpetasMovil, crearCarpetaMovil, elegirCarpetaMovil,
+  listarCarpetasMovil, crearCarpetaMovil, elegirCarpetaMovil, guardarComoEnMovil,
 } from '@/lib/guardarCopia';
 
 const ALL_ENTITIES = [
@@ -150,10 +150,26 @@ export default function BackupCenter() {
     try { localStorage.setItem('gpt_copias_preguntar', valor ? 'si' : 'no'); } catch { /* sin guardar */ }
   };
 
-  /** Abre el cuadro del sistema para elegir dónde dejar la copia. */
+  /**
+   * Abre el EXPLORADOR DE FICHEROS del sistema para que elija la carpeta.
+   * Si el explorador no está disponible en ese teléfono, se ofrece el cuadro
+   * de compartir, que al menos permite mandarla a Drive o al correo.
+   */
   const elegirDondeDejarla = async (copia) => {
-    const r = await elegirCarpetaMovil({ uri: copia.uri, nombre: copia.nombre });
-    if (!r.ok && r.motivo) setCompartirError(r.motivo);
+    setCompartirError('');
+    const r = await guardarComoEnMovil({ nombre: copia.nombre, contenido: copia.contenido });
+    if (r.ok) {
+      setUltimaCopia(c => (c ? { ...c, guardadaEn: r.uri, aviso: undefined } : c));
+      return;
+    }
+    if (r.cancelado) return;   // ha cerrado el explorador: la copia sigue guardada
+    // Segundo camino: el cuadro de compartir.
+    const r2 = await elegirCarpetaMovil({ uri: copia.uri, nombre: copia.nombre });
+    if (!r2.ok && r2.motivo) {
+      setCompartirError(`${r.motivo}. Tampoco se pudo abrir el cuadro de compartir: ${r2.motivo}`);
+    } else if (!r2.ok && !r2.motivo) {
+      setCompartirError('');
+    }
   };
 
   const refrescarCarpeta = React.useCallback(async (ruta) => {
@@ -542,7 +558,7 @@ export default function BackupCenter() {
                       <button
                         onClick={() => elegirDondeDejarla(ultimaCopia)}
                         className="text-blue-700 hover:underline font-medium">
-                        Elegir otra carpeta o enviarla a Drive
+                        Guardar en otra carpeta
                       </button>
                     )}
                     {ultimaCopia.entorno !== 'movil' && sePuedeCompartir() && (
@@ -558,6 +574,12 @@ export default function BackupCenter() {
                       </button>
                     )}
                   </div>
+                  {ultimaCopia.guardadaEn && (
+                    <p className="mt-1 text-green-700 bg-green-50 border border-green-200 rounded p-1.5">
+                      También guardada donde la has puesto tú:{' '}
+                      <span className="font-mono break-all">{decodeURIComponent(ultimaCopia.guardadaEn)}</span>
+                    </p>
+                  )}
                   {compartirError && (
                     <p className="mt-1 text-amber-700">{compartirError}</p>
                   )}
@@ -1110,13 +1132,14 @@ function DondeSeGuarda({
               className="mt-0.5"
             />
             <span>
-              <b>Preguntarme dónde dejarla al terminar</b>
+              <b>Abrir el explorador al terminar para elegir carpeta</b>
               <span className="block text-[11px] text-gray-600 leading-snug mt-0.5">
-                Al acabar la copia se abre el cuadro de Android para que elijas la carpeta:
-                Archivos, Drive, WhatsApp, correo… Es la forma segura de dejarla donde tú
-                quieras, porque Android no deja que la aplicación escriba en cualquier sitio
-                por su cuenta pero sí te deja a ti mandar el fichero donde quieras.
-                El fichero se guarda igual antes de preguntar: si cierras el cuadro, no se pierde.
+                Al acabar la copia se abre el explorador de ficheros de Android: navegas por
+                las carpetas del teléfono, de la tarjeta o de Drive, y guardas donde quieras.
+                Android le da permiso a la aplicación solo para ese fichero, así que no hay
+                que pelearse con permisos ni con carpetas restringidas.
+                El fichero se guarda en el teléfono ANTES de preguntar: si cierras el
+                explorador sin elegir, la copia no se pierde.
               </span>
             </span>
           </label>

@@ -284,6 +284,56 @@ async function guardarEnMovil({ nombre, contenido, destino, bytes }) {
 }
 
 /**
+ * Pasa un texto a base64 respetando los acentos.
+ *
+ * btoa() solo entiende bytes, y una "ñ" en UTF-8 son dos: sin este paso el
+ * fichero llegaría con la codificación rota y el JSON no se podría releer.
+ */
+export function aBase64(texto) {
+  const bytes = new TextEncoder().encode(texto);
+  let binario = '';
+  const TROZO = 0x8000;   // de golpe peta la pila con ficheros grandes
+  for (let i = 0; i < bytes.length; i += TROZO) {
+    binario += String.fromCharCode.apply(null, bytes.subarray(i, i + TROZO));
+  }
+  return btoa(binario);
+}
+
+/**
+ * Abre el EXPLORADOR DE FICHEROS del sistema para guardar la copia.
+ *
+ * Esto es lo que se pide de verdad al decir "elijo yo dónde": el cuadro de
+ * Android (ACTION_CREATE_DOCUMENT) donde se navega por las carpetas del
+ * teléfono, de la tarjeta o de Drive, se pone el nombre y se guarda. El
+ * sistema le da permiso a la aplicación para escribir SOLO en ese fichero,
+ * así que no hacen falta permisos de almacenamiento ni pelearse con las
+ * restricciones de las carpetas públicas.
+ *
+ * Es distinto del cuadro de compartir: aquel manda el fichero a otra
+ * aplicación, y si ninguna sabe recibir un .json parece que "no deja
+ * guardar". Este escribe el fichero donde se le diga.
+ *
+ * @returns {Promise<{ok:boolean, uri?:string, cancelado?:boolean, motivo?:string}>}
+ */
+export async function guardarComoEnMovil({ nombre, contenido }) {
+  try {
+    const { SaveAs } = await import('capacitor-save-as');
+    const r = await SaveAs.showSaveAsPicker({
+      filename: nombre,
+      mimeType: 'application/json',
+      data: aBase64(contenido),
+    });
+    return { ok: true, uri: r?.uri || '' };
+  } catch (err) {
+    const m = String(err?.message || err || '');
+    // Cerrar el explorador sin elegir no es un fallo: la copia ya está
+    // escrita en el teléfono y no se ha perdido nada.
+    if (/cancel/i.test(m)) return { ok: false, cancelado: true };
+    return { ok: false, motivo: m || 'No se pudo abrir el explorador de ficheros' };
+  }
+}
+
+/**
  * Abre el cuadro del sistema para decir dónde va la copia.
  *
  * Es lo que de verdad resuelve el lío de las carpetas en Android. El sistema
