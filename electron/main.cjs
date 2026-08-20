@@ -65,6 +65,100 @@ ipcMain.on('gpt-install-update', () => {
   autoUpdaterRef.quitAndInstall(false, true);
 });
 
+// ── Copias de seguridad en el disco ────────────────────────────────────────
+//
+// En el navegador la copia se "descarga" con un enlace y el sistema decide
+// dónde la deja. En el ordenador eso no vale: el fichero acaba perdido entre
+// las descargas y, cuando hace falta de verdad, no se encuentra. Aquí se
+// escribe en una carpeta fija y conocida, y se devuelve la ruta exacta para
+// poder enseñarla y abrirla.
+//
+// Dónde: junto al programa, en "Copias de seguridad". Si esa carpeta no se
+// puede escribir (instalación para todos los usuarios en Archivos de
+// programa, disco protegido, portable en un USB de solo lectura), se pasa a
+// Documentos, que siempre se puede. Nunca se falla en silencio: la ruta que
+// se devuelve es la de verdad.
+
+/** Carpeta del programa: donde está el ejecutable, no los recursos internos. */
+function carpetaDelPrograma() {
+  try {
+    // En producción, el .exe/.AppImage; en desarrollo, la raíz del proyecto.
+    return app.isPackaged ? path.dirname(app.getPath('exe')) : path.join(__dirname, '..');
+  } catch {
+    return process.cwd();
+  }
+}
+
+/** ¿Se puede escribir de verdad aquí? Se comprueba escribiendo, no adivinando. */
+function sePuedeEscribir(dir) {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const testigo = path.join(dir, `.escritura-${Date.now()}`);
+    fs.writeFileSync(testigo, 'x');
+    fs.unlinkSync(testigo);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** La carpeta de copias que toque, ya creada y comprobada. */
+function carpetaDeCopias() {
+  const preferida = path.join(carpetaDelPrograma(), 'Copias de seguridad');
+  if (sePuedeEscribir(preferida)) return { ruta: preferida, alternativa: false };
+
+  const respaldo = path.join(app.getPath('documents'), 'Gestión Pro Total', 'Copias de seguridad');
+  if (sePuedeEscribir(respaldo)) return { ruta: respaldo, alternativa: true };
+
+  // Último recurso: los datos del usuario, que siempre son escribibles.
+  const ultimo = path.join(app.getPath('userData'), 'Copias de seguridad');
+  fs.mkdirSync(ultimo, { recursive: true });
+  return { ruta: ultimo, alternativa: true };
+}
+
+ipcMain.handle('gpt-guardar-copia', async (_evt, { nombre, contenido }) => {
+  try {
+    const { ruta, alternativa } = carpetaDeCopias();
+    const fichero = path.join(ruta, String(nombre || 'copia.json').replace(/[/\\]/g, '_'));
+    fs.writeFileSync(fichero, contenido, 'utf8');
+    const { size } = fs.statSync(fichero);
+    return { ok: true, ruta: fichero, carpeta: ruta, bytes: size, alternativa };
+  } catch (err) {
+    return { ok: false, error: err?.message || 'No se pudo escribir el fichero' };
+  }
+});
+
+/** Dónde van a ir las copias, para poder enseñarlo antes de hacer ninguna. */
+ipcMain.handle('gpt-carpeta-copias', async () => {
+  try {
+    const { ruta, alternativa } = carpetaDeCopias();
+    let copias = [];
+    try {
+      copias = fs.readdirSync(ruta)
+        .filter(n => n.toLowerCase().endsWith('.json'))
+        .map(n => {
+          const st = fs.statSync(path.join(ruta, n));
+          return { nombre: n, bytes: st.size, fecha: st.mtime.toISOString() };
+        })
+        .sort((a, b) => b.fecha.localeCompare(a.fecha));
+    } catch { /* carpeta recién creada */ }
+    return { ok: true, carpeta: ruta, alternativa, copias };
+  } catch (err) {
+    return { ok: false, error: err?.message || 'No se pudo leer la carpeta' };
+  }
+});
+
+/** Abre la carpeta de copias en el explorador de archivos del sistema. */
+ipcMain.handle('gpt-abrir-carpeta-copias', async () => {
+  try {
+    const { ruta } = carpetaDeCopias();
+    await shell.openPath(ruta);
+    return { ok: true, carpeta: ruta };
+  } catch (err) {
+    return { ok: false, error: err?.message || 'No se pudo abrir la carpeta' };
+  }
+});
+
 // Buscar el HTML a cargar. Preferimos el build OFFLINE de un solo fichero
 // (todo embebido), que funciona desde file:// dentro de Electron. Si no
 // existe, caemos al index.html normal.

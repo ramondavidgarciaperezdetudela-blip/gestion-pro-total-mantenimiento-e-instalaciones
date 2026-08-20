@@ -10,6 +10,11 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fetchAllRecordsFast, runBackupJob, runRestoreJob } from '@/lib/backupEngine';
+import {
+  guardarCopiaSeguridad, detectarEntorno, nombreCopia, listarCopias,
+  abrirCarpetaCopias, leerDestino, guardarDestino, DESTINOS_MOVIL,
+  SUBCARPETA_POR_DEFECTO, limpiarCarpeta, compartirCopia, sePuedeCompartir,
+} from '@/lib/guardarCopia';
 
 const ALL_ENTITIES = [
   'Contact', 'Invoice', 'SATOrder', 'MaintenanceSheet', 'StockItem',
@@ -120,6 +125,27 @@ export default function BackupCenter() {
   // History
   const [history, setHistory] = useState([]);
 
+  // Dónde se guarda el fichero de la copia.
+  // El enlace de descarga de siempre no escribe nada en el móvil, así que
+  // aquí se lleva el sitio de verdad: carpeta del programa en el ordenador,
+  // carpeta elegida en el teléfono.
+  const entornoCopias = detectarEntorno();
+  const [destinoMovil, setDestinoMovil] = useState(() => leerDestino());
+  const [carpetaEscritorio, setCarpetaEscritorio] = useState(null);
+  const [ultimaCopia, setUltimaCopia] = useState(null);
+  const [compartirError, setCompartirError] = useState('');
+
+  const refrescarCarpeta = React.useCallback(async () => {
+    const r = await listarCopias();
+    if (r) setCarpetaEscritorio(r);
+  }, []);
+
+  useEffect(() => { refrescarCarpeta(); }, [refrescarCarpeta]);
+
+  const cambiarDestino = (cambio) => {
+    setDestinoMovil(prev => guardarDestino({ ...prev, ...cambio }));
+  };
+
   // Restore
   const restoreRef = useRef(null);
   const [restoreFile, setRestoreFile] = useState(null);
@@ -191,14 +217,26 @@ export default function BackupCenter() {
     setProgress('Generando archivo...');
     setProgressPct(95);
 
-    const dateStr = format(new Date(), 'yyyy-MM-dd_HH-mm');
-    const fileName = `backup_techmanager_${dateStr}.json`;
-    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    const fileName = nombreCopia(new Date());
+    const contenido = JSON.stringify(allData, null, 2);
+
+    // Se escribe el fichero DE VERDAD y se comprueba el resultado. Antes se
+    // pulsaba un enlace de descarga y se daba por hecho que había salido: en
+    // el móvil no salía nunca y la pantalla decía "copia completada" igual.
+    const guardado = await guardarCopiaSeguridad({
+      nombre: fileName, contenido, destino: destinoMovil,
+    });
+
+    if (!guardado.ok) {
+      setProgressPct(0);
+      setProgress(`❌ No se pudo guardar la copia: ${guardado.error}`);
+      setUltimaCopia(null);
+      setLoading(false);
+      return;   // sin fichero no hay copia: no se apunta en el historial
+    }
+
+    setUltimaCopia({ ...guardado, nombre: fileName, contenido });
+    if (guardado.entorno === 'escritorio') refrescarCarpeta();
 
     // Guardar en historial
     const totalExported = entitiesToBackup.reduce((s, e) => s + (allData[e]?.length || 0), 0);
@@ -208,6 +246,7 @@ export default function BackupCenter() {
       records: totalExported,
       entities: entitiesToBackup.length,
       format: 'json',
+      ruta: guardado.ruta || '',
     };
     const newHistory = [newEntry, ...loadHistory()];
     saveHistory(newHistory);
@@ -416,12 +455,66 @@ export default function BackupCenter() {
                 </div>
               )}
               {!loading && progress && (
-                <div className="mt-3 bg-green-100 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-800 font-medium">
+                <div className={`mt-3 border rounded-lg px-3 py-2 text-sm font-medium ${
+                  progress.startsWith('❌')
+                    ? 'bg-red-100 border-red-200 text-red-800'
+                    : 'bg-green-100 border-green-200 text-green-800'
+                }`}>
                   {progress}
+                </div>
+              )}
+
+              {/* Dónde ha quedado el fichero. Antes no se decía y en el móvil
+                  ni siquiera existía: ahora se enseña la ruta de verdad. */}
+              {!loading && ultimaCopia?.ok && (
+                <div className="mt-2 bg-white border border-green-200 rounded-lg px-3 py-2 text-xs text-gray-700">
+                  <p className="font-semibold text-gray-800 flex items-center gap-1.5">
+                    <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                    Fichero guardado ({(ultimaCopia.bytes / 1024).toFixed(0)} KB)
+                  </p>
+                  <p className="mt-1 font-mono text-[11px] break-all text-gray-600">{ultimaCopia.ruta}</p>
+                  {ultimaCopia.aviso && (
+                    <p className="mt-1 text-amber-700 bg-amber-50 border border-amber-200 rounded p-1.5">
+                      {ultimaCopia.aviso}
+                    </p>
+                  )}
+                  <div className="mt-1.5 flex items-center gap-3 flex-wrap">
+                    {ultimaCopia.entorno === 'escritorio' && (
+                      <button onClick={() => abrirCarpetaCopias()}
+                        className="text-blue-700 hover:underline font-medium">
+                        Abrir la carpeta
+                      </button>
+                    )}
+                    {/* Sacar la copia del aparato es media copia de seguridad:
+                        si se pierde el móvil, se pierde lo que hay dentro. */}
+                    {sePuedeCompartir() && (
+                      <button
+                        onClick={async () => {
+                          const r = await compartirCopia({
+                            nombre: ultimaCopia.nombre, contenido: ultimaCopia.contenido,
+                          });
+                          if (!r.ok && r.motivo) setCompartirError(r.motivo);
+                        }}
+                        className="text-blue-700 hover:underline font-medium">
+                        Enviar a Drive, WhatsApp o correo
+                      </button>
+                    )}
+                  </div>
+                  {compartirError && (
+                    <p className="mt-1 text-amber-700">{compartirError}</p>
+                  )}
                 </div>
               )}
             </CardContent>
           </Card>
+
+          <DondeSeGuarda
+            entorno={entornoCopias}
+            carpeta={carpetaEscritorio}
+            destino={destinoMovil}
+            onDestino={cambiarDestino}
+            onAbrir={() => abrirCarpetaCopias()}
+          />
 
           {/* Selección de secciones */}
           <Card>
@@ -823,5 +916,142 @@ export default function BackupCenter() {
         </div>
       )}
     </div>
+  );
+}
+/**
+ * DondeSeGuarda — el sitio donde acaba el fichero de la copia.
+ *
+ * Va a la vista porque es la pregunta que se hace uno justo después de pulsar
+ * el botón, y hasta ahora no había respuesta: en el ordenador el fichero se
+ * perdía entre las descargas y en el móvil directamente no se creaba.
+ */
+function DondeSeGuarda({ entorno, carpeta, destino, onDestino, onAbrir }) {
+  if (entorno === 'escritorio') {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Archive className="w-4 h-4 text-blue-600" />Dónde se guardan las copias
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm text-gray-600">
+            En la carpeta del programa, dentro de <strong>Copias de seguridad</strong>:
+          </p>
+          <p className="font-mono text-[11px] break-all bg-gray-50 border rounded p-2 text-gray-700">
+            {carpeta?.carpeta || 'calculando…'}
+          </p>
+          {carpeta?.alternativa && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+              La carpeta del programa no admite escritura en este equipo (suele pasar
+              cuando está instalado en Archivos de programa), así que las copias van a
+              Documentos. Se guardan igual.
+            </p>
+          )}
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button size="sm" variant="outline" onClick={onAbrir} className="gap-1.5">
+              <Archive className="w-3.5 h-3.5" />Abrir la carpeta
+            </Button>
+            {carpeta && (
+              <span className="text-xs text-gray-500">
+                {carpeta.copias?.length
+                  ? `${carpeta.copias.length} copia${carpeta.copias.length === 1 ? '' : 's'} guardada${carpeta.copias.length === 1 ? '' : 's'}`
+                  : 'Todavía no hay ninguna copia en esta carpeta'}
+              </span>
+            )}
+          </div>
+          {!!carpeta?.copias?.length && (
+            <div className="border rounded-lg divide-y max-h-44 overflow-y-auto">
+              {carpeta.copias.slice(0, 10).map(c => (
+                <div key={c.nombre} className="flex items-center justify-between px-2.5 py-1.5 text-xs">
+                  <span className="font-mono truncate mr-2 text-gray-700">{c.nombre}</span>
+                  <span className="text-gray-400 whitespace-nowrap">
+                    {(c.bytes / 1024).toFixed(0)} KB · {format(new Date(c.fecha), 'dd/MM/yyyy HH:mm')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-[11px] text-gray-500">
+            Aun así, saca de vez en cuando una copia a un disco externo o a la nube: si
+            se estropea este ordenador, la copia que está dentro de él se pierde con él.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (entorno === 'movil') {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Archive className="w-4 h-4 text-blue-600" />Dónde guardar las copias
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            {DESTINOS_MOVIL.map(d => {
+              const activo = destino.directorio === d.id;
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => onDestino({ directorio: d.id })}
+                  className={`w-full text-left rounded-lg border p-2.5 transition-colors ${
+                    activo ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <p className={`text-sm font-medium ${activo ? 'text-blue-800' : 'text-gray-800'}`}>
+                    {d.nombre}{d.recomendado && <span className="ml-1.5 text-[10px] text-blue-600">recomendada</span>}
+                  </p>
+                  <p className="text-[11px] text-gray-500 leading-snug mt-0.5">{d.detalle}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Carpeta dentro de ese sitio</label>
+            <input
+              value={destino.subcarpeta}
+              onChange={(e) => onDestino({ subcarpeta: limpiarCarpeta(e.target.value) })}
+              placeholder={SUBCARPETA_POR_DEFECTO}
+              className="w-full border border-input rounded-md px-3 py-2 text-sm"
+            />
+            <p className="text-[11px] text-gray-500 mt-1">
+              Se crea sola la primera vez. Quedará en{' '}
+              <span className="font-mono">{destino.subcarpeta || SUBCARPETA_POR_DEFECTO}/</span>
+            </p>
+          </div>
+
+          <p className="text-[11px] text-gray-500">
+            Después de hacer la copia se enseña la ruta exacta del fichero. Si el
+            teléfono no deja escribir en la carpeta elegida —Android restringe las
+            carpetas públicas en las versiones nuevas— la copia se guarda en el
+            almacenamiento de la aplicación y se avisa: nunca se dice que está hecha
+            si no hay fichero.
+          </p>
+          <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+            Y saca la copia del teléfono en cuanto la tengas, con el botón de enviar
+            a Drive, WhatsApp o correo que sale al terminar. Una copia que solo está
+            dentro del móvil se pierde con el móvil, que es justo de lo que estamos
+            intentando protegernos.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-4 text-sm text-gray-600 flex items-start gap-2">
+        <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+        <span>
+          Estás usando la versión web: el fichero se descarga a la carpeta de descargas
+          del navegador. En la aplicación de escritorio se guarda solo en la carpeta del
+          programa, y en el móvil en la carpeta que elijas.
+        </span>
+      </CardContent>
+    </Card>
   );
 }

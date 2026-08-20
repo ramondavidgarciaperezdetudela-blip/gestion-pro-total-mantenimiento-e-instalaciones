@@ -13,6 +13,15 @@ const EVENTS = [
   'gpt-update-error',
 ];
 
+// Copias de seguridad en disco. La pantalla no toca el sistema de ficheros:
+// pide "guarda esto" y recibe la ruta real donde ha quedado.
+contextBridge.exposeInMainWorld('gptCopias', {
+  disponible: true,
+  guardar: (nombre, contenido) => ipcRenderer.invoke('gpt-guardar-copia', { nombre, contenido }),
+  carpeta: () => ipcRenderer.invoke('gpt-carpeta-copias'),
+  abrirCarpeta: () => ipcRenderer.invoke('gpt-abrir-carpeta-copias'),
+});
+
 contextBridge.exposeInMainWorld('gptUpdater', {
   check: () => ipcRenderer.send('gpt-check-for-updates'),
   install: () => ipcRenderer.send('gpt-install-update'),
