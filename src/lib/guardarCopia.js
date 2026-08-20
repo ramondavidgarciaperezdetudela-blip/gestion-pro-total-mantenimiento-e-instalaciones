@@ -317,8 +317,13 @@ export function aBase64(texto) {
  */
 export async function guardarComoEnMovil({ nombre, contenido }) {
   try {
-    const { SaveAs } = await import('capacitor-save-as');
-    const r = await SaveAs.showSaveAsPicker({
+    const { registerPlugin } = await import('@capacitor/core');
+    // El trozo nativo va dentro de la propia aplicación (lo mete
+    // scripts/anadir-guardar-como.py al compilar), no como dependencia: el
+    // plugin que hay publicado para esto fija una versión de Android vieja y
+    // rompía la compilación entera.
+    const GuardarComo = registerPlugin('GuardarComo');
+    const r = await GuardarComo.guardar({
       filename: nombre,
       mimeType: 'application/json',
       data: aBase64(contenido),

@@ -60,7 +60,6 @@
     "@stripe/stripe-js": "^5.2.0",
     "@tanstack/react-query": "^5.84.1",
     "canvas-confetti": "^1.9.4",
-    "capacitor-save-as": "^0.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",

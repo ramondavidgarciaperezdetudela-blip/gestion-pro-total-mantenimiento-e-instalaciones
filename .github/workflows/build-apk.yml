@@ -73,6 +73,11 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Meter el explorador de ficheros para guardar la copia
+        # cap add/sync regenera el proyecto de Android entero, asi que este
+        # trozo nativo hay que volver a ponerlo DESPUES, en cada compilacion.
+        run: python3 scripts/anadir-guardar-como.py android
+
       - name: Generate Android app icon (same icon as desktop installers)
         run: npx @capacitor/assets generate --android
 
