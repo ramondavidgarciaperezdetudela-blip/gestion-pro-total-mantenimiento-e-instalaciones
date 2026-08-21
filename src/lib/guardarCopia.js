@@ -284,22 +284,6 @@ async function guardarEnMovil({ nombre, contenido, destino, bytes }) {
 }
 
 /**
- * Pasa un texto a base64 respetando los acentos.
- *
- * btoa() solo entiende bytes, y una "ñ" en UTF-8 son dos: sin este paso el
- * fichero llegaría con la codificación rota y el JSON no se podría releer.
- */
-export function aBase64(texto) {
-  const bytes = new TextEncoder().encode(texto);
-  let binario = '';
-  const TROZO = 0x8000;   // de golpe peta la pila con ficheros grandes
-  for (let i = 0; i < bytes.length; i += TROZO) {
-    binario += String.fromCharCode.apply(null, bytes.subarray(i, i + TROZO));
-  }
-  return btoa(binario);
-}
-
-/**
  * Abre el EXPLORADOR DE FICHEROS del sistema para guardar la copia.
  *
  * Esto es lo que se pide de verdad al decir "elijo yo dónde": el cuadro de
@@ -313,9 +297,20 @@ export function aBase64(texto) {
  * aplicación, y si ninguna sabe recibir un .json parece que "no deja
  * guardar". Este escribe el fichero donde se le diga.
  *
+ * IMPORTANTE: se le pasa la RUTA del fichero que ya está escrito en el
+ * teléfono, no su contenido. Antes se mandaba el contenido codificado y con
+ * una copia grande la aplicación SE CERRABA SOLA: entre el texto, su versión
+ * codificada (que abulta un tercio más) y el mensaje del puente había cuatro
+ * copias de lo mismo en memoria, y Android mataba la aplicación. Copiando de
+ * fichero a fichero da igual lo que ocupe la copia.
+ *
+ * @param {string} origen  ruta (file://) del fichero ya escrito
  * @returns {Promise<{ok:boolean, uri?:string, cancelado?:boolean, motivo?:string}>}
  */
-export async function guardarComoEnMovil({ nombre, contenido }) {
+export async function guardarComoEnMovil({ nombre, origen }) {
+  if (!origen) {
+    return { ok: false, motivo: 'No hay ningún fichero de copia que guardar.' };
+  }
   try {
     const { registerPlugin } = await import('@capacitor/core');
     // El trozo nativo va dentro de la propia aplicación (lo mete
@@ -326,9 +321,9 @@ export async function guardarComoEnMovil({ nombre, contenido }) {
     const r = await GuardarComo.guardar({
       filename: nombre,
       mimeType: 'application/json',
-      data: aBase64(contenido),
+      origen,
     });
-    return { ok: true, uri: r?.uri || '' };
+    return { ok: true, uri: r?.uri || '', bytes: r?.bytes };
   } catch (err) {
     const m = String(err?.message || err || '');
     // Cerrar el explorador sin elegir no es un fallo: la copia ya está

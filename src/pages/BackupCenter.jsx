@@ -157,7 +157,9 @@ export default function BackupCenter() {
    */
   const elegirDondeDejarla = async (copia) => {
     setCompartirError('');
-    const r = await guardarComoEnMovil({ nombre: copia.nombre, contenido: copia.contenido });
+    // Se le pasa la RUTA del fichero ya escrito, no su contenido: mandarlo
+    // entero por el puente cerraba la aplicación con las copias grandes.
+    const r = await guardarComoEnMovil({ nombre: copia.nombre, origen: copia.uri });
     if (r.ok) {
       setUltimaCopia(c => (c ? { ...c, guardadaEn: r.uri, aviso: undefined } : c));
       return;
@@ -291,7 +293,11 @@ export default function BackupCenter() {
       return;   // sin fichero no hay copia: no se apunta en el historial
     }
 
-    const copia = { ...guardado, nombre: fileName, contenido };
+    // En el móvil no se guarda el contenido en memoria: ya está en disco y
+    // tenerlo aquí además era parte del problema con las copias grandes.
+    const copia = guardado.entorno === 'movil'
+      ? { ...guardado, nombre: fileName }
+      : { ...guardado, nombre: fileName, contenido };
     setUltimaCopia(copia);
     setCompartirError('');
     if (guardado.entorno === 'escritorio') refrescarCarpeta();

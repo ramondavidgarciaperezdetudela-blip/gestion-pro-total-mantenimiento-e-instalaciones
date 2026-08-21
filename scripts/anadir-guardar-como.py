@@ -28,7 +28,6 @@ FUENTE_PLUGIN = """package com.gestionprototal.app;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
-import android.util.Base64;
 import androidx.activity.result.ActivityResult;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -36,6 +35,8 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.File;
+import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
@@ -49,9 +50,13 @@ import java.io.OutputStream;
  * falta permisos de almacenamiento ni saltarse las restricciones de las
  * carpetas publicas.
  *
- * El contenido llega en base64 porque el puente con la pantalla mueve texto,
- * y una copia de seguridad lleva acentos y enies que se romperian si viajaran
- * como texto suelto.
+ * IMPORTANTE: el contenido NO viaja por el puente. Se le pasa la RUTA del
+ * fichero que ya esta escrito en el telefono y se copia de disco a disco, a
+ * cachos. Antes se mandaba el contenido codificado en base64 y con una copia
+ * grande la aplicacion se cerraba sola: entre el texto original, el base64
+ * (que abulta un tercio mas) y el mensaje del puente, habia cuatro copias de
+ * lo mismo en memoria y Android mataba la aplicacion. Copiando ficheros da
+ * igual lo que ocupe la copia.
  */
 @CapacitorPlugin(name = "GuardarComo")
 public class GuardarComo extends Plugin {
@@ -60,6 +65,18 @@ public class GuardarComo extends Plugin {
     public void guardar(PluginCall call) {
         String nombre = call.getString("filename", "copia.json");
         String tipo = call.getString("mimeType", "application/json");
+        String origen = call.getString("origen", "");
+
+        if (origen == null || origen.isEmpty()) {
+            call.reject("Falta el fichero que hay que guardar");
+            return;
+        }
+        // Comprobar que existe ANTES de abrir el explorador: es feo hacerle
+        // elegir carpeta para decirle luego que no habia nada que copiar.
+        if (abrirOrigen(origen) == null) {
+            call.reject("El fichero de la copia ya no esta en el telefono");
+            return;
+        }
 
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -93,15 +110,45 @@ public class GuardarComo extends Plugin {
             return;
         }
 
-        try (OutputStream salida = getContext().getContentResolver().openOutputStream(destino)) {
-            if (salida == null) throw new Exception("no se pudo abrir el fichero para escribir");
-            salida.write(Base64.decode(call.getString("data", ""), Base64.DEFAULT));
+        String origen = call.getString("origen", "");
+        long copiados = 0;
+        try (InputStream entrada = abrirOrigen(origen);
+             OutputStream salida = getContext().getContentResolver().openOutputStream(destino)) {
+            if (entrada == null) throw new Exception("no se encuentra el fichero de la copia");
+            if (salida == null) throw new Exception("no se pudo abrir la carpeta elegida para escribir");
+            // A cachos de 64 KB: da igual que la copia ocupe 200 MB, en
+            // memoria nunca hay mas de un cacho.
+            byte[] cacho = new byte[64 * 1024];
+            int leidos;
+            while ((leidos = entrada.read(cacho)) > 0) {
+                salida.write(cacho, 0, leidos);
+                copiados += leidos;
+            }
             salida.flush();
-            JSObject r = new JSObject();
-            r.put("uri", destino.toString());
-            call.resolve(r);
         } catch (Exception e) {
-            call.reject("No se pudo escribir el fichero: " + e.getMessage());
+            call.reject("No se pudo guardar el fichero: " + e.getMessage());
+            return;
+        }
+
+        JSObject r = new JSObject();
+        r.put("uri", destino.toString());
+        r.put("bytes", copiados);
+        call.resolve(r);
+    }
+
+    /** Abre el fichero de la copia, venga como ruta, como file:// o content://. */
+    private InputStream abrirOrigen(String origen) {
+        try {
+            if (origen.startsWith("content://")) {
+                return getContext().getContentResolver().openInputStream(Uri.parse(origen));
+            }
+            String ruta = origen.startsWith("file://") ? Uri.parse(origen).getPath() : origen;
+            if (ruta == null) return null;
+            File f = new File(ruta);
+            if (!f.isFile()) return null;
+            return new java.io.FileInputStream(f);
+        } catch (Exception e) {
+            return null;
         }
     }
 }
@@ -175,10 +222,15 @@ def main():
         return 1
 
     fuente = plugin.read_text(encoding="utf-8")
-    for trozo in ["ACTION_CREATE_DOCUMENT", "startActivityForResult", "@ActivityCallback"]:
+    for trozo in ["ACTION_CREATE_DOCUMENT", "startActivityForResult", "@ActivityCallback",
+                  "abrirOrigen", "64 * 1024"]:
         if trozo not in fuente:
             print("ERROR: al plugin le falta " + trozo)
             return 1
+
+    if "Base64" in fuente:
+        print("ERROR: el contenido no debe viajar en base64 por el puente")
+        return 1
 
     print("OK: el explorador de ficheros queda dentro de la aplicacion")
     return 0
