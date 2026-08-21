@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreditCard, Plus, Printer, Download, Trash2, Edit, QrCode, Layers } from 'lucide-react';
 import QRCodeLib from 'qrcode';
 import { printDocument } from '@/lib/printHelper';
+import {
+  ESCALA_MAX, ESCALA_MIN, FUENTE_TARJETA_POR_DEFECTO, cssTarjeta, escalaValida,
+  estiloTarjeta, fuentePorId, gruposDeFuentes, medida, pesoTarjeta,
+} from '@/lib/tipoDeFuente';
 
 const EMPTY = {
   name: '', role: '', phone: '', email: '', website: '',
@@ -17,6 +21,11 @@ const EMPTY = {
   show_qr: true, show_logo: true, show_address: false, show_nif: false,
   use_company_email: false, use_company_phone: false,
   custom_fields: [], // [{ label, value }] campos a medida que también van al QR/vCard
+  // Letra de la tarjeta (cada una la suya).
+  card_font: FUENTE_TARJETA_POR_DEFECTO.fuente,
+  card_font_scale: FUENTE_TARJETA_POR_DEFECTO.escala,
+  card_font_bold: false,
+  card_font_italic: false,
 };
 
 const SCHEMES = {
@@ -63,7 +72,7 @@ function buildVCardString(card, company) {
   return `BEGIN:VCARD\nVERSION:3.0\nFN:${card.name || ''}\nORG:${companyName}\nTITLE:${card.role || ''}\nTEL:${phone || ''}\nEMAIL:${email || ''}\nURL:${web}\nADR:;;${addr};${company?.city || ''};;${company?.postal_code || ''};${company?.country || 'España'}${note}\nEND:VCARD`;
 }
 
-function CardPreview({ card, company, size = 'normal' }) {
+function CardPreview({ card, company, size = 'normal', onCabe }) {
   const s = SCHEMES[card.color_scheme] || SCHEMES.dark_blue;
   const companyName = card.company_name_override || company?.company_name || 'Mi Empresa S.L.';
   const phone = card.use_company_phone ? company?.phone : card.phone;
@@ -72,6 +81,46 @@ function CardPreview({ card, company, size = 'normal' }) {
   const vcard = buildVCardString(card, company);
 
   const isSmall = size === 'small';
+  // La letra elegida para ESTA tarjeta. `t()` aplica la escala a cada tamaño,
+  // para que subir o bajar el tamaño mueva la tarjeta entera a la vez y no
+  // solo el nombre.
+  const letra = estiloTarjeta(card);
+  const escala = escalaValida(card.card_font_scale);
+  const t = (px) => `${medida(px, escala)}px`;
+  // Una tarjeta se imprime a 85×54 mm: lo que no quepa se corta, y un nombre
+  // cortado en una tarjeta de visita no se arregla luego. Así que se mide de
+  // verdad después de pintar y se avisa.
+  const refTarjeta = React.useRef(null);
+  React.useLayoutEffect(() => {
+    if (!onCabe) return undefined;
+    const mirar = () => {
+      const el = refTarjeta.current;
+      if (!el) return;
+      // OJO: no vale medir la tarjeta entera. Los círculos de adorno salen a
+      // propósito por fuera del borde (y se recortan), así que la tarjeta
+      // siempre parece desbordada aunque el texto quepa de sobra. Se miden
+      // SOLO los bloques de contenido.
+      const caja = el.getBoundingClientRect();
+      const bloques = el.querySelectorAll('[data-contenido]');
+      let cabe = true;
+      for (const b of bloques) {
+        const r = b.getBoundingClientRect();
+        if (r.bottom > caja.bottom + 1 || r.right > caja.right + 1
+          || r.top < caja.top - 1 || r.left < caja.left - 1) {
+          cabe = false;
+          break;
+        }
+      }
+      onCabe(cabe);
+    };
+    mirar();
+    // Al cambiar de letra el navegador repinta después: se vuelve a mirar.
+    const obs = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(mirar) : null;
+    if (obs && refTarjeta.current) obs.observe(refTarjeta.current);
+    const t2 = setTimeout(mirar, 250);
+    return () => { obs?.disconnect(); clearTimeout(t2); };
+  });
+
   const cardStyle = {
     width: '100%',
     aspectRatio: '85/54',
@@ -79,7 +128,7 @@ function CardPreview({ card, company, size = 'normal' }) {
     color: s.text,
     borderRadius: 8,
     padding: isSmall ? '8px 10px' : '14px 16px',
-    fontFamily: 'Arial, sans-serif',
+    ...letra,
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
@@ -89,44 +138,44 @@ function CardPreview({ card, company, size = 'normal' }) {
   };
 
   return (
-    <div style={cardStyle}>
+    <div style={cardStyle} ref={refTarjeta}>
       {/* Decorative circles */}
       <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: s.accent, opacity: 0.15 }} />
       <div style={{ position: 'absolute', bottom: -15, left: 30, width: 50, height: 50, borderRadius: '50%', background: s.accent, opacity: 0.1 }} />
 
       {/* Top: logo + company */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div data-contenido="cabecera" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           {card.show_logo && (
             // El tamaño debe coincidir con el de la plantilla de impresión
             // (58 px), o la vista previa engañaría sobre cómo saldrá impresa.
             company?.logo_url
               ? <img src={company.logo_url} alt="logo" style={{ height: isSmall ? 34 : 58, width: isSmall ? 34 : 58, objectFit: 'contain', background: 'white', borderRadius: 5, padding: '3px', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', flexShrink: 0 }} />
-              : <div style={{ width: isSmall ? 34 : 58, height: isSmall ? 34 : 58, background: s.accent, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: isSmall ? 16 : 26, color: s.bg, flexShrink: 0 }}>
+              : <div style={{ width: isSmall ? 34 : 58, height: isSmall ? 34 : 58, background: s.accent, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: pesoTarjeta(card, { fuerte: true }), fontSize: medida(isSmall ? 16 : 26, escala), color: s.bg, flexShrink: 0 }}>
                   {companyName[0] || 'E'}
                 </div>
           )}
-          <span style={{ fontSize: isSmall ? '7px' : '10px', fontWeight: 'bold', color: s.accent, letterSpacing: '0.5px', textTransform: 'uppercase', lineHeight: 1.2 }}>
+          <span style={{ fontSize: t(isSmall ? 7 : 10), fontWeight: pesoTarjeta(card, { fuerte: true }), color: s.accent, letterSpacing: '0.5px', textTransform: 'uppercase', lineHeight: 1.2, minWidth: 0, overflowWrap: 'anywhere' }}>
             {companyName}
           </span>
         </div>
         {card.show_qr && !isSmall && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
             <QRCode value={vcard} size={56} />
-            <span style={{ fontSize: '6px', color: s.sub, textAlign: 'center', lineHeight: 1 }}>Guardar contacto</span>
+            <span style={{ fontSize: t(6), color: s.sub, textAlign: 'center', lineHeight: 1 }}>Guardar contacto</span>
           </div>
         )}
       </div>
 
       {/* Middle: name + role + nif */}
-      <div>
-        <p style={{ fontSize: isSmall ? '11px' : '15px', fontWeight: 'bold', marginBottom: 2, color: s.text }}>{card.name || 'Nombre Apellidos'}</p>
-        <p style={{ fontSize: isSmall ? '7px' : '10px', color: s.sub, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{card.role || 'Cargo / Puesto'}</p>
-        {card.show_nif && card.nif && <p style={{ fontSize: isSmall ? '6px' : '8px', color: s.sub, marginTop: 1 }}>NIF: {card.nif}</p>}
+      <div data-contenido="nombre">
+        <p style={{ fontSize: t(isSmall ? 11 : 15), fontWeight: pesoTarjeta(card, { fuerte: true }), marginBottom: 2, color: s.text, lineHeight: 1.15, overflowWrap: 'anywhere' }}>{card.name || 'Nombre Apellidos'}</p>
+        <p style={{ fontSize: t(isSmall ? 7 : 10), color: s.sub, textTransform: 'uppercase', letterSpacing: '0.8px', lineHeight: 1.2, overflowWrap: 'anywhere' }}>{card.role || 'Cargo / Puesto'}</p>
+        {card.show_nif && card.nif && <p style={{ fontSize: t(isSmall ? 6 : 8), color: s.sub, marginTop: 1 }}>NIF: {card.nif}</p>}
       </div>
 
       {/* Bottom: contact */}
-      <div style={{ fontSize: isSmall ? '6px' : '8.5px', color: s.sub, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div data-contenido="contacto" style={{ fontSize: t(isSmall ? 6 : 8.5), color: s.sub, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflowWrap: 'anywhere' }}>
         {phone && <span>📞 {phone}</span>}
         {email && <span>✉️ {email}</span>}
         {web && <span>🌐 {web}</span>}
@@ -144,6 +193,8 @@ export default function BusinessCards() {
   const [form, setForm] = useState(EMPTY);
   const [editing, setEditing] = useState(null);
   const [dialog, setDialog] = useState(false);
+  // ¿Cabe todo el texto en la tarjeta con la letra elegida?
+  const [cabe, setCabe] = useState(true);
 
   useEffect(() => {
     base44.entities.CompanySettings.list().then(r => setCompany(r[0] || null));
@@ -186,6 +237,10 @@ export default function BusinessCards() {
 
   const handlePrintMultiple = async (card, copies = 10) => {
     const s = SCHEMES[card.color_scheme] || SCHEMES.dark_blue;
+    // La misma letra que en la vista previa: si aquí se pusiera otra, lo que
+    // se ve en pantalla no sería lo que sale de la impresora.
+    const L = cssTarjeta(card);
+    const m = (px) => `${medida(px, L.escala)}px`;
     const companyName = card.company_name_override || company?.company_name || 'Mi Empresa S.L.';
     const phone = card.use_company_phone ? company?.phone : card.phone;
     const email = card.use_company_email ? company?.email : card.email;
@@ -194,7 +249,7 @@ export default function BusinessCards() {
     const qrUrl = card.show_qr ? await QRCodeLib.toDataURL(vcard, { width: 240, margin: 1 }).catch(() => '') : '';
     const logoHtml = card.show_logo && company?.logo_url
       ? `<img src="${company.logo_url}" style="height:58px;width:58px;object-fit:contain;background:white;border-radius:5px;padding:3px;box-shadow:0 1px 3px rgba(0,0,0,0.2);flex-shrink:0;" />`
-      : `<div style="width:58px;height:58px;background:${s.accent};border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:26px;color:${s.bg};line-height:1;flex-shrink:0;">${companyName[0] || 'E'}</div>`;
+      : `<div style="width:58px;height:58px;background:${s.accent};border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:${L.fuerte};font-size:${m(26)};color:${s.bg};line-height:1;flex-shrink:0;">${companyName[0] || 'E'}</div>`;
 
     const cardHtml = `
       <div class="card">
@@ -202,12 +257,12 @@ export default function BusinessCards() {
         <div class="stripe"></div>
         <div class="top">
           <div class="top-left">${logoHtml}<span class="co">${companyName}</span></div>
-          ${card.show_qr ? `<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><img src="${qrUrl}" width="60" height="60" style="border-radius:4px;background:white;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,0.2);" /><span style="font-size:6px;color:${s.sub};text-align:center">Guardar contacto</span></div>` : ''}
+          ${card.show_qr ? `<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><img src="${qrUrl}" width="60" height="60" style="border-radius:4px;background:white;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,0.2);" /><span style="font-size:${m(6)};color:${s.sub};text-align:center">Guardar contacto</span></div>` : ''}
         </div>
         <div class="mid">
           <p class="name">${card.name}</p>
           <p class="role">${card.role || ''}</p>
-          ${card.show_nif && card.nif ? `<p style="font-size:8px;color:${s.sub};margin-top:2px">NIF: ${card.nif}</p>` : ''}
+          ${card.show_nif && card.nif ? `<p style="font-size:${m(8)};color:${s.sub};margin-top:2px">NIF: ${card.nif}</p>` : ''}
         </div>
         <div class="contact">
           ${phone ? `<span>📞 ${phone}</span>` : ''}
@@ -222,7 +277,7 @@ export default function BusinessCards() {
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
       @page { size: A4 portrait; margin: 5mm; }
       * { box-sizing: border-box; }
-      html, body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background: #ffffff; }
+      html, body { margin: 0; padding: 0; font-family: ${L.familia}; font-style: ${L.estilo}; font-weight: ${L.normal}; background: #ffffff; }
       /* 2 columnas x 5 filas = 10 tarjetas que caben COMPLETAS en un A4:
          altura total = 5*53 + 4*3 = 277mm < 287mm imprimibles (margen 5mm). */
       .page {
@@ -256,11 +311,11 @@ export default function BusinessCards() {
       .c2 { position: absolute; bottom: -18px; left: 20px; width: 60px; height: 60px; border-radius: 50%; background: ${s.accent}; opacity: 0.12; }
       .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
       .top-left { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
-      .co { font-size: 9px; font-weight: bold; color: ${s.accent} !important; letter-spacing: 0.6px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .co { font-size: ${m(9)}; font-weight: ${L.fuerte}; color: ${s.accent} !important; letter-spacing: 0.6px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .mid { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 2px 0; }
-      .name { font-size: 15px; font-weight: bold; color: ${s.text} !important; margin: 0 0 3px 0; line-height: 1.2; }
-      .role { font-size: 9px; color: ${s.sub} !important; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
-      .contact { font-size: 8px; color: ${s.sub} !important; display: flex; flex-direction: column; gap: 2px; }
+      .name { font-size: ${m(15)}; font-weight: ${L.fuerte}; color: ${s.text} !important; margin: 0 0 3px 0; line-height: 1.2; }
+      .role { font-size: ${m(9)}; color: ${s.sub} !important; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
+      .contact { font-size: ${m(8)}; color: ${s.sub} !important; display: flex; flex-direction: column; gap: 2px; }
       .contact span { display: block; }
     </style></head><body>
     <div class="page">${allCards}</div>
@@ -270,6 +325,8 @@ export default function BusinessCards() {
 
   const handlePrint = async (card) => {
     const s = SCHEMES[card.color_scheme] || SCHEMES.dark_blue;
+    const L = cssTarjeta(card);
+    const m = (px) => `${medida(px, L.escala)}px`;
     const companyName = card.company_name_override || company?.company_name || 'Mi Empresa S.L.';
     const phone = card.use_company_phone ? company?.phone : card.phone;
     const email = card.use_company_email ? company?.email : card.email;
@@ -278,31 +335,31 @@ export default function BusinessCards() {
     const qrUrl = card.show_qr ? await QRCodeLib.toDataURL(vcard, { width: 200, margin: 1 }).catch(() => '') : '';
     const logoHtml = card.show_logo && company?.logo_url
       ? `<img src="${company.logo_url}" style="height:58px;width:58px;object-fit:contain;background:white;border-radius:5px;padding:3px;box-shadow:0 1px 3px rgba(0,0,0,0.2);flex-shrink:0;" />`
-      : `<div style="width:58px;height:58px;background:${s.accent};border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:26px;color:${s.bg};flex-shrink:0;">${companyName[0] || 'E'}</div>`;
+      : `<div style="width:58px;height:58px;background:${s.accent};border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:${L.fuerte};font-size:${m(26)};color:${s.bg};flex-shrink:0;">${companyName[0] || 'E'}</div>`;
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
       @page { size: 85mm 54mm; margin: 0; }
-      body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+      body { margin: 0; padding: 0; font-family: ${L.familia}; font-style: ${L.estilo}; font-weight: ${L.normal}; }
       .card { width: 85mm; height: 54mm; background: ${s.bg}; color: ${s.text}; padding: 10px 12px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
       .c1 { position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; border-radius: 50%; background: ${s.accent}; opacity: 0.15; }
       .c2 { position: absolute; bottom: -15px; left: 30px; width: 50px; height: 50px; border-radius: 50%; background: ${s.accent}; opacity: 0.1; }
       .top { display: flex; align-items: center; justify-content: space-between; }
       .top-left { display: flex; align-items: center; gap: 6px; }
-      .co { font-size: 9px; font-weight: bold; color: ${s.accent}; letter-spacing: 0.5px; text-transform: uppercase; }
-      .name { font-size: 15px; font-weight: bold; color: ${s.text}; margin-bottom: 2px; }
-      .role { font-size: 9px; color: ${s.sub}; text-transform: uppercase; letter-spacing: 0.8px; }
-      .contact { font-size: 8px; color: ${s.sub}; display: flex; flex-direction: column; gap: 2px; }
+      .co { font-size: ${m(9)}; font-weight: ${L.fuerte}; color: ${s.accent}; letter-spacing: 0.5px; text-transform: uppercase; }
+      .name { font-size: ${m(15)}; font-weight: ${L.fuerte}; color: ${s.text}; margin-bottom: 2px; }
+      .role { font-size: ${m(9)}; color: ${s.sub}; text-transform: uppercase; letter-spacing: 0.8px; }
+      .contact { font-size: ${m(8)}; color: ${s.sub}; display: flex; flex-direction: column; gap: 2px; }
     </style></head><body>
     <div class="card">
       <div class="c1"></div><div class="c2"></div>
       <div class="top">
         <div class="top-left">${logoHtml}<span class="co">${companyName}</span></div>
-        ${card.show_qr ? `<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><img src="${qrUrl}" width="58" height="58" style="border-radius:4px;background:white;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,0.2);" /><span style="font-size:6px;color:${s.sub}">Guardar contacto</span></div>` : ''}
+        ${card.show_qr ? `<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><img src="${qrUrl}" width="58" height="58" style="border-radius:4px;background:white;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,0.2);" /><span style="font-size:${m(6)};color:${s.sub}">Guardar contacto</span></div>` : ''}
       </div>
       <div>
         <p class="name">${card.name}</p>
         <p class="role">${card.role || ''}</p>
-        ${card.show_nif && card.nif ? `<p style="font-size:7px;color:${s.sub};margin-top:1px">NIF: ${card.nif}</p>` : ''}
+        ${card.show_nif && card.nif ? `<p style="font-size:${m(7)};color:${s.sub};margin-top:1px">NIF: ${card.nif}</p>` : ''}
       </div>
       <div class="contact">
         ${phone ? `<span>📞 ${phone}</span>` : ''}
@@ -383,8 +440,18 @@ export default function BusinessCards() {
           <div className="space-y-4">
             {/* Live preview */}
             <div className="max-w-xs mx-auto">
-              <CardPreview card={form} company={company} />
+              <CardPreview card={form} company={company} onCabe={setCabe} />
             </div>
+            {/* El aviso va aquí, pegado a la tarjeta y NO dentro de una
+                pestaña: si estás escribiendo el nombre en "Datos personales"
+                también tienes que enterarte de que ya no cabe. */}
+            {!cabe && (
+              <div role="alert" className="mx-auto max-w-md rounded-md border border-amber-300 bg-amber-50 p-2 text-center text-xs text-amber-800">
+                <strong>No cabe todo.</strong> Con esta letra el texto se sale de la tarjeta
+                y al imprimirla saldría cortado. Baja el tamaño en <em>Diseño</em>, acorta el
+                cargo o quita algún dato.
+              </div>
+            )}
 
             <Tabs defaultValue="datos">
               <TabsList className="w-full">
@@ -442,6 +509,55 @@ export default function BusinessCards() {
                     </SelectContent>
                   </Select>
                 </div>
+                {/* Letra de la tarjeta */}
+                <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+                  <p className="text-xs font-medium text-gray-700">Letra de la tarjeta</p>
+                  <div>
+                    <label className="text-xs text-gray-500">Tipo de letra</label>
+                    <Select value={form.card_font || 'arial'} onValueChange={v => setForm({ ...form, card_font: v })}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {gruposDeFuentes().map(({ grupo, fuentes }) => (
+                          <SelectGroup key={grupo}>
+                            <SelectLabel>{grupo}</SelectLabel>
+                            {fuentes.map(f => (
+                              <SelectItem key={f.id} value={f.id}>
+                                <span style={{ fontFamily: f.familia }}>{f.nombre}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-gray-400 mt-1">{fuentePorId(form.card_font).nota}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">
+                      Tamaño del texto — {escalaValida(form.card_font_scale)}%
+                    </label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] text-gray-400">A</span>
+                      <input
+                        type="range"
+                        min={ESCALA_MIN}
+                        max={ESCALA_MAX}
+                        step={5}
+                        aria-label="Tamaño del texto de la tarjeta"
+                        value={escalaValida(form.card_font_scale)}
+                        onChange={e => setForm({ ...form, card_font_scale: escalaValida(e.target.value) })}
+                        className="flex-1 accent-blue-600"
+                      />
+                      <span className="text-base text-gray-400">A</span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      Mueve la tarjeta entera a la vez, no solo el nombre. Lo que ves es lo que se imprime.
+                    </p>
+                  </div>
+
+                  {Toggle('card_font_bold', 'Negrita')}
+                  {Toggle('card_font_italic', 'Cursiva')}
+                </div>
+
                 <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                   <p className="text-xs font-medium text-gray-700">Elementos a mostrar:</p>
                   {Toggle('show_logo', 'Mostrar logo empresa')}

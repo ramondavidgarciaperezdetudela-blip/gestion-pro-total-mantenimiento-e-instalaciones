@@ -43,7 +43,7 @@ const EMPTY_FORM = {
   type: 'cliente', category: 'residencial', name: '', surname: '', company_name: '',
   nif: '', email: '', phone: '', phone2: '', address: '', city: '', province: '',
   postal_code: '', country: 'España', notes: '', payment_profile: 'pagador_normal',
-  pending_amount: '', internal_observations: '', photo_url: ''
+  pending_amount: null, internal_observations: '', photo_url: ''
 };
 
 function ContactCard({ contact, onEdit, onDelete }) {

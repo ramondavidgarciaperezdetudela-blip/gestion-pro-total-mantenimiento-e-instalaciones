@@ -2,6 +2,7 @@ import { createClient } from '@base44/sdk';
 import { appParams } from '@/lib/app-params';
 import {
   METODOS_QUE_GUARDAN, INTEGRACIONES_VIGILADAS, avisarDeFallo, sePuedeReintentarSolo,
+  camposNumericosVacios, conNumerosVaciosANulo,
 } from '@/lib/avisoServidor';
 
 const { appId, token, functionsVersion, appBaseUrl } = appParams;
@@ -38,6 +39,33 @@ const cliente = createClient({
 
 const ESPERA_REINTENTO = [700, 2000, 5000];
 
+/**
+ * Rehace los argumentos con los campos numéricos vacíos puestos a "sin valor".
+ *
+ * Los datos son siempre el último argumento: create(datos), update(id, datos),
+ * bulkCreate([datos...]), bulkUpdate([datos...]). Devuelve null si no había
+ * nada que arreglar, para no reintentar por gusto.
+ */
+function arreglarNumeros(args, campos) {
+  if (!campos?.length || !args.length) return null;
+  const i = args.length - 1;
+  const datos = args[i];
+  if (!datos || typeof datos !== 'object') return null;
+
+  const arreglado = Array.isArray(datos)
+    ? datos.map((d) => conNumerosVaciosANulo(d, campos))
+    : conNumerosVaciosANulo(datos, campos);
+
+  const cambia = Array.isArray(datos)
+    ? arreglado.some((d, k) => d !== datos[k])
+    : arreglado !== datos;
+  if (!cambia) return null;
+
+  const salida = [...args];
+  salida[i] = arreglado;
+  return salida;
+}
+
 function envolverEntidad(entidad, nombre) {
   if (!entidad) return entidad;
   const cache = {};
@@ -47,12 +75,31 @@ function envolverEntidad(entidad, nombre) {
       if (typeof valor !== 'function' || !METODOS_QUE_GUARDAN.includes(prop)) return valor;
       if (cache[prop]) return cache[prop];
       cache[prop] = async (...args) => {
+        let actuales = args;
+        let arregladoYa = false;
         let ultimo;
         for (let intento = 0; intento <= ESPERA_REINTENTO.length; intento++) {
           try {
-            return await valor.apply(destino, args);
+            return await valor.apply(destino, actuales);
           } catch (err) {
             ultimo = err;
+
+            // Un campo numérico que no se ha tocado va como texto vacío y el
+            // servidor rechaza el guardado entero. Él sí sabe cuáles son
+            // números: se le hace caso, se mandan como "sin valor" y se
+            // reintenta. Un rechazo así significa que NO ha guardado nada,
+            // así que reintentar no puede duplicar.
+            if (!arregladoYa) {
+              const vacios = camposNumericosVacios(err);
+              const corregidos = arreglarNumeros(actuales, vacios);
+              if (corregidos) {
+                arregladoYa = true;
+                actuales = corregidos;
+                intento--;                 // este intento no cuenta como reintento
+                continue;
+              }
+            }
+
             // Solo se reintenta solo cuando el servidor ha dicho "vas
             // demasiado rápido": ahí se sabe seguro que no ha guardado nada.
             // Con un fallo de red no se sabe, y repetir un alta crearía un

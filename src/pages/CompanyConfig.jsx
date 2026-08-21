@@ -7,6 +7,7 @@ import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import TipoDeFuentePanel from '@/components/TipoDeFuentePanel';
 import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, AlertTriangle, Type, Image as ImageIcon, CalendarClock } from 'lucide-react';
 import PostalCodeSearch from '@/components/PostalCodeSearch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -329,6 +330,7 @@ export default function CompanyConfig() {
           <TabsTrigger value="tecnicos" className="flex-1 text-xs">Técnicos</TabsTrigger>
           <TabsTrigger value="correo" className="flex-1 text-xs">Correo</TabsTrigger>
           <TabsTrigger value="horario" className="flex-1 text-xs">Horario</TabsTrigger>
+          <TabsTrigger value="fuente" className="flex-1 text-xs">Tipo de Fuente</TabsTrigger>
           <TabsTrigger value="impresion" className="flex-1 text-xs">Impresión</TabsTrigger>
           <TabsTrigger value="documentos" className="flex-1 text-xs">Documentos</TabsTrigger>
           <TabsTrigger value="escaner" className="flex-1 text-xs">Escáner</TabsTrigger>
@@ -659,6 +661,10 @@ export default function CompanyConfig() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="fuente">
+          <TipoDeFuentePanel />
         </TabsContent>
 
         <TabsContent value="impresion">

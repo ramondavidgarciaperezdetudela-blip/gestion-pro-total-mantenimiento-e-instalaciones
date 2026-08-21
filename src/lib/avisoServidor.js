@@ -62,6 +62,85 @@ export function queSeIntentaba(entidad, metodo) {
   return `No se ha podido ${VERBO[metodo] || 'guardar'} ${nombreDeSeccion(entidad)}`;
 }
 
+/** Nombres de campo en cristiano, para no soltarle al usuario "pending_amount". */
+const CAMPOS = {
+  pending_amount: 'Importe pendiente',
+  unit_price: 'Precio unidad',
+  purchase_price: 'Precio de compra',
+  sale_price: 'Precio de venta',
+  cost_price: 'Precio de coste',
+  cost: 'Coste',
+  quantity: 'Cantidad',
+  min_stock: 'Stock mínimo',
+  power_kw: 'Potencia (kW)',
+  labor_hours: 'Horas de mano de obra',
+  repair_hours: 'Horas de reparación',
+  hours: 'Horas',
+  discount: 'Descuento',
+  length: 'Largo',
+  width: 'Ancho',
+  height: 'Alto',
+  length_m: 'Longitud (m)',
+  num_panels: 'Número de paneles',
+  num_paneles: 'Número de paneles',
+  carga_gas: 'Carga de gas',
+  consumption_kwh: 'Consumo (kWh)',
+  exterior_temp: 'Temperatura exterior',
+  target_temp: 'Temperatura objetivo',
+  cold_room_temp: 'Temperatura de cámara',
+  product_kg: 'Kilos de producto',
+  num_people: 'Número de personas',
+  window_area: 'Superficie de ventanas',
+  equipment_heat: 'Calor de equipos',
+  pipe_distance: 'Distancia de tubería',
+  pipe_height_diff: 'Desnivel de tubería',
+  email: 'Email',
+  phone: 'Teléfono',
+  name: 'Nombre',
+  postal_code: 'Código postal',
+  date: 'Fecha',
+  lat: 'Latitud',
+  lng: 'Longitud',
+};
+
+export function nombreDeCampo(campo) {
+  return CAMPOS[campo] || `«${campo}»`;
+}
+
+/** "A", "A y B", "A, B y C" — como se dice, no como lo escupe el servidor. */
+function listar(nombres) {
+  const l = nombres.map(nombreDeCampo);
+  if (l.length === 1) return l[0];
+  return `${l.slice(0, -1).join(', ')} y ${l[l.length - 1]}`;
+}
+
+/** Qué campos ha señalado el servidor, sean números o no. */
+function camposSenalados(err) {
+  const detalle = err?.data?.detail ?? err?.data;
+  const campos = new Set();
+  if (Array.isArray(detalle)) {
+    for (const e of detalle) {
+      const loc = e?.loc;
+      const n = Array.isArray(loc) ? loc[loc.length - 1] : loc;
+      if (typeof n === 'string' && n && n !== 'body') campos.add(n);
+    }
+  } else if (typeof detalle === 'string') {
+    for (const m of detalle.matchAll(/['"]loc['"]\s*:\s*[([]([^)\]]*)[)\]]/g)) {
+      const partes = m[1].split(',').map((x) => x.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+      const n = partes[partes.length - 1];
+      if (n && n !== 'body') campos.add(n);
+    }
+  }
+  return [...campos];
+}
+
+/** Un detalle largo o con pinta de volcado técnico no se le enseña a nadie. */
+function textoCorto(detalle) {
+  if (typeof detalle !== 'string') return '';
+  if (detalle.length > 160 || /pydantic|\{['"]type['"]|Traceback/.test(detalle)) return '';
+  return detalle;
+}
+
 /**
  * Traduce el error del servidor a algo que se pueda leer y, sobre todo, que
  * diga qué hacer. Un "Request failed with status code 429" no le sirve a
@@ -96,7 +175,12 @@ export function motivoDelFallo(err) {
     return 'El servidor está recibiendo demasiadas peticiones seguidas. Espera unos segundos y vuelve a darle a guardar.';
   }
   if (estado === 400 || estado === 422) {
-    return `Hay algún dato que el servidor no admite${detalle ? `: ${detalle}` : '.'}`;
+    const campos = camposSenalados(err);
+    if (campos.length) {
+      return `El servidor no admite lo que hay en ${listar(campos)}. Revísalo y vuelve a guardar.`;
+    }
+    const corto = textoCorto(detalle);
+    return `Hay algún dato que el servidor no admite${corto ? `: ${corto}` : '.'}`;
   }
   if (estado >= 500) {
     return 'El servidor ha dado un error. No es cosa tuya: espera un momento y vuelve a intentarlo.';
@@ -112,6 +196,67 @@ export function sePuedeReintentarSolo(err) {
   // ahí se avisa y se deja que decida la persona.
   const estado = err?.status ?? err?.response?.status ?? null;
   return estado === 429;
+}
+
+// ── Números vacíos ─────────────────────────────────────────────────────────
+//
+// Un campo numérico que no se toca se queda valiendo cadena vacía (así es como
+// el cuadro se ve vacío en pantalla, sin un 0 delante). Al guardar, esa cadena
+// vacía viaja al servidor, que espera un número y lo rechaza entero: "Importe
+// pendiente: Input should be a valid number". El formulario no se guardaba y
+// antes ni siquiera se decía por qué.
+//
+// El servidor sí sabe qué campos son números, así que se aprovecha su propia
+// respuesta: se mira qué campos ha señalado, se mandan esos como "sin valor"
+// y se reintenta. Es seguro reintentar porque un rechazo de este tipo quiere
+// decir que NO ha guardado nada.
+
+const TIPOS_DE_NUMERO = /^(float|int|decimal)_(parsing|type)$/;
+
+/**
+ * Saca del error del servidor los campos numéricos a los que les ha llegado
+ * texto vacío.
+ *
+ * La respuesta llega unas veces como lista y otras como texto con la lista
+ * dentro, así que se contemplan las dos.
+ */
+export function camposNumericosVacios(err) {
+  const detalle = err?.data?.detail ?? err?.data;
+  const campos = new Set();
+
+  const anotar = (tipo, loc, entrada) => {
+    if (!TIPOS_DE_NUMERO.test(String(tipo || ''))) return;
+    if (entrada !== '' && entrada !== undefined) return;
+    const nombre = Array.isArray(loc) ? loc[loc.length - 1] : loc;
+    if (typeof nombre === 'string' && nombre) campos.add(nombre);
+  };
+
+  if (Array.isArray(detalle)) {
+    for (const e of detalle) anotar(e?.type, e?.loc, e?.input);
+  } else if (typeof detalle === 'string') {
+    // Viene como texto: {'type': 'float_parsing', 'loc': ('pending_amount',), ... 'input': ''
+    const trozos = detalle.split(/\}\s*,?\s*\{/);
+    for (const t of trozos) {
+      const tipo = /['"]type['"]\s*:\s*['"]([\w.]+)['"]/.exec(t)?.[1];
+      const loc = /['"]loc['"]\s*:\s*[([]([^)\]]*)[)\]]/.exec(t)?.[1];
+      const vacio = /['"]input['"]\s*:\s*(['"])\1/.test(t);
+      if (!tipo || !loc || !vacio) continue;
+      const partes = loc.split(',').map((x) => x.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+      anotar(tipo, partes, '');
+    }
+  }
+  return [...campos];
+}
+
+/** Devuelve una copia con esos campos como "sin valor" en vez de texto vacío. */
+export function conNumerosVaciosANulo(datos, campos) {
+  if (!datos || typeof datos !== 'object' || !campos?.length) return datos;
+  const salida = Array.isArray(datos) ? [...datos] : { ...datos };
+  let tocado = false;
+  for (const c of campos) {
+    if (salida[c] === '') { salida[c] = null; tocado = true; }
+  }
+  return tocado ? salida : datos;
 }
 
 // ── Lo que no es una ficha: funciones del servidor y subidas de archivos ───
