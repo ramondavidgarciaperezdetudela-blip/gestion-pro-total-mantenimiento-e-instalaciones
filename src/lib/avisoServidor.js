@@ -152,7 +152,7 @@ export function motivoDelFallo(err) {
 
   if (estado === null || estado === undefined) {
     if (/network|failed to fetch|timeout|abort|ERR_/i.test(detalle)) {
-      return 'No hay conexión con el servidor. Comprueba la cobertura y vuelve a darle a guardar; lo que has escrito sigue aquí.';
+      return 'No hay conexión con el servidor. Comprueba la cobertura y vuelve a intentarlo; lo que has escrito sigue aquí.';
     }
     return detalle || 'No se ha podido contactar con el servidor.';
   }

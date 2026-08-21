@@ -12,6 +12,11 @@ import { Bot, Plus, Trash2, Send, Search, Edit, Printer, Mail, User, Save, Refre
 import { format } from 'date-fns';
 import CompanyHeader from '../components/CompanyHeader';
 import PrintButton from '../components/PrintButton';
+import {
+  CATEGORIAS, ESQUEMA_TRABAJO, avisoDeFiabilidad, comoPartidaDePresupuesto,
+  conTusPrecios, cuentas, encargoTrabajo,
+} from '@/lib/presupuestoIA';
+import { motivoDelFallo } from '@/lib/avisoServidor';
 
 const EMPTY_BUDGET = {
   budgetTitle: '',
@@ -37,6 +42,12 @@ export default function AIBudget() {
   const [previewBudget, setPreviewBudget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // Presupuestar un trabajo descrito con palabras (no una lista de material).
+  const [misPrecios, setMisPrecios] = useState([]);
+  const [trabajo, setTrabajo] = useState('');
+  const [trabajoCargando, setTrabajoCargando] = useState(false);
+  const [trabajoError, setTrabajoError] = useState('');
+  const [estimacion, setEstimacion] = useState(null);
   const printRef = useRef(null);
 
   useEffect(() => {
@@ -48,10 +59,13 @@ export default function AIBudget() {
       base44.entities.Contact.list('name', 500),
       base44.entities.Supplier.list('name', 100),
       base44.entities.AIConsultation.filter({ type: 'presupuesto' }, '-created_date', 100),
-    ]).then(([c, s, b]) => {
+      // Tu base de precios: es lo que hace que la estimación valga algo.
+      base44.entities.PriceItem.list('description', 500).catch(() => []),
+    ]).then(([c, s, b, p]) => {
       setContacts(c);
       setSuppliers(s);
       setBudgets(b);
+      setMisPrecios(p || []);
     });
   };
 
@@ -102,6 +116,49 @@ Devuelve materiales/partidas para presupuesto profesional con descripción, cant
     });
     setAiSuggestions(result?.items || []);
     setAiLoading(false);
+  };
+
+  /**
+   * Presupuestar un trabajo descrito con palabras.
+   *
+   * Lo que devuelve la IA se cruza con TU base de precios: donde tienes
+   * precio, manda el tuyo; lo que no, queda marcado como estimado.
+   */
+  const presupuestarTrabajo = async () => {
+    if (!trabajo.trim()) return;
+    setTrabajoCargando(true);
+    setTrabajoError('');
+    setEstimacion(null);
+    try {
+      const r = await base44.integrations.Core.InvokeLLM({
+        prompt: encargoTrabajo(trabajo, {
+          catalogo: misPrecios,
+          proveedores: suppliers.map(x => x.name).filter(Boolean),
+        }),
+        add_context_from_internet: true,
+        response_json_schema: ESQUEMA_TRABAJO,
+      });
+      const partidas = conTusPrecios(r?.partidas, misPrecios);
+      if (!partidas.length) {
+        setTrabajoError('No he sacado nada en claro de esa descripción. Prueba a dar algún dato más: medidas, potencia, cuántas unidades…');
+      } else {
+        setEstimacion({
+          resumen: r?.resumen || '',
+          supuestos: Array.isArray(r?.supuestos) ? r.supuestos : [],
+          partidas,
+        });
+      }
+    } catch (err) {
+      // Si falla, se dice, y en cristiano: el traductor de errores es el
+      // mismo que usa el resto del programa, no un mensaje aparte.
+      setTrabajoError(`No se ha podido calcular la estimación. ${motivoDelFallo(err)}`);
+    } finally {
+      setTrabajoCargando(false);
+    }
+  };
+
+  const anadirPartidas = (partidas) => {
+    set('items', [...current.items, ...partidas.map(comoPartidaDePresupuesto)]);
   };
 
   const addSuggestion = (s, supplierOverride) => {
@@ -287,6 +344,134 @@ Devuelve materiales/partidas para presupuesto profesional con descripción, cant
           </Select>
         </div>
       </div>
+
+      {/* Presupuestar un trabajo entero descrito con palabras */}
+      <Card className="border-emerald-200 bg-emerald-50">
+        <CardContent className="p-4">
+          <p className="text-sm font-medium text-emerald-800 mb-1">
+            🧰 Presupuestar un trabajo
+          </p>
+          <p className="text-xs text-emerald-700 mb-2">
+            Cuenta el trabajo con tus palabras y te lo desglosa con lo que costaría:
+            material, mano de obra y desplazamiento. Donde tengas precio en tu base
+            se usa <strong>el tuyo</strong>; lo demás va marcado como estimado.
+          </p>
+          <div className="flex gap-2">
+            <Textarea
+              rows={2}
+              className="bg-white"
+              placeholder='Ej: "Cambiar el compresor de una cámara de congelado de 20 m², está a 15 km" · "Instalar 3 splits de 3000 frigorías en un piso de dos alturas" · "Montar cuadro eléctrico de una nave de 400 m²"'
+              value={trabajo}
+              onChange={e => setTrabajo(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) presupuestarTrabajo(); }}
+            />
+            <Button onClick={presupuestarTrabajo} disabled={trabajoCargando || !trabajo.trim()}
+              className="bg-emerald-600 shrink-0 self-stretch px-4">
+              {trabajoCargando ? <span className="animate-spin">⏳</span> : <Send className="w-4 h-4" />}
+            </Button>
+          </div>
+          {misPrecios.length === 0 && (
+            <p className="mt-2 text-[11px] text-emerald-700">
+              Todavía no tienes precios cargados, así que saldrá todo estimado. Cuantos
+              más precios tuyos tengas en la base, más se parecerá al presupuesto de verdad.
+            </p>
+          )}
+
+          {trabajoError && (
+            <div role="alert" className="mt-3 rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-800">
+              {trabajoError}
+            </div>
+          )}
+
+          {estimacion && (() => {
+            const c = cuentas(estimacion.partidas);
+            const aviso = avisoDeFiabilidad(c);
+            const euro = (n) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const colorAviso = aviso?.nivel === 'bien' ? 'border-emerald-300 bg-emerald-100 text-emerald-900'
+              : aviso?.nivel === 'medio' ? 'border-amber-300 bg-amber-50 text-amber-900'
+              : 'border-red-300 bg-red-50 text-red-800';
+            return (
+              <div className="mt-3 space-y-3" data-prueba="estimacion">
+                {estimacion.resumen && (
+                  <p className="text-xs text-emerald-900 bg-white border border-emerald-200 rounded-md p-2">
+                    <strong>Lo que he entendido:</strong> {estimacion.resumen}
+                  </p>
+                )}
+
+                {/* Lo que costaría */}
+                <div className="bg-white border rounded-lg p-3">
+                  <p className="text-xs text-gray-500">Costaría, sin IVA, alrededor de</p>
+                  <p className="text-2xl font-bold text-emerald-700" data-prueba="rango">
+                    {euro(c.minimo)} € – {euro(c.maximo)} €
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-600">
+                    {Object.entries(c.porCategoria).filter(([, v]) => v > 0).map(([k, v]) => (
+                      <span key={k}>{CATEGORIAS[k]}: <strong>{euro(v)} €</strong></span>
+                    ))}
+                  </div>
+                  {aviso && (
+                    <p className={`mt-2 rounded-md border p-2 text-[11px] ${colorAviso}`} role="note">
+                      {aviso.texto}
+                    </p>
+                  )}
+                </div>
+
+                {estimacion.supuestos.length > 0 && (
+                  <div className="bg-white border rounded-lg p-2">
+                    <p className="text-[11px] font-medium text-gray-700 mb-1">
+                      He dado por hecho esto (cámbialo si no es tu caso):
+                    </p>
+                    <ul className="list-disc pl-4 text-[11px] text-gray-600 space-y-0.5">
+                      {estimacion.supuestos.map((x, i) => <li key={i}>{x}</li>)}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Las partidas */}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-emerald-800">
+                    {estimacion.partidas.length} partidas — añade las que te interesen:
+                  </p>
+                  <div className="flex gap-1">
+                    <Button size="sm" className="bg-emerald-600 text-xs h-7"
+                      onClick={() => { anadirPartidas(estimacion.partidas); setEstimacion(null); }}>
+                      <Plus className="w-3 h-3 mr-1" />Añadir todo al presupuesto
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setEstimacion(null)}>
+                      Descartar
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  {estimacion.partidas.map((p, i) => (
+                    <div key={i} className="bg-white border rounded-lg p-2 flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{p.description}</p>
+                        <p className="text-xs text-gray-500">
+                          {p.quantity} {p.unidad} × {euro(p.unit_price)} € = <strong>{euro(p.quantity * p.unit_price)} €</strong>
+                          <span className="ml-2 text-gray-400">{CATEGORIAS[p.categoria]}</span>
+                        </p>
+                      </div>
+                      <Badge className={`shrink-0 text-[10px] ${p.origen === 'propio'
+                        ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
+                        {p.origen === 'propio' ? 'tu precio' : 'estimado'}
+                      </Badge>
+                      <Button size="sm" className="bg-emerald-600 text-xs h-7 shrink-0"
+                        onClick={() => {
+                          anadirPartidas([p]);
+                          setEstimacion(e => ({ ...e, partidas: e.partidas.filter((_, j) => j !== i) }));
+                        }}>
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
 
       {/* Búsqueda IA */}
       <Card className="border-blue-200 bg-blue-50">
