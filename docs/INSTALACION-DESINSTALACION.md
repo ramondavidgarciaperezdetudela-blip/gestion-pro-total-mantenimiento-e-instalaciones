@@ -11,7 +11,7 @@ publican en una **única página pública de descargas**, siempre con la última
 > La app de escritorio, además, se **actualiza sola** cuando hay una versión nueva.
 
 Los nombres son exactamente estos (sin tildes y con guiones), donde
-`<versión>` es el número de versión, por ejemplo `1.30.0`:
+`<versión>` es el número de la versión que descargues (el que aparezca en la página):
 
 | Sistema | Archivo a descargar | Tipo |
 |---|---|---|
