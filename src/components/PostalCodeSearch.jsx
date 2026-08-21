@@ -1,8 +1,18 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Loader2, AlertCircle } from 'lucide-react';
+import {
+  buscarPorPrefijo, buscarPorMunicipio, buscarPorProvincia, precargar,
+} from '@/lib/codigosPostales';
 
+/**
+ * PostalCodeSearch — buscador de códigos postales de España.
+ *
+ * Antes preguntaba al servidor y en la obra, sin cobertura, no salía nada.
+ * Ahora los datos van dentro de la aplicación: 10.866 códigos postales con su
+ * municipio y su provincia, de las 52 provincias. Funciona sin conexión y sin
+ * esperar, así que tampoco hace falta el retardo de antes al teclear.
+ */
 export default function PostalCodeSearch({ onSelect, type = 'postal_code' }) {
   const [searchValue, setSearchValue] = useState('');
   const [results, setResults] = useState([]);
@@ -11,9 +21,15 @@ export default function PostalCodeSearch({ onSelect, type = 'postal_code' }) {
   const [showResults, setShowResults] = useState(false);
   const debounceRef = useRef(null);
 
+  // Los datos se cargan al abrir el cuadro, no al escribir: así la primera
+  // búsqueda ya sale instantánea.
+  useEffect(() => { precargar(); }, []);
+
   const doSearch = useCallback(async (value) => {
     setError('');
-    if (!value || value.length < 3) {
+    // Con dos cifras ya se puede ir enseñando: "28" son los de Madrid.
+    const minimo = type === 'postal_code' ? 2 : 2;
+    if (!value || value.trim().length < minimo) {
       setResults([]);
       setShowResults(false);
       return;
@@ -21,20 +37,13 @@ export default function PostalCodeSearch({ onSelect, type = 'postal_code' }) {
 
     setLoading(true);
     try {
-      const response = await base44.functions.invoke('getSpanishPostalCodes', {
-        searchType: type,
-        searchValue: value
-      });
-
-      if (response.data?.success && response.data.results) {
-        setResults(response.data.results);
-        setShowResults(true);
-      } else {
-        setResults([]);
-        setShowResults(true);
-      }
+      const encontrados = type === 'postal_code' ? await buscarPorPrefijo(value)
+        : type === 'city' ? await buscarPorMunicipio(value)
+          : await buscarPorProvincia(value);
+      setResults(encontrados);
+      setShowResults(true);
     } catch (err) {
-      setError('Error al buscar el código postal. Inténtalo de nuevo.');
+      setError('No se pudieron cargar los códigos postales.');
       setResults([]);
     } finally {
       setLoading(false);
@@ -44,7 +53,9 @@ export default function PostalCodeSearch({ onSelect, type = 'postal_code' }) {
   const handleSearch = (value) => {
     setSearchValue(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doSearch(value), 600);
+    // 120 ms en vez de 600: ya no se llama a ningún servidor, solo hace falta
+    // no buscar en cada tecla.
+    debounceRef.current = setTimeout(() => doSearch(value), 120);
   };
 
   const handleSelect = (result) => {
@@ -87,7 +98,7 @@ export default function PostalCodeSearch({ onSelect, type = 'postal_code' }) {
               className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b last:border-b-0 text-sm"
             >
               <div className="font-medium text-gray-900">
-                {result.postal_code} - {result.city}
+                {result.postal_code} · {result.city}
               </div>
               <div className="text-xs text-gray-500">
                 {result.province}
