@@ -169,6 +169,52 @@ ipcMain.handle('gpt-elegir-carpeta-copias', async () => {
   }
 });
 
+/**
+ * Copia escrita POR PARTES.
+ *
+ * Con muchos clientes, fotos y documentos, la copia entera no cabe de una
+ * pieza en memoria: se monta el fichero sección a sección. Aquí se guarda el
+ * descriptor abierto entre llamada y llamada.
+ */
+let copiaEnCurso = null;
+
+ipcMain.handle('gpt-copia-abrir', async (_evt, { nombre, carpeta }) => {
+  try {
+    if (copiaEnCurso) { try { fs.closeSync(copiaEnCurso.fd); } catch { /* ya cerrado */ } }
+    const { ruta, alternativa, perdida } = carpetaDeCopias(carpeta);
+    const fichero = path.join(ruta, String(nombre || 'copia.json').replace(/[/\\]/g, '_'));
+    copiaEnCurso = { fd: fs.openSync(fichero, 'w'), fichero, carpeta: ruta, alternativa, perdida };
+    return { ok: true, ruta: fichero, carpeta: ruta, alternativa, perdida };
+  } catch (err) {
+    copiaEnCurso = null;
+    return { ok: false, error: err?.message || 'No se pudo crear el fichero' };
+  }
+});
+
+ipcMain.handle('gpt-copia-anadir', async (_evt, trozo) => {
+  try {
+    if (!copiaEnCurso) return { ok: false, error: 'No hay ninguna copia abierta' };
+    fs.writeSync(copiaEnCurso.fd, trozo, null, 'utf8');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err?.message || 'No se pudo escribir en el fichero' };
+  }
+});
+
+ipcMain.handle('gpt-copia-cerrar', async () => {
+  try {
+    if (!copiaEnCurso) return { ok: false, error: 'No hay ninguna copia abierta' };
+    const { fd, fichero, carpeta, alternativa, perdida } = copiaEnCurso;
+    fs.closeSync(fd);
+    copiaEnCurso = null;
+    const { size } = fs.statSync(fichero);
+    return { ok: true, ruta: fichero, carpeta, bytes: size, alternativa, perdida };
+  } catch (err) {
+    copiaEnCurso = null;
+    return { ok: false, error: err?.message || 'No se pudo cerrar el fichero' };
+  }
+});
+
 /** Dónde van a ir las copias, para poder enseñarlo antes de hacer ninguna. */
 ipcMain.handle('gpt-carpeta-copias', async (_evt, elegida) => {
   try {

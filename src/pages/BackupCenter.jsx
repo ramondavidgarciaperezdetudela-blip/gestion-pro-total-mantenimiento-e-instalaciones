@@ -11,11 +11,12 @@ import {
 import { format } from 'date-fns';
 import { fetchAllRecordsFast, runBackupJob, runRestoreJob } from '@/lib/backupEngine';
 import {
-  guardarCopiaSeguridad, detectarEntorno, nombreCopia, listarCopias,
+  detectarEntorno, nombreCopia, listarCopias,
   abrirCarpetaCopias, leerDestino, guardarDestino, DESTINOS_MOVIL,
-  SUBCARPETA_POR_DEFECTO, limpiarCarpeta, compartirCopia, sePuedeCompartir,
+  SUBCARPETA_POR_DEFECTO, limpiarCarpeta,
   leerCarpetaPC, guardarCarpetaPC, elegirCarpetaPC,
   listarCarpetasMovil, crearCarpetaMovil, elegirCarpetaMovil, guardarComoEnMovil,
+  abrirCopiaPorPartes,
 } from '@/lib/guardarCopia';
 
 const ALL_ENTITIES = [
@@ -273,17 +274,56 @@ export default function BackupCenter() {
     };
 
     setProgress('Generando archivo...');
-    setProgressPct(95);
+    setProgressPct(90);
 
     const fileName = nombreCopia(new Date());
-    const contenido = JSON.stringify(allData, null, 2);
 
-    // Se escribe el fichero DE VERDAD y se comprueba el resultado. Antes se
-    // pulsaba un enlace de descarga y se daba por hecho que había salido: en
-    // el móvil no salía nunca y la pantalla decía "copia completada" igual.
-    const guardado = await guardarCopiaSeguridad({
-      nombre: fileName, contenido, destino: destinoMovil, carpetaPC,
+    // El fichero se escribe SECCIÓN A SECCIÓN. Antes se montaba la copia
+    // entera como un solo texto (JSON.stringify de todo) y con muchos
+    // clientes, fotos y documentos ese texto no cabe en memoria: la
+    // aplicación se cerraba justo al llegar al final, cuando parecía que ya
+    // estaba hecha. Así en memoria solo está la sección que toca.
+    const fichero = await abrirCopiaPorPartes({
+      nombre: fileName, destino: destinoMovil, carpetaPC,
     });
+    if (!fichero.ok) {
+      setProgressPct(0);
+      setProgress(`❌ No se pudo crear el fichero: ${fichero.error}`);
+      setUltimaCopia(null);
+      setLoading(false);
+      return;
+    }
+
+    let guardado;
+    try {
+      // Cabecera de la copia.
+      await fichero.escribir('{\n');
+      await fichero.escribir(`"exported_at":${JSON.stringify(allData.exported_at)},\n`);
+      await fichero.escribir(`"version":${JSON.stringify(allData.version)},\n`);
+      await fichero.escribir(`"app":${JSON.stringify(allData.app)},\n`);
+      await fichero.escribir(`"entities_count":${allData.entities_count}`);
+
+      // Y ahora una sección por vez.
+      for (let i = 0; i < entitiesToBackup.length; i++) {
+        const nombreSeccion = entitiesToBackup[i];
+        const registros = allData[nombreSeccion] || [];
+        setProgress(`Escribiendo ${ENTITY_LABELS[nombreSeccion] || nombreSeccion}…`);
+        setProgressPct(90 + Math.round((i / entitiesToBackup.length) * 9));
+        await fichero.escribir(`,\n${JSON.stringify(nombreSeccion)}:${JSON.stringify(registros)}`);
+        // Un respiro al navegador para que no se atragante ni se congele la
+        // pantalla mientras escribe secciones grandes.
+        await new Promise(r => setTimeout(r, 0));
+      }
+      await fichero.escribir('\n}\n');
+      guardado = await fichero.cerrar();
+    } catch (err) {
+      await fichero.cancelar();
+      setProgressPct(0);
+      setProgress(`❌ No se pudo escribir la copia: ${err?.message || 'error desconocido'}`);
+      setUltimaCopia(null);
+      setLoading(false);
+      return;
+    }
 
     if (!guardado.ok) {
       setProgressPct(0);
@@ -293,11 +333,9 @@ export default function BackupCenter() {
       return;   // sin fichero no hay copia: no se apunta en el historial
     }
 
-    // En el móvil no se guarda el contenido en memoria: ya está en disco y
+    // El contenido de la copia NO se guarda en memoria: ya está en disco, y
     // tenerlo aquí además era parte del problema con las copias grandes.
-    const copia = guardado.entorno === 'movil'
-      ? { ...guardado, nombre: fileName }
-      : { ...guardado, nombre: fileName, contenido };
+    const copia = { ...guardado, nombre: fileName };
     setUltimaCopia(copia);
     setCompartirError('');
     if (guardado.entorno === 'escritorio') refrescarCarpeta();
@@ -567,18 +605,7 @@ export default function BackupCenter() {
                         Guardar en otra carpeta
                       </button>
                     )}
-                    {ultimaCopia.entorno !== 'movil' && sePuedeCompartir() && (
-                      <button
-                        onClick={async () => {
-                          const r = await compartirCopia({
-                            nombre: ultimaCopia.nombre, contenido: ultimaCopia.contenido,
-                          });
-                          if (!r.ok && r.motivo) setCompartirError(r.motivo);
-                        }}
-                        className="text-blue-700 hover:underline font-medium">
-                        Enviar a Drive, WhatsApp o correo
-                      </button>
-                    )}
+
                   </div>
                   {ultimaCopia.guardadaEn && (
                     <p className="mt-1 text-green-700 bg-green-50 border border-green-200 rounded p-1.5">

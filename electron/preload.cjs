@@ -22,6 +22,10 @@ contextBridge.exposeInMainWorld('gptCopias', {
   carpeta: (elegida) => ipcRenderer.invoke('gpt-carpeta-copias', elegida),
   abrirCarpeta: (elegida) => ipcRenderer.invoke('gpt-abrir-carpeta-copias', elegida),
   elegirCarpeta: () => ipcRenderer.invoke('gpt-elegir-carpeta-copias'),
+  // Copia escrita por partes, para que no haya que tenerla entera en memoria.
+  abrirPorPartes: (nombre, carpeta) => ipcRenderer.invoke('gpt-copia-abrir', { nombre, carpeta }),
+  anadirParte: (trozo) => ipcRenderer.invoke('gpt-copia-anadir', trozo),
+  cerrarPorPartes: () => ipcRenderer.invoke('gpt-copia-cerrar'),
 });
 
 contextBridge.exposeInMainWorld('gptUpdater', {

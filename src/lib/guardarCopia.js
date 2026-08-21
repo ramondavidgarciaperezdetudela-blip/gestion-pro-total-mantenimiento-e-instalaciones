@@ -185,6 +185,143 @@ export function detectarEntorno(win = globalThis.window) {
 }
 
 /**
+ * Copia escrita POR PARTES, en vez de de una pieza.
+ *
+ * POR QUÉ. Antes se montaba toda la copia como un solo texto gigante
+ * (JSON.stringify de todo) y luego se escribía. Con muchos clientes, fotos y
+ * documentos ese texto no cabe en memoria y la aplicación SE CIERRA al llegar
+ * al final de la copia, justo cuando parece que ya estaba.
+ *
+ * Ahora se abre el fichero y se van escribiendo las secciones una a una: en
+ * memoria solo está la sección que toca, no la copia entera.
+ *
+ * Se devuelve un objeto con:
+ *   escribir(trozo)  añade texto al fichero
+ *   cerrar()         lo cierra y devuelve dónde ha quedado y cuánto ocupa
+ *   cancelar()       lo deja como esté (al fallar a mitad)
+ */
+export async function abrirCopiaPorPartes({
+  nombre, destino, carpetaPC, win = globalThis.window,
+}) {
+  const entorno = detectarEntorno(win);
+
+  if (entorno === 'escritorio') {
+    const abierto = await win.gptCopias.abrirPorPartes(nombre, carpetaPC || undefined);
+    if (!abierto?.ok) return { ok: false, entorno, error: abierto?.error || 'No se pudo crear el fichero' };
+    return {
+      ok: true,
+      entorno,
+      escribir: async (trozo) => {
+        const r = await win.gptCopias.anadirParte(trozo);
+        if (!r?.ok) throw new Error(r?.error || 'No se pudo escribir en el fichero');
+      },
+      cerrar: async () => {
+        const r = await win.gptCopias.cerrarPorPartes();
+        if (!r?.ok) return { ok: false, entorno, error: r?.error || 'No se pudo cerrar el fichero' };
+        return {
+          ok: true, entorno, ruta: r.ruta, carpeta: r.carpeta, bytes: r.bytes,
+          aviso: avisoEscritorio(r),
+        };
+      },
+      cancelar: async () => { try { await win.gptCopias.cerrarPorPartes(); } catch { /* da igual */ } },
+    };
+  }
+
+  if (entorno === 'movil') return abrirEnMovilPorPartes({ nombre, destino });
+
+  // Navegador: se juntan los trozos en una lista y el Blob los une él solo,
+  // sin llegar a formar nunca una sola cadena con todo.
+  const trozos = [];
+  return {
+    ok: true,
+    entorno,
+    escribir: async (t) => { trozos.push(t); },
+    cerrar: async () => {
+      try {
+        const blob = new Blob(trozos, { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = win.document.createElement('a');
+        a.href = url;
+        a.download = nombre;
+        a.click();
+        URL.revokeObjectURL(url);
+        return { ok: true, entorno, ruta: nombre, carpeta: 'Descargas del navegador', bytes: blob.size };
+      } catch (err) {
+        return { ok: false, entorno, error: err?.message || 'El navegador no dejó descargar el fichero' };
+      }
+    },
+    cancelar: async () => { trozos.length = 0; },
+  };
+}
+
+const avisoEscritorio = (r) => (r.perdida
+  ? `La carpeta que elegiste (${r.perdida}) ya no está disponible —disco desconectado, `
+    + 'carpeta borrada o sin permisos—, así que la copia se ha guardado junto al programa. '
+    + 'Vuelve a elegir carpeta cuando puedas.'
+  : r.alternativa
+    ? 'La carpeta del programa no admitía escritura, así que la copia se ha guardado en Documentos.'
+    : undefined);
+
+/** Lo mismo en Android: primero se crea el fichero y después se le va añadiendo. */
+async function abrirEnMovilPorPartes({ nombre, destino }) {
+  const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+  const elegido = destino?.directorio && Directory[destino.directorio] ? destino.directorio : 'Documents';
+  const ruta = rutaRelativa(destino?.subcarpeta ?? SUBCARPETA_POR_DEFECTO, nombre);
+
+  const crear = async (dir) => {
+    await Filesystem.writeFile({
+      path: ruta, data: '', directory: Directory[dir],
+      encoding: Encoding.UTF8, recursive: true,
+    });
+    return dir;
+  };
+
+  let dir = elegido;
+  let aviso;
+  try {
+    if (elegido === 'Documents') {
+      try {
+        const permisos = await Filesystem.checkPermissions();
+        if (permisos?.publicStorage !== 'granted') await Filesystem.requestPermissions();
+      } catch { /* en Android moderno no hace falta */ }
+    }
+    await crear(elegido);
+  } catch (err) {
+    try {
+      dir = await crear('External');
+      aviso = `No se pudo guardar en ${nombreDestino(elegido)} (${err?.message || 'permiso denegado'}). `
+        + 'La copia está en el almacenamiento de la aplicación. Ojo: esa carpeta se borra si desinstalas la aplicación.';
+    } catch (err2) {
+      return {
+        ok: false, entorno: 'movil',
+        error: `No se pudo crear el fichero: ${err2?.message || err?.message || 'error desconocido'}`,
+      };
+    }
+  }
+
+  let bytes = 0;
+  return {
+    ok: true,
+    entorno: 'movil',
+    escribir: async (trozo) => {
+      await Filesystem.appendFile({
+        path: ruta, data: trozo, directory: Directory[dir], encoding: Encoding.UTF8,
+      });
+      bytes += new TextEncoder().encode(trozo).length;
+    },
+    cerrar: async () => {
+      const { uri } = await Filesystem.getUri({ path: ruta, directory: Directory[dir] });
+      return { ok: true, entorno: 'movil', ruta: decodeURI(uri), uri, carpeta: ruta, bytes, aviso };
+    },
+    cancelar: async () => {
+      try {
+        await Filesystem.deleteFile({ path: ruta, directory: Directory[dir] });
+      } catch { /* si no se puede borrar, se queda a medias pero se avisa arriba */ }
+    },
+  };
+}
+
+/**
  * Guarda la copia donde toque según el entorno.
  *
  * @returns {Promise<{ok:boolean, entorno:string, ruta?:string, carpeta?:string,
