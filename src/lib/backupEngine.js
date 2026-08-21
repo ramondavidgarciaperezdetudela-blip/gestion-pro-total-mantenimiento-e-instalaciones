@@ -1,4 +1,7 @@
 import { base44 } from '@/api/base44Client';
+import {
+  enLotes, firmaRegistro, sinMetadatos, planRestauracion,
+} from '@/lib/copiasLotes';
 
 // ── Motor de copia de seguridad / restauración ──────────────────────────────
 // Vive fuera de BackupCenter.jsx a propósito: así el trabajo sigue corriendo
@@ -10,8 +13,10 @@ import { base44 } from '@/api/base44Client';
 // mucho menos.
 
 const PAGE = 1000;
-const PAGE_BATCH = 4;       // páginas en paralelo dentro de una misma entidad
-const ENTITY_CONCURRENCY = 4; // entidades en paralelo al hacer copia/restauración
+const PAGE_BATCH = 6;         // páginas en paralelo dentro de una misma entidad
+const ENTITY_CONCURRENCY = 8; // entidades en paralelo al hacer copia/restauración
+
+const LOTES_A_LA_VEZ = 3;
 
 async function runPool(items, worker, concurrency) {
   let idx = 0;
@@ -57,6 +62,57 @@ export async function fetchAllRecordsFast(ent) {
   return all.filter((r) => (r.id && !seen.has(r.id)) ? (seen.add(r.id), true) : !r.id);
 }
 
+/**
+ * Cuenta los registros de una entidad SIN traerse los registros.
+ *
+ * Contar pidiendo la ficha entera era lo que hacía que la pantalla de copias
+ * tardase tanto en abrirse y en volver después de restaurar: se descargaban
+ * las fotos, los PDF y las firmas de todo el histórico para acabar enseñando
+ * un número. Aquí se pide únicamente el campo "id".
+ *
+ * Si el servidor no admite pedir campos sueltos, se cuenta a la manera larga
+ * para no quedarse sin el dato.
+ */
+export async function contarRegistros(ent) {
+  const E = base44.entities[ent];
+  if (!E) return 0;
+  const soloIds = (skip) => E.filter({}, null, PAGE, skip, ['id']);
+
+  let primera;
+  try {
+    primera = await soloIds(0);
+  } catch {
+    return (await fetchAllRecordsFast(ent))?.length || 0;
+  }
+  if (!primera) return 0;
+
+  const vistos = new Set();
+  let sueltos = 0;
+  const sumar = (lote) => {
+    for (const r of lote) {
+      if (r?.id) vistos.add(r.id);
+      else sueltos++;
+    }
+  };
+  sumar(primera);
+  if (primera.length < PAGE) return vistos.size + sueltos;
+
+  let skip = PAGE;
+  for (let guard = 0; guard < 250; guard++) {
+    const skips = Array.from({ length: PAGE_BATCH }, (_, i) => skip + i * PAGE);
+    const lotes = await Promise.all(skips.map((s) => soloIds(s).catch(() => [])));
+    let fin = false;
+    for (const lote of lotes) {
+      if (!lote || lote.length === 0) { fin = true; break; }
+      sumar(lote);
+      if (lote.length < PAGE) { fin = true; break; }
+    }
+    if (fin) break;
+    skip += PAGE * PAGE_BATCH;
+  }
+  return vistos.size + sueltos;
+}
+
 // ── Estado global compartido (para el indicador persistente) ───────────────
 let state = { active: false, kind: null, message: '', pct: 0 };
 const listeners = new Set();
@@ -96,12 +152,7 @@ export async function runBackupJob(entities, entityLabels = {}, onProgress) {
   return result;
 }
 
-const KEYERS_STRIP = ['id', 'created_date', 'updated_date', 'created_by'];
-function stripMeta(r) {
-  const out = { ...r };
-  for (const k of KEYERS_STRIP) delete out[k];
-  return out;
-}
+const stripMeta = sinMetadatos;
 
 /**
  * Restaura las entidades indicadas en paralelo (varias entidades a la vez;
@@ -116,6 +167,7 @@ export async function runRestoreJob(restoreData, entities, mode, keyers, entityL
   publish({ active: true, kind: 'restore', message: 'Iniciando restauración...', pct: 5 });
   let total = 0;
   let failed = 0;
+  let sinCambios = 0;
   const trackFail = (err) => { failed++; console.error('[backupEngine] Error real al restaurar:', err); };
   let done = 0;
 
@@ -129,52 +181,62 @@ export async function runRestoreJob(restoreData, entities, mode, keyers, entityL
     };
     report();
 
+    const E = base44.entities[ent];
+    const crear = (lista) => runPool(
+      enLotes(lista), (lote) => E?.bulkCreate(lote).catch(trackFail), LOTES_A_LA_VEZ,
+    );
+
     if (mode === 'clean') {
-      const existing = await fetchAllRecordsFast(ent);
-      await runPool(existing || [], (rec) => base44.entities[ent]?.delete(rec.id).catch(trackFail), 6);
+      await borrarTodo(ent, trackFail);
       const clean = rows.map(stripMeta);
-      await runPool(
-        Array.from({ length: Math.ceil(clean.length / 100) }, (_, i) => clean.slice(i * 100, i * 100 + 100)),
-        (chunk) => base44.entities[ent]?.bulkCreate(chunk).catch(trackFail),
-        3
-      );
+      await crear(clean);
       total += clean.length;
     } else {
       const existing = await fetchAllRecordsFast(ent);
-      const keyer = keyers[ent];
-      if (keyer) {
-        const byKey = {};
-        (existing || []).forEach((r) => { const k = keyer(r); if (k) byKey[k] = r; });
-        const toCreate = [];
-        const toUpdate = [];
-        for (const r of rows) {
-          const k = keyer(r);
-          const data = stripMeta(r);
-          if (k && byKey[k]) toUpdate.push({ id: byKey[k].id, data });
-          else toCreate.push(data);
-        }
-        await runPool(
-          Array.from({ length: Math.ceil(toCreate.length / 100) }, (_, i) => toCreate.slice(i * 100, i * 100 + 100)),
-          (chunk) => base44.entities[ent]?.bulkCreate(chunk).catch(trackFail),
-          3
-        );
-        await runPool(toUpdate, (it) => base44.entities[ent]?.update(it.id, it.data).catch(trackFail), 6);
-        total += toCreate.length + toUpdate.length;
-      } else {
-        const existingSignatures = new Set((existing || []).map((r) => JSON.stringify(stripMeta(r))));
-        const toInsert = rows.map(stripMeta).filter((r) => !existingSignatures.has(JSON.stringify(r)));
-        await runPool(
-          Array.from({ length: Math.ceil(toInsert.length / 100) }, (_, i) => toInsert.slice(i * 100, i * 100 + 100)),
-          (chunk) => base44.entities[ent]?.bulkCreate(chunk).catch(trackFail),
-          3
-        );
-        total += toInsert.length;
-      }
+      // Qué hay que crear, qué actualizar y qué dejar en paz. Lo decide una
+      // función aparte y comprobada (src/lib/copiasLotes.js).
+      const plan = planRestauracion(existing, rows, keyers[ent]);
+      sinCambios += plan.sinCambios;
+      // Se dice ya lo que va a costar: así no parece parado cuando la
+      // mayoría de los registros están igual y no hay nada que mandar.
+      const porHacer = plan.aCrear.length + plan.aActualizar.length;
+      report(porHacer === 0
+        ? ` (${plan.sinCambios} sin cambios, nada que mandar)`
+        : ` (${porHacer} por guardar)`);
+      await crear(plan.aCrear);
+      // En bloque, no de uno en uno: 2.000 registros pasan de 2.000
+      // peticiones a ocho.
+      await runPool(
+        enLotes(plan.aActualizar), (lote) => E?.bulkUpdate(lote).catch(trackFail), LOTES_A_LA_VEZ,
+      );
+      total += porHacer;
     }
     done++;
     report(` (${done}/${entities.length})`);
   }, ENTITY_CONCURRENCY);
 
   publish({ active: false, message: '', pct: 100 });
-  return { total, failed };
+  return { total, failed, sinCambios };
+}
+
+/**
+ * Vacía una entidad para la restauración "limpia".
+ *
+ * Se intenta primero de una sola petición (deleteMany), que es lo rápido. Si
+ * el servidor no lo admite o quedan registros, se borra uno a uno. Y se
+ * comprueba que de verdad se ha vaciado: si se diera por bueno sin mirar y
+ * hubiera quedado algo, la restauración duplicaría todo.
+ */
+async function borrarTodo(ent, trackFail) {
+  const E = base44.entities[ent];
+  if (!E) return;
+  try {
+    await E.deleteMany({});
+    const quedan = await E.filter({}, null, 1, 0).catch(() => []);
+    if (!quedan || quedan.length === 0) return;
+  } catch {
+    // No lo admite: se hace a la manera lenta.
+  }
+  const existing = await fetchAllRecordsFast(ent);
+  await runPool(existing || [], (rec) => E.delete(rec.id).catch(trackFail), 10);
 }

@@ -9,7 +9,7 @@ import {
   AlertCircle, Clock, Settings, Archive, Trash2, FileText, RotateCcw, Info, ChevronDown, ChevronRight, Copy
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { fetchAllRecordsFast, runBackupJob, runRestoreJob } from '@/lib/backupEngine';
+import { fetchAllRecordsFast, runBackupJob, runRestoreJob, contarRegistros } from '@/lib/backupEngine';
 import {
   detectarEntorno, nombreCopia, listarCopias,
   abrirCarpetaCopias, leerDestino, guardarDestino, DESTINOS_MOVIL,
@@ -230,16 +230,17 @@ export default function BackupCenter() {
 
   const loadCounts = async () => {
     const c = {};
-    // En paralelo (con límite) en vez de una entidad cada 200ms: en cuentas
-    // con muchas secciones esto pasaba de tardar varios segundos a menos de uno.
-    const CONCURRENCY = 5;
+    // Contar NO es descargar. Antes esta pantalla se traía cada ficha entera
+    // —fotos, PDF y firmas incluidos— de todas las secciones sólo para poder
+    // enseñar un número al lado de cada una, y eso volvía a pasar al terminar
+    // de restaurar. Ahora se pide únicamente el identificador.
+    const CONCURRENCY = 8;
     let idx = 0;
     const worker = async () => {
       while (idx < ALL_ENTITIES.length) {
         const e = ALL_ENTITIES[idx++];
         try {
-          const data = await fetchAllRecords(e);
-          c[e] = data?.length || 0;
+          c[e] = await contarRegistros(e);
         } catch {
           c[e] = 0;
         }
@@ -411,12 +412,17 @@ export default function BackupCenter() {
     // grandes. El motor compartido (backupEngine.js) sigue corriendo aunque
     // se navegue a otra pantalla, y cuenta los fallos reales en vez de dar
     // un falso "completado" si algo no se guarda.
-    const { total, failed } = await runRestoreJob(
+    const { total, failed, sinCambios } = await runRestoreJob(
       restoreData, entitiesToRestore, restoreMode, KEYERS, ENTITY_LABELS,
       (msg) => setRestoreProgress(msg)
     );
 
-    const okMsg = `✅ Restauración completa: ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.`;
+    // Se dice cuántos estaban ya iguales: es lo que explica que ahora vaya
+    // rápido, y evita pensar que se ha restaurado de menos.
+    const igualesMsg = sinCambios > 0
+      ? ` ${sinCambios.toLocaleString()} ya estaban igual y no ha hecho falta tocarlos.`
+      : '';
+    const okMsg = `✅ Restauración completa: ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.${igualesMsg}`;
     const failMsg = `⚠️ ${failed.toLocaleString()} operaciones fallaron al guardar en el servidor (revisa la conexión y vuelve a intentarlo). Consulta la consola para más detalle.`;
     setRestoreProgress(failed > 0 ? `${okMsg}\n${failMsg}` : okMsg);
     setRestoring(false);
