@@ -28,9 +28,10 @@ Ve a la **[última versión (Releases)](../../releases/latest)** y descarga:
 | Plataforma | Archivo |
 |-----------|---------|
 | 🤖 **Android** | `gestion-pro-total.apk` |
-| 🪟 **Windows** | `...-Windows-Setup.exe` (instalador) |
-| 🍎 **macOS** | `...-Mac.dmg` |
-| 🐧 **Linux / Chromebook** | `...-Linux.AppImage` o `...-Linux.deb` |
+| 🪟 **Windows** | `Gestion-Pro-Total-<versión>-Windows-Instalador.exe` (o `...-Windows-Portable.exe`) |
+| 🍎 **macOS** | `Gestion-Pro-Total-<versión>-Mac.dmg` |
+| 🐧 **Linux** | `Gestion-Pro-Total-<versión>-Linux.deb` (o `...-Linux.AppImage`) |
+| 💻 **Chromebook** | `Gestion-Pro-Total-<versión>-Linux.deb` — ver [guía de instalación](docs/INSTALACION-DESINSTALACION.md#-chromebook-chromeos) |
 
 ## 🚀 Funcionalidades
 

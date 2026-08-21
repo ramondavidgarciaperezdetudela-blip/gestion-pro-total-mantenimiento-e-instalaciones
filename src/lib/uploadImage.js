@@ -166,7 +166,7 @@ export async function uploadImage(file, compressOpts, limiteLocal) {
   try {
     const compressed = await compressImage(file, compressOpts);
     const { file_url } = await withTimeout(
-      base44.integrations.Core.UploadFile({ file: compressed }),
+      base44.sinAvisos.integrations.Core.UploadFile({ file: compressed }),
       UPLOAD_TIMEOUT_MS,
       UPLOAD_TIMEOUT_MESSAGE
     );
@@ -232,7 +232,7 @@ export async function uploadFile(file) {
   if (!cloudUploadUnavailable) {
     try {
       const { file_url } = await withTimeout(
-        base44.integrations.Core.UploadFile({ file }),
+        base44.sinAvisos.integrations.Core.UploadFile({ file }),
         UPLOAD_TIMEOUT_MS,
         UPLOAD_TIMEOUT_MESSAGE
       );

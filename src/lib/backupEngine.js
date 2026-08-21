@@ -12,6 +12,11 @@ import {
 // una, para que cuentas con muchos registros (documentos, fotos...) tarden
 // mucho menos.
 
+// El motor de copias usa el cliente SIN los avisos automáticos: ya cuenta
+// sus propios fallos y los enseña al final. Si no, una restauración con mala
+// cobertura llenaría la pantalla de carteles rojos, uno por lote.
+const entidades = base44.sinAvisos?.entities || base44.entities;
+
 const PAGE = 1000;
 const PAGE_BATCH = 6;         // páginas en paralelo dentro de una misma entidad
 const ENTITY_CONCURRENCY = 8; // entidades en paralelo al hacer copia/restauración
@@ -32,7 +37,7 @@ async function runPool(items, worker, concurrency) {
 
 /** Lee TODOS los registros de una entidad, paginando en paralelo por rondas. */
 export async function fetchAllRecordsFast(ent) {
-  const E = base44.entities[ent];
+  const E = entidades[ent];
   if (!E) return [];
   let all;
   try {
@@ -74,7 +79,7 @@ export async function fetchAllRecordsFast(ent) {
  * para no quedarse sin el dato.
  */
 export async function contarRegistros(ent) {
-  const E = base44.entities[ent];
+  const E = entidades[ent];
   if (!E) return 0;
   const soloIds = (skip) => E.filter({}, null, PAGE, skip, ['id']);
 
@@ -181,7 +186,7 @@ export async function runRestoreJob(restoreData, entities, mode, keyers, entityL
     };
     report();
 
-    const E = base44.entities[ent];
+    const E = entidades[ent];
     const crear = (lista) => runPool(
       enLotes(lista), (lote) => E?.bulkCreate(lote).catch(trackFail), LOTES_A_LA_VEZ,
     );
@@ -228,7 +233,7 @@ export async function runRestoreJob(restoreData, entities, mode, keyers, entityL
  * hubiera quedado algo, la restauración duplicaría todo.
  */
 async function borrarTodo(ent, trackFail) {
-  const E = base44.entities[ent];
+  const E = entidades[ent];
   if (!E) return;
   try {
     await E.deleteMany({});

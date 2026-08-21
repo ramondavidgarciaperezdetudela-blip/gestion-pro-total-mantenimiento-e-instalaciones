@@ -21,6 +21,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PantallaArranque, { PantallaErrorSesion } from '@/components/PantallaArranque';
 
 import UpdateChecker from '@/components/UpdateChecker';
+import AvisoServidor from './components/AvisoServidor'
 import StorageSetupNotice from '@/components/StorageSetupNotice';
 const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
 
@@ -129,6 +130,10 @@ const AuthenticatedApp = () => {
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </AnimatedRoutes>
+      {/* Si el servidor rechaza un guardado, que se vea. Va aquí y no dentro
+          del Layout para que cubra TAMBIÉN las páginas públicas donde firma el
+          cliente, que no llevan menú. */}
+      <AvisoServidor />
       {/* Aviso automático de nueva versión (escritorio usa además electron-updater) */}
       <UpdateChecker headless />
       {/* Aviso de primera instalación: dónde se guardan fotos y documentos */}
