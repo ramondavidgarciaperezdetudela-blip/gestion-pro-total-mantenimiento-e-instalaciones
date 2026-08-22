@@ -13,7 +13,7 @@ D./Dña. **Ramón David García Pérez de Tudela**, mayor de edad, con NIF/NIE
 
 1. Que es **autor** y **titular de los derechos de explotación** del programa de
    ordenador titulado **"Gestión Pro Total — Mantenimiento e Instalaciones"**,
-   versión **1.0**, en adelante "el Programa".
+   versión **1.33.0**, en adelante "el Programa".
 
 2. Que el Programa es una **obra original**, creada por el declarante, y que no
    infringe derechos de propiedad intelectual o industrial de terceros.
