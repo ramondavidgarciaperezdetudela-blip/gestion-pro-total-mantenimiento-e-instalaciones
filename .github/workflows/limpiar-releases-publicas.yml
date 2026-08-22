@@ -1,0 +1,96 @@
+name: Limpiar releases públicas
+
+# Deja en el repositorio PÚBLICO de descargas solo la versión actual y borra
+# el resto (incluidos los borradores a medias que quedan de publicaciones
+# antiguas).
+#
+# BORRAR UNA RELEASE NO SE PUEDE DESHACER. Por eso:
+#   - Primero enseña qué va a borrar y no toca nada (modo "solo mirar").
+#   - Para borrar de verdad hay que escribir BORRAR en la casilla.
+#
+# Requiere el mismo secreto RELEASES_TOKEN que usa "Publicar release pública".
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: 'Escribe BORRAR para borrar de verdad. Vacío = solo enseña qué se borraría.'
+        required: false
+        default: ''
+      conservar:
+        description: 'Etiqueta que se conserva (vacío = la última publicada).'
+        required: false
+        default: ''
+
+env:
+  RELEASES_REPO: ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases
+
+jobs:
+  limpiar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comprobar el token
+        run: |
+          if [ -z "${{ secrets.RELEASES_TOKEN }}" ]; then
+            echo "::error::Falta el secreto RELEASES_TOKEN."
+            exit 1
+          fi
+
+      - name: Ver qué hay y limpiar
+        env:
+          TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          CONFIRMAR: ${{ inputs.confirmar }}
+          CONSERVAR: ${{ inputs.conservar }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${RELEASES_REPO}"
+          auth=(-H "Authorization: Bearer ${TOKEN}" -H "Accept: application/vnd.github+json")
+
+          # Qué versión se conserva: la indicada, o la que GitHub da por última.
+          if [ -n "${CONSERVAR}" ]; then
+            guardar="${CONSERVAR}"
+          else
+            guardar=$(curl -s "${auth[@]}" "$api/releases/latest" | jq -r '.tag_name // empty')
+          fi
+          if [ -z "$guardar" ]; then
+            echo "::error::No sé qué versión conservar. Indícala a mano en 'conservar'."
+            exit 1
+          fi
+          echo "Se conserva: $guardar"
+          echo
+
+          curl -s "${auth[@]}" "$api/releases?per_page=100" > releases.json
+          total=$(jq 'length' releases.json)
+          echo "Releases en el repositorio público: $total"
+          echo
+
+          jq -r --arg g "$guardar" '.[] | select(.tag_name != $g)
+            | "\(.id)\t\(.tag_name)\t\(if .draft then "borrador" else "publicada" end)\t\(.assets|length) ficheros"' releases.json > aborrar.txt
+
+          if [ ! -s aborrar.txt ]; then
+            echo "No hay nada que borrar: solo está $guardar."
+            exit 0
+          fi
+
+          echo "SE BORRARÍAN estas $(wc -l < aborrar.txt):"
+          cat aborrar.txt
+          echo
+
+          if [ "${CONFIRMAR}" != "BORRAR" ]; then
+            echo "::notice::Modo solo mirar. No se ha borrado nada."
+            echo "Para borrarlas de verdad, vuelve a lanzarlo escribiendo BORRAR en 'confirmar'."
+            exit 0
+          fi
+
+          while IFS=$'\t' read -r id tag estado ficheros; do
+            echo "Borrando $tag ($estado, $ficheros)..."
+            curl -s -X DELETE "${auth[@]}" "$api/releases/$id"
+            # La etiqueta de git se queda suelta si no se borra también, y
+            # entonces la lista de versiones sigue enseñándola.
+            curl -s -X DELETE "${auth[@]}" "$api/git/refs/tags/$tag" >/dev/null || true
+          done < aborrar.txt
+
+          echo
+          echo "Comprobando cómo ha quedado:"
+          curl -s "${auth[@]}" "$api/releases?per_page=100" \
+            | jq -r '.[] | "  \(.tag_name) · \(if .draft then "borrador" else "publicada" end)"'
