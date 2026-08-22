@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import {
+  ESQUEMA_PLANTILLAS, buscar as buscarEnCatalogo, desdeLaIA, encargoPlantillas,
+  generarDesdePeticion, loQueHeEntendido, mezclarConIA, ordenarPorTipo,
+} from '@/lib/plantillasCatalogo';
+import { motivoDelFallo } from '@/lib/avisoServidor';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +70,7 @@ export default function DocumentTemplates() {
    const [uploading, setUploading] = useState(false);
    const [netDialog, setNetDialog] = useState(false);
    const [netQuery, setNetQuery] = useState('');
+  const [tabActiva, setTabActiva] = useState('factura');
    const [netLoading, setNetLoading] = useState(false);
    const [netResults, setNetResults] = useState([]);
    const [netError, setNetError] = useState('');
@@ -109,67 +115,70 @@ export default function DocumentTemplates() {
     setEditDialog(true);
   };
 
-  // Buscar diseños de plantilla en internet con IA y añadirlos con un clic.
-  const buscarPlantillasInternet = async () => {
+  /**
+   * Buscar plantillas.
+   *
+   * Antes esto era UNA llamada a la IA con búsqueda en internet: si fallaba
+   * —y falla a menudo— la pantalla se quedaba vacía con un "revisa la
+   * conexión". Ahora el catálogo propio se filtra al momento y sin servidor,
+   * y la IA es un extra que se pide aparte.
+   */
+  const resultadosCatalogo = React.useMemo(
+    () => ordenarPorTipo(buscarEnCatalogo(netQuery), tabActiva),
+    [netQuery, tabActiva],
+  );
+
+  /**
+   * Crear la plantilla que se ha pedido.
+   *
+   * Se intenta con la IA, que da más variedad. Pero el resultado NO depende
+   * de que responda: si falla —servidor caído, sin crédito, sin cobertura—
+   * la plantilla se hace aquí mismo a partir de lo que se ha escrito. El
+   * botón siempre acaba dando una plantilla.
+   */
+  const crearLaQuePido = async () => {
+    if (!netQuery.trim()) return;
     setNetLoading(true);
     setNetError('');
-    setNetResults([]);
+    // Lo primero: la que se puede hacer sin depender de nadie.
+    const propia = generarDesdePeticion(netQuery, { tipoActual: tabActiva });
+    let hechas = [propia];
     try {
       const r = await base44.integrations.Core.InvokeLLM({
-        add_context_from_internet: true,
-        prompt: `Busca en internet diseños profesionales de plantillas de documentos (facturas, presupuestos, órdenes de trabajo, informes técnicos) para una empresa de servicio técnico de climatización, refrigeración, electricidad y energía solar en España.
-${netQuery ? `El usuario busca en concreto: "${netQuery}".` : ''}
-Devuelve entre 6 y 8 modelos VARIADOS y elegantes, inspirados en tendencias reales de diseño de documentos. Para cada modelo indica: un nombre corto, una descripción breve del estilo, colores en hexadecimal (primario oscuro y secundario de acento), una tipografía de esta lista exacta [Arial, Times New Roman, Georgia, Verdana, Calibri, Trebuchet MS], un tamaño de fuente [small, medium, large], un estilo de tabla [simple, bordered, striped], un texto de cabecera adecuado, un texto de pie adecuado, y el tipo de documento [factura, presupuesto, recibo, sat, mantenimiento, informe]. Textos en español.`,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            modelos: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  modelo: { type: 'string' },
-                  desc: { type: 'string' },
-                  primary_color: { type: 'string' },
-                  secondary_color: { type: 'string' },
-                  font_family: { type: 'string' },
-                  font_size: { type: 'string' },
-                  table_style: { type: 'string' },
-                  header_text: { type: 'string' },
-                  footer_text: { type: 'string' },
-                  doc_type: { type: 'string' },
-                },
-              },
-            },
-          },
-        },
+        prompt: encargoPlantillas(netQuery),
+        response_json_schema: ESQUEMA_PLANTILLAS,
       });
-      const okColor = (c) => (/^#([0-9a-fA-F]{6})$/.test(c || '') ? c : null);
-      const okFont = (f) => (FONT_FAMILIES.includes(f) ? f : 'Arial');
-      const okSize = (s) => (['small', 'medium', 'large'].includes(s) ? s : 'medium');
-      const okTable = (t) => (['simple', 'bordered', 'striped'].includes(t) ? t : 'striped');
-      const okDoc = (d) => (DOC_TYPES.includes(d) ? d : 'factura');
-      const modelos = (r?.modelos || [])
-        .map((m) => ({
-          modelo: (m.modelo || 'Plantilla').slice(0, 60),
-          desc: (m.desc || '').slice(0, 140),
-          tpl: {
-            name: (m.modelo || 'Plantilla').slice(0, 60),
-            primary_color: okColor(m.primary_color) || '#1e3a5f',
-            secondary_color: okColor(m.secondary_color) || '#0ea5e9',
-            font_family: okFont(m.font_family),
-            font_size: okSize(m.font_size),
-            table_style: okTable(m.table_style),
-            header_text: (m.header_text || '').slice(0, 80),
-            footer_text: (m.footer_text || '').slice(0, 160),
-            doc_type: okDoc(m.doc_type),
-          },
-        }))
-        .filter((m) => m.modelo);
-      if (modelos.length === 0) setNetError('No se han encontrado resultados. Prueba con otra búsqueda.');
-      setNetResults(modelos);
-    } catch {
-      setNetError('No se pudo buscar en internet ahora mismo. Revisa la conexión e inténtalo de nuevo.');
+      const deIA = mezclarConIA([...resultadosCatalogo, ...netResults, propia], desdeLaIA(r));
+      hechas = [propia, ...deIA];
+    } catch (err) {
+      // No es un fallo para el usuario: ya tiene su plantilla. Solo se le
+      // dice que las variantes extra no han podido venir.
+      setNetError(`Tu plantilla está hecha. La IA no ha podido añadir más variantes: ${motivoDelFallo(err)}`);
+    }
+    setNetResults((prev) => [...hechas, ...prev]);
+    setNetLoading(false);
+  };
+
+  /** Pedirle a la IA modelos nuevos, encima de los del catálogo. */
+  const pedirMasALaIA = async () => {
+    setNetLoading(true);
+    setNetError('');
+    try {
+      const r = await base44.integrations.Core.InvokeLLM({
+        // Sin búsqueda en internet a propósito: un diseño es color,
+        // tipografía y estilo de tabla, no algo que haya que consultar. Era
+        // la parte lenta y la que hacía fallar la búsqueda.
+        prompt: encargoPlantillas(netQuery),
+        response_json_schema: ESQUEMA_PLANTILLAS,
+      });
+      const nuevos = mezclarConIA([...resultadosCatalogo, ...netResults], desdeLaIA(r));
+      if (nuevos.length === 0) {
+        setNetError('La IA no ha propuesto nada distinto de lo que ya tienes aquí. Prueba a pedir otra cosa: «factura en tonos verdes», «parte de trabajo muy compacto»…');
+      } else {
+        setNetResults((prev) => [...prev, ...nuevos]);
+      }
+    } catch (err) {
+      setNetError(`No se ha podido pedir más modelos a la IA. ${motivoDelFallo(err)} Mientras tanto tienes el catálogo de aquí abajo, que funciona sin conexión.`);
     } finally {
       setNetLoading(false);
     }
@@ -405,8 +414,8 @@ Devuelve entre 6 y 8 modelos VARIADOS y elegantes, inspirados en tendencias real
           <Palette className="w-6 h-6 text-purple-600" />Plantillas de documentos
         </h1>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={() => { setNetDialog(true); if (netResults.length === 0 && !netLoading) buscarPlantillasInternet(); }}>
-            <Globe className="w-4 h-4 mr-1" />Buscar en internet
+          <Button variant="outline" onClick={() => setNetDialog(true)}>
+            <Globe className="w-4 h-4 mr-1" />Buscar plantillas
           </Button>
           <Button variant="outline" onClick={() => importRef.current?.click()}>
             <Download className="w-4 h-4 mr-1 rotate-180" />Importar (.json/Word/Excel/PDF…)
@@ -433,57 +442,109 @@ Devuelve entre 6 y 8 modelos VARIADOS y elegantes, inspirados en tendencias real
             </button>
           ))}
         </div>
-        <p className="text-[10px] text-gray-400 mt-2">Todas las plantillas son 100% modificables (colores, tipografía, márgenes, cabecera/pie, tabla…). Puedes <b>Buscar en internet</b> más modelos, <b>Exportar</b> una plantilla e <b>Importar</b> otras.</p>
+        <p className="text-[10px] text-gray-400 mt-2">Todas las plantillas son 100% modificables (colores, tipografía, márgenes, cabecera/pie, tabla…). Puedes <b>Buscar plantillas</b> entre los modelos que trae el programa, <b>Exportar</b> una plantilla e <b>Importar</b> otras.</p>
       </div>
 
-      {/* Buscador de plantillas en internet (IA) */}
+      {/* Buscador de plantillas */}
       <Dialog open={netDialog} onOpenChange={setNetDialog}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Globe className="w-5 h-5 text-blue-600" />Buscar plantillas en internet</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="w-5 h-5 text-blue-600" />Buscar plantillas
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-xs text-gray-500">Describe el estilo que buscas (por ejemplo: «factura elegante azul», «presupuesto climatización moderno», «informe técnico sobrio»). La IA propondrá modelos que puedes añadir con un clic y luego modificar a tu gusto.</p>
+            <p className="text-xs text-gray-500">
+              Escribe qué buscas —«azul», «elegante», «frío», «letra grande», «ahorro de tinta»…—
+              y se filtra al momento. Todas se pueden añadir con un clic y luego cambiar a tu gusto.
+            </p>
             <div className="flex gap-2">
               <Input
                 value={netQuery}
                 onChange={(e) => setNetQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !netLoading) buscarPlantillasInternet(); }}
-                placeholder="¿Qué tipo de plantilla buscas? (opcional)"
+                placeholder="¿Qué tipo de plantilla buscas?"
+                data-prueba="buscar-plantilla"
               />
-              <Button onClick={buscarPlantillasInternet} disabled={netLoading} className="bg-blue-600 gap-2 shrink-0">
-                {netLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                Buscar
-              </Button>
+              {netQuery && (
+                <Button variant="outline" className="shrink-0" onClick={() => setNetQuery('')}>Ver todas</Button>
+              )}
             </div>
 
-            {netError && <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">{netError}</div>}
-
-            {netLoading && (
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-500 py-8">
-                <Loader2 className="w-5 h-5 animate-spin" /> Buscando diseños en internet…
+            {netError && (
+              <div role="alert" className="text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded p-2">
+                {netError}
               </div>
             )}
 
-            {!netLoading && netResults.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {netResults.map((m, i) => (
-                  <div key={i} className="border rounded-lg p-2" style={{ borderColor: (m.tpl.secondary_color || '#e5e7eb') + '66' }}>
-                    <div className="h-9 rounded mb-1" style={{ background: `linear-gradient(90deg, ${m.tpl.primary_color}, ${m.tpl.secondary_color})` }} />
-                    <p className="text-[11px] font-bold leading-tight text-gray-800">{m.modelo}</p>
-                    <p className="text-[9px] text-gray-500 leading-tight line-clamp-2 min-h-[1.6em]">{m.desc}</p>
-                    <p className="text-[8px] text-gray-400 uppercase tracking-wide mt-0.5">{m.tpl.doc_type} · {m.tpl.font_family}</p>
-                    <div className="flex gap-1 mt-1">
-                      <button onClick={() => addNetModel(m)} className="flex-1 text-[10px] font-semibold text-white bg-blue-600 rounded px-1.5 py-1 hover:bg-blue-700">+ Añadir</button>
-                      <button onClick={() => { addPreset(m); setNetDialog(false); }} className="text-[10px] font-semibold text-blue-600 border border-blue-200 rounded px-1.5 py-1 hover:bg-blue-50" title="Añadir y editar ahora">Editar</button>
-                    </div>
+            {/* El catálogo de casa: sale siempre, sin servidor y sin esperas. */}
+            {resultadosCatalogo.length === 0 && netResults.length === 0 && (
+              <p className="text-sm text-gray-500 py-6 text-center">
+                Nada con esa palabra. Prueba con un color, un estilo o el tipo de documento
+                — o pulsa «Ver todas».
+              </p>
+            )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" data-prueba="modelos">
+              {[...resultadosCatalogo, ...netResults].map((m, i) => (
+                <div key={m.id || `ia-${i}`} className="border rounded-lg p-2"
+                  style={{ borderColor: (m.tpl.secondary_color || '#e5e7eb') + '66' }}>
+                  <div className="h-9 rounded mb-1"
+                    style={{ background: `linear-gradient(90deg, ${m.tpl.primary_color}, ${m.tpl.secondary_color})` }} />
+                  <p className="text-[11px] font-bold leading-tight text-gray-800">{m.modelo}</p>
+                  <p className="text-[9px] text-gray-500 leading-tight line-clamp-2 min-h-[1.6em]">{m.desc}</p>
+                  <p className="text-[8px] text-gray-400 uppercase tracking-wide mt-0.5">
+                    {m.tpl.doc_type} · {m.tpl.font_family}
+                    {m.aMedida && <span className="ml-1 font-bold text-emerald-600">· A TU MEDIDA</span>}
+                    {m.deIA && <span className="ml-1 text-blue-500">· IA</span>}
+                  </p>
+                  <div className="flex gap-1 mt-1">
+                    <button onClick={() => addNetModel(m)}
+                      className="flex-1 text-[10px] font-semibold text-white bg-blue-600 rounded px-1.5 py-1 hover:bg-blue-700">
+                      + Añadir
+                    </button>
+                    <button onClick={() => { addPreset(m); setNetDialog(false); }}
+                      className="text-[10px] font-semibold text-blue-600 border border-blue-200 rounded px-1.5 py-1 hover:bg-blue-50"
+                      title="Añadir y editar ahora">Editar</button>
                   </div>
-                ))}
+                </div>
+              ))}
+            </div>
+
+            {/* Crear la que se pide. Funciona con servidor y sin él. */}
+            <div className="border-t pt-3 space-y-2">
+              {/* Se enseña lo que ha entendido ANTES de crear nada: si se ha
+                  equivocado, se ve al momento y se corrige la frase. */}
+              {netQuery.trim() && (() => {
+                const e = loQueHeEntendido(netQuery, { tipoActual: tabActiva });
+                const partes = [
+                  e.tipo && `tipo: ${e.tipo}`,
+                  e.color && `color: ${e.color}`,
+                  e.estilo && `estilo: ${e.estilo}`,
+                  e.tamano === 'large' ? 'letra grande' : e.tamano === 'small' ? 'letra pequeña' : null,
+                ].filter(Boolean);
+                return (
+                  <p className="text-[11px] text-emerald-700" data-prueba="entendido">
+                    He entendido — {partes.length ? partes.join(' · ') : 'nada en concreto todavía; añade un color o un estilo'}
+                  </p>
+                );
+              })()}
+              <p className="text-[11px] text-gray-500">
+                ¿No ves lo que buscas? Descríbelo arriba y te la creo:
+                el <b>tipo</b> (factura, presupuesto, parte…), un <b>color</b>
+                (azul, granate, verde…), el <b>estilo</b> (elegante, minimalista,
+                técnico…) y el <b>tamaño</b> de letra.
+              </p>
+              <div className="flex items-center justify-between gap-2">
+                <Button onClick={crearLaQuePido} disabled={netLoading || !netQuery.trim()}
+                  className="bg-blue-600 gap-2" data-prueba="crear-plantilla">
+                  {netLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  {netLoading ? 'Creándola…' : 'Créame esta plantilla'}
+                </Button>
+                <Button onClick={pedirMasALaIA} disabled={netLoading} variant="outline" className="gap-2 shrink-0">
+                  <Search className="w-4 h-4" />Más ideas
+                </Button>
               </div>
-            )}
-            {!netLoading && netResults.length > 0 && (
-              <p className="text-[10px] text-gray-400">Los modelos se guardan como plantillas normales: totalmente editables (colores, tipografía, márgenes, cabecera/pie, tabla…).</p>
-            )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -494,7 +555,7 @@ Devuelve entre 6 y 8 modelos VARIADOS y elegantes, inspirados en tendencias real
         </div>
       )}
 
-      <Tabs defaultValue="factura">
+      <Tabs defaultValue="factura" value={tabActiva} onValueChange={setTabActiva}>
         <TabsList className="w-full flex-wrap h-auto">
            {DOC_TYPES.map(t => (
              <TabsTrigger key={t} value={t} className="flex-1 capitalize text-xs" title={TEMPLATE_DESCRIPTIONS[t]}>{t} ({grouped[t]?.length || 0})</TabsTrigger>

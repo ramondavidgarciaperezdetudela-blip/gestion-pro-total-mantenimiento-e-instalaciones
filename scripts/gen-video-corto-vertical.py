@@ -122,7 +122,7 @@ def s_close():
 slides=[(s_real(),3.8),(s_title(),3.2),
         (s_bul("Todo en una app",["Clientes, agenda y proyectos","Presupuestos y facturas","Mantenimientos y SAT","Calculadoras e IA"]),5.2),
         (s_big("Presupuesto a factura","en un solo clic"),3.2),
-        (s_planes(),5.5),(s_close(),4.0)]
+        (s_close(),4.0)]
 
 out=f"{BASEDIR}/distribucion/COMERCIAL/Video-Corto-Vertical-Redes.mp4"
 w=imageio.get_writer(out,fps=FPS,codec="libx264",quality=8,macro_block_size=None,ffmpeg_params=["-pix_fmt","yuv420p"])

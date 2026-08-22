@@ -93,7 +93,7 @@ S=[(s_intro(),3.0,False),
    (s_shot(f"{CAP}/equivalencia-refrigerantes.png","Refrigerantes — funciona sin internet"),3.8,True),
    (s_shot(f"{CAP}/herramientas-danfoss.png","Herramientas Danfoss integradas"),3.6,True),
    (s_title("Y mucho más","Clientes · Agenda · SAT · Facturas · Inventario · IA"),3.6,False),
-   (s_planes(),5.0,False),(s_close(),4.0,False)]
+   (s_close(),4.0,False)]
 
 def kb(img,n,zoom):
     im=Image.fromarray(img)

@@ -94,13 +94,12 @@ def close():
 # (imagen, segundos, ¿zoom Ken Burns?)
 S=[
  (intro(),3.2,False),
- (shot_slide(f"{CAP}/pantalla-inicio-real.png","Pantalla de inicio: activa tu licencia y empieza"),4.5,True),
+ (shot_slide(f"{CAP}/pantalla-inicio-real.png","Pantalla de inicio: todo a mano desde el primer momento"),4.5,True),
  (title_card("Calculadoras técnicas profesionales","Integradas en la app, listas para el día a día"),3.2,False),
  (shot_slide(f"{CAP}/calc-electrico.png","Cálculo eléctrico: sección, magnetotérmico, diferencial y materiales"),5.2,True),
  (shot_slide(f"{CAP}/calc-multiarea-aire.png","Climatización multi-área: cargas por zona y equipos recomendados"),5.0,True),
  (shot_slide(f"{CAP}/equivalencia-refrigerantes.png","Equivalencia de refrigerantes — funciona sin internet"),4.6,True),
  (title_card("Y mucho más en un solo lugar","Clientes · Agenda · SAT · Presupuestos y facturas · Inventario · IA"),4.2,False),
- (planes(),5.5,False),
  (close(),4.5,False),
 ]
 

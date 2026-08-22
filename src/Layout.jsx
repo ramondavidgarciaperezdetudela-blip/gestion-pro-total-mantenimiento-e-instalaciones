@@ -171,8 +171,11 @@ const navItems = [
 { name: 'Prov. Gases', page: 'GasSuppliers', icon: Building2 },
 { name: 'Nuevo Contacto', page: 'ContactForm', icon: Users },
 { name: 'Actualizaciones', page: 'UpdateCenter', icon: Download },
-{ name: 'Activar Licencia', page: 'LicenseActivation', icon: Shield },
-{ name: 'Renovar Licencia', page: 'LicenseRenewal', icon: Shield },
+// Licencias: TODAVÍA NO ESTÁN ACTIVAS en esta versión, así que no se
+// enseñan en el menú. Las pantallas siguen ahí (LicenseActivation y
+// LicenseRenewal): para recuperarlas basta con descomentar estas dos líneas.
+// { name: 'Activar Licencia', page: 'LicenseActivation', icon: Shield },
+// { name: 'Renovar Licencia', page: 'LicenseRenewal', icon: Shield },
 { name: 'Soporte IA', page: 'AISupport', icon: Bot },
 { name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Droplets },
 { name: 'Tablas Gases', page: 'TablasRefrigerantes', icon: FileBarChart },
