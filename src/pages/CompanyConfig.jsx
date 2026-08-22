@@ -8,6 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TipoDeFuentePanel from '@/components/TipoDeFuentePanel';
+import {
+  ALINEACIONES, ESPACIADOS, ESTILOS_CABECERA, POSICIONES_CLIENTE, POSICIONES_LOGO,
+  DISENO_POR_DEFECTO, esDisenoPorDefecto, normalizarDiseno, resumenDiseno,
+} from '@/lib/disenoDocumento';
 import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, AlertTriangle, Type, Image as ImageIcon, CalendarClock } from 'lucide-react';
 import PostalCodeSearch from '@/components/PostalCodeSearch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -744,6 +748,146 @@ export default function CompanyConfig() {
                     Texto de ejemplo — Instalación solar fotovoltaica 5kWp
                   </span>
                 </div>
+              </div>
+
+              {/* Colocación de los elementos */}
+              <div className="space-y-3" data-prueba="diseno-documento">
+                <p className="text-sm font-semibold text-gray-700 border-b pb-1">📐 Dónde va cada cosa</p>
+                <p className="text-xs text-gray-500">
+                  Mueve el logo, los datos y los textos. Vale para todos los documentos:
+                  presupuestos, facturas, partes e informes.
+                </p>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium">Posición del logo</label>
+                    <Select value={normalizarDiseno(form.printer_config).logo_pos}
+                      onValueChange={v => updatePrinter('logo_pos', v)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {POSICIONES_LOGO.map(o => (
+                          <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1 text-[10px] text-gray-400">
+                      {(POSICIONES_LOGO.find(o => o.id === normalizarDiseno(form.printer_config).logo_pos) || {}).nota}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Aspecto de la cabecera</label>
+                    <Select value={normalizarDiseno(form.printer_config).cabecera_estilo}
+                      onValueChange={v => updatePrinter('cabecera_estilo', v)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {ESTILOS_CABECERA.map(o => (
+                          <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1 text-[10px] text-gray-400">
+                      {(ESTILOS_CABECERA.find(o => o.id === normalizarDiseno(form.printer_config).cabecera_estilo) || {}).nota}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Datos de la empresa</label>
+                    <Select value={normalizarDiseno(form.printer_config).datos_empresa_align}
+                      onValueChange={v => updatePrinter('datos_empresa_align', v)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {ALINEACIONES.map(o => <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Datos del cliente</label>
+                    <Select value={normalizarDiseno(form.printer_config).cliente_pos}
+                      onValueChange={v => updatePrinter('cliente_pos', v)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {POSICIONES_CLIENTE.map(o => <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Título del documento</label>
+                    <Select value={normalizarDiseno(form.printer_config).titulo_align}
+                      onValueChange={v => updatePrinter('titulo_align', v)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {ALINEACIONES.map(o => <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Pie de página</label>
+                    <Select value={normalizarDiseno(form.printer_config).pie_align}
+                      onValueChange={v => updatePrinter('pie_align', v)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {ALINEACIONES.map(o => <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Espacio entre bloques</label>
+                    <Select value={normalizarDiseno(form.printer_config).espaciado}
+                      onValueChange={v => updatePrinter('espaciado', v)}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {ESPACIADOS.map(o => <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1 text-[10px] text-gray-400">
+                      {(ESPACIADOS.find(o => o.id === normalizarDiseno(form.printer_config).espaciado) || {}).nota}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-sm font-medium">Color principal</label>
+                      <input type="color" aria-label="Color principal de los documentos"
+                        value={normalizarDiseno(form.printer_config).color_cabecera}
+                        onChange={e => updatePrinter('color_cabecera', e.target.value)}
+                        className="mt-1 h-9 w-full cursor-pointer rounded border" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Color de acento</label>
+                      <input type="color" aria-label="Color de acento de los documentos"
+                        value={normalizarDiseno(form.printer_config).color_acento}
+                        onChange={e => updatePrinter('color_acento', e.target.value)}
+                        className="mt-1 h-9 w-full cursor-pointer rounded border" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-gray-50 p-3">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={normalizarDiseno(form.printer_config).linea_bajo_titulo}
+                      onChange={e => updatePrinter('linea_bajo_titulo', e.target.checked)} />
+                    Raya debajo del título
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={normalizarDiseno(form.printer_config).mostrar_pie}
+                      onChange={e => updatePrinter('mostrar_pie', e.target.checked)} />
+                    Mostrar pie de página
+                  </label>
+                  <Button type="button" variant="outline" size="sm" className="ml-auto"
+                    disabled={esDisenoPorDefecto(form.printer_config)}
+                    onClick={() => Object.entries(DISENO_POR_DEFECTO).forEach(([k, v]) => updatePrinter(k, v))}>
+                    Dejarlo como estaba
+                  </Button>
+                </div>
+
+                <p className="text-[11px] text-gray-500" data-prueba="resumen-diseno">
+                  {resumenDiseno(form.printer_config)}
+                </p>
               </div>
 
               {/* Logo */}

@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { printDocument } from '@/lib/printHelper';
+import { cssDelDiseno } from '@/lib/disenoDocumento';
 
 function getPdfStyles(cfg = {}) {
   const mt = cfg.margin_top || 15;
@@ -46,7 +47,8 @@ function getPdfStyles(cfg = {}) {
   thead { display: table-header-group; }
   tfoot { display: table-footer-group; }
   .section-card { page-break-inside: avoid; }
-  ` : ''}`
+  ` : ''}
+  ${cssDelDiseno(cfg)}`
 }
 
 const PDF_STYLES_STATIC = `
