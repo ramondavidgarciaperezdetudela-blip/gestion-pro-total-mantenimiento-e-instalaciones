@@ -1,0 +1,30 @@
+LETRAS INCLUIDAS EN GESTIÓN PRO TOTAL
+=====================================
+
+Todas las letras de esta carpeta son de uso libre y se pueden redistribuir
+dentro de un programa. Van incluidas para que el programa se vea igual en
+cualquier equipo, tenga o no esas letras instaladas, y para que funcione
+sin conexión.
+
+| Letra                  | Autoría                          | Licencia   |
+|------------------------|----------------------------------|------------|
+| Atkinson Hyperlegible  | Braille Institute of America     | SIL OFL 1.1|
+| Inter                  | Rasmus Andersson                 | SIL OFL 1.1|
+| Open Sans              | Steve Matteson / Google          | SIL OFL 1.1|
+| Lato                   | Łukasz Dziedzic                  | SIL OFL 1.1|
+| Roboto                 | Christian Robertson / Google     | Apache 2.0 |
+| Merriweather           | Sorkin Type                      | SIL OFL 1.1|
+| Source Serif 4         | Adobe                            | SIL OFL 1.1|
+| JetBrains Mono         | JetBrains                        | SIL OFL 1.1|
+
+El texto completo de la licencia SIL Open Font License 1.1 está en
+LICENCIA-OFL.txt, en esta misma carpeta.
+
+Ambas licencias permiten usar, incrustar y redistribuir las letras dentro
+de un programa, incluso comercial. Lo que NO permiten es venderlas por
+separado como si fueran tuyas.
+
+Atkinson Hyperlegible merece una nota: está diseñada por el Braille
+Institute precisamente para que la lea bien gente con poca visión. Las
+letras que suelen confundirse (I mayúscula, l minúscula, 1) se distinguen
+a propósito. Si la letra normal se te queda corta, prueba con esa.

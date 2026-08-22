@@ -23,6 +23,22 @@ export const FUENTES = [
     grupo: 'Recomendadas',
   },
   {
+    id: 'atkinson',
+    nombre: 'Atkinson Hyperlegible',
+    nota: 'Hecha para leerse con poca visión: la I, la l y el 1 no se confunden. La más clara de todas.',
+    familia: '"Atkinson Hyperlegible", Verdana, sans-serif',
+    grupo: 'Recomendadas',
+    incluida: true,
+  },
+  {
+    id: 'inter',
+    nombre: 'Inter',
+    nota: 'Pensada para pantallas. Muy nítida en el móvil.',
+    familia: 'Inter, system-ui, Arial, sans-serif',
+    grupo: 'Recomendadas',
+    incluida: true,
+  },
+  {
     id: 'verdana',
     nombre: 'Verdana',
     nota: 'Letras anchas y separadas. La más fácil de leer en el móvil.',
@@ -70,6 +86,54 @@ export const FUENTES = [
     nota: 'Redondeada, con algo de personalidad.',
     familia: '"Trebuchet MS", "Lucida Grande", Tahoma, sans-serif',
     grupo: 'Clásicas',
+  },
+  {
+    id: 'opensans',
+    nombre: 'Open Sans',
+    nota: 'Neutra y muy legible. Va bien para todo.',
+    familia: '"Open Sans", Arial, sans-serif',
+    grupo: 'Incluidas en el programa',
+    incluida: true,
+  },
+  {
+    id: 'lato',
+    nombre: 'Lato',
+    nota: 'Con un aire cálido, algo más redondeada.',
+    familia: 'Lato, "Trebuchet MS", Arial, sans-serif',
+    grupo: 'Incluidas en el programa',
+    incluida: true,
+  },
+  {
+    id: 'roboto',
+    nombre: 'Roboto',
+    nota: 'La de Android. Compacta y muy conocida.',
+    familia: 'Roboto, system-ui, Arial, sans-serif',
+    grupo: 'Incluidas en el programa',
+    incluida: true,
+  },
+  {
+    id: 'merriweather',
+    nombre: 'Merriweather',
+    nota: 'Con remates, gruesa. Se lee muy bien en papel.',
+    familia: 'Merriweather, Georgia, serif',
+    grupo: 'Incluidas en el programa',
+    incluida: true,
+  },
+  {
+    id: 'sourceserif',
+    nombre: 'Source Serif',
+    nota: 'Con remates, más fina y elegante. Para documentos formales.',
+    familia: '"Source Serif 4", Georgia, "Times New Roman", serif',
+    grupo: 'Incluidas en el programa',
+    incluida: true,
+  },
+  {
+    id: 'jetbrains',
+    nombre: 'JetBrains Mono',
+    nota: 'De ancho fijo y muy clara. Las cifras quedan en columna.',
+    familia: '"JetBrains Mono", Consolas, "Courier New", monospace',
+    grupo: 'Incluidas en el programa',
+    incluida: true,
   },
   {
     id: 'times',
@@ -362,4 +426,115 @@ export function cssTarjeta(tarjeta) {
     fuerte: f.negrita ? 800 : 700,
     escala: f.escala,
   };
+}
+
+// ── Cada campo de la tarjeta, por su cuenta ───────────────────────────────
+//
+// La tarjeta tiene una letra general, pero cada trozo puede llevar la suya:
+// el nombre grande y en negrita, el cargo más pequeño, los datos de contacto
+// en otro color... Lo que no se toque hereda lo de la tarjeta, para no tener
+// que configurar cinco cosas cuando solo quieres cambiar una.
+
+export const CAMPOS_TARJETA = [
+  { id: 'empresa', nombre: 'Nombre de la empresa', base: 10, fuerte: true },
+  { id: 'nombre', nombre: 'Tu nombre', base: 15, fuerte: true },
+  { id: 'cargo', nombre: 'Cargo o puesto', base: 10, fuerte: false },
+  { id: 'contacto', nombre: 'Teléfono, email y web', base: 8.5, fuerte: false },
+  { id: 'nif', nombre: 'NIF', base: 8, fuerte: false },
+];
+
+export function campoTarjeta(id) {
+  return CAMPOS_TARJETA.find((c) => c.id === id) || CAMPOS_TARJETA[0];
+}
+
+/** Cuánto se puede subir o bajar un campo respecto al resto de la tarjeta. */
+export const CAMPO_ESCALA_MIN = 50;
+export const CAMPO_ESCALA_MAX = 200;
+
+export function escalaCampoValida(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 100;
+  return Math.min(CAMPO_ESCALA_MAX, Math.max(CAMPO_ESCALA_MIN, Math.round(n)));
+}
+
+function colorValido(c) {
+  return /^#[0-9a-fA-F]{6}$/.test(c || '') ? c : null;
+}
+
+/**
+ * Los ajustes de un campo, ya resueltos: lo suyo si lo tiene, y si no, lo
+ * de la tarjeta.
+ *
+ * @param {object} tarjeta
+ * @param {string} idCampo
+ * @param {string} colorPorDefecto  el del esquema de color elegido
+ */
+export function ajustesDeCampo(tarjeta, idCampo, colorPorDefecto) {
+  const campo = campoTarjeta(idCampo);
+  const propio = (tarjeta?.campos || {})[idCampo] || {};
+  const general = fuenteDeTarjeta(tarjeta);
+
+  const negrita = propio.negrita === undefined
+    ? (campo.fuerte || general.negrita)
+    : !!propio.negrita;
+
+  return {
+    fuente: propio.fuente ? fuentePorId(propio.fuente).id : general.fuente,
+    escalaCampo: escalaCampoValida(propio.escala ?? 100),
+    color: colorValido(propio.color) || colorPorDefecto,
+    negrita,
+    cursiva: propio.cursiva === undefined ? general.cursiva : !!propio.cursiva,
+    // Un campo puede llevar su propia letra sin que se note que es distinta
+    // del resto: por eso se guarda también si está tocado o no.
+    aMedida: Object.keys(propio).length > 0,
+  };
+}
+
+/**
+ * El estilo CSS final de un campo de la tarjeta.
+ *
+ * El tamaño sale de tres cosas: el que tiene ese campo de fábrica, la escala
+ * general de la tarjeta y la escala propia del campo. Así, subir el tamaño
+ * de la tarjeta entera sigue funcionando aunque un campo esté retocado.
+ */
+export function estiloDeCampo(tarjeta, idCampo, colorPorDefecto, { pequeno = false } = {}) {
+  const campo = campoTarjeta(idCampo);
+  const a = ajustesDeCampo(tarjeta, idCampo, colorPorDefecto);
+  const general = fuenteDeTarjeta(tarjeta);
+  const base = pequeno ? campo.base * 0.7 : campo.base;
+  const px = medida(base, general.escala) * (a.escalaCampo / 100);
+  return {
+    fontFamily: familiaDe(a.fuente),
+    fontSize: `${Math.round(px * 10) / 10}px`,
+    fontWeight: a.negrita ? (campo.fuerte ? 800 : 700) : (general.negrita ? 600 : 400),
+    fontStyle: a.cursiva ? 'italic' : 'normal',
+    color: a.color,
+  };
+}
+
+/** Lo mismo, en CSS suelto, para las plantillas de impresión. */
+export function cssDeCampo(tarjeta, idCampo, colorPorDefecto) {
+  const e = estiloDeCampo(tarjeta, idCampo, colorPorDefecto);
+  return `font-family:${e.fontFamily};font-size:${e.fontSize};`
+    + `font-weight:${e.fontWeight};font-style:${e.fontStyle};color:${e.color} !important;`;
+}
+
+/** Cambia un ajuste de un campo, dejando el resto como estaba. */
+export function conCampoCambiado(tarjeta, idCampo, parche) {
+  const campos = { ...(tarjeta?.campos || {}) };
+  const actual = { ...(campos[idCampo] || {}), ...parche };
+  // Quitar lo que se haya puesto a "sin valor" para que vuelva a heredar.
+  for (const k of Object.keys(actual)) {
+    if (actual[k] === null || actual[k] === undefined) delete actual[k];
+  }
+  if (Object.keys(actual).length === 0) delete campos[idCampo];
+  else campos[idCampo] = actual;
+  return { ...tarjeta, campos };
+}
+
+/** Devuelve el campo a lo que tenga la tarjeta en general. */
+export function conCampoPorDefecto(tarjeta, idCampo) {
+  const campos = { ...(tarjeta?.campos || {}) };
+  delete campos[idCampo];
+  return { ...tarjeta, campos };
 }

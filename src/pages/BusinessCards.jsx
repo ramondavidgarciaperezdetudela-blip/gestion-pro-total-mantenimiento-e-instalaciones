@@ -10,7 +10,9 @@ import { CreditCard, Plus, Printer, Download, Trash2, Edit, QrCode, Layers } fro
 import QRCodeLib from 'qrcode';
 import { printDocument } from '@/lib/printHelper';
 import {
-  ESCALA_MAX, ESCALA_MIN, FUENTE_TARJETA_POR_DEFECTO, cssTarjeta, escalaValida,
+  CAMPOS_TARJETA, CAMPO_ESCALA_MAX, CAMPO_ESCALA_MIN, ESCALA_MAX, ESCALA_MIN,
+  FUENTE_TARJETA_POR_DEFECTO, ajustesDeCampo, conCampoCambiado, conCampoPorDefecto,
+  cssDeCampo, cssTarjeta, escalaCampoValida, escalaValida, estiloDeCampo,
   estiloTarjeta, fuentePorId, gruposDeFuentes, medida, pesoTarjeta,
 } from '@/lib/tipoDeFuente';
 
@@ -155,7 +157,7 @@ function CardPreview({ card, company, size = 'normal', onCabe }) {
                   {companyName[0] || 'E'}
                 </div>
           )}
-          <span style={{ fontSize: t(isSmall ? 7 : 10), fontWeight: pesoTarjeta(card, { fuerte: true }), color: s.accent, letterSpacing: '0.5px', textTransform: 'uppercase', lineHeight: 1.2, minWidth: 0, overflowWrap: 'anywhere' }}>
+          <span style={{ ...estiloDeCampo(card, 'empresa', s.accent, { pequeno: isSmall }), letterSpacing: '0.5px', textTransform: 'uppercase', lineHeight: 1.2, minWidth: 0, overflowWrap: 'anywhere' }}>
             {companyName}
           </span>
         </div>
@@ -169,13 +171,13 @@ function CardPreview({ card, company, size = 'normal', onCabe }) {
 
       {/* Middle: name + role + nif */}
       <div data-contenido="nombre">
-        <p style={{ fontSize: t(isSmall ? 11 : 15), fontWeight: pesoTarjeta(card, { fuerte: true }), marginBottom: 2, color: s.text, lineHeight: 1.15, overflowWrap: 'anywhere' }}>{card.name || 'Nombre Apellidos'}</p>
-        <p style={{ fontSize: t(isSmall ? 7 : 10), color: s.sub, textTransform: 'uppercase', letterSpacing: '0.8px', lineHeight: 1.2, overflowWrap: 'anywhere' }}>{card.role || 'Cargo / Puesto'}</p>
-        {card.show_nif && card.nif && <p style={{ fontSize: t(isSmall ? 6 : 8), color: s.sub, marginTop: 1 }}>NIF: {card.nif}</p>}
+        <p style={{ ...estiloDeCampo(card, 'nombre', s.text, { pequeno: isSmall }), marginBottom: 2, lineHeight: 1.15, overflowWrap: 'anywhere' }}>{card.name || 'Nombre Apellidos'}</p>
+        <p style={{ ...estiloDeCampo(card, 'cargo', s.sub, { pequeno: isSmall }), textTransform: 'uppercase', letterSpacing: '0.8px', lineHeight: 1.2, overflowWrap: 'anywhere' }}>{card.role || 'Cargo / Puesto'}</p>
+        {card.show_nif && card.nif && <p style={{ ...estiloDeCampo(card, 'nif', s.sub, { pequeno: isSmall }), marginTop: 1 }}>NIF: {card.nif}</p>}
       </div>
 
       {/* Bottom: contact */}
-      <div data-contenido="contacto" style={{ fontSize: t(isSmall ? 6 : 8.5), color: s.sub, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflowWrap: 'anywhere' }}>
+      <div data-contenido="contacto" style={{ ...estiloDeCampo(card, 'contacto', s.sub, { pequeno: isSmall }), display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflowWrap: 'anywhere' }}>
         {phone && <span>📞 {phone}</span>}
         {email && <span>✉️ {email}</span>}
         {web && <span>🌐 {web}</span>}
@@ -195,6 +197,7 @@ export default function BusinessCards() {
   const [dialog, setDialog] = useState(false);
   // ¿Cabe todo el texto en la tarjeta con la letra elegida?
   const [cabe, setCabe] = useState(true);
+  const [campoAbierto, setCampoAbierto] = useState(null);
 
   useEffect(() => {
     base44.entities.CompanySettings.list().then(r => setCompany(r[0] || null));
@@ -311,11 +314,11 @@ export default function BusinessCards() {
       .c2 { position: absolute; bottom: -18px; left: 20px; width: 60px; height: 60px; border-radius: 50%; background: ${s.accent}; opacity: 0.12; }
       .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
       .top-left { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
-      .co { font-size: ${m(9)}; font-weight: ${L.fuerte}; color: ${s.accent} !important; letter-spacing: 0.6px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .co { ${cssDeCampo(card, 'empresa', s.accent)} letter-spacing: 0.6px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .mid { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 2px 0; }
-      .name { font-size: ${m(15)}; font-weight: ${L.fuerte}; color: ${s.text} !important; margin: 0 0 3px 0; line-height: 1.2; }
-      .role { font-size: ${m(9)}; color: ${s.sub} !important; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
-      .contact { font-size: ${m(8)}; color: ${s.sub} !important; display: flex; flex-direction: column; gap: 2px; }
+      .name { ${cssDeCampo(card, 'nombre', s.text)} margin: 0 0 3px 0; line-height: 1.2; }
+      .role { ${cssDeCampo(card, 'cargo', s.sub)} text-transform: uppercase; letter-spacing: 1px; margin: 0; }
+      .contact { ${cssDeCampo(card, 'contacto', s.sub)} display: flex; flex-direction: column; gap: 2px; }
       .contact span { display: block; }
     </style></head><body>
     <div class="page">${allCards}</div>
@@ -345,10 +348,10 @@ export default function BusinessCards() {
       .c2 { position: absolute; bottom: -15px; left: 30px; width: 50px; height: 50px; border-radius: 50%; background: ${s.accent}; opacity: 0.1; }
       .top { display: flex; align-items: center; justify-content: space-between; }
       .top-left { display: flex; align-items: center; gap: 6px; }
-      .co { font-size: ${m(9)}; font-weight: ${L.fuerte}; color: ${s.accent}; letter-spacing: 0.5px; text-transform: uppercase; }
-      .name { font-size: ${m(15)}; font-weight: ${L.fuerte}; color: ${s.text}; margin-bottom: 2px; }
-      .role { font-size: ${m(9)}; color: ${s.sub}; text-transform: uppercase; letter-spacing: 0.8px; }
-      .contact { font-size: ${m(8)}; color: ${s.sub}; display: flex; flex-direction: column; gap: 2px; }
+      .co { ${cssDeCampo(card, 'empresa', s.accent)} letter-spacing: 0.5px; text-transform: uppercase; }
+      .name { ${cssDeCampo(card, 'nombre', s.text)} margin-bottom: 2px; }
+      .role { ${cssDeCampo(card, 'cargo', s.sub)} text-transform: uppercase; letter-spacing: 0.8px; }
+      .contact { ${cssDeCampo(card, 'contacto', s.sub)} display: flex; flex-direction: column; gap: 2px; }
     </style></head><body>
     <div class="card">
       <div class="c1"></div><div class="c2"></div>
@@ -556,6 +559,112 @@ export default function BusinessCards() {
 
                   {Toggle('card_font_bold', 'Negrita')}
                   {Toggle('card_font_italic', 'Cursiva')}
+                </div>
+
+                {/* Cada campo por su cuenta. Lo que no se toca hereda lo de
+                    arriba, para no tener que configurar cinco cosas cuando
+                    solo quieres cambiar el nombre. */}
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <p className="text-xs font-medium text-gray-700">Ajustar cada campo por separado</p>
+                  <p className="text-[10px] text-gray-400">
+                    Lo que dejes sin tocar sigue lo de arriba. Pulsa un campo para desplegarlo.
+                  </p>
+                  {CAMPOS_TARJETA.map((campo) => {
+                    const a = ajustesDeCampo(form, campo.id, '#334155');
+                    const abierto = campoAbierto === campo.id;
+                    return (
+                      <div key={campo.id} className="rounded-md border bg-white">
+                        <button
+                          type="button"
+                          onClick={() => setCampoAbierto(abierto ? null : campo.id)}
+                          className="flex w-full items-center justify-between px-2 py-1.5 text-left"
+                          data-prueba={`campo-${campo.id}`}
+                        >
+                          <span className="text-xs font-medium text-gray-700">{campo.nombre}</span>
+                          <span className="text-[10px] text-gray-400">
+                            {a.aMedida ? <b className="text-blue-600">a medida</b> : 'igual que la tarjeta'}
+                            {abierto ? ' ▴' : ' ▾'}
+                          </span>
+                        </button>
+
+                        {abierto && (
+                          <div className="space-y-2 border-t px-2 py-2">
+                            <div>
+                              <label className="text-[10px] text-gray-500">Tipo de letra</label>
+                              <Select
+                                value={a.fuente}
+                                onValueChange={(v2) => setForm(conCampoCambiado(form, campo.id, { fuente: v2 }))}
+                              >
+                                <SelectTrigger className="mt-0.5 h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {gruposDeFuentes().map(({ grupo, fuentes }) => (
+                                    <SelectGroup key={grupo}>
+                                      <SelectLabel>{grupo}</SelectLabel>
+                                      {fuentes.map((f) => (
+                                        <SelectItem key={f.id} value={f.id}>
+                                          <span style={{ fontFamily: f.familia }}>{f.nombre}</span>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectGroup>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] text-gray-500">
+                                Tamaño de este campo — {a.escalaCampo}%
+                              </label>
+                              <input
+                                type="range"
+                                min={CAMPO_ESCALA_MIN}
+                                max={CAMPO_ESCALA_MAX}
+                                step={5}
+                                aria-label={`Tamaño de ${campo.nombre}`}
+                                value={a.escalaCampo}
+                                onChange={(e) => setForm(conCampoCambiado(form, campo.id, { escala: escalaCampoValida(e.target.value) }))}
+                                className="mt-0.5 w-full accent-blue-600"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <label className="text-[10px] text-gray-500">Color</label>
+                              <input
+                                type="color"
+                                aria-label={`Color de ${campo.nombre}`}
+                                value={a.color}
+                                onChange={(e) => setForm(conCampoCambiado(form, campo.id, { color: e.target.value }))}
+                                className="h-7 w-12 cursor-pointer rounded border"
+                              />
+                              <span className="text-[10px] text-gray-400">{a.color}</span>
+                            </div>
+
+                            <div className="flex gap-3">
+                              <label className="flex items-center gap-1.5 text-[11px] text-gray-700">
+                                <input type="checkbox" checked={a.negrita}
+                                  aria-label={`Negrita en ${campo.nombre}`}
+                                  onChange={(e) => setForm(conCampoCambiado(form, campo.id, { negrita: e.target.checked }))} />
+                                Negrita
+                              </label>
+                              <label className="flex items-center gap-1.5 text-[11px] text-gray-700">
+                                <input type="checkbox" checked={a.cursiva}
+                                  aria-label={`Cursiva en ${campo.nombre}`}
+                                  onChange={(e) => setForm(conCampoCambiado(form, campo.id, { cursiva: e.target.checked }))} />
+                                Cursiva
+                              </label>
+                            </div>
+
+                            {a.aMedida && (
+                              <Button type="button" size="sm" variant="outline" className="h-7 w-full text-[10px]"
+                                onClick={() => setForm(conCampoPorDefecto(form, campo.id))}>
+                                Dejar este campo como el resto
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="bg-gray-50 rounded-lg p-3 space-y-2">

@@ -17,6 +17,8 @@ import GlobalSearch from './components/GlobalSearch';
 import AIChat from './components/AIChat';
 import QuickPriceDBAccess from './components/QuickPriceDBAccess';
 import BackupProgressIndicator from './components/BackupProgressIndicator';
+import BarraNavegacion from './components/BarraNavegacion';
+import AjusteRapidoLetra from './components/AjusteRapidoLetra';
 
 // ─── Mobile Bottom Bar ────────────────────────────────────────────────────────
 const MAIN_TABS = [
@@ -365,6 +367,7 @@ export default function Layout({ children, currentPageName }) {
           <div className="flex items-center justify-between px-2 py-1">
             <span className="text-xs font-semibold" style={{ color: '#8890a8' }}>Alertas</span>
             <div className="flex items-center gap-1">
+              <AjusteRapidoLetra />
               <ThemeToggle />
               <NotificationsPanel />
             </div>
@@ -439,14 +442,13 @@ export default function Layout({ children, currentPageName }) {
             <button onClick={() => setSidebarOpen(true)} style={{ color: '#8890a8' }}>
               <Menu className="w-6 h-6" />
             </button>
-            <button onClick={() => window.history.back()} className="p-1" style={{ color: '#8890a8' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
-            </button>
+
           </div>
           <h2 className="font-semibold text-sm truncate mx-2" style={{ color: '#e8eaf0' }}>
             {navItems.find((n) => n.page === currentPageName)?.name || currentPageName}
           </h2>
           <div className="flex items-center gap-1">
+            <AjusteRapidoLetra compacto />
             <ThemeToggle size="w-5 h-5" />
             <button onClick={() => setSearchOpen(true)} className="p-1.5" style={{ color: '#8890a8' }}>
               <Search className="w-5 h-5" />
@@ -455,6 +457,7 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </header>
         <main className="p-3 md:p-5 max-w-7xl mx-auto relative z-10 pb-28 lg:pb-6 overflow-x-hidden min-w-0 w-full" style={{ contain: 'layout style' }}>
+          <BarraNavegacion enInicio={currentPageName === 'Home'} />
           {children}
         </main>
 
