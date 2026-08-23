@@ -5,6 +5,7 @@ import {
   camposNumericosVacios, conNumerosVaciosANulo,
 } from '@/lib/avisoServidor';
 import { iaActivada, gastaCreditos, errorIAApagada } from '@/lib/modoSinIA';
+import { ajustesIA, consultarIA } from '@/lib/proveedorIA';
 
 const { appId, token, functionsVersion, appBaseUrl } = appParams;
 
@@ -169,11 +170,25 @@ const integracionesVigiladas = new Proxy({}, {
         // escriba se olvidaría. Y se avisa en pantalla, para que quien pulse
         // el botón sepa por qué no pasa nada en vez de pensar que está roto.
         if (gastaCreditos(punto)) {
-          return (...args) => {
+          return async (...args) => {
             if (!iaActivada()) {
               const err = errorIAApagada(punto);
               avisarDeFallo({ funcion: punto, error: err });
-              return Promise.reject(err);
+              throw err;
+            }
+            // Si se ha elegido una IA libre (Ollama en el propio ordenador, o
+            // los modelos abiertos gratuitos de OpenRouter), la consulta va
+            // ahí y NO al servidor de Base44: cero créditos. Se enchufa en
+            // este punto y no en cada pantalla porque son 38 sitios distintos;
+            // así ninguno se queda fuera ni hay que acordarse en el siguiente.
+            const cfg = ajustesIA();
+            if (punto === 'InvokeLLM' && cfg.proveedor !== 'base44') {
+              try {
+                return await consultarIA(args[0] || {}, cfg);
+              } catch (err) {
+                avisarDeFallo({ funcion: punto, error: err });
+                throw err;
+              }
             }
             return fn(...args);
           };

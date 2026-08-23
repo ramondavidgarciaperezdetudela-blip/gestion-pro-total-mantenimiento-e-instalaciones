@@ -133,6 +133,48 @@ function carpetaDeCopias(elegida) {
   return { ruta: ultimo, alternativa: true };
 }
 
+// ── Puente para hablar con la IA libre (Ollama y OpenRouter) ────────────────
+//
+// La app instalada se abre como fichero local (file://). Desde ahí el
+// navegador bloquea por seguridad las llamadas a Ollama, que escucha en
+// localhost: es una petición "de otro origen" y Ollama la rechaza salvo que
+// el usuario se ponga a configurar variables de entorno a mano. Yendo por el
+// proceso principal de Electron no hay navegador de por medio, así que
+// funciona tal cual, sin que haya que tocar nada.
+//
+// Solo se dejan pasar las direcciones de la IA: ni es un proxy abierto ni
+// puede usarse para llegar a cualquier sitio desde la pantalla.
+const DESTINOS_IA_PERMITIDOS = [
+  /^https?:\/\/localhost(:\d+)?\//,
+  /^https?:\/\/127\.0\.0\.1(:\d+)?\//,
+  /^https?:\/\/\[::1\](:\d+)?\//,
+  // Ollama en otro equipo de la red de casa o del taller.
+  /^https?:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?\//,
+  /^https?:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?\//,
+  /^https:\/\/openrouter\.ai\//,
+];
+
+ipcMain.handle('gpt-ia-fetch', async (_evt, { url, method, headers, body }) => {
+  try {
+    const destino = String(url || '');
+    if (!DESTINOS_IA_PERMITIDOS.some((re) => re.test(destino))) {
+      return { ok: false, status: null, error: 'Esa dirección no está permitida para la IA.' };
+    }
+    const resp = await fetch(destino, {
+      method: method || 'GET',
+      headers: headers || {},
+      body: body || undefined,
+    });
+    const cuerpo = await resp.text();
+    if (!resp.ok) {
+      return { ok: false, status: resp.status, error: cuerpo.slice(0, 500) };
+    }
+    return { ok: true, status: resp.status, cuerpo };
+  } catch (err) {
+    return { ok: false, status: null, error: String(err?.message || err) };
+  }
+});
+
 ipcMain.handle('gpt-guardar-copia', async (_evt, { nombre, contenido, carpeta }) => {
   try {
     const { ruta, alternativa, perdida } = carpetaDeCopias(carpeta);

@@ -3,6 +3,8 @@ import { Sparkles, PowerOff } from 'lucide-react';
 import {
   escucharEstadoIA, activarIA, activarActualizacionDiaria, iaActivada,
 } from '@/lib/modoSinIA';
+import { escucharAjustesIA, esProveedorLibre } from '@/lib/proveedorIA';
+import AjustesProveedorIA from '@/components/AjustesProveedorIA';
 
 /**
  * Encender o apagar la ayuda con IA, y con ella el gasto de créditos.
@@ -12,31 +14,40 @@ import {
  */
 export default function InterruptorIA() {
   const [estado, setEstado] = useState({ ia: false, diaria: false });
+  const [cfg, setCfg] = useState({ proveedor: 'ollama' });
 
   useEffect(() => escucharEstadoIA(setEstado), []);
+  useEffect(() => escucharAjustesIA(setCfg), []);
 
   const encendida = estado.ia;
+  // Con una IA libre no se gastan créditos aunque esté encendida: el aviso no
+  // puede decir lo mismo en los dos casos.
+  const gasta = encendida && !esProveedorLibre(cfg.proveedor);
 
   return (
     <div className="space-y-3" data-prueba="interruptor-ia">
       <div
-        className={`rounded-xl border p-4 ${encendida ? 'border-amber-300 bg-amber-50' : 'border-emerald-300 bg-emerald-50'}`}
+        className={`rounded-xl border p-4 ${gasta ? 'border-amber-300 bg-amber-50' : 'border-emerald-300 bg-emerald-50'}`}
       >
         <div className="flex items-start gap-3">
-          {encendida
+          {gasta
             ? <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
             : <PowerOff className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />}
           <div className="min-w-0 flex-1">
-            <p className={`font-semibold ${encendida ? 'text-amber-800' : 'text-emerald-800'}`}
+            <p className={`font-semibold ${gasta ? 'text-amber-800' : 'text-emerald-800'}`}
                data-prueba="estado-ia">
-              {encendida
-                ? 'Ayuda con IA ENCENDIDA — consume créditos de tu cuenta'
-                : 'Ayuda con IA APAGADA — el programa no gasta créditos'}
+              {!encendida
+                ? 'Ayuda con IA APAGADA — el programa no gasta créditos'
+                : gasta
+                  ? 'Ayuda con IA ENCENDIDA con la de Base44 — consume créditos de tu cuenta'
+                  : 'Ayuda con IA ENCENDIDA con una IA libre — no gasta créditos'}
             </p>
-            <p className={`mt-1 text-sm leading-snug ${encendida ? 'text-amber-700' : 'text-emerald-700'}`}>
-              {encendida
-                ? 'Los botones de IA (presupuesto por IA, informes, búsqueda de datos por NIF, plantillas…) llamarán al servidor y gastarán créditos.'
-                : 'Todo lo demás sigue funcionando igual: clientes, presupuestos, facturas, partes, agenda, almacén, cálculos, documentos, códigos postales y las copias de seguridad. La sincronización entre ordenador, tablet y móvil tampoco depende de la IA.'}
+            <p className={`mt-1 text-sm leading-snug ${gasta ? 'text-amber-700' : 'text-emerald-700'}`}>
+              {!encendida
+                ? 'Todo lo demás sigue funcionando igual: clientes, presupuestos, facturas, partes, agenda, almacén, cálculos, documentos, códigos postales y las copias de seguridad. La sincronización entre ordenador, tablet y móvil tampoco depende de la IA.'
+                : gasta
+                  ? 'Los botones de IA (presupuesto por IA, informes, búsqueda de datos por NIF, plantillas…) llamarán al servidor de Base44 y gastarán créditos. Abajo puedes cambiar a una IA libre y dejar de gastar.'
+                  : 'Las consultas van a la IA libre que has elegido, no al servidor de Base44. No se gasta ni un crédito.'}
             </p>
           </div>
         </div>
@@ -49,9 +60,15 @@ export default function InterruptorIA() {
             className="h-4 w-4"
             aria-label="Encender la ayuda con IA"
           />
-          Encender la ayuda con IA (gasta créditos)
+          Encender la ayuda con IA
         </label>
       </div>
+
+      {encendida && (
+        <div className="rounded-xl border border-slate-200 p-3">
+          <AjustesProveedorIA />
+        </div>
+      )}
 
       <label
         className={`flex items-start gap-2 rounded-xl border p-3 text-sm ${encendida ? 'cursor-pointer border-slate-200 text-slate-700' : 'border-slate-200 text-slate-400'}`}

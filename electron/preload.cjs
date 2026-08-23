@@ -28,6 +28,13 @@ contextBridge.exposeInMainWorld('gptCopias', {
   cerrarPorPartes: () => ipcRenderer.invoke('gpt-copia-cerrar'),
 });
 
+// La IA libre (Ollama en el propio ordenador, OpenRouter). Va por aquí para
+// esquivar el bloqueo del navegador al abrirse la app como fichero local.
+contextBridge.exposeInMainWorld('gptIA', {
+  disponible: true,
+  fetch: (peticion) => ipcRenderer.invoke('gpt-ia-fetch', peticion),
+});
+
 contextBridge.exposeInMainWorld('gptUpdater', {
   check: () => ipcRenderer.send('gpt-check-for-updates'),
   install: () => ipcRenderer.send('gpt-install-update'),
