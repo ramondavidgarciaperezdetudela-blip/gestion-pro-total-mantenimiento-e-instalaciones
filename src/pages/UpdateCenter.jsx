@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import NavBar from '@/components/NavBar';
 import {
   CATEGORIES, updateCategoryData, loadSavedUpdates, getCustomSources, saveCustomSources,
+  motivoDeLaConsulta, detalleTecnico,
 } from '@/lib/dailyAutoUpdate';
-import { motivoDelFallo } from '@/lib/avisoServidor';
 
 export default function UpdateCenter() {
   const [updating, setUpdating]     = useState(false);
@@ -60,10 +60,10 @@ export default function UpdateCenter() {
       // Antes aquí se soltaba siempre "revisa la conexión", aunque el fallo
       // fuese otro (cuenta sin créditos, sesión caducada, servidor caído). Así
       // no había forma de saber qué arreglar.
-      const motivo = motivoDelFallo(e);
-      setMotivos((m) => ({ ...m, [cat.id]: motivo }));
+      const motivo = motivoDeLaConsulta(e);
+      setMotivos((m) => ({ ...m, [cat.id]: { texto: motivo, tecnico: detalleTecnico(e) } }));
       setProgress((p) => ({ ...p, [cat.id]: 'error' }));
-      addLog(`⚠️ ${cat.label} — ${motivo}`);
+      addLog(`⚠️ ${cat.label} — ${motivo} [${detalleTecnico(e)}]`);
       return false;
     }
   };
@@ -190,9 +190,15 @@ export default function UpdateCenter() {
                     {formatDate(lastUpdate[cat.id])}
                   </p>
                   {motivos[cat.id] && (
-                    <p className="text-xs text-red-600 mt-1 max-w-xs" data-prueba={`motivo-${cat.id}`}>
-                      {motivos[cat.id]}
-                    </p>
+                    <div className="mt-1 max-w-xs" data-prueba={`motivo-${cat.id}`}>
+                      <p className="text-xs text-red-600">{motivos[cat.id].texto}</p>
+                      {/* El detalle exacto, para poder verlo o fotografiarlo:
+                          sin esto solo se ve un mensaje amable y no hay manera
+                          de saber qué está pasando de verdad. */}
+                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono break-all">
+                        {motivos[cat.id].tecnico}
+                      </p>
+                    </div>
                   )}
                   {progress[cat.id] === 'sin_internet' && !motivos[cat.id] && (
                     <p className="text-xs text-amber-600 mt-1 max-w-xs">

@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { motivoDelFallo } from '@/lib/avisoServidor';
 
 // ── Categorías que se mantienen al día automáticamente ──────────────────────
 // Compartido entre la página "Centro de Actualizaciones" (UpdateCenter.jsx) y
@@ -297,4 +298,40 @@ export function maybeRunDailyBackground() {
       }
     })();
   }, jitterMs);
+}
+
+/**
+ * Por qué ha fallado la consulta, en cristiano.
+ *
+ * motivoDelFallo() de avisoServidor.js está escrito para GUARDAR fichas, y
+ * aquí algunas respuestas no encajan: un 404 no significa "el registro ya no
+ * existe", significa que la ayuda con IA no está disponible en la cuenta.
+ */
+export function motivoDeLaConsulta(err) {
+  const estado = err?.status ?? err?.response?.status ?? null;
+  const detalle = String(err?.data?.detail || err?.data?.message || err?.message || '');
+
+  if (estado === 404) {
+    return 'La ayuda con IA no está disponible en tu cuenta de Base44 (no responde a la consulta). Compruébalo en el panel de Base44.';
+  }
+  if (estado === 408 || estado === 504 || /timeout|timed out|ETIMEDOUT/i.test(detalle)) {
+    return 'La consulta ha tardado demasiado y el servidor la ha cortado. Buscar en internet es lento; vuelve a intentarlo.';
+  }
+  if (estado === null && /network|failed to fetch|abort|ERR_/i.test(detalle)) {
+    return 'No se ha podido llegar al servidor. Si el resto del programa sí funciona, no es tu conexión: es que la consulta a la IA no ha salido.';
+  }
+  return motivoDelFallo(err);
+}
+
+/**
+ * El detalle técnico del fallo, para poder enseñarlo tal cual.
+ *
+ * Sin esto no hay forma de saber qué está pasando de verdad: el usuario ve un
+ * mensaje amable y quien tiene que arreglarlo se queda a ciegas.
+ */
+export function detalleTecnico(err) {
+  const estado = err?.status ?? err?.response?.status ?? null;
+  const detalle = err?.data?.detail || err?.data?.message || err?.message || '';
+  const texto = typeof detalle === 'string' ? detalle : JSON.stringify(detalle);
+  return `${estado === null || estado === undefined ? 'sin código' : `código ${estado}`} · ${String(texto).slice(0, 300) || 'sin detalle'}`;
 }
