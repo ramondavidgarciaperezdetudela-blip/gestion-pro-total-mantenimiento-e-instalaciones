@@ -72,6 +72,15 @@ Cuando salga el ✓ verde, tus clientes ya tienen la versión nueva aquí
 
 👉 **https://github.com/ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases/releases/latest**
 
+> **Ojo con esto:** "Publicar release pública" compila y publica en la **página de
+> tus clientes**. Los otros dos workflows ("Build Android APK" y "Build Desktop
+> Installers") publican en **este** repositorio privado, para pruebas.
+>
+> Son independientes: lanzar los de prueba **no** actualiza la página de los
+> clientes. Si quieres que tus clientes tengan la versión nueva, el que hay que
+> lanzar sí o sí es **"Publicar release pública"**. Si se olvida, la página se
+> queda en la versión antigua sin avisar de nada.
+
 ---
 
 ## ✅ FORMA B — Subir ficheros a mano con el mini-programa
