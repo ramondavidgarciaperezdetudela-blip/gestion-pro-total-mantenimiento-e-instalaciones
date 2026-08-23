@@ -138,6 +138,12 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx cap add android && npx cap sync android
+      - name: Meter el explorador de ficheros para guardar la copia
+        # cap add/sync regenera el proyecto de Android entero, así que este
+        # trozo nativo hay que volver a ponerlo DESPUÉS, en cada compilación.
+        # Faltaba aquí: el APK de los clientes salía sin el explorador de
+        # ficheros, aunque el del repositorio privado sí lo llevaba.
+        run: python3 scripts/anadir-guardar-como.py android
       - name: Generate Android app icon (same icon as desktop installers)
         run: npx @capacitor/assets generate --android
       - name: Poner la versión real en el APK (para que Android la instale ENCIMA)
@@ -150,18 +156,32 @@ jobs:
           grep -E "versionCode|versionName" android/app/build.gradle
           grep -q "versionCode $CODE" android/app/build.gradle
       - name: Firma estable (clave fija → actualizar sin desinstalar)
-        # Usamos SIEMPRE la misma clave de firma para que cada APK nueva se
-        # instale ENCIMA de la anterior sin tener que desinstalar. Sin esto,
-        # cada compilación generaría una clave distinta y Android bloquearía la
-        # actualización por firma diferente.
+        # Copiar la clave a ~/.android/debug.keystore NO basta: Gradle se
+        # inventa su propia clave en cada compilación. Esto ya se arregló en
+        # build-apk.yml, pero AQUÍ se quedó sin arreglar, y este es justo el
+        # workflow que publica para los clientes: se comprobó descargando los
+        # APK publicados de la 1.34.0, 1.35.0 y 1.35.1 y los tres llevaban una
+        # clave DISTINTA, así que cada actualización obligaba a desinstalar y
+        # perder los datos. La firma se declara explícitamente en build.gradle.
         run: |
           mkdir -p ~/.android
           cp android-signing/debug.keystore ~/.android/debug.keystore
+          cp android-signing/debug.keystore android/app/debug.keystore
+          python3 scripts/firmar-apk-con-clave-fija.py android/app/build.gradle
+          grep -A 8 'signingConfigs' android/app/build.gradle
       - name: Compilar APK
         working-directory: android
         run: chmod +x ./gradlew && ./gradlew assembleDebug --no-daemon
       - name: Renombrar APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk gestion-pro-total.apk
+      - name: Comprobar que el APK lleva la clave del repositorio
+        # Si la firma no es la esperada, ese APK obligaría a desinstalar la
+        # versión anterior y el cliente perdería los datos. Mejor que falle
+        # aquí y no se publique nada.
+        run: |
+          HUELLA=$(keytool -list -keystore android-signing/debug.keystore -storepass android 2>/dev/null | grep -oE '([0-9A-F]{2}:){31}[0-9A-F]{2}')
+          echo "Huella esperada: $HUELLA"
+          python3 scripts/verificar-firma-apk.py gestion-pro-total.apk "$HUELLA"
       - name: Obtener versión
         id: ver
         run: echo "v=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
