@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { iaActivada } from '@/lib/modoSinIA';
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -161,7 +162,16 @@ function NormativePanel({ onClose }) {
   const [normInfo, setNormInfo] = useState(null);
 
   const fetchNormative = async () => {
+    // Esto se disparaba SOLO al abrir el cuadro, con búsqueda en internet:
+    // cada vez que se miraba un equipo se gastaban créditos sin pedirlo. Con
+    // la ayuda con IA apagada no se llama, y se dice qué hacer si se quiere.
+    if (!iaActivada()) {
+      setNormInfo(null);
+      setUpdating(false);
+      return;
+    }
     setUpdating(true);
+    try {
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `Eres un experto técnico en refrigeración y climatización en España.
       Dame un resumen ACTUALIZADO y CONCISO (máx 300 palabras) de las normativas VIGENTES EN 2026 para instaladores:
@@ -174,10 +184,18 @@ function NormativePanel({ onClose }) {
       model: 'gemini_3_flash',
     });
     setNormInfo(res);
+    } catch (e) {
+      // Antes no había catch: si fallaba, la rueda se quedaba girando para
+      // siempre y no se decía nada.
+      console.error('[EquipmentSelector] no se pudo consultar la normativa:', e);
+      setNormInfo(null);
+    }
     setUpdating(false);
   };
 
   useEffect(() => { fetchNormative(); }, []);
+
+  const iaApagada = !iaActivada();
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
@@ -202,6 +220,16 @@ function NormativePanel({ onClose }) {
           )}
           {normInfo && (
             <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{typeof normInfo === 'string' ? normInfo : JSON.stringify(normInfo)}</div>
+          )}
+          {iaApagada && !normInfo && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+              <p className="font-semibold">Este resumen lo escribe la IA, y está apagada.</p>
+              <p className="mt-1 text-emerald-700">
+                Se apagó para que el programa no gaste créditos. Si quieres este resumen,
+                enciéndela en <strong>Configuración → IA</strong>. El selector de equipos y
+                los cálculos funcionan igual sin ella.
+              </p>
+            </div>
           )}
         </div>
         <div className="p-3 border-t bg-gray-50 rounded-b-xl text-xs text-gray-400 text-center">

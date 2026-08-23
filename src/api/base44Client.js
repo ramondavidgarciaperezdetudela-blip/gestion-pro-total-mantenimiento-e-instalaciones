@@ -4,6 +4,7 @@ import {
   METODOS_QUE_GUARDAN, INTEGRACIONES_VIGILADAS, avisarDeFallo, sePuedeReintentarSolo,
   camposNumericosVacios, conNumerosVaciosANulo,
 } from '@/lib/avisoServidor';
+import { iaActivada, gastaCreditos, errorIAApagada } from '@/lib/modoSinIA';
 
 const { appId, token, functionsVersion, appBaseUrl } = appParams;
 
@@ -159,10 +160,26 @@ const integracionesVigiladas = new Proxy({}, {
       get(_d, punto) {
         if (typeof punto !== 'string' || punto === 'then' || punto.startsWith('_')) return undefined;
         const fn = real[punto];
-        // La ayuda con IA (InvokeLLM y compañía) se queda fuera a propósito:
-        // cada pantalla ya explica a su manera cuando no puede responder, y
-        // un cartel rojo encima sobraría.
-        if (typeof fn !== 'function' || !INTEGRACIONES_VIGILADAS.includes(punto)) return fn;
+        if (typeof fn !== 'function') return fn;
+
+        // Lo que gasta créditos (InvokeLLM y compañía) no sale de aquí si la
+        // ayuda con IA está apagada. Se corta ANTES de llamar al servidor, que
+        // es la única forma de no gastar: comprobarlo en cada pantalla no
+        // valdría, porque son 38 sitios distintos y el siguiente que se
+        // escriba se olvidaría. Y se avisa en pantalla, para que quien pulse
+        // el botón sepa por qué no pasa nada en vez de pensar que está roto.
+        if (gastaCreditos(punto)) {
+          return (...args) => {
+            if (!iaActivada()) {
+              const err = errorIAApagada(punto);
+              avisarDeFallo({ funcion: punto, error: err });
+              return Promise.reject(err);
+            }
+            return fn(...args);
+          };
+        }
+
+        if (!INTEGRACIONES_VIGILADAS.includes(punto)) return fn;
         return (...args) => conAviso(() => fn(...args), punto);
       },
     });

@@ -289,6 +289,8 @@ const INTEGRACIONES = {
   UploadPrivateFile: 'subir el archivo',
   SendEmail: 'enviar el correo',
   CreateFileSignedUrl: 'preparar la descarga del archivo',
+  InvokeLLM: 'usar la ayuda con IA',
+  GenerateImage: 'generar la imagen con IA',
 };
 
 export function queSeIntentabaFuera(nombre) {

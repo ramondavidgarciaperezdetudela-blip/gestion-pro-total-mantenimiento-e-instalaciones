@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import InterruptorIA from '@/components/InterruptorIA';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1158,6 +1159,7 @@ export default function CompanyConfig() {
               <CardTitle className="flex items-center gap-2"><Brain className="w-5 h-5 text-purple-600" />IA para Cálculos Técnicos</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <InterruptorIA />
               <AICalcConfig />
             </CardContent>
           </Card>

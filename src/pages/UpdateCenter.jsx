@@ -1,4 +1,5 @@
 import UpdateChecker from '@/components/UpdateChecker';
+import InterruptorIA from '@/components/InterruptorIA';
 import { useState, useEffect } from 'react';
 import { RefreshCw, CheckCircle2, AlertCircle, Clock, ChevronDown, ChevronRight, Wifi, Plus, X, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -123,6 +124,13 @@ export default function UpdateCenter() {
             <p className="text-xs text-slate-500 mt-0.5">Comprueba si hay una nueva versión del programa en el repositorio</p>
           </div>
           <UpdateChecker />
+        </div>
+
+        {/* Encender o apagar la IA: es lo que decide si esta pantalla gasta
+            créditos, así que va aquí mismo y no escondida en Configuración. */}
+        <div className="bg-white rounded-xl shadow p-4">
+          <p className="font-semibold text-slate-800 mb-2">💳 Créditos de IA</p>
+          <InterruptorIA />
         </div>
 
         {/* Botón principal */}

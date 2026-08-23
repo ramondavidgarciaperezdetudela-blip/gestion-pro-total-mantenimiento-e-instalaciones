@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Shield, ExternalLink, Search, RefreshCw, Zap, CheckCircle, Clock, Bell, BellOff, Thermometer } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { iaActivada } from '@/lib/modoSinIA';
 import RefrigerantGuide from '../components/RefrigerantGuide';
 
 const DEFAULT_REGULATIONS = [
@@ -91,7 +92,9 @@ export default function Regulations() {
 
   // Auto-update: check once per day if enabled
   useEffect(() => {
-    if (!autoUpdate) return;
+    // Aunque esté marcado el repaso diario, si la ayuda con IA está apagada no
+    // se consulta: apagada es apagada, sin puertas traseras que gasten.
+    if (!autoUpdate || !iaActivada()) return;
     const last = localStorage.getItem(LS_KEY_LASTCHECK);
     const now = Date.now();
     const oneDayMs = 24 * 60 * 60 * 1000;

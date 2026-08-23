@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { buscarPorMunicipio } from '@/lib/codigosPostales';
 import { Input } from "@/components/ui/input";
 import { Loader2 } from 'lucide-react';
 
@@ -94,23 +94,23 @@ export default function CityAutocomplete({ city, province, postal_code, onChange
       return;
     }
 
-    // Si no está en el mapa, usar IA
+    // Si no está en la lista corta, se busca en el callejero completo que va
+    // DENTRO del programa: los 8.000 municipios de España con sus códigos
+    // postales. Antes esto preguntaba a la IA por cada nombre que no
+    // estuviera en las 50 ciudades de arriba — y lo hacía solo, mientras se
+    // escribía la ficha de un cliente. Cada tecleo podía costar créditos, sin
+    // pedir permiso y sin decirlo, y encima no funcionaba sin cobertura, que
+    // es justo cuando se rellena una ficha en la obra.
     setLoading(true);
     try {
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Para la ciudad española "${cityValue}", devuelve la provincia y el código postal principal. Si no es una ciudad española conocida, devuelve vacío.`,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            province: { type: 'string', description: 'Nombre de la provincia en español' },
-            postal_code: { type: 'string', description: 'Código postal de 5 dígitos' },
-          }
-        }
-      });
-      if (result?.province) {
-        onChange({ city: cityValue, province: result.province, postal_code: result.postal_code || postal_code });
+      const encontrados = await buscarPorMunicipio(cityValue, 1);
+      if (encontrados.length > 0) {
+        const m = encontrados[0];
+        onChange({ city: m.city, province: m.province, postal_code: m.postal_code || postal_code });
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('[CityAutocomplete] no se pudo buscar el municipio:', e);
+    }
     setLoading(false);
   };
 

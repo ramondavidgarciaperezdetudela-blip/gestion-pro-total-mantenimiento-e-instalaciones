@@ -1,5 +1,6 @@
 import { base44 } from '@/api/base44Client';
 import { motivoDelFallo } from '@/lib/avisoServidor';
+import { actualizacionDiariaActivada, esIAApagada } from '@/lib/modoSinIA';
 
 // ── Categorías que se mantienen al día automáticamente ──────────────────────
 // Compartido entre la página "Centro de Actualizaciones" (UpdateCenter.jsx) y
@@ -233,6 +234,10 @@ export async function updateCategoryData(cat) {
         return { resultado, modo: intento.modo };
       } catch (e) {
         ultimoError = e;
+        // Si la IA está apagada a propósito, no hay nada que reintentar: sería
+        // esperar 1,5 s entre cuatro formas distintas y cinco secciones, medio
+        // minuto mirando una pantalla que ya sabe que no va a consultar.
+        if (esIAApagada(e)) throw e;
         // Solo se repite el MISMO intento si el fallo es pasajero (el servidor
         // saturado o caído). Si no, se pasa directo a la forma siguiente.
         if (vuelta === 0 && esPasajero(e)) { await espera(1500); continue; }
@@ -280,6 +285,11 @@ const DAILY_KEY = 'gpt_daily_autoupdate_last_date';
  * Pensado para llamarse una vez al montar la aplicación (Layout.jsx).
  */
 export function maybeRunDailyBackground() {
+  // Apagada mientras no se encienda a mano. Esto eran 5 consultas a la IA con
+  // búsqueda en internet CADA DÍA y EN CADA APARATO: con el ordenador, la
+  // tablet y el móvil, 15 consultas diarias que nadie había pedido y que se
+  // comían los créditos en segundo plano. Ahora hay que quererlo.
+  if (!actualizacionDiariaActivada()) return;
   const todayStr = new Date().toDateString();
   const last = localStorage.getItem(DAILY_KEY);
   if (last === todayStr) return;
