@@ -46,11 +46,27 @@ export default function StorageSetupNotice() {
     setVisible(false);
   };
 
+  // Este aviso no era un diálogo del sistema, sino una capa hecha a mano, así
+  // que no se cerraba ni con Escape ni tocando fuera: solo con el botón. En el
+  // móvil eso significa que el botón "atrás" tampoco lo quitaba.
+  useEffect(() => {
+    if (!visible) return undefined;
+    const alPulsar = (e) => { if (e.key === 'Escape') cerrar(); };
+    window.addEventListener('keydown', alPulsar);
+    return () => window.removeEventListener('keydown', alPulsar);
+  }, [visible]);
+
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={cerrar}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="px-6 py-4 bg-blue-50 border-b border-blue-200 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <ImageIcon className="w-7 h-7 text-blue-600 flex-shrink-0" />
