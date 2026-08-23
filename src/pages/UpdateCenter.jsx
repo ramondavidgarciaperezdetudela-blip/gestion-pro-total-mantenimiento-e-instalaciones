@@ -7,6 +7,7 @@ import NavBar from '@/components/NavBar';
 import {
   CATEGORIES, updateCategoryData, loadSavedUpdates, getCustomSources, saveCustomSources,
 } from '@/lib/dailyAutoUpdate';
+import { motivoDelFallo } from '@/lib/avisoServidor';
 
 export default function UpdateCenter() {
   const [updating, setUpdating]     = useState(false);
@@ -18,6 +19,8 @@ export default function UpdateCenter() {
   const [log, setLog]               = useState([]);
   const [sources, setSources]       = useState({});
   const [newSourceUrl, setNewSourceUrl] = useState({});
+  const [motivos, setMotivos]       = useState({});
+  const [resumen, setResumen]       = useState(null);
 
   useEffect(() => {
     loadUpdateDates();
@@ -40,18 +43,28 @@ export default function UpdateCenter() {
 
   const updateCategory = async (cat) => {
     setProgress((p) => ({ ...p, [cat.id]: 'loading' }));
+    setMotivos((m) => ({ ...m, [cat.id]: null }));
     addLog(`🔄 Consultando ${cat.label} (IA + internet)...`);
     try {
-      const result = await updateCategoryData(cat);
-      setResults((prev) => ({ ...prev, [cat.id]: result }));
+      const { resultado, modo } = await updateCategoryData(cat);
+      setResults((prev) => ({ ...prev, [cat.id]: resultado }));
       const now = new Date().toISOString();
       setLastUpdate((prev) => ({ ...prev, [cat.id]: now }));
-      setProgress((p) => ({ ...p, [cat.id]: 'done' }));
-      addLog(`✅ ${cat.label} — actualizado (${result?.novedades?.length || 0} elementos revisados)`);
+      setProgress((p) => ({ ...p, [cat.id]: modo === 'internet' ? 'done' : 'sin_internet' }));
+      addLog(modo === 'internet'
+        ? `✅ ${cat.label} — actualizado (${resultado?.novedades?.length || 0} elementos revisados)`
+        : `✅ ${cat.label} — actualizado SIN buscar en internet (${resultado?.novedades?.length || 0} elementos)`);
+      return true;
     } catch (e) {
       console.error('[UpdateCenter] Error real al actualizar', cat.id, e);
+      // Antes aquí se soltaba siempre "revisa la conexión", aunque el fallo
+      // fuese otro (cuenta sin créditos, sesión caducada, servidor caído). Así
+      // no había forma de saber qué arreglar.
+      const motivo = motivoDelFallo(e);
+      setMotivos((m) => ({ ...m, [cat.id]: motivo }));
       setProgress((p) => ({ ...p, [cat.id]: 'error' }));
-      addLog(`⚠️ ${cat.label} — no se pudo consultar (revisa la conexión)`);
+      addLog(`⚠️ ${cat.label} — ${motivo}`);
+      return false;
     }
   };
 
@@ -61,12 +74,22 @@ export default function UpdateCenter() {
     setUpdating(true);
     setDone(false);
     setProgress({});
+    setMotivos({});
+    setResumen(null);
     setLog([]);
     addLog('🚀 Iniciando actualización completa...');
+    // Se cuenta lo que sale bien y lo que sale mal. Antes se ponía siempre
+    // "✅ Todo actualizado" al terminar, aunque hubieran fallado las cinco: el
+    // aviso rojo de cada sección decía una cosa y el rótulo de arriba otra.
+    let bien = 0;
     for (const cat of CATEGORIES) {
-      await updateCategory(cat);
+      if (await updateCategory(cat)) bien++;
     }
-    addLog('🎉 Actualización completa finalizada');
+    const mal = CATEGORIES.length - bien;
+    setResumen({ bien, mal, cuando: new Date().toLocaleString('es-ES') });
+    addLog(mal === 0
+      ? '🎉 Actualización completa finalizada'
+      : `Terminado: ${bien} de ${CATEGORIES.length} actualizadas, ${mal} sin poder consultar.`);
     setUpdating(false);
     setDone(true);
   };
@@ -134,10 +157,20 @@ export default function UpdateCenter() {
               </span>
             )}
           </Button>
-          {done && (
-            <p className="text-sm text-green-600 font-medium">
-              ✅ Todo actualizado · {new Date().toLocaleString('es-ES')}
-            </p>
+          {done && resumen && (
+            resumen.mal === 0 ? (
+              <p className="text-sm text-green-600 font-medium">
+                ✅ Todo actualizado · {resumen.cuando}
+              </p>
+            ) : resumen.bien === 0 ? (
+              <p className="text-sm text-red-600 font-medium">
+                ❌ No se ha podido actualizar ninguna sección · {resumen.cuando}
+              </p>
+            ) : (
+              <p className="text-sm text-amber-600 font-medium">
+                ⚠️ {resumen.bien} de {CATEGORIES.length} actualizadas · {resumen.mal} sin poder consultar · {resumen.cuando}
+              </p>
+            )
           )}
         </div>
 
@@ -156,11 +189,22 @@ export default function UpdateCenter() {
                     <Clock className="w-3 h-3" />
                     {formatDate(lastUpdate[cat.id])}
                   </p>
+                  {motivos[cat.id] && (
+                    <p className="text-xs text-red-600 mt-1 max-w-xs" data-prueba={`motivo-${cat.id}`}>
+                      {motivos[cat.id]}
+                    </p>
+                  )}
+                  {progress[cat.id] === 'sin_internet' && !motivos[cat.id] && (
+                    <p className="text-xs text-amber-600 mt-1 max-w-xs">
+                      Actualizado sin buscar en internet: puede que falten novedades muy recientes.
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 {progress[cat.id] === 'loading' && <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />}
                 {progress[cat.id] === 'done' && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                {progress[cat.id] === 'sin_internet' && <CheckCircle2 className="w-4 h-4 text-amber-500" />}
                 {progress[cat.id] === 'error' && <AlertCircle className="w-4 h-4 text-red-500" />}
                 <Button
                   variant="outline"

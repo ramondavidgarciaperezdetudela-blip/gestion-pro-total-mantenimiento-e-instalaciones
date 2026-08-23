@@ -116,9 +116,29 @@ async function saveSetting(key, value) {
     } else {
       await base44.entities.SystemSettings.create({ key, value });
     }
+    return true;
   } catch {
-    /* si falla el guardado remoto, el resultado se pierde en el próximo reinicio pero no bloquea la actualización */
+    return false;
   }
+}
+
+// ── Copia en el propio aparato ──────────────────────────────────────────────
+// El guardado en el servidor puede fallar (sin cobertura, cuenta sin créditos,
+// permisos). Antes eso se tragaba en silencio y la pantalla seguía diciendo
+// "Nunca actualizado" aunque la consulta hubiera ido bien, porque la fecha
+// solo vivía en el servidor. Ahora se guarda también aquí.
+const LOCAL = 'gpt_actualizaciones';
+
+function leerLocal() {
+  try { return JSON.parse(localStorage.getItem(LOCAL) || '{}'); } catch { return {}; }
+}
+
+function guardarLocal(catId, fecha, datos) {
+  try {
+    const todo = leerLocal();
+    todo[catId] = { fecha, datos };
+    localStorage.setItem(LOCAL, JSON.stringify(todo));
+  } catch { /* sin sitio o sin permiso: no es motivo para tumbar la actualización */ }
 }
 
 // ── Fuentes concretas añadidas por el usuario (páginas/proveedores propios) ─
@@ -134,12 +154,54 @@ export async function saveCustomSources(catId, sources) {
   await saveSetting(`sources_${catId}`, JSON.stringify(sources));
 }
 
+/** Saca el JSON de una respuesta en texto ("aquí tienes: { ... }"). */
+export function jsonDelTexto(texto) {
+  if (texto && typeof texto === 'object') return texto;
+  const t = String(texto || '');
+  const a = t.indexOf('{');
+  const b = t.lastIndexOf('}');
+  if (a === -1 || b <= a) return null;
+  try { return JSON.parse(t.slice(a, b + 1)); } catch { return null; }
+}
+
+/** Deja el resultado en condiciones venga como venga de la IA. */
+function saneado(bruto) {
+  const r = jsonDelTexto(bruto);
+  if (!r || typeof r !== 'object') return null;
+  const novedades = Array.isArray(r.novedades) ? r.novedades : [];
+  return {
+    fecha_consulta: String(r.fecha_consulta || new Date().toLocaleDateString('es-ES')),
+    resumen_general: String(r.resumen_general || ''),
+    novedades: novedades.filter((n) => n && n.titulo).map((n) => ({
+      titulo: String(n.titulo),
+      estado: String(n.estado || ''),
+      descripcion: String(n.descripcion || ''),
+      url: String(n.url || ''),
+    })),
+  };
+}
+
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** ¿Merece la pena reintentar tal cual, o va a volver a fallar igual? */
+function esPasajero(err) {
+  const estado = err?.status ?? err?.response?.status ?? null;
+  return estado === 429 || (typeof estado === 'number' && estado >= 500) || estado === null;
+}
+
 /**
  * Consulta (IA + internet) las novedades de una categoría y guarda el
- * resultado y la fecha en SystemSettings, para que se muestre en el Centro
- * de Actualizaciones y sobreviva a recargas/reinicios.
+ * resultado y la fecha, para que se muestre en el Centro de Actualizaciones y
+ * sobreviva a recargas y reinicios.
+ *
+ * Antes esto era UNA sola llamada con búsqueda en internet y esquema JSON
+ * obligatorio: si el servidor no podía buscar en internet, o devolvía el JSON
+ * envuelto en texto, la categoría entera se daba por fallida y salía el aviso
+ * rojo. Ahora se prueban tres formas, de la mejor a la más simple, antes de
+ * darse por vencido.
+ *
  * @param {typeof CATEGORIES[number]} cat
- * @returns {Promise<object>} resultado de la consulta
+ * @returns {Promise<{resultado: object, modo: 'internet'|'sin_internet'}>}
  */
 export async function updateCategoryData(cat) {
   const today = new Date().toLocaleDateString('es-ES');
@@ -147,15 +209,37 @@ export async function updateCategoryData(cat) {
   const sourcesText = customSources.length
     ? `\n\nConsulta especialmente estas páginas/proveedores concretos indicados por el usuario:\n${customSources.map(s => `- ${s.url}${s.note ? ` (${s.note})` : ''}`).join('\n')}`
     : '';
-  const result = await base44.integrations.Core.InvokeLLM({
-    prompt: `${cat.prompt(today)}${sourcesText}\n\nResponde SIEMPRE en español y en formato JSON con este esquema exacto:\n{\n  "fecha_consulta": "DD/MM/YYYY",\n  "resumen_general": "resumen de 2-3 líneas del estado actual",\n  "novedades": [ { "titulo": "string", "estado": "vigente|actualizado|sin_cambios", "descripcion": "string", "url": "string o vacío" } ]\n}`,
-    add_context_from_internet: true,
-    response_json_schema: RESPONSE_SCHEMA,
-  });
-  const now = new Date().toISOString();
-  await saveSetting(`update_${cat.id}`, now);
-  await saveSetting(`update_data_${cat.id}`, JSON.stringify(result));
-  return result;
+  const prompt = `${cat.prompt(today)}${sourcesText}\n\nResponde SIEMPRE en español y en formato JSON con este esquema exacto:\n{\n  "fecha_consulta": "DD/MM/YYYY",\n  "resumen_general": "resumen de 2-3 líneas del estado actual",\n  "novedades": [ { "titulo": "string", "estado": "vigente|actualizado|sin_cambios", "descripcion": "string", "url": "string o vacío" } ]\n}`;
+
+  const intentos = [
+    { modo: 'internet',     opciones: { add_context_from_internet: true,  response_json_schema: RESPONSE_SCHEMA } },
+    { modo: 'internet',     opciones: { add_context_from_internet: true } },
+    { modo: 'sin_internet', opciones: { response_json_schema: RESPONSE_SCHEMA } },
+    { modo: 'sin_internet', opciones: {} },
+  ];
+
+  let ultimoError = null;
+  for (const intento of intentos) {
+    for (let vuelta = 0; vuelta < 2; vuelta++) {
+      try {
+        const bruto = await base44.integrations.Core.InvokeLLM({ prompt, ...intento.opciones });
+        const resultado = saneado(bruto);
+        if (!resultado) throw new Error('La IA ha respondido algo que no se entiende.');
+        const now = new Date().toISOString();
+        guardarLocal(cat.id, now, resultado);
+        await saveSetting(`update_${cat.id}`, now);
+        await saveSetting(`update_data_${cat.id}`, JSON.stringify(resultado));
+        return { resultado, modo: intento.modo };
+      } catch (e) {
+        ultimoError = e;
+        // Solo se repite el MISMO intento si el fallo es pasajero (el servidor
+        // saturado o caído). Si no, se pasa directo a la forma siguiente.
+        if (vuelta === 0 && esPasajero(e)) { await espera(1500); continue; }
+        break;
+      }
+    }
+  }
+  throw ultimoError || new Error('No se ha podido consultar.');
 }
 
 /**
@@ -174,7 +258,15 @@ export async function loadSavedUpdates() {
         dates[r.key.replace('update_', '')] = r.value;
       }
     });
-  } catch { /* sin datos previos */ }
+  } catch { /* sin datos previos en el servidor */ }
+  // Lo guardado en el propio aparato manda cuando el servidor no lo tiene: es
+  // lo que evita que salga "Nunca actualizado" después de una actualización
+  // que sí funcionó pero cuyo guardado remoto falló.
+  const local = leerLocal();
+  for (const [id, v] of Object.entries(local)) {
+    if (!dates[id] && v?.fecha) dates[id] = v.fecha;
+    if (!data[id] && v?.datos) data[id] = v.datos;
+  }
   return { dates, data };
 }
 
