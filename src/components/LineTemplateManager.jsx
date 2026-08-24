@@ -66,7 +66,7 @@ const ONLINE_MODELS = [
           { description: 'Mano de obra técnico F-Gas', quantity: 1, unit_price: 70, discount: 0 },
           { description: 'Informe F-Gas obligatorio', quantity: 1, unit_price: 20, discount: 0 },
         ],
-        notes_template: 'Intervención realizada por técnico certificado F-Gas. Conforme Reglamento UE 517/2014.',
+        notes_template: 'Intervención realizada por técnico certificado F-Gas. Conforme al Reglamento (UE) 2024/573.',
       },
     ],
   },

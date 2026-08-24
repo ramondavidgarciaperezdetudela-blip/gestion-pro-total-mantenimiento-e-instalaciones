@@ -6,18 +6,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CheckCircle, AlertTriangle, XCircle, RefreshCw, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
 // ─── Catálogo ampliado multi-marca ────────────────────────────────────────────
-// NORMATIVA 2026:
-//   RITE 2026: EER mínimo ≥ 3.0, SCOP ≥ 3.5, clase eficiencia ≥ A+
-//   F-GAS 2024/573 (aplicación 2025-2026): GWP ≤ 750 para equipos nuevos ≤ 12kW
-//                                            GWP ≤ 2500 para equipos > 12kW hasta 2030
-// Los gases PROHIBIDOS (GWP > 2500 en nuevas instalaciones ≤ 12kW desde 2025):
-//   R-410A (GWP 2088) — AÚN permitido > 12kW pero NO recomendado
-//   R-404A (GWP 3922) — PROHIBIDO en nuevas instalaciones
-//   R-407C (GWP 1774) — PROHIBIDO en ≤ 12kW desde 2025
+//
+// OJO CON LOS NOMBRES: aquí ponía «RITE 2026», y ese reglamento NO existe con
+// ese nombre. El RITE es el Real Decreto 1027/2007, con sus modificaciones
+// posteriores; no hay ningún «RITE 2026». Poner un año que no es en una
+// etiqueta que ve el cliente en un documento es dar información falsa, así que
+// se llama a cada cosa por su nombre.
+//
+// Referencias:
+//   RITE — Real Decreto 1027/2007 y modificaciones.
+//   F-Gas — Reglamento (UE) 2024/573, que sustituyó al 517/2014.
+//
+// Los umbrales de EER y SCOP de más abajo son el CRITERIO DE ESTE PROGRAMA
+// para avisar de equipos flojos, no una cifra copiada del reglamento: por eso
+// se etiquetan como «criterio propio» y no como cumplimiento normativo. Antes
+// se enseñaban como si fueran exigencia del RITE.
+const EER_ORIENTATIVO = 3.0;
+const SCOP_ORIENTATIVO = 3.5;
 
 const GWP = {
-  'R-32':   675,   // ✅ RITE+FGAS OK
-  'R-290':  3,     // ✅ RITE+FGAS OK (propano)
+  'R-32':   675,   // ✅ apto según F-Gas
+  'R-290':  3,     // ✅ apto según F-Gas (propano)
   'R-449A': 1397,  // ⚠️ GWP entre 750-2500: OK > 12kW, ⚠️ ≤ 12kW
   'R-452A': 2141,  // ⚠️ GWP entre 750-2500: OK > 12kW
   'R-448A': 1387,  // ⚠️ GWP entre 750-2500: OK > 12kW
@@ -35,24 +44,24 @@ function evaluateCompliance(eq) {
   const issues = [];
   const ok = [];
 
-  // F-GAS 2024/573
+  // Reglamento (UE) 2024/573 (F-Gas)
   if (gwp <= 750) {
-    ok.push('F-GAS 2026 ✓ (GWP ' + gwp + ')');
+    ok.push('F-Gas (UE) 2024/573 ✓ (GWP ' + gwp + ')');
   } else if (gwp <= 2500 && eq.power_kw > 12) {
-    ok.push('F-GAS 2026 ✓ > 12kW (GWP ' + gwp + ')');
+    ok.push('F-Gas (UE) 2024/573 ✓ > 12kW (GWP ' + gwp + ')');
   } else if (gwp > 2500) {
-    issues.push('F-GAS ❌ PROHIBIDO nuevas inst. (GWP ' + gwp + ')');
+    issues.push('F-Gas ❌ no apto para nuevas inst. (GWP ' + gwp + ')');
   } else if (gwp > 750 && eq.power_kw <= 12) {
-    issues.push('F-GAS ⚠️ GWP ' + gwp + ' > 750 en equipo ≤ 12kW');
+    issues.push('F-Gas ⚠️ GWP ' + gwp + ' > 750 en equipo ≤ 12kW');
   }
 
-  // RITE 2026
-  if (eq.eer && eq.eer >= 3.0) ok.push(`RITE 2026 ✓ (EER ${eq.eer})`);
-  else if (eq.eer && eq.eer < 3.0) issues.push(`RITE ⚠️ EER ${eq.eer} < 3.0 mínimo`);
-  if (eq.scop && eq.scop >= 3.5) ok.push(`SCOP ${eq.scop} ✓`);
+  // Criterio propio de eficiencia: NO se presenta como exigencia del RITE.
+  if (eq.eer && eq.eer >= EER_ORIENTATIVO) ok.push(`EER ${eq.eer} ✓ (criterio propio)`);
+  else if (eq.eer && eq.eer < EER_ORIENTATIVO) issues.push(`⚠️ EER ${eq.eer} por debajo de ${EER_ORIENTATIVO} (criterio propio)`);
+  if (eq.scop && eq.scop >= SCOP_ORIENTATIVO) ok.push(`SCOP ${eq.scop} ✓ (criterio propio)`);
 
-  if (eq.rite_compliant === false) issues.push('No declara RITE 2026');
-  if (eq.rite_compliant === true && !ok.find(s => s.includes('RITE'))) ok.push('RITE 2026 ✓');
+  if (eq.rite_compliant === false) issues.push('No declara cumplimiento del RITE (RD 1027/2007)');
+  if (eq.rite_compliant === true) ok.push('Declara cumplimiento del RITE (RD 1027/2007) ✓');
 
   const status = issues.length === 0 ? 'ok' : issues.some(i => i.includes('❌')) ? 'error' : 'warning';
   return { status, ok, issues, gwp };
@@ -174,9 +183,12 @@ function NormativePanel({ onClose }) {
     try {
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `Eres un experto técnico en refrigeración y climatización en España.
-      Dame un resumen ACTUALIZADO y CONCISO (máx 300 palabras) de las normativas VIGENTES EN 2026 para instaladores:
-      1. RITE 2026 (Real Decreto de Instalaciones Térmicas): requisitos de eficiencia energética, EER mínimo, SCOP mínimo, clase energética mínima
-      2. Reglamento F-GAS 2024/573 (UE): restricciones GWP desde 2025-2026-2030, gases prohibidos en nuevas instalaciones
+      Dame un resumen CONCISO (máx 300 palabras) de la normativa vigente para instaladores.
+      IMPORTANTE: no des por hecho que existe ninguna norma que yo no haya nombrado, y
+      no te inventes reglamentos ni años. Si algo no ha cambiado, dilo tal cual: "sin cambios".
+      Si no estás seguro de un dato, dilo en vez de arriesgar una cifra.
+      1. RITE (Real Decreto 1027/2007 y sus modificaciones): qué exige en eficiencia energética
+      2. Reglamento (UE) 2024/573 sobre gases fluorados, que sustituyó al 517/2014: restricciones por GWP y calendario
       3. Qué gases están PERMITIDOS y cuáles están PROHIBIDOS o en fase-out en nuevas instalaciones ≤ 12kW y > 12kW
       4. Certificaciones obligatorias para el instalador (F-GAS Categoría I/II, RITE)
       Formato: secciones breves con emojis, datos concretos (GWP, fechas, valores EER/SCOP).`,
@@ -202,7 +214,7 @@ function NormativePanel({ onClose }) {
       <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b bg-blue-50 rounded-t-xl">
           <div>
-            <h3 className="font-bold text-blue-800">Normativa RITE + F-GAS 2026</h3>
+            <h3 className="font-bold text-blue-800">Normativa RITE y gases fluorados</h3>
             <p className="text-xs text-blue-600">Actualización automática desde fuentes oficiales</p>
           </div>
           <div className="flex items-center gap-2">

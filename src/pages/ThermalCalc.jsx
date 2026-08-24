@@ -478,7 +478,7 @@ export default function ThermalCalc() {
           {/* Selector multi-marca con normativa RITE+FGAS */}
           <Card className="border-green-200">
             <CardHeader className="bg-green-50 py-3">
-              <CardTitle className="text-green-700 text-base">Selección de equipo — RITE 2026 + F-GAS 2026</CardTitle>
+              <CardTitle className="text-green-700 text-base">Selección de equipo — RITE y gases fluorados</CardTitle>
             </CardHeader>
             <CardContent className="p-4">
               <EquipmentSelector

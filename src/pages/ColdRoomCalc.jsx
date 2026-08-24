@@ -812,7 +812,7 @@ export default function ColdRoomCalc() {
       {/* Selector multi-marca con normativa RITE+FGAS */}
       <Card className="border-blue-200">
         <CardHeader className="bg-blue-50 py-3">
-          <CardTitle className="text-blue-700 text-base">Selección de equipo — RITE 2026 + F-GAS 2026</CardTitle>
+          <CardTitle className="text-blue-700 text-base">Selección de equipo — RITE y gases fluorados</CardTitle>
         </CardHeader>
         <CardContent className="p-4">
           <EquipmentSelector

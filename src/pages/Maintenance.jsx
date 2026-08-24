@@ -328,7 +328,7 @@ export default function Maintenance() {
                   </div>
                   {/* F-Gas section */}
                   <div className="bg-orange-50 border border-orange-200 rounded p-2 mt-2">
-                    <p className="text-xs font-semibold text-orange-700 mb-1">🌿 Registro F-Gas (Reglamento UE 517/2014)</p>
+                    <p className="text-xs font-semibold text-orange-700 mb-1">🌿 Registro F-Gas (Reglamento (UE) 2024/573)</p>
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div><span className="text-gray-500">Gas:</span> <strong>{form.readings_climate.refrigerant_type}</strong></div>
                       <div><span className="text-gray-500">GWP:</span> <strong>{form.readings_climate.fgas_gwp || FGAS_GWP[form.readings_climate.refrigerant_type] || '-'}</strong></div>

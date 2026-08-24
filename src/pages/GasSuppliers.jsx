@@ -103,7 +103,7 @@ const PROVEEDORES = [
     nombre: 'Praxair / Linde Refrigerantes',
     pais: '🌍 Internacional',
     logo: '🔷',
-    descripcion: 'División de gases refrigerantes de Linde. Especializada en gases bajos en GWP para la nueva normativa F-Gas 2024-2030.',
+    descripcion: 'División de gases refrigerantes de Linde. Especializada en gases bajos en GWP para el calendario de reducción del Reglamento (UE) 2024/573 (2024-2030).',
     url_registro: 'https://www.linde-gas.es/es/forms/contact_us/index.html',
     url_web: 'https://www.linde-gas.es/es/products_and_supply/refrigerants/index.html',
     telefono: '900 627 624',

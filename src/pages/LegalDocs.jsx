@@ -80,7 +80,7 @@ const NORMATIVA = {
   frio: [
     { label: 'RD 138/2011 Reglamento Frigorías (consolidado)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2011-2815' },
     { label: 'RD 115/2017 F-Gas España (consolidado)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2017-1664' },
-    { label: 'Reglamento UE 517/2014 F-Gas (EUR-Lex)', url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32014R0517' },
+    { label: 'Reglamento (UE) 2024/573 F-Gas (EUR-Lex)', url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32024R0573' },
   ]
 };
 
@@ -227,7 +227,7 @@ INSTRUCCIONES CRÍTICAS:
 - Incluye espacio para firma del instalador frigorista
 - NO incluyas links de internet`,
 
-    fgas_registro: `Genera el REGISTRO F-GAS COMPLETO con Libro de Seguimiento de gases fluorados según RD 115/2017 y Reglamento UE 517/2014.
+    fgas_registro: `Genera el REGISTRO F-GAS COMPLETO con Libro de Seguimiento de gases fluorados según el RD 115/2017 y el Reglamento (UE) 2024/573.
 INSTRUCCIONES CRÍTICAS:
 - Genera UN ÚNICO DOCUMENTO de registro
 - USA TABLAS HTML para el registro de cargas/recuperaciones y comprobaciones de fugas

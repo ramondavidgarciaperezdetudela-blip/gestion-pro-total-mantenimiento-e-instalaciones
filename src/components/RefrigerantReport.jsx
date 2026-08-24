@@ -79,7 +79,7 @@ export default function RefrigerantReport() {
         <h1>${title}</h1>
         <div class="info-section">
           <p><strong>Fecha del informe:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
-          <p><strong>Regulación:</strong> (UE) nº 517/2014 sobre gases fluorados de efecto invernadero (F-Gas)</p>
+          <p><strong>Regulación:</strong> Reglamento (UE) 2024/573 sobre gases fluorados de efecto invernadero (F-Gas), que sustituyó al 517/2014</p>
         </div>
     `;
 
@@ -134,7 +134,7 @@ export default function RefrigerantReport() {
 
     html += `
       <div class="footer">
-        <p>Este informe contiene información regulatoria sobre refrigerantes según la Regulación (UE) nº 517/2014.</p>
+        <p>Este informe contiene información regulatoria sobre refrigerantes según el Reglamento (UE) 2024/573.</p>
         <p>Para información técnica completa, consultar con personal especializado.</p>
       </div>
       </body>
@@ -292,7 +292,7 @@ export default function RefrigerantReport() {
 
           {/* Footer */}
           <div className="text-xs text-gray-600 border-t pt-3">
-            <p className="mb-1"><strong>Fuente normativa:</strong> Regulación (UE) nº 517/2014 sobre gases fluorados de efecto invernadero</p>
+            <p className="mb-1"><strong>Fuente normativa:</strong> Reglamento (UE) 2024/573 sobre gases fluorados de efecto invernadero</p>
             <p>Generado: {new Date().toLocaleString('es-ES')}</p>
           </div>
         </CardContent>

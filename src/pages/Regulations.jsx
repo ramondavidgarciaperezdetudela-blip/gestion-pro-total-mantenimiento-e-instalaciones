@@ -13,7 +13,7 @@ const DEFAULT_REGULATIONS = [
     category: 'F-Gas / Refrigeración',
     color: 'bg-blue-100 text-blue-700',
     items: [
-      { name: 'Reglamento F-Gas UE 517/2014', description: 'Gases fluorados de efecto invernadero', url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32014R0517', boe: 'https://www.boe.es/buscar/doc.php?id=DOUE-L-2014-81006' },
+      { name: 'Reglamento F-Gas (UE) 2024/573', description: 'Gases fluorados de efecto invernadero. Sustituyó al Reglamento (UE) 517/2014.', url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32024R0573', boe: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32024R0573' },
       { name: 'RD 115/2017 - F-Gas España', description: 'Reglamento nacional gases fluorados', url: 'https://www.boe.es/eli/es/rd/2017/02/17/115', boe: 'https://www.boe.es/eli/es/rd/2017/02/17/115' },
       { name: 'Comprobación de fugas - IDAE', description: 'Guía comprobación fugas gases fluorados', url: 'https://www.idae.es/uploads/documentos/documentos_Gu%C3%ADa_fugas_gases_fluorados_2edicion_tcm30-178434.pdf', boe: null },
       { name: 'Reglamento Frigorías - RD 138/2011', description: 'Seguridad instalaciones frigoríficas', url: 'https://www.boe.es/eli/es/rd/2011/02/04/138', boe: 'https://www.boe.es/eli/es/rd/2011/02/04/138' },
@@ -123,7 +123,7 @@ Para cada una de las siguientes normativas, indica:
 3. El enlace oficial actualizado al BOE o EUR-Lex si cambió
 
 Lista de normativas a verificar:
-- Reglamento F-Gas UE 517/2014 (posible nuevo reglamento F-Gas 2024/573)
+- Reglamento F-Gas (UE) 2024/573, que sustituyó al 517/2014
 - RD 115/2017 - F-Gas España
 - RD 138/2011 Instalaciones frigoríficas
 - RITE RD 1027/2007 y modificaciones

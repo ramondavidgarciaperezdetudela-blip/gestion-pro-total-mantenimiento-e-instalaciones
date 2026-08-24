@@ -215,7 +215,7 @@ export default function CompanyConfig() {
     availability_config: { dias_laborables: [1,2,3,4,5], hora_inicio: '09:00', hora_fin: '18:00', descanso_inicio: '14:00', descanso_fin: '15:00', duracion_cita: 60, dias_vista: 14 },
     technicians: [],
     payment_terms: 'Forma de pago: Máximo 3 pagos.\n1º Pago: 100% material + 50% mano de obra (al aceptar presupuesto)\n2º Pago: 25% mano de obra (al iniciar trabajos)\n3º Pago: 25% mano de obra restante (al finalizar)',
-    observations_climate: 'Instalación realizada según normativa RITE (RD 1027/2007) y Reglamento F-Gas (RD 115/2017). Gases fluorados según normativa UE 517/2014.',
+    observations_climate: 'Instalación realizada según el RITE (RD 1027/2007) y el RD 115/2017. Gases fluorados según el Reglamento (UE) 2024/573.',
     observations_electric: 'Instalación realizada según REBT (RD 842/2002) y normas UNE de aplicación.',
     observations_refrigeration: 'Instalación realizada según Reglamento de Seguridad para Instalaciones Frigoríficas, F-Gas RD 115/2017 y normativa de comprobación de fugas.',
   });

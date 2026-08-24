@@ -174,7 +174,7 @@ export default function RefrigerantSelector({ value, onChange, label = "Gas refr
               </p>
               {selectedRef.fgas_ban_date && (
                 <p className="text-xs text-gray-600 mt-1">
-                  ⚖️ Según Regulación (UE) nº 517/2014 sobre gases fluorados
+                  ⚖️ Según el Reglamento (UE) 2024/573 sobre gases fluorados (sustituyó al 517/2014)
                 </p>
               )}
             </div>
