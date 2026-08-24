@@ -13,6 +13,11 @@ on:
         description: "Etiqueta de versión a publicar (ej: v1.0.0). Vacío = release rodante desktop-latest."
         required: false
         default: ""
+      mac:
+        description: "¿Compilar también la versión de Mac? Cuesta 10 veces más minutos."
+        type: boolean
+        required: false
+        default: false
   push:
     tags:
       - 'v*'
@@ -50,10 +55,17 @@ jobs:
     needs: create-release
     permissions:
       contents: write
+    # El Mac se compila SOLO si se pide. GitHub cobra el Mac a razón de DIEZ
+    # veces el Linux (Windows va a dos), así que una versión completa con Mac
+    # se lleva unos 130 minutos del cupo y sin Mac unos 30. Con 2.000 minutos
+    # al mes eso es la diferencia entre 15 versiones y más de 60. Ya se agotó
+    # el cupo una vez y dejó de poder publicarse nada durante días.
+    #
+    # Para sacar la versión de Mac: lanzar el workflow a mano marcando "mac".
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: ${{ (inputs.mac || startsWith(github.ref, 'refs/tags/')) && fromJSON('["ubuntu-latest","windows-latest","macos-latest"]') || fromJSON('["ubuntu-latest","windows-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout

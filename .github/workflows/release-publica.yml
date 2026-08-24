@@ -14,6 +14,12 @@ name: Publicar release pública (descargas + auto-update)
 
 on:
   workflow_dispatch:
+    inputs:
+      mac:
+        description: "¿Compilar también la versión de Mac? Cuesta 10 veces más minutos."
+        type: boolean
+        required: false
+        default: false
 
 env:
   RELEASES_REPO: ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases
@@ -100,10 +106,23 @@ jobs:
 
   escritorio:
     needs: preparar
+    # El Mac se compila SOLO si se pide. GitHub cobra el Mac a razón de DIEZ
+    # veces el Linux (Windows va a dos), así que una versión completa con Mac
+    # se lleva unos 130 minutos del cupo y sin Mac unos 30. Con 2.000 minutos
+    # al mes eso es la diferencia entre 15 versiones y más de 60. Ya se agotó
+    # el cupo una vez y dejó de poder publicarse nada durante días.
+    #
+    # Para sacar la versión de Mac: lanzar el workflow a mano marcando "mac".
+    #
+    # OJO si algún cliente usa Mac: sin compilarlo, la release pública sale sin
+    # el fichero latest-mac.yml, y la actualización automática de esos clientes
+    # no encontrará la versión nueva. Seguirán con la que tengan instalada, sin
+    # romperse, pero no se actualizarán solos hasta que se publique una versión
+    # con Mac marcado.
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: ${{ inputs.mac && fromJSON('["ubuntu-latest","windows-latest","macos-latest"]') || fromJSON('["ubuntu-latest","windows-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
