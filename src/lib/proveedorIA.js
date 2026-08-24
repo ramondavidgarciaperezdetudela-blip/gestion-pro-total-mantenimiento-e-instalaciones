@@ -144,9 +144,9 @@ export function hayPuenteEscritorio() {
   return typeof window !== 'undefined' && window.gptIA?.disponible === true;
 }
 
-async function pedir(url, opciones) {
+async function pedir(url, opciones, tiempoMaximo) {
   if (hayPuenteEscritorio()) {
-    const r = await window.gptIA.fetch({ url, ...opciones });
+    const r = await window.gptIA.fetch({ url, ...opciones, tiempoMaximo });
     if (!r?.ok) {
       const err = new Error(
         r?.status
@@ -262,4 +262,123 @@ export async function consultarIA(peticion, cfg = ajustesIA()) {
   if (cfg.proveedor === 'ollama') return llamarOllama(peticion, cfg);
   if (cfg.proveedor === 'openrouter') return llamarOpenRouter(peticion, cfg);
   throw new Error('Ese proveedor no se atiende aquí.');
+}
+
+// ── Que no haya que configurar nada ─────────────────────────────────────────
+//
+// Pedir que alguien elija proveedor, modelo y dirección es pedirle que sepa de
+// esto. Aquí el programa se busca la vida solo: mira si hay una IA gratuita
+// funcionando en el ordenador, y si la hay la usa. Y si no hay ningún modelo
+// descargado, se lo descarga él, sin ventanas negras ni comandos.
+
+/** Espera corta: si Ollama no está, no tiene sentido dejar la pantalla colgada. */
+const PRONTO = 4000;
+
+async function conTiempo(promesa, ms = PRONTO) {
+  let corta;
+  const reloj = new Promise((_, rechazar) => {
+    corta = setTimeout(() => rechazar(new Error('Ha tardado demasiado en contestar.')), ms);
+  });
+  try {
+    return await Promise.race([promesa, reloj]);
+  } finally {
+    clearTimeout(corta);
+  }
+}
+
+/**
+ * ¿Hay una IA gratuita lista en este aparato?
+ * Devuelve { lista, modelos, motivo }.
+ */
+export async function mirarSiHayIALibre(cfg = ajustesIA()) {
+  try {
+    const modelos = await conTiempo(modelosInstalados(cfg));
+    return { lista: modelos.length > 0, modelos, motivo: modelos.length ? '' : 'sin_modelo' };
+  } catch (e) {
+    return { lista: false, modelos: [], motivo: 'sin_ollama', detalle: String(e?.message || e) };
+  }
+}
+
+/**
+ * Deja la IA gratuita lista para usar, sola.
+ *
+ * 1) Si Ollama está y ya tiene un modelo, lo elige y listo.
+ * 2) Si está pero está vacío, se descarga el modelo pequeño (unos 2 GB).
+ * 3) Si no está, lo dice para poder ofrecer el botón de instalarlo.
+ *
+ * @param {(paso: {estado: string, texto: string}) => void} avisar
+ */
+export async function prepararIALibre(avisar = () => {}) {
+  const cfg = ajustesIA();
+  avisar({ estado: 'mirando', texto: 'Mirando si ya tienes la IA gratuita en el ordenador…' });
+  const hay = await mirarSiHayIALibre(cfg);
+
+  if (hay.lista) {
+    // Se usa el que ya esté descargado: no hay por qué bajar otro de 2 GB.
+    const elegido = elegirModelo(hay.modelos, cfg.ollama_modelo);
+    guardarAjustesIA({ proveedor: 'ollama', ollama_modelo: elegido });
+    avisar({ estado: 'listo', texto: `Listo. La IA gratuita ya funciona con «${elegido}». No hay nada más que hacer.` });
+    return { listo: true, modelo: elegido };
+  }
+
+  if (hay.motivo === 'sin_modelo') {
+    avisar({
+      estado: 'descargando',
+      texto: `Descargando la IA (${cfg.ollama_modelo}, unos 2 GB). Puede tardar unos minutos; puedes seguir trabajando mientras.`,
+    });
+    await descargarModelo(cfg.ollama_modelo, cfg);
+    guardarAjustesIA({ proveedor: 'ollama' });
+    avisar({ estado: 'listo', texto: 'Listo. La IA gratuita ya funciona, y no gasta créditos.' });
+    return { listo: true, modelo: cfg.ollama_modelo };
+  }
+
+  avisar({ estado: 'falta_ollama', texto: 'Falta instalar el motor de la IA gratuita. Es una instalación normal, de las de «Siguiente, siguiente».' });
+  return { listo: false, motivo: 'sin_ollama' };
+}
+
+/** De los modelos que hay, el que ya estaba puesto o el primero. */
+export function elegirModelo(instalados, preferido) {
+  if (!instalados?.length) return preferido;
+  const exacto = instalados.find((m) => m === preferido || m.startsWith(`${preferido}:`));
+  return exacto || instalados[0];
+}
+
+/**
+ * Le pide a Ollama que se descargue un modelo.
+ *
+ * Se hace por aquí y no con «ollama pull» en una ventana negra porque quien
+ * usa esto no tiene por qué saber abrir una consola.
+ */
+export async function descargarModelo(modelo, cfg = ajustesIA()) {
+  // Sin trocear la respuesta: se espera a que termine. Tarda, pero no hace
+  // falta nada más que esperar, y así el puente del escritorio es simple.
+  const cuerpo = await pedir(`${cfg.ollama_url.replace(/\/$/, '')}/api/pull`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: modelo, name: modelo, stream: false }),
+  }, 45 * 60 * 1000);
+  const datos = typeof cuerpo === 'string' ? (jsonDeRespuesta(cuerpo) || {}) : cuerpo;
+  if (datos?.error) {
+    const err = new Error(`No se ha podido descargar «${modelo}»: ${datos.error}`);
+    err.status = null;
+    throw err;
+  }
+  return true;
+}
+
+/** La página oficial desde donde se instala el motor de la IA gratuita. */
+export const PAGINA_OLLAMA = 'https://ollama.com/download';
+
+/** Abre esa página en el navegador, sin que haya que copiar direcciones. */
+export function abrirPaginaDeInstalacion() {
+  try {
+    if (typeof window !== 'undefined' && window.gptIA?.abrir) {
+      window.gptIA.abrir(PAGINA_OLLAMA);
+      return true;
+    }
+    window.open(PAGINA_OLLAMA, '_blank', 'noopener');
+    return true;
+  } catch {
+    return false;
+  }
 }

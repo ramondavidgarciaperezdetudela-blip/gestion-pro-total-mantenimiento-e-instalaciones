@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld('gptCopias', {
 contextBridge.exposeInMainWorld('gptIA', {
   disponible: true,
   fetch: (peticion) => ipcRenderer.invoke('gpt-ia-fetch', peticion),
+  abrir: (url) => ipcRenderer.invoke('gpt-ia-abrir', url),
 });
 
 contextBridge.exposeInMainWorld('gptUpdater', {

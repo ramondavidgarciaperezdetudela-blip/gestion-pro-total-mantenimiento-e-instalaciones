@@ -154,16 +154,27 @@ const DESTINOS_IA_PERMITIDOS = [
   /^https:\/\/openrouter\.ai\//,
 ];
 
-ipcMain.handle('gpt-ia-fetch', async (_evt, { url, method, headers, body }) => {
+ipcMain.handle('gpt-ia-abrir', async (_evt, url) => {
+  // Solo la página oficial de descarga: esto no abre cualquier cosa.
+  if (String(url || '') !== 'https://ollama.com/download') return false;
+  await shell.openExternal(url);
+  return true;
+});
+
+ipcMain.handle('gpt-ia-fetch', async (_evt, { url, method, headers, body, tiempoMaximo }) => {
   try {
     const destino = String(url || '');
     if (!DESTINOS_IA_PERMITIDOS.some((re) => re.test(destino))) {
       return { ok: false, status: null, error: 'Esa dirección no está permitida para la IA.' };
     }
+    // Descargar un modelo son varios GB: sin darle tiempo de sobra, se cortaría
+    // a media descarga y parecería que ha fallado.
+    const corte = AbortSignal.timeout(Number(tiempoMaximo) > 0 ? Number(tiempoMaximo) : 120000);
     const resp = await fetch(destino, {
       method: method || 'GET',
       headers: headers || {},
       body: body || undefined,
+      signal: corte,
     });
     const cuerpo = await resp.text();
     if (!resp.ok) {

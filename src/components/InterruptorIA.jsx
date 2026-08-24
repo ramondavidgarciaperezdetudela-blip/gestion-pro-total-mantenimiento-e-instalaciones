@@ -4,7 +4,7 @@ import {
   escucharEstadoIA, activarIA, activarActualizacionDiaria, iaActivada,
 } from '@/lib/modoSinIA';
 import { escucharAjustesIA, esProveedorLibre } from '@/lib/proveedorIA';
-import AjustesProveedorIA from '@/components/AjustesProveedorIA';
+import PrepararIA from '@/components/PrepararIA';
 
 /**
  * Encender o apagar la ayuda con IA, y con ella el gasto de créditos.
@@ -66,7 +66,7 @@ export default function InterruptorIA() {
 
       {encendida && (
         <div className="rounded-xl border border-slate-200 p-3">
-          <AjustesProveedorIA />
+          <PrepararIA />
         </div>
       )}
 
