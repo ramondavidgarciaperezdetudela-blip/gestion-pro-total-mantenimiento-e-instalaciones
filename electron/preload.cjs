@@ -34,6 +34,10 @@ contextBridge.exposeInMainWorld('gptIA', {
   disponible: true,
   fetch: (peticion) => ipcRenderer.invoke('gpt-ia-fetch', peticion),
   abrir: (url) => ipcRenderer.invoke('gpt-ia-abrir', url),
+  // Compartir la IA del ordenador con el móvil y la tablet por el wifi.
+  compartirEncender: (destino) => ipcRenderer.invoke('gpt-ia-lan-encender', destino),
+  compartirApagar: () => ipcRenderer.invoke('gpt-ia-lan-apagar'),
+  compartirEstado: () => ipcRenderer.invoke('gpt-ia-lan-estado'),
 });
 
 contextBridge.exposeInMainWorld('gptUpdater', {

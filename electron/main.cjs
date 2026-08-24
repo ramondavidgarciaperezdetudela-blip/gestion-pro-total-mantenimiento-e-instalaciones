@@ -154,6 +154,127 @@ const DESTINOS_IA_PERMITIDOS = [
   /^https:\/\/openrouter\.ai\//,
 ];
 
+// ── La IA del ordenador, también para el móvil y la tablet ─────────────────
+//
+// Ollama solo escucha en el propio ordenador (127.0.0.1), así que desde el
+// móvil no se llega. Y aunque escuchara, la app de Android se sirve por https
+// y el sistema bloquea llamar a un http de la red local.
+//
+// Se resuelve aquí: el programa de escritorio levanta un puente pequeño que
+// SÍ escucha en la red de casa o del taller y reenvía a Ollama. El móvil
+// entra por ahí (con petición nativa, que no pasa por esas limitaciones) y
+// usa la misma IA gratuita del ordenador, sin gastar créditos.
+//
+// Con llave: sin la contraseña que genera el propio programa no se atiende a
+// nadie. Y solo se reenvía a Ollama, a nada más.
+const os = require('os');
+const http = require('http');
+const crypto = require('crypto');
+
+let puenteLan = null;
+
+/** La dirección del ordenador dentro de la red local (no la de internet). */
+function ipDeLaRedLocal() {
+  const preferidas = [];
+  for (const [nombre, direcciones] of Object.entries(os.networkInterfaces() || {})) {
+    for (const d of direcciones || []) {
+      if (d.family !== 'IPv4' || d.internal) continue;
+      // Solo redes privadas: nunca se anuncia una dirección pública.
+      if (!/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(d.address)) continue;
+      // El wifi y el cable van primero; las redes virtuales al final.
+      const virtual = /vmnet|virtualbox|vbox|docker|veth|tailscale|zt/i.test(nombre);
+      preferidas.push({ ip: d.address, virtual });
+    }
+  }
+  preferidas.sort((a, b) => Number(a.virtual) - Number(b.virtual));
+  return preferidas[0]?.ip || null;
+}
+
+/** La contraseña del puente, la misma entre reinicios. */
+function llaveDelPuente() {
+  const fichero = path.join(app.getPath('userData'), 'llave-ia-lan.txt');
+  try {
+    if (fs.existsSync(fichero)) {
+      const guardada = fs.readFileSync(fichero, 'utf8').trim();
+      if (guardada.length >= 32) return guardada;
+    }
+  } catch { /* se genera una nueva */ }
+  const nueva = crypto.randomBytes(24).toString('hex');
+  try { fs.writeFileSync(fichero, nueva, { mode: 0o600 }); } catch { /* en memoria */ }
+  return nueva;
+}
+
+function arrancarPuenteLan(destinoOllama) {
+  // La dirección se vuelve a mirar SIEMPRE, no se guarda: si se cambia de
+  // wifi o se enchufa el cable, la de antes ya no vale y el móvil buscaría
+  // donde no hay nadie.
+  if (puenteLan) return { ...puenteLan.datos, ip: ipDeLaRedLocal() };
+  const llave = llaveDelPuente();
+  const base = String(destinoOllama || 'http://127.0.0.1:11434').replace(/\/$/, '');
+
+  const servidor = http.createServer(async (req, res) => {
+    const responder = (codigo, cuerpo) => {
+      res.writeHead(codigo, { 'content-type': 'application/json' });
+      res.end(typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo));
+    };
+    if (req.headers['x-gpt-llave'] !== llave) return responder(401, { error: 'Llave incorrecta.' });
+    if (!/^\/api\//.test(req.url || '')) return responder(404, { error: 'Solo se atiende a la IA.' });
+    try {
+      let cuerpo = '';
+      for await (const trozo of req) cuerpo += trozo;
+      const r = await fetch(base + req.url, {
+        method: req.method,
+        headers: { 'content-type': 'application/json' },
+        body: req.method === 'GET' ? undefined : (cuerpo || undefined),
+        signal: AbortSignal.timeout(15 * 60 * 1000),
+      });
+      const texto = await r.text();
+      res.writeHead(r.status, { 'content-type': 'application/json' });
+      res.end(texto);
+    } catch (err) {
+      responder(502, { error: String(err?.message || err) });
+    }
+  });
+
+  servidor.listen(11435, '0.0.0.0');
+  const datos = { ip: ipDeLaRedLocal(), puerto: 11435, llave };
+  puenteLan = { servidor, datos };
+  return datos;
+}
+
+ipcMain.handle('gpt-ia-lan-encender', async (_evt, destino) => {
+  try {
+    // El puente se levanta aunque ahora mismo no haya wifi: así, en cuanto se
+    // conecte, ya está funcionando. Antes se devolvía un error y no se
+    // arrancaba nada, y había que acordarse de volver a darle.
+    const datos = arrancarPuenteLan(destino);
+    if (!datos.ip) {
+      return {
+        ok: false,
+        puerto: datos.puerto,
+        llave: datos.llave,
+        error: 'El puente está listo, pero este ordenador no está en ninguna red local ahora mismo. Conéctalo al wifi de casa o del taller y el móvil lo encontrará solo.',
+      };
+    }
+    return { ok: true, ...datos };
+  } catch (err) {
+    return { ok: false, error: String(err?.message || err) };
+  }
+});
+
+ipcMain.handle('gpt-ia-lan-apagar', async () => {
+  try { puenteLan?.servidor?.close(); } catch { /* ya cerrado */ }
+  puenteLan = null;
+  return { ok: true };
+});
+
+ipcMain.handle('gpt-ia-lan-estado', async () => ({
+  encendido: !!puenteLan,
+  ...(puenteLan ? puenteLan.datos : {}),
+}));
+
+app.on('before-quit', () => { try { puenteLan?.servidor?.close(); } catch { /* nada */ } });
+
 ipcMain.handle('gpt-ia-abrir', async (_evt, url) => {
   // Solo la página oficial de descarga: esto no abre cualquier cosa.
   if (String(url || '') !== 'https://ollama.com/download') return false;

@@ -382,3 +382,169 @@ export function abrirPaginaDeInstalacion() {
     return false;
   }
 }
+
+// ── El móvil y la tablet usan la IA del ordenador ───────────────────────────
+//
+// Para que la IA gratuita funcione en TODOS los aparatos y no solo en el
+// ordenador. Dos cosas lo impedían:
+//
+//   1. Ollama solo escucha en el propio ordenador, así que desde el móvil no
+//      se llega. Lo resuelve el puente que levanta el programa de escritorio.
+//   2. La app de Android va por https y el sistema no deja llamar a un http de
+//      la red local. Se resuelve pidiéndolo de forma NATIVA (CapacitorHttp),
+//      que no pasa por esa limitación del navegador.
+//
+// Y para no tener que escribir ninguna dirección: el ordenador apunta la suya
+// en la configuración compartida, que ya se sincroniza entre aparatos. El
+// móvil la lee y va solo.
+
+export const CLAVE_PUENTE = 'ia_puente_lan';
+
+/** ¿Estamos dentro de la app instalada de Android? */
+export function esAppMovil() {
+  try {
+    return window.Capacitor?.isNativePlatform?.() === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Petición nativa, la única que llega a la red local desde el móvil. */
+async function pedirNativo(url, opciones = {}) {
+  const { CapacitorHttp } = await import('@capacitor/core');
+  const r = await CapacitorHttp.request({
+    url,
+    method: opciones.method || 'GET',
+    headers: opciones.headers || {},
+    data: opciones.body ? JSON.parse(opciones.body) : undefined,
+    connectTimeout: 15000,
+    readTimeout: 15 * 60 * 1000,
+  });
+  if (r.status < 200 || r.status >= 300) {
+    const err = new Error(motivoHttp(r.status, JSON.stringify(r.data || ''), url));
+    err.status = r.status;
+    throw err;
+  }
+  return typeof r.data === 'string' ? r.data : JSON.stringify(r.data);
+}
+
+/**
+ * El ordenador enciende el puente y apunta dónde está, para que el móvil lo
+ * encuentre sin que nadie escriba una dirección IP.
+ */
+export async function compartirIAConLosDemas(base44, cfg = ajustesIA()) {
+  if (!window.gptIA?.compartirEncender) return { ok: false, error: 'Esto solo lo puede hacer el programa del ordenador.' };
+  const r = await window.gptIA.compartirEncender(cfg.ollama_url);
+  if (!r?.ok) return r;
+  await guardarPuenteEnLaNube(base44, { ip: r.ip, puerto: r.puerto, llave: r.llave });
+  return r;
+}
+
+async function guardarPuenteEnLaNube(base44, datos) {
+  // Se guarda una LISTA, no una sola dirección: en casa el ordenador tiene una
+  // y en el taller otra, y con una sola el móvil solo funcionaría en un sitio.
+  try {
+    const filas = await base44.entities.SystemSettings.filter({ key: CLAVE_PUENTE });
+    const previas = leerPuentes(filas?.[0]?.value);
+    const lista = [datos, ...previas.filter((p) => p.ip !== datos.ip)].slice(0, 5);
+    const valor = JSON.stringify(lista);
+    if (filas?.[0]) await base44.entities.SystemSettings.update(filas[0].id, { value: valor });
+    else await base44.entities.SystemSettings.create({ key: CLAVE_PUENTE, value: valor });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function leerPuentes(valor) {
+  try {
+    const d = JSON.parse(valor || 'null');
+    if (Array.isArray(d)) return d.filter((x) => x?.ip && x?.puerto && x?.llave);
+    if (d?.ip && d?.puerto && d?.llave) return [d];
+  } catch { /* nada guardado */ }
+  return [];
+}
+
+/**
+ * El móvil busca dónde está la IA del ordenador.
+ *
+ * Se prueban TODAS las direcciones conocidas (la de casa, la del taller…) y se
+ * usa la primera que conteste. Si no contesta ninguna, es que no se está en la
+ * misma red que el ordenador: con datos móviles o en otro wifi, no se llega.
+ */
+export async function buscarIADelOrdenador(base44, comprobar = true) {
+  let candidatos = [];
+  try {
+    const filas = await base44.entities.SystemSettings.filter({ key: CLAVE_PUENTE });
+    candidatos = leerPuentes(filas?.[0]?.value);
+  } catch {
+    return null;
+  }
+  if (!candidatos.length) return null;
+  if (!comprobar) return candidatos[0];
+
+  for (const puente of candidatos) {
+    try {
+      await conTiempo(probarIADelOrdenador(puente), 3500);
+      return puente;
+    } catch { /* esa red no; se prueba la siguiente */ }
+  }
+  return null;
+}
+
+/**
+ * La clave gratuita de internet, compartida entre los aparatos.
+ *
+ * Se pega UNA vez, en el aparato que sea, y desde ahí vale para el ordenador,
+ * la tablet y el móvil. Pedirla en cada aparato sería configurar tres veces.
+ */
+export async function guardarClaveCompartida(base44, clave) {
+  guardarAjustesIA({ openrouter_clave: clave });
+  try {
+    const filas = await base44.entities.SystemSettings.filter({ key: 'ia_clave_internet' });
+    if (filas?.[0]) await base44.entities.SystemSettings.update(filas[0].id, { value: clave });
+    else await base44.entities.SystemSettings.create({ key: 'ia_clave_internet', value: clave });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function recogerClaveCompartida(base44) {
+  try {
+    const filas = await base44.entities.SystemSettings.filter({ key: 'ia_clave_internet' });
+    const clave = filas?.[0]?.value;
+    if (clave && clave !== ajustesIA().openrouter_clave) guardarAjustesIA({ openrouter_clave: clave });
+    return clave || '';
+  } catch {
+    return '';
+  }
+}
+
+/** Consulta a la IA del ordenador desde el móvil. */
+export async function llamarIADelOrdenador(peticion, puente) {
+  const { texto, pideJson } = prepararPeticion(peticion);
+  const cfg = ajustesIA();
+  const url = `http://${puente.ip}:${puente.puerto}/api/chat`;
+  const cuerpo = await pedirNativo(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-gpt-llave': puente.llave },
+    body: JSON.stringify({
+      model: cfg.ollama_modelo,
+      messages: [{ role: 'user', content: texto }],
+      stream: false,
+      ...(pideJson ? { format: 'json' } : {}),
+    }),
+  });
+  const datos = typeof cuerpo === 'string' ? JSON.parse(cuerpo) : cuerpo;
+  const salida = datos?.message?.content ?? '';
+  return pideJson ? (jsonDeRespuesta(salida) ?? salida) : salida;
+}
+
+/** ¿Se puede llegar a la IA del ordenador desde aquí? */
+export async function probarIADelOrdenador(puente) {
+  const url = `http://${puente.ip}:${puente.puerto}/api/tags`;
+  const cuerpo = await pedirNativo(url, { headers: { 'x-gpt-llave': puente.llave } });
+  const datos = typeof cuerpo === 'string' ? JSON.parse(cuerpo) : cuerpo;
+  return (datos?.models || []).map((m) => m.name);
+}

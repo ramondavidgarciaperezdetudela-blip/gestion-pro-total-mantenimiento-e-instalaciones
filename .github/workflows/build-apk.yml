@@ -77,6 +77,12 @@ jobs:
         # cap add/sync regenera el proyecto de Android entero, asi que este
         # trozo nativo hay que volver a ponerlo DESPUES, en cada compilacion.
         run: python3 scripts/anadir-guardar-como.py android
+      - name: Permitir hablar con la IA gratuita del ordenador por el wifi
+        # Android bloquea por defecto las conexiones sin cifrar, y la IA
+        # gratuita del ordenador se atiende por http en la red local. Sin
+        # esto, en el movil no sale la peticion y no se ve ningun error.
+        # Va DESPUES de cap add/sync, que regeneran el proyecto entero.
+        run: python3 scripts/permitir-ia-en-red-local.py android
 
       - name: Generate Android app icon (same icon as desktop installers)
         run: npx @capacitor/assets generate --android

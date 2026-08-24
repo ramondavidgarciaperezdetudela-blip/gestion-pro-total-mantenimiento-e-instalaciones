@@ -5,7 +5,10 @@ import {
   camposNumericosVacios, conNumerosVaciosANulo,
 } from '@/lib/avisoServidor';
 import { iaActivada, gastaCreditos, errorIAApagada } from '@/lib/modoSinIA';
-import { ajustesIA, consultarIA } from '@/lib/proveedorIA';
+import {
+  ajustesIA, consultarIA, esAppMovil, buscarIADelOrdenador, llamarIADelOrdenador,
+  llamarOpenRouter, recogerClaveCompartida,
+} from '@/lib/proveedorIA';
 
 const { appId, token, functionsVersion, appBaseUrl } = appParams;
 
@@ -184,6 +187,13 @@ const integracionesVigiladas = new Proxy({}, {
             const cfg = ajustesIA();
             if (punto === 'InvokeLLM' && cfg.proveedor !== 'base44') {
               try {
+                // En el móvil y la tablet, Ollama no está en el aparato: está
+                // en el ordenador. Se prueban las opciones por orden y se usa
+                // la primera que funcione, para no dejar tirado a nadie según
+                // dónde esté: en el taller, en casa o en la calle con datos.
+                if (cfg.proveedor === 'ollama' && esAppMovil()) {
+                  return await enElMovil(args[0] || {}, cfg, punto);
+                }
                 return await consultarIA(args[0] || {}, cfg);
               } catch (err) {
                 avisarDeFallo({ funcion: punto, error: err });
@@ -200,6 +210,36 @@ const integracionesVigiladas = new Proxy({}, {
     });
   },
 });
+
+/**
+ * La IA en el móvil y la tablet, esté donde esté el aparato.
+ *
+ * 1. En el mismo wifi que el ordenador → la IA gratuita del ordenador.
+ * 2. Con datos móviles o en otro wifi → la IA gratuita de internet, si hay
+ *    clave (se pega una vez y vale para todos los aparatos).
+ * 3. Si tampoco → se dice claramente qué pasa y qué se puede hacer, en vez de
+ *    fallar sin más.
+ */
+async function enElMovil(peticion, cfg, punto) {
+  const puente = await buscarIADelOrdenador(base44);
+  if (puente) return llamarIADelOrdenador(peticion, puente);
+
+  // Fuera del wifi del ordenador. ¿Hay clave gratuita de internet?
+  let clave = cfg.openrouter_clave;
+  if (!clave) clave = await recogerClaveCompartida(base44);
+  if (clave) {
+    return llamarOpenRouter(peticion, { ...ajustesIA(), openrouter_clave: clave });
+  }
+
+  const err = new Error(
+    'Ahora mismo no estás en el wifi de tu ordenador, así que su IA gratuita no se alcanza. '
+    + 'Para que también funcione con datos móviles o en otro wifi, pega una vez la clave gratuita '
+    + 'de internet en Configuración → IA: se guarda para todos tus aparatos y no hay que repetirlo.',
+  );
+  err.status = null;
+  avisarDeFallo({ funcion: punto, error: err });
+  throw err;
+}
 
 export const base44 = new Proxy(cliente, {
   get(destino, prop) {
