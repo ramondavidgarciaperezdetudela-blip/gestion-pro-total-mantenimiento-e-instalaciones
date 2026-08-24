@@ -74,11 +74,11 @@ const NORMATIVA = {
   ],
   clima: [
     { label: 'RITE RD 1027/2007 (texto consolidado)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2007-15820' },
-    { label: 'RD 235/2013 Certificación Energética', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2013-3904' },
-    { label: 'RD 390/2021 CTE - DB-HE actualización', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2021-5825' },
+    { label: 'RD 390/2021 Certificación Energética (sustituyó al RD 235/2013)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2021-9176' },
+    { label: 'CTE DB-HE Ahorro de energía (Código Técnico)', url: 'https://www.codigotecnico.org/DocumentosCTE/AhorroEnergia.html' },
   ],
   frio: [
-    { label: 'RD 138/2011 Reglamento Frigorías (consolidado)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2011-2815' },
+    { label: 'RSIF RD 552/2019 Instalaciones frigoríficas (consolidado)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2019-12703' },
     { label: 'RD 115/2017 F-Gas España (consolidado)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2017-1664' },
     { label: 'Reglamento (UE) 2024/573 F-Gas (EUR-Lex)', url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32024R0573' },
   ]
@@ -220,7 +220,7 @@ INSTRUCCIONES CRÍTICAS:
 - USA TABLAS HTML para el programa de mantenimiento y hojas de registro
 - NO incluyas links de internet`,
 
-    cert_frigo: `Genera un CERTIFICADO DE INSTALACIÓN FRIGORÍFICA COMPLETO según RD 138/2011.
+    cert_frigo: `Genera un CERTIFICADO DE INSTALACIÓN FRIGORÍFICA COMPLETO según el RSIF (RD 552/2019).
 INSTRUCCIONES CRÍTICAS:
 - Genera UN ÚNICO CERTIFICADO oficial
 - USA TABLAS HTML para características del circuito frigorífico y componentes

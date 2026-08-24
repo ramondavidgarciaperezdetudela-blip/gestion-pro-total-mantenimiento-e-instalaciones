@@ -178,13 +178,13 @@ ${common}
 Incluye: cálculo de cargas industriales (equipos, procesos, ventilación), sistema seleccionado (HVAC, climatizadores, enfriadora), distribución, control BMS, trámites RITE, mantenimiento preventivo.`,
 
     // FRÍO
-    frio_camara: `Genera un plan de proyecto COMPLETO para instalación de cámara frigorífica según RD 138/2011 y normativa F-Gas en España.
+    frio_camara: `Genera un plan de proyecto COMPLETO para instalación de cámara frigorífica según el RSIF (RD 552/2019) y la normativa F-Gas en España.
 ${common}
 Incluye: dimensionado frigorífico (carga total, equipos), materiales (paneles sandwich, evaporador, condensador, compresor, gas), planificación de obra (estructura, sellado, instalación equipo, carga gas, pruebas), legalización F-Gas y Reglamento Frigorías.`,
 
     frio_tunelcongelacion: `Genera un plan de proyecto COMPLETO para instalación de túnel de congelación industrial en España.
 ${common}
-Incluye: cálculo potencia frigorífica necesaria, selección gas refrigerante, componentes, plazos de ejecución, pruebas de rendimiento, normativa de seguridad RD 138/2011.`,
+Incluye: cálculo potencia frigorífica necesaria, selección gas refrigerante, componentes, plazos de ejecución, pruebas de rendimiento, normativa de seguridad del RSIF (RD 552/2019).`,
 
     frio_obrador: `Genera un plan de proyecto COMPLETO para instalación de refrigeración en obrador, pastelería o cocina industrial.
 ${common}

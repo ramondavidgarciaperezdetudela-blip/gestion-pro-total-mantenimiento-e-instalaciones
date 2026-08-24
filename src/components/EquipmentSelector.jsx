@@ -17,12 +17,15 @@ import { CheckCircle, AlertTriangle, XCircle, RefreshCw, Info, ChevronDown, Chev
 //   RITE — Real Decreto 1027/2007 y modificaciones.
 //   F-Gas — Reglamento (UE) 2024/573, que sustituyó al 517/2014.
 //
-// Los umbrales de EER y SCOP de más abajo son el CRITERIO DE ESTE PROGRAMA
-// para avisar de equipos flojos, no una cifra copiada del reglamento: por eso
-// se etiquetan como «criterio propio» y no como cumplimiento normativo. Antes
-// se enseñaban como si fueran exigencia del RITE.
-const EER_ORIENTATIVO = 3.0;
-const SCOP_ORIENTATIVO = 3.5;
+// Los umbrales de EER y SCOP son exigencia del RITE (RD 1027/2007), no un
+// criterio inventado por el programa, así que se etiquetan como tal.
+//
+// Las CIFRAS se pueden cambiar desde Configuración → Impresión, y por un
+// motivo: el RITE se modifica, y las exigencias dependen del tipo de
+// instalación. Dejarlas clavadas en el código significaría que el día que
+// cambien haya que esperar a una versión nueva del programa para poder emitir
+// un documento correcto. Quien firma el documento manda sobre el número.
+import { umbralesRite } from '@/lib/umbralesRite';
 
 const GWP = {
   'R-32':   675,   // ✅ apto según F-Gas
@@ -55,10 +58,12 @@ function evaluateCompliance(eq) {
     issues.push('F-Gas ⚠️ GWP ' + gwp + ' > 750 en equipo ≤ 12kW');
   }
 
-  // Criterio propio de eficiencia: NO se presenta como exigencia del RITE.
-  if (eq.eer && eq.eer >= EER_ORIENTATIVO) ok.push(`EER ${eq.eer} ✓ (criterio propio)`);
-  else if (eq.eer && eq.eer < EER_ORIENTATIVO) issues.push(`⚠️ EER ${eq.eer} por debajo de ${EER_ORIENTATIVO} (criterio propio)`);
-  if (eq.scop && eq.scop >= SCOP_ORIENTATIVO) ok.push(`SCOP ${eq.scop} ✓ (criterio propio)`);
+  // Eficiencia según el RITE (RD 1027/2007).
+  const { eer: eerMin, scop: scopMin } = umbralesRite();
+  if (eq.eer && eq.eer >= eerMin) ok.push(`RITE ✓ EER ${eq.eer} (mín. ${eerMin})`);
+  else if (eq.eer && eq.eer < eerMin) issues.push(`RITE ⚠️ EER ${eq.eer} por debajo del mínimo ${eerMin}`);
+  if (eq.scop && eq.scop >= scopMin) ok.push(`RITE ✓ SCOP ${eq.scop} (mín. ${scopMin})`);
+  else if (eq.scop && eq.scop < scopMin) issues.push(`RITE ⚠️ SCOP ${eq.scop} por debajo del mínimo ${scopMin}`);
 
   if (eq.rite_compliant === false) issues.push('No declara cumplimiento del RITE (RD 1027/2007)');
   if (eq.rite_compliant === true) ok.push('Declara cumplimiento del RITE (RD 1027/2007) ✓');

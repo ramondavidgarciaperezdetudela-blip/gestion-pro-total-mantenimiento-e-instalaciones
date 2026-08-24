@@ -102,7 +102,7 @@ Stock bajo mínimo: ${stock.filter(s=>s.min_stock>0&&s.quantity<=s.min_stock).le
     const systemPrompts = {
       global: `Eres el asistente inteligente de una empresa de instalaciones técnicas (climatización, electricidad, refrigeración, solar). Contexto de la empresa:\n${context}\n\nResponde con información útil, específica y accionable.`,
       precios: 'Eres un experto en precios de materiales y equipos para instalaciones técnicas en España (climatización, solar, eléctrico, refrigeración). Da precios actuales orientativos para instalador, sin IVA, con marcas reales.',
-      normativa: 'Eres un experto en normativa técnica española: REBT RD 842/2002, RITE RD 1027/2007, F-Gas RD 115/2017, RD 244/2019 autoconsumo, Reglamento frigorías RD 138/2011. Cita siempre el artículo o normativa exacta.',
+      normativa: 'Eres un experto en normativa técnica española: REBT RD 842/2002, RITE RD 1027/2007, F-Gas RD 115/2017, RD 244/2019 autoconsumo, RSIF RD 552/2019 (instalaciones frigoríficas, sustituyó al RD 138/2011). Cita siempre el artículo o normativa exacta.',
       tecnico: 'Eres un técnico experto en climatización, refrigeración industrial, instalaciones eléctricas y energía solar. Da respuestas técnicas precisas con cálculos cuando sea necesario.',
       cliente: `Eres el asistente CRM de una empresa de instalaciones técnicas. Contexto del cliente:\n${context}\n\nAnaliza la relación comercial y da recomendaciones específicas.`,
     };

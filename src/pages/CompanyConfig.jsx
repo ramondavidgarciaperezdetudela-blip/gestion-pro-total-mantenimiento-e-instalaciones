@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import InterruptorIA from '@/components/InterruptorIA';
+import { umbralesRite, guardarUmbralesRite, sonLosDePartida } from '@/lib/umbralesRite';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -221,6 +222,7 @@ export default function CompanyConfig() {
   });
   const [recordId, setRecordId] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [rite, setRite] = useState(() => umbralesRite());
   const [logoUploading, setLogoUploading] = useState(false);
   const fileRef = useRef(null);
   const [showPass, setShowPass] = useState(false);
@@ -752,6 +754,41 @@ export default function CompanyConfig() {
               </div>
 
               {/* Colocación de los elementos */}
+              <div className="space-y-3" data-prueba="umbrales-rite">
+                <p className="text-sm font-semibold text-gray-700 border-b pb-1">⚙️ Mínimos de eficiencia del RITE</p>
+                <p className="text-xs text-gray-500">
+                  Con estos valores el programa marca si un equipo cumple o no en los cálculos y
+                  en los documentos. Vienen puestos EER 3,0 y SCOP 3,5. Si el RITE cambia o tu
+                  instalación exige otros, cámbialos aquí: el documento lo firmas tú.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="text-xs font-medium text-gray-700">
+                    EER mínimo (frío)
+                    <Input
+                      type="number" step="0.1" min="0"
+                      className="mt-1"
+                      value={rite.eer}
+                      onChange={(e) => setRite(guardarUmbralesRite({ ...rite, eer: e.target.value }))}
+                      aria-label="EER mínimo del RITE"
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-gray-700">
+                    SCOP mínimo (calor)
+                    <Input
+                      type="number" step="0.1" min="0"
+                      className="mt-1"
+                      value={rite.scop}
+                      onChange={(e) => setRite(guardarUmbralesRite({ ...rite, scop: e.target.value }))}
+                      aria-label="SCOP mínimo del RITE"
+                    />
+                  </label>
+                </div>
+                <p className="text-xs text-gray-400" data-prueba="resumen-rite">
+                  Ahora mismo: EER ≥ {rite.eer} · SCOP ≥ {rite.scop}
+                  {sonLosDePartida(rite) ? ' (los de partida)' : ' (cambiados por ti)'}
+                </p>
+              </div>
+
               <div className="space-y-3" data-prueba="diseno-documento">
                 <p className="text-sm font-semibold text-gray-700 border-b pb-1">📐 Dónde va cada cosa</p>
                 <p className="text-xs text-gray-500">

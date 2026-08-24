@@ -16,7 +16,7 @@ const DEFAULT_REGULATIONS = [
       { name: 'Reglamento F-Gas (UE) 2024/573', description: 'Gases fluorados de efecto invernadero. Sustituyó al Reglamento (UE) 517/2014.', url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32024R0573', boe: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32024R0573' },
       { name: 'RD 115/2017 - F-Gas España', description: 'Reglamento nacional gases fluorados', url: 'https://www.boe.es/eli/es/rd/2017/02/17/115', boe: 'https://www.boe.es/eli/es/rd/2017/02/17/115' },
       { name: 'Comprobación de fugas - IDAE', description: 'Guía comprobación fugas gases fluorados', url: 'https://www.idae.es/uploads/documentos/documentos_Gu%C3%ADa_fugas_gases_fluorados_2edicion_tcm30-178434.pdf', boe: null },
-      { name: 'Reglamento Frigorías - RD 138/2011', description: 'Seguridad instalaciones frigoríficas', url: 'https://www.boe.es/eli/es/rd/2011/02/04/138', boe: 'https://www.boe.es/eli/es/rd/2011/02/04/138' },
+      { name: 'RSIF - RD 552/2019', description: 'Reglamento de seguridad para instalaciones frigoríficas. Sustituyó al RD 138/2011.', url: 'https://www.boe.es/eli/es/rd/2019/09/27/552', boe: 'https://www.boe.es/eli/es/rd/2019/09/27/552' },
     ]
   },
   {
@@ -42,7 +42,7 @@ const DEFAULT_REGULATIONS = [
     color: 'bg-green-100 text-green-700',
     items: [
       { name: 'CTE DB-HE Ahorro Energía', description: 'Código Técnico Edificación - Ahorro de energía', url: 'https://www.codigotecnico.org/pdf/Documentos/HE/DBHE.pdf', boe: 'https://www.boe.es/eli/es/rd/2019/12/05/732' },
-      { name: 'RD 235/2013 Certificación Energética', description: 'Certificación energética de edificios', url: 'https://www.boe.es/eli/es/rd/2013/04/05/235', boe: 'https://www.boe.es/eli/es/rd/2013/04/05/235' },
+      { name: 'RD 390/2021 Certificación Energética', description: 'Procedimiento básico de certificación energética de edificios. Sustituyó al RD 235/2013.', url: 'https://www.boe.es/eli/es/rd/2021/06/01/390', boe: 'https://www.boe.es/eli/es/rd/2021/06/01/390' },
       { name: 'RD 244/2019 Autoconsumo Solar', description: 'Autoconsumo de energía eléctrica', url: 'https://www.boe.es/eli/es/rd/2019/04/05/244', boe: 'https://www.boe.es/eli/es/rd/2019/04/05/244' },
       { name: 'Directiva 2018/844 Eficiencia Energética', description: 'Eficiencia energética en edificios UE', url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32018L0844', boe: null },
     ]
@@ -125,11 +125,11 @@ Para cada una de las siguientes normativas, indica:
 Lista de normativas a verificar:
 - Reglamento F-Gas (UE) 2024/573, que sustituyó al 517/2014
 - RD 115/2017 - F-Gas España
-- RD 138/2011 Instalaciones frigoríficas
+- RSIF RD 552/2019 Instalaciones frigoríficas (sustituyó al RD 138/2011)
 - RITE RD 1027/2007 y modificaciones
 - REBT RD 842/2002
 - CTE DB-HE Ahorro Energía
-- RD 235/2013 Certificación Energética
+- RD 390/2021 Certificación Energética (sustituyó al RD 235/2013)
 - RD 244/2019 Autoconsumo Solar
 - CTE DB-SI Seguridad Incendios
 - RIPCI RD 513/2017
