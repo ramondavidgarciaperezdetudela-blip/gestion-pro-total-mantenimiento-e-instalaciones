@@ -73,7 +73,7 @@ const NORMATIVA = {
     { label: 'RD 614/2001 Disposiciones seguridad eléctrica', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2001-11736' },
   ],
   clima: [
-    { label: 'RITE RD 1027/2007 (texto consolidado)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2007-15820' },
+    { label: 'RITE RD 1027/2007 y modificaciones', url: 'https://www.boe.es/buscar/doc.php?id=BOE-A-2021-4572' },
     { label: 'RD 390/2021 Certificación Energética (sustituyó al RD 235/2013)', url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2021-9176' },
     { label: 'CTE DB-HE Ahorro de energía (Código Técnico)', url: 'https://www.codigotecnico.org/DocumentosCTE/AhorroEnergia.html' },
   ],

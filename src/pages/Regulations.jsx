@@ -23,7 +23,7 @@ const DEFAULT_REGULATIONS = [
     category: 'RITE - Instalaciones Térmicas',
     color: 'bg-orange-100 text-orange-700',
     items: [
-      { name: 'RITE - RD 1027/2007', description: 'Reglamento de Instalaciones Térmicas en Edificios', url: 'https://www.boe.es/eli/es/rd/2007/07/20/1027/con', boe: 'https://www.boe.es/eli/es/rd/2007/07/20/1027/con' },
+      { name: 'RITE - RD 1027/2007', description: 'Reglamento de Instalaciones Térmicas en Edificios, con sus modificaciones', url: 'https://www.boe.es/buscar/doc.php?id=BOE-A-2021-4572', boe: 'https://www.boe.es/buscar/doc.php?id=BOE-A-2021-4572' },
       { name: 'Modificación RITE - RD 1826/2009', description: 'Actualización del RITE', url: 'https://www.boe.es/eli/es/rd/2009/12/04/1826', boe: 'https://www.boe.es/eli/es/rd/2009/12/04/1826' },
       { name: 'RITE Instrucciones Técnicas (IT)', description: 'Instrucciones técnicas del RITE', url: 'https://energia.gob.es/desarrollo/EficienciaEnergetica/RITE/Paginas/InstalacionesTermicas.aspx', boe: null },
     ]
