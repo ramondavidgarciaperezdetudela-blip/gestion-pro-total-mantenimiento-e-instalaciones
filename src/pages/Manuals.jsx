@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { porMarcas } from '@/lib/documentacionTecnica';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -278,14 +279,14 @@ function MyManualsTab() {
     return matchBrand && matchCat && matchSearch;
   });
 
-  // Group by brand
+  // Una carpeta por marca. Se agrupa sin distinguir mayúsculas ni tildes:
+  // "Danfoss", "danfoss" y "DANFOSS" tienen que ir a la misma carpeta, o
+  // acaban tres carpetas con lo mismo dentro y no se encuentra nada. Pasa en
+  // cuanto un documento se archiva desde otra pantalla o lo escribe otro.
   const byBrand = {};
-  filtered.forEach(m => {
-    const ex = parseExtra(m.description);
-    const brand = ex.brand || 'Sin marca';
-    if (!byBrand[brand]) byBrand[brand] = [];
-    byBrand[brand].push({ ...m, _extra: ex });
-  });
+  for (const grupo of porMarcas(filtered)) {
+    byBrand[grupo.marca] = grupo.documentos.map((m) => ({ ...m, _extra: parseExtra(m.description) }));
+  }
 
   return (
     <div className="space-y-4">

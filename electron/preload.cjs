@@ -40,6 +40,13 @@ contextBridge.exposeInMainWorld('gptIA', {
   compartirEstado: () => ipcRenderer.invoke('gpt-ia-lan-estado'),
 });
 
+// Descargar documentación técnica de los fabricantes. Aparte del puente de
+// la IA a propósito: aquel solo llega a tu ordenador y a OpenRouter.
+contextBridge.exposeInMainWorld('gptDocs', {
+  disponible: true,
+  descargar: (url) => ipcRenderer.invoke('gpt-doc-descargar', url),
+});
+
 contextBridge.exposeInMainWorld('gptUpdater', {
   check: () => ipcRenderer.send('gpt-check-for-updates'),
   install: () => ipcRenderer.send('gpt-install-update'),

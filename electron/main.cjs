@@ -275,6 +275,76 @@ ipcMain.handle('gpt-ia-lan-estado', async () => ({
 
 app.on('before-quit', () => { try { puenteLan?.servidor?.close(); } catch { /* nada */ } });
 
+// ── Descargar documentación técnica de los fabricantes ─────────────────────
+//
+// Va por el proceso principal porque desde la pantalla el navegador bloquea
+// las descargas de otros sitios (CORS) y ningún fabricante permite que su PDF
+// se baje desde una aplicación ajena.
+//
+// Es un puente DISTINTO del de la IA, y a propósito: el de la IA solo puede
+// hablar con el ordenador de casa y con OpenRouter, y ampliarlo para esto
+// habría abierto esa puerta de par en par. Aquí las reglas son otras:
+//
+//   - Solo https. Nada de http, ni de ficheros locales.
+//   - NUNCA direcciones de la red interna. Sin esto, una dirección como
+//     http://192.168.1.1/ convertiría el programa en una forma de curiosear
+//     el router de casa desde fuera.
+//   - Tope de tamaño: un PDF de fabricante no pasa de unas decenas de megas,
+//     y sin tope una descarga tonta podría llenar la memoria.
+const MAXIMO_DOCUMENTO = 60 * 1024 * 1024;
+
+function direccionDeDocumentoValida(url) {
+  let u;
+  try { u = new URL(String(url || '')); } catch { return false; }
+  if (u.protocol !== 'https:') return false;
+  const host = u.hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.local')) return false;
+  // Direcciones de la red interna, en cualquiera de sus formas.
+  if (/^(127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(host)) return false;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;
+  if (host === '::1' || host === '[::1]') return false;
+  return true;
+}
+
+ipcMain.handle('gpt-doc-descargar', async (_evt, url) => {
+  try {
+    if (!direccionDeDocumentoValida(url)) {
+      return { ok: false, error: 'Esa dirección no vale. Tiene que empezar por https:// y ser de internet, no de tu red.' };
+    }
+    const resp = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(120000) });
+    if (!resp.ok) return { ok: false, status: resp.status, error: `El fabricante ha respondido ${resp.status}.` };
+
+    const tipo = (resp.headers.get('content-type') || '').toLowerCase();
+    const largo = Number(resp.headers.get('content-length') || 0);
+    if (largo && largo > MAXIMO_DOCUMENTO) {
+      return { ok: false, error: 'El documento pesa demasiado (más de 60 MB).' };
+    }
+    const datos = Buffer.from(await resp.arrayBuffer());
+    if (datos.length > MAXIMO_DOCUMENTO) {
+      return { ok: false, error: 'El documento pesa demasiado (más de 60 MB).' };
+    }
+    // Que sea un PDF de verdad y no la página de "no encontrado" del
+    // fabricante: se mira la firma del propio fichero, no lo que diga la
+    // cabecera. Guardar un HTML de error como si fuera el manual sería peor
+    // que no guardar nada, porque se descubre el día que hace falta.
+    const esPdf = datos.slice(0, 5).toString('latin1') === '%PDF-';
+    if (!esPdf && !/pdf/.test(tipo)) {
+      return { ok: false, error: 'Eso no es un PDF. Puede que el enlace lleve a una página, no al documento.' };
+    }
+    if (!esPdf) {
+      return { ok: false, error: 'El fichero dice ser un PDF pero no lo es. No se guarda.' };
+    }
+    return {
+      ok: true,
+      tipo: 'application/pdf',
+      bytes: datos.length,
+      base64: datos.toString('base64'),
+    };
+  } catch (err) {
+    return { ok: false, error: String(err?.message || err) };
+  }
+});
+
 ipcMain.handle('gpt-ia-abrir', async (_evt, url) => {
   // Solo la página oficial de descarga: esto no abre cualquier cosa.
   if (String(url || '') !== 'https://ollama.com/download') return false;

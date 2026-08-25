@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import BuscarFichaTecnica from '@/components/BuscarFichaTecnica';
+import GuardarDocumentacion from '@/components/GuardarDocumentacion';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -405,6 +406,13 @@ export default function Maintenance() {
                 {/* Rellenarlos sin teclear: pegando la ficha del fabricante o
                     deduciéndolos de la referencia. */}
                 <BuscarFichaTecnica form={form} setForm={setForm} />
+                {/* Y guardarse la documentación del fabricante en Manuales,
+                    en la carpeta de su marca, para consultarla luego. */}
+                <GuardarDocumentacion
+                  marca={form.compressor_brand || form.equipment_brand}
+                  modelo={form.equipment_model}
+                  referencia={form.compressor_ref}
+                />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <Input placeholder="Referencia completa (ej: FH4518Y-XC3A)" value={form.compressor_ref}
                     onChange={e => setForm({ ...form, compressor_ref: e.target.value })} />
