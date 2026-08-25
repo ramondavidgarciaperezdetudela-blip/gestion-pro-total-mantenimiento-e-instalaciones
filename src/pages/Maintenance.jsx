@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
@@ -127,7 +128,7 @@ export default function Maintenance() {
 
   useEffect(() => {
     Promise.all([
-      base44.entities.MaintenanceSheet.list('-date', 500),
+      cargarTodo('MaintenanceSheet', '-date'),
       base44.entities.Contact.list(),
     ]).then(([s, c]) => {
       setSheets(s);
@@ -147,7 +148,7 @@ export default function Maintenance() {
       await base44.entities.MaintenanceSheet.update(editing.id, data);
     } else {
       // Re-calcular número justo antes de guardar (por si otro guardó mientras tanto)
-      const latest = await base44.entities.MaintenanceSheet.list('-date', 500);
+      const latest = await cargarTodo('MaintenanceSheet', '-date');
       if (!data.sheet_number || data.sheet_number === getNextAvailableNumber(latest.filter(x => x.id !== editing?.id).map(x => x.sheet_number || ''))) {
         data.sheet_number = getNextAvailableNumber(latest.map(x => x.sheet_number || ''));
       }
@@ -166,7 +167,7 @@ export default function Maintenance() {
     }
     setDialogOpen(false);
     setEditing(null);
-    const s = await base44.entities.MaintenanceSheet.list('-date', 500);
+    const s = await cargarTodo('MaintenanceSheet', '-date');
     setSheets(s);
     setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(s.map(x => x.sheet_number || '')) });
     alert(editing ? '✅ Ficha actualizada correctamente' : '✅ Ficha guardada y vinculada al cliente');
@@ -518,11 +519,11 @@ export default function Maintenance() {
               <Textarea placeholder="Observaciones" value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} />
               <Textarea placeholder="Recomendaciones" value={form.recommendations} onChange={e => setForm({ ...form, recommendations: e.target.value })} />
 
-              <PhotoGallery photos={form.photos_before} onChange={p => setForm({ ...form, photos_before: p })} label="Fotos antes (máx. 30)" maxPhotos={30} />
-              <PhotoGallery photos={form.photos_after} onChange={p => setForm({ ...form, photos_after: p })} label="Fotos después (máx. 30)" maxPhotos={30} />
+              <PhotoGallery photos={form.photos_before} onChange={p => setForm({ ...form, photos_before: p })} label="Fotos antes" maxPhotos={200} />
+              <PhotoGallery photos={form.photos_after} onChange={p => setForm({ ...form, photos_after: p })} label="Fotos después" maxPhotos={200} />
               {(form.type === 'clima' || form.type === 'refrigeracion') && <>
-                <PhotoGallery photos={form.photos_evaporator_plate} onChange={p => setForm({ ...form, photos_evaporator_plate: p })} label="Placa evaporadora" maxPhotos={5} />
-                <PhotoGallery photos={form.photos_condenser_plate} onChange={p => setForm({ ...form, photos_condenser_plate: p })} label="Placa condensadora" maxPhotos={5} />
+                <PhotoGallery photos={form.photos_evaporator_plate} onChange={p => setForm({ ...form, photos_evaporator_plate: p })} label="Placa evaporadora" maxPhotos={200} />
+                <PhotoGallery photos={form.photos_condenser_plate} onChange={p => setForm({ ...form, photos_condenser_plate: p })} label="Placa condensadora" maxPhotos={200} />
               </>}
 
               {/* Signatures — solo aparece cuando hay datos suficientes en la hoja */}

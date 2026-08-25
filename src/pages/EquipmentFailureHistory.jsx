@@ -201,7 +201,7 @@ export default function EquipmentFailureHistory() {
                 <Button onClick={handleAddPart} variant="outline" size="sm" className="w-full">+ Añadir pieza</Button>
               </div>
 
-              <PhotoGallery photos={formData.photos} onChange={p => setFormData({...formData, photos: p})} label="Fotos" maxPhotos={15} />
+              <PhotoGallery photos={formData.photos} onChange={p => setFormData({...formData, photos: p})} label="Fotos" maxPhotos={200} />
 
               <textarea className="w-full p-2 border rounded text-sm" placeholder="Notas adicionales" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} rows="2" />
 

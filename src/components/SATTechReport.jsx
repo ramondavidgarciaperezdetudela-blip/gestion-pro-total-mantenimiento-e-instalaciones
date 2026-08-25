@@ -237,7 +237,7 @@ export default function SATTechReport({ order, open, onClose }) {
                 photos={form.photos}
                 onChange={p => setForm({ ...form, photos: p })}
                 label="Añadir fotos"
-                maxPhotos={20}
+                maxPhotos={200}
               />
             </div>
 

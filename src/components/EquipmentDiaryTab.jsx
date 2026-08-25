@@ -484,7 +484,7 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
               photoNames={entryForm.photo_names || []}
               onNamesChange={n => setEntryForm({...entryForm, photo_names: n})}
               label="Fotos de la reparación"
-              maxPhotos={20}
+              maxPhotos={200}
             />
 
             {/* Firmas */}

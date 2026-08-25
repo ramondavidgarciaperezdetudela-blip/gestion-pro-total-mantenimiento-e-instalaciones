@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
@@ -117,8 +118,8 @@ export default function Documents() {
 
   useEffect(() => {
     Promise.all([
-    base44.entities.Invoice.list('-date', 500),
-    base44.entities.Contact.list('name', 500),
+    cargarTodo('Invoice', '-date'),
+    cargarTodo('Contact', 'name'),
     base44.entities.DocumentTemplate.list('name', 50),
     base44.entities.LineTemplate.list('name', 100)]
     ).then(([d, c, t, lt]) => {
@@ -352,7 +353,7 @@ export default function Documents() {
       clearDraft();
       setDialogOpen(false);setEditing(null);
       toast({ title: wasEditing ? 'Documento actualizado' : 'Documento guardado', description: `${docLabel} ${form.doc_number || ''}`, duration: 2500 });
-      const d = await base44.entities.Invoice.list('-date', 500);
+      const d = await cargarTodo('Invoice', '-date');
       setDocs(d);
       const savedId = savedDoc?.id || editingId;
       const fresh = (savedId && d.find(x => x.id === savedId)) || savedDoc || (!wasEditing ? d[0] : null);
@@ -376,7 +377,7 @@ export default function Documents() {
   const handleDuplicate = async (doc) => {
     const { id, created_date, updated_date, ...rest } = doc;
     await base44.entities.Invoice.create({ ...rest, doc_number: `${rest.doc_number}-COPIA`, status: 'borrador', date: format(new Date(), 'yyyy-MM-dd') });
-    const d = await base44.entities.Invoice.list('-date', 500);
+    const d = await cargarTodo('Invoice', '-date');
     setDocs(d);
   };
 

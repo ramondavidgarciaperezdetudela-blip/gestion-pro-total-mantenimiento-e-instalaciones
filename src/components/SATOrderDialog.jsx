@@ -245,7 +245,7 @@ function SATPreview({ order, onEdit, onClose, contact, onUpdate }) {
               if (onUpdate) onUpdate({ ...order, photos_after: newPhotos });
             }}
             label=""
-            maxPhotos={30}
+            maxPhotos={200}
           />
         </div>
 
@@ -457,8 +457,8 @@ function SATForm({ order, contact, onSave, onCancel }) {
       </div>
       <p className="text-xs text-right text-gray-500">Total estimado: <strong className="text-orange-700">{calcTotal(form).toFixed(2)} €</strong></p>
 
-      <PhotoGallery photos={form.photos_before||[]} onChange={p => setForm({...form, photos_before: p})} label="Fotos antes de reparación" maxPhotos={20} />
-      <PhotoGallery photos={form.photos_after||[]} onChange={p => setForm({...form, photos_after: p})} label="Fotos después de reparación" maxPhotos={20} />
+      <PhotoGallery photos={form.photos_before||[]} onChange={p => setForm({...form, photos_before: p})} label="Fotos antes de reparación" maxPhotos={200} />
+      <PhotoGallery photos={form.photos_after||[]} onChange={p => setForm({...form, photos_after: p})} label="Fotos después de reparación" maxPhotos={200} />
 
       <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Notas internas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
 

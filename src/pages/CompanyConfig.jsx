@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import InterruptorIA from '@/components/InterruptorIA';
+import ElegirTema from '@/components/ElegirTema';
 import { umbralesRite, guardarUmbralesRite, sonLosDePartida } from '@/lib/umbralesRite';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -337,7 +338,7 @@ export default function CompanyConfig() {
           <TabsTrigger value="tecnicos" className="flex-1 text-xs">Técnicos</TabsTrigger>
           <TabsTrigger value="correo" className="flex-1 text-xs">Correo</TabsTrigger>
           <TabsTrigger value="horario" className="flex-1 text-xs">Horario</TabsTrigger>
-          <TabsTrigger value="fuente" className="flex-1 text-xs">Tipo de Fuente</TabsTrigger>
+          <TabsTrigger value="fuente" className="flex-1 text-xs">Aspecto y letra</TabsTrigger>
           <TabsTrigger value="impresion" className="flex-1 text-xs">Impresión</TabsTrigger>
           <TabsTrigger value="documentos" className="flex-1 text-xs">Documentos</TabsTrigger>
           <TabsTrigger value="escaner" className="flex-1 text-xs">Escáner</TabsTrigger>
@@ -671,7 +672,16 @@ export default function CompanyConfig() {
         </TabsContent>
 
         <TabsContent value="fuente">
-          <TipoDeFuentePanel />
+          <div className="space-y-4">
+            {/* El aspecto va junto al tipo de letra: las dos cosas son cómo se
+                ve el programa, y se buscan en el mismo sitio. */}
+            <Card>
+              <CardContent className="pt-6">
+                <ElegirTema />
+              </CardContent>
+            </Card>
+            <TipoDeFuentePanel />
+          </div>
         </TabsContent>
 
         <TabsContent value="impresion">

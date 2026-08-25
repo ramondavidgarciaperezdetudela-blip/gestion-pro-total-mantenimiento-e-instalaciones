@@ -441,7 +441,7 @@ export default function EquipmentDiaryPage() {
               photos={entryForm.photos||[]}
               onChange={p => setEntryForm({...entryForm, photos: p})}
               label="Fotos de la reparación"
-              maxPhotos={20}
+              maxPhotos={200}
             />
             <Button onClick={saveEntry} className="w-full bg-orange-600 hover:bg-orange-700">
               {editingEntry?.entryIndex !== null ? 'Actualizar entrada' : 'Guardar entrada'}

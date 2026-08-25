@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
@@ -165,8 +166,8 @@ export default function Projects() {
 
   const loadAll = () => {
     Promise.all([
-      base44.entities.Project.list('-created_date', 500),
-      base44.entities.Contact.list('name', 500),
+      cargarTodo('Project', '-created_date'),
+      cargarTodo('Contact', 'name'),
     ]).then(([p, c]) => { setProjects(p); setContacts(c); });
   };
 

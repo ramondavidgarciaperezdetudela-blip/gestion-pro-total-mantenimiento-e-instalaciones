@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
@@ -89,22 +90,22 @@ export default function Inventory() {
   const loadAll = async () => {
     // Carga secuencial con pequeñas pausas para evitar rate limit
     try {
-      const eq = await base44.entities.Equipment.list('name', 200);
+      const eq = await cargarTodo('Equipment', 'name');
       setEquipment(eq);
     } catch {}
     await new Promise(r => setTimeout(r, 120));
     try {
-      const st = await base44.entities.StockItem.list('name', 300);
+      const st = await cargarTodo('StockItem', 'name');
       setStock(st);
     } catch {}
     await new Promise(r => setTimeout(r, 120));
     try {
-      const cm = await base44.entities.ClientMachine.list('name', 300);
+      const cm = await cargarTodo('ClientMachine', 'name');
       setClientMachines(cm);
     } catch {}
     await new Promise(r => setTimeout(r, 120));
     try {
-      const co = await base44.entities.Contact.list('name', 200);
+      const co = await cargarTodo('Contact', 'name');
       setContacts(co);
     } catch {}
   };

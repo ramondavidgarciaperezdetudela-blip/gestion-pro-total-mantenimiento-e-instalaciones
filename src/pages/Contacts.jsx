@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { cargarTodo } from '@/lib/cargarTodo';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import PullToRefresh from '../components/PullToRefresh';
@@ -187,7 +188,7 @@ export default function Contacts() {
   const loadContacts = useCallback(async () => {
     try {
       // Cargamos en dos tandas para evitar rate limit con datasets grandes
-      const data = await base44.entities.Contact.list('-created_date', 300);
+      const data = await cargarTodo('Contact', '-created_date');
       setContacts(data);
       saveToCache('contacts', data);
       setCacheDate(formatCacheDate(Date.now()));
@@ -197,7 +198,7 @@ export default function Contacts() {
         // Rate limit: esperar y reintentar una vez
         await new Promise(r => setTimeout(r, 1500));
         try {
-          const data = await base44.entities.Contact.list('-created_date', 300);
+          const data = await cargarTodo('Contact', '-created_date');
           setContacts(data);
           saveToCache('contacts', data);
           setCacheDate(formatCacheDate(Date.now()));

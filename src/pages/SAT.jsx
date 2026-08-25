@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import PullToRefresh from '../components/PullToRefresh';
@@ -81,8 +82,8 @@ export default function SAT() {
     // allSettled: si una entidad falla (p.ej. CompanySettings 404) no bloquea
     // la carga de órdenes y contactos.
     const results = await Promise.allSettled([
-      base44.entities.SATOrder.list('-date', 200),
-      base44.entities.Contact.list('name', 200),
+      cargarTodo('SATOrder', '-date'),
+      cargarTodo('Contact', 'name'),
       base44.entities.CompanySettings.list(),
     ]);
     const o = results[0].status === 'fulfilled' ? results[0].value : [];
@@ -186,7 +187,7 @@ export default function SAT() {
       }
     } else {
       // Recalcular número justo antes de guardar por si hubo concurrencia
-      const latest = await base44.entities.SATOrder.list('-date', 200);
+      const latest = await cargarTodo('SATOrder', '-date');
       if (!data.order_number) {
         data.order_number = getNextAvailableNumber(latest.map(x => x.order_number || ''));
       }
@@ -777,8 +778,8 @@ export default function SAT() {
             </div>
             <p className="text-xs text-right text-gray-500">Total estimado: <strong className="text-orange-700">{calcTotal(form).toFixed(2)} €</strong></p>
 
-            <PhotoGallery photos={form.photos_before} onChange={p => setForm({ ...form, photos_before: p })} label="Fotos antes de reparación" maxPhotos={30} />
-            <PhotoGallery photos={form.photos_after} onChange={p => setForm({ ...form, photos_after: p })} label="Fotos después de reparación" maxPhotos={30} />
+            <PhotoGallery photos={form.photos_before} onChange={p => setForm({ ...form, photos_before: p })} label="Fotos antes de reparación" maxPhotos={200} />
+            <PhotoGallery photos={form.photos_after} onChange={p => setForm({ ...form, photos_after: p })} label="Fotos después de reparación" maxPhotos={200} />
             <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Notas internas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
 
             {/* Auto-generar factura */}
