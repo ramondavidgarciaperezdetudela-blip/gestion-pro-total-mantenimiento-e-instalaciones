@@ -27,6 +27,13 @@ const FGAS_GWP = {
 const EMPTY_FORM = {
   sheet_number: '', contact_id: '', contact_name: '', date: format(new Date(), 'yyyy-MM-dd'),
   type: 'clima', equipment_brand: '', equipment_model: '', serial_number: '', location: '',
+  // Datos de la placa del compresor. Antes solo cabían marca, modelo y número
+  // de serie, y el resto (referencia completa, aplicación, alimentación,
+  // refrigerantes admitidos, tecnología) acababa escrito a mano en el campo de
+  // observaciones, donde no se puede buscar ni sale ordenado en la hoja.
+  compressor_ref: '', compressor_brand: '', compressor_application: '',
+  compressor_supply: '', compressor_refrigerants: '', compressor_technology: '',
+  compressor_power_hp: '', compressor_notes: '',
   technician_name: '',
   readings_climate: { pressure_high: '', pressure_low: '', temp_impulsion: '', temp_retorno: '', temp_exterior: '', refrigerant_type: 'R-410A', refrigerant_charge: '', voltage: '', amperage_compressor: '', amperage_fan: '', superheat: '', subcooling: '', fgas_equivalent_co2: 0, fgas_gwp: 2088 },
   readings_electric: { voltage_l1: '', voltage_l2: '', voltage_l3: '', amperage_l1: '', amperage_l2: '', amperage_l3: '', power_factor: '', ground_resistance: '', insulation_resistance: '', differential_test: false, thermal_test: false },
@@ -37,6 +44,76 @@ const EMPTY_FORM = {
   photos_before: [], photos_after: [], photos_evaporator_plate: [], photos_condenser_plate: [],
   signature_technician: '', signature_client: '', sign_datetime_technician: '', sign_datetime_client: '', status: 'completada'
 };
+
+/**
+ * Deja en "sin dato" (null) las LECTURAS que se han quedado en blanco.
+ *
+ * Solo se tocan los grupos de lecturas (readings_*), donde todo son medidas
+ * numéricas. Los campos de texto se dejan como están: ahí un blanco es un
+ * blanco y no hay nada que convertir.
+ *
+ * Y no se convierte a 0: en una revisión, 0 bar es una medida real y muy
+ * distinta de "no lo he medido". Poner ceros para poder guardar falsearía el
+ * documento que se le entrega al cliente firmado.
+ */
+/**
+ * Cómo sale una medida en la hoja que firma el cliente.
+ *
+ * Lo que no se ha medido sale como «— no medido», NO como 0. Antes se
+ * imprimía «0 bar», «0 V», «0 °C» para toda lectura en blanco: eso no es un
+ * hueco, es una medida falsa en un documento firmado. Y un 0 real (que
+ * existe: 0 °C de subenfriamiento) quedaba indistinguible de un hueco.
+ */
+/**
+ * Los datos del compresor en la hoja impresa.
+ *
+ * Solo salen las casillas rellenas: si no se sabe la tecnología, no tiene
+ * sentido imprimir «Tecnología: -» en un documento que se le entrega al
+ * cliente. Y si no se ha puesto ninguna, el bloque entero no aparece.
+ */
+function bloqueCompresor(sheet) {
+  const filas = [
+    ['Referencia', sheet.compressor_ref],
+    ['Marca', sheet.compressor_brand],
+    ['Aplicación', sheet.compressor_application],
+    ['Alimentación', sheet.compressor_supply],
+    ['Refrigerantes', sheet.compressor_refrigerants],
+    ['Tecnología', sheet.compressor_technology],
+    ['Potencia', sheet.compressor_power_hp],
+    ['Otros', sheet.compressor_notes],
+  ].filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '');
+  if (!filas.length) return '';
+  return `
+    <div style="margin-top:6px;padding:6px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f8fafc">
+      <div style="font-weight:700;color:#1e3a5f;margin-bottom:3px">Compresor</div>
+      ${filas.map(([n, v]) => `<div class="field"><span>${n}: </span>${v}</div>`).join('')}
+    </div>`;
+}
+
+function medida(valor, unidad = '', decimales = null) {
+  if (valor === null || valor === undefined || valor === '') {
+    return '<span style="color:#9ca3af">— no medido</span>';
+  }
+  const n = typeof valor === 'number' ? valor : parseFloat(String(valor).replace(',', '.'));
+  if (!Number.isFinite(n)) return String(valor);
+  const texto = decimales === null ? String(n) : n.toFixed(decimales);
+  return `${texto}${unidad ? ' ' + unidad : ''}`;
+}
+
+function sinVacios(datos) {
+  const salida = { ...datos };
+  for (const [grupo, lecturas] of Object.entries(datos)) {
+    if (!grupo.startsWith('readings_') || !lecturas || typeof lecturas !== 'object') continue;
+    const limpio = {};
+    let cambiado = false;
+    for (const [campo, valor] of Object.entries(lecturas)) {
+      if (valor === '') { limpio[campo] = null; cambiado = true; }
+      else limpio[campo] = valor;
+    }
+    if (cambiado) salida[grupo] = limpio;
+  }
+  return salida;
+}
 
 export default function Maintenance() {
   const [sheets, setSheets] = useState([]);
@@ -60,7 +137,11 @@ export default function Maintenance() {
   }, []);
 
   const handleSave = async () => {
-    const data = { ...form };
+    // Lo que no se ha medido se manda como "sin dato", no como texto vacío.
+    // Antes se enviaba '' y el servidor rechazaba la hoja entera nombrando
+    // hasta 17 campos, obligando a poner ceros en lecturas que no se han hecho
+    // — y un cero no es lo mismo que "no medido": falsea la revisión.
+    const data = sinVacios({ ...form });
     if (editing) {
       await base44.entities.MaintenanceSheet.update(editing.id, data);
     } else {
@@ -96,6 +177,11 @@ export default function Maintenance() {
       sheet_number: sheet.sheet_number || '', contact_id: sheet.contact_id || '', contact_name: sheet.contact_name || '',
       date: sheet.date || '', type: sheet.type || 'clima', equipment_brand: sheet.equipment_brand || '',
       equipment_model: sheet.equipment_model || '', serial_number: sheet.serial_number || '', location: sheet.location || '',
+      compressor_ref: sheet.compressor_ref || '', compressor_brand: sheet.compressor_brand || '',
+      compressor_application: sheet.compressor_application || '', compressor_supply: sheet.compressor_supply || '',
+      compressor_refrigerants: sheet.compressor_refrigerants || '',
+      compressor_technology: sheet.compressor_technology || '',
+      compressor_power_hp: sheet.compressor_power_hp || '', compressor_notes: sheet.compressor_notes || '',
       technician_name: sheet.technician_name || '',
       readings_climate: sheet.readings_climate || EMPTY_FORM.readings_climate,
       readings_electric: sheet.readings_electric || EMPTY_FORM.readings_electric,
@@ -160,26 +246,26 @@ export default function Maintenance() {
         const r = sheet.readings_climate;
         return `<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:8px">
           <tr style="background:#f0f9ff"><th colspan="4" style="padding:4px 6px;text-align:left;color:#0369a1">Lecturas Clima/Refrigeración</th></tr>
-          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">P. Alta</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.pressure_high||0} bar</b></td>
-              <td style="padding:3px 6px;border:1px solid #e5e7eb">P. Baja</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.pressure_low||0} bar</b></td></tr>
-          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">T. Impulsión</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.temp_impulsion||0} °C</b></td>
-              <td style="padding:3px 6px;border:1px solid #e5e7eb">T. Retorno</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.temp_retorno||0} °C</b></td></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">P. Alta</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.pressure_high, 'bar')}</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">P. Baja</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.pressure_low, 'bar')}</b></td></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">T. Impulsión</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.temp_impulsion, '°C')}</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">T. Retorno</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.temp_retorno, '°C')}</b></td></tr>
           <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">Gas</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.refrigerant_type||'-'}</b></td>
-              <td style="padding:3px 6px;border:1px solid #e5e7eb">Carga gas</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.refrigerant_charge||0} kg</b></td></tr>
-          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">Recalent.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.superheat||0} °C</b></td>
-              <td style="padding:3px 6px;border:1px solid #e5e7eb">Subenfr.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.subcooling||0} °C</b></td></tr>
-          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">GWP</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.fgas_gwp||0}</b></td>
-              <td style="padding:3px 6px;border:1px solid #e5e7eb">CO₂ equiv.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${(r.fgas_equivalent_co2||0).toFixed(3)} t</b></td></tr>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">Carga gas</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.refrigerant_charge, 'kg')}</b></td></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">Recalent.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.superheat, '°C')}</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">Subenfr.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.subcooling, '°C')}</b></td></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">GWP</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.fgas_gwp)}</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">CO₂ equiv.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.fgas_equivalent_co2, 't', 3)}</b></td></tr>
         </table>`;
       }
       if (sheet.type === 'electrico' && sheet.readings_electric) {
         const r = sheet.readings_electric;
         return `<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:8px">
           <tr style="background:#fefce8"><th colspan="4" style="padding:4px 6px;text-align:left;color:#a16207">Lecturas Eléctricas</th></tr>
-          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">V L1</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.voltage_l1||0} V</b></td>
-              <td style="padding:3px 6px;border:1px solid #e5e7eb">V L2</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.voltage_l2||0} V</b></td></tr>
-          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">R. Tierra</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.ground_resistance||0} Ω</b></td>
-              <td style="padding:3px 6px;border:1px solid #e5e7eb">R. Aislam.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.insulation_resistance||0} MΩ</b></td></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">V L1</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.voltage_l1, 'V')}</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">V L2</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.voltage_l2, 'V')}</b></td></tr>
+          <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">R. Tierra</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.ground_resistance, 'Ω')}</b></td>
+              <td style="padding:3px 6px;border:1px solid #e5e7eb">R. Aislam.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${medida(r.insulation_resistance, 'MΩ')}</b></td></tr>
           <tr><td style="padding:3px 6px;border:1px solid #e5e7eb">Test dif.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.differential_test?'✓':'✗'}</b></td>
               <td style="padding:3px 6px;border:1px solid #e5e7eb">Test térm.</td><td style="padding:3px 6px;border:1px solid #e5e7eb"><b>${r.thermal_test?'✓':'✗'}</b></td></tr>
         </table>`;
@@ -234,6 +320,7 @@ export default function Maintenance() {
           <div class="field"><span>Marca: </span>${sheet.equipment_brand||'-'}</div>
           <div class="field"><span>Modelo: </span>${sheet.equipment_model||'-'}</div>
           <div class="field"><span>Nº serie: </span>${sheet.serial_number||'-'}</div>
+          ${bloqueCompresor(sheet)}
           <div class="field"><span>Ubicación: </span>${sheet.location||'-'}</div>
           <div class="field"><span>Técnico: </span><b>${sheet.technician_name||'-'}</b></div>
         </div>
@@ -300,6 +387,34 @@ export default function Maintenance() {
                 <Input placeholder="Marca" value={form.equipment_brand} onChange={e => setForm({ ...form, equipment_brand: e.target.value })} />
                 <Input placeholder="Modelo" value={form.equipment_model} onChange={e => setForm({ ...form, equipment_model: e.target.value })} />
                 <Input placeholder="Nº serie" value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} />
+              </div>
+
+              {/* Datos de la placa del compresor. Se copian tal cual de la
+                  etiqueta: cada cosa en su casilla, para que salgan ordenados
+                  en la hoja y se puedan buscar después. */}
+              <div className="rounded-lg border border-slate-200 p-3 space-y-2" data-prueba="datos-compresor">
+                <p className="text-sm font-semibold text-slate-700">🔧 Datos del compresor</p>
+                <p className="text-xs text-slate-500">
+                  Cópialos de la placa. Lo que no sepas, déjalo en blanco: no hace falta rellenarlo todo.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <Input placeholder="Referencia completa (ej: FH4518Y-XC3A)" value={form.compressor_ref}
+                    onChange={e => setForm({ ...form, compressor_ref: e.target.value })} />
+                  <Input placeholder="Marca (ej: FH2)" value={form.compressor_brand}
+                    onChange={e => setForm({ ...form, compressor_brand: e.target.value })} />
+                  <Input placeholder="Aplicación (ej: HBP, MBP, LBP)" value={form.compressor_application}
+                    onChange={e => setForm({ ...form, compressor_application: e.target.value })} />
+                  <Input placeholder="Alimentación (ej: 220-240V 1PH 50Hz)" value={form.compressor_supply}
+                    onChange={e => setForm({ ...form, compressor_supply: e.target.value })} />
+                  <Input placeholder="Refrigerantes (ej: R-134a, R-513A)" value={form.compressor_refrigerants}
+                    onChange={e => setForm({ ...form, compressor_refrigerants: e.target.value })} />
+                  <Input placeholder="Tecnología (ej: Recíproco, Scroll)" value={form.compressor_technology}
+                    onChange={e => setForm({ ...form, compressor_technology: e.target.value })} />
+                  <Input placeholder="Potencia (CV / HP)" value={form.compressor_power_hp}
+                    onChange={e => setForm({ ...form, compressor_power_hp: e.target.value })} />
+                  <Input placeholder="Otros datos de la placa" value={form.compressor_notes}
+                    onChange={e => setForm({ ...form, compressor_notes: e.target.value })} />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Input placeholder="Ubicación" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} />

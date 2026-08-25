@@ -248,14 +248,44 @@ export function camposNumericosVacios(err) {
   return [...campos];
 }
 
-/** Devuelve una copia con esos campos como "sin valor" en vez de texto vacío. */
+/**
+ * Devuelve una copia con esos campos como "sin valor" en vez de texto vacío.
+ *
+ * Busca DENTRO de los sub-objetos, no solo en el primer nivel, y esa es la
+ * parte importante. En la hoja de mantenimiento las lecturas van agrupadas
+ * (readings_electric.voltage_l1, readings_solar.panel_voltage…). El servidor
+ * las nombra por el campo suelto —«voltage_l1»—, así que mirando solo el
+ * primer nivel no se encontraba nada, no se arreglaba nada y el guardado
+ * fallaba igual: 17 campos rechazados por dejar en blanco lo que no se ha
+ * medido, que es lo normal en una revisión.
+ */
 export function conNumerosVaciosANulo(datos, campos) {
   if (!datos || typeof datos !== 'object' || !campos?.length) return datos;
-  const salida = Array.isArray(datos) ? [...datos] : { ...datos };
+  const aBuscar = new Set(campos);
   let tocado = false;
-  for (const c of campos) {
-    if (salida[c] === '') { salida[c] = null; tocado = true; }
-  }
+
+  const recorrer = (valor) => {
+    if (Array.isArray(valor)) {
+      const copia = valor.map(recorrer);
+      return copia.some((v, i) => v !== valor[i]) ? copia : valor;
+    }
+    if (!valor || typeof valor !== 'object') return valor;
+    const copia = { ...valor };
+    let cambiado = false;
+    for (const [clave, dentro] of Object.entries(valor)) {
+      if (dentro === '' && aBuscar.has(clave)) {
+        copia[clave] = null;
+        cambiado = true;
+        tocado = true;
+        continue;
+      }
+      const nuevo = recorrer(dentro);
+      if (nuevo !== dentro) { copia[clave] = nuevo; cambiado = true; }
+    }
+    return cambiado ? copia : valor;
+  };
+
+  const salida = recorrer(datos);
   return tocado ? salida : datos;
 }
 
