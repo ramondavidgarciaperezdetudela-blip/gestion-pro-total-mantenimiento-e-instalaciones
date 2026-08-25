@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -323,19 +324,12 @@ export default function IncidentManagement() {
           <div className="flex gap-3 flex-wrap items-end">
             <div className="flex-1 min-w-48">
               <label className="text-xs text-gray-600 font-semibold mb-1 block">Filtrar por cliente</label>
-              <Select value={selectedContact} onValueChange={handleSelectContact}>
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Todos los clientes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={null}>Todos los clientes</SelectItem>
-                  {contacts.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} {c.surname || ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <BuscadorCliente
+                contacts={contacts}
+                value={selectedContact}
+                onValueChange={handleSelectContact}
+                placeholder="Todos los clientes"
+              />
             </div>
             <div className="w-32">
               <label className="text-xs text-gray-600 font-semibold mb-1 block">Estado</label>
@@ -382,17 +376,15 @@ export default function IncidentManagement() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Cliente *</label>
-                <Select value={form.contact_id} onValueChange={v => {
+                <BuscadorCliente
+                contacts={contacts}
+                value={form.contact_id}
+                onValueChange={v => {
                   const c = contacts.find(x => x.id === v);
                   setForm(f => ({ ...f, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : '' }));
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
-                  <SelectContent>
-                    {contacts.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name} {c.surname || ''}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                }}
+                placeholder="Seleccionar cliente"
+              />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Tipo equipo</label>

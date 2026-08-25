@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -294,12 +295,12 @@ Genera informe de inventario con:
           {reportType === 'cliente' && (
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">Cliente a analizar *</label>
-              <Select value={selectedContact} onValueChange={setSelectedContact}>
-                <SelectTrigger><SelectValue placeholder="Selecciona un cliente..." /></SelectTrigger>
-                <SelectContent>
-                  {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname || ''} {c.company_name ? `— ${c.company_name}` : ''}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <BuscadorCliente
+                contacts={contacts}
+                value={selectedContact}
+                onValueChange={setSelectedContact}
+                placeholder="Selecciona un cliente..."
+              />
             </div>
           )}
 

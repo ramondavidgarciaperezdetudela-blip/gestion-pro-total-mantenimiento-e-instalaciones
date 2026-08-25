@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { Search, Bot, Users, FileText, Wrench, ClipboardList, Package, Loader2, ExternalLink, Zap } from 'lucide-react';
@@ -141,12 +141,12 @@ Stock bajo mínimo: ${stock.filter(s=>s.min_stock>0&&s.quantity<=s.min_stock).le
 
       {/* Cliente selector for mode=cliente */}
       {mode === 'cliente' && (
-        <Select value={selectedContact} onValueChange={setSelectedContact}>
-          <SelectTrigger><SelectValue placeholder="Selecciona un cliente para analizarlo..." /></SelectTrigger>
-          <SelectContent>
-            {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname} {c.company_name && `(${c.company_name})`}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <BuscadorCliente
+                contacts={contacts}
+                value={selectedContact}
+                onValueChange={setSelectedContact}
+                placeholder="Selecciona un cliente para analizarlo..."
+              />
       )}
 
       {/* Search input */}

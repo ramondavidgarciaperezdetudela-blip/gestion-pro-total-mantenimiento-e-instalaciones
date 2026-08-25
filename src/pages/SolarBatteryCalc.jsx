@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -622,10 +623,12 @@ export default function SolarBatteryCalc() {
           </Tabs>
           <Card>
             <CardContent className="p-4 space-y-3">
-              <Select value={solarForm.contact_id} onValueChange={selectContact(setSolarForm)}>
-                <SelectTrigger><SelectValue placeholder="Vincular a cliente (opcional)" /></SelectTrigger>
-                <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
-              </Select>
+              <BuscadorCliente
+                contacts={contacts}
+                value={solarForm.contact_id}
+                onValueChange={selectContact(setSolarForm)}
+                placeholder="Vincular a cliente (opcional)"
+              />
               {solarMode === 'por_consumo' ? (
                 <div><label className="text-sm font-medium">Consumo diario (kWh/día) o anual (kWh/año)</label>
                   <Input type="number" value={solarForm.consumption_kwh} onChange={e => setSolarForm({ ...solarForm, consumption_kwh: e.target.value })} className="mt-1" />
@@ -728,10 +731,12 @@ export default function SolarBatteryCalc() {
         <TabsContent value="baterias" className="space-y-4 mt-4">
           <Card>
             <CardContent className="p-4 space-y-4">
-              <Select value={batForm.contact_id} onValueChange={selectContact(setBatForm)}>
-                <SelectTrigger><SelectValue placeholder="Vincular a cliente (opcional)" /></SelectTrigger>
-                <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
-              </Select>
+              <BuscadorCliente
+                contacts={contacts}
+                value={batForm.contact_id}
+                onValueChange={selectContact(setBatForm)}
+                placeholder="Vincular a cliente (opcional)"
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
                   <p className="font-semibold text-sm text-gray-700">Consumo y autonomía</p>
@@ -879,10 +884,12 @@ export default function SolarBatteryCalc() {
                 <p className="text-sm font-semibold text-amber-800">☀️🔋 Cálculo completo Solar + Almacenamiento</p>
                 <p className="text-xs text-gray-600">Calcula simultáneamente la instalación fotovoltaica y el sistema de baterías, generando todos los informes, esquemas y tablas en un único documento.</p>
               </div>
-              <Select value={combForm.contact_id} onValueChange={selectContact(setCombForm)}>
-                <SelectTrigger><SelectValue placeholder="Vincular a cliente (opcional)" /></SelectTrigger>
-                <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
-              </Select>
+              <BuscadorCliente
+                contacts={contacts}
+                value={combForm.contact_id}
+                onValueChange={selectContact(setCombForm)}
+                placeholder="Vincular a cliente (opcional)"
+              />
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div><label className="text-xs text-gray-500">Nº paneles</label><Input type="number" value={combForm.num_panels} onChange={e => setCombForm({ ...combForm, num_panels: e.target.value })} /></div>
                 <div><label className="text-xs text-gray-500">W por panel</label><Input type="number" value={combForm.panel_power_w} onChange={e => setCombForm({ ...combForm, panel_power_w: e.target.value })} /></div>

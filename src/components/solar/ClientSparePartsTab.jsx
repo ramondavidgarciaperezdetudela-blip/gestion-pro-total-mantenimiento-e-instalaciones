@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -132,13 +133,12 @@ export default function ClientSparePartsTab({ contactId = null, contactName = nu
       {!contactId && (
         <div className="flex gap-2 items-center">
           <label className="text-sm font-medium text-gray-600 whitespace-nowrap">Filtrar por cliente:</label>
-          <Select value={selectedContact} onValueChange={setSelectedContact}>
-            <SelectTrigger className="max-w-xs"><SelectValue placeholder="Todos los clientes" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={null}>Todos</SelectItem>
-              {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname || ''}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <BuscadorCliente
+                contacts={contacts}
+                value={selectedContact}
+                onValueChange={setSelectedContact}
+                placeholder="Todos los clientes"
+              />
         </div>
       )}
 
@@ -160,17 +160,16 @@ export default function ClientSparePartsTab({ contactId = null, contactName = nu
             {!contactId && (
               <div>
                 <label className="text-xs text-gray-500">Vincular a cliente (opcional)</label>
-                <Select value={form.contact_id} onValueChange={v => {
+                <BuscadorCliente
+                contacts={contacts}
+                value={form.contact_id}
+                onValueChange={v => {
                   const c = contacts.find(co => co.id === v);
                   setF('contact_id', v);
                   setF('contact_name', c ? `${c.name} ${c.surname || ''}` : '');
-                }}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Sin cliente" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={null}>Sin cliente (almacén general)</SelectItem>
-                    {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname || ''}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                }}
+                placeholder="Sin cliente"
+              />
               </div>
             )}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -591,15 +592,17 @@ export default function PVGISReport({ totalKwp = 3.2, numPanels = 8, panelW = 40
           <Users className="w-5 h-5 text-green-700 flex-shrink-0" />
           <div className="flex-1 min-w-[200px]">
             <label className="text-xs text-green-800 font-semibold block mb-1">Vincular informe a cliente</label>
-            <Select value={selectedContactId} onValueChange={v => {
+            <BuscadorCliente
+                contacts={contacts}
+                value={selectedContactId}
+                onValueChange={v => {
               setSelectedContactId(v);
               const c = contacts.find(co => co.id === v);
               if (c) setClientName(`${c.name} ${c.surname || ''}`.trim());
               setSavedDocId(null);
-            }}>
-              <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Seleccionar cliente..." /></SelectTrigger>
-              <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
-            </Select>
+            }}
+                placeholder="Seleccionar cliente..."
+              />
           </div>
           <Button
             onClick={saveToClient}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -192,13 +193,15 @@ Responde en formato JSON con esta estructura:
 
       <Card>
         <CardContent className="p-4 space-y-4">
-          <Select value={form.contact_id} onValueChange={v => {
+          <BuscadorCliente
+                contacts={contacts}
+                value={form.contact_id}
+                onValueChange={v => {
             const c = contacts.find(co => co.id === v);
             setForm({...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : ''});
-          }}>
-            <SelectTrigger><SelectValue placeholder="Vincular a cliente (opcional)" /></SelectTrigger>
-            <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
-          </Select>
+          }}
+                placeholder="Vincular a cliente (opcional)"
+              />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">

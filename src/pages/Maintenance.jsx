@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -376,13 +377,15 @@ export default function Maintenance() {
                   <SelectContent>{TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <Select value={form.contact_id} onValueChange={v => {
+              <BuscadorCliente
+                contacts={contacts}
+                value={form.contact_id}
+                onValueChange={v => {
                 const c = contacts.find(co => co.id === v);
                 setForm({ ...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : '' });
-              }}>
-                <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
-                <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
-              </Select>
+              }}
+                placeholder="Cliente"
+              />
               <div className="grid grid-cols-3 gap-2">
                 <Input placeholder="Marca" value={form.equipment_brand} onChange={e => setForm({ ...form, equipment_brand: e.target.value })} />
                 <Input placeholder="Modelo" value={form.equipment_model} onChange={e => setForm({ ...form, equipment_model: e.target.value })} />

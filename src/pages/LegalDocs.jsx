@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -566,17 +567,12 @@ export default function LegalDocs() {
               <span className="text-sm font-medium text-blue-800">Vincular a cliente:</span>
             </div>
             <div className="flex-1 min-w-48">
-              <Select value={selectedContact} onValueChange={setSelectedContact}>
-                <SelectTrigger className="bg-white"><SelectValue placeholder="Seleccionar cliente (opcional)" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin vincular</SelectItem>
-                  {contacts.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} {c.surname || ''} {c.company_name ? `— ${c.company_name}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <BuscadorCliente
+                contacts={contacts}
+                value={selectedContact}
+                onValueChange={setSelectedContact}
+                placeholder="Seleccionar cliente (opcional)"
+              />
             </div>
             {contact && (
               <Badge className="bg-blue-100 text-blue-800">

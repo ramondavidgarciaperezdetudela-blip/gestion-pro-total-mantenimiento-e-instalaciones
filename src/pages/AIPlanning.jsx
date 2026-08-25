@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -336,13 +337,12 @@ export default function AIPlanning() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-500">Cliente</label>
-                    <Select value={selectedContact} onValueChange={setSelectedContact}>
-                      <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Manual (sin vincular)</SelectItem>
-                        {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname || ''} {c.company_name ? `— ${c.company_name}` : ''}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <BuscadorCliente
+                contacts={contacts}
+                value={selectedContact}
+                onValueChange={setSelectedContact}
+                placeholder="Seleccionar..."
+              />
                   </div>
                   {(!selectedContact || selectedContact === 'none') && (
                     <div><label className="text-xs text-gray-500">Nombre cliente</label><Input value={form.cliente} onChange={e => setF('cliente', e.target.value)} /></div>

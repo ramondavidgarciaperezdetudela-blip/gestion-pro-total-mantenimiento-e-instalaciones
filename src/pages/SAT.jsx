@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import PullToRefresh from '../components/PullToRefresh';
 import { Card, CardContent } from "@/components/ui/card";
@@ -658,15 +659,15 @@ export default function SAT() {
               <Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
             </div>
 
-            <Select value={form.contact_id || ''} onValueChange={v => {
+            <BuscadorCliente
+                contacts={contacts}
+                value={form.contact_id || ''}
+                onValueChange={v => {
               const c = contacts.find(co => co.id === v);
               setForm({ ...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}`.trim() : '' });
-            }}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar cliente *" /></SelectTrigger>
-              <SelectContent>
-                {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname} {c.company_name && `(${c.company_name})`}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            }}
+                placeholder="Seleccionar cliente *"
+              />
 
             <div className="grid grid-cols-4 gap-2">
               <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>

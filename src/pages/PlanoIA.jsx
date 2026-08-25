@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -2518,16 +2519,12 @@ export default function PlanoIA() {
           <div className="space-y-3">
             <div>
               <label className="text-xs font-medium text-slate-600">Cliente</label>
-              <Select value={contactoId} onValueChange={setContactoId}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Elegir cliente…" /></SelectTrigger>
-                <SelectContent>
-                  {contactos.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {`${c.name || ''} ${c.surname || ''}`.trim()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <BuscadorCliente
+                contacts={contactos}
+                value={contactoId}
+                onValueChange={setContactoId}
+                placeholder="Elegir cliente…"
+              />
               <p className="text-[11px] text-slate-400 mt-1">
                 Si no eliges ninguno se guarda como «Cliente» y lo cambias luego en Documentos.
               </p>

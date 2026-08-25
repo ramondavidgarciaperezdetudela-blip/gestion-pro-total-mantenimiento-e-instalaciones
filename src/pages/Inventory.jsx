@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -431,13 +432,15 @@ export default function Inventory() {
             <div className="flex gap-4 items-start">
               <PhotoUploader photoUrl={cmForm.photo_url} onUpload={handleCmPhotoUpload} uploading={uploadingCm} inputRef={fileCmRef} label="Foto" />
               <div className="flex-1 space-y-2">
-                <Select value={cmForm.contact_id} onValueChange={v => {
+                <BuscadorCliente
+                contacts={contacts}
+                value={cmForm.contact_id}
+                onValueChange={v => {
                   const c = contacts.find(x => x.id === v);
                   setCmForm(f => ({ ...f, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}`.trim() : '' }));
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar cliente *" /></SelectTrigger>
-                  <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname || ''} {c.company_name ? `(${c.company_name})` : ''}</SelectItem>)}</SelectContent>
-                </Select>
+                }}
+                placeholder="Seleccionar cliente *"
+              />
                 <Input placeholder="Nombre del equipo *" value={cmForm.name} onChange={e => setCmForm({ ...cmForm, name: e.target.value })} />
               </div>
             </div>

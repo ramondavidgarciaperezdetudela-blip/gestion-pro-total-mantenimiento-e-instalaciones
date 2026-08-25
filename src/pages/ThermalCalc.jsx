@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -343,13 +344,15 @@ export default function ThermalCalc() {
       <Card>
         <CardContent className="p-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Select value={form.contact_id} onValueChange={v => {
+            <BuscadorCliente
+                contacts={contacts}
+                value={form.contact_id}
+                onValueChange={v => {
               const c = contacts.find(co => co.id === v);
               setForm({...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : ''});
-            }}>
-              <SelectTrigger><SelectValue placeholder="Vincular a cliente (opcional)" /></SelectTrigger>
-              <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
-            </Select>
+            }}
+                placeholder="Vincular a cliente (opcional)"
+              />
             <Select value={form.refrigerant_type} onValueChange={v => setForm({...form, refrigerant_type: v})}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{REFRIGERANTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { NumberField } from "@/components/ui/number-field";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sun, Save, UserCheck, Edit3, CheckCircle, TrendingUp } from 'lucide-react';
 import SupplierPriceLookup from '../components/solar/SupplierPriceLookup';
@@ -143,14 +143,16 @@ export default function SolarCalc() {
 
           <Card>
             <CardContent className="p-4 space-y-3">
-              <Select value={form.contact_id} onValueChange={v => {
+              <BuscadorCliente
+                contacts={contacts}
+                value={form.contact_id}
+                onValueChange={v => {
                 const c = contacts.find(co => co.id === v);
                 setForm({...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : ''});
                 setSavedId(null);
-              }}>
-                <SelectTrigger><SelectValue placeholder="Vincular a cliente (opcional)" /></SelectTrigger>
-                <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
-              </Select>
+              }}
+                placeholder="Vincular a cliente (opcional)"
+              />
 
               {mode === 'por_consumo' && (
                 <div>

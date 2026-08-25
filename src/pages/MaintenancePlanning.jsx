@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -283,19 +284,12 @@ export default function MaintenancePlanning() {
           <div className="flex gap-3 items-end">
             <div className="flex-1 min-w-48">
               <label className="text-xs text-gray-600 font-semibold mb-1 block">Filtrar por cliente</label>
-              <Select value={selectedContact} onValueChange={setSelectedContact}>
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Todos los clientes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={null}>Todos los clientes</SelectItem>
-                  {contacts.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} {c.surname || ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <BuscadorCliente
+                contacts={contacts}
+                value={selectedContact}
+                onValueChange={setSelectedContact}
+                placeholder="Todos los clientes"
+              />
             </div>
           </div>
         </CardContent>

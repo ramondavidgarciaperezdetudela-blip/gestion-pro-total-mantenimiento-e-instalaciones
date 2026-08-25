@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -645,13 +646,15 @@ export default function ColdRoomCalc() {
   const ColdRoomInputs = () => (
     <>
       <div className="grid grid-cols-2 gap-2">
-        <Select value={form.contact_id} onValueChange={v => {
+        <BuscadorCliente
+                contacts={contacts}
+                value={form.contact_id}
+                onValueChange={v => {
           const c = contacts.find(co => co.id === v);
           setForm({...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : ''});
-        }}>
-          <SelectTrigger><SelectValue placeholder="Vincular a cliente" /></SelectTrigger>
-          <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
-        </Select>
+        }}
+                placeholder="Vincular a cliente"
+              />
         <Select value={form.refrigerant_type} onValueChange={v => setForm({...form, refrigerant_type: v})}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>{REFRIGERANTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
@@ -982,13 +985,15 @@ export default function ColdRoomCalc() {
           <Card>
             <CardContent className="p-4 space-y-3">
               <div className="grid grid-cols-2 gap-2">
-                <Select value={form.contact_id} onValueChange={v => {
+                <BuscadorCliente
+                contacts={contacts}
+                value={form.contact_id}
+                onValueChange={v => {
                   const c = contacts.find(co => co.id === v);
                   setForm({...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}` : ''});
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Vincular a cliente" /></SelectTrigger>
-                  <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
-                </Select>
+                }}
+                placeholder="Vincular a cliente"
+              />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <div><label className="text-[10px] text-gray-500">T. cámara (°C)</label><NumberField value={form.cold_room_temp} onChange={v => setForm({...form, cold_room_temp: v})} /></div>

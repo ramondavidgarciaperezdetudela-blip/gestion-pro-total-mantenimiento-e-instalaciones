@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -451,16 +452,12 @@ export default function Availability() {
               <>
                 <div>
                   <label className="text-xs font-medium text-slate-600">Cliente ya registrado</label>
-                  <Select value={form.contact_id} onValueChange={elegirContacto}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Buscar cliente…" /></SelectTrigger>
-                    <SelectContent>
-                      {contactos.map(c => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {`${c.name || ''} ${c.surname || ''}`.trim()}{c.phone ? ` · ${c.phone}` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <BuscadorCliente
+                contacts={contactos}
+                value={form.contact_id}
+                onValueChange={elegirContacto}
+                placeholder="Buscar cliente…"
+              />
                   <p className="text-[11px] text-slate-400 mt-1">O escribe los datos abajo si es un cliente nuevo.</p>
                 </div>
 

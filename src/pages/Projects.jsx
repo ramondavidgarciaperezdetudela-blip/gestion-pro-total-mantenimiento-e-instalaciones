@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -379,16 +380,15 @@ export default function Projects() {
           <div className="space-y-3">
             <Input placeholder="Nombre del proyecto *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
 
-            <Select value={form.contact_id || ''} onValueChange={v => {
+            <BuscadorCliente
+                contacts={contacts}
+                value={form.contact_id || ''}
+                onValueChange={v => {
               const c = contacts.find(co => co.id === v);
               setForm({ ...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}`.trim() : '' });
-            }}>
-              <SelectTrigger><SelectValue placeholder="Cliente (opcional)" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={null}>Sin cliente</SelectItem>
-                {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname} {c.company_name && `(${c.company_name})`}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            }}
+                placeholder="Cliente (opcional)"
+              />
 
             <div className="grid grid-cols-3 gap-2">
               <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -782,12 +783,12 @@ export default function Documents() {
               </Select>
             </div>
 
-            <Select value={form.contact_id || ''} onValueChange={handleContactSelect}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar cliente (opcional)" /></SelectTrigger>
-              <SelectContent>
-                {contacts.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname} {c.company_name ? `(${c.company_name})` : ''}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <BuscadorCliente
+                contacts={contacts}
+                value={form.contact_id || ''}
+                onValueChange={handleContactSelect}
+                placeholder="Seleccionar cliente (opcional)"
+              />
 
             {/* Si no hay cliente seleccionado, permitir introducir datos manualmente */}
             {!form.contact_id &&

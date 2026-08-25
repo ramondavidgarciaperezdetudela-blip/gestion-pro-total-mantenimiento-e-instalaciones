@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -314,13 +315,15 @@ export default function EquipmentDiaryPage() {
           </DialogHeader>
           <div className="space-y-3">
             {!editingDiary && (
-              <Select value={diaryForm.contact_id||''} onValueChange={v => {
+              <BuscadorCliente
+                contacts={contacts}
+                value={diaryForm.contact_id||''}
+                onValueChange={v => {
                 const c = contacts.find(x => x.id === v);
                 setDiaryForm({...diaryForm, contact_id: v, contact_name: c ? `${c.name} ${c.surname||''}`.trim() : ''});
-              }}>
-                <SelectTrigger><SelectValue placeholder="Cliente *" /></SelectTrigger>
-                <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname||''} {c.company_name?`(${c.company_name})`:''}</SelectItem>)}</SelectContent>
-              </Select>
+              }}
+                placeholder="Cliente *"
+              />
             )}
             {/* Foto del equipo */}
             {diaryForm.equipment_photo_url && (

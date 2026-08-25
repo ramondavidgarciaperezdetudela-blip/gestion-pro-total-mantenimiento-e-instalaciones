@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -143,10 +144,12 @@ export default function EquipmentFailureHistory() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2">
-                <Select value={formData.contact_id} onValueChange={handleContactChange}>
-                  <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
-                  <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}</SelectContent>
-                </Select>
+                <BuscadorCliente
+                contacts={contacts}
+                value={formData.contact_id}
+                onValueChange={handleContactChange}
+                placeholder="Cliente"
+              />
                 <Select value={formData.equipment_type} onValueChange={v => setFormData({...formData, equipment_type: v})}>
                   <SelectTrigger><SelectValue placeholder="Tipo equipo" /></SelectTrigger>
                   <SelectContent>{EQUIPMENT_TYPES.map(t => <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
@@ -213,13 +216,12 @@ export default function EquipmentFailureHistory() {
       {/* Filtro por cliente */}
       <Card>
         <CardContent className="p-4">
-          <Select value={selectedContact} onValueChange={setSelectedContact}>
-            <SelectTrigger><SelectValue placeholder="Filtrar por cliente..." /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={null}>Todos los clientes</SelectItem>
-              {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.surname}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <BuscadorCliente
+                contacts={contacts}
+                value={selectedContact}
+                onValueChange={setSelectedContact}
+                placeholder="Filtrar por cliente..."
+              />
         </CardContent>
       </Card>
 
