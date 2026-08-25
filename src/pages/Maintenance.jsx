@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
+import BuscarFichaTecnica from '@/components/BuscarFichaTecnica';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -401,6 +402,9 @@ export default function Maintenance() {
                 <p className="text-xs text-slate-500">
                   Cópialos de la placa. Lo que no sepas, déjalo en blanco: no hace falta rellenarlo todo.
                 </p>
+                {/* Rellenarlos sin teclear: pegando la ficha del fabricante o
+                    deduciéndolos de la referencia. */}
+                <BuscarFichaTecnica form={form} setForm={setForm} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <Input placeholder="Referencia completa (ej: FH4518Y-XC3A)" value={form.compressor_ref}
                     onChange={e => setForm({ ...form, compressor_ref: e.target.value })} />
