@@ -23,6 +23,8 @@ import PantallaArranque, { PantallaErrorSesion } from '@/components/PantallaArra
 import UpdateChecker from '@/components/UpdateChecker';
 import AvisoServidor from './components/AvisoServidor'
 import StorageSetupNotice from '@/components/StorageSetupNotice';
+import RecordarTrabajo from '@/components/RecordarTrabajo';
+import AvisoRecuperado from '@/components/AvisoRecuperado';
 const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
 
 class ErrorBoundary extends Component {
@@ -138,6 +140,10 @@ const AuthenticatedApp = () => {
       <UpdateChecker headless />
       {/* Aviso de primera instalación: dónde se guardan fotos y documentos */}
       <StorageSetupNotice />
+      {/* Si Android cerró la aplicación por su cuenta y se ha recuperado lo que
+          se estaba escribiendo, decirlo: si no, los campos aparecen rellenos sin
+          explicación y parece que te has equivocado de ficha. */}
+      <AvisoRecuperado />
     </Suspense>
   );
 };
@@ -151,6 +157,9 @@ function App() {
         <QueryClientProvider client={queryClientInstance}>
           <Router>
             <NavigationTracker />
+            {/* Recuerda la pantalla y lo escrito por si Android cierra la
+                aplicación mientras se consulta otra cosa en el móvil. */}
+            <RecordarTrabajo />
             <AuthenticatedApp />
           </Router>
           <Toaster />
