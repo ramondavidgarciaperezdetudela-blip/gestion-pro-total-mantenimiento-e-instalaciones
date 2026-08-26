@@ -1,6 +1,7 @@
 import { base44 } from '@/api/base44Client';
 import { motivoDelFallo } from '@/lib/avisoServidor';
 import { actualizacionDiariaActivada, esIAApagada } from '@/lib/modoSinIA';
+import { ajustesIA } from '@/lib/proveedorIA';
 
 // ── Categorías que se mantienen al día automáticamente ──────────────────────
 // Compartido entre la página "Centro de Actualizaciones" (UpdateCenter.jsx) y
@@ -321,7 +322,13 @@ export function motivoDeLaConsulta(err) {
   const detalle = String(err?.data?.detail || err?.data?.message || err?.message || '');
 
   if (estado === 404) {
-    return 'La ayuda con IA no está disponible en tu cuenta de Base44 (no responde a la consulta). Compruébalo en el panel de Base44.';
+    // Solo es cosa de Base44 si la consulta ha ido a Base44. Con una IA libre
+    // un 404 quiere decir otra cosa (el modelo ya no existe), y mandar a mirar
+    // el panel de Base44 es mandar a buscar donde no está el problema.
+    if (ajustesIA().proveedor === 'base44') {
+      return 'La ayuda con IA no está disponible en tu cuenta de Base44 (no responde a la consulta). Compruébalo en el panel de Base44.';
+    }
+    return detalle || 'La IA no ha reconocido la consulta. Compruébalo en Configuración → Qué IA usar.';
   }
   if (estado === 408 || estado === 504 || /timeout|timed out|ETIMEDOUT/i.test(detalle)) {
     return 'La consulta ha tardado demasiado y el servidor la ha cortado. Buscar en internet es lento; vuelve a intentarlo.';

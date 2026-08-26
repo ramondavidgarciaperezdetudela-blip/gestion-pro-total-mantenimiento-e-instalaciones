@@ -54,12 +54,21 @@ export const MODELOS_OLLAMA = [
   { id: 'gemma2', nombre: 'Gemma 2 (9B) — ~5,4 GB' },
 ];
 
+// Lista de respaldo, SOLO para cuando no se puede preguntar a OpenRouter (sin
+// internet, por ejemplo). La buena es la que se pide en vivo con
+// modelosGratisOpenRouter(): OpenRouter retira modelos gratuitos cada pocos
+// meses, y cualquier lista escrita a mano aquí se queda vieja y acaba dando
+// «404 · ese modelo ya no está disponible» en mitad del trabajo.
 export const MODELOS_OPENROUTER = [
   { id: 'meta-llama/llama-3.3-70b-instruct:free', nombre: 'Llama 3.3 70B (gratis)' },
+  { id: 'deepseek/deepseek-chat-v3-0324:free', nombre: 'DeepSeek V3 (gratis)' },
   { id: 'qwen/qwen-2.5-72b-instruct:free', nombre: 'Qwen 2.5 72B (gratis)' },
   { id: 'mistralai/mistral-7b-instruct:free', nombre: 'Mistral 7B (gratis)' },
   { id: 'google/gemma-2-9b-it:free', nombre: 'Gemma 2 9B (gratis)' },
 ];
+
+/** Dónde se pregunta qué modelos hay ahora mismo. */
+export const URL_MODELOS_OPENROUTER = 'https://openrouter.ai/api/v1/models';
 
 export const POR_DEFECTO = {
   proveedor: 'ollama',
@@ -195,8 +204,13 @@ export function motivoHttp(estado, texto, url = '') {
   }
   if (estado === 404) {
     return esOpenRouter
-      ? 'Ese modelo ya no está disponible en OpenRouter. Elige otro de la lista.'
+      ? 'Ningún modelo gratuito de OpenRouter ha contestado. Se han probado varios y todos han fallado: comprueba que hay internet y que la clave está bien, o usa la IA del ordenador (Ollama), que no depende de ellos.'
       : 'Ollama no encuentra ese modelo. Descárgalo con: ollama pull <modelo>';
+  }
+  if (estado === 402) {
+    return esOpenRouter
+      ? 'OpenRouter pide saldo para ese modelo. Los gratuitos tienen un tope diario; espera unas horas o usa Ollama en el ordenador, que no tiene tope.'
+      : 'La IA pide un pago para esa consulta.';
   }
   if (estado === 429) {
     return esOpenRouter
@@ -225,13 +239,63 @@ export async function llamarOllama({ prompt, response_json_schema }, cfg = ajust
   return pideJson ? (jsonDeRespuesta(salida) ?? salida) : salida;
 }
 
-/** Consulta a OpenRouter, con los modelos abiertos gratuitos. */
-export async function llamarOpenRouter({ prompt, response_json_schema }, cfg = ajustesIA()) {
-  if (!cfg.openrouter_clave) {
-    const err = new Error('Falta la clave gratuita de OpenRouter. Pégala en Configuración → IA.');
-    err.status = null;
-    throw err;
-  }
+// ── Los modelos gratuitos de OpenRouter cambian solos ───────────────────────
+//
+// OpenRouter retira y renombra los modelos «:free» cada pocos meses. Con la
+// lista escrita a mano dentro del programa, el día que retiran el que estaba
+// puesto la consulta contesta 404 y el trabajo se para hasta que alguien entra
+// en Configuración y elige otro a mano — que es exactamente lo que se pidió
+// que NO hiciera falta. Así que la lista se pide en vivo y, si el modelo
+// guardado ya no está, el programa se busca otro y sigue sin decir nada.
+
+// Orden de preferencia cuando hay que elegir solo. A igualdad, gana el de más
+// contexto, que es el que aguanta las fichas técnicas largas.
+const PREFERIDOS_OPENROUTER = [
+  /llama-3\.3/i, /deepseek/i, /qwen/i, /mistral/i, /gemma/i, /llama-3/i, /phi/i,
+];
+
+function puntosDeModelo(id) {
+  const i = PREFERIDOS_OPENROUTER.findIndex((r) => r.test(id));
+  return i === -1 ? 0 : PREFERIDOS_OPENROUTER.length - i;
+}
+
+function esGratisEnOpenRouter(m) {
+  if (String(m?.id || '').endsWith(':free')) return true;
+  const p = m?.pricing || {};
+  const cero = (v) => v === undefined || v === null || v === '' || Number(v) === 0;
+  return cero(p.prompt) && cero(p.completion);
+}
+
+/**
+ * La lista VIVA de modelos gratuitos de OpenRouter, ya ordenada por cuál
+ * conviene más. Se pregunta a OpenRouter, así que está al día siempre sin
+ * tener que tocar ni publicar el programa.
+ */
+export async function modelosGratisOpenRouter(cfg = ajustesIA()) {
+  const cuerpo = await pedir(URL_MODELOS_OPENROUTER, {
+    method: 'GET',
+    headers: cfg.openrouter_clave ? { Authorization: `Bearer ${cfg.openrouter_clave}` } : {},
+  }, 20000);
+  const datos = typeof cuerpo === 'string' ? JSON.parse(cuerpo) : cuerpo;
+  return (datos?.data || [])
+    .filter(esGratisEnOpenRouter)
+    .map((m) => ({
+      id: m.id,
+      nombre: `${m.name || m.id}${/gratis|free/i.test(m.name || '') ? '' : ' (gratis)'}`,
+      contexto: Number(m.context_length) || 0,
+    }))
+    .sort((a, b) => puntosDeModelo(b.id) - puntosDeModelo(a.id) || b.contexto - a.contexto);
+}
+
+/** ¿El fallo es «ese modelo ya no existe» y no otra cosa? */
+export function esModeloRetirado(err) {
+  const estado = err?.status ?? null;
+  if (estado === 404) return true;
+  return estado === 400 && /model|modelo/i.test(String(err?.message || ''));
+}
+
+/** Una sola llamada, con el modelo que se le diga. */
+async function unaLlamadaOpenRouter({ prompt, response_json_schema }, cfg, modelo) {
   const { texto, pideJson } = prepararPeticion({ prompt, response_json_schema });
   const cuerpo = await pedir('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
@@ -240,14 +304,62 @@ export async function llamarOpenRouter({ prompt, response_json_schema }, cfg = a
       Authorization: `Bearer ${cfg.openrouter_clave}`,
     },
     body: JSON.stringify({
-      model: cfg.openrouter_modelo,
+      model: modelo,
       messages: [{ role: 'user', content: texto }],
       ...(pideJson ? { response_format: { type: 'json_object' } } : {}),
     }),
   });
   const datos = typeof cuerpo === 'string' ? JSON.parse(cuerpo) : cuerpo;
+  // OpenRouter a veces contesta 200 con el error dentro. Si no se mira aquí,
+  // llega vacío a la pantalla y parece que la IA «no ha dicho nada».
+  if (datos?.error) {
+    const err = new Error(String(datos.error.message || datos.error));
+    err.status = Number(datos.error.code) || 404;
+    throw err;
+  }
   const salida = datos?.choices?.[0]?.message?.content ?? '';
   return pideJson ? (jsonDeRespuesta(salida) ?? salida) : salida;
+}
+
+/**
+ * Consulta a OpenRouter, con los modelos abiertos gratuitos.
+ *
+ * Si el modelo guardado ya no existe, prueba con otros de la lista viva hasta
+ * cuatro veces y deja apuntado el que ha funcionado. Quien lo usa no se entera
+ * de nada: la consulta simplemente sale.
+ */
+export async function llamarOpenRouter(peticion, cfg = ajustesIA()) {
+  if (!cfg.openrouter_clave) {
+    const err = new Error('Falta la clave gratuita de OpenRouter. Pégala en Configuración → IA.');
+    err.status = null;
+    throw err;
+  }
+
+  const probados = new Set();
+  let candidatos = null;
+  let modelo = cfg.openrouter_modelo || POR_DEFECTO.openrouter_modelo;
+  let ultimoFallo = null;
+
+  for (let vuelta = 0; vuelta < 4 && modelo; vuelta += 1) {
+    probados.add(modelo);
+    try {
+      const salida = await unaLlamadaOpenRouter(peticion, cfg, modelo);
+      if (modelo !== cfg.openrouter_modelo) guardarAjustesIA({ openrouter_modelo: modelo });
+      return salida;
+    } catch (e) {
+      if (!esModeloRetirado(e)) throw e;
+      ultimoFallo = e;
+      if (!candidatos) {
+        const vivos = await modelosGratisOpenRouter(cfg).catch(() => []);
+        candidatos = vivos.length
+          ? vivos.map((m) => m.id)
+          : MODELOS_OPENROUTER.map((m) => m.id);
+      }
+      modelo = candidatos.find((id) => !probados.has(id)) || null;
+    }
+  }
+
+  throw ultimoFallo || new Error('Ningún modelo gratuito de OpenRouter ha contestado.');
 }
 
 /** Los modelos que ya están descargados en el Ollama del ordenador. */

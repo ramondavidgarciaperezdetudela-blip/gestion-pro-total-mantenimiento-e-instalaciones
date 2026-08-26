@@ -1,9 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, AlertCircle, Loader2, Download } from 'lucide-react';
 import {
-  PROVEEDORES, MODELOS_OLLAMA, MODELOS_OPENROUTER,
+  PROVEEDORES, MODELOS_OLLAMA, MODELOS_OPENROUTER, modelosGratisOpenRouter,
   escucharAjustesIA, guardarAjustesIA, modelosInstalados, consultarIA, hayPuenteEscritorio,
 } from '@/lib/proveedorIA';
+
+/**
+ * La lista que se enseña, con el modelo guardado dentro aunque OpenRouter ya
+ * no lo ofrezca. Si no, el desplegable enseñaría otro distinto del que está
+ * puesto de verdad, que es la forma más rápida de volverse loco.
+ */
+function conElGuardado(lista, guardado) {
+  if (!guardado || lista.some((m) => m.id === guardado)) return lista;
+  return [{ id: guardado, nombre: `${guardado} (el que tienes puesto)` }, ...lista];
+}
 
 /**
  * Elegir con qué IA trabaja el programa.
@@ -16,8 +26,27 @@ export default function AjustesProveedorIA() {
   const [cfg, setCfg] = useState(null);
   const [probando, setProbando] = useState(false);
   const [resultado, setResultado] = useState(null);
+  const [modelosOR, setModelosOR] = useState(MODELOS_OPENROUTER);
+  const [buscandoOR, setBuscandoOR] = useState(false);
 
   useEffect(() => escucharAjustesIA(setCfg), []);
+
+  // La lista de modelos gratuitos se le pide a OpenRouter, no se escribe aquí:
+  // ellos los retiran cada pocos meses y una lista fija acaba ofreciendo
+  // modelos que ya no existen.
+  const proveedor = cfg?.proveedor;
+  const clave = cfg?.openrouter_clave;
+  useEffect(() => {
+    if (proveedor !== 'openrouter') return undefined;
+    let vivo = true;
+    setBuscandoOR(true);
+    modelosGratisOpenRouter({ openrouter_clave: clave })
+      .then((lista) => { if (vivo && lista.length) setModelosOR(lista); })
+      .catch(() => { /* sin internet: se queda la lista de respaldo */ })
+      .finally(() => { if (vivo) setBuscandoOR(false); });
+    return () => { vivo = false; };
+  }, [proveedor, clave]);
+
   if (!cfg) return null;
 
   const cambiar = (campo, valor) => { setResultado(null); guardarAjustesIA({ [campo]: valor }); };
@@ -150,9 +179,17 @@ export default function AjustesProveedorIA() {
               value={cfg.openrouter_modelo}
               onChange={(e) => cambiar('openrouter_modelo', e.target.value)}
               aria-label="Modelo de OpenRouter"
+              data-prueba="modelo-openrouter"
             >
-              {MODELOS_OPENROUTER.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+              {conElGuardado(modelosOR, cfg.openrouter_modelo).map((m) => (
+                <option key={m.id} value={m.id}>{m.nombre}</option>
+              ))}
             </select>
+            <span className="mt-1 block font-normal text-slate-400">
+              {buscandoOR
+                ? 'Buscando qué modelos gratuitos hay ahora mismo…'
+                : 'No hace falta tocarlo: si el modelo deja de existir, el programa coge otro gratuito él solo.'}
+            </span>
           </label>
         </div>
       )}
