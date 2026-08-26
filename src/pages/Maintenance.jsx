@@ -27,10 +27,33 @@ import InspeccionSanitaria from '@/components/InspeccionSanitaria';
 import { fichaVacia, hayAlgoContestado } from '@/lib/inspeccionSanitaria';
 import { htmlHojaSanitaria } from '@/lib/hojaSanitaria';
 import { anotarEnDiario } from '@/lib/diarioDeReparaciones';
+import { camposPerdidos, avisoDeCamposPerdidos } from '@/lib/guardadoDeVerdad';
 
 const FGAS_GWP = {
   'R-410A': 2088, 'R-32': 675, 'R-134a': 1430, 'R-404A': 3922,
   'R-407C': 1774, 'R-290': 3, 'R-449A': 1397, 'R-452A': 2140, 'R-448A': 1387
+};
+
+// Campos que el servidor podría estar tirando en silencio si no están
+// declarados en su ficha. Se comprueban al guardar: mandarlos y que
+// desaparezcan sin decir nada es peor que un error, porque nadie se entera
+// hasta que vuelve a abrir la ficha y el dato ya no está.
+const CAMPOS_VIGILADOS = [
+  'compressor_ref', 'compressor_brand', 'compressor_application', 'compressor_supply',
+  'compressor_refrigerants', 'compressor_technology', 'compressor_power_hp', 'compressor_notes',
+  'inspeccion_sanitaria',
+];
+
+const NOMBRES_VIGILADOS = {
+  compressor_ref: 'Referencia del compresor',
+  compressor_brand: 'Marca del compresor',
+  compressor_application: 'Aplicación del compresor',
+  compressor_supply: 'Alimentación del compresor',
+  compressor_refrigerants: 'Refrigerantes admitidos',
+  compressor_technology: 'Tecnología del compresor',
+  compressor_power_hp: 'Potencia del compresor',
+  compressor_notes: 'Otros datos de la placa',
+  inspeccion_sanitaria: 'Hoja de inspección técnico-sanitaria',
 };
 
 const EMPTY_FORM = {
@@ -156,8 +179,9 @@ export default function Maintenance() {
     // — y un cero no es lo mismo que "no medido": falsea la revisión.
     const data = sinVacios({ ...form });
     let guardadaId = editing?.id || '';
+    let devuelta = null;
     if (editing) {
-      await base44.entities.MaintenanceSheet.update(editing.id, data);
+      devuelta = await base44.entities.MaintenanceSheet.update(editing.id, data);
     } else {
       // Re-calcular número justo antes de guardar (por si otro guardó mientras tanto)
       const latest = await cargarTodo('MaintenanceSheet', '-date');
@@ -165,6 +189,7 @@ export default function Maintenance() {
         data.sheet_number = getNextAvailableNumber(latest.map(x => x.sheet_number || ''));
       }
       const saved = await base44.entities.MaintenanceSheet.create(data);
+      devuelta = saved;
       guardadaId = saved?.id || '';
       if (form.contact_id) {
         await base44.entities.ClientDocument.create({
@@ -178,6 +203,11 @@ export default function Maintenance() {
         });
       }
     }
+    // ¿Ha guardado el servidor TODO lo que se le ha mandado? Lo que contesta
+    // al guardar es su versión del registro, así que comparando se sabe si ha
+    // descartado algún campo en silencio.
+    const perdidos = camposPerdidos(data, devuelta, CAMPOS_VIGILADOS);
+
     // Si la ficha lleva hoja de inspección sanitaria, la intervención queda
     // apuntada en el diario de esa cámara. Antes había que hacerlo a mano
     // después, así que casi nunca se hacía: la máquina que más avisos daba
@@ -205,7 +235,10 @@ export default function Maintenance() {
     const s = await cargarTodo('MaintenanceSheet', '-date');
     setSheets(s);
     setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(s.map(x => x.sheet_number || '')) });
-    alert((editing ? '✅ Ficha actualizada correctamente' : '✅ Ficha guardada y vinculada al cliente') + avisoDiario);
+    const okMsg = (editing ? '✅ Ficha actualizada correctamente' : '✅ Ficha guardada y vinculada al cliente') + avisoDiario;
+    alert(perdidos.length
+      ? `${okMsg}\n\n${avisoDeCamposPerdidos(perdidos, 'MaintenanceSheet', NOMBRES_VIGILADOS)}`
+      : okMsg);
   };
 
   const handleEdit = (sheet) => {

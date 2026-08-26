@@ -369,6 +369,106 @@ export async function modelosInstalados(cfg = ajustesIA()) {
   return (datos?.models || []).map((m) => m.name);
 }
 
+// ── Cuando OpenRouter dice que no quedan consultas ─────────────────────────
+//
+// Los modelos gratuitos de OpenRouter tienen tope diario. Al llegar al tope se
+// acabó la ayuda con IA hasta el día siguiente, y eso en mitad de un trabajo
+// no vale. Ollama, en cambio, corre en el propio ordenador: no tiene tope, no
+// tiene cuenta y funciona sin internet.
+//
+// Así que al toparse con el límite no se da la consulta por perdida: se mira
+// si hay un Ollama a mano —en el ordenador, o el del ordenador por el wifi si
+// estamos en el móvil— y se repite ahí. Y si funciona, se deja puesto para
+// que la siguiente vez vaya directa y no se vuelva a gastar el intento.
+
+/** ¿El servidor está diciendo "hasta aquí por hoy"? */
+export function seAcabaronLasConsultas(err) {
+  const estado = err?.status ?? err?.response?.status ?? null;
+  if (estado === 429 || estado === 402) return true;
+  return /tope|rate.?limit|quota|too many requests|insufficient|credits?/i
+    .test(String(err?.message || ''));
+}
+
+/** ¿Hay un Ollama utilizable desde este aparato, ahora mismo? */
+export async function hayOllamaAMano(cfg = ajustesIA()) {
+  try {
+    const modelos = await conTiempo(modelosInstalados(cfg), 3500);
+    if (modelos.length) return { donde: 'aqui', modelo: elegirModelo(modelos, cfg.ollama_modelo) };
+  } catch { /* no está en este aparato */ }
+  return null;
+}
+
+/**
+ * Deja la IA gratuita puesta SIN preguntar nada, si ya está lista.
+ *
+ * Se llama al arrancar. No descarga nada ni abre ventanas: si Ollama está
+ * funcionando con algún modelo, lo elige y punto. Quien lo tenga instalado no
+ * tiene que entrar en ninguna pantalla de configuración, que es justo lo que
+ * se pidió.
+ *
+ * @returns {Promise<{puesto: boolean, modelo?: string}>}
+ */
+export async function autoConfigurarIALibre() {
+  const cfg = ajustesIA();
+  if (cfg.proveedor === 'ollama' && cfg.ollama_modelo) {
+    // Ya está elegido: solo se comprueba que el modelo guardado siga estando.
+    const hay = await hayOllamaAMano(cfg);
+    if (hay && hay.modelo !== cfg.ollama_modelo) {
+      guardarAjustesIA({ ollama_modelo: hay.modelo });
+      return { puesto: true, modelo: hay.modelo };
+    }
+    return { puesto: !!hay, modelo: cfg.ollama_modelo };
+  }
+  const hay = await hayOllamaAMano(cfg);
+  if (!hay) return { puesto: false };
+  guardarAjustesIA({ proveedor: 'ollama', ollama_modelo: hay.modelo });
+  return { puesto: true, modelo: hay.modelo };
+}
+
+/**
+ * Repite la consulta en un Ollama sin límite, si se puede.
+ *
+ * @returns {Promise<{ok: boolean, respuesta?: any, motivo?: string}>}
+ */
+export async function reintentarSinLimite(peticion, base44) {
+  const cfg = ajustesIA();
+
+  // 1. ¿Ollama en este mismo aparato? (ordenador)
+  const aqui = await hayOllamaAMano(cfg);
+  if (aqui) {
+    const usando = { ...cfg, proveedor: 'ollama', ollama_modelo: aqui.modelo };
+    const respuesta = await llamarOllama(peticion, usando);
+    guardarAjustesIA({ proveedor: 'ollama', ollama_modelo: aqui.modelo });
+    return { ok: true, respuesta, donde: 'este ordenador' };
+  }
+
+  // 2. ¿El Ollama del ordenador, por el wifi? (móvil y tablet)
+  if (base44) {
+    try {
+      const puente = await buscarIADelOrdenador(base44);
+      if (puente) {
+        const respuesta = await llamarIADelOrdenador(peticion, puente);
+        return { ok: true, respuesta, donde: `tu ordenador (${puente.ip})` };
+      }
+    } catch { /* no se llega */ }
+  }
+
+  return { ok: false, motivo: 'sin_ollama' };
+}
+
+/** El aviso de que se acabaron las consultas gratis, con la salida. */
+export function errorSinConsultas() {
+  const err = new Error(
+    'OpenRouter no acepta más consultas gratuitas por hoy y no he encontrado ninguna IA '
+    + 'sin límite a mano. La solución definitiva es instalar Ollama en el ordenador: es '
+    + 'gratis, no tiene tope, no pide cuenta y funciona sin internet. Lo tienes en '
+    + 'Configuración → Qué IA usar, con un botón que abre la descarga.',
+  );
+  err.status = 429;
+  err.sinConsultas = true;
+  return err;
+}
+
 /** Manda la consulta al proveedor elegido. */
 export async function consultarIA(peticion, cfg = ajustesIA()) {
   if (cfg.proveedor === 'ollama') return llamarOllama(peticion, cfg);

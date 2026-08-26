@@ -8,6 +8,7 @@ import { iaActivada, gastaCreditos, errorIAApagada } from '@/lib/modoSinIA';
 import {
   ajustesIA, consultarIA, esAppMovil, buscarIADelOrdenador, llamarIADelOrdenador,
   llamarOpenRouter, recogerClaveCompartida,
+  seAcabaronLasConsultas, reintentarSinLimite, errorSinConsultas,
 } from '@/lib/proveedorIA';
 
 const { appId, token, functionsVersion, appBaseUrl } = appParams;
@@ -196,6 +197,22 @@ const integracionesVigiladas = new Proxy({}, {
                 }
                 return await consultarIA(args[0] || {}, cfg);
               } catch (err) {
+                // Los modelos gratuitos de internet tienen tope diario. Al
+                // llegar al tope no se da la consulta por perdida: se busca un
+                // Ollama a mano —en el ordenador, o el del ordenador por el
+                // wifi— y se repite ahí, que no tiene límite ninguno. Si sale
+                // bien, además queda puesto para las siguientes.
+                if (seAcabaronLasConsultas(err)) {
+                  try {
+                    const r = await reintentarSinLimite(args[0] || {}, base44);
+                    if (r.ok) return r.respuesta;
+                  } catch (e2) {
+                    console.error('[base44Client] La IA sin límite tampoco ha podido:', e2);
+                  }
+                  const sinSalida = errorSinConsultas();
+                  avisarDeFallo({ funcion: punto, error: sinSalida });
+                  throw sinSalida;
+                }
                 avisarDeFallo({ funcion: punto, error: err });
                 throw err;
               }

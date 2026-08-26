@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Wand2, Loader2, ClipboardPaste, CheckCircle2, AlertCircle } from 'lucide-react';
 import {
   deLaFichaPegada, deLaReferencia, fusionar, resumenDeLoEncontrado, encargoParaLaIA,
@@ -24,9 +24,28 @@ export default function BuscarFichaTecnica({ form, setForm }) {
   const [buscando, setBuscando] = useState(false);
   const [resultado, setResultado] = useState(null);
 
+  // AQUÍ ESTABA EL FALLO QUE BORRABA LO ESCRITO A MANO.
+  //
+  // La ficha llega como propiedad, así que dentro de una función asíncrona se
+  // queda congelada en el valor que tenía al pulsar el botón. Buscar por la
+  // referencia hace DOS aplicaciones: primero lo que se deduce del código y
+  // después, tras esperar a la IA, lo que ella conteste. La segunda partía de
+  // aquella foto vieja y guardaba la ficha entera con ella: se llevaba por
+  // delante lo aplicado en el primer paso Y todo lo que se hubiera escrito a
+  // mano durante la espera, que son varios segundos tecleando datos de placa.
+  //
+  // Con una referencia siempre se parte de lo último: se actualiza en cada
+  // pintada (por si se ha escrito algo) y también nada más aplicar (por si se
+  // aplica dos veces seguidas sin que dé tiempo a repintar).
+  const ultimaFicha = useRef(form);
+  ultimaFicha.current = form;
+
   const aplicar = (encontrado, origen) => {
-    const { datos, puestos } = fusionar(form, encontrado);
-    if (puestos > 0) setForm(datos);
+    const { datos, puestos } = fusionar(ultimaFicha.current, encontrado);
+    if (puestos > 0) {
+      ultimaFicha.current = datos;
+      setForm(datos);
+    }
     setResultado({
       ok: puestos > 0,
       puestos,
@@ -49,7 +68,7 @@ export default function BuscarFichaTecnica({ form, setForm }) {
   };
 
   const desdeLaReferencia = async () => {
-    const ref = (form.compressor_ref || '').trim();
+    const ref = (ultimaFicha.current.compressor_ref || '').trim();
     if (!ref) {
       setResultado({ ok: false, texto: 'Escribe primero la referencia del compresor.' });
       return;
@@ -64,7 +83,7 @@ export default function BuscarFichaTecnica({ form, setForm }) {
       // Y si sigue faltando y la IA está encendida, se le pregunta.
       const faltan = ['compressor_brand', 'compressor_application', 'compressor_supply',
         'compressor_refrigerants', 'compressor_technology']
-        .filter((c) => !form[c] && !porPatron[c]);
+        .filter((c) => !ultimaFicha.current[c] && !porPatron[c]);
 
       if (faltan.length && iaActivada()) {
         const r = await base44.integrations.Core.InvokeLLM({
