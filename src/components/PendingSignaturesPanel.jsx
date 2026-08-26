@@ -12,12 +12,17 @@ export default function PendingSignaturesPanel() {
 
   const load = async () => {
     setLoading(true);
-    // Cargar en paralelo: presupuestos/facturas sin firmar, SAT sin firmar, mantenimientos sin firmar
-    const [invoices, satOrders, maintenances] = await Promise.all([
+    // Cargar en paralelo: presupuestos/facturas sin firmar, SAT sin firmar, mantenimientos sin firmar.
+    // allSettled: si una entidad falla (p.ej. MaintenanceSheet 404), las demás siguen
+    // funcionando y el panel no rompe toda la página.
+    const [inv, sat, maint] = await Promise.allSettled([
       base44.entities.Invoice.list('-date', 100),
       base44.entities.SATOrder.list('-date', 100),
       base44.entities.MaintenanceSheet.list('-date', 50),
     ]);
+    const invoices = inv.status === 'fulfilled' ? inv.value : [];
+    const satOrders = sat.status === 'fulfilled' ? sat.value : [];
+    const maintenances = maint.status === 'fulfilled' ? maint.value : [];
 
     const pendingItems = [];
 
