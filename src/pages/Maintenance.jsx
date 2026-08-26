@@ -27,7 +27,8 @@ import InspeccionSanitaria from '@/components/InspeccionSanitaria';
 import { fichaVacia, hayAlgoContestado } from '@/lib/inspeccionSanitaria';
 import { htmlHojaSanitaria } from '@/lib/hojaSanitaria';
 import { anotarEnDiario } from '@/lib/diarioDeReparaciones';
-import { camposPerdidos, avisoDeCamposPerdidos } from '@/lib/guardadoDeVerdad';
+import { camposPerdidos } from '@/lib/guardadoDeVerdad';
+import { guardarExtras, leerExtras, conExtras, borrarExtras, soloEstos } from '@/lib/camposExtra';
 
 const FGAS_GWP = {
   'R-410A': 2088, 'R-32': 675, 'R-134a': 1430, 'R-404A': 3922,
@@ -44,17 +45,6 @@ const CAMPOS_VIGILADOS = [
   'inspeccion_sanitaria',
 ];
 
-const NOMBRES_VIGILADOS = {
-  compressor_ref: 'Referencia del compresor',
-  compressor_brand: 'Marca del compresor',
-  compressor_application: 'Aplicación del compresor',
-  compressor_supply: 'Alimentación del compresor',
-  compressor_refrigerants: 'Refrigerantes admitidos',
-  compressor_technology: 'Tecnología del compresor',
-  compressor_power_hp: 'Potencia del compresor',
-  compressor_notes: 'Otros datos de la placa',
-  inspeccion_sanitaria: 'Hoja de inspección técnico-sanitaria',
-};
 
 const EMPTY_FORM = {
   sheet_number: '', contact_id: '', contact_name: '', date: format(new Date(), 'yyyy-MM-dd'),
@@ -164,7 +154,12 @@ export default function Maintenance() {
     Promise.all([
       cargarTodo('MaintenanceSheet', '-date'),
       base44.entities.Contact.list(),
-    ]).then(([s, c]) => {
+      leerExtras(base44, 'MaintenanceSheet'),
+    ]).then(([s0, c, sobrantes]) => {
+      // Lo que el servidor no quiso guardar (porque no tiene esos campos
+      // declarados) se guardó aparte. Aquí se vuelve a pegar donde iba, sin
+      // pisar nada de lo que sí venga del servidor.
+      const s = conExtras(s0, sobrantes);
       setSheets(s);
       setContacts(c);
       // Pre-calcular número para nueva ficha
@@ -206,7 +201,22 @@ export default function Maintenance() {
     // ¿Ha guardado el servidor TODO lo que se le ha mandado? Lo que contesta
     // al guardar es su versión del registro, así que comparando se sabe si ha
     // descartado algún campo en silencio.
+    //
+    // Y lo que haya descartado NO se pierde: se guarda aparte y se vuelve a
+    // pegar al cargar las fichas. Pedirle a quien está delante de una cámara
+    // que entre en un panel a declarar campos no es una solución; que el dato
+    // se guarde, sí.
     const perdidos = camposPerdidos(data, devuelta, CAMPOS_VIGILADOS);
+    let avisoExtras = '';
+    if (perdidos.length && guardadaId) {
+      const r = await guardarExtras(base44, 'MaintenanceSheet', guardadaId, soloEstos(data, perdidos));
+      avisoExtras = r.ok
+        ? `\n\nℹ️ ${perdidos.length} dato(s) —los del compresor y la hoja sanitaria— los guarda el programa `
+          + 'aparte, porque tu Base44 todavía no tiene esos campos declarados. Se ven y se imprimen igual. '
+          + 'Si algún día los añades en el panel (Entidades → MaintenanceSheet), esto deja de hacer falta solo.'
+        : `\n\n⚠️ No se han podido guardar ${perdidos.length} dato(s) del compresor / la hoja sanitaria `
+          + `(${r.motivo}). Vuelve a guardar la ficha cuando tengas conexión.`;
+    }
 
     // Si la ficha lleva hoja de inspección sanitaria, la intervención queda
     // apuntada en el diario de esa cámara. Antes había que hacerlo a mano
@@ -232,13 +242,15 @@ export default function Maintenance() {
 
     setDialogOpen(false);
     setEditing(null);
-    const s = await cargarTodo('MaintenanceSheet', '-date');
+    const [s0, sobrantes] = await Promise.all([
+      cargarTodo('MaintenanceSheet', '-date'),
+      leerExtras(base44, 'MaintenanceSheet'),
+    ]);
+    const s = conExtras(s0, sobrantes);
     setSheets(s);
     setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(s.map(x => x.sheet_number || '')) });
-    const okMsg = (editing ? '✅ Ficha actualizada correctamente' : '✅ Ficha guardada y vinculada al cliente') + avisoDiario;
-    alert(perdidos.length
-      ? `${okMsg}\n\n${avisoDeCamposPerdidos(perdidos, 'MaintenanceSheet', NOMBRES_VIGILADOS)}`
-      : okMsg);
+    alert((editing ? '✅ Ficha actualizada correctamente' : '✅ Ficha guardada y vinculada al cliente')
+      + avisoDiario + avisoExtras);
   };
 
   const handleEdit = (sheet) => {
@@ -791,7 +803,12 @@ export default function Maintenance() {
                   className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
                   <Phone className="w-3 h-3" /> WA
                 </button>
-                <button onClick={() => { base44.entities.MaintenanceSheet.delete(s.id).then(() => setSheets(sheets.filter(x => x.id !== s.id))); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
+                <button onClick={() => {
+                  base44.entities.MaintenanceSheet.delete(s.id).then(() => {
+                    setSheets(sheets.filter(x => x.id !== s.id));
+                    borrarExtras(base44, 'MaintenanceSheet', s.id);
+                  });
+                }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
                   <Trash2 className="w-3 h-3" /> Eliminar
                 </button>
               </div>

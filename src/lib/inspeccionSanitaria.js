@@ -14,6 +14,12 @@
  * REGLA DE LAS OPCIONES: en cada punto, la PRIMERA opción es la correcta y
  * las demás son deficiencias. De ahí sale solo el veredicto de la cabecera,
  * sin que nadie tenga que ir contando.
+ *
+ * SE PUEDE MARCAR MÁS DE UNA. Una máquina real no elige entre "sucio" y
+ * "aletas dobladas": puede estar sucia Y con las aletas dobladas, y obligar a
+ * quedarse con una sola era obligar a dejar fuera media avería. Y si lo que
+ * pasa no está en la lista, se escribe en las observaciones del apartado, que
+ * salen impresas justo debajo de sus puntos.
  */
 
 /** Secciones de una sola respuesta (se elige una opción) o de varias (se marcan). */
@@ -180,11 +186,36 @@ export function clave(seccion, punto) {
   return `${seccion}.${punto}`;
 }
 
+/**
+ * Lo marcado en un punto, siempre como lista.
+ *
+ * Las hojas antiguas guardaban una sola opción como texto suelto. Se aceptan
+ * las dos formas para que una ficha de hace un mes se siga leyendo igual.
+ */
+export function elegidasDe(ficha, seccionId, puntoId) {
+  const v = ficha?.respuestas?.[clave(seccionId, puntoId)];
+  if (Array.isArray(v)) return v.filter(Boolean);
+  if (typeof v === 'string' && v) return [v];
+  return [];
+}
+
+/** Marca o desmarca una opción, dejando las demás como estaban. */
+export function conLaOpcionCambiada(ficha, seccionId, puntoId, opcion) {
+  const k = clave(seccionId, puntoId);
+  const actuales = elegidasDe(ficha, seccionId, puntoId);
+  const nuevas = actuales.includes(opcion)
+    ? actuales.filter((o) => o !== opcion)
+    : [...actuales, opcion];
+  return { ...ficha, respuestas: { ...ficha?.respuestas, [k]: nuevas } };
+}
+
 /** ¿Se ha contestado algo? Para no imprimir una hoja en blanco. */
 export function hayAlgoContestado(ficha) {
   if (!ficha) return false;
   const r = ficha.respuestas || {};
-  if (Object.values(r).some((v) => v === true || (typeof v === 'string' && v))) return true;
+  if (Object.values(r).some((v) => v === true
+    || (typeof v === 'string' && v)
+    || (Array.isArray(v) && v.length > 0))) return true;
   if (Object.values(ficha.medidas || {}).some((v) => v !== '' && v != null)) return true;
   if (Object.values(ficha.observaciones || {}).some((v) => String(v || '').trim())) return true;
   return Object.values(ficha.fotos || {}).some((l) => (l || []).length > 0);
@@ -205,10 +236,13 @@ export function veredicto(ficha) {
   for (const seccion of SECCIONES) {
     if (seccion.tipo !== 'una') continue;
     for (const punto of seccion.puntos) {
-      const valor = ficha?.respuestas?.[clave(seccion.id, punto.id)];
-      if (!valor) { sinContestar++; continue; }
-      if (valor === punto.opciones[0]) correctos++;
-      else deficiencias.push({ seccion: seccion.titulo, punto: punto.etiqueta, estado: valor });
+      const elegidas = elegidasDe(ficha, seccion.id, punto.id);
+      if (elegidas.length === 0) { sinContestar++; continue; }
+      // Basta con que haya UNA marca deficiente para que el punto lo sea:
+      // "limpio pero con las aletas dobladas" no es un punto conforme.
+      const malas = elegidas.filter((o) => o !== punto.opciones[0]);
+      if (malas.length === 0) correctos++;
+      else deficiencias.push({ seccion: seccion.titulo, punto: punto.etiqueta, estado: malas.join(' + ') });
     }
   }
 

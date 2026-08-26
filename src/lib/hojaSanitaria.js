@@ -13,6 +13,7 @@
  */
 import {
   SECCIONES, FOTOS, clave, veredicto, ETIQUETA_VEREDICTO, marcadosDe, todasLasFotos,
+  elegidasDe,
 } from '@/lib/inspeccionSanitaria';
 
 /** Texto seguro dentro del HTML. Lo escribe una persona, así que se escapa. */
@@ -31,13 +32,13 @@ function juntar(trozos) {
 
 /** Una fila de un punto con opciones: se marca la elegida y se tachan las demás. */
 function filaPunto(ficha, seccion, punto) {
-  const elegida = ficha?.respuestas?.[clave(seccion.id, punto.id)] || '';
+  const elegidas = elegidasDe(ficha, seccion.id, punto.id);
   const medida = ficha?.medidas?.[clave(seccion.id, punto.id)];
-  const conforme = elegida && elegida === punto.opciones[0];
-  const deficiente = elegida && !conforme;
+  const deficiente = elegidas.some((o) => o !== punto.opciones[0]);
+  const conforme = elegidas.length > 0 && !deficiente;
 
   const opciones = punto.opciones.map((o) => {
-    const puesta = o === elegida;
+    const puesta = elegidas.includes(o);
     const color = puesta ? (o === punto.opciones[0] ? '#15803d' : '#b91c1c') : '#9ca3af';
     const peso = puesta ? '700' : '400';
     return `<span style="color:${color};font-weight:${peso};margin-right:10px;white-space:nowrap">
@@ -73,7 +74,8 @@ function bloqueSeccion(ficha, seccion) {
 
   const obs = String(ficha?.observaciones?.[seccion.id] || '').trim();
   const observaciones = obs
-    ? `<p style="margin:6px 0 0;font-size:9.5px"><b>Observaciones:</b> ${esc(obs)}</p>`
+    ? `<p style="margin:6px 0 0;padding:4px 6px;background:#f1f5f9;border-left:3px solid #64748b;font-size:9.5px">
+         <b>Observaciones:</b> ${esc(obs)}</p>`
     : '';
 
   return `<div class="seccion">

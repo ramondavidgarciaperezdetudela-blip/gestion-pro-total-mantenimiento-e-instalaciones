@@ -4,6 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import PhotoGallery from './PhotoGallery';
 import {
   SECCIONES, FOTOS, clave, veredicto, ETIQUETA_VEREDICTO, fichaVacia,
+  elegidasDe, conLaOpcionCambiada,
 } from '@/lib/inspeccionSanitaria';
 
 /**
@@ -30,6 +31,9 @@ export default function InspeccionSanitaria({ ficha, onChange }) {
 
   const cambiar = (parche) => onChange({ ...datos, ...parche });
   const responder = (k, valor) => cambiar({ respuestas: { ...datos.respuestas, [k]: valor } });
+  // Se puede marcar más de una: una máquina puede estar sucia Y con las aletas
+  // dobladas, y obligar a elegir una sola era dejar fuera media avería.
+  const alternar = (seccionId, puntoId, opcion) => onChange(conLaOpcionCambiada(datos, seccionId, puntoId, opcion));
   const medir = (k, valor) => cambiar({ medidas: { ...datos.medidas, [k]: valor } });
   const observar = (id, valor) => cambiar({ observaciones: { ...datos.observaciones, [id]: valor } });
   const fotografiar = (id, lista) => cambiar({ fotos: { ...datos.fotos, [id]: lista } });
@@ -44,6 +48,8 @@ export default function InspeccionSanitaria({ ficha, onChange }) {
         </p>
         <p className="mt-1 text-[11px] opacity-80">
           Esto es lo que verá el inspector nada más coger la hoja. Se calcula solo con lo que vas marcando.
+          Puedes marcar <strong>varias opciones</strong> en cada punto, y lo que no esté en la lista lo
+          escribes en las observaciones del apartado.
         </p>
       </div>
 
@@ -85,13 +91,13 @@ export default function InspeccionSanitaria({ ficha, onChange }) {
             <div className="space-y-2">
               {seccion.puntos.map((punto) => {
                 const k = clave(seccion.id, punto.id);
-                const elegida = datos.respuestas[k] || '';
+                const elegidas = elegidasDe(datos, seccion.id, punto.id);
                 return (
                   <div key={punto.id} className="border-b border-slate-100 pb-2 last:border-0">
                     <p className="text-[11px] font-medium text-slate-700">{punto.etiqueta}</p>
                     <div className="mt-1 flex flex-wrap gap-1.5">
                       {punto.opciones.map((opcion, i) => {
-                        const puesta = elegida === opcion;
+                        const puesta = elegidas.includes(opcion);
                         const buena = i === 0;
                         return (
                           <button
@@ -99,7 +105,7 @@ export default function InspeccionSanitaria({ ficha, onChange }) {
                             type="button"
                             data-prueba={`punto-${k}`}
                             aria-pressed={puesta}
-                            onClick={() => responder(k, puesta ? '' : opcion)}
+                            onClick={() => alternar(seccion.id, punto.id, opcion)}
                             className={`rounded-lg border px-2.5 py-1.5 text-[11px] transition ${
                               puesta
                                 ? (buena
@@ -155,14 +161,23 @@ export default function InspeccionSanitaria({ ficha, onChange }) {
             </div>
           )}
 
-          <Textarea
-            className="mt-2 text-[11px]"
-            rows={2}
-            placeholder="Observaciones de este apartado (opcional)"
-            value={datos.observaciones[seccion.id] || ''}
-            onChange={(e) => observar(seccion.id, e.target.value)}
-            aria-label={`Observaciones de ${seccion.titulo}`}
-          />
+          <div className="mt-2 rounded-lg bg-slate-50 p-2">
+            <p className="text-[10px] font-semibold text-slate-600">
+              ¿Falta alguna opción, o quieres detallar algo de este apartado?
+            </p>
+            <p className="mb-1 text-[10px] text-slate-500">
+              Escríbelo aquí y sale impreso en la hoja, justo debajo de estos puntos.
+            </p>
+            <Textarea
+              className="text-[11px] bg-white"
+              rows={2}
+              placeholder="Por ejemplo: «el desagüe vierte a la sala, se avisa al titular»"
+              value={datos.observaciones[seccion.id] || ''}
+              onChange={(e) => observar(seccion.id, e.target.value)}
+              aria-label={`Observaciones de ${seccion.titulo}`}
+              data-prueba={`observaciones-${seccion.id}`}
+            />
+          </div>
         </div>
       ))}
 
