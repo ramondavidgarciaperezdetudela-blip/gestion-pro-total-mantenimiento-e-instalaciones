@@ -23,6 +23,11 @@ import SignaturePad from '../components/SignaturePad';
 
 const TYPES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
+import InspeccionSanitaria from '@/components/InspeccionSanitaria';
+import { fichaVacia, hayAlgoContestado } from '@/lib/inspeccionSanitaria';
+import { htmlHojaSanitaria } from '@/lib/hojaSanitaria';
+import { anotarEnDiario } from '@/lib/diarioDeReparaciones';
+
 const FGAS_GWP = {
   'R-410A': 2088, 'R-32': 675, 'R-134a': 1430, 'R-404A': 3922,
   'R-407C': 1774, 'R-290': 3, 'R-449A': 1397, 'R-452A': 2140, 'R-448A': 1387
@@ -46,6 +51,10 @@ const EMPTY_FORM = {
   general_tasks: '',
   observations: '', recommendations: '',
   photos_before: [], photos_after: [], photos_evaporator_plate: [], photos_condenser_plate: [],
+  // La hoja que se le enseña a Sanidad cuando la ficha es de una cámara.
+  // Va dentro de la propia ficha para que no puedan separarse: el informe
+  // sanitario y las lecturas del día son la misma intervención.
+  inspeccion_sanitaria: fichaVacia(),
   signature_technician: '', signature_client: '', sign_datetime_technician: '', sign_datetime_client: '', status: 'completada'
 };
 
@@ -146,6 +155,7 @@ export default function Maintenance() {
     // hasta 17 campos, obligando a poner ceros en lecturas que no se han hecho
     // — y un cero no es lo mismo que "no medido": falsea la revisión.
     const data = sinVacios({ ...form });
+    let guardadaId = editing?.id || '';
     if (editing) {
       await base44.entities.MaintenanceSheet.update(editing.id, data);
     } else {
@@ -155,6 +165,7 @@ export default function Maintenance() {
         data.sheet_number = getNextAvailableNumber(latest.map(x => x.sheet_number || ''));
       }
       const saved = await base44.entities.MaintenanceSheet.create(data);
+      guardadaId = saved?.id || '';
       if (form.contact_id) {
         await base44.entities.ClientDocument.create({
           contact_id: form.contact_id,
@@ -167,12 +178,34 @@ export default function Maintenance() {
         });
       }
     }
+    // Si la ficha lleva hoja de inspección sanitaria, la intervención queda
+    // apuntada en el diario de esa cámara. Antes había que hacerlo a mano
+    // después, así que casi nunca se hacía: la máquina que más avisos daba
+    // era justo la que salía con el diario en blanco.
+    let avisoDiario = '';
+    const inspeccion = form.inspeccion_sanitaria;
+    if (inspeccion?.activa && hayAlgoContestado(inspeccion) && form.contact_id) {
+      try {
+        const ficha = { ...data, id: guardadaId };
+        const r = await anotarEnDiario(base44, { sheet: ficha, ficha: inspeccion });
+        if (r.ok) {
+          avisoDiario = r.creado
+            ? '\n📔 Se ha creado el diario de esta cámara y se ha apuntado la intervención.'
+            : '\n📔 Apuntada en el diario de reparaciones de esta cámara.';
+        }
+      } catch (e) {
+        // Que falle el diario no puede tirar la ficha, que ya está guardada.
+        console.error('[Maintenance] No se pudo apuntar en el diario:', e);
+        avisoDiario = '\n⚠️ La ficha se ha guardado, pero no se ha podido apuntar en el diario. Ábrelo y añádela a mano.';
+      }
+    }
+
     setDialogOpen(false);
     setEditing(null);
     const s = await cargarTodo('MaintenanceSheet', '-date');
     setSheets(s);
     setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(s.map(x => x.sheet_number || '')) });
-    alert(editing ? '✅ Ficha actualizada correctamente' : '✅ Ficha guardada y vinculada al cliente');
+    alert((editing ? '✅ Ficha actualizada correctamente' : '✅ Ficha guardada y vinculada al cliente') + avisoDiario);
   };
 
   const handleEdit = (sheet) => {
@@ -196,6 +229,7 @@ export default function Maintenance() {
       photos_before: sheet.photos_before || [], photos_after: sheet.photos_after || [],
       photos_evaporator_plate: sheet.photos_evaporator_plate || [],
       photos_condenser_plate: sheet.photos_condenser_plate || [],
+      inspeccion_sanitaria: { ...fichaVacia(), ...(sheet.inspeccion_sanitaria || {}) },
       signature_technician: sheet.signature_technician || '',
       signature_client: sheet.signature_client || '',
       sign_datetime_technician: sheet.sign_datetime_technician || '',
@@ -221,6 +255,37 @@ export default function Maintenance() {
   const updatePlumbing = (field, val) => setForm({ ...form, readings_plumbing: { ...form.readings_plumbing, [field]: val } });
 
   const typeColor = { clima: 'bg-blue-100 text-blue-700', refrigeracion: 'bg-cyan-100 text-cyan-700', electrico: 'bg-yellow-100 text-yellow-700', solar: 'bg-amber-100 text-amber-700', fontaneria: 'bg-teal-100 text-teal-700', general: 'bg-gray-100 text-gray-700' };
+
+  /**
+   * La hoja para el inspector de Sanidad.
+   *
+   * Va aparte del PDF normal a propósito: son dos documentos con dos lectores
+   * distintos. El de siempre es para el cliente y el archivo del instalador
+   * (presiones, recalentamientos, F-Gas); este es para Sanidad y responde a
+   * otra pregunta —en qué estado quedó la cámara ese día— con el veredicto
+   * arriba del todo y las fotos de la intervención al final.
+   */
+  const imprimirHojaSanitaria = async (sheet) => {
+    const ficha = sheet?.inspeccion_sanitaria;
+    if (!hayAlgoContestado(ficha)) {
+      alert('Esta ficha todavía no tiene nada contestado en la hoja de inspección sanitaria.');
+      return;
+    }
+    const [settingsList, contactList] = await Promise.all([
+      base44.entities.CompanySettings.list(),
+      sheet.contact_id ? base44.entities.Contact.filter({ id: sheet.contact_id }) : Promise.resolve([]),
+    ]);
+    const html = htmlHojaSanitaria({
+      sheet,
+      ficha,
+      company: settingsList[0] || {},
+      contact: contactList[0] || {},
+    });
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 600);
+  };
 
   const generatePDF = async (sheet) => {
     const [settingsList, contactList] = await Promise.all([
@@ -523,6 +588,41 @@ export default function Maintenance() {
                 </div>
               )}
 
+              {/* Hoja de inspección técnico-sanitaria (cámaras frigoríficas) */}
+              {form.type === 'refrigeracion' && (
+                <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50/40 p-3 space-y-3">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4"
+                      checked={!!form.inspeccion_sanitaria?.activa}
+                      data-prueba="activar-hoja-sanitaria"
+                      onChange={e => setForm({
+                        ...form,
+                        inspeccion_sanitaria: { ...fichaVacia(), ...form.inspeccion_sanitaria, activa: e.target.checked },
+                      })}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-emerald-900">
+                        🧊 Es una cámara frigorífica — añadir hoja de inspección técnico-sanitaria
+                      </span>
+                      <span className="mt-0.5 block text-xs text-emerald-800/80">
+                        Genera una hoja aparte para Sanidad, con el estado de la cámara de un vistazo y
+                        las fotos de este mismo día. Al guardar, la intervención queda apuntada en el
+                        diario de reparaciones de esta cámara.
+                      </span>
+                    </span>
+                  </label>
+
+                  {form.inspeccion_sanitaria?.activa && (
+                    <InspeccionSanitaria
+                      ficha={form.inspeccion_sanitaria}
+                      onChange={v => setForm({ ...form, inspeccion_sanitaria: v })}
+                    />
+                  )}
+                </div>
+              )}
+
               {/* General tasks */}
               {form.type === 'general' && (
                 <Textarea placeholder="Tareas realizadas en mantenimiento general..." value={form.general_tasks} onChange={e => setForm({ ...form, general_tasks: e.target.value })} rows={4} />
@@ -641,6 +741,14 @@ export default function Maintenance() {
                 <button onClick={() => generatePDF(s)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
                   <FileDown className="w-3 h-3" /> PDF
                 </button>
+                {hayAlgoContestado(s.inspeccion_sanitaria) && (
+                  <button
+                    onClick={() => imprimirHojaSanitaria(s)}
+                    data-prueba="hoja-sanitaria"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+                    <FileDown className="w-3 h-3" /> Hoja Sanidad
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     const phone = s.contact_phone?.replace(/\D/g,'') || '';
