@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +8,10 @@ import {
   AlertCircle, Clock, Settings, Archive, Trash2, FileText, RotateCcw, Info, ChevronDown, ChevronRight, Copy
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { fetchAllRecordsFast, runBackupJob, runRestoreJob, contarRegistros } from '@/lib/backupEngine';
+import {
+  runBackupJob, runRestoreJob, contarRegistros,
+  analizarDuplicados, borrarDuplicados,
+} from '@/lib/backupEngine';
 import {
   detectarEntorno, nombreCopia, listarCopias,
   abrirCarpetaCopias, leerDestino, guardarDestino, DESTINOS_MOVIL,
@@ -29,14 +31,6 @@ const ALL_ENTITIES = [
   'ChangeOpinionRequest', 'ClientMachine', 'DocumentTemplate',
   'EquipmentFailure', 'SATWorkTemplate', 'SupplierCatalog', 'SystemSettings',
 ];
-
-// Lee TODOS los registros de una entidad de forma robusta y rápida (paginado
-// EN PARALELO por rondas, con reintento sin orden si falla). Evita que una
-// sección quede vacía en la copia por un fallo de ordenación o por superar
-// un límite. Implementación real en src/lib/backupEngine.js, compartida con
-// la copia de seguridad y la restauración para que todas usen el mismo
-// motor rápido.
-const fetchAllRecords = fetchAllRecordsFast;
 
 // Clave natural por sección para el UPSERT al restaurar (actualizar en vez de
 // duplicar). Devuelve una cadena estable o null (si null → se usa el cotejo por
@@ -215,15 +209,18 @@ export default function BackupCenter() {
   const [restoreSelectedEntities, setRestoreSelectedEntities] = useState(new Set());
   const [restoreMode, setRestoreMode] = useState('update'); // 'clean' | 'update'
 
-  // Duplicates
+  // Duplicados. Ahora son DOS pasos: primero se mira, luego —si se quiere— se
+  // borra. Antes era un solo botón que analizaba y borraba de una tacada, así
+  // que no había ningún momento en el que se pudiera ver qué se iba a llevar.
   const [dupLoading, setDupLoading] = useState(false);
   const [dupProgress, setDupProgress] = useState('');
-  const [dupResults, setDupResults] = useState(null); // { entity, total, duplicates, removed }[]
+  const [dupAnalisis, setDupAnalisis] = useState(null);  // lo que se ha encontrado
+  const [dupResults, setDupResults] = useState(null);    // lo que se ha borrado
   const [dupSelectedEntities, setDupSelectedEntities] = useState(new Set(ALL_ENTITIES));
 
   useEffect(() => {
     const cfg = loadConfig();
-    if (cfg.reminder_days) setConfig(cfg);
+    if (cfg && Object.keys(cfg).length > 0) setConfig(c => ({ ...c, ...cfg }));
     setHistory(loadHistory());
     loadCounts();
   }, []);
@@ -252,6 +249,71 @@ export default function BackupCenter() {
 
   const totalRecords = Object.values(counts).reduce((a, b) => a + b, 0);
 
+  // ─── ESCRIBIR UN FICHERO DE COPIA ─────────────────────────────────────────
+  /**
+   * Escribe un JSON de copia SECCIÓN A SECCIÓN.
+   *
+   * Se hace así y no con un JSON.stringify de todo porque con muchos clientes,
+   * fotos y documentos ese texto no cabe en memoria: la aplicación se cerraba
+   * justo al final, cuando parecía que ya estaba hecha. Vive aquí, en una
+   * función suelta, porque lo usan la copia normal Y las copias de rescate.
+   */
+  const escribirCopiaPorSecciones = async ({ fileName, datos, secciones, extra = {}, avisar }) => {
+    const fichero = await abrirCopiaPorPartes({ nombre: fileName, destino: destinoMovil, carpetaPC });
+    if (!fichero.ok) return { ok: false, error: fichero.error };
+
+    const cabecera = {
+      exported_at: new Date().toISOString(),
+      version: '3.0',
+      app: 'TechManager Pro',
+      entities_count: secciones.length,
+      ...extra,
+    };
+
+    try {
+      await fichero.escribir('{\n');
+      const claves = Object.keys(cabecera);
+      for (let i = 0; i < claves.length; i++) {
+        const k = claves[i];
+        await fichero.escribir(`${JSON.stringify(k)}:${JSON.stringify(cabecera[k])}${i < claves.length - 1 ? ',' : ''}\n`);
+      }
+      for (let i = 0; i < secciones.length; i++) {
+        const seccion = secciones[i];
+        avisar?.(seccion, i);
+        await fichero.escribir(`,\n${JSON.stringify(seccion)}:${JSON.stringify(datos[seccion] || [])}`);
+        // Un respiro al navegador para que no se congele la pantalla.
+        await new Promise(r => setTimeout(r, 0));
+      }
+      await fichero.escribir('\n}\n');
+      const guardado = await fichero.cerrar();
+      return guardado.ok ? { ok: true, ...guardado, nombre: fileName } : { ok: false, error: guardado.error };
+    } catch (err) {
+      await fichero.cancelar();
+      return { ok: false, error: err?.message || 'error desconocido' };
+    }
+  };
+
+  /**
+   * Guarda una COPIA DE RESCATE antes de tocar nada.
+   *
+   * Esto es lo que faltaba y por lo que un borrado se llevó datos sin vuelta
+   * atrás. Si el rescate no se puede guardar, no se borra: es preferible no
+   * hacer la limpieza a hacerla sin red.
+   */
+  const guardarRescate = async (secciones, motivo, avisar) => {
+    avisar?.('Leyendo los datos actuales para la copia de rescate…');
+    const { datos, fallos } = await runBackupJob(secciones, ENTITY_LABELS, (msg) => avisar?.(msg));
+    if (fallos.length > 0) {
+      return {
+        ok: false,
+        error: `no se han podido leer enteras estas secciones: ${fallos.map(f => f.etiqueta).join(', ')}`,
+      };
+    }
+    avisar?.('Escribiendo la copia de rescate…');
+    const fileName = `rescate-${motivo}_${nombreCopia(new Date()).replace(/^copia-gestion-pro-total_/, '')}`;
+    return escribirCopiaPorSecciones({ fileName, datos, secciones, extra: { motivo_rescate: motivo } });
+  };
+
   // ─── EXPORTAR BACKUP ──────────────────────────────────────────────────────
   const doBackup = async () => {
     setLoading(true);
@@ -262,69 +324,43 @@ export default function BackupCenter() {
 
     // Varias secciones a la vez (no una a una): en cuentas con muchos datos
     // (documentos, fotos, órdenes SAT...) la copia tarda mucho menos.
-    const exported = await runBackupJob(entitiesToBackup, ENTITY_LABELS, (msg, pct) => {
-      setProgress(msg);
-      setProgressPct(pct);
-    });
-    const allData = {
-      exported_at: new Date().toISOString(),
-      version: '3.0',
-      app: 'TechManager Pro',
-      entities_count: entitiesToBackup.length,
-      ...exported,
-    };
+    const { datos: exported, fallos, duplicadosQuitados } = await runBackupJob(
+      entitiesToBackup, ENTITY_LABELS,
+      (msg, pct) => { setProgress(msg); setProgressPct(pct); },
+      { sinDuplicados: !!config.sin_duplicados },
+    );
+
+    // Una sección que no se ha podido leer entera NO se guarda como vacía. Una
+    // copia a medias que parece correcta es peor que no tener copia: el día que
+    // se restaure con "copia limpia" borrará lo que a ella le faltaba.
+    if (fallos.length > 0) {
+      setProgressPct(0);
+      setProgress(
+        `❌ Copia NO guardada. El servidor ha cortado la lectura de: ${fallos.map(f => f.etiqueta).join(', ')}. `
+        + 'Se para a propósito, porque el fichero habría salido incompleto sin avisar. '
+        + 'Espera un par de minutos y vuelve a darle.'
+      );
+      setUltimaCopia(null);
+      setLoading(false);
+      return;
+    }
+
+    const allData = { ...exported };
 
     setProgress('Generando archivo...');
     setProgressPct(90);
 
     const fileName = nombreCopia(new Date());
 
-    // El fichero se escribe SECCIÓN A SECCIÓN. Antes se montaba la copia
-    // entera como un solo texto (JSON.stringify de todo) y con muchos
-    // clientes, fotos y documentos ese texto no cabe en memoria: la
-    // aplicación se cerraba justo al llegar al final, cuando parecía que ya
-    // estaba hecha. Así en memoria solo está la sección que toca.
-    const fichero = await abrirCopiaPorPartes({
-      nombre: fileName, destino: destinoMovil, carpetaPC,
-    });
-    if (!fichero.ok) {
-      setProgressPct(0);
-      setProgress(`❌ No se pudo crear el fichero: ${fichero.error}`);
-      setUltimaCopia(null);
-      setLoading(false);
-      return;
-    }
-
-    let guardado;
-    try {
-      // Cabecera de la copia.
-      await fichero.escribir('{\n');
-      await fichero.escribir(`"exported_at":${JSON.stringify(allData.exported_at)},\n`);
-      await fichero.escribir(`"version":${JSON.stringify(allData.version)},\n`);
-      await fichero.escribir(`"app":${JSON.stringify(allData.app)},\n`);
-      await fichero.escribir(`"entities_count":${allData.entities_count}`);
-
-      // Y ahora una sección por vez.
-      for (let i = 0; i < entitiesToBackup.length; i++) {
-        const nombreSeccion = entitiesToBackup[i];
-        const registros = allData[nombreSeccion] || [];
-        setProgress(`Escribiendo ${ENTITY_LABELS[nombreSeccion] || nombreSeccion}…`);
+    const guardado = await escribirCopiaPorSecciones({
+      fileName,
+      datos: allData,
+      secciones: entitiesToBackup,
+      avisar: (seccion, i) => {
+        setProgress(`Escribiendo ${ENTITY_LABELS[seccion] || seccion}…`);
         setProgressPct(90 + Math.round((i / entitiesToBackup.length) * 9));
-        await fichero.escribir(`,\n${JSON.stringify(nombreSeccion)}:${JSON.stringify(registros)}`);
-        // Un respiro al navegador para que no se atragante ni se congele la
-        // pantalla mientras escribe secciones grandes.
-        await new Promise(r => setTimeout(r, 0));
-      }
-      await fichero.escribir('\n}\n');
-      guardado = await fichero.cerrar();
-    } catch (err) {
-      await fichero.cancelar();
-      setProgressPct(0);
-      setProgress(`❌ No se pudo escribir la copia: ${err?.message || 'error desconocido'}`);
-      setUltimaCopia(null);
-      setLoading(false);
-      return;
-    }
+      },
+    });
 
     if (!guardado.ok) {
       setProgressPct(0);
@@ -361,7 +397,10 @@ export default function BackupCenter() {
     setConfig(updatedConfig);
 
     setProgressPct(100);
-    setProgress(`✅ Copia completada: ${totalExported.toLocaleString()} registros en ${entitiesToBackup.length} secciones`);
+    const limpiezaMsg = duplicadosQuitados > 0
+      ? ` · ${duplicadosQuitados.toLocaleString()} repetidos omitidos (la copia queda con uno de cada)`
+      : '';
+    setProgress(`✅ Copia completada: ${totalExported.toLocaleString()} registros en ${entitiesToBackup.length} secciones${limpiezaMsg}`);
     setLoading(false);
     setTimeout(() => { setProgress(''); setProgressPct(0); }, 4000);
 
@@ -399,20 +438,39 @@ export default function BackupCenter() {
 
   const doRestore = async () => {
     if (!restoreData) return;
-    if (restoreMode === 'clean') {
-      const confirmed = window.confirm(
-        '⚠️ COPIA LIMPIA: Se borrarán TODOS los registros actuales de las secciones seleccionadas antes de restaurar.\n\n¿Estás seguro? Esta acción no se puede deshacer.'
-      );
-      if (!confirmed) return;
-    }
     const entitiesToRestore = ALL_ENTITIES.filter(e => restoreSelectedEntities.has(e) && restoreData[e]?.length > 0);
     setRestoring(true);
+
+    if (restoreMode === 'clean') {
+      const confirmed = window.confirm(
+        '⚠️ COPIA LIMPIA: se borrarán TODOS los registros actuales de las secciones seleccionadas antes de restaurar.\n\n'
+        + 'Antes de borrar nada se guardará automáticamente una COPIA DE RESCATE de lo que hay ahora, '
+        + 'y si esa copia no se puede guardar no se borrará nada.\n\n¿Seguimos?'
+      );
+      if (!confirmed) { setRestoring(false); return; }
+
+      // Esto es lo que faltaba: una vuelta atrás. La "copia limpia" es la única
+      // función del programa que borra datos buenos a propósito, y hasta ahora
+      // lo hacía sin dejar nada guardado.
+      const rescate = await guardarRescate(
+        entitiesToRestore, 'antes-de-restaurar', (msg) => setRestoreProgress(msg),
+      );
+      if (!rescate.ok) {
+        setRestoreProgress(
+          `❌ No se ha borrado ni restaurado nada: no se ha podido guardar la copia de rescate (${rescate.error}). `
+          + 'Sin red de seguridad no se toca nada.'
+        );
+        setRestoring(false);
+        return;
+      }
+      setRestoreProgress(`🛟 Copia de rescate guardada: ${rescate.nombre}. Restaurando…`);
+    }
 
     // Varias secciones a la vez (no una a una): mucho más rápido con copias
     // grandes. El motor compartido (backupEngine.js) sigue corriendo aunque
     // se navegue a otra pantalla, y cuenta los fallos reales en vez de dar
     // un falso "completado" si algo no se guarda.
-    const { total, failed, sinCambios } = await runRestoreJob(
+    const { total, failed, sinCambios, avisos } = await runRestoreJob(
       restoreData, entitiesToRestore, restoreMode, KEYERS, ENTITY_LABELS,
       (msg) => setRestoreProgress(msg)
     );
@@ -424,52 +482,89 @@ export default function BackupCenter() {
       : '';
     const okMsg = `✅ Restauración completa: ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.${igualesMsg}`;
     const failMsg = `⚠️ ${failed.toLocaleString()} operaciones fallaron al guardar en el servidor (revisa la conexión y vuelve a intentarlo). Consulta la consola para más detalle.`;
-    setRestoreProgress(failed > 0 ? `${okMsg}\n${failMsg}` : okMsg);
+    const avisosMsg = (avisos || []).length > 0 ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : '';
+    setRestoreProgress((failed > 0 ? `${okMsg}\n${failMsg}` : okMsg) + avisosMsg);
     setRestoring(false);
     loadCounts();
   };
 
-  // ─── ELIMINAR DUPLICADOS ──────────────────────────────────────────────────
-  const findAndDeleteDuplicates = async () => {
-    const confirmed = window.confirm(
-      '¿Seguro que quieres eliminar los registros duplicados? Se compararán todos los campos excepto ID y fechas. Esta acción no se puede deshacer.'
-    );
-    if (!confirmed) return;
+  // ─── DUPLICADOS: PRIMERO MIRAR, LUEGO BORRAR ─────────────────────────────
+  //
+  // Antes esto era un solo botón que analizaba y borraba de una tacada, con
+  // `.catch(() => {})` en cada borrado (así que si fallaban todos, el mensaje
+  // final seguía diciendo "proceso completado") y sin guardar nada antes.
+  // Ahora son dos pasos, con la lista delante y con copia de rescate.
+
+  const analizarLosDuplicados = async () => {
     setDupLoading(true);
     setDupResults(null);
-    const results = [];
-    const entitiesToCheck = ALL_ENTITIES.filter(e => dupSelectedEntities.has(e));
+    setDupAnalisis(null);
+    const secciones = ALL_ENTITIES.filter(e => dupSelectedEntities.has(e));
+    const analisis = await analizarDuplicados(secciones, ENTITY_LABELS, (msg) => setDupProgress(msg));
+    setDupAnalisis(analisis);
 
-    for (let i = 0; i < entitiesToCheck.length; i++) {
-      const ent = entitiesToCheck[i];
-      setDupProgress(`Analizando ${ENTITY_LABELS[ent] || ent}... (${i + 1}/${entitiesToCheck.length})`);
-      const all = await fetchAllRecords(ent);
-      if (!all || all.length === 0) continue;
+    const aBorrar = analisis.filter(a => a.seguro && !a.error).reduce((n, a) => n + a.duplicados, 0);
+    const bloqueadas = analisis.filter(a => !a.seguro && a.duplicados > 0).length;
+    const fallidas = analisis.filter(a => a.error).length;
 
-      const seen = new Map();
-      const toDelete = [];
-      for (const rec of all) {
-        const { id, created_date, updated_date, created_by, ...rest } = rec;
-        const sig = JSON.stringify(rest);
-        if (seen.has(sig)) {
-          toDelete.push(id);
-        } else {
-          seen.set(sig, id);
-        }
-      }
-
-      if (toDelete.length > 0) {
-        setDupProgress(`Eliminando ${toDelete.length} duplicados en ${ENTITY_LABELS[ent] || ent}...`);
-        for (const id of toDelete) {
-          await base44.entities[ent]?.delete(id).catch(() => {});
-        }
-      }
-
-      results.push({ entity: ent, total: all.length, duplicates: toDelete.length });
-    }
-    setDupResults(results);
-    setDupProgress(`✅ Proceso completado. ${results.reduce((s, r) => s + r.duplicates, 0)} duplicados eliminados.`);
+    const partes = [];
+    partes.push(aBorrar > 0
+      ? `Se han encontrado ${aBorrar.toLocaleString()} registros repetidos.`
+      : 'No hay ningún registro repetido.');
+    if (bloqueadas > 0) partes.push(`${bloqueadas} sección(es) no se tocarán: mira el motivo en la tabla.`);
+    if (fallidas > 0) partes.push(`${fallidas} sección(es) no se han podido leer enteras y quedan fuera.`);
+    partes.push('No se ha borrado nada todavía.');
+    setDupProgress(partes.join(' '));
     setDupLoading(false);
+  };
+
+  const borrarLosDuplicados = async () => {
+    const listas = (dupAnalisis || []).filter(a => a.seguro && !a.error && a.duplicados > 0);
+    if (listas.length === 0) return;
+    const cuantos = listas.reduce((n, a) => n + a.duplicados, 0);
+    const detalle = listas.map(a => `  · ${a.etiqueta}: ${a.duplicados} de ${a.total}`).join('\n');
+
+    const confirmado = window.confirm(
+      `Se van a borrar ${cuantos} registros repetidos:\n\n${detalle}\n\n`
+      + 'De cada grupo de fichas idénticas se CONSERVA la más antigua.\n\n'
+      + 'Antes de borrar se guardará una copia de rescate con todo lo que se va a quitar. '
+      + 'Si esa copia no se puede guardar, no se borrará nada.\n\n¿Seguimos?'
+    );
+    if (!confirmado) return;
+
+    setDupLoading(true);
+
+    // La copia de rescate lleva EXACTAMENTE lo que se va a borrar, sección a
+    // sección. Es pequeña y se puede restaurar con el botón de restaurar.
+    setDupProgress('Guardando la copia de rescate…');
+    const datos = {};
+    for (const a of listas) datos[a.entidad] = a.aBorrar;
+    const fileName = `rescate-duplicados_${nombreCopia(new Date()).replace(/^copia-gestion-pro-total_/, '')}`;
+    const rescate = await escribirCopiaPorSecciones({
+      fileName,
+      datos,
+      secciones: listas.map(a => a.entidad),
+      extra: { motivo_rescate: 'duplicados-borrados' },
+    });
+    if (!rescate.ok) {
+      setDupProgress(`❌ No se ha borrado nada: no se ha podido guardar la copia de rescate (${rescate.error}).`);
+      setDupLoading(false);
+      return;
+    }
+
+    const resultados = await borrarDuplicados(dupAnalisis, (msg) => setDupProgress(msg));
+    setDupResults(resultados);
+
+    const borrados = resultados.reduce((n, r) => n + (r.borrados || 0), 0);
+    const fallidos = resultados.reduce((n, r) => n + (r.fallidos || 0), 0);
+    setDupProgress(
+      (fallidos > 0 ? '⚠️' : '✅')
+      + ` ${borrados.toLocaleString()} repetidos borrados`
+      + (fallidos > 0 ? `, ${fallidos.toLocaleString()} no se han podido borrar` : '')
+      + `. Copia de rescate: ${rescate.nombre}`
+    );
+    setDupLoading(false);
+    setDupAnalisis(null);
     loadCounts();
   };
 
@@ -849,9 +944,10 @@ export default function BackupCenter() {
                   <Copy className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-gray-900">Eliminar registros duplicados</h2>
+                  <h2 className="text-base font-bold text-gray-900">Registros repetidos</h2>
                   <p className="text-sm text-gray-600 mt-0.5">
-                    Detecta y elimina automáticamente registros idénticos en cualquier sección. Se comparan todos los campos excepto el ID y las fechas del sistema.
+                    Primero se miran y se enseñan. Solo se borra si tú le das al segundo botón, y siempre
+                    guardando antes una copia de rescate con lo que se va a quitar.
                   </p>
                 </div>
               </div>
@@ -868,7 +964,7 @@ export default function BackupCenter() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {ALL_ENTITIES.map(ent => {
                     const checked = dupSelectedEntities.has(ent);
-                    const result = dupResults?.find(r => r.entity === ent);
+                    const info = (dupResults || dupAnalisis)?.find(r => r.entidad === ent);
                     return (
                       <label key={ent} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${checked ? 'bg-orange-50 border-orange-300' : 'bg-gray-50 border-gray-200'}`}>
                         <input type="checkbox" checked={checked}
@@ -879,9 +975,13 @@ export default function BackupCenter() {
                           }} className="rounded" />
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium text-gray-800 truncate">{ENTITY_LABELS[ent] || ent}</p>
-                          {result ? (
-                            <p className={`text-[10px] font-semibold ${result.duplicates > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                              {result.duplicates > 0 ? `${result.duplicates} eliminados` : '✓ Sin duplicados'}
+                          {info ? (
+                            <p className={`text-[10px] font-semibold ${info.error ? 'text-amber-600' : info.duplicados > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {info.error
+                                ? 'no se pudo leer'
+                                : info.borrados != null
+                                  ? (info.borrados > 0 ? `${info.borrados} borrados` : '✓ sin cambios')
+                                  : (info.duplicados > 0 ? `${info.duplicados} repetidos` : '✓ sin repetidos')}
                             </p>
                           ) : (
                             <p className="text-[10px] text-gray-400">{counts[ent] != null ? `${counts[ent]} registros` : '...'}</p>
@@ -894,28 +994,40 @@ export default function BackupCenter() {
               </div>
 
               {dupProgress && (
-                <div className={`rounded-lg px-3 py-2 text-sm font-medium ${dupProgress.startsWith('✅') ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+                <div className={`rounded-lg px-3 py-2 text-sm font-medium ${dupProgress.startsWith('✅') ? 'bg-green-100 text-green-800' : dupProgress.startsWith('❌') ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'}`}>
                   {dupProgress}
                 </div>
               )}
 
-              {dupResults && (
-                <div className="border rounded-xl overflow-hidden">
-                  <table className="w-full text-xs">
+              {(dupResults || dupAnalisis) && (
+                <div className="border rounded-xl overflow-x-auto">
+                  <table className="w-full text-xs min-w-[520px]">
                     <thead className="bg-gray-100">
                       <tr>
                         <th className="text-left p-2 font-semibold text-gray-600">Sección</th>
-                        <th className="text-right p-2 font-semibold text-gray-600">Total analizados</th>
-                        <th className="text-right p-2 font-semibold text-gray-600">Duplicados eliminados</th>
+                        <th className="text-right p-2 font-semibold text-gray-600">Registros</th>
+                        <th className="text-right p-2 font-semibold text-gray-600">Repetidos</th>
+                        <th className="text-right p-2 font-semibold text-gray-600">Se conservan</th>
+                        <th className="text-left p-2 font-semibold text-gray-600">Estado</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {dupResults.filter(r => r.duplicates > 0 || r.total > 0).map(r => (
-                        <tr key={r.entity} className={r.duplicates > 0 ? 'bg-red-50' : 'bg-white'}>
-                          <td className="p-2 font-medium">{ENTITY_LABELS[r.entity] || r.entity}</td>
+                      {(dupResults || dupAnalisis).filter(r => r.total > 0 || r.error).map(r => (
+                        <tr key={r.entidad} className={r.error ? 'bg-amber-50' : !r.seguro ? 'bg-amber-50' : r.duplicados > 0 ? 'bg-red-50' : 'bg-white'}>
+                          <td className="p-2 font-medium">{r.etiqueta}</td>
                           <td className="p-2 text-right text-gray-500">{r.total}</td>
-                          <td className={`p-2 text-right font-bold ${r.duplicates > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                            {r.duplicates > 0 ? `-${r.duplicates}` : '✓ 0'}
+                          <td className={`p-2 text-right font-bold ${r.duplicados > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {r.borrados != null && !r.omitida ? `-${r.borrados}` : r.duplicados > 0 ? r.duplicados : '0'}
+                          </td>
+                          <td className="p-2 text-right text-gray-600">{r.seConservan}</td>
+                          <td className="p-2 text-gray-600">
+                            {r.error
+                              ? '⚠️ no se pudo leer entera, queda fuera'
+                              : !r.seguro
+                                ? `⛔ ${r.motivo}`
+                                : r.fallidos > 0
+                                  ? `⚠️ ${r.fallidos} no se pudieron borrar`
+                                  : r.borrados != null ? '✓ hecho' : '✓ se puede limpiar'}
                           </td>
                         </tr>
                       ))}
@@ -924,18 +1036,49 @@ export default function BackupCenter() {
                 </div>
               )}
 
-              <Button
-                onClick={findAndDeleteDuplicates}
-                disabled={dupLoading || dupSelectedEntities.size === 0}
-                className="w-full bg-orange-600 hover:bg-orange-700 gap-2 py-3 h-auto text-base"
-              >
-                {dupLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
-                {dupLoading ? dupProgress || 'Analizando...' : `Detectar y eliminar duplicados en ${dupSelectedEntities.size} secciones`}
-              </Button>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  onClick={analizarLosDuplicados}
+                  disabled={dupLoading || dupSelectedEntities.size === 0}
+                  variant="outline"
+                  className="w-full gap-2 py-3 h-auto text-sm"
+                >
+                  {dupLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Copy className="w-5 h-5" />}
+                  {`1 · Buscar repetidos en ${dupSelectedEntities.size} secciones`}
+                </Button>
+                <Button
+                  onClick={borrarLosDuplicados}
+                  disabled={dupLoading || !dupAnalisis || dupAnalisis.every(a => !a.seguro || a.error || a.duplicados === 0)}
+                  className="w-full bg-orange-600 hover:bg-orange-700 gap-2 py-3 h-auto text-sm"
+                >
+                  <Trash2 className="w-5 h-5" />
+                  {dupAnalisis
+                    ? `2 · Borrar ${dupAnalisis.filter(a => a.seguro && !a.error).reduce((n, a) => n + a.duplicados, 0)} repetidos`
+                    : '2 · Borrar repetidos'}
+                </Button>
+              </div>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
-                <p className="font-semibold mb-1">ℹ️ ¿Cómo funciona?</p>
-                <p>Se comparan todos los campos de cada registro (excepto ID, fecha creación, fecha actualización y usuario). Si dos registros tienen exactamente los mismos valores, se elimina el duplicado más reciente. Se pedirá confirmación antes de borrar.</p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700 space-y-1">
+                <p className="font-semibold">ℹ️ Cómo funciona, y qué NO puede pasar</p>
+                <p>
+                  Se comparan todos los campos de cada ficha menos el identificador, las fechas del
+                  sistema y el usuario. Si dos fichas son idénticas, se conserva la <strong>más antigua</strong> y
+                  sobran las demás.
+                </p>
+                <p>
+                  <strong>No puede vaciar una sección.</strong> Si el análisis pretende llevarse más de la mitad de
+                  una sección, esa sección se bloquea y se dice por qué: eso casi nunca son repetidos de
+                  verdad, es una comparación que ha salido mal.
+                </p>
+                <p>
+                  <strong>Siempre deja copia.</strong> Antes de borrar se guarda un fichero de rescate con todo lo
+                  que se va a quitar; se restaura desde la pestaña «Restaurar». Si esa copia no se puede
+                  guardar, no se borra nada.
+                </p>
+                <p>
+                  <strong>Nunca analiza a medias.</strong> Si el servidor corta la lectura de una sección, esa
+                  sección se deja fuera en vez de tomar por repetido lo que solo es una lista incompleta.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -973,6 +1116,29 @@ export default function BackupCenter() {
                   ))}
                 </div>
                 <p className="text-xs text-gray-400 mt-2">Puedes excluir secciones específicas justo antes de generar el backup.</p>
+              </div>
+
+              <div>
+                <label className="flex items-start gap-3 cursor-pointer rounded-lg border p-3 hover:border-blue-300">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded"
+                    checked={!!config.sin_duplicados}
+                    onChange={e => setConfig(c => ({ ...c, sin_duplicados: e.target.checked }))}
+                    aria-label="No meter registros repetidos en la copia"
+                    data-prueba="copia-sin-duplicados"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-gray-700">
+                      No meter registros repetidos en la copia
+                    </span>
+                    <span className="block text-xs text-gray-500 mt-0.5">
+                      Si una ficha está cuatro veces exactamente igual, en la copia se guarda una sola.
+                      La copia sale más pequeña y limpia. <strong>No borra nada del programa</strong>: solo
+                      afecta al fichero que se guarda.
+                    </span>
+                  </span>
+                </label>
               </div>
 
               <Button onClick={handleSaveConfig} className="bg-blue-700 hover:bg-blue-800 gap-2">

@@ -1,9 +1,13 @@
 import { base44 } from '@/api/base44Client';
 import {
-  enLotes, firmaRegistro, sinMetadatos, planRestauracion,
+  enLotes, sinMetadatos, planRestauracion,
+  planDuplicados, revisarPlanDuplicados, quitarDuplicados,
 } from '@/lib/copiasLotes';
+import {
+  conReintento, crearFreno, esDemasiadasPeticiones, errorLecturaIncompleta,
+} from '@/lib/limiteServidor';
 
-// ── Motor de copia de seguridad / restauración ──────────────────────────────
+// ── Motor de copia de seguridad / restauración / duplicados ────────────────
 // Vive fuera de BackupCenter.jsx a propósito: así el trabajo sigue corriendo
 // aunque el usuario navegue a otra pantalla mientras se hace (no depende del
 // ciclo de vida de ese componente), y un pequeño indicador global (ver
@@ -12,16 +16,31 @@ import {
 // una, para que cuentas con muchos registros (documentos, fotos...) tarden
 // mucho menos.
 
-// El motor de copias usa el cliente SIN los avisos automáticos: ya cuenta
-// sus propios fallos y los enseña al final. Si no, una restauración con mala
-// cobertura llenaría la pantalla de carteles rojos, uno por lote.
+// El motor usa el cliente SIN los avisos automáticos: ya cuenta sus propios
+// fallos y los enseña al final. Si no, una restauración con mala cobertura
+// llenaría la pantalla de carteles rojos, uno por lote.
+//
+// OJO con esto: ese cliente en crudo tampoco trae el reintento por "demasiadas
+// peticiones" que sí tiene el resto del programa. Por eso TODA petición de
+// este fichero pasa por pedir(), que lo pone aquí. Sin ello, la parte que más
+// aprieta al servidor era la única sin protección — y una página fallada se
+// daba por "fin de los datos", con lo que la copia salía a medias sin avisar.
 const entidades = base44.sinAvisos?.entities || base44.entities;
 
 const PAGE = 1000;
-const PAGE_BATCH = 6;         // páginas en paralelo dentro de una misma entidad
-const ENTITY_CONCURRENCY = 8; // entidades en paralelo al hacer copia/restauración
+// Menos peticiones a la vez que antes (eran 6 y 8). Con el reintento y el
+// freno la copia acaba igual, pero se llega mucho menos al límite del
+// servidor, que era de donde salía el "error de muchas solicitudes".
+const PAGE_BATCH = 3;         // páginas en paralelo dentro de una misma entidad
+const ENTITY_CONCURRENCY = 4; // entidades en paralelo al hacer copia/restauración
 
-const LOTES_A_LA_VEZ = 3;
+const LOTES_A_LA_VEZ = 2;
+const BORRADOS_A_LA_VEZ = 4;
+
+/** Una petición al servidor, con espera y reintento si dice "demasiadas". */
+function pedir(freno, hacer) {
+  return conReintento(hacer, { freno });
+}
 
 async function runPool(items, worker, concurrency) {
   let idx = 0;
@@ -35,15 +54,42 @@ async function runPool(items, worker, concurrency) {
   await Promise.all(runners);
 }
 
-/** Lee TODOS los registros de una entidad, paginando en paralelo por rondas. */
-export async function fetchAllRecordsFast(ent) {
+/**
+ * Lee TODOS los registros de una entidad, paginando en paralelo por rondas.
+ *
+ * Si una página no se puede leer, esto FALLA en vez de devolver lo que llevaba.
+ * Parece más incómodo y es justo lo contrario: antes una página cortada por
+ * exceso de peticiones se tomaba por "ya no hay más", así que la copia se
+ * guardaba incompleta con toda tranquilidad, y restaurar esa copia en modo
+ * "copia limpia" —que borra antes de escribir— se llevaba por delante lo que
+ * faltaba. Mejor parar y decirlo.
+ *
+ * @param {string} ent
+ * @param {{tolerante?: boolean, freno?: object}} [opciones]
+ *   tolerante: para pintar una lista en pantalla, donde enseñar lo que haya es
+ *   mejor que no enseñar nada. NUNCA para copiar, restaurar ni borrar.
+ */
+export async function fetchAllRecordsFast(ent, opciones = {}) {
+  const { tolerante = false, freno = crearFreno() } = opciones;
   const E = entidades[ent];
   if (!E) return [];
+
+  const pagina = (skip) => pedir(freno, () => E.filter({}, null, PAGE, skip));
+  const fallar = (causa) => {
+    if (tolerante) return null;
+    throw errorLecturaIncompleta(ent, causa);
+  };
+
   let all;
   try {
-    all = await E.filter({}, null, PAGE, 0);
-  } catch {
-    try { return (await E.list('', 10000)) || []; } catch { return []; }
+    all = await pagina(0);
+  } catch (e) {
+    // El camino alternativo (list) solo tiene sentido si el servidor no admite
+    // filter. Si lo que ha dicho es "demasiadas peticiones", repetir de otra
+    // manera da lo mismo y encima devolvería una lista corta.
+    if (esDemasiadasPeticiones(e)) { const r = fallar(e); return r ?? []; }
+    try { all = (await pedir(freno, () => E.list('', 10000))) || []; }
+    catch (e2) { const r = fallar(e2); return r ?? []; }
   }
   if (!all) return [];
   if (all.length < PAGE) return all;
@@ -51,7 +97,14 @@ export async function fetchAllRecordsFast(ent) {
   let skip = PAGE;
   for (let guard = 0; guard < 250; guard++) {
     const skips = Array.from({ length: PAGE_BATCH }, (_, i) => skip + i * PAGE);
-    const batches = await Promise.all(skips.map((s) => E.filter({}, null, PAGE, s).catch(() => [])));
+    let batches;
+    try {
+      batches = await Promise.all(skips.map((s) => pagina(s)));
+    } catch (e) {
+      const r = fallar(e);
+      if (r === null) break;      // tolerante: se devuelve lo leído hasta aquí
+      return r;
+    }
     let reachedEnd = false;
     for (const batch of batches) {
       if (!batch || batch.length === 0) { reachedEnd = true; break; }
@@ -75,19 +128,19 @@ export async function fetchAllRecordsFast(ent) {
  * las fotos, los PDF y las firmas de todo el histórico para acabar enseñando
  * un número. Aquí se pide únicamente el campo "id".
  *
- * Si el servidor no admite pedir campos sueltos, se cuenta a la manera larga
- * para no quedarse sin el dato.
+ * Esto sí es tolerante: es un número informativo en pantalla, no la base de
+ * ningún borrado.
  */
-export async function contarRegistros(ent) {
+export async function contarRegistros(ent, freno = crearFreno()) {
   const E = entidades[ent];
   if (!E) return 0;
-  const soloIds = (skip) => E.filter({}, null, PAGE, skip, ['id']);
+  const soloIds = (skip) => pedir(freno, () => E.filter({}, null, PAGE, skip, ['id']));
 
   let primera;
   try {
     primera = await soloIds(0);
   } catch {
-    return (await fetchAllRecordsFast(ent))?.length || 0;
+    return (await fetchAllRecordsFast(ent, { tolerante: true, freno }))?.length || 0;
   }
   if (!primera) return 0;
 
@@ -134,27 +187,53 @@ export function getBackupState() { return state; }
 
 /**
  * Exporta todas las entidades indicadas en paralelo (varias a la vez).
+ *
+ * Devuelve TAMBIÉN qué secciones no se han podido leer enteras. Antes esto se
+ * perdía: una sección que fallaba salía como lista vacía y la copia se
+ * guardaba igual, aparentemente correcta. Quien la restaurase después creería
+ * que esa sección estaba vacía de verdad.
+ *
  * @param {string[]} entities
+ * @param {Record<string,string>} entityLabels
  * @param {(label:string, pct:number)=>void} [onProgress]
- * @returns {Promise<Record<string, any[]>>}
+ * @param {{sinDuplicados?: boolean}} [opciones]
+ * @returns {Promise<{datos: Record<string, any[]>, fallos: Array, duplicadosQuitados: number}>}
  */
-export async function runBackupJob(entities, entityLabels = {}, onProgress) {
+export async function runBackupJob(entities, entityLabels = {}, onProgress, opciones = {}) {
+  const { sinDuplicados = false } = opciones;
   publish({ active: true, kind: 'backup', message: 'Iniciando copia de seguridad...', pct: 5 });
-  const result = {};
+  const freno = crearFreno();
+  const datos = {};
+  const fallos = [];
+  let duplicadosQuitados = 0;
   let done = 0;
+
   await runPool(entities, async (ent) => {
     const label = entityLabels[ent] || ent;
     const msg = `Exportando ${label}...`;
     onProgress?.(msg, Math.round(5 + (done / entities.length) * 85));
     publish({ message: msg, pct: Math.round(5 + (done / entities.length) * 85) });
-    result[ent] = (await fetchAllRecordsFast(ent)) || [];
+    try {
+      let registros = (await fetchAllRecordsFast(ent, { freno })) || [];
+      if (sinDuplicados) {
+        const { limpios, quitados } = quitarDuplicados(registros);
+        registros = limpios;
+        duplicadosQuitados += quitados;
+      }
+      datos[ent] = registros;
+    } catch (err) {
+      // No se pone [] : una sección que no se ha podido leer NO es una sección
+      // vacía, y confundirlas es lo que convierte una copia en una trampa.
+      fallos.push({ entidad: ent, etiqueta: label, motivo: err?.message || String(err) });
+    }
     done++;
     const pct = Math.round(5 + (done / entities.length) * 85);
     onProgress?.(`Exportado ${label} (${done}/${entities.length})`, pct);
     publish({ message: `Exportando... (${done}/${entities.length})`, pct });
   }, ENTITY_CONCURRENCY);
+
   publish({ active: false, message: '', pct: 100 });
-  return result;
+  return { datos, fallos, duplicadosQuitados };
 }
 
 const stripMeta = sinMetadatos;
@@ -162,17 +241,23 @@ const stripMeta = sinMetadatos;
 /**
  * Restaura las entidades indicadas en paralelo (varias entidades a la vez;
  * dentro de cada una, por lotes, para no saturar la API).
+ *
  * @param {Record<string, any[]>} restoreData
  * @param {string[]} entities
  * @param {'update'|'clean'} mode
  * @param {Record<string, (r:any)=>string|null>} keyers
  * @param {(label:string, pct:number)=>void} [onProgress]
+ * @param {{alRescatar?: (ent:string, registros:any[]) => Promise<void>}} [opciones]
  */
-export async function runRestoreJob(restoreData, entities, mode, keyers, entityLabels = {}, onProgress) {
+export async function runRestoreJob(
+  restoreData, entities, mode, keyers, entityLabels = {}, onProgress, opciones = {},
+) {
   publish({ active: true, kind: 'restore', message: 'Iniciando restauración...', pct: 5 });
+  const freno = crearFreno();
   let total = 0;
   let failed = 0;
   let sinCambios = 0;
+  const avisos = [];
   const trackFail = (err) => { failed++; console.error('[backupEngine] Error real al restaurar:', err); };
   let done = 0;
 
@@ -188,16 +273,33 @@ export async function runRestoreJob(restoreData, entities, mode, keyers, entityL
 
     const E = entidades[ent];
     const crear = (lista) => runPool(
-      enLotes(lista), (lote) => E?.bulkCreate(lote).catch(trackFail), LOTES_A_LA_VEZ,
+      enLotes(lista),
+      (lote) => pedir(freno, () => E?.bulkCreate(lote)).catch(trackFail),
+      LOTES_A_LA_VEZ,
     );
 
     if (mode === 'clean') {
-      await borrarTodo(ent, trackFail);
+      // Nunca vaciar una sección para no meter nada dentro. Una copia con la
+      // sección vacía casi siempre significa que esa sección no se pudo leer
+      // cuando se hizo la copia — no que estuviera vacía de verdad.
+      if (rows.length === 0) {
+        avisos.push(`«${label}» no se ha tocado: la copia no trae ningún registro de esa sección, `
+          + 'y vaciarla para no poner nada es la forma más rápida de perder datos.');
+        done++; report();
+        return;
+      }
+      const rescate = await borrarTodo(ent, trackFail, freno, opciones.alRescatar);
+      if (rescate === 'sin_rescate') {
+        avisos.push(`«${label}» no se ha tocado: no se ha podido guardar antes la copia de rescate, `
+          + 'así que no se ha borrado nada.');
+        done++; report();
+        return;
+      }
       const clean = rows.map(stripMeta);
       await crear(clean);
       total += clean.length;
     } else {
-      const existing = await fetchAllRecordsFast(ent);
+      const existing = await fetchAllRecordsFast(ent, { freno });
       // Qué hay que crear, qué actualizar y qué dejar en paz. Lo decide una
       // función aparte y comprobada (src/lib/copiasLotes.js).
       const plan = planRestauracion(existing, rows, keyers[ent]);
@@ -212,7 +314,9 @@ export async function runRestoreJob(restoreData, entities, mode, keyers, entityL
       // En bloque, no de uno en uno: 2.000 registros pasan de 2.000
       // peticiones a ocho.
       await runPool(
-        enLotes(plan.aActualizar), (lote) => E?.bulkUpdate(lote).catch(trackFail), LOTES_A_LA_VEZ,
+        enLotes(plan.aActualizar),
+        (lote) => pedir(freno, () => E?.bulkUpdate(lote)).catch(trackFail),
+        LOTES_A_LA_VEZ,
       );
       total += porHacer;
     }
@@ -221,27 +325,125 @@ export async function runRestoreJob(restoreData, entities, mode, keyers, entityL
   }, ENTITY_CONCURRENCY);
 
   publish({ active: false, message: '', pct: 100 });
-  return { total, failed, sinCambios };
+  return { total, failed, sinCambios, avisos };
 }
 
 /**
  * Vacía una entidad para la restauración "limpia".
  *
- * Se intenta primero de una sola petición (deleteMany), que es lo rápido. Si
- * el servidor no lo admite o quedan registros, se borra uno a uno. Y se
- * comprueba que de verdad se ha vaciado: si se diera por bueno sin mirar y
- * hubiera quedado algo, la restauración duplicaría todo.
+ * Antes de borrar nada se lee lo que hay y se entrega a quien haya pedido el
+ * rescate (la pantalla lo guarda en un fichero). Si eso no sale bien, NO se
+ * borra: la "copia limpia" es la única función del programa que borra datos
+ * buenos a propósito, y tiene que haber una vuelta atrás.
+ *
+ * @returns {'ok'|'sin_rescate'}
  */
-async function borrarTodo(ent, trackFail) {
+async function borrarTodo(ent, trackFail, freno, alRescatar) {
   const E = entidades[ent];
-  if (!E) return;
+  if (!E) return 'ok';
+
+  let existing;
   try {
-    await E.deleteMany({});
-    const quedan = await E.filter({}, null, 1, 0).catch(() => []);
-    if (!quedan || quedan.length === 0) return;
+    existing = await fetchAllRecordsFast(ent, { freno });
+  } catch {
+    return 'sin_rescate';        // sin poder leerlo, no se borra
+  }
+
+  if (alRescatar && existing.length > 0) {
+    try { await alRescatar(ent, existing); }
+    catch { return 'sin_rescate'; }
+  }
+
+  try {
+    await pedir(freno, () => E.deleteMany({}));
+    const quedan = await pedir(freno, () => E.filter({}, null, 1, 0)).catch(() => []);
+    if (!quedan || quedan.length === 0) return 'ok';
   } catch {
     // No lo admite: se hace a la manera lenta.
   }
-  const existing = await fetchAllRecordsFast(ent);
-  await runPool(existing || [], (rec) => E.delete(rec.id).catch(trackFail), 10);
+  await runPool(
+    existing || [],
+    (rec) => (rec?.id ? pedir(freno, () => E.delete(rec.id)).catch(trackFail) : null),
+    BORRADOS_A_LA_VEZ,
+  );
+  return 'ok';
+}
+
+// ── Duplicados ─────────────────────────────────────────────────────────────
+
+/**
+ * MIRA qué duplicados hay. No borra nada.
+ *
+ * Separado del borrado a propósito: hasta ahora se analizaba y se borraba en
+ * el mismo botón, así que no había ningún momento en el que se pudiera ver lo
+ * que iba a pasar. Ahora primero se enseña y luego, si se quiere, se borra.
+ *
+ * @returns {Promise<Array<{entidad, etiqueta, total, duplicados, seConservan, seguro, motivo, aBorrar, error}>>}
+ */
+export async function analizarDuplicados(entities, entityLabels = {}, onProgress) {
+  const freno = crearFreno();
+  const salida = [];
+  for (let i = 0; i < entities.length; i++) {
+    const ent = entities[i];
+    const etiqueta = entityLabels[ent] || ent;
+    onProgress?.(`Analizando ${etiqueta}… (${i + 1}/${entities.length})`);
+    try {
+      const todos = await fetchAllRecordsFast(ent, { freno });
+      const plan = planDuplicados(todos);
+      const revision = revisarPlanDuplicados(plan);
+      salida.push({
+        entidad: ent,
+        etiqueta,
+        total: plan.total,
+        duplicados: plan.aBorrar.length,
+        seConservan: plan.seConservan,
+        grupos: plan.grupos.length,
+        seguro: revision.seguro,
+        motivo: revision.motivo,
+        aBorrar: plan.aBorrar,
+        error: null,
+      });
+    } catch (err) {
+      // Una sección que no se ha podido leer entera NO se analiza: los
+      // "duplicados" que salieran de una lectura a medias no serían reales.
+      salida.push({
+        entidad: ent, etiqueta, total: 0, duplicados: 0, seConservan: 0, grupos: 0,
+        seguro: false, motivo: err?.message || String(err), aBorrar: [], error: true,
+      });
+    }
+  }
+  return salida;
+}
+
+/**
+ * BORRA los duplicados de un análisis previo.
+ *
+ * Solo toca lo que el análisis marcó como seguro, solo registros con id, y
+ * cuenta los borrados que fallan en vez de tragárselos. Antes se hacía
+ * `.catch(() => {})` en cada borrado: si fallaban todos, el mensaje final
+ * seguía diciendo "proceso completado".
+ *
+ * @param {Array} analisis  lo que devolvió analizarDuplicados()
+ * @param {(msg:string)=>void} [onProgress]
+ */
+export async function borrarDuplicados(analisis, onProgress) {
+  const freno = crearFreno();
+  const resultados = [];
+  for (const fila of analisis || []) {
+    if (!fila.seguro || fila.error || fila.duplicados === 0) {
+      resultados.push({ ...fila, borrados: 0, fallidos: 0, omitida: !fila.seguro || !!fila.error });
+      continue;
+    }
+    const E = entidades[fila.entidad];
+    let borrados = 0;
+    let fallidos = 0;
+    onProgress?.(`Borrando ${fila.duplicados} duplicados de ${fila.etiqueta}…`);
+    await runPool(fila.aBorrar, async (rec) => {
+      if (!rec?.id) { fallidos++; return; }
+      try { await pedir(freno, () => E.delete(rec.id)); borrados++; }
+      catch (err) { fallidos++; console.error('[backupEngine] No se pudo borrar duplicado:', err); }
+    }, BORRADOS_A_LA_VEZ);
+    resultados.push({ ...fila, borrados, fallidos, omitida: false });
+  }
+  return resultados;
 }
