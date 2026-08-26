@@ -1,5 +1,5 @@
-import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
+import { DURACION_POR_DEFECTO as DURACION_AVISO } from "@/components/ui/use-toast"
 import { Component, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -162,12 +162,20 @@ function App() {
             <RecordarTrabajo />
             <AuthenticatedApp />
           </Router>
-          <Toaster />
-          {/* Media aplicación avisa con toast de sonner (presupuestos, cálculos,
-              plano, disponibilidad…) y este Toaster no estaba montado, así que
-              esos avisos no se veían nunca. Con los dos montados, cada uno
-              muestra los suyos. */}
-          <SonnerToaster position="top-center" richColors />
+          {/* UN SOLO sistema de avisos, el de sonner.
+              Antes había dos montados a la vez y el otro (el de shadcn) no
+              sabía cerrarse: el aviso "Documento actualizado" se quedaba
+              clavado arriba, a toda anchura y por delante de la cabecera,
+              tapando atrás / editar / inicio. Y su X no hacía nada.
+              Ahora todos los avisos del programa salen por aquí, duran dos
+              segundos y medio, y se pueden quitar con la X o deslizándolos. */}
+          <SonnerToaster
+            position="top-center"
+            richColors
+            closeButton
+            duration={DURACION_AVISO}
+            toastOptions={{ dismissible: true }}
+          />
         </QueryClientProvider>
       </AuthProvider>
     </ErrorBoundary>
