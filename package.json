@@ -20,8 +20,8 @@
     "desktop:dist": "npm run build:electron && npm run build:offline && electron-builder"
   },
   "dependencies": {
-    "@base44/sdk": "^0.8.43",
-    "@base44/vite-plugin": "^1.0.30",
+    "@base44/sdk": "^0.8.44",
+    "@base44/vite-plugin": "^1.0.31",
     "@bcyesil/capacitor-plugin-printer": "^0.0.6",
     "@capacitor/android": "^8.4.0",
     "@capacitor/core": "^8.4.0",
