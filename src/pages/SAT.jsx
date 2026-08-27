@@ -646,7 +646,7 @@ export default function SAT() {
 
       {/* ===== DIALOG EDITAR/CREAR ===== */}
       <Dialog open={dialogOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()} onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => setDialogOpen(false)} textoVolver="Volver sin guardar" onOpenAutoFocus={e => e.preventDefault()} onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{editing ? `Editar Orden SAT #${editing.order_number || editing.id.slice(-6)}` : 'Nueva Orden SAT'}</DialogTitle>
@@ -817,7 +817,7 @@ export default function SAT() {
 
       {/* ===== PREVIEW / IMPRIMIR ===== */}
       <Dialog open={!!previewOrder} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => setPreviewOrder(null)} textoVolver="Volver a las órdenes" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           {previewOrder && (
             <>
               <DialogHeader>

@@ -24,6 +24,7 @@ import SignaturePad from '../components/SignaturePad';
 const TYPES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
 import InspeccionSanitaria from '@/components/InspeccionSanitaria';
+import VistaPreviaDocumento from '@/components/VistaPreviaDocumento';
 import { fichaVacia, hayAlgoContestado } from '@/lib/inspeccionSanitaria';
 import { htmlHojaSanitaria } from '@/lib/hojaSanitaria';
 import { anotarEnDiario } from '@/lib/diarioDeReparaciones';
@@ -147,6 +148,8 @@ export default function Maintenance() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
+  // El documento que se está mirando antes de imprimirlo o mandarlo.
+  const [vistaPrevia, setVistaPrevia] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const printRef = useRef(null);
 
@@ -313,7 +316,9 @@ export default function Maintenance() {
   const imprimirHojaSanitaria = async (sheet) => {
     const ficha = sheet?.inspeccion_sanitaria;
     if (!hayAlgoContestado(ficha)) {
-      alert('Esta ficha todavía no tiene nada contestado en la hoja de inspección sanitaria.');
+      alert('Esta ficha todavía no tiene nada contestado en la hoja de inspección sanitaria.\n\n'
+        + 'Ábrela con «Ver/Editar», marca la casilla «Es una cámara frigorífica» y contesta los puntos. '
+        + 'En cuanto haya algo contestado, la hoja se puede ver e imprimir desde aquí.');
       return;
     }
     const [settingsList, contactList] = await Promise.all([
@@ -326,10 +331,14 @@ export default function Maintenance() {
       company: settingsList[0] || {},
       contact: contactList[0] || {},
     });
-    const w = window.open('', '_blank');
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => w.print(), 600);
+    // Se enseña primero. Antes se lanzaba el diálogo de imprimir a los 600 ms
+    // sin dar tiempo a mirar cómo había quedado, y en el móvil la ventana
+    // nueva ni se abría: no pasaba nada y parecía que el botón estaba roto.
+    setVistaPrevia({
+      titulo: `Hoja de Sanidad — ficha #${sheet.sheet_number || ''}`,
+      html,
+      nombreFichero: `hoja-sanidad-${sheet.sheet_number || 'ficha'}.html`,
+    });
   };
 
   const generatePDF = async (sheet) => {
@@ -458,10 +467,11 @@ export default function Maintenance() {
       <div class="footer">Documento generado el ${new Date().toLocaleDateString('es-ES')} — ${company.company_name||''} | NIF: ${company.nif||''}</div>
     </body></html>`;
 
-    const w = window.open('', '_blank');
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => w.print(), 600);
+    setVistaPrevia({
+      titulo: `Ficha de mantenimiento #${sheet.sheet_number || ''}`,
+      html,
+      nombreFichero: `ficha-mantenimiento-${sheet.sheet_number || ''}.html`,
+    });
   };
 
   return (
@@ -474,7 +484,7 @@ export default function Maintenance() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => { setDialogOpen(false); setEditing(null); setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(sheets.map(x => x.sheet_number || '')) }); }} textoVolver="Volver sin guardar" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <DialogTitle>{editing ? 'Editar' : 'Nueva'} ficha de mantenimiento</DialogTitle>
@@ -715,7 +725,7 @@ export default function Maintenance() {
 
       {/* Preview */}
       <Dialog open={!!preview} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => setPreview(null)} textoVolver="Volver a las fichas" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>Vista previa</DialogTitle>
@@ -758,11 +768,29 @@ export default function Maintenance() {
           <div className="flex gap-2 mt-4">
             <PrintButton contentRef={printRef} title={`Mantenimiento ${preview?.sheet_number}`} />
             <Button variant="outline" onClick={() => generatePDF(preview)} className="gap-2">
-              <FileDown className="w-4 h-4" /> PDF completo con fotos
+              <FileDown className="w-4 h-4" /> Ver e imprimir la ficha
             </Button>
+            {(preview?.type === 'refrigeracion' || hayAlgoContestado(preview?.inspeccion_sanitaria)) && (
+              <Button
+                onClick={() => imprimirHojaSanitaria(preview)}
+                data-prueba="hoja-sanitaria-preview"
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+              >
+                <FileDown className="w-4 h-4" /> Ver hoja de Sanidad
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {vistaPrevia && (
+        <VistaPreviaDocumento
+          titulo={vistaPrevia.titulo}
+          html={vistaPrevia.html}
+          nombreFichero={vistaPrevia.nombreFichero}
+          onVolver={() => setVistaPrevia(null)}
+        />
+      )}
 
       <div className="space-y-2">
         {sheets.map(s => (
@@ -786,7 +814,7 @@ export default function Maintenance() {
                 <button onClick={() => generatePDF(s)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
                   <FileDown className="w-3 h-3" /> PDF
                 </button>
-                {hayAlgoContestado(s.inspeccion_sanitaria) && (
+                {(s.type === 'refrigeracion' || hayAlgoContestado(s.inspeccion_sanitaria)) && (
                   <button
                     onClick={() => imprimirHojaSanitaria(s)}
                     data-prueba="hoja-sanitaria"

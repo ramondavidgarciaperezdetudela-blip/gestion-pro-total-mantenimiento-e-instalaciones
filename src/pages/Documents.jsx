@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
+import VistaPreviaDocumento from '@/components/VistaPreviaDocumento';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,6 +92,8 @@ export default function Documents() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [previewDoc, setPreviewDoc] = useState(null);
+  // El documento que se está mirando antes de imprimirlo o mandarlo.
+  const [vistaPrevia, setVistaPrevia] = useState(null);
   // Ajustes de impresión/PDF (A4): margen y escala para cuadrar en la impresora
   const [pdfMargin, setPdfMargin] = useState(() => { try { return parseInt(localStorage.getItem('gpt_pdf_margin')) || 10; } catch { return 10; } });
   const [pdfScale, setPdfScale] = useState(() => { try { return parseInt(localStorage.getItem('gpt_pdf_scale')) || 100; } catch { return 100; } });
@@ -568,10 +571,15 @@ export default function Documents() {
     ${verifyBoxHtml}
     <div class="footer">Documento generado · ${cs.company_name||''} · ${cs.phone||''} · ${cs.email||''}</div>
     </body></html>`;
-    const w = window.open('', '_blank');
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => { w.focus(); w.print(); }, 400);
+    // Se enseña ANTES de imprimir. Un presupuesto o una factura se le manda a
+    // un cliente: hay que poder mirar cómo ha quedado. Y en el móvil y en el
+    // programa instalado la ventana nueva muchas veces ni se abría, así que
+    // no pasaba nada y parecía que el botón estaba roto.
+    setVistaPrevia({
+      titulo: `${doc.doc_type === 'factura' ? 'Factura' : 'Presupuesto'} ${doc.doc_number || ''} — ${doc.contact_name || ''}`,
+      html,
+      nombreFichero: `${doc.doc_type || 'documento'}-${doc.doc_number || ''}.html`,
+    });
   };
 
   // Filtrado
@@ -593,6 +601,15 @@ export default function Documents() {
 
   return (
     <div className="space-y-4">
+      {vistaPrevia && (
+        <VistaPreviaDocumento
+          titulo={vistaPrevia.titulo}
+          html={vistaPrevia.html}
+          nombreFichero={vistaPrevia.nombreFichero}
+          onVolver={() => setVistaPrevia(null)}
+        />
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <FileText className="w-6 h-6 text-violet-500" />Documentos
@@ -1029,7 +1046,7 @@ export default function Documents() {
 
       {/* ===== PREVIEW ===== */}
       <Dialog open={!!previewDoc} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => setPreviewDoc(null)} textoVolver="Volver a documentos" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="capitalize">{previewDoc?.doc_type} {previewDoc?.doc_number}</DialogTitle>

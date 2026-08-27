@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { X } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -25,7 +25,38 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
-const DialogContent = React.forwardRef(({ className, children, ...props }, ref) => (
+/**
+ * Barra de VOLVER, siempre visible.
+ *
+ * Antes el único modo de salir de una ventana era una X diminuta colocada en
+ * `absolute right-4 top-4`. Dentro de una ventana que hace scroll, "absolute"
+ * quiere decir que la X se va hacia arriba con el contenido: al bajar por una
+ * ficha larga desaparecía y ya no había forma de salir. Y encima varias
+ * pantallas anulan el cierre de Radix (onOpenChange={() => {}}) para que no se
+ * pierda lo escrito al tocar fuera, así que aunque se alcanzara la X tampoco
+ * hacía nada. Resultado: el documento se quedaba fijo en pantalla.
+ *
+ * Ahora es una barra pegada arriba (`sticky`), que no se va con el scroll, con
+ * un botón grande de tocar con el dedo. Si la pantalla pasa `onVolver`, se usa
+ * eso —que es lo que funciona aunque el cierre de Radix esté anulado—; si no,
+ * se cae al cierre normal.
+ */
+const BarraVolver = ({ onVolver, textoVolver }) => {
+  const clases = "flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold "
+    + "text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400";
+  const dentro = (<><ArrowLeft className="h-4 w-4" />{textoVolver}</>);
+  return (
+    <div className="sticky top-0 z-20 -mt-2 mb-1 flex items-center rounded-lg border border-slate-200 bg-white/95 px-1.5 py-1 shadow-sm backdrop-blur print:hidden">
+      {onVolver
+        ? <button type="button" onClick={onVolver} className={clases} data-prueba="volver" aria-label={textoVolver}>{dentro}</button>
+        : <DialogPrimitive.Close className={clases} data-prueba="volver" aria-label={textoVolver}>{dentro}</DialogPrimitive.Close>}
+    </div>
+  );
+};
+
+const DialogContent = React.forwardRef((
+  { className, children, onVolver, textoVolver = "Volver", sinVolver = false, ...props }, ref,
+) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -35,12 +66,8 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
         className
       )}
       {...props}>
+      {!sinVolver && <BarraVolver onVolver={onVolver} textoVolver={textoVolver} />}
       {children}
-      <DialogPrimitive.Close
-        className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPortal>
 ))
