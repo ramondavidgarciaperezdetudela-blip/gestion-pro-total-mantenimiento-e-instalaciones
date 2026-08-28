@@ -188,7 +188,7 @@ function PresupuestoPublico() {
             doc_id: docId,
             action: 'aceptar',
             is_change_opinion: true
-          });
+          }, { sinAviso: true });
         } catch (e) {
           console.error('Error enviando copia:', e);
         }
@@ -237,7 +237,7 @@ function PresupuestoPublico() {
             doc_id: docId,
             action: 'rechazar',
             is_change_opinion: true
-          });
+          }, { sinAviso: true });
         } catch (e) {
           console.error('Error enviando copia:', e);
         }
@@ -696,7 +696,7 @@ function PresupuestoPublico() {
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-500 text-center">Se ha enviado una copia firmada a su correo electrónico</p>
+              <p className="text-xs text-gray-500 text-center">Puede imprimir o guardar su copia con el botón de arriba</p>
             </div>
           )}
           </div>

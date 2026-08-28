@@ -586,7 +586,7 @@ function SATPublico() {
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-500 text-center">Se ha enviado una copia firmada a su correo electrónico</p>
+              <p className="text-xs text-gray-500 text-center">Puede imprimir o guardar su copia con el botón de arriba</p>
             </div>
           )}
         </div>

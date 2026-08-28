@@ -875,6 +875,8 @@ export default function SAT() {
                     order={previewOrder}
                     onUpdate={aplicarActualizacionOrden}
                     contactEmail={contacts.find(c => c.id === previewOrder.contact_id)?.email || null}
+                    contactPhone={contacts.find(c => c.id === previewOrder.contact_id)?.phone || null}
+                    empresa={company}
                   />
 
                   {/* Panel de compartir SAT */}

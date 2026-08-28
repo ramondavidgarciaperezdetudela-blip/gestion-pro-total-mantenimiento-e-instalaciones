@@ -3,6 +3,7 @@ import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import VistaPreviaDocumento from '@/components/VistaPreviaDocumento';
+import EnviarCopiaFirmada from '@/components/EnviarCopiaFirmada';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1206,6 +1207,13 @@ export default function Documents() {
                           )}
                         </div>
                         <p className="text-xs text-gray-400">Esta firma puede imprimirse con el documento exportando el PDF.</p>
+                        <EnviarCopiaFirmada
+                          doc={previewDoc}
+                          empresa={company}
+                          tipo="documento"
+                          email={contacts.find(x => x.id === previewDoc.contact_id)?.email}
+                          telefono={contacts.find(x => x.id === previewDoc.contact_id)?.phone}
+                        />
                       </div>
                     ) : (
                       <SignatureCanvas
@@ -1222,28 +1230,19 @@ export default function Documents() {
                           const updated = { ...previewDoc, ...updateData };
                           setPreviewDoc(updated);
                           setDocs(prev => prev.map(d => d.id === previewDoc.id ? updated : d));
-                          // Enviar copia firmada al cliente
-                          const c = contacts.find(x => x.id === previewDoc.contact_id);
-                          base44.functions.invoke('enviarCopiaFirmada', {
-                            contact_email: c?.email || null,
-                            contact_name: previewDoc.contact_name,
-                            doc_title: `${previewDoc.doc_type?.toUpperCase()} Nº${previewDoc.doc_number}`,
-                            doc_type: previewDoc.doc_type,
-                            sign_datetime: signDt,
-                            signature_url: dataUrl,
-                            signer_role: 'cliente',
-                            extra_info: `Total: ${previewDoc.total?.toFixed(2)} € | Fecha doc: ${previewDoc.date}`
-                          }, { sinAviso: true }).catch((e) => {
-                            // La firma YA está guardada arriba. Lo único que
-                            // puede fallar aquí es el correo de cortesía con la
-                            // copia, y eso no se avisa como si se hubiera
-                            // perdido el documento: se dice lo que es.
-                            console.error('[Documents] No se pudo mandar la copia firmada:', e);
-                            toast({
-                              title: 'Firma guardada',
-                              description: 'No se ha podido mandar el correo con la copia; puedes enviarla tú desde los botones de compartir.',
-                              duration: 4000,
-                            });
+                          // La copia firmada NO se manda por el servidor.
+                          //
+                          // Ese correo lo mandaba una función de Base44 y gasta
+                          // créditos: cuando se acababan, saltaba un cartel rojo
+                          // con el cliente delante y encima se quedaba sin copia.
+                          // Ahora se manda desde el propio aparato —WhatsApp o el
+                          // correo del móvil, con el enlace donde el cliente puede
+                          // imprimirlo o guardarlo en PDF— con los botones que
+                          // salen aquí debajo en cuanto queda firmado.
+                          toast({
+                            title: 'Firma guardada',
+                            description: 'Abajo tienes los botones para mandarle su copia al cliente.',
+                            duration: 3000,
                           });
                         }}
                       />

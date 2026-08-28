@@ -6,6 +6,7 @@ import { Clock, CheckCircle2, UserCheck } from 'lucide-react';
 import { uploadFile } from '@/lib/uploadImage';
 import { describeSaveError } from '@/lib/saveErrorMessage';
 import { toast } from 'sonner';
+import EnviarCopiaFirmada from '@/components/EnviarCopiaFirmada';
 
 const getNowDatetime = () => {
   const now = new Date();
@@ -13,7 +14,7 @@ const getNowDatetime = () => {
   return `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 };
 
-export default function SATSignaturePanel({ order, onUpdate, contactEmail = null }) {
+export default function SATSignaturePanel({ order, onUpdate, contactEmail = null, contactPhone = null, empresa = null }) {
   const [techDatetime, setTechDatetime] = useState(order.sign_datetime_technician || null);
   const [clientDatetime, setClientDatetime] = useState(order.sign_datetime_client || null);
   const [saving, setSaving] = useState(false);
@@ -38,16 +39,10 @@ export default function SATSignaturePanel({ order, onUpdate, contactEmail = null
       await base44.entities.SATOrder.update(order.id, updateData);
       setTechDatetime(dt);
       onUpdate({ ...order, ...updateData });
-      base44.functions.invoke('enviarCopiaFirmada', {
-        contact_email: null,
-        contact_name: order.technician || order.contact_name,
-        doc_title: `Orden SAT Nº${order.order_number || order.id?.slice(-6)}`,
-        doc_type: 'orden_sat',
-        sign_datetime: dt,
-        signature_url: signUrl,
-        signer_role: 'tecnico',
-        extra_info: `Cliente: ${order.contact_name} | Tipo: ${order.type || ''}`
-      }).catch(() => {});
+      // La copia firmada ya NO se manda por el servidor: esa función gasta
+      // créditos de Base44 y, al acabarse, dejaba al cliente sin copia y con un
+      // cartel rojo delante. Se manda desde el propio aparato con los botones
+      // de abajo (WhatsApp o correo), que no cuestan nada.
     } catch (err) {
       toast.error(describeSaveError(err, 'la firma'));
       throw err;
@@ -65,16 +60,10 @@ export default function SATSignaturePanel({ order, onUpdate, contactEmail = null
       await base44.entities.SATOrder.update(order.id, updateData);
       setClientDatetime(dt);
       onUpdate({ ...order, ...updateData });
-      base44.functions.invoke('enviarCopiaFirmada', {
-        contact_email: contactEmail || null,
-        contact_name: order.contact_name,
-        doc_title: `Orden SAT Nº${order.order_number || order.id?.slice(-6)}`,
-        doc_type: 'orden_sat',
-        sign_datetime: dt,
-        signature_url: signUrl,
-        signer_role: 'cliente',
-        extra_info: `Tipo servicio: ${order.type || ''} | ${order.description || ''}`
-      }).catch(() => {});
+      // La copia firmada ya NO se manda por el servidor: esa función gasta
+      // créditos de Base44 y, al acabarse, dejaba al cliente sin copia y con un
+      // cartel rojo delante. Se manda desde el propio aparato con los botones
+      // de abajo (WhatsApp o correo), que no cuestan nada.
     } catch (err) {
       toast.error(describeSaveError(err, 'la firma'));
       throw err;
@@ -225,6 +214,20 @@ export default function SATSignaturePanel({ order, onUpdate, contactEmail = null
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Con la firma del cliente ya guardada, la copia se le manda desde aquí
+          —WhatsApp o correo— sin pasar por el servidor ni gastar créditos. */}
+      {clientSigned && (
+        <div className="mt-3">
+          <EnviarCopiaFirmada
+            doc={order}
+            empresa={empresa}
+            tipo="sat"
+            email={contactEmail}
+            telefono={contactPhone}
+          />
         </div>
       )}
     </div>
