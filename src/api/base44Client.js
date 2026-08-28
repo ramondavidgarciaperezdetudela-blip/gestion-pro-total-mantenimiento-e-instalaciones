@@ -6,6 +6,10 @@ import {
 } from '@/lib/avisoServidor';
 import { iaActivada, gastaCreditos, errorIAApagada } from '@/lib/modoSinIA';
 import {
+  camposDeFotoDemasiadoGrandes, conFotosReducidas, tamanoFotoMayor, guardarLimiteAprendido,
+} from '@/lib/saveErrorMessage';
+import { leerLimiteAprendido } from '@/lib/compressImage';
+import {
   ajustesIA, consultarIA, esAppMovil, buscarIADelOrdenador, llamarIADelOrdenador,
   llamarOpenRouter, recogerClaveCompartida,
   seAcabaronLasConsultas, reintentarSinLimite, errorSinConsultas,
@@ -83,10 +87,17 @@ function envolverEntidad(entidad, nombre) {
       cache[prop] = async (...args) => {
         let actuales = args;
         let arregladoYa = false;
+        let fotosReducidasYa = 0;
+        let limiteQueEntro = 0;
         let ultimo;
         for (let intento = 0; intento <= ESPERA_REINTENTO.length; intento++) {
           try {
-            return await valor.apply(destino, actuales);
+            const salida = await valor.apply(destino, actuales);
+            // Si hubo que reducir fotos, se recuerda el tamaño que el servidor
+            // SÍ ha aceptado — no el que se probó y falló—, para que la próxima
+            // vez entren a la primera.
+            if (limiteQueEntro) guardarLimiteAprendido(limiteQueEntro);
+            return salida;
           } catch (err) {
             ultimo = err;
 
@@ -103,6 +114,42 @@ function envolverEntidad(entidad, nombre) {
                 actuales = corregidos;
                 intento--;                 // este intento no cuenta como reintento
                 continue;
+              }
+            }
+
+            // El servidor limita el tamaño de CADA foto por separado, y ese
+            // tope no está documentado. Cuando rechaza una —"Field
+            // 'photos_before[2]' exceeds the maximum allowed size"— la foto se
+            // reduce y se reintenta, en vez de dar el error y perder el
+            // trabajo. Esto estaba resuelto solo en el botón de guardar de las
+            // órdenes de SAT; puesto aquí vale para TODAS las pantallas: las
+            // fichas de mantenimiento, el diario de reparaciones, y también
+            // para los guardados que no pasan por ese botón, como cambiar el
+            // estado de una orden o firmarla — que era justo donde saltaba.
+            if (fotosReducidasYa < 5) {
+              const campos = camposDeFotoDemasiadoGrandes(err);
+              if (campos.length) {
+                const i = actuales.length - 1;
+                const mayor = tamanoFotoMayor(...campos.map((c) => actuales[i]?.[c] || []));
+                // Se baja de golpe a lo que se sabe que el servidor admite —el
+                // tope aprendido, o 48 KB si aún no se sabe— en vez de ir
+                // recortando de a poco: desde una foto de 2,5 MB, ir bajando un
+                // 40% cada vez se queda sin intentos antes de llegar.
+                const conocido = leerLimiteAprendido() || 48 * 1024;
+                const limite = Math.max(
+                  20 * 1024,
+                  Math.min(Math.round((mayor || conocido) * 0.6), conocido),
+                );
+                const reducidos = await conFotosReducidas(actuales[i], campos, limite);
+                if (reducidos) {
+                  const copia = [...actuales];
+                  copia[i] = reducidos;
+                  actuales = copia;
+                  fotosReducidasYa++;
+                  limiteQueEntro = limite;
+                  intento--;                 // este intento no cuenta como reintento
+                  continue;
+                }
               }
             }
 

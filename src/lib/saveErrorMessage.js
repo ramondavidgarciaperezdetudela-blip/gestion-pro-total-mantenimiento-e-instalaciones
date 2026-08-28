@@ -46,6 +46,66 @@ export function tamanoFotoMayor(...listas) {
 
 export { guardarLimiteAprendido };
 
+/**
+ * Qué CAMPOS ha señalado el servidor por tamaño.
+ *
+ * El mensaje viene como: Field 'photos_before[2]' exceeds the maximum allowed
+ * size. Interesa el nombre del campo sin el índice, porque hay que recomprimir
+ * la lista entera para que no vuelva a tropezar en la siguiente foto.
+ */
+export function camposDeFotoDemasiadoGrandes(err) {
+  const texto = [
+    err?.message, err?.response?.data?.message, err?.data?.detail, err?.data?.message,
+  ].filter(Boolean).map(String).join(' ');
+  const campos = new Set();
+  for (const m of texto.matchAll(/Field '([A-Za-z0-9_]+)(?:\[\d+\])?' exceeds the maximum allowed size/gi)) {
+    campos.add(m[1]);
+  }
+  return [...campos];
+}
+
+/**
+ * Devuelve los mismos datos con las fotos de esos campos ya reducidas.
+ *
+ * Devuelve null si no había nada que reducir, para no reintentar por gusto.
+ * Recorre también lo que esté anidado (por ejemplo las fotos dentro de las
+ * entradas del diario de reparaciones), porque el servidor señala el campo de
+ * primer nivel pero la foto grande puede estar más adentro.
+ */
+export async function conFotosReducidas(datos, campos, limite) {
+  if (!datos || typeof datos !== 'object' || !campos?.length) return null;
+  const aMirar = new Set(campos);
+  let tocado = false;
+
+  const reducirLista = async (lista) => {
+    const nueva = await Promise.all(lista.map((f) => recomprimirDataURL(f, limite)));
+    if (nueva.some((f, i) => f !== lista[i])) { tocado = true; return nueva; }
+    return lista;
+  };
+
+  const recorrer = async (valor, clave) => {
+    if (Array.isArray(valor)) {
+      // La lista señalada por el servidor: se reducen todas sus fotos.
+      if (aMirar.has(clave) && valor.every((v) => typeof v === 'string')) {
+        return reducirLista(valor);
+      }
+      const copia = await Promise.all(valor.map((v) => recorrer(v, clave)));
+      return copia.some((v, i) => v !== valor[i]) ? copia : valor;
+    }
+    if (!valor || typeof valor !== 'object') return valor;
+    const copia = { ...valor };
+    let cambiado = false;
+    for (const [k, dentro] of Object.entries(valor)) {
+      const nuevo = await recorrer(dentro, k);
+      if (nuevo !== dentro) { copia[k] = nuevo; cambiado = true; }
+    }
+    return cambiado ? copia : valor;
+  };
+
+  const salida = await recorrer(datos, null);
+  return tocado ? salida : null;
+}
+
 /** Extrae el código HTTP de un error del SDK, venga en el campo que venga. */
 function getStatus(err) {
   return (
