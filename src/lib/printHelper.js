@@ -33,7 +33,54 @@ function esAppNativa() {
  * @param {string} title  Nombre del trabajo de impresión
  * @returns {Promise<boolean>} true si se pudo lanzar la impresión
  */
+/** ¿Estamos en el programa instalado en el ordenador? */
+function hayPuenteImpresion() {
+  try { return typeof window !== 'undefined' && window.gptImpresion?.disponible === true; }
+  catch { return false; }
+}
+
+/** La impresora elegida en Configuración, si hay alguna. */
+export function impresoraElegida() {
+  try { return localStorage.getItem('gpt_impresora') || ''; }
+  catch { return ''; }
+}
+
+export function guardarImpresoraElegida(nombre) {
+  try {
+    if (nombre) localStorage.setItem('gpt_impresora', nombre);
+    else localStorage.removeItem('gpt_impresora');
+  } catch { /* sin sitio */ }
+}
+
+/** Las impresoras que ve el ordenador. Solo en el programa instalado. */
+export async function listarImpresoras() {
+  if (!hayPuenteImpresion()) return { ok: false, motivo: 'sin_puente', impresoras: [] };
+  const r = await window.gptImpresion.listar();
+  return { ok: !!r?.ok, motivo: r?.error || '', impresoras: r?.impresoras || [] };
+}
+
 export async function printDocument(html, title = 'Gestión Pro Total') {
+  // Programa instalado en el ordenador: se manda a la impresora elegida. Si no
+  // hay ninguna elegida, sale el diálogo del sistema como siempre.
+  if (hayPuenteImpresion()) {
+    const elegida = impresoraElegida();
+    const r = await window.gptImpresion.imprimir({
+      html, impresora: elegida || null, silencioso: !!elegida,
+    });
+    if (r?.ok) return true;
+    // Si la elegida ha fallado (apagada, sin papel, ya no existe), se vuelve a
+    // intentar con el diálogo del sistema en vez de dejarlo en nada.
+    if (elegida) {
+      const r2 = await window.gptImpresion.imprimir({ html, impresora: null, silencioso: false });
+      if (r2?.ok) return true;
+      avisar(`No se ha podido imprimir en «${elegida}»: ${r?.motivo || 'no responde'}. `
+        + 'Comprueba que está encendida, o elige otra en Configuración → Impresión.');
+      return false;
+    }
+    // Sin impresora elegida y con el diálogo cancelado no hay nada que avisar.
+    return false;
+  }
+
   // App de Android: sistema de impresión nativo.
   if (esAppNativa()) {
     try {

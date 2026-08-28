@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import InterruptorIA from '@/components/InterruptorIA';
 import ElegirTema from '@/components/ElegirTema';
 import VerificacionDocumentos from '@/components/VerificacionDocumentos';
+import ElegirImpresora from '@/components/ElegirImpresora';
 import { umbralesRite, guardarUmbralesRite, sonLosDePartida } from '@/lib/umbralesRite';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -686,6 +687,11 @@ export default function CompanyConfig() {
         </TabsContent>
 
         <TabsContent value="impresion">
+          <Card className="mb-4">
+            <CardContent className="pt-6">
+              <ElegirImpresora />
+            </CardContent>
+          </Card>
           <Card className="mb-4">
             <CardContent className="pt-6">
               <VerificacionDocumentos form={form} setForm={setForm} onGuardar={handleSave} />

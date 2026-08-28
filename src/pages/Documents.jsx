@@ -4,6 +4,7 @@ import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import VistaPreviaDocumento from '@/components/VistaPreviaDocumento';
 import EnviarCopiaFirmada from '@/components/EnviarCopiaFirmada';
+import { useAvisoQueSeVa } from '@/lib/avisoTemporal';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,15 +113,7 @@ export default function Documents() {
   const printRef = useRef(null);
   const { toast } = useToast();
 
-  // Los avisos de error no se quedan clavados en pantalla: a los 3 segundos se
-  // van solos, como el resto de avisos del programa. Lo que hace falta para
-  // reintentar es que el formulario siga abierto con lo escrito, y eso se
-  // queda.
-  useEffect(() => {
-    if (!saveError) return undefined;
-    const t = setTimeout(() => setSaveError(''), 3000);
-    return () => clearTimeout(t);
-  }, [saveError]);
+  useAvisoQueSeVa(saveError, setSaveError);
 
   // Suscripción en tiempo real: si el cliente firma, actualiza automáticamente
   useEffect(() => {

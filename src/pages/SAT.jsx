@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useAvisoQueSeVa } from '@/lib/avisoTemporal';
 import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
@@ -68,6 +69,7 @@ export default function SAT() {
   const [previewOrder, setPreviewOrder] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  useAvisoQueSeVa(saveError, setSaveError);
   const [form, setForm] = useState({ ...EMPTY_FORM, ...(preContactId ? { contact_id: preContactId } : {}) });
   const [activeTab, setActiveTab] = useState('lista');
   const [autoGenerateInvoice, setAutoGenerateInvoice] = useState(false);

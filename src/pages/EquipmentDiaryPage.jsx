@@ -306,7 +306,11 @@ export default function EquipmentDiaryPage() {
 
       {/* Dialog nuevo/editar diario */}
       <Dialog open={diaryDialogOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto"
+          onVolver={() => { setDiaryDialogOpen(false); setEditingDiary(null); }}
+          textoVolver="Volver sin guardar"
+        >
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{editingDiary ? 'Editar equipo' : 'Nuevo equipo / diario'}</DialogTitle>
@@ -384,7 +388,11 @@ export default function EquipmentDiaryPage() {
 
       {/* Dialog nueva/editar entrada */}
       <Dialog open={entryDialogOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto"
+          onVolver={() => { setEntryDialogOpen(false); setEditingEntry(null); }}
+          textoVolver="Volver sin guardar"
+        >
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{editingEntry?.entryIndex !== null ? 'Editar entrada' : 'Nueva entrada de reparación'}</DialogTitle>
