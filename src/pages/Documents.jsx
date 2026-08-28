@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Plus, Search, FileText, Trash2, Edit, ShoppingCart, Copy,
-  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers, Loader2 } from
+  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers, Loader2, ShieldCheck } from
 'lucide-react';
 import QRCodeLib from 'qrcode';
 import SupplierProductSearch from '../components/SupplierProductSearch';
@@ -94,6 +94,9 @@ export default function Documents() {
   const [previewDoc, setPreviewDoc] = useState(null);
   // El documento que se está mirando antes de imprimirlo o mandarlo.
   const [vistaPrevia, setVistaPrevia] = useState(null);
+  // Los datos de la empresa: de ahí sale la dirección pública con la que se
+  // arma el QR de verificación.
+  const [company, setCompany] = useState(null);
   // Ajustes de impresión/PDF (A4): margen y escala para cuadrar en la impresora
   const [pdfMargin, setPdfMargin] = useState(() => { try { return parseInt(localStorage.getItem('gpt_pdf_margin')) || 10; } catch { return 10; } });
   const [pdfScale, setPdfScale] = useState(() => { try { return parseInt(localStorage.getItem('gpt_pdf_scale')) || 100; } catch { return 100; } });
@@ -134,10 +137,12 @@ export default function Documents() {
     cargarTodo('Invoice', '-date'),
     cargarTodo('Contact', 'name'),
     base44.entities.DocumentTemplate.list('name', 50),
-    base44.entities.LineTemplate.list('name', 100)]
-    ).then(([d, c, t, lt]) => {
+    base44.entities.LineTemplate.list('name', 100),
+    base44.entities.CompanySettings.list()]
+    ).then(([d, c, t, lt, cs]) => {
       setDocs(d);
       setContacts(c);
+      setCompany(cs?.[0] || {});
       setTemplates(t);
       setLineTemplates(lt);
       if (preContactId && preType) {
@@ -369,6 +374,18 @@ export default function Documents() {
       if (editing) {
         savedDoc = await base44.entities.Invoice.update(editing.id, payload);
       } else {
+        // La verificación por QR se activa de salida, con la validez elegida
+        // en Configuración → Impresión. Antes había que acordarse de darle a
+        // un botón escondido al final de la ventana de ver el documento, así
+        // que en la práctica los documentos salían sin verificación.
+        if (payload.verify_enabled === undefined) {
+          const dias = company?.verify_default_days;
+          const porDefecto = dias === undefined || dias === null ? 365 : Number(dias);
+          payload.verify_enabled = true;
+          payload.verify_expires = porDefecto > 0
+            ? new Date(Date.now() + porDefecto * 86400000).toISOString()
+            : null;
+        }
         savedDoc = await base44.entities.Invoice.create(payload);
         if (form.contact_id) {
           await base44.entities.ClientDocument.create({
@@ -1334,6 +1351,32 @@ export default function Documents() {
                   </span>
                 </div>
                 <p className="text-[10px] text-gray-400 mt-1">El QR va en el PDF y abre la página de verificación. Si editas el documento, la verificación se actualiza sola.</p>
+                {/* Poder VER la página, no solo configurarla a ciegas. Antes no
+                    había manera de comprobar qué le sale al cliente al escanear. */}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm" variant="outline" className="text-xs gap-1"
+                    data-prueba="ver-verificacion"
+                    onClick={() => {
+                      const base = (company?.public_app_url && String(company.public_app_url).replace(/\/$/, ''))
+                        || (/^https?:/.test(window.location.origin) && !/localhost/.test(window.location.origin)
+                          ? window.location.origin : '');
+                      if (!base) {
+                        alert('Falta la dirección pública del programa.\n\n'
+                          + 'Ponla en Configuración → Impresión → Verificación de documentos. '
+                          + 'Sin ella el QR se genera con la dirección de este aparato '
+                          + '(en el móvil, "localhost"), y al cliente no le abre nada.');
+                        return;
+                      }
+                      window.open(`${base}/verificar-documento?id=${previewDoc.id}`, '_blank', 'noopener');
+                    }}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" /> Ver lo que verá quien escanee el QR
+                  </Button>
+                  <span className="text-[10px] text-gray-400">
+                    Se configura en Configuración → Impresión → Verificación de documentos.
+                  </span>
+                </div>
               </div>
             </>
           }
