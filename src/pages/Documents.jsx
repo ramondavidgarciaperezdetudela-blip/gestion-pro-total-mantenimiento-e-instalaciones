@@ -108,6 +108,16 @@ export default function Documents() {
   const printRef = useRef(null);
   const { toast } = useToast();
 
+  // Los avisos de error no se quedan clavados en pantalla: a los 3 segundos se
+  // van solos, como el resto de avisos del programa. Lo que hace falta para
+  // reintentar es que el formulario siga abierto con lo escrito, y eso se
+  // queda.
+  useEffect(() => {
+    if (!saveError) return undefined;
+    const t = setTimeout(() => setSaveError(''), 3000);
+    return () => clearTimeout(t);
+  }, [saveError]);
+
   // Suscripción en tiempo real: si el cliente firma, actualiza automáticamente
   useEffect(() => {
     const unsubscribe = base44.entities.Invoice.subscribe((event) => {
@@ -331,6 +341,22 @@ export default function Documents() {
     return { ...rest, items };
   };
 
+  /**
+   * Salir del formulario SIN tirar lo escrito.
+   *
+   * Antes, la X hacía clearDraft() antes de cerrar: se llevaba por delante el
+   * borrador. Si el guardado había fallado —por ejemplo porque el servidor
+   * contestó mal— y se cerraba para reintentar, al volver a abrir el documento
+   * salía en blanco, como si no se hubiera rellenado nada. El borrador está
+   * justo para eso: para que lo escrito sobreviva a un cierre.
+   */
+  const cerrarFormulario = useCallback(() => {
+    setDialogOpen(false);
+    setEditing(null);
+    setShowAdvanced(false);
+    setSaveError('');
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
     setSaveError('');
@@ -409,7 +435,18 @@ export default function Documents() {
   const sendWhatsApp = (doc) => {
     const c = contacts.find((x) => x.id === doc.contact_id);
     const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
-    const msg = encodeURIComponent(`*${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}*\nCliente: ${doc.contact_name}\nFecha: ${doc.date}\nTotal: ${doc.total?.toFixed(2)} €\nEstado: ${doc.status}`);
+    // Con el ENLACE, no solo con el resumen. Antes al cliente le llegaban
+    // cuatro líneas de texto: no podía ni verlo entero, ni imprimirlo, ni
+    // guardárselo. Con el enlace lo abre en su navegador, y allí tiene el
+    // botón de imprimir y de guardar en PDF.
+    const enlace = getSignLink(doc, 'whatsapp');
+    const msg = encodeURIComponent(
+      `*${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}*\n`
+      + `Cliente: ${doc.contact_name}\n`
+      + `Fecha: ${doc.date}\n`
+      + `Total: ${doc.total?.toFixed(2)} €\n\n`
+      + `Puede verlo, imprimirlo o guardarlo en PDF aquí:\n${enlace}`,
+    );
     window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
   };
 
@@ -576,9 +613,10 @@ export default function Documents() {
     // programa instalado la ventana nueva muchas veces ni se abría, así que
     // no pasaba nada y parecía que el botón estaba roto.
     setVistaPrevia({
-      titulo: `${doc.doc_type === 'factura' ? 'Factura' : 'Presupuesto'} ${doc.doc_number || ''} — ${doc.contact_name || ''}`,
+      titulo: `${doc.doc_type === 'factura' ? 'Factura' : doc.doc_type === 'recibo' ? 'Recibo' : 'Presupuesto'} ${doc.doc_number || ''} — ${doc.contact_name || ''}`,
       html,
       nombreFichero: `${doc.doc_type || 'documento'}-${doc.doc_number || ''}.html`,
+      doc,
     });
   };
 
@@ -607,6 +645,7 @@ export default function Documents() {
           html={vistaPrevia.html}
           nombreFichero={vistaPrevia.nombreFichero}
           onVolver={() => setVistaPrevia(null)}
+          onEditar={vistaPrevia.doc ? () => { setVistaPrevia(null); setPreviewDoc(null); handleEdit(vistaPrevia.doc); } : undefined}
         />
       )}
 
@@ -763,6 +802,8 @@ export default function Documents() {
           onOpenAutoFocus={(e) => e.preventDefault()}
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
+          onVolver={cerrarFormulario}
+          textoVolver="Volver (se guarda el borrador)"
         >
           <DialogHeader>
             <div className="flex items-center justify-between gap-2">
@@ -771,8 +812,8 @@ export default function Documents() {
                 {autoSaved && <span className="text-xs text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" />Borrador guardado</span>}
                 <button
                   className="text-gray-400 hover:text-gray-700 p-1 rounded"
-                  onClick={() => { clearDraft(); setDialogOpen(false); setEditing(null); setShowAdvanced(false); }}
-                  title="Cerrar sin guardar"
+                  onClick={cerrarFormulario}
+                  title="Cerrar (el borrador se guarda)"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1175,7 +1216,18 @@ export default function Documents() {
                             signature_url: dataUrl,
                             signer_role: 'cliente',
                             extra_info: `Total: ${previewDoc.total?.toFixed(2)} € | Fecha doc: ${previewDoc.date}`
-                          }).catch(() => {});
+                          }, { sinAviso: true }).catch((e) => {
+                            // La firma YA está guardada arriba. Lo único que
+                            // puede fallar aquí es el correo de cortesía con la
+                            // copia, y eso no se avisa como si se hubiera
+                            // perdido el documento: se dice lo que es.
+                            console.error('[Documents] No se pudo mandar la copia firmada:', e);
+                            toast({
+                              title: 'Firma guardada',
+                              description: 'No se ha podido mandar el correo con la copia; puedes enviarla tú desde los botones de compartir.',
+                              duration: 4000,
+                            });
+                          });
                         }}
                       />
                     )}

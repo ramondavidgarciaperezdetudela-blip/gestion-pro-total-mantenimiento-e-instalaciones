@@ -149,10 +149,46 @@ async function conAviso(llamar, funcion) {
   throw ultimo;
 }
 
+/**
+ * Reintenta igual que conAviso(), pero sin sacar el cartel rojo.
+ *
+ * Para lo que es de CORTESÍA: el correo con la copia firmada, por ejemplo. La
+ * firma ya está guardada en la ficha; si el correo no sale, eso no es "no se
+ * ha podido guardar", y anunciarlo con el mismo cartel que un guardado
+ * fallido asusta y hace pensar que se ha perdido el documento. Quien llama
+ * recibe el error y decide qué decir.
+ */
+async function sinCartel(llamar) {
+  let ultimo;
+  for (let intento = 0; intento <= ESPERA_REINTENTO.length; intento++) {
+    try {
+      return await llamar();
+    } catch (err) {
+      ultimo = err;
+      if (!sePuedeReintentarSolo(err) || intento === ESPERA_REINTENTO.length) break;
+      await new Promise((r) => setTimeout(r, ESPERA_REINTENTO[intento]));
+    }
+  }
+  throw ultimo;
+}
+
+/** ¿El último argumento son opciones nuestras y no datos para el servidor? */
+function opcionesDeLlamada(resto) {
+  const ultimo = resto[resto.length - 1];
+  if (ultimo && typeof ultimo === 'object' && 'sinAviso' in ultimo) {
+    return { opciones: ultimo, args: resto.slice(0, -1) };
+  }
+  return { opciones: {}, args: resto };
+}
+
 const funcionesVigiladas = new Proxy(cliente.functions, {
   get(destino, prop) {
     if (prop !== 'invoke') return destino[prop];
-    return (nombre, ...resto) => conAviso(() => destino.invoke(nombre, ...resto), nombre);
+    return (nombre, ...resto) => {
+      const { opciones, args } = opcionesDeLlamada(resto);
+      const llamar = () => destino.invoke(nombre, ...args);
+      return opciones.sinAviso ? sinCartel(llamar) : conAviso(llamar, nombre);
+    };
   },
 });
 

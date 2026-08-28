@@ -6,11 +6,26 @@ import { RotateCcw, Check, PenLine, AlertCircle, Loader2 } from 'lucide-react';
  * SignatureCanvas — Componente de firma digital táctil/ratón
  * El canvas de firma se muestra como overlay fijo para evitar que la pantalla se mueva al firmar.
  */
-export default function SignatureCanvas({ label, value, onSave, onCancel, showCancelIfSigned = true, existingDatetime = null }) {
+export default function SignatureCanvas({
+  label, value, onSave, onCancel, showCancelIfSigned = true, existingDatetime = null,
+  abrirAlEntrar = false,
+}) {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
-  const [showCanvas, setShowCanvas] = useState(!value);
+  // AQUÍ ESTABA EL FALLO DE "SE QUEDA LA HOJA EN BLANCO".
+  //
+  // Esto era `useState(!value)`: sin firma todavía, el cuadro de firma se
+  // abría SOLO, a pantalla completa y por delante de todo (z-9999). Y como al
+  // guardar un documento se abre su vista, y esa vista lleva el recuadro de
+  // conformidad del cliente, el resultado era que nada más darle a guardar
+  // aparecía un lienzo blanco tapando la pantalla: parecía que el documento se
+  // había quedado en blanco y no había forma de hacer nada.
+  //
+  // Ahora no se abre por su cuenta: sale el botón de "Firmar" y se abre cuando
+  // se pide. Solo las páginas del cliente —donde acaba de pulsar "Aceptar" y
+  // lo único que falta es la firma— piden que se abra directamente.
+  const [showCanvas, setShowCanvas] = useState(abrirAlEntrar && !value);
   const [signDatetime, setSignDatetime] = useState(existingDatetime);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');

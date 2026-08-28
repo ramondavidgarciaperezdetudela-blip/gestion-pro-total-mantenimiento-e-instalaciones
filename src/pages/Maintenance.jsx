@@ -338,6 +338,7 @@ export default function Maintenance() {
       titulo: `Hoja de Sanidad — ficha #${sheet.sheet_number || ''}`,
       html,
       nombreFichero: `hoja-sanidad-${sheet.sheet_number || 'ficha'}.html`,
+      sheet,
     });
   };
 
@@ -471,6 +472,7 @@ export default function Maintenance() {
       titulo: `Ficha de mantenimiento #${sheet.sheet_number || ''}`,
       html,
       nombreFichero: `ficha-mantenimiento-${sheet.sheet_number || ''}.html`,
+      sheet,
     });
   };
 
@@ -789,6 +791,7 @@ export default function Maintenance() {
           html={vistaPrevia.html}
           nombreFichero={vistaPrevia.nombreFichero}
           onVolver={() => setVistaPrevia(null)}
+          onEditar={vistaPrevia.sheet ? () => { setVistaPrevia(null); setPreview(null); handleEdit(vistaPrevia.sheet); } : undefined}
         />
       )}
 
