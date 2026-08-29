@@ -78,6 +78,54 @@ export const FAMILIAS = {
   },
 };
 
+/**
+ * Los tipos de máquina que se manejan a diario. Salen en un desplegable y se
+ * escriben tal cual en el documento, porque en un certificado no es lo mismo
+ * "aire acondicionado" que "cassette de 4 vías": el que lo lea dentro de tres
+ * años tiene que saber qué hay colgado del techo.
+ */
+export const TIPOS_EQUIPO = [
+  { grupo: 'Climatización', tipos: [
+    'Split mural',
+    'Multisplit',
+    'Consola de suelo',
+    'Suelo-techo',
+    'Cassette',
+    'Conductos',
+    'Fancoil',
+    'Cortina de aire',
+    'Ventana / compacto',
+  ] },
+  { grupo: 'Sistemas centralizados', tipos: [
+    'VRF / VRV',
+    'Rooftop',
+    'Enfriadora / chiller',
+    'Climatizadora (UTA)',
+    'Aerotermia aire-agua',
+    'Aerotermia aire-aire',
+    'Geotermia',
+    'Suelo radiante',
+  ] },
+  { grupo: 'Refrigeración', tipos: [
+    'Cámara frigorífica',
+    'Equipo compacto de cámara',
+    'Unidad condensadora + evaporador',
+    'Central frigorífica',
+    'Mural refrigerado',
+    'Vitrina expositora',
+    'Arcón / isla de congelación',
+    'Abatidor de temperatura',
+    'Fabricador de hielo',
+    'Botellero / enfriador de bebidas',
+  ] },
+  { grupo: 'Otros', tipos: [
+    'Deshumidificador',
+    'Bomba de calor para ACS',
+    'Caldera',
+    'Otro (escribirlo a mano)',
+  ] },
+];
+
 /** Todos los modelos, por familia. */
 export const MODELOS = { ...LEGALIZACION, ...EXPEDIENTE, ...GENERALES };
 
@@ -160,6 +208,13 @@ const REGLAS = [
   { clave: 'gwp', frases: ['gwp', 'pca'] },
   { clave: 'carga_gas', frases: ['carga de refrigerante', 'carga de gas', 'carga total', 'carga'] },
   { clave: 'temperatura', frases: ['temperatura de diseno', 'temp diseno', 'temperatura de regimen'] },
+
+  { clave: 'tipo_maquina', frases: ['tipo de maquina', 'tipo de equipo', 'tipo de unidad', 'clase de equipo'] },
+  { clave: 'ubicacion_condensadora', frases: ['ubicacion de la condensadora', 'situacion de la condensadora', 'ubicacion condensadora', 'ubicacion de la unidad exterior', 'situacion de la unidad exterior', 'unidad exterior situada', 'emplazamiento de la condensadora'] },
+  { clave: 'ubicacion_evaporadora', frases: ['ubicacion de la evaporadora', 'situacion de la evaporadora', 'ubicacion evaporadora', 'ubicacion de la unidad interior', 'situacion de la unidad interior', 'unidad interior situada', 'emplazamiento de la evaporadora'] },
+  { clave: 'aceite', frases: ['tipo de aceite', 'aceite del compresor', 'aceite'] },
+  { clave: 'seguridad_gas', frases: ['grupo de seguridad', 'clasificacion de seguridad'] },
+  { clave: 'toneladas_co2', frases: ['co2 equivalente', 'co equivalente', 'toneladas equivalentes', 't co2'] },
 
   { clave: 'marca_equipo', frases: ['marca del equipo', 'marca equipo', 'marca'] },
   { clave: 'modelo_equipo', frases: ['modelo del equipo', 'modelo equipo', 'modelo'] },
@@ -301,6 +356,13 @@ export function datosDeRelleno({ form = {}, contacto = null, empresa = null, fec
     carga_gas: form.carga_gas,
     temperatura: form.temperatura,
 
+    tipo_maquina: form.tipo_maquina === 'Otro (escribirlo a mano)' ? (form.tipo_maquina_otro || '') : form.tipo_maquina,
+    ubicacion_condensadora: form.ubicacion_condensadora,
+    ubicacion_evaporadora: form.ubicacion_evaporadora,
+    aceite: form.aceite,
+    seguridad_gas: form.seguridad_gas,
+    toneladas_co2: form.toneladas_co2,
+
     marca_equipo: form.marca_equipo,
     modelo_equipo: form.modelo_equipo,
     num_serie: form.num_serie,
@@ -363,6 +425,114 @@ function hoy() {
   const d = new Date();
   const dos = (n) => String(n).padStart(2, '0');
   return `${dos(d.getDate())}/${dos(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+// ─── Bloques que se añaden al documento ──────────────────────────────────────
+
+/** Una fila de tabla, o nada si el dato está vacío. */
+function fila(etiqueta, valor) {
+  if (valor === undefined || valor === null || String(valor).trim() === '') return '';
+  return `<tr><td style="padding:8px;border:1px solid #ccc;width:50%"><strong>${esc(etiqueta)}</strong></td>`
+    + `<td style="padding:8px;border:1px solid #ccc">${esc(valor)}</td></tr>`;
+}
+
+/**
+ * Ficha del equipo: qué máquina es, dónde está cada parte y qué gas lleva.
+ *
+ * Solo se añade si el modelo no tenía ya sitio para esos datos. Así, en un
+ * certificado frigorífico —que ya trae su tabla de equipo— no salen dos veces,
+ * y en un albarán o en un justificante de tasas, que no la traen, sí sale.
+ */
+export function bloqueEquipo(datos = {}, yaPuestos = new Set()) {
+  const p = (k, etiqueta) => (yaPuestos.has(k) ? '' : fila(etiqueta, datos[k]));
+  const filas = [
+    p('tipo_maquina', 'Tipo de máquina'),
+    p('marca_equipo', 'Marca del equipo'),
+    p('modelo_equipo', 'Modelo'),
+    p('num_serie', 'Nº de serie'),
+    p('potencia', 'Potencia / Capacidad'),
+    p('ubicacion_condensadora', 'Ubicación de la condensadora'),
+    p('ubicacion_evaporadora', 'Ubicación de la evaporadora'),
+    p('gas', 'Gas refrigerante'),
+    p('seguridad_gas', 'Grupo de seguridad'),
+    p('gwp', 'GWP'),
+    p('carga_gas', 'Carga de refrigerante (kg)'),
+    p('toneladas_co2', 'CO₂ equivalentes (t)'),
+    p('aceite', 'Tipo de aceite'),
+  ].filter(Boolean).join('\n    ');
+
+  if (!filas) return '';
+  return `<h3>DATOS DEL EQUIPO</h3>
+<table border="1" style="border-collapse:collapse;width:100%;margin:10px 0">
+  <tbody>
+    ${filas}
+  </tbody>
+</table>`;
+}
+
+/**
+ * El plano o croquis de la instalación, con su leyenda y las aclaraciones.
+ *
+ * @param {object} plano  { imagen, leyenda: [{simbolo, texto}], notas }
+ */
+export function bloquePlano(plano) {
+  if (!plano || !plano.imagen) return '';
+  const leyenda = (plano.leyenda || [])
+    .filter((l) => l && (l.texto || l.simbolo))
+    .map((l) => `<tr><td style="padding:6px;border:1px solid #ccc;width:30%"><strong>${esc(l.simbolo || '')}</strong></td>`
+      + `<td style="padding:6px;border:1px solid #ccc">${esc(l.texto || '')}</td></tr>`)
+    .join('\n    ');
+
+  return `<h3>PLANO / CROQUIS DE LA INSTALACIÓN</h3>
+<p style="margin:6px 0"><img src="${esc(plano.imagen)}" alt="Croquis de la instalación" style="max-width:100%;border:1px solid #ccc"/></p>
+${leyenda ? `<p style="margin:10px 0 4px"><strong>Leyenda</strong></p>
+<table border="1" style="border-collapse:collapse;width:100%;margin:4px 0">
+  <tbody>
+    ${leyenda}
+  </tbody>
+</table>` : ''}
+${plano.notas ? `<p style="margin:10px 0 4px"><strong>Aclaraciones</strong></p><p style="border:1px solid #ccc;padding:10px;white-space:pre-wrap">${esc(plano.notas)}</p>` : ''}`;
+}
+
+/**
+ * Mete un bloque justo antes del apartado de firmas.
+ *
+ * Un documento acaba firmándose; si los datos del equipo o el plano fueran
+ * después de la firma, quedaría como un añadido posterior. Si el modelo no
+ * tiene apartado de firmas, va al final y ya está.
+ */
+export function insertarAntesDeFirmas(html, bloque) {
+  if (!bloque) return html;
+  const encabezados = [...String(html).matchAll(/<h3\b[^>]*>([\s\S]*?)<\/h3>/gi)];
+  for (let i = encabezados.length - 1; i >= 0; i--) {
+    if (/firma|certificaci[oó]n|conformidad|recepci[oó]n|aceptaci[oó]n/i.test(encabezados[i][1])) {
+      const en = encabezados[i].index;
+      return html.slice(0, en) + bloque + '\n\n' + html.slice(en);
+    }
+  }
+  return html + '\n\n' + bloque;
+}
+
+/**
+ * El documento completo: el modelo relleno, más la ficha del equipo y el
+ * plano si hacen falta. Es lo que usa la pantalla.
+ */
+export function componerDocumento(contenido, datos = {}, plano = null) {
+  const relleno = rellenarModelo(contenido, datos);
+
+  // Qué datos han encontrado ya su hueco en el modelo: esos no se repiten en
+  // la ficha del equipo.
+  const yaPuestos = new Set();
+  for (const [k, v] of Object.entries(datos)) {
+    const valor = String(v ?? '').trim();
+    if (valor.length >= 2 && relleno.includes(esc(valor)) && !contenido.includes(esc(valor))) {
+      yaPuestos.add(k);
+    }
+  }
+
+  let salida = insertarAntesDeFirmas(relleno, bloqueEquipo(datos, yaPuestos));
+  salida = insertarAntesDeFirmas(salida, bloquePlano(plano));
+  return salida;
 }
 
 /** Buscar modelos por nombre o familia, para el buscador de la pantalla. */

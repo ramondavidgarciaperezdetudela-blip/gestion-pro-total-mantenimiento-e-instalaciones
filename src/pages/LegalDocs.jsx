@@ -5,16 +5,18 @@ import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Loader2, Save, Sun, Zap, Thermometer, Snowflake, Edit, Check, X, FolderOpen, Link, Download, Wrench, Euro, ClipboardList, Sparkles, Paperclip, RotateCcw } from 'lucide-react';
+import { FileText, Loader2, Save, Sun, Zap, Thermometer, Snowflake, Edit, Check, X, FolderOpen, Link, Download, Wrench, Euro, ClipboardList, Sparkles, Paperclip, RotateCcw, Map } from 'lucide-react';
 import { format } from 'date-fns';
 import CompanyHeader from '../components/CompanyHeader';
 import PrintButton from '../components/PrintButton';
 import LegalDocSignaturePanel from '../components/LegalDocSignaturePanel';
 import SendDocumentEmailPanel from '../components/SendDocumentEmailPanel';
 import { toast } from 'sonner';
-import { FAMILIAS, modelosDe, buscarModelo, rellenarModelo, desrellenarModelo, datosDeRelleno, cuantosModelos } from '@/lib/modelosDocumentos';
+import { FAMILIAS, modelosDe, buscarModelo, componerDocumento, desrellenarModelo, datosDeRelleno, cuantosModelos, TIPOS_EQUIPO } from '@/lib/modelosDocumentos';
+import { porFamilia as gasesPorFamilia, buscarRefrigerante, sustitutosDe, ESTADOS as ESTADOS_GAS, toneladasCO2, periodicidadFugas } from '@/lib/refrigerantes';
+import CroquisInstalacion from '@/components/CroquisInstalacion';
 
 // ─── TIPOS DE DOCUMENTOS ─────────────────────────────────────────────────────
 /*
@@ -95,38 +97,12 @@ const NORMATIVA = {
   ],
 };
 
-// ─── TODOS LOS GASES REFRIGERANTES ───────────────────────────────────────────
-const ALL_GASES = [
-  // HFCs comunes climatización
-  { value: 'R-32', label: 'R-32', gwp: '675' },
-  { value: 'R-410A', label: 'R-410A', gwp: '2088' },
-  { value: 'R-134a', label: 'R-134a', gwp: '1430' },
-  { value: 'R-407C', label: 'R-407C', gwp: '1774' },
-  { value: 'R-407F', label: 'R-407F', gwp: '1825' },
-  // HFCs refrigeración industrial
-  { value: 'R-404A', label: 'R-404A', gwp: '3922' },
-  { value: 'R-507A', label: 'R-507A', gwp: '3985' },
-  { value: 'R-422D', label: 'R-422D', gwp: '2729' },
-  // HFOs y mezclas bajas GWP
-  { value: 'R-448A', label: 'R-448A (HFO)', gwp: '1387' },
-  { value: 'R-449A', label: 'R-449A (HFO)', gwp: '1282' },
-  { value: 'R-452A', label: 'R-452A (HFO)', gwp: '2140' },
-  { value: 'R-452B', label: 'R-452B (HFO)', gwp: '698' },
-  { value: 'R-454B', label: 'R-454B (HFO)', gwp: '466' },
-  { value: 'R-454C', label: 'R-454C (HFO)', gwp: '148' },
-  { value: 'R-455A', label: 'R-455A (HFO)', gwp: '148' },
-  { value: 'R-1234yf', label: 'R-1234yf (HFO)', gwp: '4' },
-  { value: 'R-1234ze', label: 'R-1234ze (HFO)', gwp: '7' },
-  // Naturales
-  { value: 'R-290', label: 'R-290 (Propano)', gwp: '3' },
-  { value: 'R-600a', label: 'R-600a (Isobutano)', gwp: '3' },
-  { value: 'R-717', label: 'R-717 (Amoniaco/NH3)', gwp: '0' },
-  { value: 'R-744', label: 'R-744 (CO2)', gwp: '1' },
-  { value: 'R-170', label: 'R-170 (Etano)', gwp: '6' },
-  // Otros
-  { value: 'R-22', label: 'R-22 (uso restringido)', gwp: '1810' },
-  { value: 'otro', label: 'Otro gas (especificar)', gwp: '' },
-];
+/*
+ * La lista de gases ya no está aquí escrita a mano: vive en
+ * src/lib/refrigerantes.js con los 67 refrigerantes, incluidos los CFC y HCFC
+ * prohibidos —que hacen falta, porque las máquinas antiguas siguen montadas—,
+ * su GWP, su grupo de seguridad, el aceite que les toca y a qué se puede pasar.
+ */
 
 function buildPrompt(typeKey, docId, form, contact, companyData) {
   const today = format(new Date(), 'dd/MM/yyyy');
@@ -266,6 +242,13 @@ REGLAS DE FORMATO ESTRICTAS (seguir siempre igual):
 - El resultado debe ser siempre del mismo tipo de estructura para el mismo tipo de documento.`;
 }
 
+/** La fecha de hoy como se escribe en un papel: 29/08/2026. */
+function hoyEnEspanol() {
+  const d = new Date();
+  const dos = (n) => String(n).padStart(2, '0');
+  return `${dos(d.getDate())}/${dos(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
 export default function LegalDocs() {
   const urlParams = new URLSearchParams(window.location.search);
   const preContactId = urlParams.get('contact_id');
@@ -282,6 +265,12 @@ export default function LegalDocs() {
     cups: '', distribuidora: '', gas: 'R-410A', carga_gas: '',
     gwp: '2088', sistema: '', fluido: '', tension: '230/400 V',
     marca_equipo: '', modelo_equipo: '', num_serie: '', temperatura: '',
+    // La fecha se pone sola con la de hoy, pero se puede cambiar: hay partes
+    // que se rellenan al día siguiente y el papel tiene que llevar el día real.
+    fecha: hoyEnEspanol(),
+    tipo_maquina: '', tipo_maquina_otro: '',
+    ubicacion_condensadora: '', ubicacion_evaporadora: '',
+    toneladas_co2: '', aceite: '', seguridad_gas: '',
   });
   const [generating, setGenerating] = useState(false);
   const [docContent, setDocContent] = useState('');
@@ -295,6 +284,9 @@ export default function LegalDocs() {
   // Mandan sobre las de fábrica. { clima: { cert_rite: '<h2>…' } }
   const [misPlantillas, setMisPlantillas] = useState({});
   const [guardandoModelos, setGuardandoModelos] = useState(false);
+  // El croquis que acompaña al documento: { imagen, leyenda, notas }
+  const [plano, setPlano] = useState(null);
+  const [verCroquis, setVerCroquis] = useState(false);
   const [technicianSignature, setTechnicianSignature] = useState(null);
   const [clientSignature, setClientSignature] = useState(null);
   const printRef = useRef(null);
@@ -374,11 +366,48 @@ export default function LegalDocs() {
       .trim();
   };
 
+  // ── El gas elegido y lo que arrastra consigo ──────────────────────────────
+  const fichaGas = buscarRefrigerante(form.gas);
+
+  /**
+   * Al elegir un gas se rellenan solos el GWP, el aceite y el grupo de
+   * seguridad, y se recalculan las toneladas de CO₂ equivalente. Todo se puede
+   * corregir a mano después: el desplegable ayuda, no manda.
+   */
+  const elegirGas = (id) => {
+    const r = buscarRefrigerante(id);
+    setForm((f) => {
+      const t = toneladasCO2(id, f.carga_gas);
+      return {
+        ...f,
+        gas: id,
+        gas_custom: id === 'otro' ? f.gas_custom : '',
+        gwp: r?.gwp !== null && r?.gwp !== undefined ? String(r.gwp) : f.gwp,
+        aceite: r?.aceite && r.aceite !== '—' ? r.aceite : f.aceite,
+        seguridad_gas: r?.seguridad && r.seguridad !== '—' ? r.seguridad : f.seguridad_gas,
+        toneladas_co2: t !== null ? String(t).replace('.', ',') : f.toneladas_co2,
+      };
+    });
+  };
+
+  /** Al escribir la carga se recalculan las toneladas de CO₂ equivalente. */
+  const cambiarCarga = (valor) => {
+    const kg = String(valor).replace(',', '.');
+    setForm((f) => {
+      const t = toneladasCO2(f.gas, kg);
+      return { ...f, carga_gas: valor, toneladas_co2: t !== null ? String(t).replace('.', ',') : f.toneladas_co2 };
+    });
+  };
+
+  /** Cada cuánto hay que mirar fugas con esa carga. */
+  const avisoFugas = periodicidadFugas(String(form.toneladas_co2 || '').replace(',', '.'));
+
   /** Lo que el programa ya sabe: empresa, cliente, técnico, equipo, gas… */
   const datosParaRellenar = () => datosDeRelleno({
     form,
     contacto: contact,
     empresa: companyData,
+    fecha: form.fecha,     // la que haya escrito el usuario, no la de hoy a la fuerza
   });
 
   /** El modelo tal y como se va a abrir: el del usuario si lo tiene, si no el de fábrica. */
@@ -484,7 +513,7 @@ export default function LegalDocs() {
         return;
       }
 
-      const contenido = rellenarModelo(elegido.contenido, datosParaRellenar());
+      const contenido = componerDocumento(elegido.contenido, datosParaRellenar(), plano);
       setDocContent(contenido);
       setEditContent(contenido);
       toast.success(elegido.propia
@@ -511,7 +540,7 @@ export default function LegalDocs() {
     try {
       const prompt = buildPrompt(activeType, selectedDoc.id, form, contact, companyData);
       const res = await base44.integrations.Core.InvokeLLM({ prompt, add_context_from_internet: false });
-      const contenido = rellenarModelo(cleanHtml(res), datosParaRellenar());
+      const contenido = componerDocumento(cleanHtml(res), datosParaRellenar(), plano);
       if (!contenido.trim()) throw new Error('la IA no ha devuelto nada');
       setDocContent(contenido);
       setEditContent(contenido);
@@ -905,6 +934,14 @@ export default function LegalDocs() {
                     <Input value={form.potencia} onChange={e => setF('potencia', e.target.value)} placeholder="ej: 5 kWp / 15 kW" />
                   </div>
                   <div>
+                    <label className="text-xs text-gray-500">Fecha del documento</label>
+                    <div className="flex gap-1">
+                      <Input data-prueba="fecha" value={form.fecha || ''} onChange={e => setF('fecha', e.target.value)} placeholder="dd/mm/aaaa" />
+                      <Button type="button" size="sm" variant="outline" className="whitespace-nowrap px-2"
+                        onClick={() => setF('fecha', hoyEnEspanol())} title="Poner la fecha de hoy">Hoy</Button>
+                    </div>
+                  </div>
+                  <div>
                     <label className="text-xs text-gray-500">Tipo de instalación</label>
                     <Input value={form.tipo_instalacion} onChange={e => setF('tipo_instalacion', e.target.value)} placeholder="ej: Vivienda unifamiliar" />
                   </div>
@@ -926,53 +963,120 @@ export default function LegalDocs() {
                   </div>
                 )}
 
-                {/* Campos específicos frío */}
-                {activeType === 'frio' && (
-                  <div className="grid grid-cols-3 gap-2 pt-1 border-t">
-                    <div className="col-span-2">
-                      <label className="text-xs text-gray-500">Gas refrigerante</label>
-                      <Select value={form.gas} onValueChange={v => {
-                        const g = ALL_GASES.find(x => x.value === v);
-                        setForm(f => ({ ...f, gas: v, gwp: g?.gwp || f.gwp, gas_custom: '' }));
-                      }}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent className="max-h-64">
-                          {ALL_GASES.map(g => <SelectItem key={g.value} value={g.value}>{g.label}{g.gwp ? ` — GWP ${g.gwp}` : ''}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      {form.gas === 'otro' && (
-                        <Input className="mt-1" placeholder="Especificar gas (ej: R-513A)" value={form.gas_custom || ''} onChange={e => setF('gas_custom', e.target.value)} />
-                      )}
-                    </div>
-                    <div><label className="text-xs text-gray-500">GWP</label><Input value={form.gwp} onChange={e => setF('gwp', e.target.value)} placeholder="GWP del gas" /></div>
-                    <div><label className="text-xs text-gray-500">Carga gas (kg)</label><Input type="number" value={form.carga_gas} onChange={e => setF('carga_gas', e.target.value)} /></div>
-                    <div><label className="text-xs text-gray-500">Temp. diseño</label><Input value={form.temperatura} onChange={e => setF('temperatura', e.target.value)} placeholder="-18°C" /></div>
-                    <div><label className="text-xs text-gray-500">Marca equipo</label><Input value={form.marca_equipo} onChange={e => setF('marca_equipo', e.target.value)} /></div>
-                    <div><label className="text-xs text-gray-500">Nº serie</label><Input value={form.num_serie} onChange={e => setF('num_serie', e.target.value)} /></div>
-                  </div>
-                )}
-
-                {/* Campos específicos clima */}
-                {activeType === 'clima' && (
-                  <div className="grid grid-cols-2 gap-2 pt-1 border-t">
-                    <div><label className="text-xs text-gray-500">Sistema</label><Input value={form.sistema} onChange={e => setF('sistema', e.target.value)} placeholder="VRF / Split / Aerotermia..." /></div>
+                {/* El equipo y su gas: en TODOS los apartados, no solo en frío y
+                    clima. Un certificado, un parte o un albarán también piden
+                    saber qué máquina es, dónde está y qué lleva dentro. */}
+                <div className="pt-2 border-t space-y-2">
+                  <p className="text-xs font-semibold text-gray-600">Datos del equipo</p>
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs text-gray-500">Gas refrigerante</label>
-                      <Select value={form.gas} onValueChange={v => {
-                        const g = ALL_GASES.find(x => x.value === v);
-                        setForm(f => ({ ...f, gas: v, gwp: g?.gwp || f.gwp, gas_custom: '' }));
-                      }}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent className="max-h-64">
-                          {ALL_GASES.map(g => <SelectItem key={g.value} value={g.value}>{g.label}{g.gwp ? ` — GWP ${g.gwp}` : ''}</SelectItem>)}
+                      <label className="text-xs text-gray-500">Tipo de máquina</label>
+                      <Select value={form.tipo_maquina || ''} onValueChange={v => setF('tipo_maquina', v)}>
+                        <SelectTrigger data-prueba="tipo-maquina"><SelectValue placeholder="Split, cassette, conductos..." /></SelectTrigger>
+                        <SelectContent className="max-h-72">
+                          {TIPOS_EQUIPO.map(g => (
+                            <SelectGroup key={g.grupo}>
+                              <SelectLabel className="text-[10px] uppercase tracking-wide text-gray-400">{g.grupo}</SelectLabel>
+                              {g.tipos.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                            </SelectGroup>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {form.tipo_maquina === 'Otro (escribirlo a mano)' && (
+                        <Input className="mt-1" placeholder="¿Qué máquina es?" value={form.tipo_maquina_otro || ''} onChange={e => setF('tipo_maquina_otro', e.target.value)} />
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Sistema</label>
+                      <Input value={form.sistema} onChange={e => setF('sistema', e.target.value)} placeholder="VRF / Aerotermia / Cascada..." />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Ubicación de la condensadora (unidad exterior)</label>
+                      <Input data-prueba="ubi-condensadora" value={form.ubicacion_condensadora || ''} onChange={e => setF('ubicacion_condensadora', e.target.value)} placeholder="ej: cubierta, patio trasero" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Ubicación de la evaporadora (unidad interior)</label>
+                      <Input data-prueba="ubi-evaporadora" value={form.ubicacion_evaporadora || ''} onChange={e => setF('ubicacion_evaporadora', e.target.value)} placeholder="ej: falso techo del comedor" />
+                    </div>
+                    <div><label className="text-xs text-gray-500">Marca equipo</label><Input value={form.marca_equipo} onChange={e => setF('marca_equipo', e.target.value)} /></div>
+                    <div><label className="text-xs text-gray-500">Modelo</label><Input value={form.modelo_equipo} onChange={e => setF('modelo_equipo', e.target.value)} /></div>
+                    <div><label className="text-xs text-gray-500">Nº serie</label><Input value={form.num_serie} onChange={e => setF('num_serie', e.target.value)} /></div>
+                    <div><label className="text-xs text-gray-500">Temperatura de diseño</label><Input value={form.temperatura} onChange={e => setF('temperatura', e.target.value)} placeholder="-18 °C" /></div>
+                  </div>
+                </div>
+
+                {/* Gas refrigerante: la lista completa, con los prohibidos. */}
+                <div className="pt-2 border-t space-y-2">
+                  <p className="text-xs font-semibold text-gray-600">Gas refrigerante</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2">
+                      <label className="text-xs text-gray-500">Refrigerante que lleva la máquina</label>
+                      <Select value={form.gas || ''} onValueChange={elegirGas}>
+                        <SelectTrigger data-prueba="gas"><SelectValue placeholder="Elige el gas" /></SelectTrigger>
+                        <SelectContent className="max-h-80">
+                          {gasesPorFamilia().map(g => (
+                            <SelectGroup key={g.familia}>
+                              <SelectLabel className="text-[10px] uppercase tracking-wide text-gray-400">
+                                {g.familia}{g.familia === 'CFC' || g.familia === 'HCFC' ? ' — prohibidos' : ''}
+                              </SelectLabel>
+                              {g.gases.map(r => (
+                                <SelectItem key={r.id} value={r.id}>
+                                  {r.nombre}{r.gwp !== null ? ` — GWP ${r.gwp}` : ''}{r.estado === 'prohibido' ? ' ⛔' : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          ))}
                         </SelectContent>
                       </Select>
                       {form.gas === 'otro' && (
-                        <Input className="mt-1" placeholder="Especificar gas (ej: R-513A)" value={form.gas_custom || ''} onChange={e => setF('gas_custom', e.target.value)} />
+                        <Input className="mt-1" placeholder="Escribe el gas (ej: R-513A)" value={form.gas_custom || ''} onChange={e => setF('gas_custom', e.target.value)} />
                       )}
                     </div>
+                    <div><label className="text-xs text-gray-500">GWP</label><Input value={form.gwp} onChange={e => setF('gwp', e.target.value)} /></div>
+                    <div><label className="text-xs text-gray-500">Carga de gas (kg)</label><Input data-prueba="carga-gas" value={form.carga_gas} onChange={e => cambiarCarga(e.target.value)} placeholder="ej: 4,2" /></div>
+                    <div><label className="text-xs text-gray-500">CO₂ equivalente (t)</label><Input data-prueba="co2" value={form.toneladas_co2 || ''} onChange={e => setF('toneladas_co2', e.target.value)} placeholder="se calcula solo" /></div>
+                    <div><label className="text-xs text-gray-500">Aceite</label><Input value={form.aceite || ''} onChange={e => setF('aceite', e.target.value)} placeholder="POE / Mineral" /></div>
                   </div>
-                )}
+
+                  {/* Lo que hay que saber del gas elegido. */}
+                  {fichaGas && (
+                    <div className={`rounded-lg border p-2 text-[11px] ${ESTADOS_GAS[fichaGas.estado].color}`} data-prueba="ficha-gas">
+                      <p className="font-semibold">
+                        {ESTADOS_GAS[fichaGas.estado].etiqueta} · {fichaGas.familia} · Seguridad {fichaGas.seguridad}
+                        {fichaGas.odp ? ` · ODP ${fichaGas.odp}` : ''}
+                      </p>
+                      <p className="mt-0.5 opacity-90">{fichaGas.nota || ESTADOS_GAS[fichaGas.estado].explicacion}</p>
+                      {fichaGas.uso && <p className="mt-0.5 opacity-75">Uso habitual: {fichaGas.uso}</p>}
+                      {sustitutosDe(form.gas).length > 0 && (
+                        <p className="mt-1">
+                          <strong>Se puede pasar a:</strong>{' '}
+                          {sustitutosDe(form.gas).map(r => `${r.id} (GWP ${r.gwp})`).join(' · ')}
+                        </p>
+                      )}
+                      {avisoFugas && <p className="mt-1"><strong>Control de fugas:</strong> {avisoFugas}</p>}
+                    </div>
+                  )}
+                </div>
+
+                {/* El plano de la instalación. Se despliega solo si se pide,
+                    que no todos los documentos lo necesitan. */}
+                <div className="pt-2 border-t">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setVerCroquis(v => !v)}
+                    data-prueba="abrir-croquis" className="gap-1">
+                    <Map className="w-3.5 h-3.5" />
+                    {verCroquis ? 'Ocultar el plano' : (plano ? 'Ver / cambiar el plano' : 'Añadir un plano de la instalación')}
+                    {plano && !verCroquis && <span className="ml-1 text-emerald-600">✓</span>}
+                  </Button>
+                  {verCroquis && (
+                    <div className="mt-2">
+                      <CroquisInstalacion
+                        plano={plano}
+                        onGuardar={(p) => { setPlano(p); setVerCroquis(false); }}
+                        onQuitar={() => { setPlano(null); toast.info('Plano quitado del documento'); }}
+                      />
+                    </div>
+                  )}
+                </div>
 
                 <Button onClick={generate} disabled={generating} className="w-full bg-indigo-600 hover:bg-indigo-700">
                   {generating
