@@ -1,3 +1,17 @@
+/*
+ * OBSOLETA desde la 1.52.0. No la llama nadie.
+ *
+ * Los modelos de legalización ya no se descargan: viven dentro del programa,
+ * en src/lib/modelosLegalizacion.js. Esta función se queda aquí solo por si
+ * alguien la tiene publicada en su panel de Base44 y la usa a mano; el
+ * programa no depende de ella para nada.
+ *
+ * El motivo del cambio: si esta función no estaba publicada —que es lo
+ * normal—, el botón "Descargar plantillas" se quedaba girando para siempre y
+ * no bajaba ningún documento. Y aunque estuviera publicada, escribía
+ * doc_type: 'solar' | 'clima' | … , valores que la entidad DocumentTemplate no
+ * admitía en su enum, así que las plantillas se guardaban a medias.
+ */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
 // Templates estándar de documentos legalizados en España - COMPLETOS

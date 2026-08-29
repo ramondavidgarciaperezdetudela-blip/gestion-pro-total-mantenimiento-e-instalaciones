@@ -81,7 +81,7 @@ const quickLinks = [
 { name: 'Presupuesto', page: 'Documents?type=presupuesto', icon: FileText, color: 'bg-blue-600' },
 { name: 'Documentos', page: 'Documents', icon: FileText, color: 'bg-violet-600' },
 { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette, color: 'bg-rose-500' },
-{ name: 'Docs Legalización', page: 'LegalDocs', icon: FileText, color: 'bg-indigo-600' },
+{ name: 'Modelos y legalización', page: 'LegalDocs', icon: FileText, color: 'bg-indigo-600' },
 { name: 'Normativas', page: 'Regulations', icon: Shield, color: 'bg-indigo-500' },
 { name: 'Manuales', page: 'Manuals', icon: BookOpen, color: 'bg-teal-600' },
 { name: 'Catálogos', page: 'Catalogs', icon: BookOpen, color: 'bg-teal-500' },

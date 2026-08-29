@@ -129,7 +129,7 @@ const navItems = [
 { name: 'Copias Seg.', page: 'BackupCenter', icon: Shield },
 { name: 'Diario Rep.', page: 'EquipmentDiaryPage', icon: ClipboardList },
 { name: 'Disponibilidad', page: 'Availability', icon: CalendarCheck },
-{ name: 'Docs Legal.', page: 'LegalDocs', icon: FileText },
+{ name: 'Modelos y legaliz.', page: 'LegalDocs', icon: FileText },
 { name: 'Documentos', page: 'Documents', icon: FileText },
 { name: 'Exportar', page: 'ExportData', icon: Download },
 { name: 'Historial', page: 'AuditLog', icon: History },
