@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Loader2, Save, Sun, Zap, Thermometer, Snowflake, Edit, Check, X, FolderOpen, Link, Download, Wrench, Euro, ClipboardList, Sparkles, Paperclip, RotateCcw, Map } from 'lucide-react';
+import { FileText, Loader2, Save, Sun, Zap, Thermometer, Snowflake, Edit, Check, X, FolderOpen, Link, Download, Wrench, Euro, ClipboardList, Sparkles, Paperclip, RotateCcw, Map, Calculator } from 'lucide-react';
 import { format } from 'date-fns';
 import CompanyHeader from '../components/CompanyHeader';
 import PrintButton from '../components/PrintButton';
@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { FAMILIAS, modelosDe, buscarModelo, componerDocumento, desrellenarModelo, datosDeRelleno, cuantosModelos, TIPOS_EQUIPO } from '@/lib/modelosDocumentos';
 import { porFamilia as gasesPorFamilia, buscarRefrigerante, sustitutosDe, ESTADOS as ESTADOS_GAS, toneladasCO2, periodicidadFugas } from '@/lib/refrigerantes';
 import CroquisInstalacion from '@/components/CroquisInstalacion';
+import PanelGasesFluorados from '@/components/PanelGasesFluorados';
+import { fichaHtml as fichaGasesHtml } from '@/lib/gasesFluorados';
 
 // ─── TIPOS DE DOCUMENTOS ─────────────────────────────────────────────────────
 /*
@@ -287,6 +289,9 @@ export default function LegalDocs() {
   // El croquis que acompaña al documento: { imagen, leyenda, notas }
   const [plano, setPlano] = useState(null);
   const [verCroquis, setVerCroquis] = useState(false);
+  // La ficha de gases fluorados que se mete en el documento, ya en HTML.
+  const [fichaGases, setFichaGases] = useState(null);
+  const [verGases, setVerGases] = useState(false);
   const [technicianSignature, setTechnicianSignature] = useState(null);
   const [clientSignature, setClientSignature] = useState(null);
   const printRef = useRef(null);
@@ -410,6 +415,21 @@ export default function LegalDocs() {
     fecha: form.fecha,     // la que haya escrito el usuario, no la de hoy a la fuerza
   });
 
+  /**
+   * Añade la ficha de gases fluorados al documento, antes de las firmas.
+   * Solo si el usuario la ha pedido: no todos los documentos la necesitan.
+   */
+  const conFichaDeGases = (html) => {
+    if (!fichaGases) return html;
+    const encabezados = [...html.matchAll(/<h3\b[^>]*>([\s\S]*?)<\/h3>/gi)];
+    for (let i = encabezados.length - 1; i >= 0; i--) {
+      if (/firma|certificaci[oó]n|conformidad|recepci[oó]n|aceptaci[oó]n/i.test(encabezados[i][1])) {
+        return html.slice(0, encabezados[i].index) + fichaGases + '\n\n' + html.slice(encabezados[i].index);
+      }
+    }
+    return html + '\n\n' + fichaGases;
+  };
+
   /** El modelo tal y como se va a abrir: el del usuario si lo tiene, si no el de fábrica. */
   const modeloDe = (familia, id) => {
     const propia = misPlantillas[familia]?.[id];
@@ -513,7 +533,7 @@ export default function LegalDocs() {
         return;
       }
 
-      const contenido = componerDocumento(elegido.contenido, datosParaRellenar(), plano);
+      const contenido = conFichaDeGases(componerDocumento(elegido.contenido, datosParaRellenar(), plano));
       setDocContent(contenido);
       setEditContent(contenido);
       toast.success(elegido.propia
@@ -540,7 +560,7 @@ export default function LegalDocs() {
     try {
       const prompt = buildPrompt(activeType, selectedDoc.id, form, contact, companyData);
       const res = await base44.integrations.Core.InvokeLLM({ prompt, add_context_from_internet: false });
-      const contenido = componerDocumento(cleanHtml(res), datosParaRellenar(), plano);
+      const contenido = conFichaDeGases(componerDocumento(cleanHtml(res), datosParaRellenar(), plano));
       if (!contenido.trim()) throw new Error('la IA no ha devuelto nada');
       setDocContent(contenido);
       setEditContent(contenido);
@@ -1054,6 +1074,36 @@ export default function LegalDocs() {
                         </p>
                       )}
                       {avisoFugas && <p className="mt-1"><strong>Control de fugas:</strong> {avisoFugas}</p>}
+                    </div>
+                  )}
+                </div>
+
+                {/* El impuesto de gases fluorados y el control de fugas. */}
+                <div className="pt-2 border-t">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setVerGases(v => !v)}
+                    data-prueba="abrir-fgas" className="gap-1">
+                    <Calculator className="w-3.5 h-3.5" />
+                    {verGases ? 'Ocultar el cálculo de gases fluorados' : 'Impuesto de gases fluorados y control de fugas'}
+                    {fichaGases && !verGases && <span className="ml-1 text-emerald-600">✓</span>}
+                  </Button>
+                  {verGases && (
+                    <div className="mt-2">
+                      <PanelGasesFluorados
+                        gas={form.gas}
+                        kilos={form.carga_gas}
+                        incluido={Boolean(fichaGases)}
+                        onInsertar={(r) => {
+                          setFichaGases(fichaGasesHtml(r));
+                          setForm(f => ({ ...f, toneladas_co2: String(r.toneladas).replace('.', ','), gwp: String(r.pca) }));
+                          toast.success('Ficha de gases fluorados añadida al documento');
+                        }}
+                      />
+                      {fichaGases && (
+                        <Button size="sm" variant="ghost" className="mt-1 text-gray-500 hover:text-red-600"
+                          onClick={() => { setFichaGases(null); toast.info('Ficha quitada del documento'); }}>
+                          Quitar la ficha del documento
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
