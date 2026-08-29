@@ -21,6 +21,7 @@
 
 import { LEGALIZACION } from './modelosLegalizacion';
 import { GENERALES } from './modelosGenerales';
+import { EXPEDIENTE } from './modelosExpediente';
 
 /**
  * Las familias de documentos, en el orden en que salen en pantalla.
@@ -69,10 +70,16 @@ export const FAMILIAS = {
     color: 'bg-violet-100 text-violet-800',
     descripcion: 'Informe técnico, acta de entrega y declaración responsable.',
   },
+  expediente: {
+    label: '📎 Papeles del expediente',
+    grupo: 'legalizacion',
+    color: 'bg-rose-100 text-rose-800',
+    descripcion: 'Certificado, memoria, proyecto, esquema unifilar, pruebas, tasas y uno en blanco.',
+  },
 };
 
 /** Todos los modelos, por familia. */
-export const MODELOS = { ...LEGALIZACION, ...GENERALES };
+export const MODELOS = { ...LEGALIZACION, ...EXPEDIENTE, ...GENERALES };
 
 /** Las familias de un grupo ('legalizacion' o 'general'), en orden. */
 export function familiasDe(grupo) {
@@ -314,6 +321,41 @@ export function datosDeRelleno({ form = {}, contacto = null, empresa = null, fec
     }
   }
   return datos;
+}
+
+/**
+ * Lo contrario de rellenar: quita del documento los datos que puso el programa
+ * y vuelve a dejar el hueco.
+ *
+ * Hace falta para poder guardar un modelo corregido "a mi manera". Si se
+ * guardara el documento tal cual está en pantalla, el nombre y el NIF del
+ * cliente de ese día quedarían pegados dentro del modelo y saldrían en todos
+ * los documentos siguientes. Así el modelo se guarda limpio.
+ *
+ * Solo toca valores de cuatro caracteres o más: los cortos (un "12", un "5")
+ * aparecen en cualquier parte del texto y borrarlos haría más daño que bien.
+ */
+export function desrellenarModelo(html, datos = {}) {
+  if (!html) return '';
+  let salida = String(html);
+  // De más largo a más corto: si el nombre completo y el apellido son datos
+  // distintos, primero se quita el largo para no dejar cachos sueltos.
+  const valores = Object.values(datos)
+    .map((v) => String(v ?? '').trim())
+    .filter((v) => v.length >= 4)
+    .sort((a, b) => b.length - a.length);
+
+  for (const v of valores) {
+    const buscado = esc(v);
+    let desde = 0;
+    for (;;) {
+      const i = salida.indexOf(buscado, desde);
+      if (i === -1) break;
+      salida = salida.slice(0, i) + '_______________________' + salida.slice(i + buscado.length);
+      desde = i + 23;
+    }
+  }
+  return salida;
 }
 
 /** La fecha de hoy tal y como se escribe en un papel: 09/03/2026. */

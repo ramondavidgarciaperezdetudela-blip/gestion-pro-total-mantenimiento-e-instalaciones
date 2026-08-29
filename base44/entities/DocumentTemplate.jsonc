@@ -22,7 +22,8 @@
         "clima",
         "frio",
         "trabajo",
-        "comercial"
+        "comercial",
+        "expediente"
       ],
       "default": "factura"
     },

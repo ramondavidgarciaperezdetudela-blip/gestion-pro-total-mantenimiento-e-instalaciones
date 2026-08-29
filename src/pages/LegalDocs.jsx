@@ -7,14 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Loader2, Save, Sun, Zap, Thermometer, Snowflake, Edit, Check, X, FolderOpen, Link, Download, Wrench, Euro, ClipboardList, Sparkles } from 'lucide-react';
+import { FileText, Loader2, Save, Sun, Zap, Thermometer, Snowflake, Edit, Check, X, FolderOpen, Link, Download, Wrench, Euro, ClipboardList, Sparkles, Paperclip, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import CompanyHeader from '../components/CompanyHeader';
 import PrintButton from '../components/PrintButton';
 import LegalDocSignaturePanel from '../components/LegalDocSignaturePanel';
 import SendDocumentEmailPanel from '../components/SendDocumentEmailPanel';
 import { toast } from 'sonner';
-import { FAMILIAS, modelosDe, buscarModelo, rellenarModelo, datosDeRelleno, cuantosModelos } from '@/lib/modelosDocumentos';
+import { FAMILIAS, modelosDe, buscarModelo, rellenarModelo, desrellenarModelo, datosDeRelleno, cuantosModelos } from '@/lib/modelosDocumentos';
 
 // ─── TIPOS DE DOCUMENTOS ─────────────────────────────────────────────────────
 /*
@@ -35,6 +35,7 @@ const ICONOS = {
   trabajo: Wrench,
   comercial: Euro,
   informe: ClipboardList,
+  expediente: Paperclip,
 };
 
 const DOC_TYPES = Object.fromEntries(
@@ -334,7 +335,8 @@ export default function LegalDocs() {
         const nombre = String(t.name || '').replace(/^LEGAL:\s*/i, '').trim();
         const modelo = modelosDe(t.doc_type).find((m) => m.label === nombre || m.id === t.template_key);
         if (!modelo) continue;
-        (propias[t.doc_type] ||= {})[modelo.id] = t.notes_template;
+        // Se guarda también el id del registro para poder corregirlo o quitarlo.
+        (propias[t.doc_type] ||= {})[modelo.id] = { contenido: t.notes_template, registro: t.id };
       }
     } catch {
       // Sin conexión no hay plantillas propias, pero las de fábrica están aquí.
@@ -382,9 +384,80 @@ export default function LegalDocs() {
   /** El modelo tal y como se va a abrir: el del usuario si lo tiene, si no el de fábrica. */
   const modeloDe = (familia, id) => {
     const propia = misPlantillas[familia]?.[id];
-    if (propia) return { contenido: propia, propia: true };
+    if (propia?.contenido) return { contenido: propia.contenido, propia: true };
     const modelo = buscarModelo(familia, id);
     return modelo ? { contenido: modelo.contenido, propia: false } : null;
+  };
+
+  /** ¿Este modelo ya lo tengo corregido a mi manera? */
+  const tengoMiVersion = () =>
+    Boolean(selectedDoc && misPlantillas[activeType]?.[selectedDoc.id]?.contenido);
+
+  /**
+   * Guardar el documento que hay en pantalla como MI modelo para siempre.
+   *
+   * Antes de guardarlo se le quitan los datos del cliente de hoy con
+   * desrellenarModelo(). Si no, el nombre y el NIF de ese cliente quedarían
+   * pegados dentro del modelo y saldrían en todos los documentos siguientes.
+   */
+  const guardarComoMiModelo = async () => {
+    if (!selectedDoc || !docContent) return;
+    const limpio = desrellenarModelo(docContent, datosParaRellenar());
+    if (!confirm(
+      `Se va a guardar este documento como TU modelo de «${selectedDoc.label}».\n\n`
+      + 'A partir de ahora, cada vez que lo abras saldrá tu versión en lugar de la de fábrica.\n\n'
+      + 'Los datos del cliente de hoy se quitan al guardar, para que no se queden pegados dentro del modelo.',
+    )) return;
+
+    setGuardandoModelos(true);
+    try {
+      const yaLoTengo = misPlantillas[activeType]?.[selectedDoc.id]?.registro;
+      if (yaLoTengo) {
+        await base44.entities.DocumentTemplate.update(yaLoTengo, { notes_template: limpio });
+      } else {
+        await base44.entities.DocumentTemplate.create({
+          name: selectedDoc.label,
+          doc_type: activeType,
+          template_key: selectedDoc.id,
+          primary_color: '#1e3a5f',
+          secondary_color: '#0ea5e9',
+          header_text: selectedDoc.label,
+          footer_text: 'Revisar y firmar antes de presentar',
+          show_logo: true,
+          show_iban: false,
+          show_signature_box: true,
+          font_size: 'medium',
+          iva_rate: 21,
+          is_default: false,
+          notes_template: limpio,
+        });
+      }
+      toast.success(`✅ Guardado. «${selectedDoc.label}» se abrirá siempre con tus cambios.`);
+      await loadDefaultTemplates();
+    } catch (e) {
+      toast.error('No se ha podido guardar tu modelo: ' + (e?.message || 'revisa la conexión'));
+    } finally {
+      setGuardandoModelos(false);
+    }
+  };
+
+  /** Tirar mi versión y volver a la de fábrica. */
+  const volverAlDeFabrica = async () => {
+    const registro = selectedDoc && misPlantillas[activeType]?.[selectedDoc.id]?.registro;
+    if (!registro) return;
+    if (!confirm(`Se van a perder tus cambios en «${selectedDoc.label}» y volverá el modelo de fábrica. ¿Seguro?`)) return;
+    setGuardandoModelos(true);
+    try {
+      await base44.entities.DocumentTemplate.delete(registro);
+      toast.success('Restaurado el modelo de fábrica');
+      await loadDefaultTemplates();
+      setDocContent('');
+      setEditContent('');
+    } catch (e) {
+      toast.error('No se ha podido restaurar: ' + (e?.message || 'revisa la conexión'));
+    } finally {
+      setGuardandoModelos(false);
+    }
   };
 
   /**
@@ -965,6 +1038,29 @@ export default function LegalDocs() {
                                 )}
                              </div>
                            </div>
+
+                           {/* Dejar el modelo a mi manera, para siempre. */}
+                           {!editing && (
+                             <div className="mt-2 pt-2 border-t border-indigo-200 flex items-center gap-2 flex-wrap">
+                               <Button size="sm" variant="outline" onClick={guardarComoMiModelo} disabled={guardandoModelos}
+                                 className="text-indigo-700 border-indigo-300"
+                                 title="Guarda este documento como tu versión del modelo. Los datos del cliente de hoy se quitan al guardar.">
+                                 <Save className="w-3.5 h-3.5 mr-1" />
+                                 {guardandoModelos ? 'Guardando...' : 'Guardar como mi modelo'}
+                               </Button>
+                               {tengoMiVersion() && (
+                                 <Button size="sm" variant="ghost" onClick={volverAlDeFabrica} disabled={guardandoModelos}
+                                   className="text-gray-500 hover:text-red-600">
+                                   <RotateCcw className="w-3.5 h-3.5 mr-1" />Volver al de fábrica
+                                 </Button>
+                               )}
+                               <p className="text-[10px] text-gray-400">
+                                 {tengoMiVersion()
+                                   ? 'Estás usando TU versión de este modelo.'
+                                   : 'Dale a «Editar», cámbialo a tu gusto y guárdalo: se abrirá así siempre.'}
+                               </p>
+                             </div>
+                           )}
                            <p className="text-[10px] text-gray-400 mt-1">⚠️ Revisar y firmar por técnico cualificado antes de presentar oficialmente</p>
                          </CardHeader>
 
