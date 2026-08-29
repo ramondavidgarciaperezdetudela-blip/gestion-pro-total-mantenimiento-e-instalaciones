@@ -391,26 +391,46 @@ export default function CompanyConfig() {
                   <label className="text-sm font-medium text-gray-700">Dirección</label>
                   <Input value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="Calle, número, piso" className="mt-1" />
                 </div>
+                {/* Los tres campos son buscadores Y campos a la vez: escribes,
+                    eliges de la lista y se rellenan los tres. Antes solo eran
+                    buscadores y, al elegir, el cuadro se quedaba en blanco.
+                    El setForm va en su forma de función para que elegir en dos
+                    cuadros seguidos no borre lo del primero. */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Ciudad</label>
-                  <PostalCodeSearch
-                    type="city"
-                    onSelect={(result) => setForm({...form, postal_code: result.postal_code, city: result.city, province: result.province})}
-                  />
+                  <label className="text-sm font-medium text-gray-700">Ciudad / Población</label>
+                  <div className="mt-1">
+                    <PostalCodeSearch
+                      type="city"
+                      data-prueba="empresa-ciudad"
+                      value={form.city || ''}
+                      onChange={(v) => setForm(f => ({ ...f, city: v }))}
+                      onSelect={(r) => setForm(f => ({ ...f, postal_code: r.postal_code, city: r.city, province: r.province }))}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Provincia</label>
-                  <PostalCodeSearch
-                    type="province"
-                    onSelect={(result) => setForm({...form, postal_code: result.postal_code, city: result.city, province: result.province})}
-                  />
+                  <div className="mt-1">
+                    <PostalCodeSearch
+                      type="province"
+                      data-prueba="empresa-provincia"
+                      value={form.province || ''}
+                      onChange={(v) => setForm(f => ({ ...f, province: v }))}
+                      onSelect={(r) => setForm(f => ({ ...f, postal_code: r.postal_code, city: r.city, province: r.province }))}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Código Postal</label>
-                  <PostalCodeSearch
-                    type="postal_code"
-                    onSelect={(result) => setForm({...form, postal_code: result.postal_code, city: result.city, province: result.province})}
-                  />
+                  <div className="mt-1">
+                    <PostalCodeSearch
+                      type="postal_code"
+                      data-prueba="empresa-cp"
+                      value={form.postal_code || ''}
+                      onChange={(v) => setForm(f => ({ ...f, postal_code: v }))}
+                      onSelect={(r) => setForm(f => ({ ...f, postal_code: r.postal_code, city: r.city, province: r.province }))}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Email</label>

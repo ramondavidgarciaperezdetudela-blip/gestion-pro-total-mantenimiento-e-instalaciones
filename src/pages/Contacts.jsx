@@ -423,26 +423,39 @@ export default function Contacts() {
               </div>
               <Input placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
               <Input placeholder="Dirección" value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
-              {/* Búsqueda por CP — rellena ciudad y provincia automáticamente */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 space-y-2">
-                <p className="text-xs text-blue-700 font-medium">📍 Buscar por código postal (rellena ciudad y provincia automáticamente)</p>
+              {/* Los tres campos buscan y se rellenan entre ellos: da igual por
+                  cuál empieces —la población, la provincia o el código postal—,
+                  eliges de la lista y se ponen los otros dos. Antes solo se
+                  podía buscar por código postal, y si no te lo sabías tenías
+                  que escribirlo todo a mano. */}
+              <p className="text-xs text-blue-700 font-medium flex items-center gap-1">
+                📍 Escribe la población, la provincia o el código postal y elige de la lista: se rellenan los tres
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <PostalCodeSearch
+                  type="city"
+                  data-prueba="cliente-ciudad"
+                  placeholder="Población / Municipio"
+                  value={form.city || ''}
+                  onChange={(v) => setForm(prev => ({ ...prev, city: v }))}
+                  onSelect={(r) => setForm(prev => ({ ...prev, postal_code: r.postal_code, city: r.city, province: r.province }))}
+                />
+                <PostalCodeSearch
+                  type="province"
+                  data-prueba="cliente-provincia"
+                  placeholder="Provincia"
+                  value={form.province || ''}
+                  onChange={(v) => setForm(prev => ({ ...prev, province: v }))}
+                  onSelect={(r) => setForm(prev => ({ ...prev, postal_code: r.postal_code, city: r.city, province: r.province }))}
+                />
                 <PostalCodeSearch
                   type="postal_code"
-                  onSelect={(result) => {
-                    setForm(prev => ({
-                      ...prev,
-                      postal_code: result.postal_code,
-                      city: result.city,
-                      province: result.province
-                    }));
-                  }}
+                  data-prueba="cliente-cp"
+                  placeholder="Código postal"
+                  value={form.postal_code || ''}
+                  onChange={(v) => setForm(prev => ({ ...prev, postal_code: v }))}
+                  onSelect={(r) => setForm(prev => ({ ...prev, postal_code: r.postal_code, city: r.city, province: r.province }))}
                 />
-              </div>
-              {/* Campos directos editables */}
-              <div className="grid grid-cols-3 gap-2">
-                <Input placeholder="Código postal" value={form.postal_code || ''} onChange={e => setForm({...form, postal_code: e.target.value})} />
-                <Input placeholder="Ciudad / Municipio" value={form.city || ''} onChange={e => setForm({...form, city: e.target.value})} />
-                <Input placeholder="Provincia" value={form.province || ''} onChange={e => setForm({...form, province: e.target.value})} />
               </div>
               <Textarea placeholder="Notas" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} />
               <div className="grid grid-cols-2 gap-2">
