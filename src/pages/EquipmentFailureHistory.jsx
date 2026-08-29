@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Wrench, Plus, Edit, Trash2, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '../utils';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
@@ -127,11 +129,19 @@ export default function EquipmentFailureHistory() {
 
   return (
     <div className="space-y-4 max-w-6xl">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Wrench className="w-8 h-8 text-orange-600" />
           Historial Averías Frigoríficas
         </h1>
+        {/* La chuleta de códigos, a un clic desde aquí: cuando registras una
+            avería es justo cuando tienes el código en el display delante. */}
+        <Link to={createPageUrl('CodigosError')} data-prueba="ir-codigos">
+          <Button variant="outline" className="gap-1 border-red-300 text-red-700 hover:bg-red-50">
+            <AlertCircle className="w-4 h-4" />
+            Códigos de error por marcas
+          </Button>
+        </Link>
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogTrigger asChild>
             <Button onClick={() => { resetForm(); setShowDialog(true); }} className="bg-orange-600 hover:bg-orange-700">

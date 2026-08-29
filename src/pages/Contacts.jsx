@@ -20,6 +20,7 @@ import { saveToCache, loadFromCache, formatCacheDate } from '@/lib/offlineCache'
 import { fetchCompanyLogo } from '../components/LogoFetcher';
 import { uploadImage } from '@/lib/uploadImage';
 import PostalCodeSearch from '../components/PostalCodeSearch';
+import CompletarDatosEmpresa from '../components/CompletarDatosEmpresa';
 
 const PAYMENT_PROFILES = {
   buen_pagador: { label: 'Buen pagador', color: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
@@ -169,7 +170,6 @@ export default function Contacts() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [fetchingLogo, setFetchingLogo] = useState(false);
-  const [fetchingCompany, setFetchingCompany] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [cacheDate, setCacheDate] = useState('');
   const photoInputRef = React.useRef(null);
@@ -261,50 +261,6 @@ export default function Contacts() {
     setFetchingLogo(false);
   };
 
-  // Buscar datos de empresa por NIF o nombre usando IA con internet
-  const handleFetchCompanyData = async () => {
-    const query = form.nif || form.company_name;
-    if (!query) return alert('Introduce primero el NIF/CIF o nombre de la empresa');
-    setFetchingCompany(true);
-    try {
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Busca en internet (web pública, registro mercantil, AEAT, páginas oficiales) los datos de la empresa española con ${form.nif ? `NIF/CIF: ${form.nif}` : `nombre: "${form.company_name}"`}. Devuelve los datos que encuentres: razón social, dirección, código postal, ciudad, provincia, teléfono, email, website. Si no encuentras algún dato, deja el campo vacío.`,
-        add_context_from_internet: true,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            company_name: { type: 'string' },
-            address: { type: 'string' },
-            postal_code: { type: 'string' },
-            city: { type: 'string' },
-            province: { type: 'string' },
-            phone: { type: 'string' },
-            email: { type: 'string' },
-            website: { type: 'string' },
-            nif: { type: 'string' },
-          }
-        }
-      });
-      if (result) {
-        setForm(prev => ({
-          ...prev,
-          company_name: result.company_name || prev.company_name,
-          address: result.address || prev.address,
-          postal_code: result.postal_code || prev.postal_code,
-          city: result.city || prev.city,
-          province: result.province || prev.province,
-          phone: result.phone || prev.phone,
-          email: result.email || prev.email,
-          website: result.website || prev.website,
-          nif: result.nif || prev.nif,
-        }));
-      }
-    } catch (e) {
-      alert('Error al buscar datos de empresa: ' + e.message);
-    }
-    setFetchingCompany(false);
-  };
-
   const handleEdit = (c) => {
     setEditing(c);
     setForm({ ...EMPTY_FORM, ...c });
@@ -392,14 +348,17 @@ export default function Contacts() {
                   <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="flex gap-2">
-                <Input placeholder="NIF / CIF empresa" value={form.nif} onChange={e => setForm({...form, nif: e.target.value})} className="flex-1" />
-                <Button onClick={handleFetchCompanyData} variant="outline" size="sm" disabled={fetchingCompany || (!form.nif && !form.company_name)} className="whitespace-nowrap gap-1 text-xs">
-                  <Search className="w-3 h-3" />
-                  {fetchingCompany ? 'Buscando...' : 'Buscar empresa'}
-                </Button>
-              </div>
+              <Input placeholder="NIF / CIF empresa" value={form.nif} onChange={e => setForm({...form, nif: e.target.value})} />
               <Input placeholder="Empresa / Razón social" value={form.company_name} onChange={e => setForm({...form, company_name: e.target.value})} />
+              {/* Un solo buscador, el mismo que en los datos de la empresa:
+                  comprueba el NIF, saca la provincia de él y lo demás lo busca
+                  fuera, pero sin pisar nada sin permiso. Antes había un botón
+                  que machacaba los campos directamente y sin avisar. */}
+              <CompletarDatosEmpresa
+                actuales={form}
+                onAplicar={(nuevos) => setForm(prev => ({ ...prev, ...nuevos }))}
+                campos={['company_name', 'nif', 'address', 'postal_code', 'city', 'province', 'phone', 'email', 'website']}
+              />
               <div className="flex gap-2">
                 <Input placeholder="Website de empresa" value={form.website || ''} onChange={e => setForm({...form, website: e.target.value})} className="flex-1" />
                 <Button onClick={handleAutoFetchLogo} variant="outline" size="sm" disabled={fetchingLogo || (!form.company_name && !form.website)} className="whitespace-nowrap gap-1 text-xs">

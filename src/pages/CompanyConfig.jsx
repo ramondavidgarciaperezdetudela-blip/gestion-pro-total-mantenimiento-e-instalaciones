@@ -19,6 +19,7 @@ import {
 } from '@/lib/disenoDocumento';
 import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, AlertTriangle, Type, Image as ImageIcon, CalendarClock } from 'lucide-react';
 import PostalCodeSearch from '@/components/PostalCodeSearch';
+import CompletarDatosEmpresa from '@/components/CompletarDatosEmpresa';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ValidCharsConfig from '@/components/ValidCharsConfig';
 import { loadLicense, parseLicense, getDeviceId, clearLicense } from '@/lib/licenseManager';
@@ -382,6 +383,14 @@ export default function CompanyConfig() {
                 <div>
                   <label className="text-sm font-medium text-gray-700">NIF / CIF</label>
                   <Input value={form.nif} onChange={e => setForm({...form, nif: e.target.value})} placeholder="B12345678" className="mt-1" />
+                </div>
+                {/* Escribe el NIF o el nombre y que rellene lo que falte. Nunca
+                    pisa nada sin que lo marques tú. */}
+                <div className="md:col-span-2">
+                  <CompletarDatosEmpresa
+                    actuales={form}
+                    onAplicar={(nuevos) => setForm(f => ({ ...f, ...nuevos }))}
+                  />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Teléfono</label>
