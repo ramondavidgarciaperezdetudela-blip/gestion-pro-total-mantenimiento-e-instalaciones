@@ -66,6 +66,7 @@ const ColdRoomCalc = lazy(() => import('./pages/ColdRoomCalc'));
 const ContactDetail = lazy(() => import('./pages/ContactDetail'));
 const Contacts = lazy(() => import('./pages/Contacts'));
 const CodigosError = lazy(() => import('./pages/CodigosError'));
+const PresionesGas = lazy(() => import('./pages/PresionesGas'));
 const DocumentTemplates = lazy(() => import('./pages/DocumentTemplates'));
 const Documents = lazy(() => import('./pages/Documents'));
 const ElectricalCalc = lazy(() => import('./pages/ElectricalCalc'));
@@ -133,6 +134,7 @@ export const PAGES = {
     "ContactDetail": ContactDetail,
     "Contacts": Contacts,
     "CodigosError": CodigosError,
+    "PresionesGas": PresionesGas,
     "DocumentTemplates": DocumentTemplates,
     "Documents": Documents,
     "ElectricalCalc": ElectricalCalc,

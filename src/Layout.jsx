@@ -115,6 +115,7 @@ const navItems = [
 { name: 'Asistente IA', page: 'AIAssistant', icon: Bot },
 { name: 'Averías', page: 'EquipmentFailureHistory', icon: AlertCircle },
 { name: 'Códigos de error', page: 'CodigosError', icon: AlertCircle },
+{ name: 'Presiones y carga', page: 'PresionesGas', icon: Droplets },
 { name: 'Baterías', page: 'BatteryCalc', icon: Zap },
 { name: 'Búsqueda IA', page: 'AISearch', icon: Search },
 { name: 'Cal. SAT', page: 'SATCalendar', icon: Calendar },
@@ -193,7 +194,7 @@ const PAGE_SECTION = {
   TechnicianFieldWork: 'Operaciones', TechnicianDay: 'Operaciones', TecniciansRoutes: 'Operaciones',
   Maintenance: 'Operaciones', MaintenancePlanning: 'Operaciones', IncidentManagement: 'Operaciones',
   EquipmentDiaryPage: 'Operaciones', EquipmentFailureHistory: 'Operaciones', Agenda: 'Operaciones',
-  CodigosError: 'Operaciones',
+  CodigosError: 'Operaciones', PresionesGas: 'Cálculo y diagnóstico',
   Availability: 'Operaciones',
   TablasRefrigerantes: 'Operaciones',
   // Clientes y proyectos
