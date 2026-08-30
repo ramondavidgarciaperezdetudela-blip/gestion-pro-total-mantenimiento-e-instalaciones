@@ -37,14 +37,12 @@ export default function PanelGasesFluorados({ gas, kilos, onInsertar, incluido }
   const [hermetico, setHermetico] = useState(false);
   const [conDetector, setConDetector] = useState(false);
   const [pcaManual, setPcaManual] = useState('');
-  const [regenerado, setRegenerado] = useState(false);
-  const [uso, setUso] = useState('clima');
   const [ajustes, setAjustes] = useState(false);
   const [cfg, setCfg] = useState(parametros());
 
   const r = useMemo(
-    () => calcular({ gas, kilos, hermetico, conDetector, pcaManual: pcaManual || null, regenerado, uso }),
-    [gas, kilos, hermetico, conDetector, pcaManual, regenerado, uso, cfg],
+    () => calcular({ gas, kilos, hermetico, conDetector, pcaManual: pcaManual || null }),
+    [gas, kilos, hermetico, conDetector, pcaManual, cfg],
   );
 
   const pcaDelCatalogo = pcaDe(gas);
@@ -102,22 +100,6 @@ export default function PanelGasesFluorados({ gas, kilos, onInsertar, incluido }
                 <input type="checkbox" checked={conDetector} onChange={(e) => setConDetector(e.target.checked)} data-prueba="detector" />
                 Lleva sistema de detección de fugas
               </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={regenerado} onChange={(e) => setRegenerado(e.target.checked)} data-prueba="regenerado" />
-                Gas regenerado o reciclado
-              </label>
-              <label className="flex items-center gap-1.5">
-                ¿Qué aparato es?
-                <select
-                  value={uso}
-                  onChange={(e) => setUso(e.target.value)}
-                  data-prueba="uso-equipo"
-                  className="h-7 rounded-md border border-input px-1.5 text-xs"
-                >
-                  <option value="clima">Aire acondicionado / bomba de calor</option>
-                  <option value="refrigeracion">Refrigeración</option>
-                </select>
-              </label>
             </div>
 
             {/* El cálculo */}
@@ -158,41 +140,6 @@ export default function PanelGasesFluorados({ gas, kilos, onInsertar, incluido }
                 )}
                 <p className="text-[10px] text-gray-500 mt-1.5 leading-relaxed">{r.impuesto.quienLoPaga}</p>
               </div>
-
-              {/* La cuota europea es un coste distinto del impuesto, y desde
-                  2026 los dos van dentro del mismo precio del kilo. */}
-              <div className="border rounded-lg p-2.5 bg-white md:col-span-2" data-prueba="bloque-cuota-ue">
-                <p className="text-[11px] font-bold text-gray-700 mb-1">Cuota europea de HFC</p>
-                {r.cuotaEuropea?.aplicable ? (
-                  <>
-                    <Dato etiqueta="Tipo" valor={`${r.cuotaEuropea.euroPorToneladaCO2e} € por tonelada de CO₂e`} />
-                    <Dato etiqueta="Por kilo de este gas" valor={`${r.pca} × ${r.cuotaEuropea.euroPorToneladaCO2e} ÷ 1.000 = ${Math.round((r.pca * r.cuotaEuropea.euroPorToneladaCO2e) / 1000 * 10000) / 10000} €/kg`} />
-                    <Dato etiqueta="Importe de la cuota" valor={`${r.cuotaEuropea.importe} €`} fuerte />
-                    <Dato etiqueta="Fórmula" valor={r.cuotaEuropea.formula} />
-                  </>
-                ) : (
-                  <Dato etiqueta="Situación" valor={`No se aplica. ${r.cuotaEuropea?.motivoNoAplicable || ''}`} fuerte />
-                )}
-                <p className="text-[10px] text-gray-500 mt-1.5 leading-relaxed">{r.cuotaEuropea?.quienLaPaga}</p>
-              </div>
-
-              {/* ¿Se puede recargar esto hoy? */}
-              {r.restriccion && (
-                <div
-                  className={`border rounded-lg p-2.5 md:col-span-2 ${r.restriccion.prohibido
-                    ? 'bg-red-50 border-red-300'
-                    : 'bg-emerald-50 border-emerald-300'}`}
-                  data-prueba="bloque-restriccion"
-                >
-                  <p className="text-[11px] font-bold text-gray-800 mb-1">
-                    {r.restriccion.prohibido
-                      ? '⚠️ No se puede recargar con gas virgen'
-                      : 'Recarga permitida'}
-                  </p>
-                  <p className="text-[11px] text-gray-800 leading-relaxed">{r.restriccion.resumen}</p>
-                  <p className="text-[10px] text-gray-500 mt-1">Reglamento (UE) 2024/573, artículo 13 (restricciones de utilización).</p>
-                </div>
-              )}
             </div>
 
             {/* Avisos */}
@@ -267,13 +214,6 @@ export default function PanelGasesFluorados({ gas, kilos, onInsertar, incluido }
                   <label className="text-[10px] text-gray-500">PCA mínimo que tributa</label>
                   <Input className="h-8 text-xs" defaultValue={cfg.impuesto.pcaMinimoSujeto}
                     onBlur={(e) => cambiarParametro('impuesto', 'pcaMinimoSujeto', e.target.value)} />
-                </div>
-                <div>
-                  {/* Este lo pone cada distribuidor al repercutirlo: si en tu
-                      albarán viene otro, se cambia aquí. */}
-                  <label className="text-[10px] text-gray-500">Cuota europea (€ por t CO₂e)</label>
-                  <Input className="h-8 text-xs" data-prueba="tipo-cuota-ue" defaultValue={cfg.cuotaEuropea.euroPorToneladaCO2e}
-                    onBlur={(e) => cambiarParametro('cuotaEuropea', 'euroPorToneladaCO2e', e.target.value)} />
                 </div>
                 <div>
                   <label className="text-[10px] text-gray-500">Umbral 12 meses (t CO₂e)</label>

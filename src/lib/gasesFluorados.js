@@ -41,7 +41,7 @@ export const REFERENCIAS = [
   {
     id: 'ue2024573',
     titulo: 'Reglamento (UE) 2024/573 — gases fluorados de efecto invernadero',
-    detalle: 'Texto consolidado. Derogó el Reglamento (UE) 517/2014. Aquí están los PCA del anexo, los umbrales de control de fugas, las restricciones de uso del artículo 13 y el sistema de cuotas del que sale la cuota europea de HFC que el distribuidor repercute desde 2026.',
+    detalle: 'Texto consolidado. Derogó el Reglamento (UE) 517/2014. Aquí están los PCA del anexo, los umbrales de control de fugas y las prohibiciones por tipo de equipo.',
     url: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:02024R0573',
   },
   {
@@ -71,66 +71,8 @@ export const REFERENCIAS = [
  * conviene confirmar, porque no todos tienen la misma solidez.
  */
 export const PARAMETROS_BASE = {
-  vigenciaDatos: '2026',
+  vigenciaDatos: '2024',
   moneda: '€',
-
-  // ── Cuota europea de HFC ───────────────────────────────────────────────────
-  //
-  // Ojo, que esto NO es el impuesto español: son dos cosas distintas que se
-  // suman en la misma botella.
-  //
-  // Desde el 1 de enero de 2026 los distribuidores repercuten una cuota
-  // europea sobre el gas VIRGEN, calculada por su CO₂ equivalente. Sale del
-  // sistema de cuotas del Reglamento (UE) 2024/573: hay cada vez menos
-  // toneladas disponibles en el mercado (42,9 millones de t CO₂e para
-  // 2025-2026, un 48 % menos que las 82,3 de 2023) y ese coste se traslada al
-  // precio del kilo.
-  //
-  // El gas regenerado y el reciclado NO la llevan. Por eso salen más baratos
-  // cuanto más alto es el PCA, y por eso hay una casilla para marcarlo.
-  cuotaEuropea: {
-    euroPorToneladaCO2e: 3,
-    desde: '2026-01-01',
-    exentos: 'gas regenerado y gas reciclado',
-    fuente: 'Cuota europea de HFC derivada del Reglamento (UE) 2024/573, repercutida por los distribuidores desde el 1 de enero de 2026',
-    confirmar: 'La cuota la fija cada distribuidor al repercutirla. Comprueba en tu albarán el importe que te han cargado: si no coincide, corrige aquí los €/tonelada.',
-  },
-
-  // ── Restricciones de uso (artículo 13 del Reglamento (UE) 2024/573) ────────
-  //
-  // Esto es lo que dice si puedes o no recargar la máquina que tienes delante.
-  // Va por fecha, por PCA del gas y por tipo de equipo, y casi siempre tiene
-  // una salida: el gas regenerado o reciclado sigue permitido unos años más.
-  restricciones: {
-    fuente: 'Reglamento (UE) 2024/573, artículo 13 (restricciones de utilización)',
-    lista: [
-      {
-        desde: '2025-01-01',
-        pcaMinimo: 2500,
-        equipos: 'refrigeracion',
-        regeneradoHasta: '2030-01-01',
-        texto: 'Desde el 1 de enero de 2025 no se puede usar gas virgen con PCA ≥ 2.500 para el mantenimiento o la revisión de aparatos de refrigeración, sea cual sea la carga. Con el reglamento anterior solo afectaba a equipos de 40 t CO₂e o más; ahora es para todos.',
-        salida: 'Se puede seguir usando gas regenerado o reciclado hasta el 1 de enero de 2030.',
-      },
-      {
-        desde: '2026-01-01',
-        pcaMinimo: 2500,
-        equipos: 'clima',
-        regeneradoHasta: '2032-01-01',
-        texto: 'Desde el 1 de enero de 2026 no se puede usar gas virgen con PCA ≥ 2.500 para el mantenimiento o la revisión de aparatos de aire acondicionado y bombas de calor.',
-        salida: 'Se puede seguir usando gas regenerado o reciclado hasta el 1 de enero de 2032.',
-      },
-      {
-        desde: '2032-01-01',
-        pcaMinimo: 750,
-        equipos: 'refrigeracion',
-        regeneradoHasta: null,
-        texto: 'Desde el 1 de enero de 2032 no se podrá usar gas con PCA ≥ 750 para el mantenimiento o la revisión de aparatos de refrigeración fija, salvo enfriadoras.',
-        salida: null,
-      },
-    ],
-    confirmar: 'Las restricciones tienen excepciones por tipo de aparato y la Comisión puede suspenderlas temporalmente si hay escasez de gas regenerado. Antes de decirle a un cliente que su máquina no se puede recargar, compruébalo en el texto consolidado del reglamento.',
-  },
 
   impuesto: {
     // Cuota = kilos × PCA × tipoPorUnidadPca, con el tope de topePorKilo.
@@ -166,8 +108,6 @@ export function parametros() {
       ...propios,
       impuesto: { ...PARAMETROS_BASE.impuesto, ...(propios.impuesto || {}) },
       fugas: { ...PARAMETROS_BASE.fugas, ...(propios.fugas || {}) },
-      cuotaEuropea: { ...PARAMETROS_BASE.cuotaEuropea, ...(propios.cuotaEuropea || {}) },
-      restricciones: { ...PARAMETROS_BASE.restricciones, ...(propios.restricciones || {}) },
     };
   } catch {
     // Sin almacenamiento (ventana privada, permisos) se sigue con los de fábrica.
@@ -182,8 +122,6 @@ export function guardarParametros(cambios) {
     ...cambios,
     impuesto: { ...parametros().impuesto, ...(cambios.impuesto || {}) },
     fugas: { ...parametros().fugas, ...(cambios.fugas || {}) },
-    cuotaEuropea: { ...parametros().cuotaEuropea, ...(cambios.cuotaEuropea || {}) },
-    restricciones: { ...parametros().restricciones, ...(cambios.restricciones || {}) },
   };
   try {
     localStorage.setItem(CLAVE_GUARDADO, JSON.stringify(nuevos));
@@ -243,66 +181,6 @@ const num = (v) => {
 const redondear = (n, dec = 2) => Math.round(n * 10 ** dec) / 10 ** dec;
 
 /**
- * ¿Se puede recargar esta máquina con este gas, hoy?
- *
- * Devuelve la restricción que muerde, si es que muerde alguna, y por dónde se
- * sale (casi siempre: gas regenerado o reciclado). No inventa nada: recorre la
- * lista de restricciones configurada, que es la del artículo 13.
- *
- * @param {number} pca
- * @param {'refrigeracion'|'clima'} uso   qué tipo de aparato es
- * @param {boolean} regenerado            si el gas es regenerado o reciclado
- * @param {Date} [hoy]                    para poder probarlo con otra fecha
- */
-export function restriccionDeUso(pca, uso = 'clima', regenerado = false, hoy = new Date()) {
-  const cfg = parametros();
-  if (!Number.isFinite(pca)) return null;
-  const fecha = hoy instanceof Date ? hoy : new Date(hoy);
-
-  // De las que ya están en vigor y afectan a este equipo, la más exigente:
-  // la del PCA más bajo, que es la que de verdad prohíbe.
-  const aplicables = (cfg.restricciones?.lista || [])
-    .filter((r) => r.equipos === uso && pca >= r.pcaMinimo && new Date(r.desde) <= fecha)
-    .sort((a, b) => a.pcaMinimo - b.pcaMinimo);
-  if (aplicables.length === 0) return null;
-
-  const r = aplicables[0];
-  const salidaViva = r.regeneradoHasta ? new Date(r.regeneradoHasta) > fecha : false;
-
-  return {
-    ...r,
-    prohibido: !(regenerado && salidaViva),
-    regenerado,
-    salidaViva,
-    resumen: regenerado && salidaViva
-      ? `${r.salida} El gas marcado es regenerado o reciclado, así que esta recarga sí se puede hacer.`
-      : `${r.texto}${r.salida ? ` ${r.salida}` : ''}`,
-  };
-}
-
-/** Lo que costará la cuota europea de HFC de esta carga. */
-export function cuotaEuropeaDe(toneladas, regenerado = false, hoy = new Date()) {
-  const cfg = parametros().cuotaEuropea;
-  const fecha = hoy instanceof Date ? hoy : new Date(hoy);
-  const enVigor = new Date(cfg.desde) <= fecha;
-  const aplicable = enVigor && !regenerado;
-  return {
-    aplicable,
-    enVigor,
-    regenerado,
-    euroPorToneladaCO2e: cfg.euroPorToneladaCO2e,
-    desde: cfg.desde,
-    importe: aplicable ? redondear(toneladas * cfg.euroPorToneladaCO2e, 2) : 0,
-    motivoNoAplicable: aplicable
-      ? null
-      : (regenerado
-        ? 'El gas regenerado y el reciclado no llevan la cuota europea.'
-        : `La cuota europea no se aplica hasta el ${cfg.desde.split('-').reverse().join('/')}.`),
-    fuente: cfg.fuente,
-  };
-}
-
-/**
  * La cuenta entera de un gas y una carga.
  *
  * Devuelve TODOS los pasos, no solo el resultado: quien lo lea tiene que poder
@@ -314,18 +192,8 @@ export function cuotaEuropeaDe(toneladas, regenerado = false, hoy = new Date()) 
  * @param {boolean} [entrada.hermetico]        equipo herméticamente sellado y etiquetado como tal
  * @param {boolean} [entrada.conDetector]      lleva sistema de detección de fugas
  * @param {number|string} [entrada.pcaManual]  PCA a usar en vez del del catálogo
- * @param {boolean} [entrada.regenerado]       el gas es regenerado o reciclado
- * @param {'refrigeracion'|'clima'} [entrada.uso]  tipo de aparato, para las restricciones
  */
-export function calcular({
-  gas,
-  kilos,
-  hermetico = false,
-  conDetector = false,
-  pcaManual = null,
-  regenerado = false,
-  uso = 'clima',
-} = {}) {
+export function calcular({ gas, kilos, hermetico = false, conDetector = false, pcaManual = null } = {}) {
   const cfg = parametros();
   const kg = num(kilos);
   const ficha = buscarRefrigerante(gas);
@@ -360,12 +228,6 @@ export function calcular({
   // ── Toneladas equivalentes de CO₂ ──
   const toneladas = redondear((pca.valor * kg) / 1000, 3);
 
-  // ── Cuota europea de HFC (la que repercute el distribuidor desde 2026) ──
-  const cuotaUE = cuotaEuropeaDe(toneladas, regenerado);
-
-  // ── ¿Se puede recargar? ──
-  const restriccion = restriccionDeUso(pca.valor, uso, regenerado);
-
   // ── Impuesto ──
   const tipoSinTope = redondear(pca.valor * cfg.impuesto.tipoPorUnidadPca, 4);
   const tipoAplicado = Math.min(tipoSinTope, cfg.impuesto.topePorKilo);
@@ -397,32 +259,10 @@ export function calcular({
   if (sujeto && cfg.impuesto.confirmar) {
     base.avisos.push(cfg.impuesto.confirmar);
   }
-  if (restriccion?.prohibido) {
-    base.avisos.push(`No se puede recargar con gas virgen: ${restriccion.resumen}`);
-  }
-  if (cuotaUE.aplicable && cuotaUE.importe > 0) {
-    base.avisos.push(
-      `Desde el ${cfg.cuotaEuropea.desde.split('-').reverse().join('/')} el distribuidor repercute además la cuota `
-      + `europea de HFC: ${cuotaUE.euroPorToneladaCO2e} € por tonelada de CO₂e, ${cuotaUE.importe} € en esta carga. `
-      + 'No es el impuesto español: son dos cosas distintas y las dos van dentro del precio del kilo.',
-    );
-  }
 
   return {
     ...base,
     toneladas,
-    cuotaEuropea: {
-      ...cuotaUE,
-      formula: cuotaUE.aplicable
-        ? `${toneladas} t CO₂e × ${cuotaUE.euroPorToneladaCO2e} €/t  =  ${cuotaUE.importe} €`
-          + `   (por kilo: ${pca.valor} PCA × ${cuotaUE.euroPorToneladaCO2e} € ÷ 1.000 = `
-          + `${redondear((pca.valor * cuotaUE.euroPorToneladaCO2e) / 1000, 4)} €/kg)`
-        : null,
-      quienLaPaga: 'La repercute el distribuidor sobre el gas virgen que te factura. No es un impuesto español ni es IVA: '
-        + 'es el coste de la cuota europea de HFC del Reglamento (UE) 2024/573, que cada año deja menos toneladas '
-        + 'disponibles en el mercado. El gas regenerado y el reciclado no la llevan.',
-    },
-    restriccion,
     impuesto: {
       sujeto,
       motivoNoSujeto: sujeto ? null : `El PCA (${pca.valor}) no supera el mínimo configurado de ${cfg.impuesto.pcaMinimoSujeto}.`,
@@ -500,32 +340,10 @@ export function fichaHtml(r) {
   </tbody>
 </table>
 
-<p style="margin:10px 0 4px"><strong>Cuota europea de HFC</strong></p>
-<table border="1" style="border-collapse:collapse;width:100%;margin:4px 0">
-  <tbody>
-    ${r.cuotaEuropea?.aplicable
-      ? `${f('Tipo', `${r.cuotaEuropea.euroPorToneladaCO2e} € por tonelada de CO₂ equivalente`)}
-    ${f('Importe', `${r.cuotaEuropea.importe} €`)}
-    ${f('Cálculo', r.cuotaEuropea.formula)}`
-      : f('Situación', `No se aplica. ${r.cuotaEuropea?.motivoNoAplicable || ''}`)}
-    ${f('Quién la repercute', r.cuotaEuropea?.quienLaPaga || '—')}
-  </tbody>
-</table>
-
-${r.restriccion ? `<p style="margin:10px 0 4px"><strong>Restricciones de utilización</strong></p>
-<table border="1" style="border-collapse:collapse;width:100%;margin:4px 0">
-  <tbody>
-    ${f(r.restriccion.prohibido ? 'NO se puede recargar con gas virgen' : 'Recarga permitida', r.restriccion.resumen)}
-    ${f('Referencia', 'Reglamento (UE) 2024/573, artículo 13 (restricciones de utilización)')}
-  </tbody>
-</table>` : ''}
-
 <p style="font-size:11px;color:#666;margin-top:10px">
   Datos calculados con los parámetros vigentes en el programa (referencia ${esc(cfg.vigenciaDatos)}):
   tipo ${cfg.impuesto.tipoPorUnidadPca} € por unidad de PCA y kilo, tope ${cfg.impuesto.topePorKilo} €/kg,
-  PCA mínimo sujeto ${cfg.impuesto.pcaMinimoSujeto}; cuota europea ${cfg.cuotaEuropea.euroPorToneladaCO2e} €/t CO₂e
-  desde el ${esc(String(cfg.cuotaEuropea.desde).split('-').reverse().join('/'))} sobre gas virgen;
-  umbrales de fugas ${cfg.fugas.umbral12meses}/${cfg.fugas.umbral6meses}/${cfg.fugas.umbral3meses} t CO₂e
+  PCA mínimo sujeto ${cfg.impuesto.pcaMinimoSujeto}; umbrales de fugas ${cfg.fugas.umbral12meses}/${cfg.fugas.umbral6meses}/${cfg.fugas.umbral3meses} t CO₂e
   (${cfg.fugas.umbralHermetico} t en equipos herméticamente sellados).
   Referencias: Reglamento (UE) 2024/573 y sus revisiones posteriores (texto consolidado),
   Ley 14/2022 de 8 de julio y RD 115/2017.
@@ -539,8 +357,6 @@ export function resumenCorto(r) {
   const trozos = [`${r.toneladas} t CO₂e`, r.fugas.texto];
   if (r.impuesto.sujeto) trozos.push(`Impuesto: ${r.impuesto.cuota} € (${r.impuesto.tipoAplicado} €/kg)`);
   else trozos.push('No sujeto al impuesto');
-  if (r.cuotaEuropea?.aplicable) trozos.push(`Cuota europea: ${r.cuotaEuropea.importe} €`);
-  if (r.restriccion?.prohibido) trozos.push('⚠️ No recargable con gas virgen');
   return trozos.join(' · ');
 }
 
@@ -566,17 +382,11 @@ export function resumenCorto(r) {
  * @param {string} d.gas                 identificador, p. ej. 'R-410A'
  * @param {number|string} d.kilos        kilos que se han metido
  * @param {number|string} d.precioKilo   euros por kilo
- * Con la cuota europea de HFC pasa exactamente lo mismo desde el 1 de enero de
- * 2026: la repercute el distribuidor sobre el gas virgen y llega dentro del
- * precio del kilo. Así que va por el mismo camino, con la misma casilla.
- *
- * @param {boolean} [d.impuestoIncluido] si el precio ya lleva impuesto y cuota (por defecto sí)
- * @param {boolean} [d.regenerado]       el gas es regenerado o reciclado (no lleva cuota europea)
- * @param {'refrigeracion'|'clima'} [d.uso] tipo de aparato, para las restricciones de recarga
+ * @param {boolean} [d.impuestoIncluido] si el precio ya lleva el impuesto (por defecto sí)
  * @param {string}  [d.concepto]         texto de la línea, si se quiere otro
  */
 export function lineasDeCargaDeGas({
-  gas, kilos, precioKilo, impuestoIncluido = true, regenerado = false, uso = 'clima', concepto = null,
+  gas, kilos, precioKilo, impuestoIncluido = true, concepto = null,
 } = {}) {
   const kg = Number(String(kilos ?? '').replace(',', '.'));
   const precio = Number(String(precioKilo ?? '').replace(',', '.'));
@@ -588,14 +398,13 @@ export function lineasDeCargaDeGas({
   if (!Number.isFinite(precio) || precio < 0) faltan.push('el precio por kilo');
   if (faltan.length) return { completo: false, faltan };
 
-  const cuentas = calcular({ gas, kilos: kg, regenerado, uso });
+  const cuentas = calcular({ gas, kilos: kg });
   const importeGas = Math.round(precio * kg * 100) / 100;
   const impuesto = cuentas.impuesto?.sujeto ? cuentas.impuesto.cuota : 0;
-  const cuotaUE = cuentas.cuotaEuropea?.aplicable ? cuentas.cuotaEuropea.importe : 0;
 
   const lineas = [{
     description: concepto
-      || `Carga de refrigerante ${ficha?.nombre || gas}${regenerado ? ' regenerado' : ''} — ${kg} kg`,
+      || `Carga de refrigerante ${ficha?.nombre || gas} — ${kg} kg`,
     quantity: kg,
     unit_price: precio,
     discount: 0,
@@ -615,18 +424,6 @@ export function lineasDeCargaDeGas({
     });
   }
 
-  if (!impuestoIncluido && cuotaUE > 0) {
-    lineas.push({
-      description: `Cuota europea de HFC — ${ficha?.nombre || gas} `
-        + `(${String(cuentas.toneladas).replace('.', ',')} t CO₂e × `
-        + `${String(cuentas.cuotaEuropea.euroPorToneladaCO2e).replace('.', ',')} €/t)`,
-      quantity: 1,
-      unit_price: cuotaUE,
-      discount: 0,
-      total: cuotaUE,
-    });
-  }
-
   const total = Math.round(lineas.reduce((n, l) => n + l.total, 0) * 100) / 100;
 
   return {
@@ -637,22 +434,13 @@ export function lineasDeCargaDeGas({
     importeGas,
     impuesto,
     impuestoIncluido,
-    cuotaEuropea: cuotaUE,
-    cuotaAplicable: Boolean(cuentas.cuotaEuropea?.aplicable),
-    tipoCuotaEuropea: cuentas.cuotaEuropea?.euroPorToneladaCO2e ?? 0,
-    motivoSinCuota: cuentas.cuotaEuropea?.motivoNoAplicable || null,
-    regenerado,
-    uso,
-    restriccion: cuentas.restriccion || null,
     tipoImpuesto: cuentas.impuesto?.tipoAplicado ?? 0,
     sujeto: Boolean(cuentas.impuesto?.sujeto),
     pca: cuentas.pca,
     toneladas: cuentas.toneladas,
     total,
     lineas,
-    observaciones: observacionesDeCarga({
-      cuentas, ficha, kg, precio, importeGas, impuesto, impuestoIncluido, cuotaUE, regenerado,
-    }),
+    observaciones: observacionesDeCarga({ cuentas, ficha, kg, precio, importeGas, impuesto, impuestoIncluido }),
     avisos: cuentas.avisos,
   };
 }
@@ -665,9 +453,7 @@ export function lineasDeCargaDeGas({
  * los datos de la carga, que son los que hacen falta para el libro de
  * registro del equipo.
  */
-export function observacionesDeCarga({
-  cuentas, ficha, kg, precio, importeGas, impuesto, impuestoIncluido, cuotaUE = 0, regenerado = false,
-}) {
+export function observacionesDeCarga({ cuentas, ficha, kg, precio, importeGas, impuesto, impuestoIncluido }) {
   const cfg = cuentas.parametros;
   const trozos = [];
   // Este texto va tal cual a la factura del cliente: los decimales con coma,
@@ -675,8 +461,7 @@ export function observacionesDeCarga({
   const es = (n) => String(n).replace('.', ',');
 
   trozos.push(
-    `CARGA DE REFRIGERANTE: ${ficha?.nombre || cuentas.gas}${regenerado ? ' (regenerado/reciclado)' : ''} · `
-    + `${es(kg)} kg · ${es(precio)} €/kg · ${es(importeGas)} €.`,
+    `CARGA DE REFRIGERANTE: ${ficha?.nombre || cuentas.gas} · ${es(kg)} kg · ${es(precio)} €/kg · ${es(importeGas)} €.`,
   );
   trozos.push(
     `PCA (GWP) ${cuentas.pca} · ${es(cuentas.toneladas)} t CO₂ equivalente · ${cuentas.fugas.texto}`,
@@ -704,42 +489,13 @@ export function observacionesDeCarga({
     + 'almacenistas de gases fluorados; la empresa instaladora lo soporta dentro del precio de compra.',
   );
 
-  // La cuota europea es otra cosa distinta del impuesto español, y desde 2026
-  // van las dos en el mismo kilo. Se dice expresamente para que nadie las
-  // confunda al leer la factura.
-  const ue = cuentas.cuotaEuropea;
-  if (ue?.aplicable) {
-    trozos.push(
-      `CUOTA EUROPEA DE HFC: ${es(ue.euroPorToneladaCO2e)} € por tonelada de CO₂ equivalente `
-      + `· ${es(cuentas.toneladas)} t × ${es(ue.euroPorToneladaCO2e)} € = ${es(cuotaUE || ue.importe)} € `
-      + `(por kilo: PCA ${cuentas.pca} × ${es(ue.euroPorToneladaCO2e)} € ÷ 1.000). `
-      + (impuestoIncluido
-        ? 'Repercutida por el distribuidor dentro del precio del kilo; se detalla, no se suma aparte. '
-        : 'Se repercute aparte porque el precio por kilo indicado no la incluye. ')
-      + 'No es un impuesto español ni es IVA: es el coste de la cuota europea de HFC, en vigor desde el '
-      + `${String(ue.desde).split('-').reverse().join('/')} y aplicable solo al gas virgen.`,
-    );
-  } else if (ue) {
-    trozos.push(`CUOTA EUROPEA DE HFC: no se aplica. ${ue.motivoNoAplicable}`);
-  }
-
-  // Si la máquina no se puede recargar con gas virgen, eso va en el papel.
-  if (cuentas.restriccion) {
-    trozos.push(
-      `${cuentas.restriccion.prohibido ? '⚠️ RESTRICCIÓN DE USO' : 'RESTRICCIÓN DE USO'}: `
-      + `${cuentas.restriccion.resumen} (Reglamento (UE) 2024/573, artículo 13).`,
-    );
-  }
-
   trozos.push(
     'NORMATIVA DE REFERENCIA: Ley 14/2022, de 8 de julio (impuesto sobre los gases fluorados de efecto '
     + 'invernadero); Reglamento (UE) 2024/573 y sus revisiones posteriores (PCA de los gases y control de '
     + 'fugas); RD 115/2017 (comercialización y manipulación de gases fluorados en España). '
     + `Calculado con los parámetros vigentes en el programa (referencia ${cfg.vigenciaDatos}): `
     + `${es(cfg.impuesto.tipoPorUnidadPca)} € por unidad de PCA y kilo, con tope de ${es(cfg.impuesto.topePorKilo)} €/kg, `
-    + `sin sujeción por debajo de PCA ${cfg.impuesto.pcaMinimoSujeto}, `
-    + `y cuota europea de HFC de ${es(cfg.cuotaEuropea.euroPorToneladaCO2e)} € por tonelada de CO₂ equivalente `
-    + `desde el ${String(cfg.cuotaEuropea.desde).split('-').reverse().join('/')} sobre gas virgen.`,
+    + `y sin sujeción por debajo de PCA ${cfg.impuesto.pcaMinimoSujeto}.`,
   );
 
   if (ficha?.estado === 'prohibido') {
