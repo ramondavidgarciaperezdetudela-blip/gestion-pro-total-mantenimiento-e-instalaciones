@@ -37,7 +37,40 @@
  *    el navegador lo cuente y que el rescate del index.html pueda actuar.
  */
 
-const VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
+const VERSION = new URL(self.location.href).searchParams.get('v');
+
+/*
+ * ─── INTERRUPTOR DE EMERGENCIA ──────────────────────────────────────────────
+ *
+ * Los aparatos que instalaron una versión antigua tienen registrado el service
+ * worker como «/sw.js», sin versión detrás. Ese registro sobrevive a la
+ * reinstalación del APK, porque los datos del WebView no se borran al
+ * actualizar, y puede tumbar la carga inicial: sale «La página no se cargó
+ * correctamente» y no hay manera de arreglarlo desde la página, porque la
+ * página no llega a cargar.
+ *
+ * La salida es esta: el navegador comprueba si /sw.js ha cambiado cada vez que
+ * se navega, aunque la navegación acabe fallando. Así que si este fichero se
+ * pide SIN versión, sabemos que viene de un registro antiguo y lo que hace es
+ * suicidarse: borra todas las cachés, se da de baja y no intercepta nada.
+ * A la siguiente carga ya no hay service worker de por medio.
+ *
+ * El registro nuevo siempre lleva ?v=<versión>, así que nunca entra por aquí.
+ */
+if (!VERSION) {
+  self.addEventListener('install', () => self.skipWaiting());
+  self.addEventListener('activate', (event) => {
+    event.waitUntil(
+      caches.keys()
+        .then((claves) => Promise.all(claves.map((k) => caches.delete(k))))
+        .then(() => self.registration.unregister())
+        .then(() => self.clients.claim())
+        .catch(() => {}),
+    );
+  });
+  // Sin listener de fetch: no se toca ni una petición.
+} else {
+
 const CACHE_NAME = `gestion-pro-total-${VERSION}`;
 const SHELL = '/index.html';
 
@@ -134,3 +167,5 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+}
