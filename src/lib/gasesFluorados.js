@@ -359,3 +359,151 @@ export function resumenCorto(r) {
   else trozos.push('No sujeto al impuesto');
   return trozos.join(' · ');
 }
+
+// ─── La carga de gas en un presupuesto, una factura o un parte ───────────────
+
+/**
+ * Las líneas de una carga de gas, listas para meter en el documento.
+ *
+ * ⚠️ LO IMPORTANTE, Y NO ES UN DETALLE: el impuesto sobre los gases fluorados
+ * lo autoliquidan los fabricantes, importadores, adquirentes intracomunitarios
+ * y almacenistas. La empresa instaladora NO lo declara: lo paga ya metido en
+ * el precio de la botella.
+ *
+ * Por eso, si el precio por kilo que has puesto es el que te cobró tu
+ * proveedor —que es lo normal—, el impuesto YA ESTÁ DENTRO. Sumarlo otra vez
+ * al cliente sería cobrárselo dos veces. Así que de fábrica el impuesto sale
+ * como información: se dice cuánto de ese precio es impuesto, y no se suma.
+ *
+ * Solo se suma aparte si marcas que tu precio va sin impuesto, que pasa cuando
+ * lo has apuntado a pelo del coste del gas sin repercutirlo.
+ *
+ * @param {object} d
+ * @param {string} d.gas                 identificador, p. ej. 'R-410A'
+ * @param {number|string} d.kilos        kilos que se han metido
+ * @param {number|string} d.precioKilo   euros por kilo
+ * @param {boolean} [d.impuestoIncluido] si el precio ya lleva el impuesto (por defecto sí)
+ * @param {string}  [d.concepto]         texto de la línea, si se quiere otro
+ */
+export function lineasDeCargaDeGas({
+  gas, kilos, precioKilo, impuestoIncluido = true, concepto = null,
+} = {}) {
+  const kg = Number(String(kilos ?? '').replace(',', '.'));
+  const precio = Number(String(precioKilo ?? '').replace(',', '.'));
+  const ficha = buscarRefrigerante(gas);
+
+  const faltan = [];
+  if (!gas) faltan.push('el gas');
+  if (!Number.isFinite(kg) || kg <= 0) faltan.push('los kilos');
+  if (!Number.isFinite(precio) || precio < 0) faltan.push('el precio por kilo');
+  if (faltan.length) return { completo: false, faltan };
+
+  const cuentas = calcular({ gas, kilos: kg });
+  const importeGas = Math.round(precio * kg * 100) / 100;
+  const impuesto = cuentas.impuesto?.sujeto ? cuentas.impuesto.cuota : 0;
+
+  const lineas = [{
+    description: concepto
+      || `Carga de refrigerante ${ficha?.nombre || gas} — ${kg} kg`,
+    quantity: kg,
+    unit_price: precio,
+    discount: 0,
+    total: importeGas,
+  }];
+
+  // Solo se suma si el precio NO lo llevaba dentro.
+  if (!impuestoIncluido && impuesto > 0) {
+    lineas.push({
+      description: `Impuesto sobre gases fluorados — ${ficha?.nombre || gas} `
+        + `(PCA ${cuentas.pca} × ${String(cuentas.parametros.impuesto.tipoPorUnidadPca).replace('.', ',')} €/kg`
+        + `${cuentas.impuesto.topeAplicado ? `, limitado al tope de ${String(cuentas.parametros.impuesto.topePorKilo).replace('.', ',')} €/kg` : ''})`,
+      quantity: kg,
+      unit_price: cuentas.impuesto.tipoAplicado,
+      discount: 0,
+      total: impuesto,
+    });
+  }
+
+  const total = Math.round(lineas.reduce((n, l) => n + l.total, 0) * 100) / 100;
+
+  return {
+    completo: true,
+    gas: ficha?.nombre || gas,
+    kilos: kg,
+    precioKilo: precio,
+    importeGas,
+    impuesto,
+    impuestoIncluido,
+    tipoImpuesto: cuentas.impuesto?.tipoAplicado ?? 0,
+    sujeto: Boolean(cuentas.impuesto?.sujeto),
+    pca: cuentas.pca,
+    toneladas: cuentas.toneladas,
+    total,
+    lineas,
+    observaciones: observacionesDeCarga({ cuentas, ficha, kg, precio, importeGas, impuesto, impuestoIncluido }),
+    avisos: cuentas.avisos,
+  };
+}
+
+/**
+ * El texto que va a observaciones del documento.
+ *
+ * Lleva la normativa dentro porque es lo que pide un cliente cuando ve una
+ * línea de impuesto en su factura: de dónde sale ese número. Y lleva también
+ * los datos de la carga, que son los que hacen falta para el libro de
+ * registro del equipo.
+ */
+export function observacionesDeCarga({ cuentas, ficha, kg, precio, importeGas, impuesto, impuestoIncluido }) {
+  const cfg = cuentas.parametros;
+  const trozos = [];
+  // Este texto va tal cual a la factura del cliente: los decimales con coma,
+  // que en español «6.264 t» se lee como seis mil doscientas sesenta y cuatro.
+  const es = (n) => String(n).replace('.', ',');
+
+  trozos.push(
+    `CARGA DE REFRIGERANTE: ${ficha?.nombre || cuentas.gas} · ${es(kg)} kg · ${es(precio)} €/kg · ${es(importeGas)} €.`,
+  );
+  trozos.push(
+    `PCA (GWP) ${cuentas.pca} · ${es(cuentas.toneladas)} t CO₂ equivalente · ${cuentas.fugas.texto}`,
+  );
+
+  if (cuentas.impuesto.sujeto) {
+    trozos.push(
+      `IMPUESTO SOBRE LOS GASES FLUORADOS: ${es(cuentas.impuesto.tipoAplicado)} €/kg `
+      + `(${cuentas.pca} × ${es(cfg.impuesto.tipoPorUnidadPca)} €`
+      + `${cuentas.impuesto.topeAplicado ? `, con el tope de ${es(cfg.impuesto.topePorKilo)} €/kg` : ''}) `
+      + `· ${es(impuesto)} € por los ${es(kg)} kg. `
+      + (impuestoIncluido
+        ? 'Este importe NO se suma aparte: va incluido en el precio por kilo, porque el impuesto lo '
+          + 'repercute el proveedor del gas. Se detalla solo a título informativo.'
+        : 'Este importe SÍ se repercute aparte porque el precio por kilo indicado no lo incluye.'),
+    );
+  } else {
+    trozos.push(
+      `IMPUESTO SOBRE LOS GASES FLUORADOS: no sujeto. ${cuentas.impuesto.motivoNoSujeto}`,
+    );
+  }
+
+  trozos.push(
+    'El impuesto lo autoliquidan los fabricantes, importadores, adquirentes intracomunitarios y '
+    + 'almacenistas de gases fluorados; la empresa instaladora lo soporta dentro del precio de compra.',
+  );
+
+  trozos.push(
+    'NORMATIVA DE REFERENCIA: Ley 14/2022, de 8 de julio (impuesto sobre los gases fluorados de efecto '
+    + 'invernadero); Reglamento (UE) 2024/573 y sus revisiones posteriores (PCA de los gases y control de '
+    + 'fugas); RD 115/2017 (comercialización y manipulación de gases fluorados en España). '
+    + `Calculado con los parámetros vigentes en el programa (referencia ${cfg.vigenciaDatos}): `
+    + `${es(cfg.impuesto.tipoPorUnidadPca)} € por unidad de PCA y kilo, con tope de ${es(cfg.impuesto.topePorKilo)} €/kg, `
+    + `y sin sujeción por debajo de PCA ${cfg.impuesto.pcaMinimoSujeto}.`,
+  );
+
+  if (ficha?.estado === 'prohibido') {
+    trozos.push(
+      `⚠️ ${ficha.nombre} no se puede utilizar en recargas. Si el documento refleja una recarga, `
+      + 'revísalo: la operación no es legal y el equipo debe reconvertirse o sustituirse.',
+    );
+  }
+
+  return trozos.join('\n\n');
+}

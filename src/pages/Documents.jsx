@@ -12,9 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Plus, Search, FileText, Trash2, Edit, ShoppingCart, Copy,
-  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers, Loader2, ShieldCheck } from
+  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers, Loader2, ShieldCheck, Snowflake } from
 'lucide-react';
 import QRCodeLib from 'qrcode';
+import CargaDeGas from '@/components/CargaDeGas';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
 import AdvancedPriceSearch from '../components/AdvancedPriceSearch';
@@ -103,6 +104,7 @@ export default function Documents() {
   const [pdfMargin, setPdfMargin] = useState(() => { try { return parseInt(localStorage.getItem('gpt_pdf_margin')) || 10; } catch { return 10; } });
   const [pdfScale, setPdfScale] = useState(() => { try { return parseInt(localStorage.getItem('gpt_pdf_scale')) || 100; } catch { return 100; } });
   const [supplierSearchOpen, setSupplierSearchOpen] = useState(false);
+  const [cargaGasAbierta, setCargaGasAbierta] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -972,6 +974,12 @@ export default function Documents() {
               )}
               <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Línea</Button>
+                {/* Carga de gas: el gas, los kilos, el precio y el impuesto,
+                    con la normativa en observaciones. */}
+                <Button size="sm" variant="outline" onClick={() => setCargaGasAbierta(true)}
+                  data-prueba="abrir-carga-gas" className="border-sky-300 text-sky-700">
+                  <Snowflake className="w-3 h-3 mr-1" />Carga de gas
+                </Button>
                 <PriceItemSelector onSelect={(item) => {
                   setForm((prev) => {
                     const newItems = [...prev.items, { _id: ++_itemId, description: item.description, quantity: item.quantity || 1, unit_price: item.unit_price, discount: 0, total: item.unit_price }];
@@ -1095,6 +1103,23 @@ export default function Documents() {
       </Dialog>
 
       <SupplierProductSearch open={supplierSearchOpen} onClose={() => setSupplierSearchOpen(false)} onAddItem={addItemFromSupplier} />
+
+      {/* La carga de gas añade sus líneas y deja la normativa en observaciones:
+          es lo que pide un cliente cuando ve una línea de impuesto. */}
+      <CargaDeGas
+        abierto={cargaGasAbierta}
+        onCerrar={() => setCargaGasAbierta(false)}
+        onAnadir={(r) => setForm((prev) => {
+          const nuevas = [...prev.items, ...r.lineas.map((l) => ({ ...l, _id: ++_itemId }))];
+          return {
+            ...prev,
+            ...recalculate(nuevas, prev.iva_rate),
+            observations: prev.observations
+              ? `${prev.observations}\n\n${r.observaciones}`
+              : r.observaciones,
+          };
+        })}
+      />
 
       {/* ===== PREVIEW ===== */}
       <Dialog open={!!previewDoc} onOpenChange={() => {}}>

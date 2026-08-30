@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Wrench, Trash2, Search, Edit, Eye, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, FileText, Link2, ClipboardList, X } from 'lucide-react';
+import { Plus, Wrench, Trash2, Search, Edit, Eye, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, FileText, Link2, ClipboardList, X, Snowflake } from 'lucide-react';
 import SATTechReport from '../components/SATTechReport';
 import TechnicianSelect from '../components/TechnicianSelect';
 import SATSignaturePanel from '../components/SATSignaturePanel';
@@ -23,6 +23,7 @@ import { getNextAvailableNumber } from '../components/autoNumber';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
+import CargaDeGas from '@/components/CargaDeGas';
 import PriceItemSelector from '../components/PriceItemSelector';
 import SATTemplateSelector from '../components/SATTemplateSelector';
 import { withTimeout, getFallbackPhotosSize, MAX_TOTAL_FALLBACK_PAYLOAD, PHOTOS_TOO_LARGE_MESSAGE } from '@/lib/uploadImage';
@@ -65,6 +66,7 @@ export default function SAT() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [cargaGasAbierta, setCargaGasAbierta] = useState(false);
   const [editing, setEditing] = useState(null);
   const [previewOrder, setPreviewOrder] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -747,6 +749,12 @@ export default function SAT() {
                 <div className="flex gap-1">
                   <PriceItemSelector onSelect={item => setForm(prev => ({ ...prev, materials_used: [...(prev.materials_used || []), { material: item.description, quantity: item.quantity || 1, unit_price: item.unit_price }] }))} />
                   <Button size="sm" variant="outline" onClick={addMaterial}><Plus className="w-3 h-3 mr-1" />Manual</Button>
+                  {/* Carga de gas: el gas, los kilos, el precio y el impuesto,
+                      con la normativa en las notas del parte. */}
+                  <Button size="sm" variant="outline" onClick={() => setCargaGasAbierta(true)}
+                    data-prueba="abrir-carga-gas" className="border-sky-300 text-sky-700">
+                    <Snowflake className="w-3 h-3 mr-1" />Gas
+                  </Button>
                 </div>
               </div>
               {form.materials_used?.map((m, i) => (
@@ -937,6 +945,22 @@ export default function SAT() {
                 )}
                 </DialogContent>
                 </Dialog>
+
+      {/* La carga de gas añade sus líneas de material y deja la normativa en
+          las notas: es lo que pide un cliente cuando ve el impuesto. */}
+      <CargaDeGas
+        abierto={cargaGasAbierta}
+        onCerrar={() => setCargaGasAbierta(false)}
+        onAnadir={(r) => setForm((prev) => ({
+          ...prev,
+          materials_used: [
+            ...(prev.materials_used || []),
+            ...r.lineas.map((l) => ({ material: l.description, quantity: l.quantity, unit_price: l.unit_price })),
+          ],
+          notes: prev.notes ? `${prev.notes}\n\n${r.observaciones}` : r.observaciones,
+        }))}
+      />
+
 
       {/* ===== INFORME TÉCNICO POST-VISITA ===== */}
       {techReportOrder && (
