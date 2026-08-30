@@ -29,13 +29,17 @@ export default function CargaDeGas({ abierto, onCerrar, onAnadir, tarifas = null
   const [kilos, setKilos] = useState('');
   const [precio, setPrecio] = useState('');
   const [incluido, setIncluido] = useState(true);
+  const [regenerado, setRegenerado] = useState(false);
+  const [uso, setUso] = useState('clima');
   const [precios, setPrecios] = useState([]);
   const [buscandoPrecio, setBuscandoPrecio] = useState(false);
 
   const ficha = buscarRefrigerante(gas);
   const r = useMemo(
-    () => lineasDeCargaDeGas({ gas, kilos, precioKilo: precio, impuestoIncluido: incluido }),
-    [gas, kilos, precio, incluido],
+    () => lineasDeCargaDeGas({
+      gas, kilos, precioKilo: precio, impuestoIncluido: incluido, regenerado, uso,
+    }),
+    [gas, kilos, precio, incluido, regenerado, uso],
   );
 
   // Precios del gas en las tarifas guardadas, para no tener que acordarse.
@@ -116,6 +120,35 @@ export default function CargaDeGas({ abierto, onCerrar, onAnadir, tarifas = null
             </div>
           </div>
 
+          {/* Estas dos cosas cambian el resultado de verdad: el tipo de aparato
+              decide qué prohibición te toca, y el gas regenerado se libra de la
+              prohibición y de la cuota europea. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-gray-500">¿Qué aparato es?</label>
+              <Select value={uso} onValueChange={setUso}>
+                <SelectTrigger data-prueba="uso-carga"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="clima">Aire acondicionado o bomba de calor</SelectItem>
+                  <SelectItem value="refrigeracion">Refrigeración (cámara, mural, industrial)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <label className="flex items-start gap-2 rounded-lg border bg-gray-50 p-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                data-prueba="gas-regenerado"
+                checked={regenerado}
+                onChange={(e) => setRegenerado(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                <strong>Gas regenerado o reciclado.</strong> No lleva la cuota europea, y sigue permitido
+                para recargar durante unos años más aunque el gas virgen ya esté prohibido.
+              </span>
+            </label>
+          </div>
+
           {/* Precios guardados, para no tener que acordarse */}
           {precios.length > 0 && (
             <div className="flex flex-wrap gap-1.5" data-prueba="precios-guardados">
@@ -133,6 +166,20 @@ export default function CargaDeGas({ abierto, onCerrar, onAnadir, tarifas = null
                 </button>
               ))}
             </div>
+          )}
+
+          {/* ¿Se puede recargar esto hoy? Antes que ningún número. */}
+          {r.completo && r.restriccion && (
+            <p
+              data-prueba="restriccion-carga"
+              className={`rounded-lg border p-2 text-[11px] ${r.restriccion.prohibido
+                ? 'bg-red-100 text-red-900 border-red-300'
+                : 'bg-emerald-50 text-emerald-900 border-emerald-300'}`}
+            >
+              <strong>{r.restriccion.prohibido ? '⚠️ No se puede recargar con gas virgen. ' : 'Recarga permitida. '}</strong>
+              {r.restriccion.resumen}
+              {' '}(Reglamento (UE) 2024/573, artículo 13.)
+            </p>
           )}
 
           {/* El estado del gas, con todas sus letras: si está prohibido hay que
@@ -153,9 +200,10 @@ export default function CargaDeGas({ abierto, onCerrar, onAnadir, tarifas = null
               className="mt-0.5"
             />
             <span>
-              <strong>El precio por kilo ya lleva el impuesto dentro</strong> (lo normal: te lo repercutió tu
-              proveedor al comprar la botella). Si lo dejas marcado, el impuesto se detalla en observaciones
-              pero <strong>no se suma otra vez</strong>, para no cobrárselo dos veces al cliente.
+              <strong>El precio por kilo ya lleva dentro el impuesto y la cuota europea</strong> (lo normal:
+              te los repercutió tu proveedor al comprar la botella). Si lo dejas marcado, los dos se detallan
+              en observaciones pero <strong>no se suman otra vez</strong>, para no cobrárselos dos veces al
+              cliente.
             </span>
           </label>
 
@@ -174,6 +222,17 @@ export default function CargaDeGas({ abierto, onCerrar, onAnadir, tarifas = null
               )}
               {!r.sujeto && (
                 <div className="flex justify-between text-xs"><span className="text-gray-500">Impuesto gases fluorados</span><span className="text-gray-500">No sujeto</span></div>
+              )}
+              {r.cuotaAplicable ? (
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">
+                    Cuota europea de HFC ({String(r.toneladas).replace('.', ',')} t CO₂e × {String(r.tipoCuotaEuropea).replace('.', ',')} €/t)
+                    {r.impuestoIncluido && <span className="text-amber-700"> — ya incluida, no se suma</span>}
+                  </span>
+                  <span className={r.impuestoIncluido ? 'text-gray-400 line-through' : 'font-semibold'}>{dinero(r.cuotaEuropea)}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between text-xs"><span className="text-gray-500">Cuota europea de HFC</span><span className="text-gray-500">No se aplica</span></div>
               )}
               <div className="flex justify-between text-sm border-t pt-1"><span className="font-bold">Total a la factura</span><span className="font-bold">{dinero(r.total)}</span></div>
               <p className="text-[10px] text-gray-400 pt-1">
