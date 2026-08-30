@@ -124,8 +124,8 @@ const GRUPOS = [
   // Los cálculos van por oficio, igual que en el menú lateral: veintitantas
   // herramientas seguidas no hay quien las lea.
   { titulo: 'Electricidad', color: '#eab308', pages: ['ElectricalCalc'] },
-  { titulo: 'Clima', color: '#0ea5e9', pages: ['ACPotenciaCalc', 'ACPlanAnalysis', 'ThermalCalc', 'MultiAreaCalc', 'PlanoIA'] },
-  { titulo: 'Refrigeración', color: '#06b6d4', pages: ['ColdRoomCalc', 'CapillaryCalc', 'DiagnosticoCarga', 'RefrigerantEquiv', 'DanfossTools', 'PresionesGas', 'CodigosError', 'TablasRefrigerantes'] },
+  { titulo: 'Clima', color: '#0ea5e9', pages: ['ACPotenciaCalc', 'ACPlanAnalysis', 'ThermalCalc', 'MultiAreaCalc', 'PlanoIA', 'CodigosError'] },
+  { titulo: 'Refrigeración', color: '#06b6d4', pages: ['ColdRoomCalc', 'CapillaryCalc', 'DiagnosticoCarga', 'RefrigerantEquiv', 'DanfossTools', 'PresionesGas', 'TablasRefrigerantes'] },
   { titulo: 'Solar', color: '#f59e0b', pages: ['SolarCalc', 'SolarBatteryCalc', 'BatteryCalc'] },
   { titulo: 'Documentos', color: '#7C3AED', pages: ['Documents', 'Documents?type=factura', 'Documents?type=presupuesto', 'DocumentTemplates', 'LegalDocs'] },
   { titulo: 'SAT y Trabajo', color: '#F97316', pages: ['SAT', 'SATChat', 'TechnicianFieldWork', 'TecniciansRoutes', 'Maintenance', 'MaintenancePlanning', 'IncidentManagement', 'EquipmentFailureHistory', 'EquipmentDiaryPage'] },
@@ -474,6 +474,27 @@ export default function Home() {
           })}
         </div>
       </div>
+
+      {/* ── Códigos de avería por marcas ───────────────────────────────────
+          Va aparte y grande a propósito: es lo primero que se busca cuando
+          hay una máquina en error y el cliente delante. */}
+      <Link to={createPageUrl('CodigosError')} data-prueba="boton-codigos-error">
+        <div className="rounded-xl p-4 flex items-center gap-4 transition-all cursor-pointer"
+          style={{ background: '#1a0e12', border: '1px solid #ef444455' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#26141a'}
+          onMouseLeave={e => e.currentTarget.style.background = '#1a0e12'}>
+          <div className="bg-red-600 p-3 rounded-xl text-white shadow-lg flex-shrink-0">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold" style={{ color: '#e8eaf0' }}>Códigos de avería por marcas</h2>
+            <p className="text-xs" style={{ color: '#8890a8' }}>
+              Busca el código que da la máquina y te dice dónde puede estar la avería.
+              Con el teléfono del servicio técnico oficial de cada marca.
+            </p>
+          </div>
+        </div>
+      </Link>
 
       {/* Accesos AGRUPADOS por secciones (móvil + escritorio) */}
       <div className="space-y-3">

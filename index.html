@@ -85,12 +85,86 @@
         }, 300); // reducido de 800ms a 300ms
       });
 
-      // Registrar Service Worker para PWA
+      // Registrar Service Worker para PWA.
+      //
+      // La versión va en la URL a propósito: el service worker la usa para
+      // nombrar su caché, y así al actualizar se borra la de la versión
+      // anterior. Sin esto se mezclaban ficheros de dos versiones y el
+      // programa arrancaba en blanco. __VERSION_APP__ la pone el compilador.
+      //
+      // Y NO se registra dentro del APK ni del programa de escritorio.
+      // Ahí todos los ficheros ya están en el aparato, así que la caché no
+      // aporta nada y solo añade una forma de fallar: si sirve un index.html
+      // guardado de una versión anterior, apunta a ficheros que la versión
+      // nueva ya no trae y sale el "La página no se cargó correctamente".
+      // Además se quita el que hubiera de antes, para dejar limpios los
+      // móviles que ya lo tengan puesto.
+      var esNativo = !!(window.Capacitor || window.gptCopias || window.gptIA
+        || location.protocol === 'capacitor:' || location.protocol === 'file:');
+
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        if (esNativo) {
+          navigator.serviceWorker.getRegistrations().then(function (rs) {
+            rs.forEach(function (r) { r.unregister(); });
+            if (window.caches && caches.keys) {
+              caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
+            }
+          }).catch(function () {});
+        } else {
+          window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/sw.js?v=__VERSION_APP__').catch(function () {});
+          });
+        }
+      }
+
+      // Cuando el service worker nuevo toma el mando, se recarga una vez.
+      //
+      // Hace falta: al actualizar, la página ya se ha empezado a cargar con
+      // los ficheros de la versión anterior, y mezclarlos con los nuevos es
+      // justo lo que dejaba la pantalla en blanco. Con la recarga, todo lo
+      // que se pide viene ya de la versión nueva y de su caché limpia.
+      //
+      // Solo si ANTES había un service worker mandando: la primera vez que se
+      // instala también salta este aviso y ahí no hay nada que recargar.
+      if ('serviceWorker' in navigator && !esNativo) {
+        var habiaSW = !!navigator.serviceWorker.controller;
+        var recargando = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (!habiaSW || recargando) return;
+          recargando = true;
+          location.reload();
         });
       }
+
+      // ── Rescate para quien ya tenga la caché envenenada ──
+      //
+      // Los que actualizaron con el service worker viejo se quedan con la
+      // pantalla en blanco y reinstalar no les sirve, porque la caché mala
+      // sobrevive. Si a los 12 segundos no ha pintado nada, se tira todo y se
+      // recarga una vez. La marca en sessionStorage evita el bucle: si
+      // después de limpiar sigue sin arrancar, el fallo es otro y hay que
+      // verlo, no seguir recargando.
+      (function () {
+        var YA = 'gpt_rescate_cache_hecho';
+        setTimeout(function () {
+          var raiz = document.getElementById('root');
+          var pintado = raiz && raiz.children.length > 0;
+          if (pintado) return;
+          try { if (sessionStorage.getItem(YA)) return; sessionStorage.setItem(YA, '1'); } catch (e) { return; }
+          var limpiar = [];
+          if (window.caches && caches.keys) {
+            limpiar.push(caches.keys().then(function (ks) {
+              return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+            }));
+          }
+          if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+            limpiar.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+              return Promise.all(rs.map(function (r) { return r.unregister(); }));
+            }));
+          }
+          Promise.all(limpiar).catch(function () {}).then(function () { location.reload(); });
+        }, 12000);
+      })();
 
       // Detectar si se puede instalar la PWA y mostrar banner
       let deferredPrompt;

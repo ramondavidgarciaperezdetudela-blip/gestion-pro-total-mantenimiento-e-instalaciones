@@ -193,23 +193,25 @@ const PAGE_SECTION = {
   Maintenance: 'Operaciones', MaintenancePlanning: 'Operaciones', IncidentManagement: 'Operaciones',
   EquipmentDiaryPage: 'Operaciones', EquipmentFailureHistory: 'Operaciones', Agenda: 'Operaciones',
   Availability: 'Operaciones',
-  TablasRefrigerantes: 'Operaciones',
   // Clientes y proyectos
   Contacts: 'Clientes', ContactForm: 'Clientes', ClientPortal: 'Clientes',
   Projects: 'Clientes', ProjectTimeline: 'Clientes',
   // Documentos
   Documents: 'Documentos', DocumentTemplates: 'Documentos', BusinessCards: 'Documentos',
   LegalDocs: 'Documentos', Catalogs: 'Documentos',
-  // Cálculo y diagnóstico técnico
-  ThermalCalc: 'Cálculo y diagnóstico', ElectricalCalc: 'Cálculo y diagnóstico',
-  ColdRoomCalc: 'Cálculo y diagnóstico', ACPotenciaCalc: 'Cálculo y diagnóstico',
-  ACPlanAnalysis: 'Cálculo y diagnóstico', MultiAreaCalc: 'Cálculo y diagnóstico',
-  PlanoIA: 'Cálculo y diagnóstico',
-  SolarBatteryCalc: 'Cálculo y diagnóstico', CapillaryCalc: 'Cálculo y diagnóstico',
-  BatteryCalc: 'Cálculo y diagnóstico', SolarCalc: 'Cálculo y diagnóstico',
-  RefrigerantEquiv: 'Cálculo y diagnóstico', DiagnosticoCarga: 'Cálculo y diagnóstico',
-  DanfossTools: 'Cálculo y diagnóstico',
-  CodigosError: 'Cálculo y diagnóstico', PresionesGas: 'Cálculo y diagnóstico',
+  // Cálculo y diagnóstico, cada oficio por su lado.
+  //
+  // Antes iban todos juntos en una sección con subgrupos dentro. Se han
+  // separado en secciones independientes porque el que trabaja el frío no
+  // quiere pasar por delante de lo eléctrico cada vez que abre el menú.
+  ElectricalCalc: 'Electricidad',
+  ACPotenciaCalc: 'Clima', ACPlanAnalysis: 'Clima', ThermalCalc: 'Clima',
+  MultiAreaCalc: 'Clima', PlanoIA: 'Clima', CodigosError: 'Clima',
+  ColdRoomCalc: 'Refrigeración', CapillaryCalc: 'Refrigeración',
+  DiagnosticoCarga: 'Refrigeración', RefrigerantEquiv: 'Refrigeración',
+  DanfossTools: 'Refrigeración', PresionesGas: 'Refrigeración',
+  SolarCalc: 'Solar', SolarBatteryCalc: 'Solar', BatteryCalc: 'Solar',
+  TablasRefrigerantes: 'Refrigeración',
   // Proveedores y stock
   Suppliers: 'Proveedores y stock', GasSuppliers: 'Proveedores y stock',
   SupplierTariffs: 'Proveedores y stock', Inventory: 'Proveedores y stock',
@@ -225,33 +227,12 @@ const PAGE_SECTION = {
   Home: 'Sistema', CompanyConfig: 'Sistema', Manuals: 'Sistema', Regulations: 'Sistema',
   UpdateCenter: 'Sistema', LicenseActivation: 'Sistema', LicenseRenewal: 'Sistema',
 };
-/*
- * Dentro de «Cálculo y diagnóstico» las herramientas se separan por oficio.
- * Antes iban las veintitantas seguidas y en orden alfabético, así que buscar
- * la del gas te obligaba a leerlas todas.
- */
-const PAGE_SUBSECTION = {
-  // Electricidad
-  ElectricalCalc: 'Electricidad',
-  // Climatización
-  ACPotenciaCalc: 'Clima', ACPlanAnalysis: 'Clima', ThermalCalc: 'Clima',
-  MultiAreaCalc: 'Clima', PlanoIA: 'Clima',
-  // Refrigeración
-  ColdRoomCalc: 'Refrigeración', CapillaryCalc: 'Refrigeración',
-  DiagnosticoCarga: 'Refrigeración', RefrigerantEquiv: 'Refrigeración',
-  DanfossTools: 'Refrigeración', PresionesGas: 'Refrigeración',
-  CodigosError: 'Refrigeración', TablasRefrigerantes: 'Refrigeración',
-  // Solar
-  SolarCalc: 'Solar', SolarBatteryCalc: 'Solar', BatteryCalc: 'Solar',
-};
-const SUBSECTION_ORDER = ['Electricidad', 'Clima', 'Refrigeración', 'Solar', 'Otros'];
-
-/** Qué secciones se parten en subgrupos. */
-const CON_SUBGRUPOS = new Set(['Cálculo y diagnóstico']);
-
 const SECTION_ORDER = [
-  'Sistema', 'Operaciones', 'Cálculo y diagnóstico', 'Clientes',
-  'Documentos', 'Proveedores y stock', 'IA y asistencia', 'Informes y datos', 'Otros',
+  'Sistema', 'Operaciones',
+  // Los cuatro oficios, seguidos y cada uno con su título.
+  'Electricidad', 'Clima', 'Refrigeración', 'Solar',
+  'Clientes', 'Documentos', 'Proveedores y stock',
+  'IA y asistencia', 'Informes y datos', 'Otros',
 ];
 const basePage = (p) => (p || '').split('?')[0];
 function groupNav(items) {
@@ -260,19 +241,9 @@ function groupNav(items) {
     const sec = PAGE_SECTION[basePage(it.page)] || 'Otros';
     (buckets[sec] = buckets[sec] || []).push(it);
   });
-  return SECTION_ORDER.filter((s) => buckets[s]?.length).map((s) => {
-    if (!CON_SUBGRUPOS.has(s)) return { section: s, items: buckets[s] };
-    const sub = {};
-    buckets[s].forEach((it) => {
-      const g = PAGE_SUBSECTION[basePage(it.page)] || 'Otros';
-      (sub[g] = sub[g] || []).push(it);
-    });
-    return {
-      section: s,
-      items: [],
-      subgrupos: SUBSECTION_ORDER.filter((g) => sub[g]?.length).map((g) => ({ nombre: g, items: sub[g] })),
-    };
-  });
+  return SECTION_ORDER
+    .filter((s) => buckets[s]?.length)
+    .map((s) => ({ section: s, items: buckets[s] }));
 }
 
 // Navegación agrupada por secciones técnicas (compartida por escritorio y móvil)
@@ -294,22 +265,10 @@ function SidebarNav({ currentPageName, onNavigate, activeStyle, idleColor }) {
 
   return (
     <>
-      {groupNav(navItems).map(({ section, items, subgrupos }) => (
-        <div key={section} className="mb-1">
+      {groupNav(navItems).map(({ section, items }) => (
+        <div key={section} className="mb-1" data-prueba={`seccion-${section}`}>
           <div className="px-3 pt-3 pb-1 tech-label" style={{ color: '#5a6178' }}>{section}</div>
-
-          {/* Las secciones con subgrupos (los cálculos) van separadas por
-              oficio: electricidad, clima, refrigeración y solar. */}
-          {subgrupos
-            ? subgrupos.map(({ nombre, items: sus }) => (
-              <div key={nombre} className="mb-0.5" data-prueba={`subgrupo-${nombre}`}>
-                <div className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#7c86a0' }}>
-                  {nombre}
-                </div>
-                {sus.map((item) => <Enlace key={item.page} item={item} />)}
-              </div>
-            ))
-            : items.map((item) => <Enlace key={item.page} item={item} />)}
+          {items.map((item) => <Enlace key={item.page} item={item} />)}
         </div>
       ))}
     </>
