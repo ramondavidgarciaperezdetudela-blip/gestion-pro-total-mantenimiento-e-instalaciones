@@ -102,7 +102,18 @@ const quickLinks = [
 { name: 'Copias Seg.', page: 'BackupCenter', icon: Shield, color: 'bg-blue-700' },
 { name: 'Actualizaciones', page: 'UpdateCenter', icon: RefreshCw, color: 'bg-green-600' },
 { name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
-{ name: 'Soporte IA', page: 'AISupport', icon: Bot, color: 'bg-blue-500' }];
+{ name: 'Soporte IA', page: 'AISupport', icon: Bot, color: 'bg-blue-500' },
+// Estos faltaban en la lista y por eso no salían en ningún grupo de abajo:
+// los grupos se arman a partir de aquí y lo que no está, se descarta.
+{ name: 'Cálculo Eléctrico', page: 'ElectricalCalc', icon: Zap, color: 'bg-yellow-500' },
+{ name: 'Baterías', page: 'BatteryCalc', icon: Zap, color: 'bg-lime-600' },
+{ name: 'Cálculo Solar', page: 'SolarCalc', icon: Sun, color: 'bg-amber-500' },
+{ name: 'Solar + Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-orange-500' },
+{ name: 'Tubo Capilar', page: 'CapillaryCalc', icon: Ruler, color: 'bg-cyan-700' },
+{ name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Gauge, color: 'bg-rose-600' },
+{ name: 'Tablas de Gases', page: 'TablasRefrigerantes', icon: Snowflake, color: 'bg-sky-700' },
+{ name: 'Códigos de Error', page: 'CodigosError', icon: AlertTriangle, color: 'bg-red-600' },
+{ name: 'Presiones y Carga', page: 'PresionesGas', icon: Gauge, color: 'bg-blue-700' }];
 
 // Índice rápido página -> objeto de enlace (para armar los grupos reutilizando icono/color/nombre)
 const _linkByPage = Object.fromEntries(quickLinks.map(l => [l.page, l]));
@@ -110,12 +121,17 @@ const _linkByPage = Object.fromEntries(quickLinks.map(l => [l.page, l]));
 // Accesos AGRUPADOS por secciones (como el bloque de Refrigeración y Gases).
 const GRUPOS = [
   { titulo: 'Proveedores y Tarifas', color: '#f59e0b', pages: ['Suppliers', 'SupplierTariffs', 'PurchaseSummary', 'SparePartsManager', 'Inventory', 'Catalogs'] },
-  { titulo: 'Cálculos', color: '#ef4444', pages: ['ThermalCalc', 'ElectricalCalc', 'BatteryCalc', 'SolarBatteryCalc', 'SolarCalc', 'ColdRoomCalc', 'ACPotenciaCalc', 'MultiAreaCalc', 'ACPlanAnalysis', 'PlanoIA', 'CapillaryCalc', 'DiagnosticoCarga'] },
+  // Los cálculos van por oficio, igual que en el menú lateral: veintitantas
+  // herramientas seguidas no hay quien las lea.
+  { titulo: 'Electricidad', color: '#eab308', pages: ['ElectricalCalc'] },
+  { titulo: 'Clima', color: '#0ea5e9', pages: ['ACPotenciaCalc', 'ACPlanAnalysis', 'ThermalCalc', 'MultiAreaCalc', 'PlanoIA'] },
+  { titulo: 'Refrigeración', color: '#06b6d4', pages: ['ColdRoomCalc', 'CapillaryCalc', 'DiagnosticoCarga', 'RefrigerantEquiv', 'DanfossTools', 'PresionesGas', 'CodigosError', 'TablasRefrigerantes'] },
+  { titulo: 'Solar', color: '#f59e0b', pages: ['SolarCalc', 'SolarBatteryCalc', 'BatteryCalc'] },
   { titulo: 'Documentos', color: '#7C3AED', pages: ['Documents', 'Documents?type=factura', 'Documents?type=presupuesto', 'DocumentTemplates', 'LegalDocs'] },
   { titulo: 'SAT y Trabajo', color: '#F97316', pages: ['SAT', 'SATChat', 'TechnicianFieldWork', 'TecniciansRoutes', 'Maintenance', 'MaintenancePlanning', 'IncidentManagement', 'EquipmentFailureHistory', 'EquipmentDiaryPage'] },
   { titulo: 'Clientes y Agenda', color: '#10B981', pages: ['Contacts', 'ClientPortal', 'Projects', 'ProjectTimeline', 'Agenda', 'Availability', 'SATCalendar', 'TechnicianDay'] },
   { titulo: 'IA y Asistencia', color: '#3B82F6', pages: ['AIAssistant', 'AISearch', 'AIBudget', 'AIReports', 'AIPlanning', 'AISupport'] },
-  { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'Regulations', 'DanfossTools', 'GasSuppliers', 'RefrigerantEquiv', 'TablasRefrigerantes'] },
+  { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'Regulations', 'GasSuppliers'] },
   { titulo: 'Informes y Sistema', color: '#64748b', pages: ['Reports', 'Automations', 'SmartReminders', 'Notes', 'AuditLog', 'BusinessCards', 'ExportData', 'BackupCenter', 'UpdateCenter', 'CompanyConfig'] },
 ].map(g => ({ ...g, links: g.pages.map(p => _linkByPage[p]).filter(Boolean) }));
 

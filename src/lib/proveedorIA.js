@@ -170,6 +170,27 @@ async function pedir(url, opciones, tiempoMaximo) {
     }
     return r.cuerpo;
   }
+  // En el móvil, la petición NATIVA. El fetch del navegador de la APK no vale:
+  // Android bloquea las llamadas en claro a la red local y, encima, Ollama
+  // rechaza el origen. Esto estaba escrito más abajo pero solo lo usaba el
+  // puente del ordenador; aquí no se usaba, y por eso en el móvil no ha
+  // funcionado nunca hablar con Ollama directamente.
+  if (esMovil()) {
+    try {
+      return await pedirNativo(url, opciones);
+    } catch (e) {
+      const err = new Error(
+        url.includes('openrouter')
+          ? 'No se ha podido llegar a OpenRouter desde el móvil. Comprueba que hay internet.'
+          : `No responde Ollama en ${url.replace(/\/api\/.*$/, '')}. En el móvil, Ollama corre en el ordenador: `
+            + 'enciende allí «Compartir la IA por wifi» y comprueba que los dos están en la misma red.',
+      );
+      err.status = e?.status ?? null;
+      err.causa = String(e?.message || e);
+      throw err;
+    }
+  }
+
   let resp;
   try {
     resp = await fetch(url, opciones);
@@ -389,6 +410,137 @@ export function seAcabaronLasConsultas(err) {
     .test(String(err?.message || ''));
 }
 
+/**
+ * ¿Estamos dentro de la aplicación del móvil (APK)?
+ *
+ * Importa porque ahí no vale el fetch del navegador: Android bloquea las
+ * llamadas en claro a la red local y, además, Ollama rechaza el origen. La
+ * petición nativa de Capacitor se salta las dos cosas.
+ */
+export function esMovil() {
+  return typeof window !== 'undefined'
+    && Boolean(window.Capacitor?.isNativePlatform?.());
+}
+
+/**
+ * Averigua QUÉ le pasa a Ollama, no solo si va o no.
+ *
+ * Esto es lo que faltaba. Antes, si no se encontraba Ollama, se devolvía null
+ * y punto: ni el usuario ni yo podíamos saber si es que no estaba arrancado,
+ * si estaba en otro puerto, o si estaba funcionando perfectamente pero
+ * rechazando al programa. Son tres problemas distintos con tres soluciones
+ * distintas, y sin distinguirlos no se arregla ninguno.
+ *
+ * El truco para distinguir "no hay nada escuchando" de "hay algo pero me
+ * rechaza": se repite la petición con mode:'no-cors'. Si esa SÍ responde
+ * (aunque venga vacía), es que el servidor está ahí y lo que falla es el
+ * permiso de origen. Si tampoco responde, no hay nadie al otro lado.
+ *
+ * @returns {Promise<{estado:string, titulo:string, detalle:string, arreglo?:string, url?:string, modelos?:string[]}>}
+ */
+export async function diagnosticarOllama(cfg = ajustesIA()) {
+  const base = String(cfg.ollama_url || 'http://localhost:11434').replace(/\/$/, '');
+  const url = `${base}/api/tags`;
+
+  // 1. El camino normal (puente del escritorio, nativo en el móvil o fetch).
+  try {
+    const cuerpo = await conTiempo(modelosInstalados(cfg), 6000);
+    if (cuerpo.length === 0) {
+      return {
+        estado: 'sin_modelos',
+        url: base,
+        modelos: [],
+        titulo: 'Ollama está funcionando, pero no tiene ningún modelo descargado.',
+        detalle: 'El motor está ahí; le falta el cerebro.',
+        arreglo: 'Dale al botón de descargar el modelo, o escribe en una consola: ollama pull llama3.2',
+      };
+    }
+    return {
+      estado: 'ok',
+      url: base,
+      modelos: cuerpo,
+      titulo: `Ollama funcionando con ${cuerpo.length} ${cuerpo.length === 1 ? 'modelo' : 'modelos'}.`,
+      detalle: cuerpo.join(', '),
+    };
+  } catch (e) {
+    var fallo = e;
+  }
+
+  // 2. ¿Hay algo escuchando en ese puerto, aunque nos rechace?
+  //    Solo se puede comprobar así en el navegador; con el puente del
+  //    escritorio o en el móvil no hay CORS que valga.
+  const porNavegador = !hayPuenteEscritorio() && !esMovil() && typeof fetch === 'function';
+  if (porNavegador) {
+    let respondeAlgo = false;
+    try {
+      await conTiempo(fetch(url, { mode: 'no-cors' }), 4000);
+      respondeAlgo = true;
+    } catch { /* no hay nadie */ }
+
+    if (respondeAlgo) {
+      return {
+        estado: 'bloqueado',
+        url: base,
+        titulo: 'Ollama SÍ está funcionando, pero no deja que el programa le hable.',
+        detalle: 'Ollama solo atiende a las páginas que tiene permitidas, y esta aplicación no está en esa lista. '
+          + 'No es que no lo encuentre: lo encuentra y le cierra la puerta.',
+        arreglo: 'Hay que darle permiso una sola vez, poniendo la variable OLLAMA_ORIGINS=* y reiniciando Ollama.\n\n'
+          + 'En Windows, en una ventana de comandos:\n'
+          + '    setx OLLAMA_ORIGINS "*"\n'
+          + '  y luego cierra Ollama del todo (icono junto al reloj → Quit) y vuelve a abrirlo.\n\n'
+          + 'En Mac o Linux:\n'
+          + '    launchctl setenv OLLAMA_ORIGINS "*"   (Mac)\n'
+          + '    export OLLAMA_ORIGINS="*"             (Linux, antes de arrancar ollama serve)\n\n'
+          + 'Otra salida, si no quieres tocar nada: usa el programa instalado en el ordenador '
+          + '(la versión de escritorio) en vez de la del navegador. Ahí no hace falta permiso ninguno.',
+      };
+    }
+  }
+
+  // 3. No hay nadie escuchando.
+  const puerto = base.match(/:(\d+)/)?.[1] || '11434';
+  return {
+    estado: 'apagado',
+    url: base,
+    titulo: `No hay nada escuchando en ${base}.`,
+    detalle: fallo?.causa || fallo?.message || 'No responde.',
+    arreglo: esMovil()
+      ? 'En el móvil, Ollama no corre aquí: corre en el ordenador. Enciende en el ordenador «Compartir la IA por wifi» '
+        + '(Configuración → Qué IA usar) y asegúrate de que móvil y ordenador están en la misma red.'
+      : `Comprueba que Ollama está abierto (en Windows y Mac se ve un icono junto al reloj). Si lo tienes en otro `
+        + `puerto distinto del ${puerto}, cámbialo aquí abajo. Si acabas de instalarlo, ciérralo y ábrelo otra vez.`,
+  };
+}
+
+/**
+ * Busca Ollama en las direcciones de siempre, no solo en la configurada.
+ *
+ * Mucha gente lo tiene en 127.0.0.1 y no en localhost, o al revés, y en algún
+ * equipo con IPv6 «localhost» resuelve a ::1 y no contesta. Probar las tres
+ * cuesta un segundo y evita un «no lo encuentro» que no era verdad.
+ */
+export const DIRECCIONES_HABITUALES = [
+  'http://127.0.0.1:11434',
+  'http://localhost:11434',
+  'http://[::1]:11434',
+];
+
+export async function buscarOllamaPorAhi(cfg = ajustesIA()) {
+  const suya = String(cfg.ollama_url || '').replace(/\/$/, '');
+  const candidatas = [suya, ...DIRECCIONES_HABITUALES].filter((u, i, a) => u && a.indexOf(u) === i);
+  let mejor = null;
+  for (const url of candidatas) {
+    const r = await diagnosticarOllama({ ...cfg, ollama_url: url });
+    if (r.estado === 'ok') {
+      if (url !== suya) guardarAjustesIA({ ollama_url: url });
+      return r;
+    }
+    // Un "bloqueado" o un "sin modelos" dicen más que un "apagado".
+    if (!mejor || (mejor.estado === 'apagado' && r.estado !== 'apagado')) mejor = r;
+  }
+  return mejor;
+}
+
 /** ¿Hay un Ollama utilizable desde este aparato, ahora mismo? */
 export async function hayOllamaAMano(cfg = ajustesIA()) {
   try {
@@ -419,10 +571,40 @@ export async function autoConfigurarIALibre() {
     }
     return { puesto: !!hay, modelo: cfg.ollama_modelo };
   }
-  const hay = await hayOllamaAMano(cfg);
-  if (!hay) return { puesto: false };
-  guardarAjustesIA({ proveedor: 'ollama', ollama_modelo: hay.modelo });
-  return { puesto: true, modelo: hay.modelo };
+  // Se prueban también 127.0.0.1 y ::1, no solo la dirección guardada: en
+  // algún equipo «localhost» resuelve a IPv6 y ahí Ollama no contesta.
+  const r = await buscarOllamaPorAhi(cfg);
+  if (r?.estado !== 'ok') return { puesto: false, diagnostico: r };
+  const modelo = elegirModelo(r.modelos, cfg.ollama_modelo);
+  guardarAjustesIA({ proveedor: 'ollama', ollama_modelo: modelo });
+  return { puesto: true, modelo };
+}
+
+/**
+ * Vuelve a mirar cada poco si ha aparecido un Ollama.
+ *
+ * Hace falta porque la comprobación del arranque se hacía UNA vez y ya está.
+ * Y lo normal es abrir el programa y que Ollama tarde un poco en levantarse, o
+ * arrancarlo después de ver el aviso de que no quedan consultas. En esos casos
+ * el programa se quedaba en OpenRouter para siempre aunque Ollama estuviera
+ * ahí desde hacía media hora.
+ *
+ * Se para en cuanto lo encuentra: no tiene sentido seguir mirando.
+ */
+export function vigilarOllama({ cada = 60000, veces = 30 } = {}) {
+  let intentos = 0;
+  let parado = false;
+  const reloj = setInterval(async () => {
+    if (parado) return;
+    intentos += 1;
+    if (intentos > veces) { clearInterval(reloj); return; }
+    if (ajustesIA().proveedor === 'ollama' && ajustesIA().ollama_modelo) { clearInterval(reloj); return; }
+    try {
+      const r = await autoConfigurarIALibre();
+      if (r.puesto) { clearInterval(reloj); }
+    } catch { /* se reintenta en la siguiente vuelta */ }
+  }, cada);
+  return () => { parado = true; clearInterval(reloj); };
 }
 
 /**
@@ -453,19 +635,31 @@ export async function reintentarSinLimite(peticion, base44) {
     } catch { /* no se llega */ }
   }
 
-  return { ok: false, motivo: 'sin_ollama' };
+  // Si no hay salida, al menos que se sepa POR QUÉ.
+  let diagnostico = null;
+  try { diagnostico = await diagnosticarOllama(cfg); } catch { /* ni eso */ }
+  return { ok: false, motivo: 'sin_ollama', diagnostico };
 }
 
 /** El aviso de que se acabaron las consultas gratis, con la salida. */
-export function errorSinConsultas() {
+export function errorSinConsultas(diagnostico = null) {
+  // Antes esto decía siempre lo mismo: "no he encontrado ninguna IA sin límite
+  // a mano" y a instalar Ollama. A quien YA lo tiene instalado eso le suena a
+  // tomadura de pelo, y encima no le dice qué mirar. Ahora, si sabemos qué le
+  // pasa a su Ollama, se lo decimos.
+  const cola = diagnostico && diagnostico.estado !== 'ok'
+    ? `\n\n${diagnostico.titulo}\n${diagnostico.arreglo || diagnostico.detalle || ''}`
+    : '\n\nSi ya tienes Ollama instalado, entra en Configuración → Qué IA usar y dale a '
+      + '«Buscar Ollama ahora»: te dirá exactamente qué le pasa.';
+
   const err = new Error(
-    'OpenRouter no acepta más consultas gratuitas por hoy y no he encontrado ninguna IA '
-    + 'sin límite a mano. La solución definitiva es instalar Ollama en el ordenador: es '
-    + 'gratis, no tiene tope, no pide cuenta y funciona sin internet. Lo tienes en '
-    + 'Configuración → Qué IA usar, con un botón que abre la descarga.',
+    'OpenRouter no acepta más consultas gratuitas por hoy. La solución definitiva es Ollama '
+    + 'en el ordenador: es gratis, no tiene tope, no pide cuenta y funciona sin internet.'
+    + cola,
   );
   err.status = 429;
   err.sinConsultas = true;
+  err.diagnostico = diagnostico;
   return err;
 }
 

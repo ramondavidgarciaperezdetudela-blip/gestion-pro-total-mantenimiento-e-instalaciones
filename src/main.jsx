@@ -20,8 +20,15 @@ aplicarTema()
 // de consultas, no pide cuenta y funciona sin internet. Se hace en segundo
 // plano y sin bloquear el arranque — si no hay Ollama, no pasa nada y todo
 // sigue como estaba.
+// Y se sigue mirando cada minuto por si Ollama aparece después: lo normal es
+// abrir el programa y que Ollama tarde en levantarse, o arrancarlo justo
+// después de ver el aviso de que no quedan consultas. Antes se miraba UNA vez
+// al arrancar y, si no estaba, se quedaba en OpenRouter para siempre.
 import('@/lib/proveedorIA')
-  .then(({ autoConfigurarIALibre }) => autoConfigurarIALibre())
+  .then(async ({ autoConfigurarIALibre, vigilarOllama }) => {
+    const r = await autoConfigurarIALibre()
+    if (!r.puesto) vigilarOllama()
+  })
   .catch(() => { /* que esto falle no puede impedir abrir el programa */ })
 
 ReactDOM.createRoot(document.getElementById('root')).render(

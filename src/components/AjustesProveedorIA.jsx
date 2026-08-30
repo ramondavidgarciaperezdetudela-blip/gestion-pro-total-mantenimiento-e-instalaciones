@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, AlertCircle, Loader2, Download } from 'lucide-react';
+import BuscarOllama from '@/components/BuscarOllama';
 import {
   PROVEEDORES, MODELOS_OLLAMA, MODELOS_OPENROUTER, modelosGratisOpenRouter,
   escucharAjustesIA, guardarAjustesIA, modelosInstalados, consultarIA, hayPuenteEscritorio,
@@ -193,6 +194,8 @@ export default function AjustesProveedorIA() {
           </label>
         </div>
       )}
+
+        <BuscarOllama />
 
       {elegido.libre && (
         <>

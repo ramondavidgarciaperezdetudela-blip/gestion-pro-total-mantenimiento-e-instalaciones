@@ -286,13 +286,17 @@ const integracionesVigiladas = new Proxy({}, {
                 // wifi— y se repite ahí, que no tiene límite ninguno. Si sale
                 // bien, además queda puesto para las siguientes.
                 if (seAcabaronLasConsultas(err)) {
+                  let porQue = null;
                   try {
                     const r = await reintentarSinLimite(args[0] || {}, base44);
                     if (r.ok) return r.respuesta;
+                    // Si no ha podido, al menos nos traemos el motivo para
+                    // contárselo: "no lo encuentro" a secas no ayuda a nadie.
+                    porQue = r.diagnostico || null;
                   } catch (e2) {
                     console.error('[base44Client] La IA sin límite tampoco ha podido:', e2);
                   }
-                  const sinSalida = errorSinConsultas();
+                  const sinSalida = errorSinConsultas(porQue);
                   avisarDeFallo({ funcion: punto, error: sinSalida });
                   throw sinSalida;
                 }

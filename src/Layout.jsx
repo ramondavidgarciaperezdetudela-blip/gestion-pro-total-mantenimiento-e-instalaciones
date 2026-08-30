@@ -121,8 +121,7 @@ const navItems = [
 { name: 'Cal. SAT', page: 'SATCalendar', icon: Calendar },
 { name: 'Calc. Eléctrico', page: 'ElectricalCalc', icon: Zap },
 { name: 'Calc. Térmico', page: 'ThermalCalc', icon: Thermometer },
-{ name: 'Cám. + Humedad', page: 'ColdRoomCalc?tab=combinado', icon: Droplets },
-{ name: 'Cám. Frigorífica', page: 'ColdRoomCalc?tab=camara', icon: Thermometer },
+{ name: 'Cámara frigorífica', page: 'ColdRoomCalc', icon: Thermometer },
 { name: 'Campo', page: 'TechnicianFieldWork', icon: Wrench },
 { name: 'Catálogos', page: 'Catalogs', icon: FileText },
 { name: 'Chat SAT', page: 'SATChat', icon: MessageSquare },
@@ -135,7 +134,6 @@ const navItems = [
 { name: 'Documentos', page: 'Documents', icon: FileText },
 { name: 'Exportar', page: 'ExportData', icon: Download },
 { name: 'Historial', page: 'AuditLog', icon: History },
-{ name: 'Humedad Relativa', page: 'ColdRoomCalc?tab=humedad', icon: Droplets },
 { name: 'Incidencias', page: 'IncidentManagement', icon: AlertTriangle },
 { name: 'Inicio', page: 'Home', icon: Home },
 { name: 'Informes', page: 'Reports', icon: BarChart3 },
@@ -194,7 +192,6 @@ const PAGE_SECTION = {
   TechnicianFieldWork: 'Operaciones', TechnicianDay: 'Operaciones', TecniciansRoutes: 'Operaciones',
   Maintenance: 'Operaciones', MaintenancePlanning: 'Operaciones', IncidentManagement: 'Operaciones',
   EquipmentDiaryPage: 'Operaciones', EquipmentFailureHistory: 'Operaciones', Agenda: 'Operaciones',
-  CodigosError: 'Operaciones', PresionesGas: 'Cálculo y diagnóstico',
   Availability: 'Operaciones',
   TablasRefrigerantes: 'Operaciones',
   // Clientes y proyectos
@@ -212,6 +209,7 @@ const PAGE_SECTION = {
   BatteryCalc: 'Cálculo y diagnóstico', SolarCalc: 'Cálculo y diagnóstico',
   RefrigerantEquiv: 'Cálculo y diagnóstico', DiagnosticoCarga: 'Cálculo y diagnóstico',
   DanfossTools: 'Cálculo y diagnóstico',
+  CodigosError: 'Cálculo y diagnóstico', PresionesGas: 'Cálculo y diagnóstico',
   // Proveedores y stock
   Suppliers: 'Proveedores y stock', GasSuppliers: 'Proveedores y stock',
   SupplierTariffs: 'Proveedores y stock', Inventory: 'Proveedores y stock',
@@ -227,6 +225,30 @@ const PAGE_SECTION = {
   Home: 'Sistema', CompanyConfig: 'Sistema', Manuals: 'Sistema', Regulations: 'Sistema',
   UpdateCenter: 'Sistema', LicenseActivation: 'Sistema', LicenseRenewal: 'Sistema',
 };
+/*
+ * Dentro de «Cálculo y diagnóstico» las herramientas se separan por oficio.
+ * Antes iban las veintitantas seguidas y en orden alfabético, así que buscar
+ * la del gas te obligaba a leerlas todas.
+ */
+const PAGE_SUBSECTION = {
+  // Electricidad
+  ElectricalCalc: 'Electricidad',
+  // Climatización
+  ACPotenciaCalc: 'Clima', ACPlanAnalysis: 'Clima', ThermalCalc: 'Clima',
+  MultiAreaCalc: 'Clima', PlanoIA: 'Clima',
+  // Refrigeración
+  ColdRoomCalc: 'Refrigeración', CapillaryCalc: 'Refrigeración',
+  DiagnosticoCarga: 'Refrigeración', RefrigerantEquiv: 'Refrigeración',
+  DanfossTools: 'Refrigeración', PresionesGas: 'Refrigeración',
+  CodigosError: 'Refrigeración', TablasRefrigerantes: 'Refrigeración',
+  // Solar
+  SolarCalc: 'Solar', SolarBatteryCalc: 'Solar', BatteryCalc: 'Solar',
+};
+const SUBSECTION_ORDER = ['Electricidad', 'Clima', 'Refrigeración', 'Solar', 'Otros'];
+
+/** Qué secciones se parten en subgrupos. */
+const CON_SUBGRUPOS = new Set(['Cálculo y diagnóstico']);
+
 const SECTION_ORDER = [
   'Sistema', 'Operaciones', 'Cálculo y diagnóstico', 'Clientes',
   'Documentos', 'Proveedores y stock', 'IA y asistencia', 'Informes y datos', 'Otros',
@@ -238,31 +260,56 @@ function groupNav(items) {
     const sec = PAGE_SECTION[basePage(it.page)] || 'Otros';
     (buckets[sec] = buckets[sec] || []).push(it);
   });
-  return SECTION_ORDER.filter((s) => buckets[s]?.length).map((s) => ({ section: s, items: buckets[s] }));
+  return SECTION_ORDER.filter((s) => buckets[s]?.length).map((s) => {
+    if (!CON_SUBGRUPOS.has(s)) return { section: s, items: buckets[s] };
+    const sub = {};
+    buckets[s].forEach((it) => {
+      const g = PAGE_SUBSECTION[basePage(it.page)] || 'Otros';
+      (sub[g] = sub[g] || []).push(it);
+    });
+    return {
+      section: s,
+      items: [],
+      subgrupos: SUBSECTION_ORDER.filter((g) => sub[g]?.length).map((g) => ({ nombre: g, items: sub[g] })),
+    };
+  });
 }
 
 // Navegación agrupada por secciones técnicas (compartida por escritorio y móvil)
 function SidebarNav({ currentPageName, onNavigate, activeStyle, idleColor }) {
+  const Enlace = ({ item }) => {
+    const Icon = item.icon;
+    const isActive = currentPageName === item.page;
+    return (
+      <Link
+        to={createPageUrl(item.page)}
+        onClick={onNavigate}
+        className="flex items-center gap-2.5 px-3 py-2 text-xs transition-all"
+        style={isActive ? activeStyle : { color: idleColor, borderLeft: '2px solid transparent' }}>
+        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+        <span className="truncate">{item.name}</span>
+      </Link>
+    );
+  };
+
   return (
     <>
-      {groupNav(navItems).map(({ section, items }) => (
+      {groupNav(navItems).map(({ section, items, subgrupos }) => (
         <div key={section} className="mb-1">
           <div className="px-3 pt-3 pb-1 tech-label" style={{ color: '#5a6178' }}>{section}</div>
-          {items.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentPageName === item.page;
-            return (
-              <Link
-                key={item.page}
-                to={createPageUrl(item.page)}
-                onClick={onNavigate}
-                className="flex items-center gap-2.5 px-3 py-2 text-xs transition-all"
-                style={isActive ? activeStyle : { color: idleColor, borderLeft: '2px solid transparent' }}>
-                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="truncate">{item.name}</span>
-              </Link>
-            );
-          })}
+
+          {/* Las secciones con subgrupos (los cálculos) van separadas por
+              oficio: electricidad, clima, refrigeración y solar. */}
+          {subgrupos
+            ? subgrupos.map(({ nombre, items: sus }) => (
+              <div key={nombre} className="mb-0.5" data-prueba={`subgrupo-${nombre}`}>
+                <div className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#7c86a0' }}>
+                  {nombre}
+                </div>
+                {sus.map((item) => <Enlace key={item.page} item={item} />)}
+              </div>
+            ))
+            : items.map((item) => <Enlace key={item.page} item={item} />)}
         </div>
       ))}
     </>

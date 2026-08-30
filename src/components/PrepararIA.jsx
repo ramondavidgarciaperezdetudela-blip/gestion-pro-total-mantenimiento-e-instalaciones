@@ -259,6 +259,11 @@ export default function PrepararIA() {
         )}
       </div>
 
+      {/* Buscar Ollama, A LA VISTA. Estaba escondido detrás de «Cambiar de IA
+          a mano (no hace falta)», que es justo donde no puede estar: quien no
+          consigue que le detecten Ollama necesita esto lo primero. */}
+      <BuscarOllama />
+
       <button
         type="button"
         onClick={() => setVerAvanzado((v) => !v)}
