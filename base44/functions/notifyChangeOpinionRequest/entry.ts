@@ -58,13 +58,37 @@ Deno.serve(async (req) => {
     const companies = await base44.asServiceRole.entities.CompanySettings.list();
     const company = companies?.[0];
 
+    // Sin correo de la empresa no hay a quién avisar. Se dice por qué, en vez
+    // de contestar "ok" y dejar al usuario esperando un aviso que nunca llega.
     if (!company?.email) {
-      return Response.json({ ok: true });
+      return Response.json({
+        ok: false,
+        motivo: 'sin_email_empresa',
+        aviso: 'No se ha enviado el aviso porque la empresa no tiene correo configurado. '
+          + 'Ponlo en Configuración → Datos de la empresa.',
+      });
     }
 
-    // Generar enlaces únicos para este cambio de opinión con token
-    const presupuestoUrlEmail = `https://app.base44.io/presupuesto-publico?id=${doc_id}&method=email&token=${changeOpinionToken}`;
-    const presupuestoUrlWhatsapp = `https://app.base44.io/presupuesto-publico?id=${doc_id}&method=whatsapp&token=${changeOpinionToken}`;
+    /*
+     * Los enlaces salen de la dirección pública configurada.
+     *
+     * Antes iban escritos a mano («https://app.base44.io»), que no es la
+     * dirección de este programa: al cliente le llegaba un enlace que no abría
+     * en ninguna parte. Se pone en Configuración → Impresión → Verificación de
+     * documentos.
+     */
+    const base = String(company?.public_app_url || '').trim().replace(/\/$/, '');
+    if (!base) {
+      return Response.json({
+        ok: false,
+        motivo: 'sin_direccion_publica',
+        aviso: 'No se ha enviado el aviso porque falta la dirección pública del programa. '
+          + 'Ponla en Configuración → Impresión → Verificación de documentos: sin ella el '
+          + 'enlace que recibiría el cliente no se podría abrir.',
+      });
+    }
+    const presupuestoUrlEmail = `${base}/presupuesto-publico?id=${doc_id}&method=email&token=${changeOpinionToken}`;
+    const presupuestoUrlWhatsapp = `${base}/presupuesto-publico?id=${doc_id}&method=whatsapp&token=${changeOpinionToken}`;
 
     // Enviar email al admin
     const emailBodyAdmin = `

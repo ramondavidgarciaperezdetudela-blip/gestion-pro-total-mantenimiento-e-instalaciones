@@ -29,6 +29,9 @@ import SATTemplateSelector from '../components/SATTemplateSelector';
 import { withTimeout, getFallbackPhotosSize, MAX_TOTAL_FALLBACK_PAYLOAD, PHOTOS_TOO_LARGE_MESSAGE } from '@/lib/uploadImage';
 import { describeSaveError, esErrorDeFotoDemasiadoGrande, reducirFotos, tamanoFotoMayor, guardarLimiteAprendido } from '@/lib/saveErrorMessage';
 import { useParametrosUrl } from '@/lib/parametrosUrl';
+import { direccionPublica, AVISO_SIN_DIRECCION } from '@/lib/copiaFirmada';
+import { toast } from 'sonner';
+import { abrirEnlaceAvisando } from '@/lib/abrirEnlace';
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
 const STATUSES = ['pendiente', 'en_curso', 'completada', 'cancelada'];
@@ -320,7 +323,7 @@ export default function SAT() {
     if (!c?.email) return alert('Este cliente no tiene email registrado');
     const subject = encodeURIComponent(`Orden SAT #${order.order_number} - ${order.type}`);
     const body = encodeURIComponent(`Estimado/a ${order.contact_name},\n\nLe informamos del estado de su orden SAT:\n\nNº: ${order.order_number}\nTipo: ${order.type}\nEstado: ${order.status}\nDescripción: ${order.description || '-'}\nSolución: ${order.solution || '-'}\nTotal: ${order.total?.toFixed(2)} €\n\nQuedamos a su disposición.`);
-    window.open(`mailto:${c.email}?subject=${subject}&body=${body}`, '_blank');
+    abrirEnlaceAvisando(`mailto:${c.email}?subject=${subject}&body=${body}`, (m) => toast.error(m, { duration: 12000 }));
   };
 
   const sendWhatsApp = (order) => {
@@ -933,9 +936,13 @@ export default function SAT() {
                   size="sm" 
                   className="text-purple-700 border-purple-300"
                   onClick={() => {
-                    const satPublicoUrl = `${window.location.origin}/sat-publico?id=${previewOrder.id}`;
+                    // De la dirección pública, no de la del aparato: si no,
+                    // al cliente le llega un enlace a «localhost».
+                    const baseSat = direccionPublica(company);
+                    if (!baseSat) { toast.error(AVISO_SIN_DIRECCION); return; }
+                    const satPublicoUrl = `${baseSat}/sat-publico?id=${previewOrder.id}`;
                     const msg = encodeURIComponent(`Hola ${previewOrder.contact_name},\n\nLE PRESENTAMOS LA ORDEN SAT Nº${previewOrder.order_number}:\n\n🔧 Tipo: ${previewOrder.type?.replace(/_/g, ' ')}\n💶 Importe: ${previewOrder.total?.toFixed(2)} €\n\n➡️ Enlace para aceptar o rechazar:\n${satPublicoUrl}\n\nGracias por confiar en nosotros.`);
-                    window.open(`https://wa.me/${previewOrder.contact_id}?text=${msg}`, '_blank');
+                    abrirEnlaceAvisando(`https://wa.me/${previewOrder.contact_id}?text=${msg}`, (m) => toast.error(m, { duration: 12000 }));
                   }}
                   title="Enviar SAT público por WhatsApp"
                 >

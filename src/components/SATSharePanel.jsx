@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, Mail, Copy, Loader2 } from 'lucide-react';
+import { direccionPublica, AVISO_SIN_DIRECCION } from '@/lib/copiaFirmada';
+import { toast } from 'sonner';
+import { abrirEnlaceAvisando } from '@/lib/abrirEnlace';
 
 export default function SATSharePanel({ sat, company }) {
   const [sending, setSending] = useState(false);
@@ -9,16 +12,19 @@ export default function SATSharePanel({ sat, company }) {
 
   if (!sat) return null;
 
-  const baseUrl = window.location.origin;
-  const satPublicoUrl = `${baseUrl}/sat-publico?id=${sat.id}&method=web`;
+  // La dirección pública configurada. Con la del aparato el cliente recibiría
+  // un enlace a «localhost» que no abre en ningún sitio.
+  const baseUrl = direccionPublica(company);
+  const satPublicoUrl = baseUrl ? `${baseUrl}/sat-publico?id=${sat.id}&method=web` : '';
 
   const handleSendWhatsApp = () => {
     if (!sat.contact_name || !sat.contact_id) return;
+    if (!satPublicoUrl) { toast.error(AVISO_SIN_DIRECCION); return; }
     const contact = sat.contact_name.split(' ')[0];
     const msg = encodeURIComponent(
       `Hola ${contact},\n\n📋 Le enviamos la Orden SAT Nº ${sat.order_number} para su revisión y firma digital.\n\nImporte: ${(sat.total || 0).toFixed(2)} €\n\n🔗 Firme aquí: ${satPublicoUrl}\n\nEste enlace es seguro y no requiere instalación.\n\n${company?.company_name || 'Su empresa'}`
     );
-    window.open(`https://wa.me/?text=${msg}`, '_blank');
+    abrirEnlaceAvisando(`https://wa.me/?text=${msg}`, (m) => toast.error(m, { duration: 12000 }));
   };
 
   const handleSendEmail = async () => {
@@ -36,6 +42,7 @@ export default function SATSharePanel({ sat, company }) {
   };
 
   const handleCopyLink = () => {
+    if (!satPublicoUrl) { toast.error(AVISO_SIN_DIRECCION); return; }
     navigator.clipboard.writeText(satPublicoUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

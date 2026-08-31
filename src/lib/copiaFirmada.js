@@ -39,6 +39,51 @@ export function direccionPublica(empresa) {
   return '';
 }
 
+/*
+ * Aviso para cuando no hay dirección pública configurada.
+ *
+ * Antes, sin dirección, los enlaces se armaban con la del propio aparato: en
+ * el móvil salía «https://localhost/...» y en el programa instalado un fichero
+ * del disco. Al cliente le llegaba un enlace que no abría en ninguna parte, y
+ * nadie se enteraba de por qué.
+ */
+export const AVISO_SIN_DIRECCION =
+  'Falta la dirección pública del programa, así que el enlace que le llegaría al cliente '
+  + 'no se podría abrir (saldría «localhost»). Ponla en Configuración → Impresión → '
+  + 'Verificación de documentos, y vuelve a enviarlo.';
+
+/**
+ * La dirección pública, o un aviso claro si no la hay.
+ * @returns {{ok: boolean, base: string, aviso: string}}
+ */
+export function baseParaEnlaces(empresa) {
+  const base = direccionPublica(empresa);
+  return { ok: !!base, base, aviso: base ? '' : AVISO_SIN_DIRECCION };
+}
+
+/*
+ * Lo que hace falta para que el aviso de aceptado/rechazado llegue de vuelta.
+ *
+ * Cuando el cliente firma, el servidor manda un correo con la decisión y la
+ * fecha y hora de la firma: uno a la empresa y otro al cliente. Pero si falta
+ * el correo de la empresa NO se manda nada, y antes eso ocurría en silencio:
+ * el presupuesto se firmaba y no llegaba ningún aviso, sin explicación.
+ *
+ * @returns {string[]} lo que falta, vacío si está todo
+ */
+export function faltaParaAvisos(empresa) {
+  const faltan = [];
+  if (!String(empresa?.email || '').trim()) {
+    faltan.push('el correo de la empresa (Configuración → Datos de la empresa): '
+      + 'sin él no te llegará el aviso de si el cliente ha aceptado o rechazado');
+  }
+  if (!direccionPublica(empresa)) {
+    faltan.push('la dirección pública (Configuración → Impresión → Verificación de documentos): '
+      + 'sin ella el enlace que recibe el cliente no se puede abrir');
+  }
+  return faltan;
+}
+
 /** El enlace donde el cliente ve, imprime o guarda su documento. */
 export function enlaceDelDocumento(doc, empresa, tipo = 'documento') {
   const base = direccionPublica(empresa);

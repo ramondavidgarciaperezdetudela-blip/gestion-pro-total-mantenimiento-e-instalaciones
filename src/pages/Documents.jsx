@@ -27,6 +27,8 @@ import CompanyHeader from '../components/CompanyHeader';
 import SignatureCanvas from '../components/SignaturePad';
 import { useToast } from "@/components/ui/use-toast";
 import { useParametrosUrl } from '@/lib/parametrosUrl';
+import { direccionPublica, AVISO_SIN_DIRECCION, faltaParaAvisos } from '@/lib/copiaFirmada';
+import { abrirEnlaceAvisando, enlaceWhatsApp } from '@/lib/abrirEnlace';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo'];
 const STATUSES = ['borrador', 'enviado', 'pagado', 'vencido', 'cancelado'];
@@ -444,7 +446,35 @@ export default function Documents() {
     setDocs(docs.map((d) => d.id === doc.id ? { ...d, status: newStatus } : d));
   };
 
-  const getSignLink = (doc, method = 'web') => `${window.location.origin}/presupuesto-publico?id=${doc.id}&method=${method}`;
+  /*
+   * El enlace que se le manda al cliente para aceptar o rechazar.
+   *
+   * Tiene que salir de la dirección PÚBLICA configurada, no de la del propio
+   * aparato: en el móvil esa es «https://localhost» y en el programa instalado
+   * es un fichero del disco, así que al cliente le llegaba un enlace que no
+   * abría en ninguna parte. Si no hay dirección puesta se devuelve vacío y
+   * quien lo use avisa, en vez de mandar algo roto.
+   */
+  /*
+   * Antes de mandar nada: si falta algo para que el aviso de vuelta funcione,
+   * se dice ahora y no cuando el cliente ya ha firmado y no llega nada.
+   */
+  const avisarSiFaltaAlgo = () => {
+    const faltan = faltaParaAvisos(company);
+    if (!faltan.length) return true;
+    toast({
+      title: 'Falta configurar algo para que te llegue la respuesta',
+      description: faltan.join('. ') + '.',
+      variant: 'destructive',
+      duration: 10000,
+    });
+    return false;
+  };
+
+  const getSignLink = (doc, method = 'web') => {
+    const base = direccionPublica(company);
+    return base ? `${base}/presupuesto-publico?id=${doc.id}&method=${method}` : '';
+  };
 
   const sendWhatsApp = (doc) => {
     const c = contacts.find((x) => x.id === doc.contact_id);
@@ -454,6 +484,7 @@ export default function Documents() {
     // guardárselo. Con el enlace lo abre en su navegador, y allí tiene el
     // botón de imprimir y de guardar en PDF.
     const enlace = getSignLink(doc, 'whatsapp');
+    if (!enlace) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; }
     const msg = encodeURIComponent(
       `*${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}*\n`
       + `Cliente: ${doc.contact_name}\n`
@@ -461,7 +492,7 @@ export default function Documents() {
       + `Total: ${doc.total?.toFixed(2)} €\n\n`
       + `Puede verlo, imprimirlo o guardarlo en PDF aquí:\n${enlace}`,
     );
-    window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+    abrirEnlaceAvisando(enlaceWhatsApp(phone, decodeURIComponent(msg)), (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
   };
 
   const sendEmail = (doc) => {
@@ -469,7 +500,7 @@ export default function Documents() {
     const email = c?.email || '';
     const subject = encodeURIComponent(`${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}`);
     const body = encodeURIComponent(`Estimado/a ${doc.contact_name},\n\nAdjunto ${doc.doc_type} Nº${doc.doc_number} de fecha ${doc.date}.\nTotal: ${doc.total?.toFixed(2)} €\n\nQuedamos a su disposición.`);
-    window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+    abrirEnlaceAvisando(`mailto:${email}?subject=${subject}&body=${body}`, (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
   };
 
   const sendReminderWhatsApp = (doc) => {
@@ -477,15 +508,21 @@ export default function Documents() {
     const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
     const diasPendiente = Math.floor((new Date() - new Date(doc.date)) / (1000 * 60 * 60 * 24));
     const link = getSignLink(doc);
+
+    if (!link) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; }
     const msg = encodeURIComponent(
       `Estimado/a *${doc.contact_name}*,\n\nLe recordamos que tiene pendiente de respuesta nuestro *PRESUPUESTO Nº${doc.doc_number}* de fecha ${doc.date} por importe de *${doc.total?.toFixed(2)} €*.\n\nHace ${diasPendiente} días que está pendiente de confirmación.\n\nPuede *ACEPTAR o RECHAZAR* el presupuesto y firmarlo digitalmente aquí:\n${link}\n\nQuedamos a su disposición para cualquier consulta.`
     );
-    window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+    abrirEnlaceAvisando(enlaceWhatsApp(phone, decodeURIComponent(msg)), (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
   };
 
   const sendSignLink = (doc, via) => {
+    // Si falta el correo de la empresa, el cliente podrá firmar pero el aviso
+    // de vuelta no llegará. Mejor saberlo ahora que después.
+    if (!avisarSiFaltaAlgo()) return;
     const c = contacts.find((x) => x.id === doc.contact_id);
     const link = getSignLink(doc, via);
+    if (!link) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; }
     const isAlreadySent = !!doc.signature_client || doc.status === 'enviado';
     const avisoReenvio = isAlreadySent
       ? `\n\n⚠️ *AVISO: Este presupuesto ya fue enviado anteriormente. Este enlace es únicamente para aceptarlo o rechazarlo digitalmente y dejar constancia firmada.*`
@@ -496,7 +533,7 @@ export default function Documents() {
       const msg = encodeURIComponent(
         `Estimado/a *${doc.contact_name}*,\n\nLe enviamos el enlace para *ACEPTAR o RECHAZAR* el presupuesto con su firma digital:\n\n📄 *${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}*\n💶 Total: *${doc.total?.toFixed(2)} €*\n📅 Fecha: ${doc.date}\n\n🔗 *Firmar aquí:*\n${link}${avisoReenvio}`
       );
-      window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+      abrirEnlaceAvisando(enlaceWhatsApp(phone, decodeURIComponent(msg)), (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
     } else {
       const email = c?.email || '';
       const subject = encodeURIComponent(`Solicitud de firma - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}`);
@@ -506,27 +543,28 @@ export default function Documents() {
       const body = encodeURIComponent(
         `Estimado/a ${doc.contact_name},\n\nLe enviamos el enlace para ACEPTAR o RECHAZAR el presupuesto con su firma digital:\n\n${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}\nTotal: ${doc.total?.toFixed(2)} €\nFecha: ${doc.date}\n\nFirmar aquí:\n${link}${avisoEmail}\n\nQuedamos a su disposición.`
       );
-      window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+      abrirEnlaceAvisando(`mailto:${email}?subject=${subject}&body=${body}`, (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
     }
   };
 
   const sendChangeOpinionLink = (doc, via) => {
     const c = contacts.find((x) => x.id === doc.contact_id);
-    const presupuestoUrl = `${window.location.origin}/presupuesto-publico?id=${doc.id}&method=${via}`;
+    const presupuestoUrl = getSignLink(doc, via);
+    if (!presupuestoUrl) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; }
 
     if (via === 'whatsapp') {
       const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
       const msg = encodeURIComponent(
         `📄 *PRESUPUESTO - Opción de cambio de opinión*\n\nHola *${doc.contact_name}*,\n\nTienes la opción de cambiar tu decisión anterior sobre el presupuesto *Nº${doc.doc_number}* por *${(doc.total || 0).toFixed(2)} €*.\n\nAccede aquí para revisar y actualizar tu respuesta:\n${presupuestoUrl}\n\nGracias`
       );
-      window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+      abrirEnlaceAvisando(enlaceWhatsApp(phone, decodeURIComponent(msg)), (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
     } else {
       const email = c?.email || '';
       const subject = encodeURIComponent(`Opción de cambio de opinión - Presupuesto Nº${doc.doc_number}`);
       const body = encodeURIComponent(
         `Estimado/a ${doc.contact_name},\n\nTienes la opción de cambiar tu decisión anterior sobre el presupuesto Nº${doc.doc_number} por ${(doc.total || 0).toFixed(2)} €.\n\nAccede aquí para revisar y actualizar tu respuesta:\n${presupuestoUrl}\n\nGracias`
       );
-      window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+      abrirEnlaceAvisando(`mailto:${email}?subject=${subject}&body=${body}`, (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
     }
   };
 
@@ -535,9 +573,11 @@ export default function Documents() {
     const email = c?.email || '';
     const diasPendiente = Math.floor((new Date() - new Date(doc.date)) / (1000 * 60 * 60 * 24));
     const link = getSignLink(doc);
+
+    if (!link) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; }
     const subject = encodeURIComponent(`Recordatorio: Presupuesto Nº${doc.doc_number} pendiente de confirmación`);
     const body = encodeURIComponent(`Estimado/a ${doc.contact_name},\n\nLe recordamos que tiene pendiente de respuesta nuestro Presupuesto Nº${doc.doc_number} de fecha ${doc.date} por importe de ${doc.total?.toFixed(2)} €.\n\nHace ${diasPendiente} días que está pendiente de confirmación.\n\nPuede aceptar o rechazar el presupuesto y firmarlo digitalmente aquí:\n${link}\n\nQuedamos a su disposición para cualquier consulta.`);
-    window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+    abrirEnlaceAvisando(`mailto:${email}?subject=${subject}&body=${body}`, (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
   };
 
   // Presupuestos pendientes >7 días
@@ -554,10 +594,27 @@ export default function Documents() {
     const csArr = await base44.entities.CompanySettings.list();
     const cs = csArr?.[0] || {};
     // QR de verificación del documento (abre la página pública de verificación).
-    const base = (cs.public_app_url && String(cs.public_app_url).replace(/\/$/, '')) || window.location.origin;
-    const verifyUrl = `${base}/verificar-documento?id=${doc.id}`;
+    /*
+     * Sin dirección pública NO se pinta el QR.
+     *
+     * Antes se generaba igual, con lo cual el código llevaba dentro
+     * «/verificar-documento?id=…» sin dominio delante: al escanearlo el móvil
+     * no iba a ninguna parte. Un QR que no lleva a ningún sitio es peor que no
+     * ponerlo, porque el cliente cree que el documento no es auténtico.
+     */
+    const base = direccionPublica(cs);
     let verifyQR = '';
-    try { verifyQR = await QRCodeLib.toDataURL(verifyUrl, { width: 220, margin: 1 }); } catch { verifyQR = ''; }
+    if (base) {
+      const verifyUrl = `${base}/verificar-documento?id=${doc.id}`;
+      try { verifyQR = await QRCodeLib.toDataURL(verifyUrl, { width: 220, margin: 1 }); } catch { verifyQR = ''; }
+    } else {
+      toast({
+        title: 'El documento sale sin QR de verificación',
+        description: AVISO_SIN_DIRECCION,
+        variant: 'destructive',
+        duration: 10000,
+      });
+    }
     const validezTxt = doc.verify_expires ? `Verificable hasta ${new Date(doc.verify_expires).toLocaleDateString('es-ES')}` : 'Verificable online';
     const verifyBoxHtml = verifyQR ? `
       <div style="margin-top:16px;display:flex;gap:12px;align-items:center;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;background:#f9fafb">
@@ -1287,7 +1344,7 @@ export default function Documents() {
                     <Button size="sm" variant="outline" className="text-blue-700 border-blue-200 hover:bg-blue-50" onClick={() => sendSignLink(previewDoc, 'email')}>
                       <Mail className="w-3.5 h-3.5 mr-1" />Enviar enlace firma (Email)
                     </Button>
-                    <Button size="sm" variant="outline" className="text-gray-500" onClick={() => { navigator.clipboard.writeText(getSignLink(previewDoc)); }}>
+                    <Button size="sm" variant="outline" className="text-gray-500" onClick={() => { const l = getSignLink(previewDoc); if (!l) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; } navigator.clipboard.writeText(l); toast({ title: 'Enlace copiado', duration: 2000 }); }}>
                       <Link className="w-3.5 h-3.5 mr-1" />Copiar enlace
                     </Button>
                   </div>
@@ -1376,9 +1433,7 @@ export default function Documents() {
                     size="sm" variant="outline" className="text-xs gap-1"
                     data-prueba="ver-verificacion"
                     onClick={() => {
-                      const base = (company?.public_app_url && String(company.public_app_url).replace(/\/$/, ''))
-                        || (/^https?:/.test(window.location.origin) && !/localhost/.test(window.location.origin)
-                          ? window.location.origin : '');
+                      const base = direccionPublica(company);
                       if (!base) {
                         alert('Falta la dirección pública del programa.\n\n'
                           + 'Ponla en Configuración → Impresión → Verificación de documentos. '
