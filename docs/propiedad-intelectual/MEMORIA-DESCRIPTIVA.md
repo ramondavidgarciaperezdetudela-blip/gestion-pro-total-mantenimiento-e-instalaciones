@@ -14,7 +14,7 @@
 |---|---|
 | **Título del programa** | Gestión Pro Total — Mantenimiento e Instalaciones |
 | **Tipo de obra** | Programa de ordenador (software) |
-| **Versión objeto de registro** | 1.33.0 |
+| **Versión objeto de registro** | 1.63.0 |
 | **Fecha de finalización / divulgación** | [fecha] |
 | **Clase de obra** | Aplicación informática de gestión empresarial (vertical SAT) |
 | **Soporte de depósito** | Listado de código fuente en soporte digital (PDF/ZIP) |
