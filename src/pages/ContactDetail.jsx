@@ -28,7 +28,7 @@ import SignatureHistoryViewer from '../components/SignatureHistoryViewer';
 import ThermalCalcViewer from '../components/ThermalCalcViewer';
 import InstallationHistoryTab from '../components/InstallationHistoryTab';
 import InterventionHistoryTab from '../components/InterventionHistoryTab';
-import { parametrosDeUrl } from '@/lib/parametrosUrl';
+import { useParametrosUrl } from '@/lib/parametrosUrl';
 
 function ChangeHistoryTab({ contactId }) {
   const [logs, setLogs] = React.useState([]);
@@ -78,7 +78,7 @@ const PAYMENT_PROFILES = {
 const APT_STATUS_ICON = { pendiente: <Clock className="w-3 h-3" />, confirmada: <CheckCircle className="w-3 h-3" />, completada: <CheckCircle className="w-3 h-3 text-green-600" />, cancelada: <XCircle className="w-3 h-3 text-red-500" /> };
 
 export default function ContactDetail() {
-  const urlParams = parametrosDeUrl();
+  const urlParams = useParametrosUrl();
   const contactId = urlParams.get('id');
   const [contact, setContact] = useState(null);
   const [cargando, setCargando] = useState(true);

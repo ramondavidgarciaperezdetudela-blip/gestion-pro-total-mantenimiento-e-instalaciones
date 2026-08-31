@@ -26,7 +26,7 @@ import { getNextAvailableNumber } from '../components/autoNumber';
 import CompanyHeader from '../components/CompanyHeader';
 import SignatureCanvas from '../components/SignaturePad';
 import { useToast } from "@/components/ui/use-toast";
-import { parametrosDeUrl } from '@/lib/parametrosUrl';
+import { useParametrosUrl } from '@/lib/parametrosUrl';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo'];
 const STATUSES = ['borrador', 'enviado', 'pagado', 'vencido', 'cancelado'];
@@ -79,7 +79,7 @@ function recalculate(items, iva_rate) {
 }
 
 export default function Documents() {
-  const urlParams = parametrosDeUrl();
+  const urlParams = useParametrosUrl();
   const preContactId = urlParams.get('contact_id');
   const preType = urlParams.get('type');
   const preEditId = urlParams.get('edit');

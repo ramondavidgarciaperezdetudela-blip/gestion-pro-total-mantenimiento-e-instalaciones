@@ -1,3 +1,6 @@
+import { useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
+
 /**
  * parametrosUrl.js — leer los parámetros de la dirección, con # o sin él.
  *
@@ -37,4 +40,25 @@ export function parametrosDeUrl(url = null) {
 /** Atajo para pedir un parámetro suelto. */
 export function parametroDeUrl(nombre, url = null) {
   return parametrosDeUrl(url).get(nombre);
+}
+
+/*
+ * La versión para usar dentro de una pantalla.
+ *
+ * parametrosDeUrl() lee la dirección UNA VEZ, cuando se pinta. Con eso basta
+ * si se entra de cero, pero no si se navega dentro del programa: al pasar de
+ * la ficha de un cliente a la de otro, o de una orden de SAT al diagnóstico,
+ * la dirección cambia sin recargar la página y la pantalla se quedaba con el
+ * identificador anterior.
+ *
+ * Esta versión se apoya en el enrutador, así que se entera de cada cambio y
+ * la pantalla se vuelve a pintar con lo que toca.
+ */
+export function useParametrosUrl() {
+  const sitio = useLocation();
+  return useMemo(() => {
+    const delEnrutador = new URLSearchParams(sitio.search || '');
+    if ([...delEnrutador.keys()].length > 0) return delEnrutador;
+    return parametrosDeUrl();
+  }, [sitio.search, sitio.hash, sitio.pathname]);
 }

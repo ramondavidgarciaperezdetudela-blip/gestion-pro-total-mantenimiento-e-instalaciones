@@ -99,22 +99,55 @@
       // nueva ya no trae y sale el "La página no se cargó correctamente".
       // Además se quita el que hubiera de antes, para dejar limpios los
       // móviles que ya lo tengan puesto.
-      var esNativo = !!(window.Capacitor || window.gptCopias || window.gptIA
-        || location.protocol === 'capacitor:' || location.protocol === 'file:');
+      // OJO CON EL MOMENTO EN QUE SE PREGUNTA ESTO.
+      //
+      // Capacitor pone window.Capacitor él mismo al cargar la página, y no
+      // siempre ha llegado cuando se ejecuta este script. Si se preguntaba
+      // aquí y todavía no estaba, el APK se daba por "navegador" y registraba
+      // el service worker igual: justo lo que dejaba la aplicación sin
+      // arrancar tras la siguiente actualización.
+      //
+      // Por eso se pregunta DENTRO del load, que es tarde de sobra.
+      //
+      // (No se mira el nombre del servidor: Capacitor sirve desde localhost,
+      // pero un navegador en localhost es una instalación de verdad y se
+      // quedaría sin caché sin motivo. El cierre definitivo es otro: el APK ya
+      // no lleva sw.js dentro, así que aunque se intentara registrar no habría
+      // nada que registrar, y cualquier registro viejo se da de baja solo al
+      // encontrarse el fichero ausente.)
+      // Ojo con window.Capacitor a secas: la librería de Capacitor lo define
+      // TAMBIÉN en el navegador, así que su mera existencia no significa nada.
+      // Lo que sirve es preguntarle isNativePlatform(), que contesta que no
+      // cuando se está en la web. Preguntando mal pasaban las dos cosas: la
+      // web se quedaba sin caché, y el APK —donde aún no había cargado la
+      // librería cuando se preguntaba— se daba por navegador y registraba el
+      // service worker que luego lo dejaba sin arrancar.
+      function esNativo() {
+        var cap = false;
+        try {
+          cap = !!(window.Capacitor
+            && typeof window.Capacitor.isNativePlatform === 'function'
+            && window.Capacitor.isNativePlatform());
+        } catch (e) { cap = false; }
+        return !!(cap || window.gptCopias || window.gptIA
+          || location.protocol === 'capacitor:' || location.protocol === 'file:');
+      }
 
       if ('serviceWorker' in navigator) {
-        if (esNativo) {
-          navigator.serviceWorker.getRegistrations().then(function (rs) {
-            rs.forEach(function (r) { r.unregister(); });
-            if (window.caches && caches.keys) {
-              caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
-            }
-          }).catch(function () {});
-        } else {
-          window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/sw.js?v=__VERSION_APP__').catch(function () {});
-          });
-        }
+        window.addEventListener('load', function () {
+          if (esNativo()) {
+            // Dentro del APK o del programa de escritorio no hace falta caché:
+            // los ficheros ya están en el aparato. Y se quita la que hubiera.
+            navigator.serviceWorker.getRegistrations().then(function (rs) {
+              rs.forEach(function (r) { r.unregister(); });
+              if (window.caches && caches.keys) {
+                caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
+              }
+            }).catch(function () {});
+            return;
+          }
+          navigator.serviceWorker.register('/sw.js?v=__VERSION_APP__').catch(function () {});
+        });
       }
 
       // Cuando el service worker nuevo toma el mando, se recarga una vez.
@@ -126,7 +159,7 @@
       //
       // Solo si ANTES había un service worker mandando: la primera vez que se
       // instala también salta este aviso y ahí no hay nada que recargar.
-      if ('serviceWorker' in navigator && !esNativo) {
+      if ('serviceWorker' in navigator && !esNativo()) {
         var habiaSW = !!navigator.serviceWorker.controller;
         var recargando = false;
         navigator.serviceWorker.addEventListener('controllerchange', function () {

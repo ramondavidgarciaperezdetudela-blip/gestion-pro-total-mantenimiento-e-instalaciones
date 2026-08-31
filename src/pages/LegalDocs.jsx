@@ -19,7 +19,7 @@ import { porFamilia as gasesPorFamilia, buscarRefrigerante, sustitutosDe, ESTADO
 import CroquisInstalacion from '@/components/CroquisInstalacion';
 import PanelGasesFluorados from '@/components/PanelGasesFluorados';
 import { fichaHtml as fichaGasesHtml } from '@/lib/gasesFluorados';
-import { parametrosDeUrl } from '@/lib/parametrosUrl';
+import { useParametrosUrl } from '@/lib/parametrosUrl';
 
 // ─── TIPOS DE DOCUMENTOS ─────────────────────────────────────────────────────
 /*
@@ -253,7 +253,7 @@ function hoyEnEspanol() {
 }
 
 export default function LegalDocs() {
-  const urlParams = parametrosDeUrl();
+  const urlParams = useParametrosUrl();
   const preContactId = urlParams.get('contact_id');
 
   const [contacts, setContacts] = useState([]);
