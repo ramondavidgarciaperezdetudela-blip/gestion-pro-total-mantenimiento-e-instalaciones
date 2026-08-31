@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@base44/sdk": "^0.8.44",
-    "@base44/vite-plugin": "^1.0.32",
+    "@base44/vite-plugin": "^1.0.33",
     "@bcyesil/capacitor-plugin-printer": "^0.0.6",
     "@capacitor/android": "^8.4.0",
     "@capacitor/core": "^8.4.0",
