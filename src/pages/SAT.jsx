@@ -28,6 +28,7 @@ import PriceItemSelector from '../components/PriceItemSelector';
 import SATTemplateSelector from '../components/SATTemplateSelector';
 import { withTimeout, getFallbackPhotosSize, MAX_TOTAL_FALLBACK_PAYLOAD, PHOTOS_TOO_LARGE_MESSAGE } from '@/lib/uploadImage';
 import { describeSaveError, esErrorDeFotoDemasiadoGrande, reducirFotos, tamanoFotoMayor, guardarLimiteAprendido } from '@/lib/saveErrorMessage';
+import { parametrosDeUrl } from '@/lib/parametrosUrl';
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
 const STATUSES = ['pendiente', 'en_curso', 'completada', 'cancelada'];
@@ -55,7 +56,7 @@ const EMPTY_FORM = {
 };
 
 export default function SAT() {
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = parametrosDeUrl();
   const preContactId = urlParams.get('contact_id');
   const preViewId = urlParams.get('view');
   const preEditId = urlParams.get('edit');

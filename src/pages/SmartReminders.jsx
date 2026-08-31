@@ -19,23 +19,32 @@ export default function SmartReminders() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState('');
   const [contacts, setContacts] = useState([]);
+  const [errorCarga, setErrorCarga] = useState('');
 
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
     setLoading(true);
-    const [invoices, sat, maintenance, appointments, projects, stock, cts] = await Promise.all([
-      base44.entities.Invoice.list('-date', 500),
-      base44.entities.SATOrder.list('-date', 500),
-      base44.entities.MaintenanceSheet.list('-date', 500),
-      base44.entities.Appointment.list('-date', 200),
-      base44.entities.Project.list('-created_date', 200),
-      base44.entities.StockItem.list('name', 300),
-      base44.entities.Contact.list('name', 500),
-    ]);
-    setData({ invoices, sat, maintenance, appointments, projects, stock, contacts: cts });
-    setContacts(cts);
-    setLoading(false);
+    setErrorCarga('');
+    try {
+      const [invoices, sat, maintenance, appointments, projects, stock, cts] = await Promise.all([
+        base44.entities.Invoice.list('-date', 500),
+        base44.entities.SATOrder.list('-date', 500),
+        base44.entities.MaintenanceSheet.list('-date', 500),
+        base44.entities.Appointment.list('-date', 200),
+        base44.entities.Project.list('-created_date', 200),
+        base44.entities.StockItem.list('name', 300),
+        base44.entities.Contact.list('name', 500),
+      ]);
+      setData({ invoices, sat, maintenance, appointments, projects, stock, contacts: cts });
+      setContacts(cts);
+    } catch (err) {
+      setErrorCarga(err?.message || 'No se han podido cargar los datos.');
+    } finally {
+      // En el finally a propósito: si esto falla y no se apaga, la pantalla se
+      // queda en «Analizando datos...» para siempre y sin decir por qué.
+      setLoading(false);
+    }
   };
 
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -143,6 +152,16 @@ Máximo 300 palabras, usa bullet points.`,
   );
 
   if (loading) return <div className="text-center py-16 text-gray-400"><RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2" /><p>Analizando datos...</p></div>;
+  if (errorCarga) return (
+    <div className="max-w-md mx-auto text-center py-12 px-4" data-prueba="error-recordatorios">
+      <p className="font-semibold text-gray-800 mb-1">No se han podido cargar los datos</p>
+      <p className="text-sm text-gray-500 mb-3">
+        El servidor no ha contestado. Suele ser la cobertura o que se han hecho muchas peticiones seguidas.
+      </p>
+      <p className="text-[11px] text-gray-400 mb-4 break-words">{errorCarga}</p>
+      <Button onClick={loadAll} data-prueba="reintentar-recordatorios">Volver a intentarlo</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-4 max-w-4xl">

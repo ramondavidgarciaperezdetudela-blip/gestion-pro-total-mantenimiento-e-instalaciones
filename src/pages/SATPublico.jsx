@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Check, X, PenLine, RotateCcw, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { parametrosDeUrl } from '@/lib/parametrosUrl';
 
 const DocumentSkeleton = () => (
   <div className="bg-white rounded-2xl shadow-sm border p-5 space-y-4 animate-pulse">
@@ -138,7 +139,7 @@ function SignaturePad({ onSave }) {
 }
 
 function SATPublico() {
-  const params = new URLSearchParams(window.location.search);
+  const params = parametrosDeUrl();
   const orderId = params.get('id');
   const method = params.get('method') || 'web';
   const changeOpinionToken = params.get('token');

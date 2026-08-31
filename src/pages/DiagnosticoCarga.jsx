@@ -14,6 +14,8 @@ import EsquemaCircuito from '@/components/EsquemaCircuito';
 import CodigosAveriaSplit from '@/components/CodigosAveriaSplit';
 import EsquemaSplit from '@/components/EsquemaSplit';
 import { diagnosticoClima, GASES_CLIMA, tempSaturacion, RANGOS_CLIMA, nivelRango } from '@/lib/diagnosticoClima';
+import { parametrosDeUrl } from '@/lib/parametrosUrl';
+import { imprimirPantalla } from '@/lib/printHelper';
 
 // Presiones ORIENTATIVAS manométricas (bar) por refrigerante y aplicación.
 const PRES = {
@@ -328,7 +330,7 @@ export default function DiagnosticoCarga() {
   // ── Contexto: cliente / orden SAT desde la URL (llegando desde una orden) ──
   // Permite guardar el diagnóstico en la ficha del cliente y, si viene de una
   // orden SAT, vincularlo automáticamente a sus apartados antes/después.
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = parametrosDeUrl();
   const ctxContactId = urlParams.get('contact_id');
   const ctxSatOrderId = urlParams.get('sat_order_id');
   const [ctxContact, setCtxContact] = useState(null);
@@ -709,12 +711,39 @@ export default function DiagnosticoCarga() {
     }
   };
 
+  /*
+   * Imprimir el diagnóstico TAL Y COMO ESTÁ EN PANTALLA.
+   *
+   * ─── Los tres fallos que arregla, para que no vuelvan ──────────────────────
+   *
+   * 1) SALÍA OTRO REFRIGERANTE. Antes se copiaba el innerHTML tal cual, y un
+   *    <select> no guarda en el HTML lo que has elegido: lo guarda en una
+   *    propiedad del elemento. Al copiar el HTML se perdía la elección y el
+   *    navegador pintaba la PRIMERA opción de la lista. Por eso ponías R-32 y
+   *    salía impreso R-410A. Lo mismo pasaba con las medidas escritas a mano:
+   *    salían en blanco.
+   *    Ahora cada campo se sustituye por su valor actual, en texto.
+   *
+   * 2) IMPRIMÍA LOS FALLOS. Se corta en la barra de botones (Imprimir,
+   *    Exportar PDF, Limpiar medidas), que es hasta donde interesa. Lo que va
+   *    después —las causas probables y demás— se queda fuera.
+   *
+   * 3) LA LEYENDA SALÍA EN GRIS. Los navegadores quitan los colores de fondo
+   *    al imprimir salvo que se les diga que no. Con print-color-adjust:exact
+   *    los colores de la leyenda salen como en pantalla.
+   */
+  /*
+   * Imprimir el diagnóstico TAL Y COMO ESTÁ EN PANTALLA.
+   *
+   * De esto se encarga imprimirPantalla(), que se lleva los estilos del
+   * programa al papel —recuadros y colores incluidos—, sustituye cada campo
+   * por lo que hayas escrito o elegido, y corta en la barra de botones para
+   * que los fallos no salgan impresos.
+   */
   const printAll = () => {
-    const cont = document.getElementById('diag-print')?.innerHTML || '';
-    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Diagnóstico frigorífico</title>
-    <style>*{box-sizing:border-box;font-family:Arial,sans-serif}body{padding:14px;color:#111;font-size:12px}@media print{@page{size:A4;margin:12mm}}</style>
-    </head><body>${cont}<script>window.onload=()=>setTimeout(()=>window.print(),400)</script></body></html>`;
-    const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); }
+    const panel = document.getElementById('diag-print');
+    if (!panel) return;
+    imprimirPantalla(panel, { titulo: `Diagnóstico frigorífico — ${gas}` });
   };
 
   return (
@@ -1054,8 +1083,11 @@ export default function DiagnosticoCarga() {
                 })()}
               </div>
 
-              {/* Situación de las posibles averías (rojo / amarillo / verde) */}
-              <div className="mt-3 border-t pt-3">
+              {/* Situación de las posibles averías (rojo / amarillo / verde).
+                  No se imprime: en el papel interesa el cálculo que has hecho,
+                  no el mapa de fallos posibles. Va antes de los botones, así
+                  que cortar por los botones no bastaba: se marca aparte. */}
+              <div className="mt-3 border-t pt-3" data-no-imprimir>
                 <DiagnosticFailuresDiagram items={diag1} />
               </div>
             </div>
@@ -1102,7 +1134,7 @@ export default function DiagnosticoCarga() {
               </div>
             ))}
 
-            <div className="flex gap-2">
+            <div className="flex gap-2" data-fin-impresion>
               <Button onClick={printAll} className="gap-2"><Printer className="w-4 h-4" />Imprimir</Button>
               <Button onClick={printAll} variant="outline" className="gap-2"><FileDown className="w-4 h-4" />Exportar PDF</Button>
             </div>
@@ -1306,7 +1338,7 @@ export default function DiagnosticoCarga() {
               </div>
             )}
 
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap" data-fin-impresion>
               <Button onClick={printAll} className="gap-2"><Printer className="w-4 h-4" />Imprimir</Button>
               <Button onClick={printAll} variant="outline" className="gap-2"><FileDown className="w-4 h-4" />Exportar PDF</Button>
               <Button onClick={limpiarClima} variant="outline" className="gap-2 text-red-600">Limpiar medidas</Button>
@@ -1419,7 +1451,7 @@ export default function DiagnosticoCarga() {
                   <p className="flex items-center gap-1"><Droplets className="w-4 h-4 text-amber-600" />Aceite: <b>{destInfo.aceite}</b> {destInfo.vaciar ? '· ⚠ Vaciar y cambiar' : '· ✓ Mantener'}</p>
                   <p className="text-[11px] text-slate-500">Recuerda: cambiar filtro deshidratador, hacer vacío y ajustar recalentamiento. Verifica compatibilidad del compresor arriba.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2" data-fin-impresion>
                   <Button onClick={printAll} className="gap-2"><Printer className="w-4 h-4" />Imprimir</Button>
                   <Button onClick={printAll} variant="outline" className="gap-2"><FileDown className="w-4 h-4" />Exportar PDF</Button>
                 </div>
@@ -1446,7 +1478,7 @@ export default function DiagnosticoCarga() {
               {avResp && <div className="bg-gray-50 border rounded-lg p-3 text-sm whitespace-pre-wrap">{avResp}</div>}
             </div>
             {avResp && (
-              <div className="flex gap-2">
+              <div className="flex gap-2" data-fin-impresion>
                 <Button onClick={printAll} className="gap-2"><Printer className="w-4 h-4" />Imprimir</Button>
                 <Button onClick={printAll} variant="outline" className="gap-2"><FileDown className="w-4 h-4" />Exportar PDF</Button>
               </div>

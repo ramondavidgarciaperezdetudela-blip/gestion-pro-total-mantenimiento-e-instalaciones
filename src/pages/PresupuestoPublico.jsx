@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Check, X, PenLine, RotateCcw, CheckCircle, XCircle, Loader2, AlertTriangle, MessageCircle } from 'lucide-react';
+import { parametrosDeUrl } from '@/lib/parametrosUrl';
 
 // Skeleton loader
 const DocumentSkeleton = () => (
@@ -140,7 +141,7 @@ function SignaturePad({ onSave }) {
 }
 
 function PresupuestoPublico() {
-  const params = new URLSearchParams(window.location.search);
+  const params = parametrosDeUrl();
   const docId = params.get('id');
   const method = params.get('method') || 'web'; // Detecta si vino por email, whatsapp o web
   const changeOpinionToken = params.get('token'); // Token único del cambio de opinión
