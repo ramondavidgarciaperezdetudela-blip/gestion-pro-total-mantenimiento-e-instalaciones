@@ -1483,6 +1483,21 @@ export default function Documents() {
                       {isRechazado && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200 flex-shrink-0">❌ RECHAZADO</span>}
                     </div>
                     <p className="text-gray-500 text-sm truncate">{doc.contact_name || 'Sin cliente'} · {doc.date} {doc.work_type && doc.work_type !== 'otro' ? `· ${doc.work_type}` : ''}</p>
+                    {/* La decisión del cliente, con su fecha y su hora, en la
+                        propia lista: para verlo de un vistazo sin abrir nada
+                        ni tener que buscarlo en el correo. */}
+                    {(isAceptado || isRechazado) && (
+                      <p
+                        className={`text-xs font-semibold ${isAceptado ? 'text-green-700' : 'text-red-600'}`}
+                        data-prueba="firma-en-lista"
+                      >
+                        {isAceptado ? '✅ Aceptado' : '❌ Rechazado'} y firmado
+                        {doc.sign_datetime ? ` el ${doc.sign_datetime}` : ''}
+                        {doc.signature_history?.length > 1
+                          ? ` · cambió de opinión ${doc.signature_history.length - 1} ${doc.signature_history.length - 1 === 1 ? 'vez' : 'veces'}`
+                          : ''}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>

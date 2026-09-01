@@ -444,6 +444,20 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
               <p className="text-lg font-black truncate">{doc.doc_number || doc.title || doc.order_number || `${type} sin nº`}</p>
               <p className="text-gray-500 text-xs font-black">{fmtDate(doc.date)} {doc.total != null ? `| ${doc.total?.toFixed(2)} €` : ''}</p>
               <Badge variant="outline" className="text-[10px] mt-1">{doc.status || doc.doc_type || type}</Badge>
+              {/* Si el cliente lo firmó, aquí se ve qué decidió y cuándo, sin
+                  abrir el documento ni ir a buscarlo al correo. */}
+              {doc.signature_client && (
+                <p
+                  className={`text-xs font-bold mt-1 ${doc.status === 'cancelado' ? 'text-red-600' : 'text-green-700'}`}
+                  data-prueba="firma-en-ficha"
+                >
+                  {doc.status === 'cancelado' ? '❌ Rechazado' : '✅ Aceptado'} y firmado
+                  {doc.sign_datetime ? ` el ${doc.sign_datetime}` : ''}
+                  {doc.signature_history?.length > 1
+                    ? ` · cambió de opinión ${doc.signature_history.length - 1} ${doc.signature_history.length - 1 === 1 ? 'vez' : 'veces'}`
+                    : ''}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex gap-1 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
