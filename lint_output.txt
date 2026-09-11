@@ -1,0 +1,428 @@
+
+> base44-app@0.0.0 lint
+> eslint . --quiet
+
+
+/app/src/components/AIChat.jsx
+  3:41  error  'CardTitle' is defined but never used    unused-imports/no-unused-imports
+  6:10  error  'Badge' is defined but never used        unused-imports/no-unused-imports
+  7:33  error  'ChevronDown' is defined but never used  unused-imports/no-unused-imports
+  7:52  error  'ThumbsUp' is defined but never used     unused-imports/no-unused-imports
+  7:62  error  'ThumbsDown' is defined but never used   unused-imports/no-unused-imports
+
+/app/src/components/AgendaPanel.jsx
+  1:38  error  'memo' is defined but never used        unused-imports/no-unused-imports
+  7:20  error  'Clock' is defined but never used       unused-imports/no-unused-imports
+  8:27  error  'isToday' is defined but never used     unused-imports/no-unused-imports
+  8:36  error  'isTomorrow' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/CameraCapture.jsx
+  2:28  error  'Upload' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/ClientHistorySection.jsx
+  1:27  error  'useEffect' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/ClientRepairGallery.jsx
+  3:10  error  'Card' is defined but never used         unused-imports/no-unused-imports
+  3:16  error  'CardContent' is defined but never used  unused-imports/no-unused-imports
+  3:29  error  'CardHeader' is defined but never used   unused-imports/no-unused-imports
+  3:41  error  'CardTitle' is defined but never used    unused-imports/no-unused-imports
+  4:10  error  'Badge' is defined but never used        unused-imports/no-unused-imports
+  5:56  error  'Filter' is defined but never used       unused-imports/no-unused-imports
+
+/app/src/components/EquipmentDiaryTab.jsx
+   1:38  error  'useRef' is defined but never used       unused-imports/no-unused-imports
+  11:24  error  'ChevronDown' is defined but never used  unused-imports/no-unused-imports
+  11:62  error  'Download' is defined but never used     unused-imports/no-unused-imports
+
+/app/src/components/EquipmentSelector.jsx
+  3:10  error  'Badge' is defined but never used  unused-imports/no-unused-imports
+  6:88  error  'Zap' is defined but never used    unused-imports/no-unused-imports
+
+/app/src/components/GlobalSearch.jsx
+  1:46  error  'useCallback' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/InstallationHistoryTab.jsx
+  3:10  error  'Card' is defined but never used         unused-imports/no-unused-imports
+  3:16  error  'CardContent' is defined but never used  unused-imports/no-unused-imports
+  5:46  error  'Calendar' is defined but never used     unused-imports/no-unused-imports
+
+/app/src/components/InterventionHistoryTab.jsx
+   5:10  error  'Badge' is defined but never used     unused-imports/no-unused-imports
+  10:3   error  'Calendar' is defined but never used  unused-imports/no-unused-imports
+  10:13  error  'Euro' is defined but never used      unused-imports/no-unused-imports
+
+/app/src/components/InvoicePreviewDialog.jsx
+   8:16  error  'Printer' is defined but never used                 unused-imports/no-unused-imports
+   8:90  error  'X' is defined but never used                       unused-imports/no-unused-imports
+  11:10  error  'format' is defined but never used                  unused-imports/no-unused-imports
+  12:10  error  'getNextAvailableNumber' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/LegalDocSignaturePanel.jsx
+  1:35  error  'useEffect' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/MonthlyRevenueChart.jsx
+  7:75  error  'LineChart' is defined but never used      unused-imports/no-unused-imports
+  7:86  error  'Line' is defined but never used           unused-imports/no-unused-imports
+  8:51  error  'AlertTriangle' is defined but never used  unused-imports/no-unused-imports
+  9:29  error  'startOfMonth' is defined but never used   unused-imports/no-unused-imports
+  9:43  error  'endOfMonth' is defined but never used     unused-imports/no-unused-imports
+
+/app/src/components/NotificationsPanel.jsx
+  3:10  error  'Button' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/PendingSignaturesPanel.jsx
+  8:10  error  'format' is defined but never used  unused-imports/no-unused-imports
+  9:10  error  'es' is defined but never used      unused-imports/no-unused-imports
+
+/app/src/components/PendingTasksPanel.jsx
+  6:38  error  'Wrench' is defined but never used       unused-imports/no-unused-imports
+  6:72  error  'AlertCircle' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/PriceComparator.jsx
+  2:10  error  'Input' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/PriceItemSelector.jsx
+  1:38  error  'useRef' is defined but never used  unused-imports/no-unused-imports
+  3:41  error  'X' is defined but never used       unused-imports/no-unused-imports
+
+/app/src/components/PullToRefresh.jsx
+  1:46  error  'useCallback' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/RefrigerantSelector.jsx
+  5:10  error  'ChevronDown' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/SATOrderDialog.jsx
+   9:51  error  'Printer' is defined but never used      unused-imports/no-unused-imports
+  12:8   error  'PrintButton' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/SATTechReport.jsx
+  6:10  error  'Badge' is defined but never used  unused-imports/no-unused-imports
+  7:65  error  'X' is defined but never used      unused-imports/no-unused-imports
+
+/app/src/components/SendDocumentEmailPanel.jsx
+  6:10  error  'Select' is defined but never used         unused-imports/no-unused-imports
+  6:18  error  'SelectContent' is defined but never used  unused-imports/no-unused-imports
+  6:33  error  'SelectItem' is defined but never used     unused-imports/no-unused-imports
+  6:45  error  'SelectTrigger' is defined but never used  unused-imports/no-unused-imports
+  6:60  error  'SelectValue' is defined but never used    unused-imports/no-unused-imports
+
+/app/src/components/SupplierCatalogImport.jsx
+  1:27  error  'useRef' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/SupplierCatalogImportWithSupplier.jsx
+  1:35  error  'useCallback' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/SupplierCatalogManager.jsx
+  7:16  error  'CardContent' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/SupplierDataFetcher.jsx
+  2:10  error  'toast' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/SupplierOnlineUpdate.jsx
+  1:44  error  'useEffect' is defined but never used    unused-imports/no-unused-imports
+  1:55  error  'useCallback' is defined but never used  unused-imports/no-unused-imports
+  8:50  error  'CheckCircle' is defined but never used  unused-imports/no-unused-imports
+  9:60  error  'Save' is defined but never used         unused-imports/no-unused-imports
+
+/app/src/components/SupplierPriceManager.jsx
+  6:16  error  'CardContent' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/SupplierProductSearch.jsx
+  8:41  error  'ExternalLink' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/ThermalCalcViewer.jsx
+  6:44  error  'Printer' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/ThermalCharts.jsx
+  5:20  error  'ReferenceLine' is defined but never used  unused-imports/no-unused-imports
+  5:35  error  'Legend' is defined but never used         unused-imports/no-unused-imports
+
+/app/src/components/UpdateErrorsTable.jsx
+  6:61   error  'Filter' is defined but never used        unused-imports/no-unused-imports
+  6:109  error  'ExternalLink' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/ValidCharsConfig.jsx
+  4:16  error  'Trash2' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/solar/InverterComparison.jsx
+  4:34  error  'XCircle' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/components/solar/PVGISReport.jsx
+  5:29  error  'CardHeader' is defined but never used  unused-imports/no-unused-imports
+  5:41  error  'CardTitle' is defined but never used   unused-imports/no-unused-imports
+
+/app/src/components/solar/SolarPVGISCalc.jsx
+  6:27  error  'Zap' is defined but never used        unused-imports/no-unused-imports
+  6:45  error  'Home' is defined but never used       unused-imports/no-unused-imports
+  6:51  error  'BarChart2' is defined but never used  unused-imports/no-unused-imports
+  6:62  error  'Info' is defined but never used       unused-imports/no-unused-imports
+
+/app/src/components/solar/SolarSparePartsTab.jsx
+  8:61  error  'CheckCircle' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/AIAssistant.jsx
+  8:38  error  'Search' is defined but never used  unused-imports/no-unused-imports
+  8:46  error  'Zap' is defined but never used     unused-imports/no-unused-imports
+
+/app/src/pages/AIBudget.jsx
+  10:10  error  'Tabs' is defined but never used         unused-imports/no-unused-imports
+  10:16  error  'TabsContent' is defined but never used  unused-imports/no-unused-imports
+  10:29  error  'TabsList' is defined but never used     unused-imports/no-unused-imports
+  10:39  error  'TabsTrigger' is defined but never used  unused-imports/no-unused-imports
+  11:98  error  'X' is defined but never used            unused-imports/no-unused-imports
+
+/app/src/pages/AIPlanning.jsx
+   7:10  error  'Tabs' is defined but never used         unused-imports/no-unused-imports
+   7:16  error  'TabsContent' is defined but never used  unused-imports/no-unused-imports
+   7:29  error  'TabsList' is defined but never used     unused-imports/no-unused-imports
+   7:39  error  'TabsTrigger' is defined but never used  unused-imports/no-unused-imports
+   8:10  error  'Badge' is defined but never used        unused-imports/no-unused-imports
+  10:79  error  'Calendar' is defined but never used     unused-imports/no-unused-imports
+
+/app/src/pages/AIReports.jsx
+  7:10  error  'Tabs' is defined but never used         unused-imports/no-unused-imports
+  7:16  error  'TabsContent' is defined but never used  unused-imports/no-unused-imports
+  7:29  error  'TabsList' is defined but never used     unused-imports/no-unused-imports
+  7:39  error  'TabsTrigger' is defined but never used  unused-imports/no-unused-imports
+  9:15  error  'RefreshCw' is defined but never used    unused-imports/no-unused-imports
+  9:26  error  'Download' is defined but never used     unused-imports/no-unused-imports
+  9:36  error  'Users' is defined but never used        unused-imports/no-unused-imports
+  9:43  error  'FileText' is defined but never used     unused-imports/no-unused-imports
+  9:53  error  'Wrench' is defined but never used       unused-imports/no-unused-imports
+  9:81  error  'Save' is defined but never used         unused-imports/no-unused-imports
+  9:87  error  'Printer' is defined but never used      unused-imports/no-unused-imports
+
+/app/src/pages/AISearch.jsx
+  10:100  error  'AlertTriangle' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/Agenda.jsx
+   3:29   error  'CardHeader' is defined but never used  unused-imports/no-unused-imports
+   3:41   error  'CardTitle' is defined but never used   unused-imports/no-unused-imports
+  10:51   error  'Edit' is defined but never used        unused-imports/no-unused-imports
+  10:104  error  'Bell' is defined but never used        unused-imports/no-unused-imports
+  11:18   error  'addDays' is defined but never used     unused-imports/no-unused-imports
+
+/app/src/pages/Automations.jsx
+  11:50  error  'AlertTriangle' is defined but never used  unused-imports/no-unused-imports
+  12:18  error  'addDays' is defined but never used        unused-imports/no-unused-imports
+  13:10  error  'es' is defined but never used             unused-imports/no-unused-imports
+
+/app/src/pages/BackupCenter.jsx
+   8:40  error  'Database' is defined but never used  unused-imports/no-unused-imports
+  10:3   error  'Play' is defined but never used      unused-imports/no-unused-imports
+
+/app/src/pages/BatteryCalc.jsx
+  7:10  error  'Tabs' is defined but never used         unused-imports/no-unused-imports
+  7:16  error  'TabsContent' is defined but never used  unused-imports/no-unused-imports
+  7:29  error  'TabsList' is defined but never used     unused-imports/no-unused-imports
+  7:39  error  'TabsTrigger' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/BusinessCards.jsx
+  1:38  error  'useRef' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/Catalogs.jsx
+  3:29  error  'CardHeader' is defined but never used  unused-imports/no-unused-imports
+  3:41  error  'CardTitle' is defined but never used   unused-imports/no-unused-imports
+  7:48  error  'Search' is defined but never used      unused-imports/no-unused-imports
+  8:10  error  'toast' is defined but never used       unused-imports/no-unused-imports
+
+/app/src/pages/ClientPortal.jsx
+  11:3   error  'Download' is defined but never used    unused-imports/no-unused-imports
+  12:9   error  'TrendingUp' is defined but never used  unused-imports/no-unused-imports
+  12:32  error  'XCircle' is defined but never used     unused-imports/no-unused-imports
+  14:10  error  'format' is defined but never used      unused-imports/no-unused-imports
+
+/app/src/pages/CompanyConfig.jsx
+  1:46   error  'useCallback' is defined but never used  unused-imports/no-unused-imports
+  9:153  error  'Layout' is defined but never used       unused-imports/no-unused-imports
+
+/app/src/pages/ContactDetail.jsx
+   1:46  error  'useMemo' is defined but never used        unused-imports/no-unused-imports
+   1:55  error  'useCallback' is defined but never used    unused-imports/no-unused-imports
+  13:41  error  'Calendar' is defined but never used       unused-imports/no-unused-imports
+  13:51  error  'Wrench' is defined but never used         unused-imports/no-unused-imports
+  13:69  error  'ClipboardList' is defined but never used  unused-imports/no-unused-imports
+  13:96  error  'AlertCircle' is defined but never used    unused-imports/no-unused-imports
+
+/app/src/pages/Contacts.jsx
+   1:51  error  'useRef' is defined but never used        unused-imports/no-unused-imports
+   6:29  error  'CardHeader' is defined but never used    unused-imports/no-unused-imports
+   6:41  error  'CardTitle' is defined but never used     unused-imports/no-unused-imports
+  13:10  error  'Tabs' is defined but never used          unused-imports/no-unused-imports
+  13:16  error  'TabsContent' is defined but never used   unused-imports/no-unused-imports
+  13:29  error  'TabsList' is defined but never used      unused-imports/no-unused-imports
+  13:39  error  'TabsTrigger' is defined but never used   unused-imports/no-unused-imports
+  15:48  error  'Navigation' is defined but never used    unused-imports/no-unused-imports
+  16:34  error  'Euro' is defined but never used          unused-imports/no-unused-imports
+  16:58  error  'Star' is defined but never used          unused-imports/no-unused-imports
+  17:4   error  'ChevronRight' is defined but never used  unused-imports/no-unused-imports
+  17:18  error  'TrendingUp' is defined but never used    unused-imports/no-unused-imports
+  17:30  error  'FileText' is defined but never used      unused-imports/no-unused-imports
+  17:40  error  'Wrench' is defined but never used        unused-imports/no-unused-imports
+
+/app/src/pages/Documents.jsx
+   3:29  error  'CardHeader' is defined but never used   unused-imports/no-unused-imports
+   3:41  error  'CardTitle' is defined but never used    unused-imports/no-unused-imports
+   6:10  error  'Badge' is defined but never used        unused-imports/no-unused-imports
+   8:10  error  'Textarea' is defined but never used     unused-imports/no-unused-imports
+  11:41  error  'Eye' is defined but never used          unused-imports/no-unused-imports
+  12:46  error  'BarChart3' is defined but never used    unused-imports/no-unused-imports
+  12:57  error  'TrendingUp' is defined but never used   unused-imports/no-unused-imports
+  13:3   error  'Euro' is defined but never used         unused-imports/no-unused-imports
+  13:42  error  'Filter' is defined but never used       unused-imports/no-unused-imports
+  13:50  error  'Download' is defined but never used     unused-imports/no-unused-imports
+  22:8   error  'PrintButton' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/EquipmentDiaryPage.jsx
+   9:29  error  'CardHeader' is defined but never used     unused-imports/no-unused-imports
+   9:41  error  'CardTitle' is defined but never used      unused-imports/no-unused-imports
+  14:8   error  'CompanyHeader' is defined but never used  unused-imports/no-unused-imports
+  15:8   error  'PrintButton' is defined but never used    unused-imports/no-unused-imports
+  17:10  error  'createPageUrl' is defined but never used  unused-imports/no-unused-imports
+  18:10  error  'Link' is defined but never used           unused-imports/no-unused-imports
+
+/app/src/pages/EquipmentFailureHistory.jsx
+  8:72  error  'Printer' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/ExportData.jsx
+  1:38  error  'useRef' is defined but never used  unused-imports/no-unused-imports
+  5:10  error  'Badge' is defined but never used   unused-imports/no-unused-imports
+
+/app/src/pages/Home.jsx
+  16:10  error  'Button' is defined but never used         unused-imports/no-unused-imports
+  21:24  error  'Battery' is defined but never used        unused-imports/no-unused-imports
+  21:42  error  'CreditCard' is defined but never used     unused-imports/no-unused-imports
+  22:3   error  'TrendingUp' is defined but never used     unused-imports/no-unused-imports
+  22:15  error  'TrendingDown' is defined but never used   unused-imports/no-unused-imports
+  23:15  error  'Phone' is defined but never used          unused-imports/no-unused-imports
+  23:22  error  'MapPin' is defined but never used         unused-imports/no-unused-imports
+  24:3   error  'MessageCircle' is defined but never used  unused-imports/no-unused-imports
+  24:18  error  'RefreshCw' is defined but never used      unused-imports/no-unused-imports
+
+/app/src/pages/IncidentManagement.jsx
+   9:31  error  'Users' is defined but never used          unused-imports/no-unused-imports
+   9:48  error  'MapPin' is defined but never used         unused-imports/no-unused-imports
+   9:56  error  'FileText' is defined but never used       unused-imports/no-unused-imports
+   9:72  error  'Loader2' is defined but never used        unused-imports/no-unused-imports
+  12:8   error  'CompanyHeader' is defined but never used  unused-imports/no-unused-imports
+  13:8   error  'PrintButton' is defined but never used    unused-imports/no-unused-imports
+
+/app/src/pages/Inventory.jsx
+   3:29  error  'CardHeader' is defined but never used   unused-imports/no-unused-imports
+   3:41  error  'CardTitle' is defined but never used    unused-imports/no-unused-imports
+  11:97  error  'ChevronDown' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/LegalDocs.jsx
+  7:10   error  'Tabs' is defined but never used         unused-imports/no-unused-imports
+  7:16   error  'TabsContent' is defined but never used  unused-imports/no-unused-imports
+  7:29   error  'TabsList' is defined but never used     unused-imports/no-unused-imports
+  7:39   error  'TabsTrigger' is defined but never used  unused-imports/no-unused-imports
+  9:125  error  'Lightning' is defined but never used    unused-imports/no-unused-imports
+
+/app/src/pages/Maintenance.jsx
+   1:46  error  'useMemo' is defined but never used      unused-imports/no-unused-imports
+   1:55  error  'useCallback' is defined but never used  unused-imports/no-unused-imports
+  10:10  error  'Tabs' is defined but never used         unused-imports/no-unused-imports
+  10:16  error  'TabsContent' is defined but never used  unused-imports/no-unused-imports
+  10:29  error  'TabsList' is defined but never used     unused-imports/no-unused-imports
+  10:39  error  'TabsTrigger' is defined but never used  unused-imports/no-unused-imports
+  11:39  error  'Edit' is defined but never used         unused-imports/no-unused-imports
+  11:66  error  'Send' is defined but never used         unused-imports/no-unused-imports
+
+/app/src/pages/MaintenancePlanning.jsx
+  3:29  error  'CardHeader' is defined but never used  unused-imports/no-unused-imports
+  3:41  error  'CardTitle' is defined but never used   unused-imports/no-unused-imports
+  8:69  error  'Bell' is defined but never used        unused-imports/no-unused-imports
+  8:89  error  'Clock' is defined but never used       unused-imports/no-unused-imports
+
+/app/src/pages/Manuals.jsx
+   9:42   error  'Download' is defined but never used       unused-imports/no-unused-imports
+   9:57   error  'Battery' is defined but never used        unused-imports/no-unused-imports
+   9:186  error  'Filter' is defined but never used         unused-imports/no-unused-imports
+  10:23   error  'loadFromCache' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/PresupuestoPublico.jsx
+  4:86  error  'Phone' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/Projects.jsx
+   3:29  error  'CardHeader' is defined but never used              unused-imports/no-unused-imports
+   3:41  error  'CardTitle' is defined but never used               unused-imports/no-unused-imports
+  15:3   error  'Users' is defined but never used                   unused-imports/no-unused-imports
+  15:10  error  'Calendar' is defined but never used                unused-imports/no-unused-imports
+  15:42  error  'Clock' is defined but never used                   unused-imports/no-unused-imports
+  16:3   error  'BarChart3' is defined but never used               unused-imports/no-unused-imports
+  16:14  error  'Target' is defined but never used                  unused-imports/no-unused-imports
+  19:10  error  'getNextAvailableNumber' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/Reports.jsx
+   4:10  error  'Button' is defined but never used         unused-imports/no-unused-imports
+   9:51  error  'ClipboardList' is defined but never used  unused-imports/no-unused-imports
+  10:3   error  'TrendingDown' is defined but never used   unused-imports/no-unused-imports
+  10:29  error  'Calendar' is defined but never used       unused-imports/no-unused-imports
+
+/app/src/pages/SAT.jsx
+   4:29   error  'CardHeader' is defined but never used  unused-imports/no-unused-imports
+   4:41   error  'CardTitle' is defined but never used   unused-imports/no-unused-imports
+   9:10   error  'Textarea' is defined but never used    unused-imports/no-unused-imports
+  12:51   error  'Send' is defined but never used        unused-imports/no-unused-imports
+  12:144  error  'Printer' is defined but never used     unused-imports/no-unused-imports
+
+/app/src/pages/SATCalendar.jsx
+  1:47   error  'useRef' is defined but never used     unused-imports/no-unused-imports
+  3:112  error  'isSameDay' is defined but never used  unused-imports/no-unused-imports
+  9:98   error  'X' is defined but never used          unused-imports/no-unused-imports
+
+/app/src/pages/SATChat.jsx
+  1:46  error  'useCallback' is defined but never used  unused-imports/no-unused-imports
+  1:59  error  'useMemo' is defined but never used      unused-imports/no-unused-imports
+  3:10  error  'Card' is defined but never used         unused-imports/no-unused-imports
+  3:16  error  'CardContent' is defined but never used  unused-imports/no-unused-imports
+  3:29  error  'CardHeader' is defined but never used   unused-imports/no-unused-imports
+  3:41  error  'CardTitle' is defined but never used    unused-imports/no-unused-imports
+  6:31  error  'Image' is defined but never used        unused-imports/no-unused-imports
+
+/app/src/pages/SmartReminders.jsx
+   3:29  error  'CardHeader' is defined but never used  unused-imports/no-unused-imports
+   3:41  error  'CardTitle' is defined but never used   unused-imports/no-unused-imports
+  11:25  error  'Phone' is defined but never used       unused-imports/no-unused-imports
+  15:10  error  'es' is defined but never used          unused-imports/no-unused-imports
+
+/app/src/pages/SolarBatteryCalc.jsx
+  8:78   error  'Printer' is defined but never used       unused-imports/no-unused-imports
+  8:87   error  'ShoppingCart' is defined but never used  unused-imports/no-unused-imports
+  8:101  error  'Plug' is defined but never used          unused-imports/no-unused-imports
+  8:107  error  'Cpu' is defined but never used           unused-imports/no-unused-imports
+  8:121  error  'Cable' is defined but never used         unused-imports/no-unused-imports
+  8:128  error  'Layers' is defined but never used        unused-imports/no-unused-imports
+  8:166  error  'Wrench' is defined but never used        unused-imports/no-unused-imports
+
+/app/src/pages/SolarCalc.jsx
+   8:15  error  'Calculator' is defined but never used      unused-imports/no-unused-imports
+   8:76  error  'Package' is defined but never used         unused-imports/no-unused-imports
+  15:8   error  'SolarPVGISCalc' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/Suppliers.jsx
+   3:29   error  'CardHeader' is defined but never used  unused-imports/no-unused-imports
+   3:41   error  'CardTitle' is defined but never used   unused-imports/no-unused-imports
+  11:107  error  'Bot' is defined but never used         unused-imports/no-unused-imports
+  11:157  error  'TrendingUp' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/TechnicianDay.jsx
+   4:28  error  'isToday' is defined but never used  unused-imports/no-unused-imports
+  12:32  error  'MapPin' is defined but never used   unused-imports/no-unused-imports
+  12:40  error  'Phone' is defined but never used    unused-imports/no-unused-imports
+  12:47  error  'User' is defined but never used     unused-imports/no-unused-imports
+
+/app/src/pages/TechnicianFieldWork.jsx
+  8:46  error  'Clock' is defined but never used  unused-imports/no-unused-imports
+
+/app/src/pages/TecniciansRoutes.jsx
+  9:57  error  'AlertCircle' is defined but never used  unused-imports/no-unused-imports
+  9:77  error  'Copy' is defined but never used         unused-imports/no-unused-imports
+
+/app/src/pages/ThermalCalc.jsx
+  7:10  error  'Badge' is defined but never used  unused-imports/no-unused-imports
+
+✖ 265 problems (265 errors, 0 warnings)
+  265 errors and 0 warnings potentially fixable with the `--fix` option.
