@@ -47,6 +47,13 @@ contextBridge.exposeInMainWorld('gptDocs', {
   descargar: (url) => ipcRenderer.invoke('gpt-doc-descargar', url),
 });
 
+// Impresoras del ordenador: listarlas y mandar a imprimir a la elegida.
+contextBridge.exposeInMainWorld('gptImpresion', {
+  disponible: true,
+  listar: () => ipcRenderer.invoke('gpt-impresoras'),
+  imprimir: (opciones) => ipcRenderer.invoke('gpt-imprimir', opciones),
+});
+
 contextBridge.exposeInMainWorld('gptUpdater', {
   check: () => ipcRenderer.send('gpt-check-for-updates'),
   install: () => ipcRenderer.send('gpt-install-update'),

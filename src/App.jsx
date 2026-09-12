@@ -1,5 +1,5 @@
-import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
+import { DURACION_POR_DEFECTO as DURACION_AVISO } from "@/components/ui/use-toast"
 import { Component, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -23,6 +23,7 @@ import PantallaArranque, { PantallaErrorSesion } from '@/components/PantallaArra
 import UpdateChecker from '@/components/UpdateChecker';
 import AvisoServidor from './components/AvisoServidor'
 import StorageSetupNotice from '@/components/StorageSetupNotice';
+import AvisoDireccionPublica from '@/components/AvisoDireccionPublica';
 import RecordarTrabajo from '@/components/RecordarTrabajo';
 import AvisoRecuperado from '@/components/AvisoRecuperado';
 const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
@@ -70,8 +71,37 @@ function AnimatedRoutes({ children }) {
   return <>{children}</>;
 }
 
+/*
+ * Las páginas que abre el CLIENTE, que no tiene cuenta en el programa.
+ *
+ * ─── EL FALLO QUE ARREGLA ESTO ──────────────────────────────────────────────
+ *
+ * El enlace que se le manda por WhatsApp o por correo para aceptar o rechazar
+ * un presupuesto —y el QR de verificación— los abre alguien que NO ha iniciado
+ * sesión, y que no tiene por qué tenerla.
+ *
+ * Pero la comprobación de sesión iba ANTES de mirar la ruta: al no haber
+ * sesión, mandaba al cliente a la pantalla de acceso y ahí se acababa todo. El
+ * documento no llegaba a verse nunca. Desde fuera parecía que «el enlace no
+ * abre».
+ *
+ * Estas rutas se atienden sin pasar por la sesión.
+ */
+const RUTAS_PUBLICAS = ['/presupuesto-publico', '/sat-publico', '/verificar-documento'];
+
+function esRutaPublica() {
+  try {
+    const h = String(window.location.hash || '');
+    const camino = h.startsWith('#') ? h.slice(1).split('?')[0] : window.location.pathname;
+    return RUTAS_PUBLICAS.some((r) => camino.toLowerCase().startsWith(r));
+  } catch {
+    return false;
+  }
+}
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const publica = esRutaPublica();
   // Permite entrar aunque la sesión no se haya podido comprobar (sin cobertura,
   // servidor caído). Sin esto, un fallo de red dejaba el programa encerrado en
   // la pantalla de error, que es peor que el problema que venía a resolver.
@@ -80,12 +110,13 @@ const AuthenticatedApp = () => {
   // Mientras se comprueba la sesión. Si el servidor no contesta esto no
   // termina nunca, así que la pantalla avisa a los pocos segundos en vez de
   // dejar la ruedecita girando sin decir nada (parecía que no abría).
-  if (isLoadingPublicSettings || isLoadingAuth) {
+  if ((isLoadingPublicSettings || isLoadingAuth) && !publica) {
     return <PantallaArranque />;
   }
 
-  // Errores de sesión
-  if (authError) {
+  // Errores de sesión. En las páginas del cliente no se mira: él no tiene
+  // cuenta, y mandarlo al acceso es dejarle sin ver su documento.
+  if (authError && !publica) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
@@ -139,7 +170,10 @@ const AuthenticatedApp = () => {
       {/* Aviso automático de nueva versión (escritorio usa además electron-updater) */}
       <UpdateChecker headless />
       {/* Aviso de primera instalación: dónde se guardan fotos y documentos */}
-      <StorageSetupNotice />
+      {/* Los avisos internos NO se enseñan en las páginas del cliente: él
+          entra a firmar su presupuesto, no a configurar el programa. */}
+      {!publica && <StorageSetupNotice />}
+      {!publica && <AvisoDireccionPublica />}
       {/* Si Android cerró la aplicación por su cuenta y se ha recuperado lo que
           se estaba escribiendo, decirlo: si no, los campos aparecen rellenos sin
           explicación y parece que te has equivocado de ficha. */}
@@ -162,12 +196,20 @@ function App() {
             <RecordarTrabajo />
             <AuthenticatedApp />
           </Router>
-          <Toaster />
-          {/* Media aplicación avisa con toast de sonner (presupuestos, cálculos,
-              plano, disponibilidad…) y este Toaster no estaba montado, así que
-              esos avisos no se veían nunca. Con los dos montados, cada uno
-              muestra los suyos. */}
-          <SonnerToaster position="top-center" richColors />
+          {/* UN SOLO sistema de avisos, el de sonner.
+              Antes había dos montados a la vez y el otro (el de shadcn) no
+              sabía cerrarse: el aviso "Documento actualizado" se quedaba
+              clavado arriba, a toda anchura y por delante de la cabecera,
+              tapando atrás / editar / inicio. Y su X no hacía nada.
+              Ahora todos los avisos del programa salen por aquí, duran dos
+              segundos y medio, y se pueden quitar con la X o deslizándolos. */}
+          <SonnerToaster
+            position="top-center"
+            richColors
+            closeButton
+            duration={DURACION_AVISO}
+            toastOptions={{ dismissible: true }}
+          />
         </QueryClientProvider>
       </AuthProvider>
     </ErrorBoundary>

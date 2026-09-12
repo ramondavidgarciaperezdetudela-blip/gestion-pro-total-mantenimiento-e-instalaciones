@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import InterruptorIA from '@/components/InterruptorIA';
 import ElegirTema from '@/components/ElegirTema';
+import VerificacionDocumentos from '@/components/VerificacionDocumentos';
+import ElegirImpresora from '@/components/ElegirImpresora';
 import { umbralesRite, guardarUmbralesRite, sonLosDePartida } from '@/lib/umbralesRite';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +19,7 @@ import {
 } from '@/lib/disenoDocumento';
 import { Building2, Save, Upload, Printer, Mail, Eye, EyeOff, UserCog, Plus, Trash2, LogOut, Globe, Wifi, Users, Shield, Brain, Copy, Check, RefreshCw, AlertTriangle, Type, Image as ImageIcon, CalendarClock } from 'lucide-react';
 import PostalCodeSearch from '@/components/PostalCodeSearch';
+import CompletarDatosEmpresa from '@/components/CompletarDatosEmpresa';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ValidCharsConfig from '@/components/ValidCharsConfig';
 import { loadLicense, parseLicense, getDeviceId, clearLicense } from '@/lib/licenseManager';
@@ -381,6 +384,14 @@ export default function CompanyConfig() {
                   <label className="text-sm font-medium text-gray-700">NIF / CIF</label>
                   <Input value={form.nif} onChange={e => setForm({...form, nif: e.target.value})} placeholder="B12345678" className="mt-1" />
                 </div>
+                {/* Escribe el NIF o el nombre y que rellene lo que falte. Nunca
+                    pisa nada sin que lo marques tú. */}
+                <div className="md:col-span-2">
+                  <CompletarDatosEmpresa
+                    actuales={form}
+                    onAplicar={(nuevos) => setForm(f => ({ ...f, ...nuevos }))}
+                  />
+                </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Teléfono</label>
                   <Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="600 000 000" className="mt-1" />
@@ -389,26 +400,46 @@ export default function CompanyConfig() {
                   <label className="text-sm font-medium text-gray-700">Dirección</label>
                   <Input value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="Calle, número, piso" className="mt-1" />
                 </div>
+                {/* Los tres campos son buscadores Y campos a la vez: escribes,
+                    eliges de la lista y se rellenan los tres. Antes solo eran
+                    buscadores y, al elegir, el cuadro se quedaba en blanco.
+                    El setForm va en su forma de función para que elegir en dos
+                    cuadros seguidos no borre lo del primero. */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Ciudad</label>
-                  <PostalCodeSearch
-                    type="city"
-                    onSelect={(result) => setForm({...form, postal_code: result.postal_code, city: result.city, province: result.province})}
-                  />
+                  <label className="text-sm font-medium text-gray-700">Ciudad / Población</label>
+                  <div className="mt-1">
+                    <PostalCodeSearch
+                      type="city"
+                      data-prueba="empresa-ciudad"
+                      value={form.city || ''}
+                      onChange={(v) => setForm(f => ({ ...f, city: v }))}
+                      onSelect={(r) => setForm(f => ({ ...f, postal_code: r.postal_code, city: r.city, province: r.province }))}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Provincia</label>
-                  <PostalCodeSearch
-                    type="province"
-                    onSelect={(result) => setForm({...form, postal_code: result.postal_code, city: result.city, province: result.province})}
-                  />
+                  <div className="mt-1">
+                    <PostalCodeSearch
+                      type="province"
+                      data-prueba="empresa-provincia"
+                      value={form.province || ''}
+                      onChange={(v) => setForm(f => ({ ...f, province: v }))}
+                      onSelect={(r) => setForm(f => ({ ...f, postal_code: r.postal_code, city: r.city, province: r.province }))}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Código Postal</label>
-                  <PostalCodeSearch
-                    type="postal_code"
-                    onSelect={(result) => setForm({...form, postal_code: result.postal_code, city: result.city, province: result.province})}
-                  />
+                  <div className="mt-1">
+                    <PostalCodeSearch
+                      type="postal_code"
+                      data-prueba="empresa-cp"
+                      value={form.postal_code || ''}
+                      onChange={(v) => setForm(f => ({ ...f, postal_code: v }))}
+                      onSelect={(r) => setForm(f => ({ ...f, postal_code: r.postal_code, city: r.city, province: r.province }))}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Email</label>
@@ -685,6 +716,16 @@ export default function CompanyConfig() {
         </TabsContent>
 
         <TabsContent value="impresion">
+          <Card className="mb-4">
+            <CardContent className="pt-6">
+              <ElegirImpresora />
+            </CardContent>
+          </Card>
+          <Card className="mb-4">
+            <CardContent className="pt-6">
+              <VerificacionDocumentos form={form} setForm={setForm} onGuardar={handleSave} />
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Printer className="w-5 h-5" />Configuración de Impresión y Documentos</CardTitle></CardHeader>
             <CardContent className="space-y-6">

@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useAvisoQueSeVa } from '@/lib/avisoTemporal';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -327,6 +328,7 @@ function SATForm({ order, contact, onSave, onCancel }) {
   const [form, setForm] = useState({ ...EMPTY_FORM, ...order, materials_used: order?.materials_used || [], photos_before: order?.photos_before || [], photos_after: order?.photos_after || [] });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  useAvisoQueSeVa(saveError, setSaveError);
 
   const calcTotal = (f) => (f.labor_hours || 0) * (f.labor_rate || 0) + (f.materials_used || []).reduce((s, m) => s + (m.quantity || 0) * (m.unit_price || 0), 0);
 

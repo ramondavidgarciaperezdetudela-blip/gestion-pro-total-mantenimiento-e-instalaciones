@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
+import VistaPreviaDocumento from '@/components/VistaPreviaDocumento';
+import EnviarCopiaFirmada from '@/components/EnviarCopiaFirmada';
+import { useAvisoQueSeVa } from '@/lib/avisoTemporal';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Plus, Search, FileText, Trash2, Edit, ShoppingCart, Copy,
-  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers, Loader2 } from
+  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers, Loader2, ShieldCheck, Snowflake } from
 'lucide-react';
 import QRCodeLib from 'qrcode';
+import CargaDeGas from '@/components/CargaDeGas';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
 import AdvancedPriceSearch from '../components/AdvancedPriceSearch';
@@ -22,6 +26,9 @@ import { getNextAvailableNumber } from '../components/autoNumber';
 import CompanyHeader from '../components/CompanyHeader';
 import SignatureCanvas from '../components/SignaturePad';
 import { useToast } from "@/components/ui/use-toast";
+import { useParametrosUrl } from '@/lib/parametrosUrl';
+import { direccionPublica, AVISO_SIN_DIRECCION, faltaParaAvisos } from '@/lib/copiaFirmada';
+import { abrirEnlaceAvisando, enlaceWhatsApp } from '@/lib/abrirEnlace';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo'];
 const STATUSES = ['borrador', 'enviado', 'pagado', 'vencido', 'cancelado'];
@@ -74,7 +81,7 @@ function recalculate(items, iva_rate) {
 }
 
 export default function Documents() {
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = useParametrosUrl();
   const preContactId = urlParams.get('contact_id');
   const preType = urlParams.get('type');
   const preEditId = urlParams.get('edit');
@@ -91,10 +98,16 @@ export default function Documents() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [previewDoc, setPreviewDoc] = useState(null);
+  // El documento que se está mirando antes de imprimirlo o mandarlo.
+  const [vistaPrevia, setVistaPrevia] = useState(null);
+  // Los datos de la empresa: de ahí sale la dirección pública con la que se
+  // arma el QR de verificación.
+  const [company, setCompany] = useState(null);
   // Ajustes de impresión/PDF (A4): margen y escala para cuadrar en la impresora
   const [pdfMargin, setPdfMargin] = useState(() => { try { return parseInt(localStorage.getItem('gpt_pdf_margin')) || 10; } catch { return 10; } });
   const [pdfScale, setPdfScale] = useState(() => { try { return parseInt(localStorage.getItem('gpt_pdf_scale')) || 100; } catch { return 100; } });
   const [supplierSearchOpen, setSupplierSearchOpen] = useState(false);
+  const [cargaGasAbierta, setCargaGasAbierta] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -104,6 +117,8 @@ export default function Documents() {
   const [activeTab, setActiveTab] = useState('all'); // all | facturas | presupuestos
   const printRef = useRef(null);
   const { toast } = useToast();
+
+  useAvisoQueSeVa(saveError, setSaveError);
 
   // Suscripción en tiempo real: si el cliente firma, actualiza automáticamente
   useEffect(() => {
@@ -121,10 +136,12 @@ export default function Documents() {
     cargarTodo('Invoice', '-date'),
     cargarTodo('Contact', 'name'),
     base44.entities.DocumentTemplate.list('name', 50),
-    base44.entities.LineTemplate.list('name', 100)]
-    ).then(([d, c, t, lt]) => {
+    base44.entities.LineTemplate.list('name', 100),
+    base44.entities.CompanySettings.list()]
+    ).then(([d, c, t, lt, cs]) => {
       setDocs(d);
       setContacts(c);
+      setCompany(cs?.[0] || {});
       setTemplates(t);
       setLineTemplates(lt);
       if (preContactId && preType) {
@@ -328,6 +345,22 @@ export default function Documents() {
     return { ...rest, items };
   };
 
+  /**
+   * Salir del formulario SIN tirar lo escrito.
+   *
+   * Antes, la X hacía clearDraft() antes de cerrar: se llevaba por delante el
+   * borrador. Si el guardado había fallado —por ejemplo porque el servidor
+   * contestó mal— y se cerraba para reintentar, al volver a abrir el documento
+   * salía en blanco, como si no se hubiera rellenado nada. El borrador está
+   * justo para eso: para que lo escrito sobreviva a un cierre.
+   */
+  const cerrarFormulario = useCallback(() => {
+    setDialogOpen(false);
+    setEditing(null);
+    setShowAdvanced(false);
+    setSaveError('');
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
     setSaveError('');
@@ -340,6 +373,18 @@ export default function Documents() {
       if (editing) {
         savedDoc = await base44.entities.Invoice.update(editing.id, payload);
       } else {
+        // La verificación por QR se activa de salida, con la validez elegida
+        // en Configuración → Impresión. Antes había que acordarse de darle a
+        // un botón escondido al final de la ventana de ver el documento, así
+        // que en la práctica los documentos salían sin verificación.
+        if (payload.verify_enabled === undefined) {
+          const dias = company?.verify_default_days;
+          const porDefecto = dias === undefined || dias === null ? 365 : Number(dias);
+          payload.verify_enabled = true;
+          payload.verify_expires = porDefecto > 0
+            ? new Date(Date.now() + porDefecto * 86400000).toISOString()
+            : null;
+        }
         savedDoc = await base44.entities.Invoice.create(payload);
         if (form.contact_id) {
           await base44.entities.ClientDocument.create({
@@ -401,13 +446,53 @@ export default function Documents() {
     setDocs(docs.map((d) => d.id === doc.id ? { ...d, status: newStatus } : d));
   };
 
-  const getSignLink = (doc, method = 'web') => `${window.location.origin}/presupuesto-publico?id=${doc.id}&method=${method}`;
+  /*
+   * El enlace que se le manda al cliente para aceptar o rechazar.
+   *
+   * Tiene que salir de la dirección PÚBLICA configurada, no de la del propio
+   * aparato: en el móvil esa es «https://localhost» y en el programa instalado
+   * es un fichero del disco, así que al cliente le llegaba un enlace que no
+   * abría en ninguna parte. Si no hay dirección puesta se devuelve vacío y
+   * quien lo use avisa, en vez de mandar algo roto.
+   */
+  /*
+   * Antes de mandar nada: si falta algo para que el aviso de vuelta funcione,
+   * se dice ahora y no cuando el cliente ya ha firmado y no llega nada.
+   */
+  const avisarSiFaltaAlgo = () => {
+    const faltan = faltaParaAvisos(company);
+    if (!faltan.length) return true;
+    toast({
+      title: 'Falta configurar algo para que te llegue la respuesta',
+      description: faltan.join('. ') + '.',
+      variant: 'destructive',
+      duration: 10000,
+    });
+    return false;
+  };
+
+  const getSignLink = (doc, method = 'web') => {
+    const base = direccionPublica(company);
+    return base ? `${base}/presupuesto-publico?id=${doc.id}&method=${method}` : '';
+  };
 
   const sendWhatsApp = (doc) => {
     const c = contacts.find((x) => x.id === doc.contact_id);
     const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
-    const msg = encodeURIComponent(`*${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}*\nCliente: ${doc.contact_name}\nFecha: ${doc.date}\nTotal: ${doc.total?.toFixed(2)} €\nEstado: ${doc.status}`);
-    window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+    // Con el ENLACE, no solo con el resumen. Antes al cliente le llegaban
+    // cuatro líneas de texto: no podía ni verlo entero, ni imprimirlo, ni
+    // guardárselo. Con el enlace lo abre en su navegador, y allí tiene el
+    // botón de imprimir y de guardar en PDF.
+    const enlace = getSignLink(doc, 'whatsapp');
+    if (!enlace) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; }
+    const msg = encodeURIComponent(
+      `*${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}*\n`
+      + `Cliente: ${doc.contact_name}\n`
+      + `Fecha: ${doc.date}\n`
+      + `Total: ${doc.total?.toFixed(2)} €\n\n`
+      + `Puede verlo, imprimirlo o guardarlo en PDF aquí:\n${enlace}`,
+    );
+    abrirEnlaceAvisando(enlaceWhatsApp(phone, decodeURIComponent(msg)), (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
   };
 
   const sendEmail = (doc) => {
@@ -415,7 +500,7 @@ export default function Documents() {
     const email = c?.email || '';
     const subject = encodeURIComponent(`${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}`);
     const body = encodeURIComponent(`Estimado/a ${doc.contact_name},\n\nAdjunto ${doc.doc_type} Nº${doc.doc_number} de fecha ${doc.date}.\nTotal: ${doc.total?.toFixed(2)} €\n\nQuedamos a su disposición.`);
-    window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+    abrirEnlaceAvisando(`mailto:${email}?subject=${subject}&body=${body}`, (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
   };
 
   const sendReminderWhatsApp = (doc) => {
@@ -423,15 +508,21 @@ export default function Documents() {
     const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
     const diasPendiente = Math.floor((new Date() - new Date(doc.date)) / (1000 * 60 * 60 * 24));
     const link = getSignLink(doc);
+
+    if (!link) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; }
     const msg = encodeURIComponent(
       `Estimado/a *${doc.contact_name}*,\n\nLe recordamos que tiene pendiente de respuesta nuestro *PRESUPUESTO Nº${doc.doc_number}* de fecha ${doc.date} por importe de *${doc.total?.toFixed(2)} €*.\n\nHace ${diasPendiente} días que está pendiente de confirmación.\n\nPuede *ACEPTAR o RECHAZAR* el presupuesto y firmarlo digitalmente aquí:\n${link}\n\nQuedamos a su disposición para cualquier consulta.`
     );
-    window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+    abrirEnlaceAvisando(enlaceWhatsApp(phone, decodeURIComponent(msg)), (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
   };
 
   const sendSignLink = (doc, via) => {
+    // Si falta el correo de la empresa, el cliente podrá firmar pero el aviso
+    // de vuelta no llegará. Mejor saberlo ahora que después.
+    if (!avisarSiFaltaAlgo()) return;
     const c = contacts.find((x) => x.id === doc.contact_id);
     const link = getSignLink(doc, via);
+    if (!link) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; }
     const isAlreadySent = !!doc.signature_client || doc.status === 'enviado';
     const avisoReenvio = isAlreadySent
       ? `\n\n⚠️ *AVISO: Este presupuesto ya fue enviado anteriormente. Este enlace es únicamente para aceptarlo o rechazarlo digitalmente y dejar constancia firmada.*`
@@ -442,7 +533,7 @@ export default function Documents() {
       const msg = encodeURIComponent(
         `Estimado/a *${doc.contact_name}*,\n\nLe enviamos el enlace para *ACEPTAR o RECHAZAR* el presupuesto con su firma digital:\n\n📄 *${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}*\n💶 Total: *${doc.total?.toFixed(2)} €*\n📅 Fecha: ${doc.date}\n\n🔗 *Firmar aquí:*\n${link}${avisoReenvio}`
       );
-      window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+      abrirEnlaceAvisando(enlaceWhatsApp(phone, decodeURIComponent(msg)), (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
     } else {
       const email = c?.email || '';
       const subject = encodeURIComponent(`Solicitud de firma - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}`);
@@ -452,27 +543,28 @@ export default function Documents() {
       const body = encodeURIComponent(
         `Estimado/a ${doc.contact_name},\n\nLe enviamos el enlace para ACEPTAR o RECHAZAR el presupuesto con su firma digital:\n\n${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}\nTotal: ${doc.total?.toFixed(2)} €\nFecha: ${doc.date}\n\nFirmar aquí:\n${link}${avisoEmail}\n\nQuedamos a su disposición.`
       );
-      window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+      abrirEnlaceAvisando(`mailto:${email}?subject=${subject}&body=${body}`, (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
     }
   };
 
   const sendChangeOpinionLink = (doc, via) => {
     const c = contacts.find((x) => x.id === doc.contact_id);
-    const presupuestoUrl = `${window.location.origin}/presupuesto-publico?id=${doc.id}&method=${via}`;
+    const presupuestoUrl = getSignLink(doc, via);
+    if (!presupuestoUrl) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; }
 
     if (via === 'whatsapp') {
       const phone = c?.phone?.replace(/[^0-9]/g, '') || '';
       const msg = encodeURIComponent(
         `📄 *PRESUPUESTO - Opción de cambio de opinión*\n\nHola *${doc.contact_name}*,\n\nTienes la opción de cambiar tu decisión anterior sobre el presupuesto *Nº${doc.doc_number}* por *${(doc.total || 0).toFixed(2)} €*.\n\nAccede aquí para revisar y actualizar tu respuesta:\n${presupuestoUrl}\n\nGracias`
       );
-      window.open(phone ? `https://wa.me/34${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+      abrirEnlaceAvisando(enlaceWhatsApp(phone, decodeURIComponent(msg)), (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
     } else {
       const email = c?.email || '';
       const subject = encodeURIComponent(`Opción de cambio de opinión - Presupuesto Nº${doc.doc_number}`);
       const body = encodeURIComponent(
         `Estimado/a ${doc.contact_name},\n\nTienes la opción de cambiar tu decisión anterior sobre el presupuesto Nº${doc.doc_number} por ${(doc.total || 0).toFixed(2)} €.\n\nAccede aquí para revisar y actualizar tu respuesta:\n${presupuestoUrl}\n\nGracias`
       );
-      window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+      abrirEnlaceAvisando(`mailto:${email}?subject=${subject}&body=${body}`, (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
     }
   };
 
@@ -481,9 +573,11 @@ export default function Documents() {
     const email = c?.email || '';
     const diasPendiente = Math.floor((new Date() - new Date(doc.date)) / (1000 * 60 * 60 * 24));
     const link = getSignLink(doc);
+
+    if (!link) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; }
     const subject = encodeURIComponent(`Recordatorio: Presupuesto Nº${doc.doc_number} pendiente de confirmación`);
     const body = encodeURIComponent(`Estimado/a ${doc.contact_name},\n\nLe recordamos que tiene pendiente de respuesta nuestro Presupuesto Nº${doc.doc_number} de fecha ${doc.date} por importe de ${doc.total?.toFixed(2)} €.\n\nHace ${diasPendiente} días que está pendiente de confirmación.\n\nPuede aceptar o rechazar el presupuesto y firmarlo digitalmente aquí:\n${link}\n\nQuedamos a su disposición para cualquier consulta.`);
-    window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+    abrirEnlaceAvisando(`mailto:${email}?subject=${subject}&body=${body}`, (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
   };
 
   // Presupuestos pendientes >7 días
@@ -500,10 +594,27 @@ export default function Documents() {
     const csArr = await base44.entities.CompanySettings.list();
     const cs = csArr?.[0] || {};
     // QR de verificación del documento (abre la página pública de verificación).
-    const base = (cs.public_app_url && String(cs.public_app_url).replace(/\/$/, '')) || window.location.origin;
-    const verifyUrl = `${base}/verificar-documento?id=${doc.id}`;
+    /*
+     * Sin dirección pública NO se pinta el QR.
+     *
+     * Antes se generaba igual, con lo cual el código llevaba dentro
+     * «/verificar-documento?id=…» sin dominio delante: al escanearlo el móvil
+     * no iba a ninguna parte. Un QR que no lleva a ningún sitio es peor que no
+     * ponerlo, porque el cliente cree que el documento no es auténtico.
+     */
+    const base = direccionPublica(cs);
     let verifyQR = '';
-    try { verifyQR = await QRCodeLib.toDataURL(verifyUrl, { width: 220, margin: 1 }); } catch { verifyQR = ''; }
+    if (base) {
+      const verifyUrl = `${base}/verificar-documento?id=${doc.id}`;
+      try { verifyQR = await QRCodeLib.toDataURL(verifyUrl, { width: 220, margin: 1 }); } catch { verifyQR = ''; }
+    } else {
+      toast({
+        title: 'El documento sale sin QR de verificación',
+        description: AVISO_SIN_DIRECCION,
+        variant: 'destructive',
+        duration: 10000,
+      });
+    }
     const validezTxt = doc.verify_expires ? `Verificable hasta ${new Date(doc.verify_expires).toLocaleDateString('es-ES')}` : 'Verificable online';
     const verifyBoxHtml = verifyQR ? `
       <div style="margin-top:16px;display:flex;gap:12px;align-items:center;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;background:#f9fafb">
@@ -568,10 +679,16 @@ export default function Documents() {
     ${verifyBoxHtml}
     <div class="footer">Documento generado · ${cs.company_name||''} · ${cs.phone||''} · ${cs.email||''}</div>
     </body></html>`;
-    const w = window.open('', '_blank');
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => { w.focus(); w.print(); }, 400);
+    // Se enseña ANTES de imprimir. Un presupuesto o una factura se le manda a
+    // un cliente: hay que poder mirar cómo ha quedado. Y en el móvil y en el
+    // programa instalado la ventana nueva muchas veces ni se abría, así que
+    // no pasaba nada y parecía que el botón estaba roto.
+    setVistaPrevia({
+      titulo: `${doc.doc_type === 'factura' ? 'Factura' : doc.doc_type === 'recibo' ? 'Recibo' : 'Presupuesto'} ${doc.doc_number || ''} — ${doc.contact_name || ''}`,
+      html,
+      nombreFichero: `${doc.doc_type || 'documento'}-${doc.doc_number || ''}.html`,
+      doc,
+    });
   };
 
   // Filtrado
@@ -593,6 +710,16 @@ export default function Documents() {
 
   return (
     <div className="space-y-4">
+      {vistaPrevia && (
+        <VistaPreviaDocumento
+          titulo={vistaPrevia.titulo}
+          html={vistaPrevia.html}
+          nombreFichero={vistaPrevia.nombreFichero}
+          onVolver={() => setVistaPrevia(null)}
+          onEditar={vistaPrevia.doc ? () => { setVistaPrevia(null); setPreviewDoc(null); handleEdit(vistaPrevia.doc); } : undefined}
+        />
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <FileText className="w-6 h-6 text-violet-500" />Documentos
@@ -746,6 +873,8 @@ export default function Documents() {
           onOpenAutoFocus={(e) => e.preventDefault()}
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
+          onVolver={cerrarFormulario}
+          textoVolver="Volver (se guarda el borrador)"
         >
           <DialogHeader>
             <div className="flex items-center justify-between gap-2">
@@ -754,8 +883,8 @@ export default function Documents() {
                 {autoSaved && <span className="text-xs text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" />Borrador guardado</span>}
                 <button
                   className="text-gray-400 hover:text-gray-700 p-1 rounded"
-                  onClick={() => { clearDraft(); setDialogOpen(false); setEditing(null); setShowAdvanced(false); }}
-                  title="Cerrar sin guardar"
+                  onClick={cerrarFormulario}
+                  title="Cerrar (el borrador se guarda)"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -903,6 +1032,12 @@ export default function Documents() {
               )}
               <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Línea</Button>
+                {/* Carga de gas: el gas, los kilos, el precio y el impuesto,
+                    con la normativa en observaciones. */}
+                <Button size="sm" variant="outline" onClick={() => setCargaGasAbierta(true)}
+                  data-prueba="abrir-carga-gas" className="border-sky-300 text-sky-700">
+                  <Snowflake className="w-3 h-3 mr-1" />Carga de gas
+                </Button>
                 <PriceItemSelector onSelect={(item) => {
                   setForm((prev) => {
                     const newItems = [...prev.items, { _id: ++_itemId, description: item.description, quantity: item.quantity || 1, unit_price: item.unit_price, discount: 0, total: item.unit_price }];
@@ -1027,9 +1162,26 @@ export default function Documents() {
 
       <SupplierProductSearch open={supplierSearchOpen} onClose={() => setSupplierSearchOpen(false)} onAddItem={addItemFromSupplier} />
 
+      {/* La carga de gas añade sus líneas y deja la normativa en observaciones:
+          es lo que pide un cliente cuando ve una línea de impuesto. */}
+      <CargaDeGas
+        abierto={cargaGasAbierta}
+        onCerrar={() => setCargaGasAbierta(false)}
+        onAnadir={(r) => setForm((prev) => {
+          const nuevas = [...prev.items, ...r.lineas.map((l) => ({ ...l, _id: ++_itemId }))];
+          return {
+            ...prev,
+            ...recalculate(nuevas, prev.iva_rate),
+            observations: prev.observations
+              ? `${prev.observations}\n\n${r.observaciones}`
+              : r.observaciones,
+          };
+        })}
+      />
+
       {/* ===== PREVIEW ===== */}
       <Dialog open={!!previewDoc} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => setPreviewDoc(null)} textoVolver="Volver a documentos" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="capitalize">{previewDoc?.doc_type} {previewDoc?.doc_number}</DialogTitle>
@@ -1131,6 +1283,13 @@ export default function Documents() {
                           )}
                         </div>
                         <p className="text-xs text-gray-400">Esta firma puede imprimirse con el documento exportando el PDF.</p>
+                        <EnviarCopiaFirmada
+                          doc={previewDoc}
+                          empresa={company}
+                          tipo="documento"
+                          email={contacts.find(x => x.id === previewDoc.contact_id)?.email}
+                          telefono={contacts.find(x => x.id === previewDoc.contact_id)?.phone}
+                        />
                       </div>
                     ) : (
                       <SignatureCanvas
@@ -1147,18 +1306,20 @@ export default function Documents() {
                           const updated = { ...previewDoc, ...updateData };
                           setPreviewDoc(updated);
                           setDocs(prev => prev.map(d => d.id === previewDoc.id ? updated : d));
-                          // Enviar copia firmada al cliente
-                          const c = contacts.find(x => x.id === previewDoc.contact_id);
-                          base44.functions.invoke('enviarCopiaFirmada', {
-                            contact_email: c?.email || null,
-                            contact_name: previewDoc.contact_name,
-                            doc_title: `${previewDoc.doc_type?.toUpperCase()} Nº${previewDoc.doc_number}`,
-                            doc_type: previewDoc.doc_type,
-                            sign_datetime: signDt,
-                            signature_url: dataUrl,
-                            signer_role: 'cliente',
-                            extra_info: `Total: ${previewDoc.total?.toFixed(2)} € | Fecha doc: ${previewDoc.date}`
-                          }).catch(() => {});
+                          // La copia firmada NO se manda por el servidor.
+                          //
+                          // Ese correo lo mandaba una función de Base44 y gasta
+                          // créditos: cuando se acababan, saltaba un cartel rojo
+                          // con el cliente delante y encima se quedaba sin copia.
+                          // Ahora se manda desde el propio aparato —WhatsApp o el
+                          // correo del móvil, con el enlace donde el cliente puede
+                          // imprimirlo o guardarlo en PDF— con los botones que
+                          // salen aquí debajo en cuanto queda firmado.
+                          toast({
+                            title: 'Firma guardada',
+                            description: 'Abajo tienes los botones para mandarle su copia al cliente.',
+                            duration: 3000,
+                          });
                         }}
                       />
                     )}
@@ -1183,7 +1344,7 @@ export default function Documents() {
                     <Button size="sm" variant="outline" className="text-blue-700 border-blue-200 hover:bg-blue-50" onClick={() => sendSignLink(previewDoc, 'email')}>
                       <Mail className="w-3.5 h-3.5 mr-1" />Enviar enlace firma (Email)
                     </Button>
-                    <Button size="sm" variant="outline" className="text-gray-500" onClick={() => { navigator.clipboard.writeText(getSignLink(previewDoc)); }}>
+                    <Button size="sm" variant="outline" className="text-gray-500" onClick={() => { const l = getSignLink(previewDoc); if (!l) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; } navigator.clipboard.writeText(l); toast({ title: 'Enlace copiado', duration: 2000 }); }}>
                       <Link className="w-3.5 h-3.5 mr-1" />Copiar enlace
                     </Button>
                   </div>
@@ -1265,6 +1426,30 @@ export default function Documents() {
                   </span>
                 </div>
                 <p className="text-[10px] text-gray-400 mt-1">El QR va en el PDF y abre la página de verificación. Si editas el documento, la verificación se actualiza sola.</p>
+                {/* Poder VER la página, no solo configurarla a ciegas. Antes no
+                    había manera de comprobar qué le sale al cliente al escanear. */}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm" variant="outline" className="text-xs gap-1"
+                    data-prueba="ver-verificacion"
+                    onClick={() => {
+                      const base = direccionPublica(company);
+                      if (!base) {
+                        alert('Falta la dirección pública del programa.\n\n'
+                          + 'Ponla en Configuración → Impresión → Verificación de documentos. '
+                          + 'Sin ella el QR se genera con la dirección de este aparato '
+                          + '(en el móvil, "localhost"), y al cliente no le abre nada.');
+                        return;
+                      }
+                      window.open(`${base}/verificar-documento?id=${previewDoc.id}`, '_blank', 'noopener');
+                    }}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" /> Ver lo que verá quien escanee el QR
+                  </Button>
+                  <span className="text-[10px] text-gray-400">
+                    Se configura en Configuración → Impresión → Verificación de documentos.
+                  </span>
+                </div>
               </div>
             </>
           }
@@ -1298,6 +1483,21 @@ export default function Documents() {
                       {isRechazado && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200 flex-shrink-0">❌ RECHAZADO</span>}
                     </div>
                     <p className="text-gray-500 text-sm truncate">{doc.contact_name || 'Sin cliente'} · {doc.date} {doc.work_type && doc.work_type !== 'otro' ? `· ${doc.work_type}` : ''}</p>
+                    {/* La decisión del cliente, con su fecha y su hora, en la
+                        propia lista: para verlo de un vistazo sin abrir nada
+                        ni tener que buscarlo en el correo. */}
+                    {(isAceptado || isRechazado) && (
+                      <p
+                        className={`text-xs font-semibold ${isAceptado ? 'text-green-700' : 'text-red-600'}`}
+                        data-prueba="firma-en-lista"
+                      >
+                        {isAceptado ? '✅ Aceptado' : '❌ Rechazado'} y firmado
+                        {doc.sign_datetime ? ` el ${doc.sign_datetime}` : ''}
+                        {doc.signature_history?.length > 1
+                          ? ` · cambió de opinión ${doc.signature_history.length - 1} ${doc.signature_history.length - 1 === 1 ? 'vez' : 'veces'}`
+                          : ''}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import { Link } from 'react-router-dom';
@@ -12,7 +12,7 @@ import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Phone, Mail, Navigation, Plus, FileText, Calculator, CheckCircle, Clock, XCircle, Upload, Trash2, Edit, Eye, Send, Bot, ArrowLeft, Printer, MessageCircle, Camera, History } from 'lucide-react';
+import { Phone, Mail, Navigation, Plus, FileText, Calculator, CheckCircle, Clock, XCircle, Upload, Trash2, Edit, Eye, Send, Bot, ArrowLeft, Printer, MessageCircle, Camera, History, AlertTriangle } from 'lucide-react';
 import ClientMachineTab from '../components/ClientMachineTab';
 import EquipmentDiaryTab from '../components/EquipmentDiaryTab';
 import ClientRepairGallery from '../components/ClientRepairGallery';
@@ -28,6 +28,7 @@ import SignatureHistoryViewer from '../components/SignatureHistoryViewer';
 import ThermalCalcViewer from '../components/ThermalCalcViewer';
 import InstallationHistoryTab from '../components/InstallationHistoryTab';
 import InterventionHistoryTab from '../components/InterventionHistoryTab';
+import { useParametrosUrl } from '@/lib/parametrosUrl';
 
 function ChangeHistoryTab({ contactId }) {
   const [logs, setLogs] = React.useState([]);
@@ -77,9 +78,12 @@ const PAYMENT_PROFILES = {
 const APT_STATUS_ICON = { pendiente: <Clock className="w-3 h-3" />, confirmada: <CheckCircle className="w-3 h-3" />, completada: <CheckCircle className="w-3 h-3 text-green-600" />, cancelada: <XCircle className="w-3 h-3 text-red-500" /> };
 
 export default function ContactDetail() {
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = useParametrosUrl();
   const contactId = urlParams.get('id');
   const [contact, setContact] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState('');
+  const [avisoHistorial, setAvisoHistorial] = useState(false);
   const [invoices, setInvoices] = useState([]);
   const [satOrders, setSatOrders] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
@@ -112,25 +116,49 @@ export default function ContactDetail() {
   const photoRef = useRef(null);
   const printRef = useRef(null);
 
-  useEffect(() => {
+  /*
+   * La carga de la ficha, con red de seguridad.
+   *
+   * Antes esto no tenía ni un try/catch: si el servidor contestaba mal —un 429
+   * por exceso de peticiones, un corte de cobertura— la pantalla se quedaba en
+   * «Cargando...» para siempre y sin decir por qué.
+   *
+   * Ahora se separa lo imprescindible de lo accesorio: el contacto tiene que
+   * cargar sí o sí, y si falla se dice y se ofrece reintentar. El historial
+   * (facturas, partes, documentos…) se pide aparte, y si una tanda falla se
+   * pinta la ficha igual con lo que haya: más vale ver los datos del cliente
+   * sin su historial que no ver nada.
+   */
+  const cargar = useCallback(async () => {
     if (!contactId) return;
-    const load = async () => {
-      // Cargar contacto primero para mostrar UI al instante
+    setErrorCarga('');
+    setCargando(true);
+    try {
       const contacts = await base44.entities.Contact.filter({ id: contactId });
       const c = contacts[0] || null;
       setContact(c);
       setContactForm(c || {});
+      if (!c) setErrorCarga('no-esta');
+    } catch (err) {
+      setErrorCarga(err?.message || 'No se ha podido cargar el cliente.');
+      setCargando(false);
+      return;
+    }
+    setCargando(false);
 
-      // Cargar en dos tandas para no superar el rate limit
+    // El historial, en dos tandas para no pasarse del límite de peticiones.
+    try {
       const [inv, sat, maint] = await Promise.all([
         base44.entities.Invoice.filter({ contact_id: contactId }),
         base44.entities.SATOrder.filter({ contact_id: contactId }),
         base44.entities.MaintenanceSheet.filter({ contact_id: contactId }),
       ]);
-      setInvoices(inv);
-      setSatOrders(sat);
-      setMaintenance(maint);
+      setInvoices(inv); setSatOrders(sat); setMaintenance(maint);
+    } catch {
+      setAvisoHistorial(true);
+    }
 
+    try {
       const [docs, nts, apts, calcs] = await Promise.all([
         base44.entities.ClientDocument.filter({ contact_id: contactId }),
         base44.entities.ClientNote.filter({ contact_id: contactId }),
@@ -139,12 +167,13 @@ export default function ContactDetail() {
       ]);
       setDocuments(docs);
       setEquipmentPhotos(docs.filter((d) => d.doc_type === 'foto_equipo'));
-      setNotes(nts);
-      setAppointments(apts);
-      setCalculations(calcs);
-    };
-    load();
+      setNotes(nts); setAppointments(apts); setCalculations(calcs);
+    } catch {
+      setAvisoHistorial(true);
+    }
   }, [contactId]);
+
+  useEffect(() => { cargar(); }, [cargar]);
 
   const saveNote = async () => {
     await base44.entities.ClientNote.create({ ...noteForm, contact_id: contactId, contact_name: contact?.name, date: format(new Date(), 'yyyy-MM-dd') });
@@ -290,7 +319,37 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
     setMaintenance(maintenance.filter((m) => m.id !== id));
   };
 
-  if (!contact) return <div className="text-center py-8 text-gray-400">Cargando...</div>;
+  if (!contact) {
+    // Nunca más un «Cargando...» eterno: o está cargando de verdad, o se dice
+    // qué ha pasado y se ofrece volver a intentarlo.
+    if (cargando) return <div className="text-center py-8 text-gray-400">Cargando...</div>;
+    return (
+      <div className="max-w-md mx-auto text-center py-10 px-4" data-prueba="error-ficha-cliente">
+        <AlertTriangle className="w-10 h-10 mx-auto text-amber-500 mb-3" />
+        <p className="font-semibold text-gray-800 mb-1">
+          {errorCarga === 'no-esta' ? 'Este cliente ya no está' : 'No se ha podido abrir la ficha'}
+        </p>
+        <p className="text-sm text-gray-500 mb-4">
+          {errorCarga === 'no-esta'
+            ? 'Puede que lo hayan borrado, o que el enlace apunte a una ficha que ya no existe.'
+            : (contactId
+              ? 'El servidor no ha contestado. Suele ser la cobertura o que se han hecho muchas peticiones seguidas.'
+              : 'El enlace no trae el cliente que hay que abrir.')}
+        </p>
+        {errorCarga && errorCarga !== 'no-esta' && (
+          <p className="text-[11px] text-gray-400 mb-4 break-words">{errorCarga}</p>
+        )}
+        <div className="flex gap-2 justify-center">
+          {contactId && errorCarga !== 'no-esta' && (
+            <Button onClick={cargar} data-prueba="reintentar-ficha">Volver a intentarlo</Button>
+          )}
+          <Link to={createPageUrl('Contacts')}>
+            <Button variant="outline">Ir a la lista de clientes</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const pp = PAYMENT_PROFILES[contact.payment_profile] || PAYMENT_PROFILES.pagador_normal;
 
@@ -385,6 +444,20 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
               <p className="text-lg font-black truncate">{doc.doc_number || doc.title || doc.order_number || `${type} sin nº`}</p>
               <p className="text-gray-500 text-xs font-black">{fmtDate(doc.date)} {doc.total != null ? `| ${doc.total?.toFixed(2)} €` : ''}</p>
               <Badge variant="outline" className="text-[10px] mt-1">{doc.status || doc.doc_type || type}</Badge>
+              {/* Si el cliente lo firmó, aquí se ve qué decidió y cuándo, sin
+                  abrir el documento ni ir a buscarlo al correo. */}
+              {doc.signature_client && (
+                <p
+                  className={`text-xs font-bold mt-1 ${doc.status === 'cancelado' ? 'text-red-600' : 'text-green-700'}`}
+                  data-prueba="firma-en-ficha"
+                >
+                  {doc.status === 'cancelado' ? '❌ Rechazado' : '✅ Aceptado'} y firmado
+                  {doc.sign_datetime ? ` el ${doc.sign_datetime}` : ''}
+                  {doc.signature_history?.length > 1
+                    ? ` · cambió de opinión ${doc.signature_history.length - 1} ${doc.signature_history.length - 1 === 1 ? 'vez' : 'veces'}`
+                    : ''}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex gap-1 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
@@ -423,6 +496,23 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           </Button>
         </Link>
       </div>
+
+      {/* Si el historial no llegó, se dice. Si no, una ficha con las pestañas
+          vacías parece un cliente sin facturas ni partes, que es peor. */}
+      {avisoHistorial && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 flex items-start gap-2"
+          data-prueba="aviso-historial-incompleto">
+          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-900">
+            <strong>El historial no se ha podido cargar entero.</strong> Los datos del cliente son
+            correctos, pero puede que falten facturas, partes o documentos. No es que no los tenga.
+            <button type="button" onClick={cargar} className="ml-1 underline font-semibold">
+              Volver a intentarlo
+            </button>
+          </p>
+        </div>
+      )}
+
       <CompanyHeader />
 
       <Card>

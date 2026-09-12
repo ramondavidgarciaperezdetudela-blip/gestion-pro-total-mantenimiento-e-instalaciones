@@ -157,6 +157,23 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx cap add android && npx cap sync android
+
+      - name: Quitar el service worker del APK
+        # Dentro del APK todos los ficheros ya están en el aparato, así que la
+        # caché del service worker no aporta nada y sí puede romper: si queda
+        # una de una versión anterior, sirve un index.html viejo que apunta a
+        # ficheros que la versión nueva ya no trae, y la aplicación no arranca
+        # («La página no se cargó correctamente»).
+        #
+        # Al no estar el fichero, el navegador que busque una actualización de
+        # /sw.js se encuentra un 404 y DA DE BAJA el registro él solo. Es la
+        # única forma de limpiar un aparato ya afectado sin que el usuario
+        # tenga que ir a borrar los datos de la aplicación a mano.
+        run: |
+          rm -f android/app/src/main/assets/public/sw.js
+          ls android/app/src/main/assets/public/sw.js 2>/dev/null \
+            && { echo "::error::el sw.js sigue dentro del APK"; exit 1; } \
+            || echo "sw.js fuera del APK, correcto"
       - name: Meter el explorador de ficheros para guardar la copia
         # cap add/sync regenera el proyecto de Android entero, así que este
         # trozo nativo hay que volver a ponerlo DESPUÉS, en cada compilación.

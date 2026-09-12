@@ -379,7 +379,7 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
 
       {/* Dialog nuevo/editar diario */}
       <Dialog open={diaryDialogOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-md" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-md" onVolver={() => { setDiaryDialogOpen(false); setEditingDiary(null); }} textoVolver="Volver sin guardar" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{editingDiary ? 'Editar equipo' : 'Nuevo equipo'}</DialogTitle>
@@ -447,7 +447,7 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
 
       {/* Dialog nueva/editar entrada */}
       <Dialog open={entryDialogOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onVolver={() => { setEntryDialogOpen(false); setEditingEntry(null); }} textoVolver="Volver sin guardar" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{editingEntry?.entryIndex !== null ? 'Editar entrada' : 'Nueva entrada de reparación'}</DialogTitle>

@@ -81,7 +81,7 @@ const quickLinks = [
 { name: 'Presupuesto', page: 'Documents?type=presupuesto', icon: FileText, color: 'bg-blue-600' },
 { name: 'Documentos', page: 'Documents', icon: FileText, color: 'bg-violet-600' },
 { name: 'Plantillas', page: 'DocumentTemplates', icon: Palette, color: 'bg-rose-500' },
-{ name: 'Docs Legalización', page: 'LegalDocs', icon: FileText, color: 'bg-indigo-600' },
+{ name: 'Modelos y legalización', page: 'LegalDocs', icon: FileText, color: 'bg-indigo-600' },
 { name: 'Normativas', page: 'Regulations', icon: Shield, color: 'bg-indigo-500' },
 { name: 'Manuales', page: 'Manuals', icon: BookOpen, color: 'bg-teal-600' },
 { name: 'Catálogos', page: 'Catalogs', icon: BookOpen, color: 'bg-teal-500' },
@@ -102,7 +102,18 @@ const quickLinks = [
 { name: 'Copias Seg.', page: 'BackupCenter', icon: Shield, color: 'bg-blue-700' },
 { name: 'Actualizaciones', page: 'UpdateCenter', icon: RefreshCw, color: 'bg-green-600' },
 { name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
-{ name: 'Soporte IA', page: 'AISupport', icon: Bot, color: 'bg-blue-500' }];
+{ name: 'Soporte IA', page: 'AISupport', icon: Bot, color: 'bg-blue-500' },
+// Estos faltaban en la lista y por eso no salían en ningún grupo de abajo:
+// los grupos se arman a partir de aquí y lo que no está, se descarta.
+{ name: 'Cálculo Eléctrico', page: 'ElectricalCalc', icon: Zap, color: 'bg-yellow-500' },
+{ name: 'Baterías', page: 'BatteryCalc', icon: Zap, color: 'bg-lime-600' },
+{ name: 'Cálculo Solar', page: 'SolarCalc', icon: Sun, color: 'bg-amber-500' },
+{ name: 'Solar + Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-orange-500' },
+{ name: 'Tubo Capilar', page: 'CapillaryCalc', icon: Ruler, color: 'bg-cyan-700' },
+{ name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Gauge, color: 'bg-rose-600' },
+{ name: 'Tablas de Gases', page: 'TablasRefrigerantes', icon: Snowflake, color: 'bg-sky-700' },
+{ name: 'Códigos de Error', page: 'CodigosError', icon: AlertTriangle, color: 'bg-red-600' },
+{ name: 'Presiones y Carga', page: 'PresionesGas', icon: Gauge, color: 'bg-blue-700' }];
 
 // Índice rápido página -> objeto de enlace (para armar los grupos reutilizando icono/color/nombre)
 const _linkByPage = Object.fromEntries(quickLinks.map(l => [l.page, l]));
@@ -110,12 +121,17 @@ const _linkByPage = Object.fromEntries(quickLinks.map(l => [l.page, l]));
 // Accesos AGRUPADOS por secciones (como el bloque de Refrigeración y Gases).
 const GRUPOS = [
   { titulo: 'Proveedores y Tarifas', color: '#f59e0b', pages: ['Suppliers', 'SupplierTariffs', 'PurchaseSummary', 'SparePartsManager', 'Inventory', 'Catalogs'] },
-  { titulo: 'Cálculos', color: '#ef4444', pages: ['ThermalCalc', 'ElectricalCalc', 'BatteryCalc', 'SolarBatteryCalc', 'SolarCalc', 'ColdRoomCalc', 'ACPotenciaCalc', 'MultiAreaCalc', 'ACPlanAnalysis', 'PlanoIA', 'CapillaryCalc', 'DiagnosticoCarga'] },
+  // Los cálculos van por oficio, igual que en el menú lateral: veintitantas
+  // herramientas seguidas no hay quien las lea.
+  { titulo: 'Electricidad', color: '#eab308', pages: ['ElectricalCalc'] },
+  { titulo: 'Clima', color: '#0ea5e9', pages: ['ACPotenciaCalc', 'ACPlanAnalysis', 'ThermalCalc', 'MultiAreaCalc', 'PlanoIA', 'CodigosError'] },
+  { titulo: 'Refrigeración', color: '#06b6d4', pages: ['ColdRoomCalc', 'CapillaryCalc', 'DiagnosticoCarga', 'RefrigerantEquiv', 'DanfossTools', 'PresionesGas', 'TablasRefrigerantes'] },
+  { titulo: 'Solar', color: '#f59e0b', pages: ['SolarCalc', 'SolarBatteryCalc', 'BatteryCalc'] },
   { titulo: 'Documentos', color: '#7C3AED', pages: ['Documents', 'Documents?type=factura', 'Documents?type=presupuesto', 'DocumentTemplates', 'LegalDocs'] },
   { titulo: 'SAT y Trabajo', color: '#F97316', pages: ['SAT', 'SATChat', 'TechnicianFieldWork', 'TecniciansRoutes', 'Maintenance', 'MaintenancePlanning', 'IncidentManagement', 'EquipmentFailureHistory', 'EquipmentDiaryPage'] },
   { titulo: 'Clientes y Agenda', color: '#10B981', pages: ['Contacts', 'ClientPortal', 'Projects', 'ProjectTimeline', 'Agenda', 'Availability', 'SATCalendar', 'TechnicianDay'] },
   { titulo: 'IA y Asistencia', color: '#3B82F6', pages: ['AIAssistant', 'AISearch', 'AIBudget', 'AIReports', 'AIPlanning', 'AISupport'] },
-  { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'Regulations', 'DanfossTools', 'GasSuppliers', 'RefrigerantEquiv', 'TablasRefrigerantes'] },
+  { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'Regulations', 'GasSuppliers'] },
   { titulo: 'Informes y Sistema', color: '#64748b', pages: ['Reports', 'Automations', 'SmartReminders', 'Notes', 'AuditLog', 'BusinessCards', 'ExportData', 'BackupCenter', 'UpdateCenter', 'CompanyConfig'] },
 ].map(g => ({ ...g, links: g.pages.map(p => _linkByPage[p]).filter(Boolean) }));
 
@@ -458,6 +474,27 @@ export default function Home() {
           })}
         </div>
       </div>
+
+      {/* ── Códigos de avería por marcas ───────────────────────────────────
+          Va aparte y grande a propósito: es lo primero que se busca cuando
+          hay una máquina en error y el cliente delante. */}
+      <Link to={createPageUrl('CodigosError')} data-prueba="boton-codigos-error">
+        <div className="rounded-xl p-4 flex items-center gap-4 transition-all cursor-pointer"
+          style={{ background: '#1a0e12', border: '1px solid #ef444455' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#26141a'}
+          onMouseLeave={e => e.currentTarget.style.background = '#1a0e12'}>
+          <div className="bg-red-600 p-3 rounded-xl text-white shadow-lg flex-shrink-0">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold" style={{ color: '#e8eaf0' }}>Códigos de avería por marcas</h2>
+            <p className="text-xs" style={{ color: '#8890a8' }}>
+              Busca el código que da la máquina y te dice dónde puede estar la avería.
+              Con el teléfono del servicio técnico oficial de cada marca.
+            </p>
+          </div>
+        </div>
+      </Link>
 
       {/* Accesos AGRUPADOS por secciones (móvil + escritorio) */}
       <div className="space-y-3">

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit, Phone, Mail, Copy, Save, Plus, ChevronDown, ChevronUp, FileDown } from 'lucide-react';
 import CompanyHeader from './CompanyHeader';
 import SignatureCanvas from './SignaturePad';
+import { direccionPublica } from '@/lib/copiaFirmada';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo'];
 const STATUSES = ['borrador', 'enviado', 'pagado', 'vencido', 'cancelado'];
@@ -205,7 +206,7 @@ export default function InvoicePreviewDialog({ doc, open, onClose, onSaved, cont
   };
 
   const getSignLink = () => {
-    const base = window.location.origin;
+    const base = direccionPublica(companySettings);
     return `${base}/presupuesto-publico?id=${doc.id}`;
   };
 

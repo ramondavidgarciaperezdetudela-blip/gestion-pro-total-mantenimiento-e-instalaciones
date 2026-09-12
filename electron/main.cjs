@@ -377,6 +377,70 @@ ipcMain.handle('gpt-ia-fetch', async (_evt, { url, method, headers, body, tiempo
   }
 });
 
+// ── Impresoras del ordenador ───────────────────────────────────────────────
+//
+// En el navegador no se puede saber qué impresoras hay: el diálogo lo enseña
+// el propio navegador y ya está. En el programa instalado sí se puede, y hace
+// falta: quien trabaja con una impresora de etiquetas y otra de papel quiere
+// elegir de una vez cuál usa para los documentos, y no tener que acordarse en
+// cada impresión.
+
+ipcMain.handle('gpt-impresoras', async () => {
+  try {
+    const win = mainWindow || BrowserWindow.getAllWindows()[0];
+    if (!win) return { ok: false, error: 'No hay ventana' };
+    const lista = await win.webContents.getPrintersAsync();
+    return {
+      ok: true,
+      impresoras: (lista || []).map((i) => ({
+        nombre: i.name,
+        descripcion: i.displayName || i.description || '',
+        pordefecto: !!i.isDefault,
+        estado: i.status,
+      })),
+    };
+  } catch (err) {
+    return { ok: false, error: String(err && err.message ? err.message : err) };
+  }
+});
+
+/**
+ * Imprime un HTML en la impresora elegida.
+ *
+ * Se pinta en una ventana oculta y se imprime desde ahí: así el documento sale
+ * tal cual, sin la interfaz del programa alrededor. Si no se dice impresora, o
+ * si se pide expresamente, sale el diálogo del sistema para elegirla.
+ */
+ipcMain.handle('gpt-imprimir', async (_evt, { html, impresora, silencioso, margenes, tamanoPapel }) => {
+  let oculta = null;
+  try {
+    oculta = new BrowserWindow({
+      show: false,
+      webPreferences: { contextIsolation: true, nodeIntegration: false, javascript: false },
+    });
+    await oculta.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(String(html || '')));
+    // Un respiro para que carguen las imágenes (logo, firmas, fotos).
+    await new Promise((r) => setTimeout(r, 400));
+
+    const opciones = {
+      silent: !!silencioso && !!impresora,
+      printBackground: true,
+      deviceName: impresora || undefined,
+      margins: margenes ? { marginType: 'custom', ...margenes } : { marginType: 'default' },
+    };
+    if (tamanoPapel) opciones.pageSize = tamanoPapel;
+
+    const resultado = await new Promise((resolve) => {
+      oculta.webContents.print(opciones, (exito, motivo) => resolve({ exito, motivo }));
+    });
+    return { ok: !!resultado.exito, motivo: resultado.motivo || '' };
+  } catch (err) {
+    return { ok: false, motivo: String(err && err.message ? err.message : err) };
+  } finally {
+    if (oculta) { try { oculta.destroy(); } catch { /* ya cerrada */ } }
+  }
+});
+
 ipcMain.handle('gpt-guardar-copia', async (_evt, { nombre, contenido, carpeta }) => {
   try {
     const { ruta, alternativa, perdida } = carpetaDeCopias(carpeta);

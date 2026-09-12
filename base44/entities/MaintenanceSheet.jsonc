@@ -224,6 +224,62 @@
         "completada"
       ],
       "default": "pendiente"
+    },
+    "compressor_ref": {
+      "type": "string",
+      "description": "Referencia completa del compresor (ej: FH4518Y-XC3A)"
+    },
+    "compressor_brand": {
+      "type": "string",
+      "description": "Marca del compresor tal y como figura en la placa"
+    },
+    "compressor_application": {
+      "type": "string",
+      "description": "Aplicación: HBP, MBP, LBP…"
+    },
+    "compressor_supply": {
+      "type": "string",
+      "description": "Alimentación (ej: 220-240V 1PH 50Hz)"
+    },
+    "compressor_refrigerants": {
+      "type": "string",
+      "description": "Refrigerantes admitidos (ej: R-134a, R-513A)"
+    },
+    "compressor_technology": {
+      "type": "string",
+      "description": "Tecnología: recíproco, scroll, tornillo…"
+    },
+    "compressor_power_hp": {
+      "type": "string",
+      "description": "Potencia en CV / HP"
+    },
+    "compressor_notes": {
+      "type": "string",
+      "description": "Otros datos de la placa del compresor"
+    },
+    "sign_datetime_technician": {
+      "type": "string",
+      "description": "Fecha y hora de la firma del técnico"
+    },
+    "sign_datetime_client": {
+      "type": "string",
+      "description": "Fecha y hora de la firma del cliente"
+    },
+    "inspeccion_sanitaria": {
+      "type": "object",
+      "description": "Hoja de inspección técnico-sanitaria de cámaras frigoríficas",
+      "properties": {
+        "activa": { "type": "boolean", "default": false },
+        "establecimiento": { "type": "string" },
+        "actividad": { "type": "string" },
+        "registro_sanitario": { "type": "string" },
+        "motivo": { "type": "string" },
+        "carne_instalador": { "type": "string" },
+        "respuestas": { "type": "object", "description": "Lo marcado en cada punto" },
+        "medidas": { "type": "object", "description": "Valores medidos (bar, °C…)" },
+        "observaciones": { "type": "object", "description": "Texto libre por apartado" },
+        "fotos": { "type": "object", "description": "Fotos de la intervención por bloque" }
+      }
     }
   },
   "required": [

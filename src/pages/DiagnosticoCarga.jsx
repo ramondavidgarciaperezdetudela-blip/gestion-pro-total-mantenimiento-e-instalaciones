@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import NavBar from '@/components/NavBar';
 import { base44 } from '@/api/base44Client';
 import { uploadFile } from '@/lib/uploadImage';
-import { Printer, FileDown, Gauge, Snowflake, ArrowRightLeft, Wrench, Loader2, Droplets, Zap, AlertTriangle, Save, CheckCircle2, BookOpen, ArrowLeft } from 'lucide-react';
+import { Printer, FileDown, Gauge, Snowflake, ArrowRightLeft, Wrench, Loader2, Droplets, Zap, AlertTriangle, Save, CheckCircle2, BookOpen, ArrowLeft, User } from 'lucide-react';
 import { REFRIGERANT_DATABASE, estadoRefrigerante, getRefrigerantInfo } from '@/components/refrigerantData';
 import { format } from 'date-fns';
 import { createPageUrl } from '../utils';
@@ -14,6 +14,9 @@ import EsquemaCircuito from '@/components/EsquemaCircuito';
 import CodigosAveriaSplit from '@/components/CodigosAveriaSplit';
 import EsquemaSplit from '@/components/EsquemaSplit';
 import { diagnosticoClima, GASES_CLIMA, tempSaturacion, RANGOS_CLIMA, nivelRango } from '@/lib/diagnosticoClima';
+import { useParametrosUrl } from '@/lib/parametrosUrl';
+import { imprimirPantalla } from '@/lib/printHelper';
+import BuscadorCliente from '@/components/BuscadorCliente';
 
 // Presiones ORIENTATIVAS manométricas (bar) por refrigerante y aplicación.
 const PRES = {
@@ -328,15 +331,59 @@ export default function DiagnosticoCarga() {
   // ── Contexto: cliente / orden SAT desde la URL (llegando desde una orden) ──
   // Permite guardar el diagnóstico en la ficha del cliente y, si viene de una
   // orden SAT, vincularlo automáticamente a sus apartados antes/después.
-  const urlParams = new URLSearchParams(window.location.search);
-  const ctxContactId = urlParams.get('contact_id');
+  const urlParams = useParametrosUrl();
+  const urlContactId = urlParams.get('contact_id');
   const ctxSatOrderId = urlParams.get('sat_order_id');
   const [ctxContact, setCtxContact] = useState(null);
   const [ctxOrder, setCtxOrder] = useState(null);
+
+  /*
+   * El cliente se puede elegir aquí mismo.
+   *
+   * Antes solo se podía vincular llegando desde una orden de SAT, con el
+   * cliente metido en la dirección. Si entrabas por el menú —que es lo normal
+   * cuando estás delante de la máquina— no había manera de guardarlo en la
+   * ficha de nadie, y el botón de guardar ni siquiera aparecía.
+   *
+   * Ahora manda el que se elija a mano, y si no se ha elegido ninguno se usa
+   * el que venga en la dirección. Así el camino de la orden SAT sigue igual.
+   */
+  const [contactoElegido, setContactoElegido] = useState('');
+  const [contactos, setContactos] = useState([]);
+  const [cargandoContactos, setCargandoContactos] = useState(false);
+
+  const ctxContactId = contactoElegido || urlContactId;
+
+  // Si se llega con un cliente en la dirección —desde una orden de SAT o desde
+  // su ficha—, manda ese: es una elección explícita y tiene que pisar la que
+  // hubiera hecha a mano antes en esta misma pantalla.
   useEffect(() => {
-    if (ctxContactId) base44.entities.Contact.filter({ id: ctxContactId }).then(l => setCtxContact(l?.[0] || null)).catch(() => {});
+    if (urlContactId) setContactoElegido(urlContactId);
+  }, [urlContactId]);
+
+  useEffect(() => {
     if (ctxSatOrderId) base44.entities.SATOrder.filter({ id: ctxSatOrderId }).then(l => setCtxOrder(l?.[0] || null)).catch(() => {});
-  }, [ctxContactId, ctxSatOrderId]);
+  }, [ctxSatOrderId]);
+
+  useEffect(() => {
+    if (!ctxContactId) { setCtxContact(null); return; }
+    const yaEstá = contactos.find((c) => c.id === ctxContactId);
+    if (yaEstá) { setCtxContact(yaEstá); return; }
+    base44.entities.Contact.filter({ id: ctxContactId })
+      .then((l) => setCtxContact(l?.[0] || null))
+      .catch(() => setCtxContact(null));
+  }, [ctxContactId, contactos]);
+
+  // La lista para el buscador, una sola vez y sin bloquear la pantalla.
+  useEffect(() => {
+    let vivo = true;
+    setCargandoContactos(true);
+    base44.entities.Contact.list('name', 500)
+      .then((l) => { if (vivo) setContactos(l || []); })
+      .catch(() => { if (vivo) setContactos([]); })
+      .finally(() => { if (vivo) setCargandoContactos(false); });
+    return () => { vivo = false; };
+  }, []);
 
   // ── comunes ──
   const [gas, setGas] = useState('R-410A');
@@ -709,12 +756,39 @@ export default function DiagnosticoCarga() {
     }
   };
 
+  /*
+   * Imprimir el diagnóstico TAL Y COMO ESTÁ EN PANTALLA.
+   *
+   * ─── Los tres fallos que arregla, para que no vuelvan ──────────────────────
+   *
+   * 1) SALÍA OTRO REFRIGERANTE. Antes se copiaba el innerHTML tal cual, y un
+   *    <select> no guarda en el HTML lo que has elegido: lo guarda en una
+   *    propiedad del elemento. Al copiar el HTML se perdía la elección y el
+   *    navegador pintaba la PRIMERA opción de la lista. Por eso ponías R-32 y
+   *    salía impreso R-410A. Lo mismo pasaba con las medidas escritas a mano:
+   *    salían en blanco.
+   *    Ahora cada campo se sustituye por su valor actual, en texto.
+   *
+   * 2) IMPRIMÍA LOS FALLOS. Se corta en la barra de botones (Imprimir,
+   *    Exportar PDF, Limpiar medidas), que es hasta donde interesa. Lo que va
+   *    después —las causas probables y demás— se queda fuera.
+   *
+   * 3) LA LEYENDA SALÍA EN GRIS. Los navegadores quitan los colores de fondo
+   *    al imprimir salvo que se les diga que no. Con print-color-adjust:exact
+   *    los colores de la leyenda salen como en pantalla.
+   */
+  /*
+   * Imprimir el diagnóstico TAL Y COMO ESTÁ EN PANTALLA.
+   *
+   * De esto se encarga imprimirPantalla(), que se lleva los estilos del
+   * programa al papel —recuadros y colores incluidos—, sustituye cada campo
+   * por lo que hayas escrito o elegido, y corta en la barra de botones para
+   * que los fallos no salgan impresos.
+   */
   const printAll = () => {
-    const cont = document.getElementById('diag-print')?.innerHTML || '';
-    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Diagnóstico frigorífico</title>
-    <style>*{box-sizing:border-box;font-family:Arial,sans-serif}body{padding:14px;color:#111;font-size:12px}@media print{@page{size:A4;margin:12mm}}</style>
-    </head><body>${cont}<script>window.onload=()=>setTimeout(()=>window.print(),400)</script></body></html>`;
-    const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); }
+    const panel = document.getElementById('diag-print');
+    if (!panel) return;
+    imprimirPantalla(panel, { titulo: `Diagnóstico frigorífico — ${gas}` });
   };
 
   return (
@@ -729,11 +803,40 @@ export default function DiagnosticoCarga() {
           ))}
         </div>
 
+        {/* Elegir cliente. Va arriba y siempre visible: es lo primero que se
+            hace cuando el diagnóstico es para la ficha de alguien. */}
+        <div className="bg-white rounded-xl shadow p-3 space-y-2" data-prueba="cliente-diagnostico">
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5" />
+              Cliente al que va este diagnóstico
+              <span className="font-normal text-slate-400">(opcional)</span>
+            </label>
+            {ctxContactId && (
+              <Link to={createPageUrl(`ContactDetail?id=${ctxContactId}`)}
+                className="text-[11px] text-indigo-700 font-semibold hover:underline whitespace-nowrap">
+                Ver ficha
+              </Link>
+            )}
+          </div>
+          <BuscadorCliente
+            contacts={contactos}
+            value={ctxContactId || ''}
+            onValueChange={(v) => setContactoElegido(v || '')}
+            placeholder={cargandoContactos ? 'Cargando clientes…' : 'Escribe el nombre del cliente…'}
+          />
+          <p className="text-[11px] text-slate-500">
+            {ctxContactId
+              ? 'Al guardar, el diagnóstico y su imagen quedan en la ficha de este cliente.'
+              : 'Sin cliente el diagnóstico se puede imprimir igual, pero no se guarda en ninguna ficha.'}
+          </p>
+        </div>
+
         {ctxContactId && (
           <div className="flex items-start gap-2 text-[11px] bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-md p-2">
             <BookOpen className="w-4 h-4 shrink-0 mt-0.5" />
             <span className="flex-1">
-              Vinculado a <b>{ctxContact?.name || 'cliente…'}</b>
+              {ctxSatOrderId ? 'Vinculado a ' : 'Se guardará en la ficha de '}<b>{ctxContact?.name || 'cliente…'}</b>
               {ctxSatOrderId && <> · Orden SAT <b>{ctxOrder?.order_number ? `#${ctxOrder.order_number}` : '…'}</b></>}
               {ctxSatOrderId && (ctxOrder?.diagnostic_before?.image_url
                 ? <> · ya hay un diagnóstico guardado como <b>antes de la reparación</b>; el próximo guardado se archivará como <b>después</b>.</>
@@ -1054,8 +1157,11 @@ export default function DiagnosticoCarga() {
                 })()}
               </div>
 
-              {/* Situación de las posibles averías (rojo / amarillo / verde) */}
-              <div className="mt-3 border-t pt-3">
+              {/* Situación de las posibles averías (rojo / amarillo / verde).
+                  No se imprime: en el papel interesa el cálculo que has hecho,
+                  no el mapa de fallos posibles. Va antes de los botones, así
+                  que cortar por los botones no bastaba: se marca aparte. */}
+              <div className="mt-3 border-t pt-3" data-no-imprimir>
                 <DiagnosticFailuresDiagram items={diag1} />
               </div>
             </div>
@@ -1102,7 +1208,7 @@ export default function DiagnosticoCarga() {
               </div>
             ))}
 
-            <div className="flex gap-2">
+            <div className="flex gap-2" data-fin-impresion>
               <Button onClick={printAll} className="gap-2"><Printer className="w-4 h-4" />Imprimir</Button>
               <Button onClick={printAll} variant="outline" className="gap-2"><FileDown className="w-4 h-4" />Exportar PDF</Button>
             </div>
@@ -1306,7 +1412,7 @@ export default function DiagnosticoCarga() {
               </div>
             )}
 
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap" data-fin-impresion>
               <Button onClick={printAll} className="gap-2"><Printer className="w-4 h-4" />Imprimir</Button>
               <Button onClick={printAll} variant="outline" className="gap-2"><FileDown className="w-4 h-4" />Exportar PDF</Button>
               <Button onClick={limpiarClima} variant="outline" className="gap-2 text-red-600">Limpiar medidas</Button>
@@ -1419,7 +1525,7 @@ export default function DiagnosticoCarga() {
                   <p className="flex items-center gap-1"><Droplets className="w-4 h-4 text-amber-600" />Aceite: <b>{destInfo.aceite}</b> {destInfo.vaciar ? '· ⚠ Vaciar y cambiar' : '· ✓ Mantener'}</p>
                   <p className="text-[11px] text-slate-500">Recuerda: cambiar filtro deshidratador, hacer vacío y ajustar recalentamiento. Verifica compatibilidad del compresor arriba.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2" data-fin-impresion>
                   <Button onClick={printAll} className="gap-2"><Printer className="w-4 h-4" />Imprimir</Button>
                   <Button onClick={printAll} variant="outline" className="gap-2"><FileDown className="w-4 h-4" />Exportar PDF</Button>
                 </div>
@@ -1446,7 +1552,7 @@ export default function DiagnosticoCarga() {
               {avResp && <div className="bg-gray-50 border rounded-lg p-3 text-sm whitespace-pre-wrap">{avResp}</div>}
             </div>
             {avResp && (
-              <div className="flex gap-2">
+              <div className="flex gap-2" data-fin-impresion>
                 <Button onClick={printAll} className="gap-2"><Printer className="w-4 h-4" />Imprimir</Button>
                 <Button onClick={printAll} variant="outline" className="gap-2"><FileDown className="w-4 h-4" />Exportar PDF</Button>
               </div>

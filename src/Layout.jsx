@@ -114,13 +114,14 @@ const navItems = [
 { name: 'Agenda', page: 'Agenda', icon: Calendar },
 { name: 'Asistente IA', page: 'AIAssistant', icon: Bot },
 { name: 'Averías', page: 'EquipmentFailureHistory', icon: AlertCircle },
+{ name: 'Códigos de error', page: 'CodigosError', icon: AlertCircle },
+{ name: 'Presiones y carga', page: 'PresionesGas', icon: Droplets },
 { name: 'Baterías', page: 'BatteryCalc', icon: Zap },
 { name: 'Búsqueda IA', page: 'AISearch', icon: Search },
 { name: 'Cal. SAT', page: 'SATCalendar', icon: Calendar },
 { name: 'Calc. Eléctrico', page: 'ElectricalCalc', icon: Zap },
 { name: 'Calc. Térmico', page: 'ThermalCalc', icon: Thermometer },
-{ name: 'Cám. + Humedad', page: 'ColdRoomCalc?tab=combinado', icon: Droplets },
-{ name: 'Cám. Frigorífica', page: 'ColdRoomCalc?tab=camara', icon: Thermometer },
+{ name: 'Cámara frigorífica', page: 'ColdRoomCalc', icon: Thermometer },
 { name: 'Campo', page: 'TechnicianFieldWork', icon: Wrench },
 { name: 'Catálogos', page: 'Catalogs', icon: FileText },
 { name: 'Chat SAT', page: 'SATChat', icon: MessageSquare },
@@ -129,11 +130,10 @@ const navItems = [
 { name: 'Copias Seg.', page: 'BackupCenter', icon: Shield },
 { name: 'Diario Rep.', page: 'EquipmentDiaryPage', icon: ClipboardList },
 { name: 'Disponibilidad', page: 'Availability', icon: CalendarCheck },
-{ name: 'Docs Legal.', page: 'LegalDocs', icon: FileText },
+{ name: 'Modelos y legaliz.', page: 'LegalDocs', icon: FileText },
 { name: 'Documentos', page: 'Documents', icon: FileText },
 { name: 'Exportar', page: 'ExportData', icon: Download },
 { name: 'Historial', page: 'AuditLog', icon: History },
-{ name: 'Humedad Relativa', page: 'ColdRoomCalc?tab=humedad', icon: Droplets },
 { name: 'Incidencias', page: 'IncidentManagement', icon: AlertTriangle },
 { name: 'Inicio', page: 'Home', icon: Home },
 { name: 'Informes', page: 'Reports', icon: BarChart3 },
@@ -193,22 +193,25 @@ const PAGE_SECTION = {
   Maintenance: 'Operaciones', MaintenancePlanning: 'Operaciones', IncidentManagement: 'Operaciones',
   EquipmentDiaryPage: 'Operaciones', EquipmentFailureHistory: 'Operaciones', Agenda: 'Operaciones',
   Availability: 'Operaciones',
-  TablasRefrigerantes: 'Operaciones',
   // Clientes y proyectos
   Contacts: 'Clientes', ContactForm: 'Clientes', ClientPortal: 'Clientes',
   Projects: 'Clientes', ProjectTimeline: 'Clientes',
   // Documentos
   Documents: 'Documentos', DocumentTemplates: 'Documentos', BusinessCards: 'Documentos',
   LegalDocs: 'Documentos', Catalogs: 'Documentos',
-  // Cálculo y diagnóstico técnico
-  ThermalCalc: 'Cálculo y diagnóstico', ElectricalCalc: 'Cálculo y diagnóstico',
-  ColdRoomCalc: 'Cálculo y diagnóstico', ACPotenciaCalc: 'Cálculo y diagnóstico',
-  ACPlanAnalysis: 'Cálculo y diagnóstico', MultiAreaCalc: 'Cálculo y diagnóstico',
-  PlanoIA: 'Cálculo y diagnóstico',
-  SolarBatteryCalc: 'Cálculo y diagnóstico', CapillaryCalc: 'Cálculo y diagnóstico',
-  BatteryCalc: 'Cálculo y diagnóstico', SolarCalc: 'Cálculo y diagnóstico',
-  RefrigerantEquiv: 'Cálculo y diagnóstico', DiagnosticoCarga: 'Cálculo y diagnóstico',
-  DanfossTools: 'Cálculo y diagnóstico',
+  // Cálculo y diagnóstico, cada oficio por su lado.
+  //
+  // Antes iban todos juntos en una sección con subgrupos dentro. Se han
+  // separado en secciones independientes porque el que trabaja el frío no
+  // quiere pasar por delante de lo eléctrico cada vez que abre el menú.
+  ElectricalCalc: 'Electricidad',
+  ACPotenciaCalc: 'Clima', ACPlanAnalysis: 'Clima', ThermalCalc: 'Clima',
+  MultiAreaCalc: 'Clima', PlanoIA: 'Clima', CodigosError: 'Clima',
+  ColdRoomCalc: 'Refrigeración', CapillaryCalc: 'Refrigeración',
+  DiagnosticoCarga: 'Refrigeración', RefrigerantEquiv: 'Refrigeración',
+  DanfossTools: 'Refrigeración', PresionesGas: 'Refrigeración',
+  SolarCalc: 'Solar', SolarBatteryCalc: 'Solar', BatteryCalc: 'Solar',
+  TablasRefrigerantes: 'Refrigeración',
   // Proveedores y stock
   Suppliers: 'Proveedores y stock', GasSuppliers: 'Proveedores y stock',
   SupplierTariffs: 'Proveedores y stock', Inventory: 'Proveedores y stock',
@@ -225,8 +228,11 @@ const PAGE_SECTION = {
   UpdateCenter: 'Sistema', LicenseActivation: 'Sistema', LicenseRenewal: 'Sistema',
 };
 const SECTION_ORDER = [
-  'Sistema', 'Operaciones', 'Cálculo y diagnóstico', 'Clientes',
-  'Documentos', 'Proveedores y stock', 'IA y asistencia', 'Informes y datos', 'Otros',
+  'Sistema', 'Operaciones',
+  // Los cuatro oficios, seguidos y cada uno con su título.
+  'Electricidad', 'Clima', 'Refrigeración', 'Solar',
+  'Clientes', 'Documentos', 'Proveedores y stock',
+  'IA y asistencia', 'Informes y datos', 'Otros',
 ];
 const basePage = (p) => (p || '').split('?')[0];
 function groupNav(items) {
@@ -235,31 +241,34 @@ function groupNav(items) {
     const sec = PAGE_SECTION[basePage(it.page)] || 'Otros';
     (buckets[sec] = buckets[sec] || []).push(it);
   });
-  return SECTION_ORDER.filter((s) => buckets[s]?.length).map((s) => ({ section: s, items: buckets[s] }));
+  return SECTION_ORDER
+    .filter((s) => buckets[s]?.length)
+    .map((s) => ({ section: s, items: buckets[s] }));
 }
 
 // Navegación agrupada por secciones técnicas (compartida por escritorio y móvil)
 function SidebarNav({ currentPageName, onNavigate, activeStyle, idleColor }) {
+  const Enlace = ({ item }) => {
+    const Icon = item.icon;
+    const isActive = currentPageName === item.page;
+    return (
+      <Link
+        to={createPageUrl(item.page)}
+        onClick={onNavigate}
+        className="flex items-center gap-2.5 px-3 py-2 text-xs transition-all"
+        style={isActive ? activeStyle : { color: idleColor, borderLeft: '2px solid transparent' }}>
+        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+        <span className="truncate">{item.name}</span>
+      </Link>
+    );
+  };
+
   return (
     <>
       {groupNav(navItems).map(({ section, items }) => (
-        <div key={section} className="mb-1">
+        <div key={section} className="mb-1" data-prueba={`seccion-${section}`}>
           <div className="px-3 pt-3 pb-1 tech-label" style={{ color: '#5a6178' }}>{section}</div>
-          {items.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentPageName === item.page;
-            return (
-              <Link
-                key={item.page}
-                to={createPageUrl(item.page)}
-                onClick={onNavigate}
-                className="flex items-center gap-2.5 px-3 py-2 text-xs transition-all"
-                style={isActive ? activeStyle : { color: idleColor, borderLeft: '2px solid transparent' }}>
-                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="truncate">{item.name}</span>
-              </Link>
-            );
-          })}
+          {items.map((item) => <Enlace key={item.page} item={item} />)}
         </div>
       ))}
     </>

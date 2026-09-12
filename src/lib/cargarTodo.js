@@ -34,6 +34,11 @@ function ordenar(registros, orden) {
  * @param {string} orden    'name', '-date'… Igual que en .list().
  */
 export async function cargarTodo(entidad, orden = '') {
-  const registros = (await fetchAllRecordsFast(entidad)) || [];
+  // "tolerante": esto es para PINTAR una lista en pantalla. Si el servidor
+  // corta a media lectura por exceso de peticiones, es mejor enseñar lo que
+  // haya llegado que dejar la pantalla en blanco. En las copias, las
+  // restauraciones y los borrados es justo al revés —ahí una lectura a medias
+  // hace perder datos— y por eso allí NO se usa este modo.
+  const registros = (await fetchAllRecordsFast(entidad, { tolerante: true })) || [];
   return ordenar(registros, orden);
 }

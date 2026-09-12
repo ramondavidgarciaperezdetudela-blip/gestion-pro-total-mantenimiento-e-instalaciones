@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useAvisoQueSeVa } from '@/lib/avisoTemporal';
 import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
@@ -10,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Wrench, Trash2, Search, Edit, Eye, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, FileText, Link2, ClipboardList, X } from 'lucide-react';
+import { Plus, Wrench, Trash2, Search, Edit, Eye, Phone, Mail, Calendar, BarChart3, Clock, CheckCircle2, AlertTriangle, Save, RefreshCw, FileText, Link2, ClipboardList, X, Snowflake } from 'lucide-react';
 import SATTechReport from '../components/SATTechReport';
 import TechnicianSelect from '../components/TechnicianSelect';
 import SATSignaturePanel from '../components/SATSignaturePanel';
@@ -22,10 +23,15 @@ import { getNextAvailableNumber } from '../components/autoNumber';
 import PrintButton from '../components/PrintButton';
 import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
+import CargaDeGas from '@/components/CargaDeGas';
 import PriceItemSelector from '../components/PriceItemSelector';
 import SATTemplateSelector from '../components/SATTemplateSelector';
 import { withTimeout, getFallbackPhotosSize, MAX_TOTAL_FALLBACK_PAYLOAD, PHOTOS_TOO_LARGE_MESSAGE } from '@/lib/uploadImage';
 import { describeSaveError, esErrorDeFotoDemasiadoGrande, reducirFotos, tamanoFotoMayor, guardarLimiteAprendido } from '@/lib/saveErrorMessage';
+import { useParametrosUrl } from '@/lib/parametrosUrl';
+import { direccionPublica, AVISO_SIN_DIRECCION } from '@/lib/copiaFirmada';
+import { toast } from 'sonner';
+import { abrirEnlaceAvisando } from '@/lib/abrirEnlace';
 const TYPES = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'];
 const EQUIPMENT = ['aire_acondicionado', 'bomba_calor', 'camara_frigorifica', 'electrico', 'solar', 'otro'];
 const STATUSES = ['pendiente', 'en_curso', 'completada', 'cancelada'];
@@ -53,7 +59,7 @@ const EMPTY_FORM = {
 };
 
 export default function SAT() {
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = useParametrosUrl();
   const preContactId = urlParams.get('contact_id');
   const preViewId = urlParams.get('view');
   const preEditId = urlParams.get('edit');
@@ -64,10 +70,12 @@ export default function SAT() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [cargaGasAbierta, setCargaGasAbierta] = useState(false);
   const [editing, setEditing] = useState(null);
   const [previewOrder, setPreviewOrder] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  useAvisoQueSeVa(saveError, setSaveError);
   const [form, setForm] = useState({ ...EMPTY_FORM, ...(preContactId ? { contact_id: preContactId } : {}) });
   const [activeTab, setActiveTab] = useState('lista');
   const [autoGenerateInvoice, setAutoGenerateInvoice] = useState(false);
@@ -315,7 +323,7 @@ export default function SAT() {
     if (!c?.email) return alert('Este cliente no tiene email registrado');
     const subject = encodeURIComponent(`Orden SAT #${order.order_number} - ${order.type}`);
     const body = encodeURIComponent(`Estimado/a ${order.contact_name},\n\nLe informamos del estado de su orden SAT:\n\nNº: ${order.order_number}\nTipo: ${order.type}\nEstado: ${order.status}\nDescripción: ${order.description || '-'}\nSolución: ${order.solution || '-'}\nTotal: ${order.total?.toFixed(2)} €\n\nQuedamos a su disposición.`);
-    window.open(`mailto:${c.email}?subject=${subject}&body=${body}`, '_blank');
+    abrirEnlaceAvisando(`mailto:${c.email}?subject=${subject}&body=${body}`, (m) => toast.error(m, { duration: 12000 }));
   };
 
   const sendWhatsApp = (order) => {
@@ -646,7 +654,7 @@ export default function SAT() {
 
       {/* ===== DIALOG EDITAR/CREAR ===== */}
       <Dialog open={dialogOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()} onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => setDialogOpen(false)} textoVolver="Volver sin guardar" onOpenAutoFocus={e => e.preventDefault()} onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{editing ? `Editar Orden SAT #${editing.order_number || editing.id.slice(-6)}` : 'Nueva Orden SAT'}</DialogTitle>
@@ -745,6 +753,12 @@ export default function SAT() {
                 <div className="flex gap-1">
                   <PriceItemSelector onSelect={item => setForm(prev => ({ ...prev, materials_used: [...(prev.materials_used || []), { material: item.description, quantity: item.quantity || 1, unit_price: item.unit_price }] }))} />
                   <Button size="sm" variant="outline" onClick={addMaterial}><Plus className="w-3 h-3 mr-1" />Manual</Button>
+                  {/* Carga de gas: el gas, los kilos, el precio y el impuesto,
+                      con la normativa en las notas del parte. */}
+                  <Button size="sm" variant="outline" onClick={() => setCargaGasAbierta(true)}
+                    data-prueba="abrir-carga-gas" className="border-sky-300 text-sky-700">
+                    <Snowflake className="w-3 h-3 mr-1" />Gas
+                  </Button>
                 </div>
               </div>
               {form.materials_used?.map((m, i) => (
@@ -817,7 +831,7 @@ export default function SAT() {
 
       {/* ===== PREVIEW / IMPRIMIR ===== */}
       <Dialog open={!!previewOrder} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => setPreviewOrder(null)} textoVolver="Volver a las órdenes" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           {previewOrder && (
             <>
               <DialogHeader>
@@ -875,6 +889,8 @@ export default function SAT() {
                     order={previewOrder}
                     onUpdate={aplicarActualizacionOrden}
                     contactEmail={contacts.find(c => c.id === previewOrder.contact_id)?.email || null}
+                    contactPhone={contacts.find(c => c.id === previewOrder.contact_id)?.phone || null}
+                    empresa={company}
                   />
 
                   {/* Panel de compartir SAT */}
@@ -920,9 +936,13 @@ export default function SAT() {
                   size="sm" 
                   className="text-purple-700 border-purple-300"
                   onClick={() => {
-                    const satPublicoUrl = `${window.location.origin}/sat-publico?id=${previewOrder.id}`;
+                    // De la dirección pública, no de la del aparato: si no,
+                    // al cliente le llega un enlace a «localhost».
+                    const baseSat = direccionPublica(company);
+                    if (!baseSat) { toast.error(AVISO_SIN_DIRECCION); return; }
+                    const satPublicoUrl = `${baseSat}/sat-publico?id=${previewOrder.id}`;
                     const msg = encodeURIComponent(`Hola ${previewOrder.contact_name},\n\nLE PRESENTAMOS LA ORDEN SAT Nº${previewOrder.order_number}:\n\n🔧 Tipo: ${previewOrder.type?.replace(/_/g, ' ')}\n💶 Importe: ${previewOrder.total?.toFixed(2)} €\n\n➡️ Enlace para aceptar o rechazar:\n${satPublicoUrl}\n\nGracias por confiar en nosotros.`);
-                    window.open(`https://wa.me/${previewOrder.contact_id}?text=${msg}`, '_blank');
+                    abrirEnlaceAvisando(`https://wa.me/${previewOrder.contact_id}?text=${msg}`, (m) => toast.error(m, { duration: 12000 }));
                   }}
                   title="Enviar SAT público por WhatsApp"
                 >
@@ -933,6 +953,22 @@ export default function SAT() {
                 )}
                 </DialogContent>
                 </Dialog>
+
+      {/* La carga de gas añade sus líneas de material y deja la normativa en
+          las notas: es lo que pide un cliente cuando ve el impuesto. */}
+      <CargaDeGas
+        abierto={cargaGasAbierta}
+        onCerrar={() => setCargaGasAbierta(false)}
+        onAnadir={(r) => setForm((prev) => ({
+          ...prev,
+          materials_used: [
+            ...(prev.materials_used || []),
+            ...r.lineas.map((l) => ({ material: l.description, quantity: l.quantity, unit_price: l.unit_price })),
+          ],
+          notes: prev.notes ? `${prev.notes}\n\n${r.observaciones}` : r.observaciones,
+        }))}
+      />
+
 
       {/* ===== INFORME TÉCNICO POST-VISITA ===== */}
       {techReportOrder && (

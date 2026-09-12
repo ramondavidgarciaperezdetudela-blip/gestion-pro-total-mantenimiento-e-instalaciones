@@ -146,6 +146,15 @@
           "name"
         ]
       }
+    },
+    "public_app_url": {
+      "type": "string",
+      "description": "Dirección pública del programa. Con ella se arma el QR de verificación de los documentos; sin ella el QR apunta al aparato desde el que se imprime y al cliente no le abre nada"
+    },
+    "verify_default_days": {
+      "type": "number",
+      "default": 365,
+      "description": "Días de validez de la verificación en los documentos nuevos (0 = sin caducidad)"
     }
   },
   "required": [

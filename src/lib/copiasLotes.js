@@ -117,3 +117,131 @@ export function planRestauracion(existentes, filas, clave) {
 export function peticionesDelPlan(plan) {
   return enLotes(plan.aCrear).length + enLotes(plan.aActualizar).length;
 }
+
+// ── Duplicados ──────────────────────────────────────────────────────────────
+//
+// Esta parte estaba escrita dentro de la pantalla y tenía tres cosas que, a la
+// vez, se llevaron por delante datos de verdad:
+//
+//   1. Comparaba con JSON.stringify a pelo, que depende del ORDEN de los
+//      campos. El servidor no garantiza ese orden, así que dos fichas
+//      idénticas podían no parecerlo — y dos que sí lo parecían, serlo por
+//      accidente. Aquí se usa firmaRegistro(), que ordena las claves.
+//   2. Borraba sin mirar CUÁNTO iba a borrar. Si por lo que fuera todas las
+//      fichas salían con la misma firma, se llevaba la sección entera.
+//   3. Si un registro venía sin id, metía ese "sin id" en la lista de borrar.
+//
+// Ahora la decisión se toma aquí, sin tocar el servidor, y se puede enseñar
+// antes de borrar nada.
+
+/** Qué hace que dos registros sean "el mismo". Sin id ni fechas del servidor. */
+export function firmaDeContenido(registro) {
+  return firmaRegistro(sinMetadatos(registro));
+}
+
+/** El más antiguo de dos registros (el que se conserva). */
+function esMasAntiguo(a, b) {
+  const fa = Date.parse(a?.created_date || '') || Infinity;
+  const fb = Date.parse(b?.created_date || '') || Infinity;
+  if (fa !== fb) return fa < fb;
+  return false;   // a igualdad, manda el que llegó primero
+}
+
+/**
+ * Decide qué duplicados sobran, SIN borrar nada.
+ *
+ * De cada grupo de fichas iguales se conserva la MÁS ANTIGUA (la original) y
+ * sobran las demás. Un registro sin id nunca se marca para borrar: no se puede
+ * borrar por id, y meterlo en la lista era pedir un borrado a ciegas.
+ *
+ * @returns {{grupos: Array, aBorrar: Array, seConservan: number, total: number, sinId: number}}
+ */
+export function planDuplicados(registros) {
+  const porFirma = new Map();
+  let sinId = 0;
+
+  for (const r of registros || []) {
+    if (!r || typeof r !== 'object') continue;
+    if (!r.id) { sinId++; continue; }          // no se toca lo que no se puede identificar
+    const firma = firmaDeContenido(r);
+    if (!porFirma.has(firma)) porFirma.set(firma, []);
+    porFirma.get(firma).push(r);
+  }
+
+  const grupos = [];
+  const aBorrar = [];
+  let seConservan = 0;
+
+  for (const [firma, lista] of porFirma) {
+    seConservan++;
+    if (lista.length < 2) continue;
+    let original = lista[0];
+    for (const r of lista) if (esMasAntiguo(r, original)) original = r;
+    const sobran = lista.filter((r) => r.id !== original.id);
+    grupos.push({ firma, conserva: original, sobran });
+    for (const r of sobran) aBorrar.push(r);
+  }
+
+  return {
+    grupos,
+    aBorrar,
+    seConservan,
+    sinId,
+    total: (registros || []).length,
+  };
+}
+
+/**
+ * Cuánto es demasiado. Por encima de esto no se borra sin que alguien lo diga
+ * expresamente, porque un plan que se lleva casi toda una sección casi nunca
+ * es un plan bueno: es una comparación que ha salido mal.
+ */
+export const TOPE_BORRADO = 0.5;
+
+/**
+ * ¿Es razonable ejecutar este plan de borrado?
+ *
+ * @returns {{seguro: boolean, motivo: string, proporcion: number}}
+ */
+export function revisarPlanDuplicados(plan, tope = TOPE_BORRADO) {
+  const total = plan?.total || 0;
+  const cuantos = plan?.aBorrar?.length || 0;
+  const proporcion = total > 0 ? cuantos / total : 0;
+
+  if (cuantos === 0) {
+    return { seguro: true, motivo: 'No hay duplicados que borrar.', proporcion: 0 };
+  }
+  if (plan.seConservan === 0) {
+    return {
+      seguro: false,
+      proporcion,
+      motivo: 'El plan no dejaría ni un registro. Eso no es un duplicado: es un fallo al comparar. No se borra nada.',
+    };
+  }
+  if (proporcion > tope) {
+    return {
+      seguro: false,
+      proporcion,
+      motivo: `El plan borraría el ${Math.round(proporcion * 100)}% de la sección (${cuantos} de ${total}). `
+        + 'Eso casi nunca son duplicados de verdad, así que no se hace solo: míralo antes en la lista.',
+    };
+  }
+  return { seguro: true, motivo: '', proporcion };
+}
+
+/**
+ * Deja una lista sin repetidos, para que la COPIA salga limpia sin tocar el
+ * servidor. Es lo que se pidió: que la copia no se lleve el mismo fichero
+ * cuatro veces.
+ *
+ * @returns {{limpios: Array, quitados: number}}
+ */
+export function quitarDuplicados(registros) {
+  const plan = planDuplicados(registros);
+  if (plan.aBorrar.length === 0) return { limpios: registros || [], quitados: 0 };
+  const fuera = new Set(plan.aBorrar.map((r) => r.id));
+  return {
+    limpios: (registros || []).filter((r) => !(r?.id && fuera.has(r.id))),
+    quitados: plan.aBorrar.length,
+  };
+}

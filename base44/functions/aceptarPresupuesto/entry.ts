@@ -136,6 +136,16 @@ Deno.serve(async (req) => {
           contactEmail = contacts?.[0]?.email || null;
         }
 
+        /*
+         * La dirección pública del programa, la que el cliente puede abrir.
+         *
+         * Antes iba escrita a mano («https://app.base44.io»), que no es la de
+         * este programa: al cliente le llegaba un botón que no lleva a ninguna
+         * parte. Ahora sale de Configuración → Impresión → Verificación de
+         * documentos, y si no está puesta el botón directamente no se pinta.
+         */
+        const baseCliente = String(company?.public_app_url || '').trim().replace(/\/$/, '');
+
         const historyHTML = generateSignatureHistoryHTML(doc, company, updatedHistory);
 
         const emailBodyRechazoAdmin = `
@@ -179,11 +189,11 @@ Deno.serve(async (req) => {
       ${signature ? `<div style="margin-top:12px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Su firma digital registrada:</strong></p><img src="${signature}" alt="Firma" style="max-width:250px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;padding:4px"/></div>` : ''}
       ${historyHTML}
       <p style="color:#555;font-size:13px;margin-top:16px">Si ha cambiado de opinión o desea más información, no dude en contactarnos.</p>
-      <div style="margin-top:16px;padding:12px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px">
+      ${baseCliente ? `<div style="margin-top:16px;padding:12px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px">
       <p style="margin:0;color:#16a34a;font-size:12px;font-weight:bold">💡 ¿Cambió de opinión?</p>
       <p style="margin:4px 0 0 0;color:#555;font-size:12px">Puede acceder de nuevo al presupuesto con el siguiente enlace para cambiar su decisión si lo desea.</p>
-      <a href="https://app.base44.io/presupuesto-publico?id=${doc_id}" style="display:inline-block;margin-top:8px;padding:8px 16px;background:#16a34a;color:white;text-decoration:none;border-radius:6px;font-size:12px;font-weight:bold">Acceder al presupuesto</a>
-      </div>
+      <a href="${baseCliente}/presupuesto-publico?id=${doc_id}" style="display:inline-block;margin-top:8px;padding:8px 16px;background:#16a34a;color:white;text-decoration:none;border-radius:6px;font-size:12px;font-weight:bold">Acceder al presupuesto</a>
+      </div>` : ''}
       <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb"/>
       <p style="font-size:12px;color:#999">${company?.company_name || ''} · ${company?.phone || ''} · ${company?.email || ''}</p>
       </div>

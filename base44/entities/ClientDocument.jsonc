@@ -38,6 +38,10 @@
     "date": {
       "type": "string",
       "format": "date"
+    },
+    "reference_id": {
+      "type": "string",
+      "description": "Identificador de la ficha o documento al que corresponde"
     }
   },
   "required": [

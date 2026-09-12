@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { direccionPublica, AVISO_SIN_DIRECCION } from '@/lib/copiaFirmada';
+import { toast } from 'sonner';
+import { abrirEnlaceAvisando } from '@/lib/abrirEnlace';
 import {
   Users, FileText, Wrench, CheckCircle, Clock, AlertCircle, Send, Eye, Search, Phone, Mail, MessageCircle,
   Euro, FileCheck, Link
@@ -71,14 +74,16 @@ export default function ClientPortal() {
   const pendingBudgets = clientDocs.filter(d => d.doc_type === 'presupuesto' && d.status === 'enviado');
 
   // Generar enlace público para presupuesto
+  // Los enlaces salen de la dirección pública configurada: con la del aparato
+  // al cliente le llegaría «localhost», que no abre en ninguna parte.
   const getPresupuestoLink = (doc) => {
-    const base = window.location.origin;
-    return `${base}/presupuesto-publico?id=${doc.id}`;
+    const base = direccionPublica(company);
+    return base ? `${base}/presupuesto-publico?id=${doc.id}` : '';
   };
 
   const getSATLink = (sat) => {
-    const base = window.location.origin;
-    return `${base}/sat-publico?id=${sat.id}`;
+    const base = direccionPublica(company);
+    return base ? `${base}/sat-publico?id=${sat.id}` : '';
   };
 
   const handleSendDocLink = async (doc) => {
@@ -87,16 +92,16 @@ export default function ClientPortal() {
     const link = doc.doc_type === 'presupuesto' || doc.doc_type === 'factura'
       ? getPresupuestoLink(doc)
       : null;
-    if (!link) { setSendingLink(null); return; }
+    if (!link) { toast.error(AVISO_SIN_DIRECCION); setSendingLink(null); return; }
 
     const docLabel = doc.doc_type === 'presupuesto' ? 'presupuesto' : 'factura';
     const msg = `Hola ${contact?.name || doc.contact_name},\n\nTe enviamos el enlace para ver y ${doc.doc_type === 'presupuesto' ? 'aceptar' : 'descargar'} tu ${docLabel} nº ${doc.doc_number || ''}:\n\n${link}\n\nCualquier duda, estamos a tu disposición.`;
 
     if (contact?.phone) {
       const phone = contact.phone.replace(/[^0-9]/g, '');
-      window.open(`https://wa.me/34${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      abrirEnlaceAvisando(`https://wa.me/34${phone}?text=${encodeURIComponent(msg)}`, (m) => toast.error(m, { duration: 12000 }));
     } else if (contact?.email) {
-      window.open(`mailto:${contact.email}?subject=Tu ${docLabel}&body=${encodeURIComponent(msg)}`, '_blank');
+      abrirEnlaceAvisando(`mailto:${contact.email}?subject=Tu ${docLabel}&body=${encodeURIComponent(msg)}`, (m) => toast.error(m, { duration: 12000 }));
     } else {
       navigator.clipboard.writeText(link);
       alert('Enlace copiado al portapapeles');
@@ -107,9 +112,10 @@ export default function ClientPortal() {
   const handleSendSATLink = async (sat) => {
     const contact = contacts.find(c => c.id === sat.contact_id);
     const link = getSATLink(sat);
+    if (!link) { toast.error(AVISO_SIN_DIRECCION); return; }
     const msg = `Hola ${contact?.name || sat.contact_name},\n\nPuedes ver el estado de tu orden de servicio (SAT):\n\n${link}\n\nGracias por confiar en nosotros.`;
     if (contact?.phone) {
-      window.open(`https://wa.me/34${contact.phone.replace(/[^0-9]/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
+      abrirEnlaceAvisando(`https://wa.me/34${contact.phone.replace(/[^0-9]/g,'')}?text=${encodeURIComponent(msg)}`, (m) => toast.error(m, { duration: 12000 }));
     } else {
       navigator.clipboard.writeText(link);
       alert('Enlace copiado al portapapeles');
@@ -487,7 +493,7 @@ export default function ClientPortal() {
 
               <div className="bg-indigo-50 rounded-lg p-3">
                 <p className="text-xs text-indigo-600 font-semibold mb-1">Enlace para el cliente:</p>
-                <p className="text-xs font-mono text-indigo-800 break-all">{getPresupuestoLink(previewDoc)}</p>
+                <p className="text-xs font-mono text-indigo-800 break-all">{getPresupuestoLink(previewDoc) || AVISO_SIN_DIRECCION}</p>
               </div>
 
               <div className="flex gap-2">
@@ -500,7 +506,7 @@ export default function ClientPortal() {
                 <Button
                   variant="outline"
                   className="gap-2"
-                  onClick={() => { navigator.clipboard.writeText(getPresupuestoLink(previewDoc)); }}
+                  onClick={() => { const l = getPresupuestoLink(previewDoc); if (!l) { toast.error(AVISO_SIN_DIRECCION); return; } navigator.clipboard.writeText(l); }}
                 >
                   <Link className="w-4 h-4" />Copiar enlace
                 </Button>

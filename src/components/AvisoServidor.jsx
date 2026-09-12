@@ -9,10 +9,29 @@ import { escucharAvisos, cerrarAviso } from '@/lib/avisoServidor';
  * como si nada. Ahora sale esto, dice QUÉ no se ha podido guardar y POR QUÉ,
  * y el formulario se queda abierto con lo escrito para poder reintentarlo.
  */
+/** Lo que dura el cartel antes de irse solo. */
+export const DURACION = 3000;
+
 export default function AvisoServidor() {
   const [aviso, setAviso] = useState(null);
 
   useEffect(() => escucharAvisos(setAviso), []);
+
+  // Se va solo a los 3 segundos.
+  //
+  // Antes se quedaba hasta que alguien le daba a la X, y este cartel se pinta
+  // fijo arriba a la derecha por delante de la cabecera: en el móvil tapaba
+  // atrás y editar. Si además el fallo se repetía (el servidor saturado manda
+  // varios seguidos), había que ir cerrándolos uno a uno para poder trabajar.
+  //
+  // El texto no se pierde: el fallo sigue en el registro y el formulario se
+  // queda abierto con lo escrito, que es lo que de verdad importa para poder
+  // reintentarlo.
+  useEffect(() => {
+    if (!aviso) return undefined;
+    const t = setTimeout(cerrarAviso, DURACION);
+    return () => clearTimeout(t);
+  }, [aviso]);
 
   if (!aviso) return null;
 

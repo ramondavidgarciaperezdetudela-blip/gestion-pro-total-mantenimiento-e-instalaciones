@@ -95,12 +95,61 @@
           "next_action_date": {
             "type": "string",
             "format": "date"
+          },
+          "photo_names": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Qué es cada foto (mismo orden que photos)"
+          },
+          "signature_technician": {
+            "type": "string",
+            "description": "Firma del técnico (base64)"
+          },
+          "sign_datetime_technician": {
+            "type": "string",
+            "description": "Fecha y hora de la firma del técnico"
+          },
+          "signature_client": {
+            "type": "string",
+            "description": "Firma del cliente (base64)"
+          },
+          "sign_datetime_client": {
+            "type": "string",
+            "description": "Fecha y hora de la firma del cliente"
+          },
+          "ficha_id": {
+            "type": "string",
+            "description": "Ficha de mantenimiento de la que salió esta entrada; sirve para actualizarla en vez de duplicarla al volver a guardar"
+          },
+          "ficha_numero": {
+            "type": "string",
+            "description": "Número de esa ficha"
           }
         }
       }
     },
     "notes": {
       "type": "string"
+    },
+    "equipment_power_kw": {
+      "type": "string",
+      "description": "Potencia del equipo (kW o CV)"
+    },
+    "equipment_year": {
+      "type": "string",
+      "description": "Año del equipo"
+    },
+    "equipment_refrigerant": {
+      "type": "string",
+      "description": "Refrigerante que lleva"
+    },
+    "equipment_photo_url": {
+      "type": "string",
+      "description": "Foto del equipo o de su placa"
+    },
+    "warranty_expires": {
+      "type": "string",
+      "description": "Hasta cuándo está en garantía"
     }
   },
   "required": [

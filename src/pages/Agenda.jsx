@@ -149,7 +149,7 @@ export default function Agenda() {
             <DialogTrigger asChild>
               <Button className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-2" />Nueva cita</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onVolver={() => { setDialogOpen(false); setEditingAppt(null); }} textoVolver="Volver sin guardar" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
               <DialogHeader>
                 <div className="flex items-center justify-between">
                   <DialogTitle>{editingAppt ? 'Editar cita' : 'Nueva cita'}</DialogTitle>

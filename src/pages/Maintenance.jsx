@@ -23,10 +23,29 @@ import SignaturePad from '../components/SignaturePad';
 
 const TYPES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
+import InspeccionSanitaria from '@/components/InspeccionSanitaria';
+import VistaPreviaDocumento from '@/components/VistaPreviaDocumento';
+import { fichaVacia, hayAlgoContestado } from '@/lib/inspeccionSanitaria';
+import { htmlHojaSanitaria } from '@/lib/hojaSanitaria';
+import { anotarEnDiario } from '@/lib/diarioDeReparaciones';
+import { camposPerdidos } from '@/lib/guardadoDeVerdad';
+import { guardarExtras, leerExtras, conExtras, borrarExtras, soloEstos } from '@/lib/camposExtra';
+
 const FGAS_GWP = {
   'R-410A': 2088, 'R-32': 675, 'R-134a': 1430, 'R-404A': 3922,
   'R-407C': 1774, 'R-290': 3, 'R-449A': 1397, 'R-452A': 2140, 'R-448A': 1387
 };
+
+// Campos que el servidor podría estar tirando en silencio si no están
+// declarados en su ficha. Se comprueban al guardar: mandarlos y que
+// desaparezcan sin decir nada es peor que un error, porque nadie se entera
+// hasta que vuelve a abrir la ficha y el dato ya no está.
+const CAMPOS_VIGILADOS = [
+  'compressor_ref', 'compressor_brand', 'compressor_application', 'compressor_supply',
+  'compressor_refrigerants', 'compressor_technology', 'compressor_power_hp', 'compressor_notes',
+  'inspeccion_sanitaria',
+];
+
 
 const EMPTY_FORM = {
   sheet_number: '', contact_id: '', contact_name: '', date: format(new Date(), 'yyyy-MM-dd'),
@@ -46,6 +65,10 @@ const EMPTY_FORM = {
   general_tasks: '',
   observations: '', recommendations: '',
   photos_before: [], photos_after: [], photos_evaporator_plate: [], photos_condenser_plate: [],
+  // La hoja que se le enseña a Sanidad cuando la ficha es de una cámara.
+  // Va dentro de la propia ficha para que no puedan separarse: el informe
+  // sanitario y las lecturas del día son la misma intervención.
+  inspeccion_sanitaria: fichaVacia(),
   signature_technician: '', signature_client: '', sign_datetime_technician: '', sign_datetime_client: '', status: 'completada'
 };
 
@@ -125,6 +148,8 @@ export default function Maintenance() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
+  // El documento que se está mirando antes de imprimirlo o mandarlo.
+  const [vistaPrevia, setVistaPrevia] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const printRef = useRef(null);
 
@@ -132,7 +157,12 @@ export default function Maintenance() {
     Promise.all([
       cargarTodo('MaintenanceSheet', '-date'),
       base44.entities.Contact.list(),
-    ]).then(([s, c]) => {
+      leerExtras(base44, 'MaintenanceSheet'),
+    ]).then(([s0, c, sobrantes]) => {
+      // Lo que el servidor no quiso guardar (porque no tiene esos campos
+      // declarados) se guardó aparte. Aquí se vuelve a pegar donde iba, sin
+      // pisar nada de lo que sí venga del servidor.
+      const s = conExtras(s0, sobrantes);
       setSheets(s);
       setContacts(c);
       // Pre-calcular número para nueva ficha
@@ -146,8 +176,10 @@ export default function Maintenance() {
     // hasta 17 campos, obligando a poner ceros en lecturas que no se han hecho
     // — y un cero no es lo mismo que "no medido": falsea la revisión.
     const data = sinVacios({ ...form });
+    let guardadaId = editing?.id || '';
+    let devuelta = null;
     if (editing) {
-      await base44.entities.MaintenanceSheet.update(editing.id, data);
+      devuelta = await base44.entities.MaintenanceSheet.update(editing.id, data);
     } else {
       // Re-calcular número justo antes de guardar (por si otro guardó mientras tanto)
       const latest = await cargarTodo('MaintenanceSheet', '-date');
@@ -155,6 +187,8 @@ export default function Maintenance() {
         data.sheet_number = getNextAvailableNumber(latest.map(x => x.sheet_number || ''));
       }
       const saved = await base44.entities.MaintenanceSheet.create(data);
+      devuelta = saved;
+      guardadaId = saved?.id || '';
       if (form.contact_id) {
         await base44.entities.ClientDocument.create({
           contact_id: form.contact_id,
@@ -167,12 +201,59 @@ export default function Maintenance() {
         });
       }
     }
+    // ¿Ha guardado el servidor TODO lo que se le ha mandado? Lo que contesta
+    // al guardar es su versión del registro, así que comparando se sabe si ha
+    // descartado algún campo en silencio.
+    //
+    // Y lo que haya descartado NO se pierde: se guarda aparte y se vuelve a
+    // pegar al cargar las fichas. Pedirle a quien está delante de una cámara
+    // que entre en un panel a declarar campos no es una solución; que el dato
+    // se guarde, sí.
+    const perdidos = camposPerdidos(data, devuelta, CAMPOS_VIGILADOS);
+    let avisoExtras = '';
+    if (perdidos.length && guardadaId) {
+      const r = await guardarExtras(base44, 'MaintenanceSheet', guardadaId, soloEstos(data, perdidos));
+      avisoExtras = r.ok
+        ? `\n\nℹ️ ${perdidos.length} dato(s) —los del compresor y la hoja sanitaria— los guarda el programa `
+          + 'aparte, porque tu Base44 todavía no tiene esos campos declarados. Se ven y se imprimen igual. '
+          + 'Si algún día los añades en el panel (Entidades → MaintenanceSheet), esto deja de hacer falta solo.'
+        : `\n\n⚠️ No se han podido guardar ${perdidos.length} dato(s) del compresor / la hoja sanitaria `
+          + `(${r.motivo}). Vuelve a guardar la ficha cuando tengas conexión.`;
+    }
+
+    // Si la ficha lleva hoja de inspección sanitaria, la intervención queda
+    // apuntada en el diario de esa cámara. Antes había que hacerlo a mano
+    // después, así que casi nunca se hacía: la máquina que más avisos daba
+    // era justo la que salía con el diario en blanco.
+    let avisoDiario = '';
+    const inspeccion = form.inspeccion_sanitaria;
+    if (inspeccion?.activa && hayAlgoContestado(inspeccion) && form.contact_id) {
+      try {
+        const ficha = { ...data, id: guardadaId };
+        const r = await anotarEnDiario(base44, { sheet: ficha, ficha: inspeccion });
+        if (r.ok) {
+          avisoDiario = r.creado
+            ? '\n📔 Se ha creado el diario de esta cámara y se ha apuntado la intervención.'
+            : '\n📔 Apuntada en el diario de reparaciones de esta cámara.';
+        }
+      } catch (e) {
+        // Que falle el diario no puede tirar la ficha, que ya está guardada.
+        console.error('[Maintenance] No se pudo apuntar en el diario:', e);
+        avisoDiario = '\n⚠️ La ficha se ha guardado, pero no se ha podido apuntar en el diario. Ábrelo y añádela a mano.';
+      }
+    }
+
     setDialogOpen(false);
     setEditing(null);
-    const s = await cargarTodo('MaintenanceSheet', '-date');
+    const [s0, sobrantes] = await Promise.all([
+      cargarTodo('MaintenanceSheet', '-date'),
+      leerExtras(base44, 'MaintenanceSheet'),
+    ]);
+    const s = conExtras(s0, sobrantes);
     setSheets(s);
     setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(s.map(x => x.sheet_number || '')) });
-    alert(editing ? '✅ Ficha actualizada correctamente' : '✅ Ficha guardada y vinculada al cliente');
+    alert((editing ? '✅ Ficha actualizada correctamente' : '✅ Ficha guardada y vinculada al cliente')
+      + avisoDiario + avisoExtras);
   };
 
   const handleEdit = (sheet) => {
@@ -196,6 +277,7 @@ export default function Maintenance() {
       photos_before: sheet.photos_before || [], photos_after: sheet.photos_after || [],
       photos_evaporator_plate: sheet.photos_evaporator_plate || [],
       photos_condenser_plate: sheet.photos_condenser_plate || [],
+      inspeccion_sanitaria: { ...fichaVacia(), ...(sheet.inspeccion_sanitaria || {}) },
       signature_technician: sheet.signature_technician || '',
       signature_client: sheet.signature_client || '',
       sign_datetime_technician: sheet.sign_datetime_technician || '',
@@ -221,6 +303,44 @@ export default function Maintenance() {
   const updatePlumbing = (field, val) => setForm({ ...form, readings_plumbing: { ...form.readings_plumbing, [field]: val } });
 
   const typeColor = { clima: 'bg-blue-100 text-blue-700', refrigeracion: 'bg-cyan-100 text-cyan-700', electrico: 'bg-yellow-100 text-yellow-700', solar: 'bg-amber-100 text-amber-700', fontaneria: 'bg-teal-100 text-teal-700', general: 'bg-gray-100 text-gray-700' };
+
+  /**
+   * La hoja para el inspector de Sanidad.
+   *
+   * Va aparte del PDF normal a propósito: son dos documentos con dos lectores
+   * distintos. El de siempre es para el cliente y el archivo del instalador
+   * (presiones, recalentamientos, F-Gas); este es para Sanidad y responde a
+   * otra pregunta —en qué estado quedó la cámara ese día— con el veredicto
+   * arriba del todo y las fotos de la intervención al final.
+   */
+  const imprimirHojaSanitaria = async (sheet) => {
+    const ficha = sheet?.inspeccion_sanitaria;
+    if (!hayAlgoContestado(ficha)) {
+      alert('Esta ficha todavía no tiene nada contestado en la hoja de inspección sanitaria.\n\n'
+        + 'Ábrela con «Ver/Editar», marca la casilla «Es una cámara frigorífica» y contesta los puntos. '
+        + 'En cuanto haya algo contestado, la hoja se puede ver e imprimir desde aquí.');
+      return;
+    }
+    const [settingsList, contactList] = await Promise.all([
+      base44.entities.CompanySettings.list(),
+      sheet.contact_id ? base44.entities.Contact.filter({ id: sheet.contact_id }) : Promise.resolve([]),
+    ]);
+    const html = htmlHojaSanitaria({
+      sheet,
+      ficha,
+      company: settingsList[0] || {},
+      contact: contactList[0] || {},
+    });
+    // Se enseña primero. Antes se lanzaba el diálogo de imprimir a los 600 ms
+    // sin dar tiempo a mirar cómo había quedado, y en el móvil la ventana
+    // nueva ni se abría: no pasaba nada y parecía que el botón estaba roto.
+    setVistaPrevia({
+      titulo: `Hoja de Sanidad — ficha #${sheet.sheet_number || ''}`,
+      html,
+      nombreFichero: `hoja-sanidad-${sheet.sheet_number || 'ficha'}.html`,
+      sheet,
+    });
+  };
 
   const generatePDF = async (sheet) => {
     const [settingsList, contactList] = await Promise.all([
@@ -348,10 +468,12 @@ export default function Maintenance() {
       <div class="footer">Documento generado el ${new Date().toLocaleDateString('es-ES')} — ${company.company_name||''} | NIF: ${company.nif||''}</div>
     </body></html>`;
 
-    const w = window.open('', '_blank');
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => w.print(), 600);
+    setVistaPrevia({
+      titulo: `Ficha de mantenimiento #${sheet.sheet_number || ''}`,
+      html,
+      nombreFichero: `ficha-mantenimiento-${sheet.sheet_number || ''}.html`,
+      sheet,
+    });
   };
 
   return (
@@ -364,7 +486,7 @@ export default function Maintenance() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => { setDialogOpen(false); setEditing(null); setForm({ ...EMPTY_FORM, sheet_number: getNextAvailableNumber(sheets.map(x => x.sheet_number || '')) }); }} textoVolver="Volver sin guardar" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <DialogTitle>{editing ? 'Editar' : 'Nueva'} ficha de mantenimiento</DialogTitle>
@@ -523,6 +645,41 @@ export default function Maintenance() {
                 </div>
               )}
 
+              {/* Hoja de inspección técnico-sanitaria (cámaras frigoríficas) */}
+              {form.type === 'refrigeracion' && (
+                <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50/40 p-3 space-y-3">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4"
+                      checked={!!form.inspeccion_sanitaria?.activa}
+                      data-prueba="activar-hoja-sanitaria"
+                      onChange={e => setForm({
+                        ...form,
+                        inspeccion_sanitaria: { ...fichaVacia(), ...form.inspeccion_sanitaria, activa: e.target.checked },
+                      })}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-emerald-900">
+                        🧊 Es una cámara frigorífica — añadir hoja de inspección técnico-sanitaria
+                      </span>
+                      <span className="mt-0.5 block text-xs text-emerald-800/80">
+                        Genera una hoja aparte para Sanidad, con el estado de la cámara de un vistazo y
+                        las fotos de este mismo día. Al guardar, la intervención queda apuntada en el
+                        diario de reparaciones de esta cámara.
+                      </span>
+                    </span>
+                  </label>
+
+                  {form.inspeccion_sanitaria?.activa && (
+                    <InspeccionSanitaria
+                      ficha={form.inspeccion_sanitaria}
+                      onChange={v => setForm({ ...form, inspeccion_sanitaria: v })}
+                    />
+                  )}
+                </div>
+              )}
+
               {/* General tasks */}
               {form.type === 'general' && (
                 <Textarea placeholder="Tareas realizadas en mantenimiento general..." value={form.general_tasks} onChange={e => setForm({ ...form, general_tasks: e.target.value })} rows={4} />
@@ -570,7 +727,7 @@ export default function Maintenance() {
 
       {/* Preview */}
       <Dialog open={!!preview} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => setPreview(null)} textoVolver="Volver a las fichas" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>Vista previa</DialogTitle>
@@ -613,11 +770,30 @@ export default function Maintenance() {
           <div className="flex gap-2 mt-4">
             <PrintButton contentRef={printRef} title={`Mantenimiento ${preview?.sheet_number}`} />
             <Button variant="outline" onClick={() => generatePDF(preview)} className="gap-2">
-              <FileDown className="w-4 h-4" /> PDF completo con fotos
+              <FileDown className="w-4 h-4" /> Ver e imprimir la ficha
             </Button>
+            {(preview?.type === 'refrigeracion' || hayAlgoContestado(preview?.inspeccion_sanitaria)) && (
+              <Button
+                onClick={() => imprimirHojaSanitaria(preview)}
+                data-prueba="hoja-sanitaria-preview"
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+              >
+                <FileDown className="w-4 h-4" /> Ver hoja de Sanidad
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {vistaPrevia && (
+        <VistaPreviaDocumento
+          titulo={vistaPrevia.titulo}
+          html={vistaPrevia.html}
+          nombreFichero={vistaPrevia.nombreFichero}
+          onVolver={() => setVistaPrevia(null)}
+          onEditar={vistaPrevia.sheet ? () => { setVistaPrevia(null); setPreview(null); handleEdit(vistaPrevia.sheet); } : undefined}
+        />
+      )}
 
       <div className="space-y-2">
         {sheets.map(s => (
@@ -641,6 +817,14 @@ export default function Maintenance() {
                 <button onClick={() => generatePDF(s)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
                   <FileDown className="w-3 h-3" /> PDF
                 </button>
+                {(s.type === 'refrigeracion' || hayAlgoContestado(s.inspeccion_sanitaria)) && (
+                  <button
+                    onClick={() => imprimirHojaSanitaria(s)}
+                    data-prueba="hoja-sanitaria"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+                    <FileDown className="w-3 h-3" /> Hoja Sanidad
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     const phone = s.contact_phone?.replace(/\D/g,'') || '';
@@ -650,7 +834,12 @@ export default function Maintenance() {
                   className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-50 text-green-700 hover:bg-green-100">
                   <Phone className="w-3 h-3" /> WA
                 </button>
-                <button onClick={() => { base44.entities.MaintenanceSheet.delete(s.id).then(() => setSheets(sheets.filter(x => x.id !== s.id))); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
+                <button onClick={() => {
+                  base44.entities.MaintenanceSheet.delete(s.id).then(() => {
+                    setSheets(sheets.filter(x => x.id !== s.id));
+                    borrarExtras(base44, 'MaintenanceSheet', s.id);
+                  });
+                }} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
                   <Trash2 className="w-3 h-3" /> Eliminar
                 </button>
               </div>

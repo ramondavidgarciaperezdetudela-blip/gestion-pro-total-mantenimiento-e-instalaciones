@@ -1,7 +1,9 @@
+import BotonImprimirCliente from '@/components/BotonImprimirCliente';
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Check, X, PenLine, RotateCcw, CheckCircle, XCircle, Loader2, AlertTriangle, MessageCircle } from 'lucide-react';
+import { parametrosDeUrl } from '@/lib/parametrosUrl';
 
 // Skeleton loader
 const DocumentSkeleton = () => (
@@ -139,7 +141,7 @@ function SignaturePad({ onSave }) {
 }
 
 function PresupuestoPublico() {
-  const params = new URLSearchParams(window.location.search);
+  const params = parametrosDeUrl();
   const docId = params.get('id');
   const method = params.get('method') || 'web'; // Detecta si vino por email, whatsapp o web
   const changeOpinionToken = params.get('token'); // Token único del cambio de opinión
@@ -187,7 +189,7 @@ function PresupuestoPublico() {
             doc_id: docId,
             action: 'aceptar',
             is_change_opinion: true
-          });
+          }, { sinAviso: true });
         } catch (e) {
           console.error('Error enviando copia:', e);
         }
@@ -236,7 +238,7 @@ function PresupuestoPublico() {
             doc_id: docId,
             action: 'rechazar',
             is_change_opinion: true
-          });
+          }, { sinAviso: true });
         } catch (e) {
           console.error('Error enviando copia:', e);
         }
@@ -308,6 +310,8 @@ function PresupuestoPublico() {
   return (
     <div className="min-h-screen bg-slate-50 py-6 px-4">
       <div className="max-w-2xl mx-auto space-y-4">
+
+        <BotonImprimirCliente etiqueta="Imprimir o guardar en PDF" />
 
         {/* Header empresa — aparece inmediatamente */}
         <div className="bg-white rounded-2xl shadow-sm border p-4 flex items-center gap-4">
@@ -632,7 +636,7 @@ function PresupuestoPublico() {
                   <p className="text-xs text-gray-400">Espere un momento, se está registrando su conformidad</p>
                 </div>
               ) : (
-                <SignaturePad onSave={handleSign} />
+                <SignaturePad onSave={handleSign} abrirAlEntrar />
               )}
               <Button variant="ghost" size="sm" className="w-full text-gray-500" onClick={() => setStep('view')}>
                 Cancelar y ver el documento sin firmar
@@ -654,7 +658,7 @@ function PresupuestoPublico() {
                   <span className="text-gray-500 font-medium">Registrando su respuesta...</span>
                 </div>
               ) : (
-                <SignaturePad onSave={handleRejectWithSign} />
+                <SignaturePad onSave={handleRejectWithSign} abrirAlEntrar />
               )}
               <Button variant="ghost" size="sm" className="w-full text-gray-500" onClick={() => setStep('view')}>
                 Cancelar y ver el documento sin firmar
@@ -693,7 +697,7 @@ function PresupuestoPublico() {
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-500 text-center">Se ha enviado una copia firmada a su correo electrónico</p>
+              <p className="text-xs text-gray-500 text-center">Puede imprimir o guardar su copia con el botón de arriba</p>
             </div>
           )}
           </div>

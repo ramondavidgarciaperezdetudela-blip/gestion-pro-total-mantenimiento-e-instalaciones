@@ -6,8 +6,13 @@ import {
 } from '@/lib/avisoServidor';
 import { iaActivada, gastaCreditos, errorIAApagada } from '@/lib/modoSinIA';
 import {
+  camposDeFotoDemasiadoGrandes, conFotosReducidas, tamanoFotoMayor, guardarLimiteAprendido,
+} from '@/lib/saveErrorMessage';
+import { leerLimiteAprendido } from '@/lib/compressImage';
+import {
   ajustesIA, consultarIA, esAppMovil, buscarIADelOrdenador, llamarIADelOrdenador,
   llamarOpenRouter, recogerClaveCompartida,
+  seAcabaronLasConsultas, reintentarSinLimite, errorSinConsultas,
 } from '@/lib/proveedorIA';
 
 const { appId, token, functionsVersion, appBaseUrl } = appParams;
@@ -82,10 +87,17 @@ function envolverEntidad(entidad, nombre) {
       cache[prop] = async (...args) => {
         let actuales = args;
         let arregladoYa = false;
+        let fotosReducidasYa = 0;
+        let limiteQueEntro = 0;
         let ultimo;
         for (let intento = 0; intento <= ESPERA_REINTENTO.length; intento++) {
           try {
-            return await valor.apply(destino, actuales);
+            const salida = await valor.apply(destino, actuales);
+            // Si hubo que reducir fotos, se recuerda el tamaño que el servidor
+            // SÍ ha aceptado — no el que se probó y falló—, para que la próxima
+            // vez entren a la primera.
+            if (limiteQueEntro) guardarLimiteAprendido(limiteQueEntro);
+            return salida;
           } catch (err) {
             ultimo = err;
 
@@ -102,6 +114,42 @@ function envolverEntidad(entidad, nombre) {
                 actuales = corregidos;
                 intento--;                 // este intento no cuenta como reintento
                 continue;
+              }
+            }
+
+            // El servidor limita el tamaño de CADA foto por separado, y ese
+            // tope no está documentado. Cuando rechaza una —"Field
+            // 'photos_before[2]' exceeds the maximum allowed size"— la foto se
+            // reduce y se reintenta, en vez de dar el error y perder el
+            // trabajo. Esto estaba resuelto solo en el botón de guardar de las
+            // órdenes de SAT; puesto aquí vale para TODAS las pantallas: las
+            // fichas de mantenimiento, el diario de reparaciones, y también
+            // para los guardados que no pasan por ese botón, como cambiar el
+            // estado de una orden o firmarla — que era justo donde saltaba.
+            if (fotosReducidasYa < 5) {
+              const campos = camposDeFotoDemasiadoGrandes(err);
+              if (campos.length) {
+                const i = actuales.length - 1;
+                const mayor = tamanoFotoMayor(...campos.map((c) => actuales[i]?.[c] || []));
+                // Se baja de golpe a lo que se sabe que el servidor admite —el
+                // tope aprendido, o 48 KB si aún no se sabe— en vez de ir
+                // recortando de a poco: desde una foto de 2,5 MB, ir bajando un
+                // 40% cada vez se queda sin intentos antes de llegar.
+                const conocido = leerLimiteAprendido() || 48 * 1024;
+                const limite = Math.max(
+                  20 * 1024,
+                  Math.min(Math.round((mayor || conocido) * 0.6), conocido),
+                );
+                const reducidos = await conFotosReducidas(actuales[i], campos, limite);
+                if (reducidos) {
+                  const copia = [...actuales];
+                  copia[i] = reducidos;
+                  actuales = copia;
+                  fotosReducidasYa++;
+                  limiteQueEntro = limite;
+                  intento--;                 // este intento no cuenta como reintento
+                  continue;
+                }
               }
             }
 
@@ -148,10 +196,46 @@ async function conAviso(llamar, funcion) {
   throw ultimo;
 }
 
+/**
+ * Reintenta igual que conAviso(), pero sin sacar el cartel rojo.
+ *
+ * Para lo que es de CORTESÍA: el correo con la copia firmada, por ejemplo. La
+ * firma ya está guardada en la ficha; si el correo no sale, eso no es "no se
+ * ha podido guardar", y anunciarlo con el mismo cartel que un guardado
+ * fallido asusta y hace pensar que se ha perdido el documento. Quien llama
+ * recibe el error y decide qué decir.
+ */
+async function sinCartel(llamar) {
+  let ultimo;
+  for (let intento = 0; intento <= ESPERA_REINTENTO.length; intento++) {
+    try {
+      return await llamar();
+    } catch (err) {
+      ultimo = err;
+      if (!sePuedeReintentarSolo(err) || intento === ESPERA_REINTENTO.length) break;
+      await new Promise((r) => setTimeout(r, ESPERA_REINTENTO[intento]));
+    }
+  }
+  throw ultimo;
+}
+
+/** ¿El último argumento son opciones nuestras y no datos para el servidor? */
+function opcionesDeLlamada(resto) {
+  const ultimo = resto[resto.length - 1];
+  if (ultimo && typeof ultimo === 'object' && 'sinAviso' in ultimo) {
+    return { opciones: ultimo, args: resto.slice(0, -1) };
+  }
+  return { opciones: {}, args: resto };
+}
+
 const funcionesVigiladas = new Proxy(cliente.functions, {
   get(destino, prop) {
     if (prop !== 'invoke') return destino[prop];
-    return (nombre, ...resto) => conAviso(() => destino.invoke(nombre, ...resto), nombre);
+    return (nombre, ...resto) => {
+      const { opciones, args } = opcionesDeLlamada(resto);
+      const llamar = () => destino.invoke(nombre, ...args);
+      return opciones.sinAviso ? sinCartel(llamar) : conAviso(llamar, nombre);
+    };
   },
 });
 
@@ -196,6 +280,26 @@ const integracionesVigiladas = new Proxy({}, {
                 }
                 return await consultarIA(args[0] || {}, cfg);
               } catch (err) {
+                // Los modelos gratuitos de internet tienen tope diario. Al
+                // llegar al tope no se da la consulta por perdida: se busca un
+                // Ollama a mano —en el ordenador, o el del ordenador por el
+                // wifi— y se repite ahí, que no tiene límite ninguno. Si sale
+                // bien, además queda puesto para las siguientes.
+                if (seAcabaronLasConsultas(err)) {
+                  let porQue = null;
+                  try {
+                    const r = await reintentarSinLimite(args[0] || {}, base44);
+                    if (r.ok) return r.respuesta;
+                    // Si no ha podido, al menos nos traemos el motivo para
+                    // contárselo: "no lo encuentro" a secas no ayuda a nadie.
+                    porQue = r.diagnostico || null;
+                  } catch (e2) {
+                    console.error('[base44Client] La IA sin límite tampoco ha podido:', e2);
+                  }
+                  const sinSalida = errorSinConsultas(porQue);
+                  avisarDeFallo({ funcion: punto, error: sinSalida });
+                  throw sinSalida;
+                }
                 avisarDeFallo({ funcion: punto, error: err });
                 throw err;
               }

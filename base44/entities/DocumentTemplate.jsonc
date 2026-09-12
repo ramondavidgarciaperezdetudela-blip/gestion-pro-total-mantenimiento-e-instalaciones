@@ -14,9 +14,22 @@
         "recibo",
         "sat",
         "mantenimiento",
-        "informe"
+        "informe",
+        "legalización",
+        "tarjeta_contacto",
+        "solar",
+        "electrico",
+        "clima",
+        "frio",
+        "trabajo",
+        "comercial",
+        "expediente"
       ],
       "default": "factura"
+    },
+    "template_key": {
+      "type": "string",
+      "description": "Identificador del modelo de fábrica del que salió esta plantilla (mtd_solar, parte_trabajo…)"
     },
     "primary_color": {
       "type": "string",

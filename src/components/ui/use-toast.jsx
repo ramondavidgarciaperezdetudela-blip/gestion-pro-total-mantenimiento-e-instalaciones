@@ -1,164 +1,61 @@
-// Inspired by react-hot-toast library
-import { useState, useEffect } from "react";
+/**
+ * use-toast.jsx — Los avisos que salen arriba ("Documento actualizado…").
+ *
+ * QUÉ PASABA
+ *
+ * Este fichero venía de la plantilla de shadcn, que está pensada para usarse
+ * con @radix-ui/react-toast. Aquí Radix no está: toast.jsx son <div> normales
+ * que se limitan a copiar las propiedades. Resultado:
+ *
+ *   · `duration: 2500` no lo leía nadie. El aviso NO desaparecía nunca.
+ *   · `open: false` tampoco: el aviso se seguía pintando igual.
+ *   · La X era un <button> sin nada dentro, así que no cerraba.
+ *   · Y una vez "cerrado", el aviso no se quitaba de la lista hasta pasados
+ *     TOAST_REMOVE_DELAY = 1.000.000 ms, o sea 16 minutos y medio.
+ *
+ * Con el aviso fijo arriba del todo y a toda anchura (z-100), en el móvil eso
+ * tapaba la cabecera entera: ni atrás, ni editar, ni inicio. Y no había forma
+ * de quitarlo.
+ *
+ * QUÉ SE HACE AHORA
+ *
+ * El resto del programa (unos 35 sitios) ya avisaba con `sonner`, que sí sabe
+ * cerrarse solo. Así que en vez de arreglar una segunda tubería para que haga
+ * lo mismo, esta pasa a ser un adaptador de la que ya funciona: se mantiene la
+ * forma de llamarla —toast({ title, description, variant, duration })— para no
+ * tocar las pantallas, y por debajo avisa sonner. Un solo sitio, un solo
+ * comportamiento, y los avisos se van solos.
+ */
+import { toast as sonner } from 'sonner';
 
-const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 1000000;
+/** Lo que dura un aviso en pantalla si nadie dice otra cosa. */
+export const DURACION_POR_DEFECTO = 2500;
 
-const actionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
-};
-
-let count = 0;
-
-function genId() {
-  count = (count + 1) % Number.MAX_VALUE;
-  return count.toString();
-}
-
-const toastTimeouts = new Map();
-
-const addToRemoveQueue = (toastId) => {
-  if (toastTimeouts.has(toastId)) {
-    return;
-  }
-
-  const timeout = setTimeout(() => {
-    toastTimeouts.delete(toastId);
-    dispatch({
-      type: actionTypes.REMOVE_TOAST,
-      toastId,
-    });
-  }, TOAST_REMOVE_DELAY);
-
-  toastTimeouts.set(toastId, timeout);
-};
-
-const _clearFromRemoveQueue = (toastId) => {
-  const timeout = toastTimeouts.get(toastId);
-  if (timeout) {
-    clearTimeout(timeout);
-    toastTimeouts.delete(toastId);
-  }
-};
-
-export const reducer = (state, action) => {
-  switch (action.type) {
-    case actionTypes.ADD_TOAST:
-      return {
-        ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
-      };
-
-    case actionTypes.UPDATE_TOAST:
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t
-        ),
-      };
-
-    case actionTypes.DISMISS_TOAST: {
-      const { toastId } = action;
-
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
-      if (toastId) {
-        addToRemoveQueue(toastId);
-      } else {
-        state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id);
-        });
-      }
-
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === toastId || toastId === undefined
-            ? {
-                ...t,
-                open: false,
-              }
-            : t
-        ),
-      };
-    }
-    case actionTypes.REMOVE_TOAST:
-      if (action.toastId === undefined) {
-        return {
-          ...state,
-          toasts: [],
-        };
-      }
-      return {
-        ...state,
-        toasts: state.toasts.filter((t) => t.id !== action.toastId),
-      };
-  }
-};
-
-const listeners = [];
-
-let memoryState = { toasts: [] };
-
-function dispatch(action) {
-  memoryState = reducer(memoryState, action);
-  listeners.forEach((listener) => {
-    listener(memoryState);
-  });
-}
-
-function toast({ ...props }) {
-  const id = genId();
-
-  const update = (props) =>
-    dispatch({
-      type: actionTypes.UPDATE_TOAST,
-      toast: { ...props, id },
-    });
-
-  const dismiss = () =>
-    dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id });
-
-  dispatch({
-    type: actionTypes.ADD_TOAST,
-    toast: {
-      ...props,
-      id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss();
-      },
-    },
-  });
+/** Junta título y texto como los espera sonner. */
+function toast({ title, description, variant, duration, ...resto } = {}) {
+  const opciones = {
+    description: description || undefined,
+    duration: Number.isFinite(duration) ? duration : DURACION_POR_DEFECTO,
+    ...resto,
+  };
+  const texto = title || description || '';
+  const id = variant === 'destructive'
+    ? sonner.error(texto, opciones)
+    : sonner.success(texto, opciones);
 
   return {
     id,
-    dismiss,
-    update,
+    dismiss: () => sonner.dismiss(id),
+    update: ({ title: t, ...r } = {}) => sonner(t || texto, { ...opciones, ...r, id }),
   };
 }
 
 function useToast() {
-  const [state, setState] = useState(memoryState);
-
-  useEffect(() => {
-    listeners.push(setState);
-    return () => {
-      const index = listeners.indexOf(setState);
-      if (index > -1) {
-        listeners.splice(index, 1);
-      }
-    };
-  }, [state]);
-
   return {
-    ...state,
+    toasts: [],           // ya no hace falta pintarlos a mano: lo hace sonner
     toast,
-    dismiss: (toastId) => dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
+    dismiss: (id) => sonner.dismiss(id),
   };
 }
 
-export { useToast, toast }; 
+export { useToast, toast };

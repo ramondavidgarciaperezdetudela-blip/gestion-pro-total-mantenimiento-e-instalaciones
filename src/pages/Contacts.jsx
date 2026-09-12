@@ -20,6 +20,7 @@ import { saveToCache, loadFromCache, formatCacheDate } from '@/lib/offlineCache'
 import { fetchCompanyLogo } from '../components/LogoFetcher';
 import { uploadImage } from '@/lib/uploadImage';
 import PostalCodeSearch from '../components/PostalCodeSearch';
+import CompletarDatosEmpresa from '../components/CompletarDatosEmpresa';
 
 const PAYMENT_PROFILES = {
   buen_pagador: { label: 'Buen pagador', color: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
@@ -169,7 +170,6 @@ export default function Contacts() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [fetchingLogo, setFetchingLogo] = useState(false);
-  const [fetchingCompany, setFetchingCompany] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [cacheDate, setCacheDate] = useState('');
   const photoInputRef = React.useRef(null);
@@ -261,50 +261,6 @@ export default function Contacts() {
     setFetchingLogo(false);
   };
 
-  // Buscar datos de empresa por NIF o nombre usando IA con internet
-  const handleFetchCompanyData = async () => {
-    const query = form.nif || form.company_name;
-    if (!query) return alert('Introduce primero el NIF/CIF o nombre de la empresa');
-    setFetchingCompany(true);
-    try {
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Busca en internet (web pública, registro mercantil, AEAT, páginas oficiales) los datos de la empresa española con ${form.nif ? `NIF/CIF: ${form.nif}` : `nombre: "${form.company_name}"`}. Devuelve los datos que encuentres: razón social, dirección, código postal, ciudad, provincia, teléfono, email, website. Si no encuentras algún dato, deja el campo vacío.`,
-        add_context_from_internet: true,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            company_name: { type: 'string' },
-            address: { type: 'string' },
-            postal_code: { type: 'string' },
-            city: { type: 'string' },
-            province: { type: 'string' },
-            phone: { type: 'string' },
-            email: { type: 'string' },
-            website: { type: 'string' },
-            nif: { type: 'string' },
-          }
-        }
-      });
-      if (result) {
-        setForm(prev => ({
-          ...prev,
-          company_name: result.company_name || prev.company_name,
-          address: result.address || prev.address,
-          postal_code: result.postal_code || prev.postal_code,
-          city: result.city || prev.city,
-          province: result.province || prev.province,
-          phone: result.phone || prev.phone,
-          email: result.email || prev.email,
-          website: result.website || prev.website,
-          nif: result.nif || prev.nif,
-        }));
-      }
-    } catch (e) {
-      alert('Error al buscar datos de empresa: ' + e.message);
-    }
-    setFetchingCompany(false);
-  };
-
   const handleEdit = (c) => {
     setEditing(c);
     setForm({ ...EMPTY_FORM, ...c });
@@ -357,7 +313,7 @@ export default function Contacts() {
           <DialogTrigger asChild>
             <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => { setEditing(null); setForm(EMPTY_FORM); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+          <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => { setDialogOpen(false); setEditing(null); setForm(EMPTY_FORM); }} textoVolver="Volver sin guardar" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <DialogTitle>{editing ? 'Editar contacto' : 'Nuevo contacto'}</DialogTitle>
@@ -392,14 +348,17 @@ export default function Contacts() {
                   <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="flex gap-2">
-                <Input placeholder="NIF / CIF empresa" value={form.nif} onChange={e => setForm({...form, nif: e.target.value})} className="flex-1" />
-                <Button onClick={handleFetchCompanyData} variant="outline" size="sm" disabled={fetchingCompany || (!form.nif && !form.company_name)} className="whitespace-nowrap gap-1 text-xs">
-                  <Search className="w-3 h-3" />
-                  {fetchingCompany ? 'Buscando...' : 'Buscar empresa'}
-                </Button>
-              </div>
+              <Input placeholder="NIF / CIF empresa" value={form.nif} onChange={e => setForm({...form, nif: e.target.value})} />
               <Input placeholder="Empresa / Razón social" value={form.company_name} onChange={e => setForm({...form, company_name: e.target.value})} />
+              {/* Un solo buscador, el mismo que en los datos de la empresa:
+                  comprueba el NIF, saca la provincia de él y lo demás lo busca
+                  fuera, pero sin pisar nada sin permiso. Antes había un botón
+                  que machacaba los campos directamente y sin avisar. */}
+              <CompletarDatosEmpresa
+                actuales={form}
+                onAplicar={(nuevos) => setForm(prev => ({ ...prev, ...nuevos }))}
+                campos={['company_name', 'nif', 'address', 'postal_code', 'city', 'province', 'phone', 'email', 'website']}
+              />
               <div className="flex gap-2">
                 <Input placeholder="Website de empresa" value={form.website || ''} onChange={e => setForm({...form, website: e.target.value})} className="flex-1" />
                 <Button onClick={handleAutoFetchLogo} variant="outline" size="sm" disabled={fetchingLogo || (!form.company_name && !form.website)} className="whitespace-nowrap gap-1 text-xs">
@@ -423,26 +382,39 @@ export default function Contacts() {
               </div>
               <Input placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
               <Input placeholder="Dirección" value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
-              {/* Búsqueda por CP — rellena ciudad y provincia automáticamente */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 space-y-2">
-                <p className="text-xs text-blue-700 font-medium">📍 Buscar por código postal (rellena ciudad y provincia automáticamente)</p>
+              {/* Los tres campos buscan y se rellenan entre ellos: da igual por
+                  cuál empieces —la población, la provincia o el código postal—,
+                  eliges de la lista y se ponen los otros dos. Antes solo se
+                  podía buscar por código postal, y si no te lo sabías tenías
+                  que escribirlo todo a mano. */}
+              <p className="text-xs text-blue-700 font-medium flex items-center gap-1">
+                📍 Escribe la población, la provincia o el código postal y elige de la lista: se rellenan los tres
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <PostalCodeSearch
+                  type="city"
+                  data-prueba="cliente-ciudad"
+                  placeholder="Población / Municipio"
+                  value={form.city || ''}
+                  onChange={(v) => setForm(prev => ({ ...prev, city: v }))}
+                  onSelect={(r) => setForm(prev => ({ ...prev, postal_code: r.postal_code, city: r.city, province: r.province }))}
+                />
+                <PostalCodeSearch
+                  type="province"
+                  data-prueba="cliente-provincia"
+                  placeholder="Provincia"
+                  value={form.province || ''}
+                  onChange={(v) => setForm(prev => ({ ...prev, province: v }))}
+                  onSelect={(r) => setForm(prev => ({ ...prev, postal_code: r.postal_code, city: r.city, province: r.province }))}
+                />
                 <PostalCodeSearch
                   type="postal_code"
-                  onSelect={(result) => {
-                    setForm(prev => ({
-                      ...prev,
-                      postal_code: result.postal_code,
-                      city: result.city,
-                      province: result.province
-                    }));
-                  }}
+                  data-prueba="cliente-cp"
+                  placeholder="Código postal"
+                  value={form.postal_code || ''}
+                  onChange={(v) => setForm(prev => ({ ...prev, postal_code: v }))}
+                  onSelect={(r) => setForm(prev => ({ ...prev, postal_code: r.postal_code, city: r.city, province: r.province }))}
                 />
-              </div>
-              {/* Campos directos editables */}
-              <div className="grid grid-cols-3 gap-2">
-                <Input placeholder="Código postal" value={form.postal_code || ''} onChange={e => setForm({...form, postal_code: e.target.value})} />
-                <Input placeholder="Ciudad / Municipio" value={form.city || ''} onChange={e => setForm({...form, city: e.target.value})} />
-                <Input placeholder="Provincia" value={form.province || ''} onChange={e => setForm({...form, province: e.target.value})} />
               </div>
               <Textarea placeholder="Notas" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} />
               <div className="grid grid-cols-2 gap-2">

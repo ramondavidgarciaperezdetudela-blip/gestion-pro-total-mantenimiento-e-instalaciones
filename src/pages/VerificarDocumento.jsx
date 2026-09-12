@@ -4,17 +4,45 @@ import { CheckCircle2, XCircle, Clock, ShieldCheck, Loader2 } from 'lucide-react
 
 // Página PÚBLICA de verificación de un documento (se abre al escanear el QR).
 export default function VerificarDocumento() {
-  const params = new URLSearchParams(typeof window !== 'undefined' ? (window.location.search || (window.location.hash.split('?')[1] ? '?' + window.location.hash.split('?')[1] : '')) : '');
-  const docId = params.get('id');
+  // El código puede venir de tres sitios según cómo se abra el enlace: la
+  // dirección normal (?id=), detrás de la almohadilla (#/…?id=) —así es en el
+  // programa instalado y en el móvil— o al final de la ruta. Se buscan los
+  // tres, porque este enlace lo abre gente en su móvil desde una cámara de
+  // fotos y no hay una segunda oportunidad para explicarlo.
+  const docId = (() => {
+    if (typeof window === 'undefined') return null;
+    const href = window.location.href || '';
+    const busca = (texto) => {
+      const m = /[?&]id=([^&#/]+)/.exec(texto || '');
+      return m ? decodeURIComponent(m[1]) : null;
+    };
+    return busca(window.location.search) || busca(window.location.hash) || busca(href);
+  })();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
 
   useEffect(() => {
-    if (!docId) { setErr('Falta el identificador del documento.'); setLoading(false); return; }
+    if (!docId) {
+      // Entrar aquí sin código no es un error: es lo que pasa al abrir la
+      // página "a pelo" para ver cómo es. Se explica en vez de dar un fallo.
+      setErr('Esta es la página que se abre al escanear el QR de un documento. '
+        + 'Para comprobar uno, escanea su QR o abre el enlace que lleva su código.');
+      setLoading(false);
+      return;
+    }
     base44.functions.invoke('verificarDocumento', { doc_id: docId })
       .then((res) => setData(res?.data || res))
-      .catch(() => setErr('No se pudo verificar el documento.'))
+      .catch((e) => {
+        // Un 404 aquí no es "documento no encontrado": es que la función de
+        // comprobación todavía no está publicada en el panel. Decirlo ahorra
+        // buscar el fallo donde no está.
+        const estado = e?.status ?? e?.response?.status ?? null;
+        setErr(estado === 404
+          ? 'La comprobación no está disponible: falta publicar la función «verificarDocumento» '
+            + 'en el panel de Base44. Avisa a quien te ha mandado el documento.'
+          : 'No se ha podido comprobar el documento ahora mismo. Inténtalo dentro de un rato.');
+      })
       .finally(() => setLoading(false));
   }, [docId]);
 
