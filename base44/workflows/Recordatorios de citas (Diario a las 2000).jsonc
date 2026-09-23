@@ -1,0 +1,44 @@
+{
+  "name": "Recordatorios de citas (Diario a las 20:00)",
+  "description": "Env\u00eda recordatorios autom\u00e1ticos a clientes sobre citas programadas para el d\u00eda siguiente a trav\u00e9s de WhatsApp. Se ejecuta diariamente a las 20:00",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 19 * * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "recordatorios_de_citas_diario_a_las_20_00",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "appointmentReminder",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "appointmentReminder"
+  }
+}
