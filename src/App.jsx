@@ -14,7 +14,8 @@ import { BrowserRouter, HashRouter, Route, Routes } from 'react-router-dom';
 // BrowserRouter para conservar las URLs limpias y los enlaces públicos.
 const isFileProtocol = typeof window !== 'undefined' && window.location.protocol === 'file:';
 const Router = isFileProtocol ? HashRouter : BrowserRouter;
-import { Suspense, lazy } from 'react';
+import { Suspense } from 'react';
+import { lazyWithRetry as lazy } from '@/lib/lazyWithRetry';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';

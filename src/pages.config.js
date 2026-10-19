@@ -47,7 +47,7 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import { lazy } from 'react';
+import { lazyWithRetry as lazy } from '@/lib/lazyWithRetry';
 
 const AIAssistant = lazy(() => import('./pages/AIAssistant'));
 const AIBudget = lazy(() => import('./pages/AIBudget'));
