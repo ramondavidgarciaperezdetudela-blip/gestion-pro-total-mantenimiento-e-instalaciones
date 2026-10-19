@@ -7,6 +7,7 @@ import {
 } from '@/lib/proveedorIA';
 import { base44 } from '@/api/base44Client';
 import AjustesProveedorIA from '@/components/AjustesProveedorIA';
+import BuscarOllama from '@/components/BuscarOllama';
 
 /**
  * Dejar la IA lista sin que haya que configurar nada.

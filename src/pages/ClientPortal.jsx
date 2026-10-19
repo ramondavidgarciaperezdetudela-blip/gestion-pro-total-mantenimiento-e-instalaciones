@@ -42,19 +42,22 @@ export default function ClientPortal() {
   const [previewDoc, setPreviewDoc] = useState(null);
   const [sendingLink, setSendingLink] = useState(null);
   const [tab, setTab] = useState('resumen');
+  const [company, setCompany] = useState(null);
 
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
     setLoading(true);
-    const [c, inv, sat] = await Promise.all([
+    const [c, inv, sat, comp] = await Promise.all([
       base44.entities.Contact.list('name', 500),
       base44.entities.Invoice.list('-date', 500),
       base44.entities.SATOrder.list('-date', 200),
+      base44.entities.CompanySettings.list().catch(() => []),
     ]);
     setContacts(c);
     setInvoices(inv);
     setSatOrders(sat);
+    setCompany(comp && comp[0] ? comp[0] : null);
     setLoading(false);
   };
 
