@@ -369,6 +369,10 @@ export default function Documents() {
     let savedDoc = null;
     const wasEditing = !!editing;
     const editingId = editing?.id;
+
+    // ── 1) El guardado en sí (lo único que de verdad importa) ──────────────
+    // Se aisla en su propio try/catch: si falla, se avisa y se queda el
+    // formulario abierto para reintentar. Nada más cuelga el spinner.
     try {
       if (editing) {
         savedDoc = await base44.entities.Invoice.update(editing.id, payload);
@@ -392,25 +396,47 @@ export default function Documents() {
             title: `${docLabel} ${form.doc_number || ''}`,
             doc_type: form.doc_type, date: form.date,
             description: `Total: ${form.total?.toFixed(2)} € | Estado: ${form.status}`
-          });
+          }).catch(() => {}); // No bloquea el guardado del documento
         }
       }
-      clearDraft();
-      setDialogOpen(false);setEditing(null);
-      toast({ title: wasEditing ? 'Documento actualizado' : 'Documento guardado', description: `${docLabel} ${form.doc_number || ''}`, duration: 2500 });
-      const d = await cargarTodo('Invoice', '-date');
-      setDocs(d);
-      const savedId = savedDoc?.id || editingId;
-      const fresh = (savedId && d.find(x => x.id === savedId)) || savedDoc || (!wasEditing ? d[0] : null);
-      if (fresh) setPreviewDoc(fresh);
     } catch (err) {
       console.error('[Documents] Error al guardar:', err);
       const msg = err?.message || 'No se pudo guardar el documento. Inténtalo de nuevo.';
       setSaveError(msg);
       toast({ variant: 'destructive', title: 'Error al guardar', description: msg, duration: 4000 });
-    } finally {
-      setSaving(false);
+      setSaving(false); // libera el botón para reintentar
+      return;
     }
+
+    // ── 2) Confirmación inmediata: el documento SÍ se ha guardado ─────────
+    // Antes se esperaba a recargar TODA la lista antes de cerrar el formulario
+    // y avisar. Si la recarga se colaba por rate-limiting, el spinner se quedaba
+    // girando para siempre y parecía que no había guardado nada. Ahora se
+    // confirma en cuanto el servidor contesta, y la recarga va en segundo plano.
+    clearDraft();
+    setDialogOpen(false);
+    setEditing(null);
+    setSaving(false);
+    toast({ title: wasEditing ? 'Documento actualizado' : 'Documento guardado', description: `${docLabel} ${form.doc_number || ''}`, duration: 2500 });
+
+    // ── 3) Recarga de la lista + apertura de la vista previa (en segundo plano)
+    // Si la red va lenta o salta el limitador, lo que ya está guardado no se
+    // pierde y el usuario no se queda esperando: se le muestra el documento
+    // tal como lo devolvió el servidor.
+    const savedId = savedDoc?.id || editingId;
+    if (savedDoc) setPreviewDoc(savedDoc);
+    (async () => {
+      try {
+        const d = await cargarTodo('Invoice', '-date');
+        setDocs(d);
+        const fresh = (savedId && d.find(x => x.id === savedId)) || savedDoc;
+        if (fresh) setPreviewDoc(fresh);
+      } catch (e) {
+        // La lista no se actualizó, pero el documento está guardado. No se
+        // asusta al usuario: basta con refrescar a mano si hace falta.
+        console.warn('[Documents] Recarga en segundo plano falló:', e);
+      }
+    })();
   };
 
   const handleDelete = async (id) => {
