@@ -48,21 +48,30 @@ export const AuthProvider = ({ children }) => {
         interceptResponses: true
       });
       
+      // Sin token (el caso normal del programa vendido: funciona sin cuenta de
+      // Base44, en modo app-level): NO se bloquea la entrada esperando al
+      // servidor. Antes, si el servidor fallaba durante un rebuild o sin
+      // conexión, la ruedecita de arranque giraba 15 s y luego mostraba la
+      // pantalla de error, que era justo el "no me deja entrar" tras cada
+      // modificación. Ahora se entra al instante y los ajustes públicos se
+      // cargan en segundo plano (best-effort): si llegan, mejor; si no, la
+      // app sigue funcionando igual.
+      if (!appParams.token) {
+        setIsLoadingAuth(false);
+        setIsLoadingPublicSettings(false);
+        setIsAuthenticated(false);
+        appClient.get(`/prod/public-settings/by-id/${appParams.appId}`)
+          .then((ps) => setAppPublicSettings(ps))
+          .catch(() => { /* sin ajustes públicos: no bloquea la entrada */ });
+        return;
+      }
+
+      // Con token (el creador con login de Base44): sí hace falta esperar a
+      // los ajustes públicos para saber si hace falta iniciar sesión.
       try {
         const publicSettings = await conTope(appClient.get(`/prod/public-settings/by-id/${appParams.appId}`));
         setAppPublicSettings(publicSettings);
-        
-        // If we got the app public settings successfully, check if user is authenticated
-        // NOTA: el programa se distribuye/vende para que cada cliente lo use sin
-        // ninguna cuenta de Base44 (solo el creador tiene login ahí). Sin token no
-        // se debe exigir iniciar sesión: la app funciona en modo app-level
-        // (requiresAuth: false en base44Client.js) usando solo el appId.
-        if (appParams.token) {
-          await conTope(checkUserAuth());
-        } else {
-          setIsLoadingAuth(false);
-          setIsAuthenticated(false);
-        }
+        await conTope(checkUserAuth());
         clearTimeout(temporizador);
         setIsLoadingPublicSettings(false);
       } catch (appError) {
