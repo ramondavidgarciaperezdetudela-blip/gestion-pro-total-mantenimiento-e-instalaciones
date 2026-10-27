@@ -44,21 +44,41 @@ export function esDemasiadasPeticiones(err) {
 /**
  * Un freno compartido por todo un trabajo.
  *
- * Sin esto, cuarenta peticiones en paralelo se comen el límite, cada una
- * reintenta por su cuenta y todas vuelven a la vez: se vuelve a saturar. Con
- * el freno, el primer 429 para a TODOS un rato, y el trabajo sale adelante
- * más despacio pero entero.
+ * Hace DOS cosas:
+ *
+ * 1) RITMO PROACTIVO. El servidor admite 140 lecturas/min por usuario. Si se
+ *    lanzan sincontrol, se vacía el cupo en unos segundos y llega el 429. El
+ *    freno reparte las peticiones para que salgan como mucho una cada
+ *    `interval` ms (500 ms = 120/min), por debajo del límite. Así no hace
+ *    falta esperar a que el servidor nos pare: nunca llegamos ahí.
+ *
+ *    El "turno" se RESERVA antes de esperar, no después. Si se reservase al
+ *    final, dos peticiones que entran a la vez leerían la misma marca, no
+ *    esperarían ninguna y saldrían juntas: justo lo que satura. Reservando
+ *    antes, cada una se queda con su hueco y salen desfazadas aunque haya
+ *    varias en curso.
+ *
+ * 2) FRENO REACTIVO. Cuando aun así el servidor dice "demasiadas", el primer
+ *    429 para a TODOS un rato y el trabajo sale adelante despacio pero entero.
  */
-export function crearFreno() {
-  let hasta = 0;
+export function crearFreno(interval = 500) {
+  let hasta = 0;        // freno reactivo (429)
   let veces = 0;
+  let proxima = 0;      // marca del siguiente hueco libre (ritmo proactivo)
   return {
-    /** Espera si hay freno puesto. Se llama antes de cada petición. */
+    /** Espera su hueco y el freno reactivo. Se llama antes de cada petición. */
     async turno() {
+      if (interval > 0) {
+        const ahora = Date.now();
+        const slot = Math.max(proxima, ahora);
+        proxima = slot + interval;     // reserva el hueco ANTES de esperar
+        const espera = slot - ahora;
+        if (espera > 0) await new Promise((r) => setTimeout(r, espera));
+      }
       const falta = hasta - Date.now();
       if (falta > 0) await new Promise((r) => setTimeout(r, falta));
     },
-    /** Pone el freno para todos durante `ms`. */
+    /** Pone el freno reactivo para todos durante `ms`. */
     frenar(ms) {
       veces++;
       hasta = Math.max(hasta, Date.now() + ms);
