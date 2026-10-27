@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Wrench, Plus, Edit, Trash2, AlertCircle, CheckCircle2, Clock, Gauge } from 'lucide-react';
+import { Wrench, Plus, Edit, Trash2, AlertCircle, CheckCircle2, Clock, Gauge, List, LayoutGrid } from 'lucide-react';
+import GaleriaAverias from '@/components/GaleriaAverias';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
@@ -34,6 +35,7 @@ export default function EquipmentFailureHistory() {
   const [selectedContact, setSelectedContact] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
+  const [vista, setVista] = useState('lista'); // 'lista' | 'galeria'
   const printRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -243,10 +245,28 @@ export default function EquipmentFailureHistory() {
         </CardContent>
       </Card>
 
-      {/* Historial como diario */}
+      {/* Conmutador Lista / Galería */}
+      <div className="flex justify-end">
+        <div className="flex rounded-lg border overflow-hidden" style={{ borderColor: 'hsl(var(--border))' }}>
+          <button onClick={() => setVista('lista')} className="px-2.5 py-2 flex items-center gap-1 text-xs transition-colors"
+            style={vista === 'lista' ? { background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' } : { color: 'hsl(var(--muted-foreground))', background: 'hsl(var(--card))' }}
+            title="Vista de lista">
+            <List className="w-4 h-4" /> Lista
+          </button>
+          <button onClick={() => setVista('galeria')} className="px-2.5 py-2 flex items-center gap-1 text-xs transition-colors"
+            style={vista === 'galeria' ? { background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' } : { color: 'hsl(var(--muted-foreground))', background: 'hsl(var(--card))' }}
+            title="Vista de galería con fotos">
+            <LayoutGrid className="w-4 h-4" /> Galería
+          </button>
+        </div>
+      </div>
+
+      {/* Historial como diario o galería */}
       <div className="space-y-3">
         {filteredFailures.length === 0 ? (
           <Card><CardContent className="p-8 text-center text-gray-500">Sin registros de averías</CardContent></Card>
+        ) : vista === 'galeria' ? (
+          <GaleriaAverias averias={filteredFailures} onEditar={handleEdit} onEliminar={(f) => handleDelete(f.id)} />
         ) : (
           filteredFailures.map(failure => {
             const statusConfig = STATUS_CONFIG[failure.status];

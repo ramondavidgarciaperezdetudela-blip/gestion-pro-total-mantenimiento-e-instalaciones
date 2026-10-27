@@ -14,8 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
-  Plus, FolderOpen, Trash2, Edit, ChevronDown, ChevronUp, CheckCircle2, Circle, AlertTriangle, Zap, ListTodo, GripVertical
+  Plus, FolderOpen, Trash2, Edit, ChevronDown, ChevronUp, CheckCircle2, Circle, AlertTriangle, Zap, ListTodo, GripVertical, LayoutGrid
 } from 'lucide-react';
+import GaleriaProyectos from '@/components/GaleriaProyectos';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
 const TYPES = ['clima', 'refrigeracion', 'electrico', 'solar', 'mixto'];
@@ -291,8 +292,17 @@ export default function Projects() {
       <Tabs defaultValue="lista">
         <TabsList>
           <TabsTrigger value="lista">Lista</TabsTrigger>
+          <TabsTrigger value="galeria">Galería</TabsTrigger>
           <TabsTrigger value="kanban">Kanban</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="galeria" className="pt-2">
+          {filtered.length === 0 ? (
+            <p className="text-center text-gray-400 py-10">No hay proyectos</p>
+          ) : (
+            <GaleriaProyectos proyectos={filtered} onEdit={handleEdit} onDelete={handleDelete} />
+          )}
+        </TabsContent>
 
         <TabsContent value="lista" className="space-y-2 pt-2">
           {filtered.length === 0 && <p className="text-center text-gray-400 py-10">No hay proyectos</p>}
