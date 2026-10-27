@@ -4,7 +4,7 @@ import { createPageUrl } from './utils';
 import { base44 } from '@/api/base44Client';
 import {
   Home, Users, FileText, Calendar, Wrench, ClipboardList,
-  Thermometer, Sun, BookOpen, Shield, Bot, Settings,
+  Thermometer, Sun, BookOpen, Shield, ShieldCheck, Bot, Settings,
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette,
   CreditCard, Download, Bell, History, Search, FileBarChart, Droplets, AlertCircle,
@@ -180,6 +180,7 @@ const navItems = [
 // { name: 'Renovar Licencia', page: 'LicenseRenewal', icon: Shield },
 { name: 'Soporte IA', page: 'AISupport', icon: Bot },
 { name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Droplets },
+{ name: 'Informes Aseguradora', page: 'InformesTecnicos', icon: ShieldCheck },
 { name: 'Tablas Gases', page: 'TablasRefrigerantes', icon: FileBarChart },
 ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
@@ -212,6 +213,7 @@ const PAGE_SECTION = {
   DanfossTools: 'Refrigeración', PresionesGas: 'Refrigeración',
   SolarCalc: 'Solar', SolarBatteryCalc: 'Solar', BatteryCalc: 'Solar',
   TablasRefrigerantes: 'Refrigeración',
+  InformesTecnicos: 'Documentos',
   // Proveedores y stock
   Suppliers: 'Proveedores y stock', GasSuppliers: 'Proveedores y stock',
   SupplierTariffs: 'Proveedores y stock', Inventory: 'Proveedores y stock',
