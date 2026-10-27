@@ -23,8 +23,10 @@
  * los demás no sigan empujando.
  */
 
-/** Esperas entre reintentos (ms). Suben rápido: el límite se levanta con tiempo. */
-export const ESPERAS = [700, 2000, 5000, 12000, 25000];
+/** Esperas entre reintentos (ms). Suben rápido: el límite se levanta con tiempo.
+ * Las dos últimas permiten esperar a que pase el minuto entero del cupo del
+ * servidor (140/min) cuando la copia llega a pillar muchas secciones a la vez. */
+export const ESPERAS = [700, 2000, 5000, 12000, 25000, 40000, 60000];
 
 /**
  * ¿El servidor está diciendo «demasiadas peticiones» o «ahora no puedo»?

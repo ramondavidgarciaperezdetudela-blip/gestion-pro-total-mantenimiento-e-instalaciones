@@ -28,11 +28,18 @@ import {
 const entidades = base44.sinAvisos?.entities || base44.entities;
 
 const PAGE = 1000;
-// Menos peticiones a la vez que antes (eran 6 y 8). Con el reintento y el
-// freno la copia acaba igual, pero se llega mucho menos al límite del
-// servidor, que era de donde salía el "error de muchas solicitudes".
-const PAGE_BATCH = 3;         // páginas en paralelo dentro de una misma entidad
-const ENTITY_CONCURRENCY = 4; // entidades en paralelo al hacer copia/restauración
+// El servidor limita a 140 lecturas/min por usuario. Antes se lanzaban 4
+// entidades a la vez × 3 páginas en paralelo = 12 lecturas simultáneas, que
+// vaciaban el cupo en unos segundos; entonces el freno paraba a todos, pero
+// al soltar volvían a salir 12 de golpe y se volvía a saturar, hasta que
+// los reintentos de una página se agotaban y la copia fallaba entera.
+//
+// Ahora las páginas van SEGUIDAS dentro de cada entidad (PAGE_BATCH=1) y solo
+// 2 entidades a la vez: 2 lecturas concurrentes como mucho. Con el freno y
+// los reintentos alargados, cuando el servidor dice "para" se espera, y al
+// seguir solo sale una o dos peticiones, que ya no lo vuelven a saturar.
+const PAGE_BATCH = 1;         // páginas en paralelo dentro de una misma entidad
+const ENTITY_CONCURRENCY = 2; // entidades en paralelo al hacer copia/restauración
 
 const LOTES_A_LA_VEZ = 2;
 const BORRADOS_A_LA_VEZ = 4;
