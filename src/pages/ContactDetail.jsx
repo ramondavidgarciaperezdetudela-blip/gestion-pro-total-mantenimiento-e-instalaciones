@@ -91,6 +91,7 @@ export default function ContactDetail() {
   const [notes, setNotes] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [calculations, setCalculations] = useState([]);
+  const [insuranceReports, setInsuranceReports] = useState([]);
   const [noteDialog, setNoteDialog] = useState(false);
   const [noteForm, setNoteForm] = useState({ title: '', content: '' });
   const [editingContact, setEditingContact] = useState(false);
@@ -159,15 +160,17 @@ export default function ContactDetail() {
     }
 
     try {
-      const [docs, nts, apts, calcs] = await Promise.all([
+      const [docs, nts, apts, calcs, infReports] = await Promise.all([
         base44.entities.ClientDocument.filter({ contact_id: contactId }),
         base44.entities.ClientNote.filter({ contact_id: contactId }),
         base44.entities.Appointment.filter({ contact_id: contactId }),
         base44.entities.ThermalCalculation.filter({ contact_id: contactId }),
+        base44.entities.InsuranceReport.filter({ contact_id: contactId }),
       ]);
       setDocuments(docs);
       setEquipmentPhotos(docs.filter((d) => d.doc_type === 'foto_equipo'));
       setNotes(nts); setAppointments(apts); setCalculations(calcs);
+      setInsuranceReports(Array.isArray(infReports) ? infReports : (infReports?.items || []));
     } catch {
       setAvisoHistorial(true);
     }
@@ -744,6 +747,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           <TabsTrigger value="diario" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🔧 Diario</TabsTrigger>
           <TabsTrigger value="instalaciones" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🏭 Instalaciones</TabsTrigger>
           <TabsTrigger value="intervenciones" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">📋 Intervenciones ({satOrders.length + invoices.length + maintenance.length})</TabsTrigger>
+          <TabsTrigger value="informes_aseg" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🛡️ Informes Aseg. ({insuranceReports.length})</TabsTrigger>
           </TabsList>
 
         {/* FACTURAS */}
@@ -1285,6 +1289,42 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
             satOrders={satOrders}
             maintenance={maintenance}
           />
+        </TabsContent>
+
+        {/* INFORMES TÉCNICOS PARA ASEGURADORA */}
+        <TabsContent value="informes_aseg">
+          <div className="space-y-2 mt-2">
+            <Link to={createPageUrl(`InformesTecnicos?contact_id=${contactId}`)}>
+              <Button size="sm" className="bg-emerald-600"><Plus className="w-4 h-4 mr-1" />Nuevo informe para aseguradora</Button>
+            </Link>
+            {(insuranceReports || []).map((inf) => (
+              <Card key={inf.id} className="hover:shadow-md">
+                <CardContent className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">{inf.report_number || 'S/N'} — {inf.insurance_company || 'Sin aseguradora'}</p>
+                      <p className="text-xs text-gray-500">{inf.report_date} {inf.insurance_claim_ref ? `· Siniestro ${inf.insurance_claim_ref}` : ''}</p>
+                      {inf.equipment_brand && <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">{inf.equipment_brand} {inf.equipment_model}</p>}
+                      {inf.technician && <p className="text-xs text-blue-600">👷 {inf.technician}</p>}
+                      {inf.failure_description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{inf.failure_description}</p>}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <Badge variant="outline" className="text-[10px]">{inf.status}</Badge>
+                      {inf.total > 0 && <span className="text-xs font-semibold">{inf.total?.toFixed(2)} €</span>}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 mt-2 border-t pt-2 flex-wrap">
+                    <Link to={createPageUrl(`InformesTecnicos?edit=${inf.id}`)}>
+                      <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer">
+                        <Edit className="w-3 h-3" /> Abrir
+                      </span>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {(!insuranceReports || insuranceReports.length === 0) && <p className="text-gray-400 text-sm text-center py-4">Sin informes para aseguradora</p>}
+          </div>
         </TabsContent>
 
         </Tabs>

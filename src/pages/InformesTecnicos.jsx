@@ -4,9 +4,11 @@ import { toast } from 'sonner';
 import { ShieldCheck, Plus, Search, FileText, Trash2, Edit3, Printer, Eye, LayoutGrid, List } from 'lucide-react';
 import PhotoBlock from '@/components/PhotoBlock';
 import DualSignaturePanel from '@/components/DualSignaturePanel';
-import BuscadorCliente from '@/components/BuscadorCliente';
+import BuscadorCliente, { nombreCompleto } from '@/components/BuscadorCliente';
 import GaleriaInformes from '@/components/GaleriaInformes';
+import TechnicianSelect from '@/components/TechnicianSelect';
 import { getNextAvailableNumber } from '@/components/autoNumber';
+import { useParametrosUrl } from '@/lib/parametrosUrl';
 
 const EQUIPOS = [
   { value: 'aire_acondicionado', label: 'Aire acondicionado' },
@@ -46,7 +48,9 @@ const hoy = () => {
 };
 
 export default function InformesTecnicos() {
+  const urlParams = useParametrosUrl();
   const [informes, setInformes] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
@@ -55,7 +59,6 @@ export default function InformesTecnicos() {
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(VACIO);
   const [guardando, setGuardando] = useState(false);
-  const [contacto, setContacto] = useState(null);
 
   const cargar = async () => {
     setCargando(true);
@@ -71,6 +74,38 @@ export default function InformesTecnicos() {
 
   useEffect(() => { cargar(); }, []);
 
+  // Lista de clientes para el buscador. Antes no se pasaba y el BuscadorCliente
+  // se quedaba sin nadie que mostrar: por eso "no reconocía" a los clientes.
+  useEffect(() => {
+    base44.entities.Contact.list(null, 1000)
+      .then((r) => setContacts(Array.isArray(r) ? r : (r?.items || [])))
+      .catch(() => setContacts([]));
+  }, []);
+
+  // Si se abre desde la ficha de un cliente (?contact_id=...), se le preselecciona.
+  useEffect(() => {
+    const cid = urlParams.get('contact_id');
+    if (cid && contacts.length && vista === 'lista') {
+      const c = contacts.find((x) => x.id === cid);
+      if (c) {
+        setEditando(null);
+        setForm({ ...VACIO, contact_id: c.id, contact_name: nombreCompleto(c), report_date: new Date().toISOString().slice(0, 10) });
+        setVista('form');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contacts]);
+
+  // Si se abre con ?edit=ID (desde la ficha del cliente), se carga ese informe.
+  useEffect(() => {
+    const eid = urlParams.get('edit');
+    if (eid && informes.length && vista === 'lista') {
+      const inf = informes.find((x) => x.id === eid);
+      if (inf) editar(inf);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [informes]);
+
   const setCampo = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const totalCalculado = useMemo(() => {
@@ -82,14 +117,12 @@ export default function InformesTecnicos() {
   const nuevo = () => {
     setEditando(null);
     setForm({ ...VACIO, report_date: new Date().toISOString().slice(0, 10) });
-    setContacto(null);
     setVista('form');
   };
 
   const editar = (inf) => {
     setEditando(inf);
     setForm({ ...VACIO, ...inf });
-    setContacto(inf.contact_id ? { id: inf.contact_id, name: inf.contact_name } : null);
     setVista('form');
   };
 
@@ -180,12 +213,17 @@ export default function InformesTecnicos() {
           <div className="md:col-span-2">
             <label className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>Cliente</label>
             <BuscadorCliente
-              value={contacto}
-              onChange={(c) => { setContacto(c); setCampo('contact_id', c?.id || ''); setCampo('contact_name', c?.name || ''); }}
+              contacts={contacts}
+              value={form.contact_id}
+              onValueChange={(id) => {
+                const c = contacts.find((x) => x.id === id) || null;
+                setCampo('contact_id', id || '');
+                setCampo('contact_name', c ? nombreCompleto(c) : '');
+              }}
               placeholder="Buscar cliente..."
             />
           </div>
-          <Campo label="Técnico responsable"><input value={form.technician} onChange={(e) => setCampo('technician', e.target.value)} className="inp" /></Campo>
+          <Campo label="Técnico responsable"><TechnicianSelect value={form.technician} onChange={(v) => setCampo('technician', v)} /></Campo>
           <Campo label="Fecha del informe"><input type="date" value={form.report_date} onChange={(e) => setCampo('report_date', e.target.value)} className="inp" /></Campo>
         </Seccion>
 
