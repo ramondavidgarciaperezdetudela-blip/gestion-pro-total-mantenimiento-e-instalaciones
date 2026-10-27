@@ -303,9 +303,13 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   useEffect(() => {
-    base44.entities.CompanySettings.list().then((data) => {
-      if (data.length > 0) setCompany(data[0]);
-    });
+    // Si el servidor no responde (404 transitorio, sin conexión), no se puede
+    // sacar el logo/nombre de empresa: no es motivo para tumbar toda la app.
+    // Sin este .catch el rechazo queda suelto y se propaga como error no
+    // capturado, que es justo el 404 que aparecía sin explicación.
+    base44.entities.CompanySettings.list()
+      .then((data) => { if (data.length > 0) setCompany(data[0]); })
+      .catch(() => { /* sin empresa cargada: la cabecera usa el valor por defecto */ });
   }, []);
 
   useEffect(() => {
