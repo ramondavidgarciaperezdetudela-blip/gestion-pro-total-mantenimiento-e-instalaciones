@@ -76,31 +76,23 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingPublicSettings(false);
       } catch (appError) {
         console.error('App state check failed:', appError);
-        
-        // Handle app-level errors
+
+        // Solo bloquean la entrada los errores reales de acceso (403): si hace
+        // falta iniciar sesión o el usuario no está registrado, hay que
+        // llevarle al login. Todo lo demás (red, 404 transitorio, timeout,
+        // servidor caído durante un rebuild) NO debe dejarle encerrado en la
+        // pantalla de error: la app funciona en modo app-level y las
+        // calculadoras, el plano y el diagnóstico no necesitan servidor. Se
+        // entra directo; lo que necesite servidor ya avisara al usarlo.
         if (appError.status === 403 && appError.data?.extra_data?.reason) {
           const reason = appError.data.extra_data.reason;
           if (reason === 'auth_required') {
-            setAuthError({
-              type: 'auth_required',
-              message: 'Authentication required'
-            });
+            setAuthError({ type: 'auth_required', message: 'Authentication required' });
           } else if (reason === 'user_not_registered') {
-            setAuthError({
-              type: 'user_not_registered',
-              message: 'User not registered for this app'
-            });
+            setAuthError({ type: 'user_not_registered', message: 'User not registered for this app' });
           } else {
-            setAuthError({
-              type: reason,
-              message: appError.message
-            });
+            setAuthError({ type: reason, message: appError.message });
           }
-        } else {
-          setAuthError({
-            type: 'unknown',
-            message: appError.message || 'Failed to load app'
-          });
         }
         setIsLoadingPublicSettings(false);
         setIsLoadingAuth(false);
@@ -108,12 +100,8 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       clearTimeout(temporizador);
       console.error('Unexpected error:', error);
-      setAuthError({
-        type: 'unknown',
-        message: /timeout/i.test(error?.message || '')
-          ? 'No se ha podido conectar con el servidor (tiempo de espera agotado)'
-          : (error.message || 'An unexpected error occurred')
-      });
+      // Idem: un timeout o fallo de red al arrancar no deja al usuario
+      // encerrado. Se entra al programa igualmente.
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
     }
