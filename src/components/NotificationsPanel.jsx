@@ -87,14 +87,20 @@ export default function NotificationsPanel() {
   useEffect(() => {
     // Carga diferida para no competir con la carga inicial de la página
     const t = setTimeout(() => {
-      Promise.all([
+      // allSettled: si una llamada falla (404, sin servidor, etc.) las demás
+      // siguen y el panel no lanza un error no capturado que rompa la página.
+      Promise.allSettled([
         base44.entities.Invoice.filter({ status: 'enviado' }, '-due_date', 30),
         base44.entities.SATOrder.filter({ status: 'pendiente' }, '-date', 15),
         base44.entities.Appointment.filter({ date: format(new Date(), 'yyyy-MM-dd') }),
         base44.entities.Project.list('-end_date', 20),
-      ]).then(([invoices, sat, apts, projects]) => {
-        setNotifications(buildNotifications(invoices, sat, apts, projects));
-      });
+      ]).then(([inv, sat, apts, proj]) => {
+        const invoices = inv.status === 'fulfilled' ? inv.value : [];
+        const satOrders = sat.status === 'fulfilled' ? sat.value : [];
+        const appointments = apts.status === 'fulfilled' ? apts.value : [];
+        const projects = proj.status === 'fulfilled' ? proj.value : [];
+        setNotifications(buildNotifications(invoices, satOrders, appointments, projects));
+      }).catch(() => { /* error de fondo: no debe tumbar la app */ });
     }, 1500);
     return () => clearTimeout(t);
   }, []);

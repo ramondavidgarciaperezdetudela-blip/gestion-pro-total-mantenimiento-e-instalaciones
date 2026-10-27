@@ -34,18 +34,24 @@ export default function AgendaPanel() {
     const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
     const nextWeek = format(addDays(new Date(), 7), 'yyyy-MM-dd');
 
-    const data = await base44.entities.Appointment.list('-date', 50);
-    // Filtrar: hoy + mañana + próximos 7 días con status pendiente o confirmada
-    const relevant = data.filter(a =>
-      a.date >= today && a.date <= nextWeek &&
-      ['pendiente', 'confirmada'].includes(a.status)
-    ).sort((a, b) => {
-      if (a.date !== b.date) return a.date.localeCompare(b.date);
-      return (a.time_start || '').localeCompare(b.time_start || '');
-    });
+    try {
+      const data = await base44.entities.Appointment.list('-date', 50);
+      // Filtrar: hoy + mañana + próximos 7 días con status pendiente o confirmada
+      const relevant = (data || []).filter(a =>
+        a.date >= today && a.date <= nextWeek &&
+        ['pendiente', 'confirmada'].includes(a.status)
+      ).sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return (a.time_start || '').localeCompare(b.time_start || '');
+      });
 
-    setAppointments(relevant);
-    setLoading(false);
+      setAppointments(relevant);
+    } catch {
+      // Un 404 u otro error de red en segundo plano no debe romper la página.
+      setAppointments([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);

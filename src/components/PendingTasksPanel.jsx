@@ -45,8 +45,19 @@ export default function PendingTasksPanel() {
   const handleRefresh = () => { invalidateHomeCache(); loadPendingTasks(true); };
 
   const testReminders = async () => {
-    await base44.functions.invoke('appointmentReminder', {});
-    alert('Recordatorios enviados ✓');
+    try {
+      await base44.functions.invoke('appointmentReminder', {});
+      alert('Recordatorios enviados ✓');
+    } catch (e) {
+      // Esta función vive en el backend; si la cuenta no la soporta (404) o el
+      // servidor no responde, se explica en vez de lanzar un error sin capturar.
+      const estado = e?.status ?? e?.response?.status ?? null;
+      if (estado === 404) {
+        alert('Los recordatorios automáticos no están disponibles en este plan. Requiere el plan Builder+.');
+      } else {
+        alert('No se han podido enviar los recordatorios. Inténtalo de nuevo.');
+      }
+    }
   };
 
   const sendReminder = (task, type) => {

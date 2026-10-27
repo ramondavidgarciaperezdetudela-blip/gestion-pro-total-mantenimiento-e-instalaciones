@@ -73,9 +73,15 @@ export default function SATKanban({ initialOrders = null }) {
 
   const load = async () => {
     setLoading(true);
-    const data = await base44.entities.SATOrder.list('-date', 100);
-    setOrders(data);
-    setLoading(false);
+    try {
+      const data = await base44.entities.SATOrder.list('-date', 100);
+      setOrders(data || []);
+    } catch {
+      // Un 404 u otro error de red en segundo plano no debe romper la página.
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
