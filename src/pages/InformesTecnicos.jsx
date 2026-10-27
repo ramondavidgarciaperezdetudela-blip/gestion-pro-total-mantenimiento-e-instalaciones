@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { ShieldCheck, Plus, Search, FileText, Trash2, Edit3, Printer, Eye } from 'lucide-react';
+import { ShieldCheck, Plus, Search, FileText, Trash2, Edit3, Printer, Eye, LayoutGrid, List } from 'lucide-react';
 import PhotoBlock from '@/components/PhotoBlock';
 import DualSignaturePanel from '@/components/DualSignaturePanel';
 import BuscadorCliente from '@/components/BuscadorCliente';
+import GaleriaInformes from '@/components/GaleriaInformes';
 import { getNextAvailableNumber } from '@/components/autoNumber';
 
 const EQUIPOS = [
@@ -50,6 +51,7 @@ export default function InformesTecnicos() {
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [vista, setVista] = useState('lista'); // lista | form | preview
+  const [modoLista, setModoLista] = useState('lista'); // lista | galeria
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(VACIO);
   const [guardando, setGuardando] = useState(false);
@@ -294,6 +296,18 @@ export default function InformesTecnicos() {
           <option value="">Todos los estados</option>
           {ESTADOS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+        <div className="flex rounded-lg border overflow-hidden" style={{ borderColor: 'hsl(var(--border))' }}>
+          <button onClick={() => setModoLista('lista')} className="px-2.5 py-2 flex items-center gap-1 text-xs transition-colors"
+            style={modoLista === 'lista' ? { background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' } : { color: 'hsl(var(--muted-foreground))', background: 'hsl(var(--card))' }}
+            title="Vista de lista">
+            <List className="w-4 h-4" /> Lista
+          </button>
+          <button onClick={() => setModoLista('galeria')} className="px-2.5 py-2 flex items-center gap-1 text-xs transition-colors"
+            style={modoLista === 'galeria' ? { background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' } : { color: 'hsl(var(--muted-foreground))', background: 'hsl(var(--card))' }}
+            title="Vista de galería con fotos antes/después">
+            <LayoutGrid className="w-4 h-4" /> Galería
+          </button>
+        </div>
       </div>
 
       {cargando ? (
@@ -303,6 +317,13 @@ export default function InformesTecnicos() {
           <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
           No hay informes técnicos. Pulsa "Nuevo informe" para crear el primero.
         </div>
+      ) : modoLista === 'galeria' ? (
+        <GaleriaInformes
+          informes={filtrados}
+          onAbrir={(inf) => { setEditando(inf); setVista('preview'); }}
+          onEditar={editar}
+          onEliminar={eliminar}
+        />
       ) : (
         <div className="grid md:grid-cols-2 gap-3">
           {filtrados.map((inf) => (

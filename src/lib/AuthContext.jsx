@@ -18,6 +18,18 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const checkAppState = async () => {
+    // Si el servidor no responde, la ruedecita de arranque giraba para siempre.
+    // Con este tope, a los 15 s se considera fallo de red y se muestra la
+    // pantalla con "Entrar de todas formas" en vez de quedar colgado.
+    const TOPE_MS = 15000;
+    let temporizador;
+    const conTope = (promesa) => Promise.race([
+      promesa,
+      new Promise((_, reject) => {
+        temporizador = setTimeout(() => reject(new Error('timeout de conexión al arrancar')), TOPE_MS);
+      }),
+    ]);
+
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
@@ -37,7 +49,7 @@ export const AuthProvider = ({ children }) => {
       });
       
       try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
+        const publicSettings = await conTope(appClient.get(`/prod/public-settings/by-id/${appParams.appId}`));
         setAppPublicSettings(publicSettings);
         
         // If we got the app public settings successfully, check if user is authenticated
@@ -46,11 +58,12 @@ export const AuthProvider = ({ children }) => {
         // se debe exigir iniciar sesión: la app funciona en modo app-level
         // (requiresAuth: false en base44Client.js) usando solo el appId.
         if (appParams.token) {
-          await checkUserAuth();
+          await conTope(checkUserAuth());
         } else {
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
         }
+        clearTimeout(temporizador);
         setIsLoadingPublicSettings(false);
       } catch (appError) {
         console.error('App state check failed:', appError);
@@ -84,10 +97,13 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingAuth(false);
       }
     } catch (error) {
+      clearTimeout(temporizador);
       console.error('Unexpected error:', error);
       setAuthError({
         type: 'unknown',
-        message: error.message || 'An unexpected error occurred'
+        message: /timeout/i.test(error?.message || '')
+          ? 'No se ha podido conectar con el servidor (tiempo de espera agotado)'
+          : (error.message || 'An unexpected error occurred')
       });
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
