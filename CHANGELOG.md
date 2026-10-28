@@ -6,6 +6,27 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.71.0] — 2026-10-28
+
+### Añadido
+- **Pantalla «Novedades del programa».** Hasta ahora el historial que se veía
+  dentro del programa solo anotaba ediciones de DATOS (clientes, documentos…),
+  porque es lo único que pasa por el registrador de cambios. Los arreglos y las
+  mejoras del programa se escribían en el CHANGELOG, que vivía solo en el
+  repositorio: podías tener dos días de trabajo hecho y, mirando el programa,
+  parecía que no había pasado nada. Ahora se ven desde Sistema → Novedades, y
+  también desde los accesos de Inicio.
+  - Una ficha por versión, con su fecha y cuántos cambios trae; la que tienes
+    instalada viene abierta y marcada.
+  - Los cambios separados por apartado (añadido, corregido, mejorado, internos),
+    cada uno con su color.
+  - Buscador: se escribe «copias», «gas» o «firma» y salen solo los cambios que
+    hablan de eso.
+- El CHANGELOG se empaqueta DENTRO del programa, así que esta pantalla funciona
+  sin cobertura y sin ir a buscar nada a GitHub.
+
+---
+
 ## [1.70.0] — 2026-10-28
 
 ### Añadido

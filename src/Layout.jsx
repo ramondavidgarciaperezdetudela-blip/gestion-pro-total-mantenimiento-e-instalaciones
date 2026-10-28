@@ -8,7 +8,7 @@ import {
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette,
   CreditCard, Download, Bell, History, Search, FileBarChart, Droplets, AlertCircle,
-  MoreHorizontal, MessageSquare, ListChecks, AlertTriangle, CalendarCheck, Ruler } from
+  MoreHorizontal, MessageSquare, ListChecks, AlertTriangle, CalendarCheck, Ruler, Sparkles } from
 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 import ThemeToggle from './components/ThemeToggle';
@@ -173,6 +173,7 @@ const navItems = [
 { name: 'Prov. Gases', page: 'GasSuppliers', icon: Building2 },
 { name: 'Nuevo Contacto', page: 'ContactForm', icon: Users },
 { name: 'Actualizaciones', page: 'UpdateCenter', icon: Download },
+{ name: 'Novedades', page: 'Novedades', icon: Sparkles },
 // Licencias: TODAVÍA NO ESTÁN ACTIVAS en esta versión, así que no se
 // enseñan en el menú. Las pantallas siguen ahí (LicenseActivation y
 // LicenseRenewal): para recuperarlas basta con descomentar estas dos líneas.
@@ -227,7 +228,7 @@ const PAGE_SECTION = {
   BackupCenter: 'Informes y datos', Automations: 'Informes y datos', Notes: 'Informes y datos',
   // Sistema
   Home: 'Sistema', CompanyConfig: 'Sistema', Manuals: 'Sistema', Regulations: 'Sistema',
-  UpdateCenter: 'Sistema', LicenseActivation: 'Sistema', LicenseRenewal: 'Sistema',
+  UpdateCenter: 'Sistema', Novedades: 'Sistema', LicenseActivation: 'Sistema', LicenseRenewal: 'Sistema',
 };
 const SECTION_ORDER = [
   'Sistema', 'Operaciones',

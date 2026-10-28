@@ -19,7 +19,7 @@ import {
   StickyNote, Package, Palette, Bell, Download, Euro, CheckCircle, XCircle, AlertTriangle,
   ArrowRight, ChevronRight, ShoppingCart, Search, Navigation, ChevronDown, ChevronUp,
   Snowflake, Ruler, Gauge, Droplets, Repeat, History, Briefcase, MessageSquare,
-  Calculator, Layers, RefreshCw, ListChecks, Map, FileBarChart } from
+  Calculator, Layers, RefreshCw, ListChecks, Map, FileBarChart, Sparkles } from
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
@@ -101,6 +101,7 @@ const quickLinks = [
 { name: 'Exportar', page: 'ExportData', icon: Download, color: 'bg-lime-600' },
 { name: 'Copias Seg.', page: 'BackupCenter', icon: Shield, color: 'bg-blue-700' },
 { name: 'Actualizaciones', page: 'UpdateCenter', icon: RefreshCw, color: 'bg-green-600' },
+{ name: 'Novedades', page: 'Novedades', icon: Sparkles, color: 'bg-amber-500' },
 { name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
 { name: 'Soporte IA', page: 'AISupport', icon: Bot, color: 'bg-blue-500' },
 // Estos faltaban en la lista y por eso no salían en ningún grupo de abajo:
@@ -132,7 +133,7 @@ const GRUPOS = [
   { titulo: 'Clientes y Agenda', color: '#10B981', pages: ['Contacts', 'ClientPortal', 'Projects', 'ProjectTimeline', 'Agenda', 'Availability', 'SATCalendar', 'TechnicianDay'] },
   { titulo: 'IA y Asistencia', color: '#3B82F6', pages: ['AIAssistant', 'AISearch', 'AIBudget', 'AIReports', 'AIPlanning', 'AISupport'] },
   { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'Regulations', 'GasSuppliers'] },
-  { titulo: 'Informes y Sistema', color: '#64748b', pages: ['Reports', 'Automations', 'SmartReminders', 'Notes', 'AuditLog', 'BusinessCards', 'ExportData', 'BackupCenter', 'UpdateCenter', 'CompanyConfig'] },
+  { titulo: 'Informes y Sistema', color: '#64748b', pages: ['Reports', 'Automations', 'SmartReminders', 'Notes', 'AuditLog', 'BusinessCards', 'ExportData', 'BackupCenter', 'UpdateCenter', 'Novedades', 'CompanyConfig'] },
 ].map(g => ({ ...g, links: g.pages.map(p => _linkByPage[p]).filter(Boolean) }));
 
 
