@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff } from 'lucide-react';
+import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { getNextAvailableNumber } from '@/components/autoNumber';
@@ -11,6 +11,7 @@ import PlanoPaleta from '@/components/plano_frigorifico/PlanoPaleta';
 import PlanoEquipoDetalles from '@/components/plano_frigorifico/PlanoEquipoDetalles';
 import { construirPDF, exportarPDF, imprimirPlano } from '@/components/plano_frigorifico/PlanoExporter';
 import { exportarDXF } from '@/lib/planoDxfExport';
+import InformeAseguradoraDialog from '@/components/plano_frigorifico/InformeAseguradoraDialog';
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
 import { CAT_COLOR, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
 import { presupuestoAproximado } from '@/lib/instalacionCalculos';
@@ -41,18 +42,22 @@ export default function PlanoFrigorifico() {
   const [gmailDialog, setGmailDialog] = useState(false);
   const [gmailForm, setGmailForm] = useState({ to: '', subject: '', body: '' });
   const [enviando, setEnviando] = useState(false);
+  const [empresa, setEmpresa] = useState({});
+  const [informeDialog, setInformeDialog] = useState(false);
 
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
-      const [ps, cs, ts] = await Promise.all([
+      const [ps, cs, ts, emps] = await Promise.all([
         base44.entities.RefrigerationPlan.filter({}, { sort: '-created_date', limit: 100 }).catch(() => ({ items: [] })),
         base44.entities.Contact.list({ limit: 500 }).catch(() => []),
         base44.entities.PriceItem.list().catch(() => []),
+        base44.entities.CompanySettings.list().catch(() => []),
       ]);
       setPlanos(ps?.items || []);
       setContacts(cs || []);
       setTarifas(ts || []);
+      if (emps && emps.length) setEmpresa(emps[0]);
     } finally { setLoading(false); }
   }, []);
 
@@ -399,6 +404,10 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         <button onClick={onImprimir} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
           <Printer className="w-3.5 h-3.5" /> Imprimir
         </button>
+        <button onClick={() => setInformeDialog(true)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
+          style={{ background: '#2563eb' }}>
+          <ShieldCheck className="w-3.5 h-3.5" /> Informe aseguradora
+        </button>
         <button onClick={() => setGmailDialog(true)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
           style={{ background: '#D44638' }}>
           <Mail className="w-3.5 h-3.5" /> Enviar por Gmail
@@ -600,6 +609,19 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           </div>
         </div>
       )}
+
+      {/* Informe técnico para aseguradora: genera PDF estructurado con fotos,
+          lista de materiales y doble firma a partir del plano actual. */}
+      <InformeAseguradoraDialog
+        open={informeDialog}
+        onClose={() => setInformeDialog(false)}
+        plan={plan}
+        elements={plan.elements}
+        walls={plan.walls}
+        connections={plan.connections}
+        empresa={empresa}
+        contacts={contacts}
+      />
     </div>
   );
 }

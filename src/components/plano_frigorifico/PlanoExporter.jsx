@@ -2,24 +2,17 @@ import { jsPDF } from 'jspdf';
 import { longitudConexion, resumenTuberias } from '@/lib/planoCalculo';
 import { elementoDe } from '@/lib/planoFrigorificoCatalogo';
 import { TIPOS_CONEXION_ELECTRICA } from '@/lib/instalacionCalculos';
+import { dibujarPlanoVectorial, PLANO_CANVAS } from '@/lib/planoDibujoPdf';
 
 // Exportación e impresión del plano frigorífico.
 //
 // En vez de serializar el SVG (que arrastra variables CSS que no resuelve un
 // visor de PDF), se dibuja el plano directamente con primitivas vectoriales
-// de jsPDF: rects, líneas y texto. Sale un PDF técnico nítido, ligero y con
-// el resumen de la instalación (equipos, tuberías y conexiones eléctricas).
+// de jsPDF (compartido con el informe de aseguradora en planoDibujoPdf): rects,
+// líneas y texto. Sale un PDF técnico nítido, ligero y con el resumen de la
+// instalación (equipos, tuberías, conductos y conexiones eléctricas).
 
-function hexToRgb(hex) {
-  const h = (hex || '#888888').replace('#', '');
-  return [
-    parseInt(h.slice(0, 2), 16) || 120,
-    parseInt(h.slice(2, 4), 16) || 120,
-    parseInt(h.slice(4, 6), 16) || 120,
-  ];
-}
-
-const CANVAS = { w: 1400, h: 900 };
+const CANVAS = PLANO_CANVAS;
 
 export function construirPDF(plan, elements, walls, connections, { autoPrint = false, presupuesto = null } = {}) {
   const scale = plan.scale || 50;
@@ -29,8 +22,8 @@ export function construirPDF(plan, elements, walls, connections, { autoPrint = f
   const legendW = 132;
   const drawW = PW - margin * 2 - legendW;
   const drawH = PH - margin - titleH - margin;
-  const sc = Math.min(drawW / CANVAS.w, drawH / CANVAS.h);
   const ox = margin, oy = margin + titleH;
+  const { sc } = dibujarPlanoVectorial(doc, { plan, elements, walls, connections, ox, oy, boxW: drawW, boxH: drawH });
   const lx = margin + CANVAS.w * sc + 8;
 
   // Cabecera
@@ -43,48 +36,6 @@ export function construirPDF(plan, elements, walls, connections, { autoPrint = f
     `Escala: 1 px = ${(1 / scale).toFixed(3)} m`,
   ].filter(Boolean);
   doc.text(sub.join('     ·     '), margin, margin + 15);
-
-  // Marco del área de dibujo
-  doc.setDrawColor(215); doc.setLineWidth(0.2);
-  doc.rect(ox, oy, CANVAS.w * sc, CANVAS.h * sc);
-
-  // Paredes
-  doc.setDrawColor(120); doc.setLineWidth(0.8);
-  walls.forEach((w) => doc.line(ox + w.x1 * sc, oy + w.y1 * sc, ox + w.x2 * sc, oy + w.y2 * sc));
-
-  // Conexiones (debajo de los equipos): polilínea si tiene codos, si no recta
-  connections.forEach((c) => {
-    const a = elements.find((e) => e.id === c.from_id);
-    const b = elements.find((e) => e.id === c.to_id);
-    if (!a || !b) return;
-    const rgb = c.type === 'refrigerante' ? [0, 160, 233] : [245, 130, 35];
-    doc.setDrawColor(...rgb);
-    doc.setLineWidth(c.type === 'refrigerante' ? 1.1 : 0.7);
-    if (c.type === 'refrigerante') doc.setLineDash([3, 1.5]); else doc.setLineDash([]);
-    const pts = [{ x: a.x, y: a.y }, ...(c.path || []), { x: b.x, y: b.y }];
-    for (let i = 1; i < pts.length; i++) {
-      doc.line(ox + pts[i - 1].x * sc, oy + pts[i - 1].y * sc, ox + pts[i].x * sc, oy + pts[i].y * sc);
-    }
-    doc.setLineDash([]);
-  });
-
-  // Equipos
-  elements.forEach((el) => {
-    const wpx = (el.w_m || 0.5) * scale, hpx = (el.h_m || 0.5) * scale;
-    const x = ox + (el.x - wpx / 2) * sc, y = oy + (el.y - hpx / 2) * sc;
-    const w = Math.max(wpx * sc, 1.5), h = Math.max(hpx * sc, 1.5);
-    const rgb = hexToRgb(el.color);
-    doc.setDrawColor(...rgb); doc.setFillColor(255, 255, 255); doc.setLineWidth(0.4);
-    // En jsPDF el método se llama roundedRect: con roundRect el PDF no se
-    // generaba nunca —ni al exportar ni al imprimir— y el aviso de error no
-    // decía por qué.
-    doc.roundedRect(x, y, w, h, 1, 1, 'S');
-    doc.setFontSize(Math.min(8, Math.max(4, h * 1.3)));
-    doc.setTextColor(...rgb); doc.setFont(undefined, 'bold');
-    if (w > 4 && h > 3) doc.text(el.glyph || '', x + w / 2, y + h / 2, { align: 'center', baseline: 'middle' });
-    doc.setFontSize(5); doc.setFont(undefined, 'normal'); doc.setTextColor(70);
-    doc.text(el.label || '', x + w / 2, y + h + 2, { align: 'center' });
-  });
 
   // ── Resumen lateral ──
   //
