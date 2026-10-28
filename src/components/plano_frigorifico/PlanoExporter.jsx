@@ -72,7 +72,10 @@ export function construirPDF(plan, elements, walls, connections, { autoPrint = f
     const w = Math.max(wpx * sc, 1.5), h = Math.max(hpx * sc, 1.5);
     const rgb = hexToRgb(el.color);
     doc.setDrawColor(...rgb); doc.setFillColor(255, 255, 255); doc.setLineWidth(0.4);
-    doc.roundRect(x, y, w, h, 1, 1, 'S');
+    // En jsPDF el método se llama roundedRect: con roundRect el PDF no se
+    // generaba nunca —ni al exportar ni al imprimir— y el aviso de error no
+    // decía por qué.
+    doc.roundedRect(x, y, w, h, 1, 1, 'S');
     doc.setFontSize(Math.min(8, Math.max(4, h * 1.3)));
     doc.setTextColor(...rgb); doc.setFont(undefined, 'bold');
     if (w > 4 && h > 3) doc.text(el.glyph || '', x + w / 2, y + h / 2, { align: 'center', baseline: 'middle' });
