@@ -77,7 +77,7 @@ async function runPool(items, worker, concurrency) {
  *   mejor que no enseñar nada. NUNCA para copiar, restaurar ni borrar.
  */
 export async function fetchAllRecordsFast(ent, opciones = {}) {
-  const { tolerante = false, freno = crearFreno() } = opciones;
+  const { tolerante = false, freno = crearFreno(), onPage } = opciones;
   const E = entidades[ent];
   if (!E) return [];
 
@@ -99,6 +99,7 @@ export async function fetchAllRecordsFast(ent, opciones = {}) {
     catch (e2) { const r = fallar(e2); return r ?? []; }
   }
   if (!all) return [];
+  onPage?.(all.length);
   if (all.length < PAGE) return all;
 
   let skip = PAGE;
@@ -118,6 +119,7 @@ export async function fetchAllRecordsFast(ent, opciones = {}) {
       all = all.concat(batch);
       if (batch.length < PAGE) { reachedEnd = true; break; }
     }
+    onPage?.(all.length);
     if (reachedEnd) break;
     skip += PAGE * PAGE_BATCH;
   }
@@ -179,10 +181,18 @@ export async function contarRegistros(ent, freno = crearFreno()) {
 }
 
 // ── Estado global compartido (para el indicador persistente) ───────────────
-let state = { active: false, kind: null, message: '', pct: 0 };
+let state = { active: false, kind: null, message: '', pct: 0, secciones: {} };
 const listeners = new Set();
 function publish(patch) {
   state = { ...state, ...patch };
+  listeners.forEach((l) => l(state));
+}
+/** Actualiza el estado de UNA sección y lo publica (para el progreso por apartado). */
+function setSeccion(ent, patch) {
+  state = {
+    ...state,
+    secciones: { ...state.secciones, [ent]: { ...state.secciones[ent], ...patch } },
+  };
   listeners.forEach((l) => l(state));
 }
 export function subscribeBackupState(fn) {
@@ -208,7 +218,7 @@ export function getBackupState() { return state; }
  */
 export async function runBackupJob(entities, entityLabels = {}, onProgress, opciones = {}) {
   const { sinDuplicados = false } = opciones;
-  publish({ active: true, kind: 'backup', message: 'Iniciando copia de seguridad...', pct: 5 });
+  publish({ active: true, kind: 'backup', message: 'Iniciando copia de seguridad...', pct: 5, secciones: {} });
   const freno = crearFreno();
   const datos = {};
   const fallos = [];
@@ -220,18 +230,21 @@ export async function runBackupJob(entities, entityLabels = {}, onProgress, opci
     const msg = `Exportando ${label}...`;
     onProgress?.(msg, Math.round(5 + (done / entities.length) * 85));
     publish({ message: msg, pct: Math.round(5 + (done / entities.length) * 85) });
+    setSeccion(ent, { label, leidos: 0, fase: 'leyendo' });
     try {
-      let registros = (await fetchAllRecordsFast(ent, { freno })) || [];
+      let registros = (await fetchAllRecordsFast(ent, { freno, onPage: (n) => setSeccion(ent, { leidos: n }) })) || [];
       if (sinDuplicados) {
         const { limpios, quitados } = quitarDuplicados(registros);
         registros = limpios;
         duplicadosQuitados += quitados;
       }
       datos[ent] = registros;
+      setSeccion(ent, { fase: 'hecho', leidos: registros.length, total: registros.length });
     } catch (err) {
       // No se pone [] : una sección que no se ha podido leer NO es una sección
       // vacía, y confundirlas es lo que convierte una copia en una trampa.
       fallos.push({ entidad: ent, etiqueta: label, motivo: err?.message || String(err) });
+      setSeccion(ent, { fase: 'fallo', motivo: err?.message || String(err) });
     }
     done++;
     const pct = Math.round(5 + (done / entities.length) * 85);
@@ -259,7 +272,7 @@ const stripMeta = sinMetadatos;
 export async function runRestoreJob(
   restoreData, entities, mode, keyers, entityLabels = {}, onProgress, opciones = {},
 ) {
-  publish({ active: true, kind: 'restore', message: 'Iniciando restauración...', pct: 5 });
+  publish({ active: true, kind: 'restore', message: 'Iniciando restauración...', pct: 5, secciones: {} });
   const freno = crearFreno();
   let total = 0;
   let failed = 0;
@@ -276,12 +289,17 @@ export async function runRestoreJob(
       onProgress?.(`Restaurando ${label}...${extra}`, pct);
       publish({ message: `Restaurando... (${done}/${entities.length})`, pct });
     };
+    setSeccion(ent, { label, leidos: 0, total: rows.length, fase: mode === 'clean' ? 'borrando' : 'preparando' });
     report();
 
     const E = entidades[ent];
+    // Cuenta cuántos registros de ESTA sección se han mandado ya, para el
+    // progreso por apartado.
+    let hechosEnEnt = 0;
+    const contarLote = (lote) => { hechosEnEnt += (lote?.length || 0); setSeccion(ent, { leidos: hechosEnEnt }); };
     const crear = (lista) => runPool(
       enLotes(lista),
-      (lote) => pedir(freno, () => E?.bulkCreate(lote)).catch(trackFail),
+      (lote) => pedir(freno, () => E?.bulkCreate(lote)).then((r) => { contarLote(lote); return r; }).catch(trackFail),
       LOTES_A_LA_VEZ,
     );
 
@@ -292,6 +310,7 @@ export async function runRestoreJob(
       if (rows.length === 0) {
         avisos.push(`«${label}» no se ha tocado: la copia no trae ningún registro de esa sección, `
           + 'y vaciarla para no poner nada es la forma más rápida de perder datos.');
+        setSeccion(ent, { fase: 'omitida' });
         done++; report();
         return;
       }
@@ -299,9 +318,11 @@ export async function runRestoreJob(
       if (rescate === 'sin_rescate') {
         avisos.push(`«${label}» no se ha tocado: no se ha podido guardar antes la copia de rescate, `
           + 'así que no se ha borrado nada.');
+        setSeccion(ent, { fase: 'omitida' });
         done++; report();
         return;
       }
+      setSeccion(ent, { fase: 'guardando', leidos: 0 });
       const clean = rows.map(stripMeta);
       await crear(clean);
       total += clean.length;
@@ -319,6 +340,7 @@ export async function runRestoreJob(
           + `(${err?.incompleta ? 'exceso de peticiones del servidor' : (err?.message || 'error de lectura')}). `
           + 'No se ha tocado nada de esa sección para no arriesgarla. Repite la restauración dentro de un par de minutos.');
         failed++;
+        setSeccion(ent, { fase: 'fallo' });
         done++;
         report(` (omitida por error de lectura)`);
         return;
@@ -327,6 +349,8 @@ export async function runRestoreJob(
       // función aparte y comprobada (src/lib/copiasLotes.js).
       const plan = planRestauracion(existing, rows, keyers[ent]);
       sinCambios += plan.sinCambios;
+      hechosEnEnt = plan.sinCambios;   // los que ya estaban igual cuentan como hechos
+      setSeccion(ent, { fase: 'guardando', leidos: hechosEnEnt });
       // Se dice ya lo que va a costar: así no parece parado cuando la
       // mayoría de los registros están igual y no hay nada que mandar.
       const porHacer = plan.aCrear.length + plan.aActualizar.length;
@@ -338,11 +362,12 @@ export async function runRestoreJob(
       // peticiones a ocho.
       await runPool(
         enLotes(plan.aActualizar),
-        (lote) => pedir(freno, () => E?.bulkUpdate(lote)).catch(trackFail),
+        (lote) => pedir(freno, () => E?.bulkUpdate(lote)).then((r) => { contarLote(lote); return r; }).catch(trackFail),
         LOTES_A_LA_VEZ,
       );
       total += porHacer;
     }
+    setSeccion(ent, { fase: 'hecho', leidos: rows.length });
     done++;
     report(` (${done}/${entities.length})`);
   }, ENTITY_CONCURRENCY);

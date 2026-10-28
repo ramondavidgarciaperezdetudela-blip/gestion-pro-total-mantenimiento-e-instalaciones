@@ -13,6 +13,7 @@ import {
   analizarDuplicados, borrarDuplicados,
 } from '@/lib/backupEngine';
 import CronoProgreso from '@/components/CronoProgreso';
+import SeccionesProgreso from '@/components/SeccionesProgreso';
 import {
   detectarEntorno, nombreCopia, listarCopias,
   abrirCarpetaCopias, leerDestino, guardarDestino, DESTINOS_MOVIL,
@@ -733,6 +734,7 @@ export default function BackupCenter() {
                     <div className="h-2.5 bg-blue-600 rounded-full transition-all duration-300" style={{ width: `${progressPct}%` }} />
                   </div>
                   <CronoProgreso active={loading} pct={progressPct} />
+                  <SeccionesProgreso />
                 </div>
               )}
               {!loading && progress && (
@@ -971,6 +973,7 @@ export default function BackupCenter() {
                     </div>
                   )}
                   <CronoProgreso active={restoring} pct={restorePct} />
+                  <SeccionesProgreso />
 
                   <Button
                     onClick={doRestore}
