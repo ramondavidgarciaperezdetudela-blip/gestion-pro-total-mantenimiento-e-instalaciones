@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Thermometer, Calculator, Save, Trash2, User, Wind, CheckCircle, Loader2, FileText, Upload, MapPin, Package, X, ZoomIn } from 'lucide-react';
+import { Thermometer, Calculator, Save, Trash2, User, Wind, CheckCircle, Loader2, FileText, Upload, MapPin, Package, X, ZoomIn, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import NavBar from '@/components/NavBar';
 import ACSystemDiagram from '@/components/ACSystemDiagram';
 import MollierDiagram from '@/components/MollierDiagram';
+import EsquemaInteractivoAC from '@/components/EsquemaInteractivoAC';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 
 // ─── Tipos de máquina disponibles (definición explícita y ordenada) ─────────
@@ -708,6 +709,7 @@ EXCLUYE SIEMPRE: baños, aseos, garajes, jardines, terrazas.`;
       <div className="flex gap-0 border border-gray-200 rounded-xl overflow-hidden">
         {[
           { id: 'calc',      label: 'Calcular',     icon: Calculator },
+          { id: 'esquema',   label: 'Esquema',      icon: SlidersHorizontal },
           { id: 'resultado', label: 'Resultado',    icon: Thermometer },
           { id: 'plano',     label: 'Plano IA',     icon: Upload },
           { id: 'mollier',   label: 'Mollier',      icon: Wind },
@@ -864,6 +866,11 @@ EXCLUYE SIEMPRE: baños, aseos, garajes, jardines, terrazas.`;
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* ── TAB ESQUEMA INTERACTIVO ── */}
+      {activeTab === 'esquema' && (
+        <EsquemaInteractivoAC />
       )}
 
       {/* ── TAB RESULTADO ── */}
