@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle } from 'lucide-react';
+import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { getNextAvailableNumber } from '@/components/autoNumber';
@@ -12,7 +12,7 @@ import PlanoEquipoDetalles from '@/components/plano_frigorifico/PlanoEquipoDetal
 import { construirPDF, exportarPDF, imprimirPlano } from '@/components/plano_frigorifico/PlanoExporter';
 import { exportarDXF } from '@/lib/planoDxfExport';
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
-import { CAT_COLOR, elementoDe } from '@/lib/planoFrigorificoCatalogo';
+import { CAT_COLOR, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
 import { presupuestoAproximado } from '@/lib/instalacionCalculos';
 
 const PLANO_VACIO = {
@@ -35,6 +35,9 @@ export default function PlanoFrigorifico() {
   const [generating, setGenerating] = useState(false);
   const [tarifas, setTarifas] = useState([]);
   const [polyline, setPolyline] = useState(false);
+  const [gridMeters, setGridMeters] = useState(1);
+  const [snapMode, setSnapMode] = useState('libre');
+  const [capasVisibles, setCapasVisibles] = useState(() => Object.fromEntries(CAPAS.map((c) => [c.id, true])));
   const [gmailDialog, setGmailDialog] = useState(false);
   const [gmailForm, setGmailForm] = useState({ to: '', subject: '', body: '' });
   const [enviando, setEnviando] = useState(false);
@@ -444,16 +447,62 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         </div>
       </div>
 
-      {/* Cuerpo: paleta · lienzo · detalles */}
-      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_240px] gap-3">
-        <div className="rounded-lg border border-border bg-card p-3 lg:max-h-[70vh] overflow-y-auto">
-          <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} onPick={onPick} />
-        </div>
+      {/* Paleta superior: dibujos por categorías con todos los tipos */}
+      <div className="rounded-lg border border-border bg-card p-3">
+        <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} onPick={onPick} />
+      </div>
 
+      {/* Controles de cuadrícula, movimiento y capas */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2">
+        <div className="flex items-center gap-1.5 text-xs">
+          <Grid3x3 className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-muted-foreground">Cuadrícula</span>
+          {[1, 0.5].map((g) => (
+            <button key={g} onClick={() => setGridMeters(g)}
+              className="rounded-md border px-2 py-1 text-xs transition-all"
+              style={gridMeters === g ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
+              {g} m
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5 text-xs">
+          <Ruler className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-muted-foreground">Movimiento</span>
+          <button onClick={() => setSnapMode('libre')}
+            className="rounded-md border px-2 py-1 text-xs transition-all"
+            style={snapMode === 'libre' ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
+            Libre (0,1 m)
+          </button>
+          <button onClick={() => setSnapMode('cuadricula')}
+            className="rounded-md border px-2 py-1 text-xs transition-all"
+            style={snapMode === 'cuadricula' ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
+            A cuadrícula
+          </button>
+        </div>
+        <div className="w-px h-6 bg-border" />
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-muted-foreground">Capas</span>
+          {CAPAS.map((capa) => {
+            const on = capasVisibles[capa.id] !== false;
+            return (
+              <button key={capa.id} onClick={() => setCapasVisibles((v) => ({ ...v, [capa.id]: !on }))}
+                className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-all"
+                style={{ borderColor: on ? capa.color : 'hsl(var(--border))', color: on ? capa.color : 'hsl(var(--muted-foreground))', background: on ? capa.color + '15' : 'transparent' }}>
+                {on ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                {capa.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Cuerpo: lienzo · detalles */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
         <PlanoCanvas
           walls={plan.walls} elements={plan.elements} connections={plan.connections}
           selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-          polyline={polyline} scale={plan.scale} onChange={handleChange} />
+          polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
+          capasVisibles={capasVisibles} onChange={handleChange} />
 
         <div className="rounded-lg border border-border bg-card p-3 lg:max-h-[70vh] overflow-y-auto">
           <PlanoEquipoDetalles

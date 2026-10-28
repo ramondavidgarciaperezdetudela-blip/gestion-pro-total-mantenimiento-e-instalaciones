@@ -18,9 +18,24 @@ export function crearConexion(type, from_id, to_id, path = []) {
     liquid_diameter: '',
     power_type: '',
     comm_type: '',
+    // Conductos: sección en mm, forma y caudal.
+    duct_section: '',
+    duct_shape: 'Rectangular',
+    duct_caudal_m3h: '',
     notes: '',
   };
 }
+
+// Elementos de la capa de ventilación: rejillas, difusores, bocas, ventiladores,
+// UVT, plenum… Lo que se une con conductos en vez de tuberías.
+const ES_VENTILACION = new Set([
+  'rejilla_impulsion', 'rejilla_retorno', 'rejilla_extraccion',
+  'difusor_circular', 'difusor_lineal', 'boca_impulsion', 'boca_retorno',
+  'ventilador_extraccion', 'ventilador_impulsion', 'uvt',
+  'compuerta_cortafuego', 'silenciador', 'caja_toma', 'extractor_eolico',
+  'conductos', 'recuperador',
+]);
+export function esVentilacion(tipo) { return ES_VENTILACION.has(tipo); }
 
 // Lista de puntos por los que pasa una conexión: origen → codos → destino.
 export function puntosConexion(conn, elements) {
@@ -92,6 +107,24 @@ export function autoConectar(elements, existentes = []) {
 
   const loads = [...compresores, ...grupos, ...condens];
   cuadros.forEach((cu) => loads.forEach((l) => add('electrica', cu.id, l.id)));
+
+  // ── Ventilación: une cada rejilla/boca/difusor al ventilador o UVT más
+  // cercano, y los ventiladores al plenum si lo hay. Así el conducto aparece
+  // solo con «auto-conectar», igual que la tubería frigorífica.
+  const vent = elements.filter((e) => esVentilacion(e.type));
+  const impulsores = elements.filter((e) =>
+    e.type === 'ventilador_impulsion' || e.type === 'uvt' || e.type === 'caja_toma');
+  const extractores = elements.filter((e) =>
+    e.type === 'ventilador_extraccion' || e.type === 'extractor_eolico');
+  vent.forEach((v) => {
+    if (v.type === 'rejilla_extraccion' || v.type === 'boca_retorno') {
+      const t = nearest(v, [...extractores, ...impulsores]);
+      if (t) add('conducto', v.id, t.id);
+    } else {
+      const t = nearest(v, impulsores.length ? impulsores : extractores);
+      if (t) add('conducto', v.id, t.id);
+    }
+  });
 
   return out;
 }

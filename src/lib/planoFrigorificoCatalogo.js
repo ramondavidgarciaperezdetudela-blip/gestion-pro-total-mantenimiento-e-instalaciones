@@ -22,14 +22,26 @@
  */
 
 export const CATEGORIAS = [
-  { id: 'refrigeracion', label: 'Refrigeración', color: '#00D4FF' },
-  { id: 'clima', label: 'Climatización', color: '#22D3EE' },
-  { id: 'electrico', label: 'Electricidad / Aparamenta', color: '#F5A623' },
-  { id: 'seguridad', label: 'Seguridad', color: '#E5484D' },
-  { id: 'estructura', label: 'Estructura', color: '#7C3AED' },
+  { id: 'refrigeracion', label: 'Refrigeración', color: '#00D4FF', capa: 'frio' },
+  { id: 'clima', label: 'Climatización', color: '#22D3EE', capa: 'frio' },
+  { id: 'ventilacion', label: 'Ventilación / Conductos', color: '#10b981', capa: 'ventilacion' },
+  { id: 'electrico', label: 'Electricidad / Aparamenta', color: '#F5A623', capa: 'electrico' },
+  { id: 'seguridad', label: 'Seguridad', color: '#E5484D', capa: 'seguridad' },
+  { id: 'estructura', label: 'Estructura', color: '#7C3AED', capa: 'estructura' },
 ];
 
 export const CAT_COLOR = CATEGORIAS.reduce((m, c) => { m[c.id] = c.color; return m; }, {});
+
+/** Capa (layer) a la que pertenece una categoría, para mostrar/ocultar
+ *  bloques enteros del plano sin tocar uno a uno. */
+export const CAT_CAPA = CATEGORIAS.reduce((m, c) => { m[c.id] = c.capa; return m; }, {});
+export const CAPAS = [
+  { id: 'frio', label: 'Frigorífico / Clima', color: '#00D4FF' },
+  { id: 'ventilacion', label: 'Ventilación', color: '#10b981' },
+  { id: 'electrico', label: 'Eléctrico', color: '#F5A623' },
+  { id: 'seguridad', label: 'Seguridad', color: '#E5484D' },
+  { id: 'estructura', label: 'Estructura', color: '#7C3AED' },
+];
 
 /* ─── Campos que se repiten ─────────────────────────────────────────────── */
 
@@ -50,9 +62,37 @@ export const ELEMENTOS = [
   { id: 'compresor', cat: 'refrigeracion', label: 'Compresor', w_m: 1.0, h_m: 0.8, glyph: 'CP', precio: 1600,
     campos: [campoPotencia, campoConsumo, campoRefrigerante, campoTension,
       { id: 'tipo_compresor', etiqueta: 'Tipo', tipo: 'opcion', opciones: ['Hermético', 'Semihermético', 'Scroll', 'Tornillo'] }] },
-  { id: 'condensador', cat: 'refrigeracion', label: 'Condensador', w_m: 1.2, h_m: 0.8, glyph: 'CD', precio: 900,
+  { id: 'condensador', cat: 'refrigeracion', label: 'Condensador (genérico)', w_m: 1.2, h_m: 0.8, glyph: 'CD', precio: 900,
     campos: [campoPotencia, campoRefrigerante,
       { id: 'ventiladores', etiqueta: 'Nº de ventiladores', tipo: 'numero', porDefecto: 2 }] },
+  // ── Condensadoras diferenciadas por tipo ──
+  // Cada una se dibuja distinta en el plano (no por un detalle pequeño):
+  // aire axial, aire centrífugo, agua, evaporativa y seca/dry-cooler.
+  { id: 'condensadora_aire', cat: 'refrigeracion', label: 'Condensadora aire (axial)', w_m: 1.4, h_m: 0.9, glyph: 'CDA', precio: 1100,
+    campos: [campoPotencia, campoRefrigerante, campoConsumo, campoTension,
+      { id: 'ventiladores', etiqueta: 'Nº de ventiladores axiales', tipo: 'numero', porDefecto: 2 },
+      { id: 'tipo_condensadora', etiqueta: 'Tipo', tipo: 'opcion', opciones: ['Aire axial'], porDefecto: 'Aire axial' }],
+    nota: 'Condensadora por aire con ventiladores axiales: la más habitual en cámaras pequeñas y medianas.' },
+  { id: 'condensadora_centrifugo', cat: 'refrigeracion', label: 'Condensadora aire (centrífugo)', w_m: 1.4, h_m: 0.9, glyph: 'CDC', precio: 1300,
+    campos: [campoPotencia, campoRefrigerante, campoConsumo, campoTension,
+      { id: 'ventiladores', etiqueta: 'Nº de ventiladores centrífugos', tipo: 'numero', porDefecto: 1 },
+      { id: 'tipo_condensadora', etiqueta: 'Tipo', tipo: 'opcion', opciones: ['Aire centrífugo'], porDefecto: 'Aire centrífugo' }],
+    nota: 'Centrífugo: para instalar en interior o conducir el aire por conducto, tira más que el axial.' },
+  { id: 'condensadora_agua', cat: 'refrigeracion', label: 'Condensadora por agua', w_m: 1.0, h_m: 0.7, glyph: 'CDH2O', precio: 1700,
+    campos: [campoPotencia, campoRefrigerante, campoConsumo, campoTension,
+      { id: 'tipo_condensadora', etiqueta: 'Tipo', tipo: 'opcion', opciones: ['Agua (cascada + torre)', 'Agua (shell&tube)'], porDefecto: 'Agua (shell&tube)' },
+      { id: 'caudal_agua_m3h', etiqueta: 'Caudal de agua (m³/h)', tipo: 'numero' }],
+    nota: 'Condensación por agua: necesita torre de refrigeración o circuito de agua fría.' },
+  { id: 'condensadora_evaporativa', cat: 'refrigeracion', label: 'Condensadora evaporativa', w_m: 1.6, h_m: 1.4, glyph: 'CDE', precio: 2600,
+    campos: [campoPotencia, campoRefrigerante, campoConsumo, campoTension,
+      { id: 'tipo_condensadora', etiqueta: 'Tipo', tipo: 'opcion', opciones: ['Evaporativa'], porDefecto: 'Evaporativa' },
+      { id: 'caudal_agua_m3h', etiqueta: 'Caudal recirculación (m³/h)', tipo: 'numero' }],
+    nota: 'Evaporativa: la más eficiente en clima seco, integra torre y condensador en uno.' },
+  { id: 'condensadora_seca', cat: 'refrigeracion', label: 'Condensadora seca (dry-cooler)', w_m: 1.6, h_m: 0.9, glyph: 'CDD', precio: 1500,
+    campos: [campoPotencia, campoRefrigerante, campoConsumo, campoTension,
+      { id: 'ventiladores', etiqueta: 'Nº de ventiladores', tipo: 'numero', porDefecto: 4 },
+      { id: 'tipo_condensadora', etiqueta: 'Tipo', tipo: 'opcion', opciones: ['Seca / dry-cooler'], porDefecto: 'Seca / dry-cooler' }],
+    nota: 'Dry-cooler: para sistemas con glicol o condensación indirecta, sin consumo de agua.' },
   { id: 'evaporador', cat: 'refrigeracion', label: 'Evaporador', w_m: 1.0, h_m: 0.6, glyph: 'EV', precio: 950,
     campos: [campoPotencia, campoRefrigerante,
       { id: 'desescarche', etiqueta: 'Desescarche', tipo: 'opcion', opciones: ['Aire', 'Eléctrico', 'Gas caliente', 'Agua'], porDefecto: 'Eléctrico' },
@@ -113,6 +153,39 @@ export const ELEMENTOS = [
   { id: 'fancoil', cat: 'clima', label: 'Fancoil', w_m: 0.8, h_m: 0.3, glyph: 'FC', precio: 850,
     campos: [campoPotencia] },
   { id: 'recuperador', cat: 'clima', label: 'Recuperador de calor', w_m: 1.2, h_m: 0.8, glyph: 'RC', precio: 2100,
+    campos: [campoCaudal] },
+
+  /* ── Ventilación / Conductos ── */
+  // Rejillas, difusores y elementos de distribución de aire. Se unen entre sí
+  // y con las máquinas con la herramienta «Conducto» (conexión tipo 'conducto').
+  { id: 'rejilla_impulsion', cat: 'ventilacion', label: 'Rejilla impulsión', w_m: 0.4, h_m: 0.4, glyph: 'RI', precio: 38,
+    campos: [campoCaudal, { id: 'dimension', etiqueta: 'Medida', tipo: 'texto', ayuda: 'p. ej. 400×200' }] },
+  { id: 'rejilla_retorno', cat: 'ventilacion', label: 'Rejilla retorno', w_m: 0.4, h_m: 0.4, glyph: 'RR', precio: 38,
+    campos: [campoCaudal, { id: 'dimension', etiqueta: 'Medida', tipo: 'texto' }] },
+  { id: 'rejilla_extraccion', cat: 'ventilacion', label: 'Rejilla extracción', w_m: 0.4, h_m: 0.4, glyph: 'RE', precio: 42,
+    campos: [campoCaudal] },
+  { id: 'difusor_circular', cat: 'ventilacion', label: 'Difusor circular', w_m: 0.5, h_m: 0.5, glyph: 'DC', precio: 65,
+    campos: [campoCaudal, { id: 'bocas', etiqueta: 'Nº de bocas', tipo: 'numero', porDefecto: 4 }] },
+  { id: 'difusor_lineal', cat: 'ventilacion', label: 'Difusor lineal', w_m: 1.2, h_m: 0.2, glyph: 'DL', precio: 90,
+    campos: [campoCaudal, { id: 'largo_m', etiqueta: 'Largo (m)', tipo: 'numero', porDefecto: 1.2 }] },
+  { id: 'boca_impulsion', cat: 'ventilacion', label: 'Boca de impulsión', w_m: 0.3, h_m: 0.3, glyph: 'BI', precio: 28,
+    campos: [campoCaudal] },
+  { id: 'boca_retorno', cat: 'ventilacion', label: 'Boca de retorno', w_m: 0.3, h_m: 0.3, glyph: 'BR', precio: 28,
+    campos: [campoCaudal] },
+  { id: 'ventilador_extraccion', cat: 'ventilacion', label: 'Ventilador extracción', w_m: 0.6, h_m: 0.6, glyph: 'VEX', precio: 320,
+    campos: [campoCaudal, campoTension, campoConsumo] },
+  { id: 'ventilador_impulsion', cat: 'ventilacion', label: 'Ventilador impulsión', w_m: 0.6, h_m: 0.6, glyph: 'VIM', precio: 340,
+    campos: [campoCaudal, campoTension, campoConsumo] },
+  { id: 'uvt', cat: 'ventilacion', label: 'UVT (unid. trat. aire)', w_m: 1.6, h_m: 0.9, glyph: 'UVT', precio: 2600,
+    campos: [campoCaudal, campoPotencia, campoTension,
+      { id: 'baterias', etiqueta: 'Baterías', tipo: 'opcion', opciones: ['Solo frío', 'Frío + calor', 'Recuperador'], porDefecto: 'Frío + calor' }] },
+  { id: 'compuerta_cortafuego', cat: 'ventilacion', label: 'Compuerta cortafuegos', w_m: 0.5, h_m: 0.5, glyph: 'CCF', precio: 140,
+    campos: [{ id: 'clasificacion', etiqueta: 'Clasificación', tipo: 'opcion', opciones: ['EI60', 'EI90', 'EI120'], porDefecto: 'EI90' }] },
+  { id: 'silenciador', cat: 'ventilacion', label: 'Silenciador', w_m: 0.8, h_m: 0.4, glyph: 'SIL', precio: 110,
+    campos: [campoCaudal] },
+  { id: 'caja_toma', cat: 'ventilacion', label: 'Caja / plenum', w_m: 0.6, h_m: 0.6, glyph: 'PL', precio: 95,
+    campos: [campoCaudal] },
+  { id: 'extractor_eolico', cat: 'ventilacion', label: 'Extractor eólico', w_m: 0.5, h_m: 0.5, glyph: 'EOL', precio: 180,
     campos: [campoCaudal] },
 
   /* ── Electricidad / aparamenta ── */

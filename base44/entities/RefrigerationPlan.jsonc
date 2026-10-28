@@ -49,7 +49,7 @@
     },
     "elements": {
       "type": "array",
-      "description": "Equipos, aparamenta, seguridad y estructura colocados en el plano",
+      "description": "Equipos, aparamenta, seguridad, ventilaci\u00f3n y estructura colocados en el plano",
       "items": {
         "type": "object",
         "properties": {
@@ -57,10 +57,12 @@
             "type": "string"
           },
           "type": {
-            "type": "string"
+            "type": "string",
+            "description": "Identificador del cat\u00e1logo (compresor, condensadora_aire, rejilla_impulsion, etc.)"
           },
           "cat": {
-            "type": "string"
+            "type": "string",
+            "description": "Categor\u00eda: refrigeracion, clima, ventilacion, electrico, seguridad, estructura"
           },
           "label": {
             "type": "string"
@@ -95,13 +97,18 @@
           "qty": {
             "type": "number",
             "default": 1
+          },
+          "datos": {
+            "type": "object",
+            "description": "Campos t\u00e9cnicos propios del equipo (potencia, refrigerante, tensi\u00f3n, etc.)",
+            "additionalProperties": true
           }
         }
       }
     },
     "connections": {
       "type": "array",
-      "description": "Tuber\u00edas refrigerantes y conexiones el\u00e9ctricas entre equipos",
+      "description": "Tuber\u00edas refrigerantes, conductos de ventilaci\u00f3n y conexiones el\u00e9ctricas entre equipos",
       "items": {
         "type": "object",
         "properties": {
@@ -112,7 +119,8 @@
             "type": "string",
             "enum": [
               "refrigerante",
-              "electrica"
+              "electrica",
+              "conducto"
             ]
           },
           "from_id": {
@@ -125,7 +133,7 @@
           },
           "path": {
             "type": "array",
-            "description": "Puntos intermedios (codos) de la tuber\u00eda como polil\u00ednea: [{x,y}, ...]. Vac\u00edo = l\u00ednea recta.",
+            "description": "Puntos intermedios (codos) como polil\u00ednea: [{x,y}, ...]. Vac\u00edo = l\u00ednea recta.",
             "items": {
               "type": "object",
               "properties": {
@@ -146,6 +154,17 @@
             "type": "string",
             "description": "Di\u00e1metro de la l\u00ednea de l\u00edquido (refrigerante)"
           },
+          "power_w": {
+            "type": "string",
+            "description": "Potencia que mueve la conexi\u00f3n (W)"
+          },
+          "voltage": {
+            "type": "string"
+          },
+          "height_m": {
+            "type": "string",
+            "description": "Desnivel de la tuber\u00eda (m)"
+          },
           "power_type": {
             "type": "string",
             "description": "Tipo de conexi\u00f3n de potencia (el\u00e9ctrica)"
@@ -153,6 +172,29 @@
           "comm_type": {
             "type": "string",
             "description": "Tipo de conexi\u00f3n de comunicaciones (el\u00e9ctrica)"
+          },
+          "conn_kind": {
+            "type": "string",
+            "description": "Subtipo de conexi\u00f3n el\u00e9ctrica: potencia o comunicacion"
+          },
+          "section_mm2": {
+            "type": "string",
+            "description": "Secci\u00f3n del cable (mm\u00b2)"
+          },
+          "cable": {
+            "type": "string"
+          },
+          "duct_section": {
+            "type": "string",
+            "description": "Secci\u00f3n del conducto (mm)"
+          },
+          "duct_shape": {
+            "type": "string",
+            "description": "Forma del conducto: Rectangular, Circular, Flexible"
+          },
+          "duct_caudal_m3h": {
+            "type": "string",
+            "description": "Caudal del conducto (m\u00b3/h)"
           },
           "notes": {
             "type": "string"

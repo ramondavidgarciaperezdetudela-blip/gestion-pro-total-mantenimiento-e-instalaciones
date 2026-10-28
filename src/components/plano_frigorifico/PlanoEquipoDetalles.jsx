@@ -67,7 +67,8 @@ function DetalleConexion({ connection, elements, scale, onUpdate, onDelete }) {
   const b = elements.find((e) => e.id === connection.to_id);
   const L = longitudConexion(connection, elements, scale);
   const esRef = connection.type === 'refrigerante';
-  const color = esRef ? '#00A0E9' : '#F5821F';
+  const esConducto = connection.type === 'conducto';
+  const color = esRef ? '#00A0E9' : esConducto ? '#10b981' : '#F5821F';
 
   // La potencia sale del equipo al que está enganchada. Puede estar pegada a
   // dos (el grupo y el evaporador): se coge el que la tenga puesta, porque es
@@ -90,9 +91,9 @@ function DetalleConexion({ connection, elements, scale, onUpdate, onDelete }) {
   const esComunicacion = connection.conn_kind === 'comunicacion';
 
   return (
-    <div className="flex flex-col gap-2" data-prueba={esRef ? 'detalle-tuberia' : 'detalle-electrica'}>
+    <div className="flex flex-col gap-2" data-prueba={esRef ? 'detalle-tuberia' : esConducto ? 'detalle-conducto' : 'detalle-electrica'}>
       <div className="flex items-center justify-between">
-        <div className="tech-label" style={{ color }}>{esRef ? 'Tubería refrigerante' : 'Conexión eléctrica'}</div>
+        <div className="tech-label" style={{ color }}>{esRef ? 'Tubería refrigerante' : esConducto ? 'Conducto / ventilación' : 'Conexión eléctrica'}</div>
         <button onClick={onDelete} className="p-1 rounded text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></button>
       </div>
       <div className="text-xs text-muted-foreground">{(a?.label) || '?'} → {(b?.label) || '?'}</div>
@@ -144,6 +145,33 @@ function DetalleConexion({ connection, elements, scale, onUpdate, onDelete }) {
           <Avisos lista={sugTub.avisos} />
           <p className="text-[10px] leading-snug text-muted-foreground">
             Diámetros orientativos: el bueno es el de la ficha técnica del equipo.
+          </p>
+        </>
+      ) : esConducto ? (
+        <>
+          <Campo label="Forma del conducto">
+            <select value={connection.duct_shape || 'Rectangular'} data-prueba="forma-conducto"
+              onChange={(e) => onUpdate({ duct_shape: e.target.value })}
+              className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs">
+              <option value="Rectangular">Rectangular</option>
+              <option value="Circular">Circular</option>
+              <option value="Flexible">Flexible</option>
+            </select>
+          </Campo>
+          <Campo label="Sección / diámetro (mm)">
+            <input value={connection.duct_section || ''} data-prueba="seccion-conducto"
+              onChange={(e) => onUpdate({ duct_section: e.target.value })}
+              placeholder="p. ej. 400×200 o Ø250"
+              className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+          </Campo>
+          <Campo label="Caudal (m³/h)">
+            <input inputMode="decimal" value={connection.duct_caudal_m3h ?? conDato?.datos?.caudal_m3h ?? ''}
+              data-prueba="caudal-conducto"
+              onChange={(e) => onUpdate({ duct_caudal_m3h: e.target.value })}
+              className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+          </Campo>
+          <p className="text-[10px] leading-snug text-muted-foreground">
+            Conducto de distribución de aire. La sección sale del caudal y la velocidad recomendada (2-5 m/s).
           </p>
         </>
       ) : (
