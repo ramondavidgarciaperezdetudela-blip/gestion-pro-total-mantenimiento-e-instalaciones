@@ -48,6 +48,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
     orientativos.
 
 ### Corregido
+- **El PDF del plano no se generaba nunca**, ni al exportar ni al imprimir: el
+  exportador llamaba a un método de jsPDF que no existe, y el aviso en
+  pantalla solo decía «No se pudo generar el PDF» sin contar el motivo.
+- La pantalla de planos **no cargaba** («La página no se cargó correctamente»)
+  en cuanto el catálogo traía una categoría nueva, porque la paleta se quedaba
+  sin icono para ella. Ahora lleva icono de reserva.
+- La tubería recién creada no quedaba seleccionada, así que la ficha donde se
+  piden los diámetros de gas y de líquido no se abría: había que ir a buscar
+  la línea al plano para rellenarla.
 - El resumen del PDF se escribía fuera del papel cuando la instalación tenía
   muchos equipos: ahora pasa a una hoja nueva.
 - Al imprimir cualquier pantalla con un lienzo, el dibujo salía **en blanco**:
