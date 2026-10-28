@@ -27,7 +27,11 @@ import {
 // daba por "fin de los datos", con lo que la copia salía a medias sin avisar.
 const entidades = base44.sinAvisos?.entities || base44.entities;
 
-const PAGE = 1000;
+// El servidor entrega como mucho 5.000 registros por petición. Antes se
+// pedían de 1.000 en 1.000: con 474.000 tarifas (SupplierPrice) eran 474
+// lecturas solo para leer una sección, y a 500 ms el freno eran 4 minutos.
+// A 5.000 por página son 95 lecturas — cinco veces menos.
+const PAGE = 5000;
 // El servidor limita a 140 lecturas/min por usuario. Antes se lanzaban 4
 // entidades a la vez × 3 páginas en paralelo = 12 lecturas simultáneas, que
 // vaciaban el cupo en unos segundos; entonces el freno paraba a todos, pero
@@ -143,41 +147,20 @@ export async function fetchAllRecordsFast(ent, opciones = {}) {
 export async function contarRegistros(ent, freno = crearFrenoGlobal()) {
   const E = entidades[ent];
   if (!E) return 0;
-  const soloIds = (skip) => pedir(freno, () => E.filter({}, null, PAGE, skip, ['id']));
-
-  let primera;
+  // count() es UNA sola llamada al servidor. Antes se paginaba registro a
+  // registro (solo el id) para contar, y con 474.000 tarifas eran 474
+  // lecturas a 500 ms cada una = 4 minutos solo para enseñar un número en
+  // pantalla. Durante esos 4 minutos el freno compartido no dejaba arrancar
+  // la copia ni la restauración: por eso se quedaba en «Restaurando…» sin
+  // avanzar nada.
   try {
-    primera = await soloIds(0);
+    return await pedir(freno, () => E.count({}));
   } catch {
+    // Si count no se puede (p.ej. reglas de lectura por campo que lo
+    // rechazan), se cuenta como antes: paginando solo el id. Es lento pero
+    // tolerante, y solo llega aquí en casos raros.
     return (await fetchAllRecordsFast(ent, { tolerante: true, freno }))?.length || 0;
   }
-  if (!primera) return 0;
-
-  const vistos = new Set();
-  let sueltos = 0;
-  const sumar = (lote) => {
-    for (const r of lote) {
-      if (r?.id) vistos.add(r.id);
-      else sueltos++;
-    }
-  };
-  sumar(primera);
-  if (primera.length < PAGE) return vistos.size + sueltos;
-
-  let skip = PAGE;
-  for (let guard = 0; guard < 250; guard++) {
-    const skips = Array.from({ length: PAGE_BATCH }, (_, i) => skip + i * PAGE);
-    const lotes = await Promise.all(skips.map((s) => soloIds(s).catch(() => [])));
-    let fin = false;
-    for (const lote of lotes) {
-      if (!lote || lote.length === 0) { fin = true; break; }
-      sumar(lote);
-      if (lote.length < PAGE) { fin = true; break; }
-    }
-    if (fin) break;
-    skip += PAGE * PAGE_BATCH;
-  }
-  return vistos.size + sueltos;
 }
 
 // ── Estado global compartido (para el indicador persistente) ───────────────
