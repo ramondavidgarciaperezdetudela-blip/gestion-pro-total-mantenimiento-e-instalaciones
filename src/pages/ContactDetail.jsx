@@ -12,7 +12,7 @@ import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Phone, Mail, Navigation, Plus, FileText, Calculator, CheckCircle, Clock, XCircle, Upload, Trash2, Edit, Eye, Send, Bot, ArrowLeft, Printer, MessageCircle, Camera, History, AlertTriangle } from 'lucide-react';
+import { Phone, Mail, Navigation, Plus, FileText, Calculator, CheckCircle, Clock, XCircle, Upload, Trash2, Edit, Eye, Send, Bot, ArrowLeft, Printer, MessageCircle, Camera, History, AlertTriangle, PenTool } from 'lucide-react';
 import ClientMachineTab from '../components/ClientMachineTab';
 import EquipmentDiaryTab from '../components/EquipmentDiaryTab';
 import ClientRepairGallery from '../components/ClientRepairGallery';
@@ -1014,6 +1014,11 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
             }
             {documents.filter((d) => d.doc_type !== 'manual').map((d) => {
               const isHtmlDoc = d.description && d.description.trim().startsWith('<');
+              // Los planos de instalación llevan el dibujo entero guardado en
+              // la descripción (un JSON). Enseñarlo en crudo no dice nada y
+              // ocupa toda la ficha: se enseña el plano y un botón para
+              // abrirlo donde se dibujó.
+              const esPlano = d.doc_type === 'plano_instalacion';
               const openDocPreview = () => {
                 const w = window.open('', '_blank');
                 if (isHtmlDoc) {
@@ -1050,7 +1055,8 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{d.title}</p>
                         <p className="text-xs text-gray-500">{d.doc_type?.replace(/_/g, ' ')} | {d.date}</p>
-                        {!isHtmlDoc && d.description && <p className="text-xs text-gray-400 truncate">{d.description}</p>}
+                        {!isHtmlDoc && !esPlano && d.description && <p className="text-xs text-gray-400 truncate">{d.description}</p>}
+                        {esPlano && <span className="text-[10px] font-medium text-cyan-600">📐 Plano de instalación — se puede seguir editando</span>}
                         {isHtmlDoc && <span className="text-[10px] text-indigo-500 font-medium">📄 Documento HTML generado</span>}
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
@@ -1065,6 +1071,11 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
                       </div>
                     </div>
                     <div className="flex gap-1 mt-2 border-t pt-2 flex-wrap">
+                      {esPlano &&
+                      <Link to={createPageUrl(`DisenoInstalacion?doc=${d.id}`)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-cyan-50 text-cyan-700 hover:bg-cyan-100">
+                          <PenTool className="w-3 h-3" /> Abrir en el diseñador
+                        </Link>
+                      }
                       {isHtmlDoc &&
                       <button onClick={openDocPreview} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
                           <Eye className="w-3 h-3" /> Ver impresión
