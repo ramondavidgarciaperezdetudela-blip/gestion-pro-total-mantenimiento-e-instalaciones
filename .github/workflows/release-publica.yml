@@ -154,6 +154,10 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
       - uses: android-actions/setup-android@v3
+        with:
+          # El paquete «tools» ya no existe en el SDK: pedirlo hace fallar a
+          # sdkmanager y se cae el trabajo antes de compilar nada.
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
       - run: npm ci
       - run: npm run build
       - run: npx cap add android && npx cap sync android

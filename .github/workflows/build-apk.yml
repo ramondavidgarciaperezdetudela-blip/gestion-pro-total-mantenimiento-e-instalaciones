@@ -58,6 +58,12 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Sin esto, la acción intenta instalar el paquete «tools», que Google
+          # retiró del SDK: sdkmanager falla y la compilación se cae antes de
+          # empezar. Se piden solo los paquetes que hacen falta, que además ya
+          # vienen en la imagen del runner.
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
       - name: Install dependencies
         run: npm ci
