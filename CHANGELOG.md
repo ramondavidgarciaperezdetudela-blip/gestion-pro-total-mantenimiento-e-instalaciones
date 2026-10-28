@@ -6,6 +6,61 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.72.0] — 2026-10-28
+
+### Añadido
+- **Diseño de instalaciones y planos frigoríficos** (Refrigeración → Diseño
+  Instalación, y también en los accesos de Inicio). Se dibuja la instalación
+  entera y de ahí sale el presupuesto, sin tener que pasar por tres pantallas
+  distintas ni por el cuaderno.
+  - **Paredes libres.** El local se dibuja tramo a tramo, con sus pilares, sus
+    entrantes y las formas en L o en U que tienen las obras de verdad: ya no
+    hay que fingir que todo es una habitación cuadrada. Doble clic o Escape
+    cierra el contorno; con «Cota» se mide cualquier distancia y queda escrita
+    en el plano.
+  - **Catálogo de 46 elementos** en cinco familias: frío (centrales, unidades
+    condensadoras, evaporadores, cámaras, murales, arcones, válvulas…), clima,
+    **aparamenta de seguridad** (válvulas de seguridad, presostatos, detectores
+    de fugas, alarmas), **electricidad** (cuadros, diferenciales, magneto-
+    térmicos, variadores, controladores) y obra.
+  - **Cada elemento pide lo suyo.** El evaporador pregunta potencia, refrige-
+    rante, desescarche y nº de ventiladores; el diferencial, sensibilidad,
+    clase y polos; la válvula de seguridad, el tarado y a dónde descarga. El
+    detector de fugas avisa de lo que pide el Reglamento (UE) 2024/573.
+  - **Tuberías entre equipos, automáticas o a mano.** Se pulsa un equipo y
+    luego el otro y la línea se une y se cierra sola; para llevarla por donde
+    toca, se pulsan los codos por el camino.
+  - **Cálculo de tubería.** Al añadirla pide los tamaños de **gas y de
+    líquido** y los sugiere con la potencia del equipo, la longitud y el
+    desnivel, penalizando las tiradas largas. Dice también la carga aproximada
+    que se queda en la línea de líquido, y avisa cuando la tirada pide sifones
+    o cuando se sale de tabla.
+  - **Líneas eléctricas.** Pide **tipo de conexión de potencia** (monofásica,
+    trifásica, mando, maniobra) y de **comunicación** (Modbus RTU, BACnet,
+    KNX, bus propietario, Ethernet), y sugiere la **sección en mm²** por
+    intensidad y por caída de tensión, con el cable de datos separado de la
+    fuerza.
+  - **Presupuesto aproximado automático**, que se va recalculando mientras se
+    dibuja: material por elemento, metros de tubería y de cable, y un 35 % de
+    mano de obra. Si tienes tus propios precios en Tarifas, manda el tuyo.
+  - **Y detallado con la IA**: coge el inventario del plano y devuelve el
+    presupuesto por capítulos con las partidas que no se ven en un dibujo
+    (vacío, carga de gas, puesta en marcha, legalización, desplazamientos) y
+    las jornadas estimadas, diciendo además qué falta preguntar al cliente.
+  - **Vinculado al cliente.** El plano se guarda en su ficha como documento
+    («plano_instalacion»), con la imagen y el dibujo entero dentro, así que se
+    vuelve a abrir y se sigue editando; los planos de ese cliente salen en una
+    fila para reabrirlos de un toque.
+  - **Imprimir y PDF** con la misma preparación de página que el resto del
+    programa (colores y cuadros incluidos), y guardado automático del borrador
+    por si se sale sin querer.
+
+### Corregido
+- La ficha de cliente se quedaba en «Cargando…» para siempre cuando se abría
+  sin indicar cliente: ahora dice qué ha pasado y ofrece ir a la lista.
+
+---
+
 ## [1.71.0] — 2026-10-28
 
 ### Añadido

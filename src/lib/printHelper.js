@@ -196,6 +196,37 @@ export function estilosDeLaPagina() {
 export function htmlDeLaPantalla(nodo, { titulo = 'Gestión Pro Total', corte = '[data-fin-impresion]' } = {}) {
   const copia = nodo.cloneNode(true);
 
+  /*
+   * Los lienzos, por su dibujo.
+   *
+   * Un <canvas> copiado sale EN BLANCO: lo pintado no está en el HTML, está
+   * dentro del lienzo. Al imprimir un plano salía el recuadro y nada dentro.
+   * Se cambia por una imagen con lo que hay pintado en ese momento. Va lo
+   * primero, antes de recortar nada, porque el emparejamiento entre los
+   * lienzos de la pantalla y los de la copia se hace por orden.
+   */
+  const lienzos = nodo.querySelectorAll('canvas');
+  copia.querySelectorAll('canvas').forEach((c, i) => {
+    const original = lienzos[i];
+    let url = '';
+    try { url = original?.toDataURL('image/png') || ''; } catch { url = ''; }
+    if (!url) return;
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.width = '100%';
+    img.style.maxWidth = `${original.width}px`;
+    img.style.border = '1px solid #cbd5e1';
+    img.style.borderRadius = '6px';
+    c.replaceWith(img);
+  });
+
+  // Lo que solo tiene sentido en el papel (listados, leyendas, totales) va
+  // escondido en pantalla y se enseña aquí.
+  copia.querySelectorAll('[data-solo-impresion]').forEach((e) => {
+    e.classList.remove('hidden');
+    e.style.display = 'block';
+  });
+
   // Cortar donde se haya dicho, y quitar lo marcado como "esto no se imprime".
   if (corte) {
     const fin = copia.querySelector(corte);

@@ -8,7 +8,7 @@ import {
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette,
   CreditCard, Download, Bell, History, Search, FileBarChart, Droplets, AlertCircle,
-  MoreHorizontal, MessageSquare, ListChecks, AlertTriangle, CalendarCheck, Ruler, Sparkles } from
+  MoreHorizontal, MessageSquare, ListChecks, AlertTriangle, CalendarCheck, Ruler, Sparkles, PenTool } from
 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 import ThemeToggle from './components/ThemeToggle';
@@ -181,6 +181,7 @@ const navItems = [
 // { name: 'Renovar Licencia', page: 'LicenseRenewal', icon: Shield },
 { name: 'Soporte IA', page: 'AISupport', icon: Bot },
 { name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Droplets },
+{ name: 'Diseño Instalación', page: 'DisenoInstalacion', icon: PenTool },
 { name: 'Informes Aseguradora', page: 'InformesTecnicos', icon: ShieldCheck },
 { name: 'Tablas Gases', page: 'TablasRefrigerantes', icon: FileBarChart },
 ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
@@ -213,7 +214,7 @@ const PAGE_SECTION = {
   DiagnosticoCarga: 'Refrigeración', RefrigerantEquiv: 'Refrigeración',
   DanfossTools: 'Refrigeración', PresionesGas: 'Refrigeración',
   SolarCalc: 'Solar', SolarBatteryCalc: 'Solar', BatteryCalc: 'Solar',
-  TablasRefrigerantes: 'Refrigeración',
+  TablasRefrigerantes: 'Refrigeración', DisenoInstalacion: 'Refrigeración',
   InformesTecnicos: 'Documentos',
   // Proveedores y stock
   Suppliers: 'Proveedores y stock', GasSuppliers: 'Proveedores y stock',

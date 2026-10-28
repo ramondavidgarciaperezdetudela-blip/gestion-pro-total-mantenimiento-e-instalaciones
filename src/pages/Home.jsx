@@ -19,7 +19,7 @@ import {
   StickyNote, Package, Palette, Bell, Download, Euro, CheckCircle, XCircle, AlertTriangle,
   ArrowRight, ChevronRight, ShoppingCart, Search, Navigation, ChevronDown, ChevronUp,
   Snowflake, Ruler, Gauge, Droplets, Repeat, History, Briefcase, MessageSquare,
-  Calculator, Layers, RefreshCw, ListChecks, Map, FileBarChart, Sparkles } from
+  Calculator, Layers, RefreshCw, ListChecks, Map, FileBarChart, Sparkles, PenTool } from
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
@@ -102,6 +102,7 @@ const quickLinks = [
 { name: 'Copias Seg.', page: 'BackupCenter', icon: Shield, color: 'bg-blue-700' },
 { name: 'Actualizaciones', page: 'UpdateCenter', icon: RefreshCw, color: 'bg-green-600' },
 { name: 'Novedades', page: 'Novedades', icon: Sparkles, color: 'bg-amber-500' },
+{ name: 'Diseño Instalación', page: 'DisenoInstalacion', icon: PenTool, color: 'bg-cyan-600' },
 { name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
 { name: 'Soporte IA', page: 'AISupport', icon: Bot, color: 'bg-blue-500' },
 // Estos faltaban en la lista y por eso no salían en ningún grupo de abajo:
@@ -126,7 +127,7 @@ const GRUPOS = [
   // herramientas seguidas no hay quien las lea.
   { titulo: 'Electricidad', color: '#eab308', pages: ['ElectricalCalc'] },
   { titulo: 'Clima', color: '#0ea5e9', pages: ['ACPotenciaCalc', 'ACPlanAnalysis', 'ThermalCalc', 'MultiAreaCalc', 'PlanoIA', 'CodigosError'] },
-  { titulo: 'Refrigeración', color: '#06b6d4', pages: ['ColdRoomCalc', 'CapillaryCalc', 'DiagnosticoCarga', 'RefrigerantEquiv', 'DanfossTools', 'PresionesGas', 'TablasRefrigerantes'] },
+  { titulo: 'Refrigeración', color: '#06b6d4', pages: ['ColdRoomCalc', 'CapillaryCalc', 'DiagnosticoCarga', 'RefrigerantEquiv', 'DanfossTools', 'PresionesGas', 'TablasRefrigerantes', 'DisenoInstalacion'] },
   { titulo: 'Solar', color: '#f59e0b', pages: ['SolarCalc', 'SolarBatteryCalc', 'BatteryCalc'] },
   { titulo: 'Documentos', color: '#7C3AED', pages: ['Documents', 'Documents?type=factura', 'Documents?type=presupuesto', 'DocumentTemplates', 'LegalDocs'] },
   { titulo: 'SAT y Trabajo', color: '#F97316', pages: ['SAT', 'SATChat', 'TechnicianFieldWork', 'TecniciansRoutes', 'Maintenance', 'MaintenancePlanning', 'IncidentManagement', 'EquipmentFailureHistory', 'EquipmentDiaryPage'] },

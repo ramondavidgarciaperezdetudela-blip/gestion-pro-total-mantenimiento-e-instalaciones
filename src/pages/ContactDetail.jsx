@@ -131,7 +131,10 @@ export default function ContactDetail() {
    * sin su historial que no ver nada.
    */
   const cargar = useCallback(async () => {
-    if (!contactId) return;
+    // Sin identificador no hay nada que pedir, pero hay que APAGAR el
+    // indicador: si no, la pantalla se queda en «Cargando...» para siempre.
+    // Pasa al abrir la ficha desde un enlace al que le falta el cliente.
+    if (!contactId) { setCargando(false); return; }
     setErrorCarga('');
     setCargando(true);
     try {
