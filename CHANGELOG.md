@@ -6,7 +6,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
-## [No publicada] — Próxima release
+## [1.70.0] — 2026-10-28
 
 ### Añadido
 - **Documentación de arquitectura y workflow.** Diagramas técnicos (HTML + imágenes) generados con Archify y sincronizados desde el repositorio de GitHub:
