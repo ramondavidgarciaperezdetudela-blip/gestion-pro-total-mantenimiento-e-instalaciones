@@ -99,6 +99,52 @@
         }
       }
     },
+    "connections": {
+      "type": "array",
+      "description": "Tuber\u00edas refrigerantes y conexiones el\u00e9ctricas entre equipos",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "refrigerante",
+              "electrica"
+            ]
+          },
+          "from_id": {
+            "type": "string",
+            "description": "ID del elemento de origen"
+          },
+          "to_id": {
+            "type": "string",
+            "description": "ID del elemento de destino"
+          },
+          "gas_diameter": {
+            "type": "string",
+            "description": "Di\u00e1metro de la l\u00ednea de gas (refrigerante)"
+          },
+          "liquid_diameter": {
+            "type": "string",
+            "description": "Di\u00e1metro de la l\u00ednea de l\u00edquido (refrigerante)"
+          },
+          "power_type": {
+            "type": "string",
+            "description": "Tipo de conexi\u00f3n de potencia (el\u00e9ctrica)"
+          },
+          "comm_type": {
+            "type": "string",
+            "description": "Tipo de conexi\u00f3n de comunicaciones (el\u00e9ctrica)"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "observations": {
       "type": "string",
       "description": "Notas del plano"

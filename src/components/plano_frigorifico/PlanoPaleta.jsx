@@ -1,5 +1,5 @@
 import React from 'react';
-import { MousePointer2, Minus, Thermometer, Zap, ShieldAlert, Box } from 'lucide-react';
+import { MousePointer2, Minus, Thermometer, Zap, ShieldAlert, Box, Link2 } from 'lucide-react';
 import { CATEGORIAS, elementosPorCategoria } from '@/lib/planoFrigorificoCatalogo';
 
 const CAT_ICON = {
@@ -10,8 +10,9 @@ const CAT_ICON = {
 };
 
 // Paleta de herramientas y elementos colocables. Avisa al padre del modo
-// activo ('select' | 'wall' | 'place') y, en 'place', del catálogo elegido.
-export default function PlanoPaleta({ mode, activeType, onPick }) {
+// activo ('select' | 'wall' | 'place' | 'connect') y, según el modo, del
+// catálogo elegido o del tipo de conexión ('refrigerante' | 'electrica').
+export default function PlanoPaleta({ mode, activeType, connectType, onPick }) {
   const porCat = elementosPorCategoria();
 
   return (
@@ -19,17 +20,15 @@ export default function PlanoPaleta({ mode, activeType, onPick }) {
       <div>
         <div className="tech-label mb-1.5 px-1">Herramientas</div>
         <div className="grid grid-cols-2 gap-1.5">
-          <BotonHerr
-            activo={mode === 'select'}
-            onClick={() => onPick({ mode: 'select' })}
-            icon={MousePointer2} label="Seleccionar" />
-          <BotonHerr
-            activo={mode === 'wall'}
-            onClick={() => onPick({ mode: 'wall' })}
-            icon={Minus} label="Pared" />
+          <BotonHerr activo={mode === 'select'} onClick={() => onPick({ mode: 'select' })} icon={MousePointer2} label="Seleccionar" />
+          <BotonHerr activo={mode === 'wall'} onClick={() => onPick({ mode: 'wall' })} icon={Minus} label="Pared" />
+          <BotonHerr activo={mode === 'connect' && connectType === 'refrigerante'}
+            onClick={() => onPick({ mode: 'connect', connectType: 'refrigerante' })} icon={Link2} label="Tubería" color="#00A0E9" />
+          <BotonHerr activo={mode === 'connect' && connectType === 'electrica'}
+            onClick={() => onPick({ mode: 'connect', connectType: 'electrica' })} icon={Zap} label="Eléctrica" color="#F5821F" />
         </div>
         <p className="text-[10px] text-muted-foreground px-1 mt-1 leading-tight">
-          Pared: clic para empezar, clic siguiente punto, sigue encadenando. Esc para cortar.
+          Pared: encadena puntos (Esc corta). Tubería/Eléctrica: clic en un equipo y luego en el destino.
         </p>
       </div>
 
@@ -66,15 +65,15 @@ export default function PlanoPaleta({ mode, activeType, onPick }) {
   );
 }
 
-function BotonHerr({ activo, onClick, icon: Icon, label }) {
+function BotonHerr({ activo, onClick, icon: Icon, label, color }) {
   return (
     <button
       onClick={onClick}
       className="flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] transition-all"
       style={{
-        borderColor: activo ? 'hsl(var(--primary))' : 'hsl(var(--border))',
-        background: activo ? 'hsl(var(--primary) / 0.15)' : 'transparent',
-        color: activo ? 'hsl(var(--primary))' : 'hsl(var(--foreground))',
+        borderColor: activo ? (color || 'hsl(var(--primary))') : 'hsl(var(--border))',
+        background: activo ? (color ? color + '22' : 'hsl(var(--primary) / 0.15)') : 'transparent',
+        color: activo ? (color || 'hsl(var(--primary))') : 'hsl(var(--foreground))',
         fontWeight: activo ? 600 : 400,
       }}
     >
