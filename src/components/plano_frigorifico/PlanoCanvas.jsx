@@ -79,10 +79,12 @@ export default function PlanoCanvas({
         return;
       }
       if (hit && hit.id !== connFrom) {
-        onChange({
-          connections: [...connections, crearConexion(connectType || 'refrigerante', connFrom, hit.id)],
-          selectedId: null,
-        });
+        // La conexión recién hecha queda seleccionada: lo primero que hay que
+        // hacer con una tubería es decir los diámetros de gas y de líquido, y
+        // con una línea eléctrica el tipo de conexión. Si no se selecciona,
+        // hay que ir a buscarla al plano para poder rellenarla.
+        const nueva = crearConexion(connectType || 'refrigerante', connFrom, hit.id);
+        onChange({ connections: [...connections, nueva], selectedId: nueva.id });
         setConnFrom(null);
         return;
       }
