@@ -306,7 +306,23 @@ export async function runRestoreJob(
       await crear(clean);
       total += clean.length;
     } else {
-      const existing = await fetchAllRecordsFast(ent, { freno });
+      // Para decidir qué crear y qué actualizar hace falta saber qué hay ya.
+      // Si esa lectura falla (el servidor corta por exceso de peticiones), NO
+      // se toca esa sección: actualizar a ciegas crearía duplicados o
+      // machacaría datos sin saberlo. Se anota y se SIGUE con las demás, que
+      // antes este error tiraba la restauración entera.
+      let existing;
+      try {
+        existing = await fetchAllRecordsFast(ent, { freno });
+      } catch (err) {
+        avisos.push(`«${label}» no se ha restaurado: no se han podido leer los registros actuales `
+          + `(${err?.incompleta ? 'exceso de peticiones del servidor' : (err?.message || 'error de lectura')}). `
+          + 'No se ha tocado nada de esa sección para no arriesgarla. Repite la restauración dentro de un par de minutos.');
+        failed++;
+        done++;
+        report(` (omitida por error de lectura)`);
+        return;
+      }
       // Qué hay que crear, qué actualizar y qué dejar en paz. Lo decide una
       // función aparte y comprobada (src/lib/copiasLotes.js).
       const plan = planRestauracion(existing, rows, keyers[ent]);
