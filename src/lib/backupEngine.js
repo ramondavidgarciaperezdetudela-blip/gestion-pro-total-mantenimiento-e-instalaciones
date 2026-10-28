@@ -48,9 +48,29 @@ const ENTITY_CONCURRENCY = 2; // entidades en paralelo al hacer copia/restauraci
 const LOTES_A_LA_VEZ = 2;
 const BORRADOS_A_LA_VEZ = 4;
 
-/** Una petición al servidor, con espera y reintento si dice "demasiadas". */
+/**
+ * Una petición al servidor, con espera y reintento si dice "demasiadas".
+ *
+ * Aquí es donde la copia decide NO rendirse. Se le dan muchos más intentos que
+ * al resto del programa (25 en vez de 7): con la espera más larga (60 s) al
+ * final, eso son más de 20 minutos de paciencia. El servidor repone su cupo
+ * (140 lecturas/min) en menos de un minuto, así que por mucho que sature de
+ * golpe, esperar y volver acaba funcionando. Antes, rendirse a los 7 intentos
+ * cortaba la copia de «Tarifas Proveedores» a medias y dejaba sin respaldo.
+ *
+ * Mientras espera, lo dice en el indicador de progreso: para que no parezca
+ * que se ha quedado colgado cuando lleva un minuto sin avanzar.
+ */
 function pedir(freno, hacer) {
-  return conReintento(hacer, { freno });
+  return conReintento(hacer, {
+    freno,
+    maxIntentos: 25,
+    alEsperar: (espera, intento) => {
+      publish({
+        message: `El servidor está saturado. Esperando ${Math.round(espera / 1000)} s antes del reintento ${intento}/25…`,
+      });
+    },
+  });
 }
 
 async function runPool(items, worker, concurrency) {

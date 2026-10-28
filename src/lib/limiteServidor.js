@@ -117,16 +117,26 @@ export function crearFrenoGlobal(interval = 500) {
  * @param {{freno?: ReturnType<typeof crearFreno>, esperas?: number[], alEsperar?: Function}} [opciones]
  */
 export async function conReintento(hacer, opciones = {}) {
-  const { freno, esperas = ESPERAS, alEsperar } = opciones;
+  // maxIntentos: cuántas veces se reintentará antes de rendirse. Por defecto
+  // se mantiene como antes (una pasada por cada espera de la lista). Pero la
+  // copia de seguridad pide muchas más: con 474.000 tarifas y un servidor que
+  // suelta 429 a ráfagas, rendirse a los 7 intentos dejaba la copia a medias.
+  // Pasado el final de la lista, se sigue esperando con la espera MÁS LARGA
+  // (60 s): el cupo del servidor (140 lecturas/min) se repone en menos de un
+  // minuto, así que esperar y volver a pedir siempre acaba funcionando.
+  const { freno, esperas = ESPERAS, alEsperar, maxIntentos = esperas.length } = opciones;
   for (let intento = 0; ; intento++) {
     if (freno) await freno.turno();
     try {
       return await hacer();
     } catch (err) {
-      if (!esDemasiadasPeticiones(err) || intento >= esperas.length) throw err;
+      if (!esDemasiadasPeticiones(err) || intento >= maxIntentos) throw err;
       // Un poco de azar para que los que esperan no vuelvan todos en el mismo
-      // milisegundo y se sature otra vez.
-      const espera = esperas[intento] + Math.floor(Math.random() * 500);
+      // milisegundo y se sature otra vez. Pasado el final de la lista se queda
+      // en la espera más larga, para no rendirse nunca mientras el servidor
+      // se recupera.
+      const idx = Math.min(intento, esperas.length - 1);
+      const espera = esperas[idx] + Math.floor(Math.random() * 500);
       freno?.frenar(espera);
       alEsperar?.(espera, intento + 1);
       await new Promise((r) => setTimeout(r, espera));
