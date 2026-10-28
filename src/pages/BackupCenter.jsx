@@ -12,6 +12,7 @@ import {
   runBackupJob, runRestoreJob, contarRegistros,
   analizarDuplicados, borrarDuplicados,
 } from '@/lib/backupEngine';
+import { crearFrenoGlobal } from '@/lib/limiteServidor';
 import CronoProgreso from '@/components/CronoProgreso';
 import SeccionesProgreso from '@/components/SeccionesProgreso';
 import {
@@ -236,13 +237,22 @@ export default function BackupCenter() {
     // —fotos, PDF y firmas incluidos— de todas las secciones sólo para poder
     // enseñar un número al lado de cada una, y eso volvía a pasar al terminar
     // de restaurar. Ahora se pide únicamente el identificador.
-    const CONCURRENCY = 8;
+    //
+    // OJO: esto se lanza al ABRIR la página. Si salen 8 conteos a la vez, cada
+    // uno con su propio limitador, se vacía en segundos el cupo del servidor
+    // (140 lecturas/min). Entonces la copia o restauración que se hace justo
+    // después recibe todo el reparto de "demasiadas peticiones" y fallan TODAS
+    // las secciones. Un solo limitador compartido y solo 2 a la vez lo deja
+    // por debajo del cupo, para que el trabajo de verdad (copiar/restaurar)
+    // encuentre servidor libre.
+    const frenoComun = crearFrenoGlobal(600);
+    const CONCURRENCY = 2;
     let idx = 0;
     const worker = async () => {
       while (idx < ALL_ENTITIES.length) {
         const e = ALL_ENTITIES[idx++];
         try {
-          c[e] = await contarRegistros(e);
+          c[e] = await contarRegistros(e, frenoComun);
         } catch {
           c[e] = 0;
         }

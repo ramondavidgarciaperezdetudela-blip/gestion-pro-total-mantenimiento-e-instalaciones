@@ -89,6 +89,26 @@ export function crearFreno(interval = 500) {
 }
 
 /**
+ * Un ÚNICO freno para TODA la pantalla de copias.
+ *
+ * El servidor admite 140 lecturas/min por usuario. Si los conteos de la
+ * pantalla y la copia/restauración misma salen cada uno con su propio freno,
+ * entre los dos se pasan del cupo y el servidor empieza a devolver 429 a todo:
+ * fallan TODAS las secciones. Compartiendo este freno, conteos + copia +
+ * restauración suman juntos por debajo del límite, porque salen en cola a un
+ * ritmo solo.
+ *
+ * Se crea una vez y se reutiliza: el estado (hueco reactivo y ritmo proactivo)
+ * vive en el módulo, así que aunque la pantalla se monte y desmonte el freno
+ * no se reinicia a medias de un trabajo.
+ */
+let _frenoGlobal = null;
+export function crearFrenoGlobal(interval = 500) {
+  if (!_frenoGlobal) _frenoGlobal = crearFreno(interval);
+  return _frenoGlobal;
+}
+
+/**
  * Hace algo y, si el servidor dice «demasiadas peticiones», espera y repite.
  *
  * Si se le pasa un freno, también para a los demás mientras tanto.

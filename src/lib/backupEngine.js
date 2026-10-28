@@ -4,7 +4,7 @@ import {
   planDuplicados, revisarPlanDuplicados, quitarDuplicados,
 } from '@/lib/copiasLotes';
 import {
-  conReintento, crearFreno, esDemasiadasPeticiones, errorLecturaIncompleta,
+  conReintento, crearFreno, crearFrenoGlobal, esDemasiadasPeticiones, errorLecturaIncompleta,
 } from '@/lib/limiteServidor';
 
 // ── Motor de copia de seguridad / restauración / duplicados ────────────────
@@ -140,7 +140,7 @@ export async function fetchAllRecordsFast(ent, opciones = {}) {
  * Esto sí es tolerante: es un número informativo en pantalla, no la base de
  * ningún borrado.
  */
-export async function contarRegistros(ent, freno = crearFreno()) {
+export async function contarRegistros(ent, freno = crearFrenoGlobal()) {
   const E = entidades[ent];
   if (!E) return 0;
   const soloIds = (skip) => pedir(freno, () => E.filter({}, null, PAGE, skip, ['id']));
@@ -219,7 +219,7 @@ export function getBackupState() { return state; }
 export async function runBackupJob(entities, entityLabels = {}, onProgress, opciones = {}) {
   const { sinDuplicados = false } = opciones;
   publish({ active: true, kind: 'backup', message: 'Iniciando copia de seguridad...', pct: 5, secciones: {} });
-  const freno = crearFreno();
+  const freno = crearFrenoGlobal();
   const datos = {};
   const fallos = [];
   let duplicadosQuitados = 0;
@@ -273,7 +273,7 @@ export async function runRestoreJob(
   restoreData, entities, mode, keyers, entityLabels = {}, onProgress, opciones = {},
 ) {
   publish({ active: true, kind: 'restore', message: 'Iniciando restauración...', pct: 5, secciones: {} });
-  const freno = crearFreno();
+  const freno = crearFrenoGlobal();
   let total = 0;
   let failed = 0;
   let sinCambios = 0;
@@ -430,7 +430,7 @@ async function borrarTodo(ent, trackFail, freno, alRescatar) {
  */
 export async function analizarDuplicados(entities, entityLabels = {}, onProgress, opciones = {}) {
   const { conservar = 'antiguo' } = opciones;
-  const freno = crearFreno();
+  const freno = crearFrenoGlobal();
   const salida = [];
   for (let i = 0; i < entities.length; i++) {
     const ent = entities[i];
@@ -476,7 +476,7 @@ export async function analizarDuplicados(entities, entityLabels = {}, onProgress
  * @param {(msg:string)=>void} [onProgress]
  */
 export async function borrarDuplicados(analisis, onProgress) {
-  const freno = crearFreno();
+  const freno = crearFrenoGlobal();
   const resultados = [];
   for (const fila of analisis || []) {
     if (!fila.seguro || fila.error || fila.duplicados === 0) {
