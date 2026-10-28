@@ -28,6 +28,7 @@ import SignatureHistoryViewer from '../components/SignatureHistoryViewer';
 import ThermalCalcViewer from '../components/ThermalCalcViewer';
 import InstallationHistoryTab from '../components/InstallationHistoryTab';
 import InterventionHistoryTab from '../components/InterventionHistoryTab';
+import ClientPlanosTab from '../components/ClientPlanosTab';
 import { useParametrosUrl } from '@/lib/parametrosUrl';
 
 function ChangeHistoryTab({ contactId }) {
@@ -748,6 +749,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           <TabsTrigger value="instalaciones" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🏭 Instalaciones</TabsTrigger>
           <TabsTrigger value="intervenciones" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">📋 Intervenciones ({satOrders.length + invoices.length + maintenance.length})</TabsTrigger>
           <TabsTrigger value="informes_aseg" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🛡️ Informes Aseg. ({insuranceReports.length})</TabsTrigger>
+          <TabsTrigger value="planos" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">📐 Planos</TabsTrigger>
           </TabsList>
 
         {/* FACTURAS */}
@@ -1324,10 +1326,15 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
               </Card>
             ))}
             {(!insuranceReports || insuranceReports.length === 0) && <p className="text-gray-400 text-sm text-center py-4">Sin informes para aseguradora</p>}
-          </div>
-        </TabsContent>
+            </div>
+            </TabsContent>
 
-        </Tabs>
+            {/* PLANOS FRIGORÍFICOS */}
+            <TabsContent value="planos">
+            <ClientPlanosTab contactId={contactId} contactName={contact?.full_name || contact?.name || ''} />
+            </TabsContent>
+
+            </Tabs>
 
       {/* INVOICE INLINE DIALOG */}
       {invoiceDialog &&

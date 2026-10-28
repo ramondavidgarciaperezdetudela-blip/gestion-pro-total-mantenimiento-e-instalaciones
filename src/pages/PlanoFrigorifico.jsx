@@ -2,14 +2,15 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2 } from 'lucide-react';
+import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { getNextAvailableNumber } from '@/components/autoNumber';
 import PlanoCanvas from '@/components/plano_frigorifico/PlanoCanvas';
 import PlanoPaleta from '@/components/plano_frigorifico/PlanoPaleta';
 import PlanoEquipoDetalles from '@/components/plano_frigorifico/PlanoEquipoDetalles';
-import { exportarPDF, imprimirPlano } from '@/components/plano_frigorifico/PlanoExporter';
+import { construirPDF, exportarPDF, imprimirPlano } from '@/components/plano_frigorifico/PlanoExporter';
+import { exportarDXF } from '@/lib/planoDxfExport';
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
 import { CAT_COLOR } from '@/lib/planoFrigorificoCatalogo';
 
@@ -31,6 +32,10 @@ export default function PlanoFrigorifico() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [polyline, setPolyline] = useState(false);
+  const [gmailDialog, setGmailDialog] = useState(false);
+  const [gmailForm, setGmailForm] = useState({ to: '', subject: '', body: '' });
+  const [enviando, setEnviando] = useState(false);
 
   const cargarDatos = useCallback(async () => {
     setLoading(true);
@@ -45,6 +50,41 @@ export default function PlanoFrigorifico() {
   }, []);
 
   useEffect(() => { cargarDatos(); }, [cargarDatos]);
+
+  // Permite abrir este módulo desde la ficha del cliente con ?contact=<id>
+  // para arrancar un plano ya vinculado a ese cliente.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cid = params.get('contact');
+    if (cid) {
+      setPlan((p) => {
+        if (p.contact_id === cid) return p;
+        const c = contacts.find((x) => x.id === cid);
+        return { ...p, contact_id: cid, contact_name: c ? (c.full_name || c.name || c.company || '') : p.contact_name };
+      });
+    }
+  }, [contacts]);
+
+  // Cargar un plano concreto por id desde la URL (?plano=<id>), para editar
+  // directamente desde la ficha del cliente.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get('plano');
+    if (!pid) return;
+    (async () => {
+      try {
+        const p = await base44.entities.RefrigerationPlan.get(pid);
+        if (p) { setPlan({ ...PLANO_VACIO, ...p, connections: p.connections || [] }); setSelectedId(null); setMode('select'); }
+      } catch { /* plano no encontrado */ }
+    })();
+  }, []);
+
+  // Cuando se elige un cliente, rellenamos el destinatario del correo con su email.
+  useEffect(() => {
+    if (!plan.contact_id) return;
+    const c = contacts.find((x) => x.id === plan.contact_id);
+    if (c?.email) setGmailForm((f) => ({ ...f, to: c.email }));
+  }, [plan.contact_id, contacts]);
 
   // Borrado con teclado cuando hay selección y el foco no está en un input.
   useEffect(() => {
@@ -174,6 +214,38 @@ export default function PlanoFrigorifico() {
     catch (e) { console.error(e); toast.error('No se pudo abrir la impresión', { description: String(e?.message || e) }); }
   };
 
+  // ── Enviar el PDF por Gmail al cliente ───────────────────────────────────
+  const enviarPorGmail = async () => {
+    if (!gmailForm.to.trim()) { toast.error('Indica el correo del cliente'); return; }
+    setEnviando(true);
+    try {
+      const doc = construirPDF(plan, plan.elements, plan.walls, plan.connections);
+      const dataUri = doc.output('datauristring');
+      const pdfBase64 = dataUri.split(',')[1];
+      const filename = (plan.name || 'plano_frigorifico').replace(/[^\w\-]+/g, '_');
+      const res = await base44.functions.invoke('enviarPlanoPorGmail', {
+        to: gmailForm.to.trim(),
+        subject: gmailForm.subject.trim() || `Plano frigorífico — ${plan.name || 'instalación'}`,
+        body: gmailForm.body.trim() || `Hola,\n\nAdjunto el plano frigorífico de la instalación${plan.contact_name ? ' de ' + plan.contact_name : ''}.\n\nUn saludo.`,
+        pdf_base64: pdfBase64,
+        filename,
+        contact_id: plan.contact_id,
+      });
+      if (res?.data?.ok) {
+        toast.success('Plano enviado por Gmail', { description: `Enviado a ${gmailForm.to}` });
+        setGmailDialog(false);
+        if (plan.id) {
+          base44.entities.RefrigerationPlan.update(plan.id, { status: 'enviado' })
+            .then(() => setPlan((p) => ({ ...p, status: 'enviado' }))).catch(() => {});
+        }
+      } else {
+        toast.error('No se pudo enviar', { description: res?.data?.error || 'Gmail rechazó el envío' });
+      }
+    } catch (e) {
+      console.error(e); toast.error('No se pudo enviar el correo', { description: String(e?.message || e) });
+    } finally { setEnviando(false); }
+  };
+
   // ── Generar presupuesto con IA ──────────────────────────────────────────
   const generarPresupuestoIA = async () => {
     if (!plan.contact_id) { toast.error('Vincula un cliente antes de generar el presupuesto'); return; }
@@ -285,16 +357,31 @@ Incluye conceptos de mano de obra, materiales, aparamenta eléctrica y de seguri
         </div>
       </div>
 
-      {/* Segunda fila de acciones: auto-conectar, PDF, imprimir */}
+      {/* Segunda fila de acciones: auto-conectar, polilínea, PDF, CAD, imprimir, Gmail */}
       <div className="flex items-center gap-2 flex-wrap">
         <button onClick={autoConectarPlano} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
           <Link2 className="w-3.5 h-3.5" /> Auto-conectar
         </button>
+        <button onClick={() => setPolyline((v) => !v)}
+          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs"
+          style={polyline
+            ? { borderColor: '#00A0E9', background: '#00A0E922', color: '#00A0E9', fontWeight: 600 }
+            : { borderColor: 'hsl(var(--border))' }}>
+          <Spline className="w-3.5 h-3.5" /> {polyline ? 'Polilínea ON' : 'Polilínea (codos)'}
+        </button>
+        <div className="w-px h-5 bg-border mx-0.5" />
         <button onClick={onExportarPDF} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-          <FileDown className="w-3.5 h-3.5" /> Exportar PDF
+          <FileDown className="w-3.5 h-3.5" /> PDF
+        </button>
+        <button onClick={() => exportarDXF(plan, plan.elements, plan.walls, plan.connections)} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
+          <FileBox className="w-3.5 h-3.5" /> CAD (DXF)
         </button>
         <button onClick={onImprimir} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
           <Printer className="w-3.5 h-3.5" /> Imprimir
+        </button>
+        <button onClick={() => setGmailDialog(true)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
+          style={{ background: '#D44638' }}>
+          <Mail className="w-3.5 h-3.5" /> Enviar por Gmail
         </button>
         {plan.id && (
           <button onClick={borrarPlano} className="flex items-center gap-1.5 rounded-lg border border-destructive/40 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 ml-auto">
@@ -349,7 +436,7 @@ Incluye conceptos de mano de obra, materiales, aparamenta eléctrica y de seguri
         <PlanoCanvas
           walls={plan.walls} elements={plan.elements} connections={plan.connections}
           selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-          scale={plan.scale} onChange={handleChange} />
+          polyline={polyline} scale={plan.scale} onChange={handleChange} />
 
         <div className="rounded-lg border border-border bg-card p-3 lg:max-h-[70vh] overflow-y-auto">
           <PlanoEquipoDetalles
@@ -369,6 +456,52 @@ Incluye conceptos de mano de obra, materiales, aparamenta eléctrica y de seguri
           </div>
         </div>
       </div>
+
+      {/* Diálogo: enviar el plano por Gmail */}
+      {gmailDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !enviando && setGmailDialog(false)}>
+          <div className="w-full max-w-md rounded-xl bg-card border border-border p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#D44638' }}>
+                <Mail className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold">Enviar plano por Gmail</h3>
+                <p className="text-[11px] text-muted-foreground">Se envía desde tu cuenta de Gmail conectada</p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] text-muted-foreground">Para (correo del cliente)</span>
+                <input value={gmailForm.to} onChange={(e) => setGmailForm((f) => ({ ...f, to: e.target.value }))}
+                  placeholder="cliente@email.com" type="email"
+                  className="rounded-md border border-border bg-input px-2 py-1.5 text-xs" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] text-muted-foreground">Asunto</span>
+                <input value={gmailForm.subject} onChange={(e) => setGmailForm((f) => ({ ...f, subject: e.target.value }))}
+                  placeholder={`Plano frigorífico — ${plan.name || 'instalación'}`}
+                  className="rounded-md border border-border bg-input px-2 py-1.5 text-xs" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] text-muted-foreground">Mensaje</span>
+                <textarea value={gmailForm.body} onChange={(e) => setGmailForm((f) => ({ ...f, body: e.target.value }))}
+                  rows={4} className="rounded-md border border-border bg-input px-2 py-1.5 text-xs resize-none" />
+              </label>
+              <p className="text-[10px] text-muted-foreground">Se adjuntará el PDF del plano automáticamente.</p>
+            </div>
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setGmailDialog(false)} disabled={enviando}
+                className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-muted">Cancelar</button>
+              <button onClick={enviarPorGmail} disabled={enviando}
+                className="rounded-md px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+                style={{ background: '#D44638' }}>
+                <Mail className="w-3.5 h-3.5" /> {enviando ? 'Enviando…' : 'Enviar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

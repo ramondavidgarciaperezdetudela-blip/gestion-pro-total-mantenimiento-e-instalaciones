@@ -123,6 +123,21 @@
             "type": "string",
             "description": "ID del elemento de destino"
           },
+          "path": {
+            "type": "array",
+            "description": "Puntos intermedios (codos) de la tuber\u00eda como polil\u00ednea: [{x,y}, ...]. Vac\u00edo = l\u00ednea recta.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              }
+            }
+          },
           "gas_diameter": {
             "type": "string",
             "description": "Di\u00e1metro de la l\u00ednea de gas (refrigerante)"

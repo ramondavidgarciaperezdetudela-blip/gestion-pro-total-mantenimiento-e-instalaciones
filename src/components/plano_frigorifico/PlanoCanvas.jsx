@@ -26,14 +26,29 @@ function distSeg(px, py, x1, y1, x2, y2) {
 
 const CONN_COLOR = { refrigerante: '#00A0E9', electrica: '#F5821F' };
 
+// Convierte una secuencia de puntos en una polilínea ortogonal con codos a
+// 90°: entre cada par inserta un vértice intermedio que hace el codo en L.
+function ortogonalizar(pts) {
+  if (pts.length < 2) return pts;
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const a = out[out.length - 1], b = pts[i];
+    if (a.x === b.x || a.y === b.y) { out.push(b); continue; }
+    out.push({ x: b.x, y: a.y });
+    out.push(b);
+  }
+  return out;
+}
+
 export default function PlanoCanvas({
-  walls, elements, connections, selectedId, mode, activeElement, connectType, scale = 50, onChange,
+  walls, elements, connections, selectedId, mode, activeElement, connectType, polyline, scale = 50, onChange,
 }) {
   const svgRef = useRef(null);
   const [mouse, setMouse] = useState(null);
   const [wallStart, setWallStart] = useState(null);
   const [drag, setDrag] = useState(null);
   const [connFrom, setConnFrom] = useState(null);
+  const [connPath, setConnPath] = useState([]);
 
   const toSvg = (e) => {
     const rect = svgRef.current.getBoundingClientRect();
@@ -53,8 +68,22 @@ export default function PlanoCanvas({
     const a = elements.find((e) => e.id === c.from_id);
     const b = elements.find((e) => e.id === c.to_id);
     if (!a || !b) return false;
-    return distSeg(p.x, p.y, a.x, a.y, b.x, b.y) < 7;
+    const pts = [{ x: a.x, y: a.y }, ...(c.path || []), { x: b.x, y: b.y }];
+    for (let i = 1; i < pts.length; i++) {
+      if (distSeg(p.x, p.y, pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y) < 7) return true;
+    }
+    return false;
   });
+
+  const cerrarConexion = (hit) => {
+    const pts = polyline ? ortogonalizar(connPath) : [];
+    onChange({
+      connections: [...connections, crearConexion(connectType || 'refrigerante', connFrom, hit.id, pts)],
+      selectedId: null,
+    });
+    setConnFrom(null);
+    setConnPath([]);
+  };
 
   const handleDown = (e) => {
     const p = toSvg(e); p.x = snap(p.x); p.y = snap(p.y);
@@ -71,22 +100,18 @@ export default function PlanoCanvas({
     if (mode === 'connect') {
       const hit = hitElement(p);
       if (!connFrom) {
-        if (hit) { setConnFrom(hit.id); onChange({ selectedId: null }); }
+        if (hit) { setConnFrom(hit.id); setConnPath([]); onChange({ selectedId: null }); }
         else {
           const c = hitConnection(p);
           if (c) onChange({ selectedId: c.id });
         }
         return;
       }
-      if (hit && hit.id !== connFrom) {
-        onChange({
-          connections: [...connections, crearConexion(connectType || 'refrigerante', connFrom, hit.id)],
-          selectedId: null,
-        });
-        setConnFrom(null);
-        return;
-      }
+      if (hit && hit.id !== connFrom) { cerrarConexion(hit); return; }
+      // polilínea activa: clic en vacío añade un codo
+      if (polyline && !hit) { setConnPath((pp) => [...pp, p]); return; }
       setConnFrom(null);
+      setConnPath([]);
       return;
     }
 
@@ -167,27 +192,33 @@ export default function PlanoCanvas({
           );
         })}
 
-        {/* Conexiones (tuberías / eléctricas) */}
+        {/* Conexiones (tuberías / eléctricas), con o sin codos */}
         {connections.map((c) => {
           const a = elements.find((e) => e.id === c.from_id);
           const b = elements.find((e) => e.id === c.to_id);
           if (!a || !b) return null;
           const sel = c.id === selectedId;
           const color = CONN_COLOR[c.type] || '#888';
-          const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+          const pts = [{ x: a.x, y: a.y }, ...(c.path || []), { x: b.x, y: b.y }];
+          const mid = pts[Math.floor(pts.length / 2)] || { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
           const tag = c.type === 'refrigerante'
-            ? (c.gas_diameter || c.liquid_diameter ? `G ${c.gas_diameter || '—'} · L ${c.liquid_diameter || '—'}` : 'Tubería')
-            : (c.power_type || c.comm_type ? `${c.power_type || '—'}` : 'Eléctrica');
+            ? (c.gas_diameter || c.liquid_diameter ? `G ${c.gas_diameter || '-'} / L ${c.liquid_diameter || '-'}` : 'Tubería')
+            : (c.power_type || c.comm_type ? `${c.power_type || '-'}` : 'Eléctrica');
           return (
             <g key={c.id}>
-              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={color} strokeWidth={sel ? 4 : 2.5}
-                strokeDasharray={c.type === 'refrigerante' ? '8 5' : '2 4'} strokeLinecap="round" />
+              <polyline points={pts.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color}
+                strokeWidth={sel ? 4 : 2.5}
+                strokeDasharray={c.type === 'refrigerante' ? '8 5' : '2 4'}
+                strokeLinejoin="round" strokeLinecap="round" />
+              {sel && (c.path || []).map((pp, i) => (
+                <rect key={i} x={pp.x - 3} y={pp.y - 3} width="6" height="6" fill={color} stroke="#fff" strokeWidth="1" />
+              ))}
               <circle cx={a.x} cy={a.y} r="3" fill={color} />
               <circle cx={b.x} cy={b.y} r="3" fill={color} />
               {sel && (
-                <rect x={mx - 56} y={my - 9} width={112} height={14} rx="3" fill="hsl(var(--card))" stroke={color} strokeWidth="1" />
+                <rect x={mid.x - 56} y={mid.y - 9} width={112} height={14} rx="3" fill="hsl(var(--card))" stroke={color} strokeWidth="1" />
               )}
-              <text x={mx} y={my + 2} textAnchor="middle" fontSize="9" fill={sel ? color : 'hsl(var(--muted-foreground))'} style={{ pointerEvents: 'none' }}>{tag}</text>
+              <text x={mid.x} y={mid.y + 2} textAnchor="middle" fontSize="9" fill={sel ? color : 'hsl(var(--muted-foreground))'} style={{ pointerEvents: 'none' }}>{tag}</text>
             </g>
           );
         })}
@@ -215,12 +246,13 @@ export default function PlanoCanvas({
           <line x1={wallStart.x} y1={wallStart.y} x2={mouse.x} y2={mouse.y} stroke="#00D4FF" strokeWidth={3} strokeDasharray="6 6" opacity="0.7" />
         )}
 
-        {/* Vista previa de conexión en curso */}
+        {/* Vista previa de conexión en curso (recta o polilínea con codos) */}
         {mode === 'connect' && connFrom && mouse && (() => {
           const a = elements.find((e) => e.id === connFrom);
           if (!a) return null;
           const color = CONN_COLOR[connectType] || '#00D4FF';
-          return <line x1={a.x} y1={a.y} x2={mouse.x} y2={mouse.y} stroke={color} strokeWidth={2.5} strokeDasharray="6 6" opacity="0.6" />;
+          const preview = ortogonalizar([{ x: a.x, y: a.y }, ...connPath, mouse]);
+          return <polyline points={preview.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color} strokeWidth={2.5} strokeDasharray="6 6" opacity="0.6" strokeLinejoin="round" />;
         })()}
 
         {/* Vista previa fantasma del elemento a colocar */}
@@ -236,7 +268,11 @@ export default function PlanoCanvas({
         {/* Cursor de coordenadas */}
         {mouse && (
           <text x={12} y={CANVAS_H - 14} fontSize="12" fill="hsl(var(--muted-foreground))" style={{ pointerEvents: 'none' }}>
-            {mode === 'connect' && connFrom ? `Conectando: clic en el equipo destino · ${connectType === 'refrigerante' ? 'tubería' : 'eléctrica'}` : `${m(mouse.x)} m × ${m(mouse.y)} m`}
+            {mode === 'connect' && connFrom
+              ? (polyline
+                  ? `Codos: ${connPath.length} · clic en el equipo destino para cerrar (Esc cancela)`
+                  : `Conectando: clic en el equipo destino · ${connectType === 'refrigerante' ? 'tubería' : 'eléctrica'}`)
+              : `${m(mouse.x)} m × ${m(mouse.y)} m`}
           </text>
         )}
       </svg>

@@ -50,7 +50,7 @@ export function construirPDF(plan, elements, walls, connections, { autoPrint = f
   doc.setDrawColor(120); doc.setLineWidth(0.8);
   walls.forEach((w) => doc.line(ox + w.x1 * sc, oy + w.y1 * sc, ox + w.x2 * sc, oy + w.y2 * sc));
 
-  // Conexiones (debajo de los equipos)
+  // Conexiones (debajo de los equipos): polilínea si tiene codos, si no recta
   connections.forEach((c) => {
     const a = elements.find((e) => e.id === c.from_id);
     const b = elements.find((e) => e.id === c.to_id);
@@ -59,7 +59,10 @@ export function construirPDF(plan, elements, walls, connections, { autoPrint = f
     doc.setDrawColor(...rgb);
     doc.setLineWidth(c.type === 'refrigerante' ? 1.1 : 0.7);
     if (c.type === 'refrigerante') doc.setLineDash([3, 1.5]); else doc.setLineDash([]);
-    doc.line(ox + a.x * sc, oy + a.y * sc, ox + b.x * sc, oy + b.y * sc);
+    const pts = [{ x: a.x, y: a.y }, ...(c.path || []), { x: b.x, y: b.y }];
+    for (let i = 1; i < pts.length; i++) {
+      doc.line(ox + pts[i - 1].x * sc, oy + pts[i - 1].y * sc, ox + pts[i].x * sc, oy + pts[i].y * sc);
+    }
     doc.setLineDash([]);
   });
 
@@ -132,6 +135,24 @@ export function construirPDF(plan, elements, walls, connections, { autoPrint = f
     const lines = doc.splitTextToSize([plan.description, plan.observations].filter(Boolean).join(' — '), legendW - 4);
     doc.text(lines, lx, ly);
   }
+
+  // ── Leyenda de símbolos ──
+  ly += 8;
+  doc.setFontSize(8); doc.setFont(undefined, 'bold'); doc.setTextColor(20);
+  doc.text('Leyenda', lx, ly); ly += 5;
+  doc.setFont(undefined, 'normal'); doc.setFontSize(7);
+  const leyenda = [
+    { c: [0, 160, 233], t: 'Tubería refrigerante (gas/líquido)' },
+    { c: [245, 130, 35], t: 'Conexión eléctrica (potencia/comunic.)' },
+    { c: [120, 120, 120], t: 'Pared / mampara' },
+  ];
+  leyenda.forEach((l) => {
+    doc.setDrawColor(...l.c); doc.setLineWidth(1.2);
+    if (l.t.includes('refrigerante')) doc.setLineDash([3, 1.5]); else doc.setLineDash([]);
+    doc.line(lx, ly - 1.5, lx + 8, ly - 1.5); doc.setLineDash([]);
+    doc.setTextColor(60); doc.text(l.t, lx + 10, ly);
+    ly += 4.5;
+  });
 
   if (autoPrint) doc.autoPrint();
   return doc;
