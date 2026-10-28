@@ -139,24 +139,37 @@ export function firmaDeContenido(registro) {
   return firmaRegistro(sinMetadatos(registro));
 }
 
-/** El más antiguo de dos registros (el que se conserva). */
+/** El más antiguo de dos registros (el que se conserva por defecto). */
 function esMasAntiguo(a, b) {
   const fa = Date.parse(a?.created_date || '') || Infinity;
   const fb = Date.parse(b?.created_date || '') || Infinity;
   if (fa !== fb) return fa < fb;
   return false;   // a igualdad, manda el que llegó primero
 }
+/** El más reciente de dos registros (el que se conserva al limpiar tras restaurar). */
+function esMasReciente(a, b) {
+  const fa = Date.parse(a?.created_date || '') || 0;
+  const fb = Date.parse(b?.created_date || '') || 0;
+  if (fa !== fb) return fa > fb;
+  return false;
+}
 
 /**
  * Decide qué duplicados sobran, SIN borrar nada.
  *
- * De cada grupo de fichas iguales se conserva la MÁS ANTIGUA (la original) y
- * sobran las demás. Un registro sin id nunca se marca para borrar: no se puede
- * borrar por id, y meterlo en la lista era pedir un borrado a ciegas.
+ * Por defecto, de cada grupo de fichas iguales se conserva la MÁS ANTIGUA (la
+ * original) y sobran las demás. Tras una restauración interesa lo contrario:
+ * conservar la MÁS RECIENTE —el dato que ya estaba en vivo suele ser más
+ * nuevo que el de la copia— y quitar el anterior. Se elige con
+ * `opciones.conservar`: 'antiguo' (por defecto) o 'reciente'.
+ *
+ * Un registro sin id nunca se marca para borrar: no se puede borrar por id, y
+ * meterlo en la lista era pedir un borrado a ciegas.
  *
  * @returns {{grupos: Array, aBorrar: Array, seConservan: number, total: number, sinId: number}}
  */
-export function planDuplicados(registros) {
+export function planDuplicados(registros, opciones = {}) {
+  const conservar = opciones.conservar === 'reciente' ? 'reciente' : 'antiguo';
   const porFirma = new Map();
   let sinId = 0;
 
@@ -176,7 +189,10 @@ export function planDuplicados(registros) {
     seConservan++;
     if (lista.length < 2) continue;
     let original = lista[0];
-    for (const r of lista) if (esMasAntiguo(r, original)) original = r;
+    for (const r of lista) {
+      if (conservar === 'reciente') { if (esMasReciente(r, original)) original = r; }
+      else { if (esMasAntiguo(r, original)) original = r; }
+    }
     const sobran = lista.filter((r) => r.id !== original.id);
     grupos.push({ firma, conserva: original, sobran });
     for (const r of sobran) aBorrar.push(r);

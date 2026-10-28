@@ -29,7 +29,7 @@ const ALL_ENTITIES = [
   'AIConsultation', 'SATChatMessage', 'EquipmentDiary',
   // Añadidas para cubrir TODOS los apartados del programa:
   'ChangeOpinionRequest', 'ClientMachine', 'DocumentTemplate',
-  'EquipmentFailure', 'SATWorkTemplate', 'SupplierCatalog', 'SystemSettings',
+  'EquipmentFailure', 'InsuranceReport', 'SATWorkTemplate', 'SupplierCatalog', 'SystemSettings',
 ];
 
 // Clave natural por sección para el UPSERT al restaurar (actualizar en vez de
@@ -60,6 +60,7 @@ const KEYERS = {
   SATWorkTemplate:    (r) => _s(r.name) || null,
   SupplierCatalog:    (r) => (_s(r.supplier_id) && `${_s(r.supplier_id)}|${_s(r.name)}`) || _s(r.name) || null,
   SystemSettings:     (r) => _s(r.key) || null,
+  InsuranceReport:    (r) => _s(r.report_number) || null,
   // ChangeLog, AIConsultation, SATChatMessage, EquipmentDiary, ChangeOpinionRequest,
   // EquipmentFailure → histórico: sin clave (solo añadir lo que falte)
 };
@@ -94,6 +95,7 @@ const ENTITY_LABELS = {
   SATWorkTemplate: 'Plantillas de Trabajo SAT',
   SupplierCatalog: 'Catálogos de Proveedor',
   SystemSettings: 'Ajustes del Sistema',
+  InsuranceReport: 'Informes Aseguradora',
 };
 
 const STORAGE_KEY = 'backupConfig';
@@ -484,8 +486,13 @@ export default function BackupCenter() {
     const failMsg = `⚠️ ${failed.toLocaleString()} operaciones fallaron al guardar en el servidor (revisa la conexión y vuelve a intentarlo). Consulta la consola para más detalle.`;
     const avisosMsg = (avisos || []).length > 0 ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : '';
     setRestoreProgress((failed > 0 ? `${okMsg}\n${failMsg}` : okMsg) + avisosMsg);
-    setRestoring(false);
     loadCounts();
+    // Tras restaurar se buscan repetidos en lo que se acaba de restaurar: si
+    // la copia y los datos actuales tenían registros casi iguales, ahora están
+    // duplicados. Se conserva el MÁS RECIENTE y se borra el anterior, previa
+    // confirmación y con copia de rescate.
+    await limpiarDuplicadosTrasRestaurar(entitiesToRestore);
+    setRestoring(false);
   };
 
   // ─── DUPLICADOS: PRIMERO MIRAR, LUEGO BORRAR ─────────────────────────────
@@ -565,6 +572,63 @@ export default function BackupCenter() {
     );
     setDupLoading(false);
     setDupAnalisis(null);
+    loadCounts();
+  };
+
+  // ─── LIMPIEZA DE DUPLICADOS TRAS RESTAURAR ─────────────────────────────────
+  //
+  // Al restaurar en modo "actualizar" puede quedar el mismo registro dos veces:
+  // el que ya estaba y el que trae la copia, si la clave natural no los
+  // emparentó (un campo que cambió de mayúsculas, un NIF con guion...). Sin
+  // esto, los duplicados se quedan para siempre y la siguiente copia ya los
+  // lleva duplicados también.
+  //
+  // Se hace solo en las secciones que se acaban de restaurar, y conservando el
+  // MÁS RECIENTE de cada grupo: el dato que ya estaba en vivo suele ser más
+  // nuevo que el de la copia, y es el que interesa guardar.
+  const limpiarDuplicadosTrasRestaurar = async (secciones) => {
+    if (!secciones || secciones.length === 0) return;
+    setRestoreProgress(p => p + '\n🔍 Buscando registros repetidos tras la restauración…');
+    const analisis = await analizarDuplicados(
+      secciones, ENTITY_LABELS, (msg) => setRestoreProgress(p => `${p.split('\n')[0]}\n${msg}`),
+      { conservar: 'reciente' },
+    );
+    const listas = analisis.filter(a => a.seguro && !a.error && a.duplicados > 0);
+    const totalDup = listas.reduce((n, a) => n + a.duplicados, 0);
+    if (totalDup === 0) {
+      setRestoreProgress(p => p + '\n✅ No han quedado registros repetidos tras la restauración.');
+      return;
+    }
+    const detalle = listas.map(a => `  · ${a.etiqueta}: ${a.duplicados}`).join('\n');
+    const ok = window.confirm(
+      `Tras la restauración se han encontrado ${totalDup} registros repetidos:\n\n${detalle}\n\n`
+      + 'De cada grupo se CONSERVARÁ EL MÁS RECIENTE y se borrará el anterior. '
+      + 'Antes de borrar se guardará una copia de rescate con todo lo que se quite.\n\n¿Borrar los repetidos ahora?'
+    );
+    if (!ok) {
+      setRestoreProgress(p => p
+        + `\nℹ️ Se han encontrado ${totalDup} repetidos, pero has decidido no borrarlos. Puedes hacerlo después en la pestaña «Duplicados».`);
+      return;
+    }
+    setRestoreProgress(p => p + '\nGuardando copia de rescate de los repetidos…');
+    const datos = {};
+    for (const a of listas) datos[a.entidad] = a.aBorrar;
+    const fileName = `rescate-duplicados-restauracion_${nombreCopia(new Date()).replace(/^copia-gestion-pro-total_/, '')}`;
+    const rescate = await escribirCopiaPorSecciones({
+      fileName, datos, secciones: listas.map(a => a.entidad),
+      extra: { motivo_rescate: 'duplicados-tras-restaurar' },
+    });
+    if (!rescate.ok) {
+      setRestoreProgress(p => p + `\n⚠️ No se han borrado los repetidos: no se pudo guardar la copia de rescate (${rescate.error}).`);
+      return;
+    }
+    const resultados = await borrarDuplicados(analisis, (msg) => setRestoreProgress(p => `${p.split('\n')[0]}\n${msg}`));
+    const borrados = resultados.reduce((n, r) => n + (r.borrados || 0), 0);
+    const fallidos = resultados.reduce((n, r) => n + (r.fallidos || 0), 0);
+    setRestoreProgress(p => p
+      + `\n${fallidos > 0 ? '⚠️' : '✅'} ${borrados.toLocaleString()} repetidos borrados (conservando el más reciente de cada uno)`
+      + (fallidos > 0 ? `, ${fallidos.toLocaleString()} no se pudieron borrar` : '')
+      + `. Rescate: ${rescate.nombre}`);
     loadCounts();
   };
 

@@ -387,7 +387,8 @@ async function borrarTodo(ent, trackFail, freno, alRescatar) {
  *
  * @returns {Promise<Array<{entidad, etiqueta, total, duplicados, seConservan, seguro, motivo, aBorrar, error}>>}
  */
-export async function analizarDuplicados(entities, entityLabels = {}, onProgress) {
+export async function analizarDuplicados(entities, entityLabels = {}, onProgress, opciones = {}) {
+  const { conservar = 'antiguo' } = opciones;
   const freno = crearFreno();
   const salida = [];
   for (let i = 0; i < entities.length; i++) {
@@ -396,7 +397,7 @@ export async function analizarDuplicados(entities, entityLabels = {}, onProgress
     onProgress?.(`Analizando ${etiqueta}… (${i + 1}/${entities.length})`);
     try {
       const todos = await fetchAllRecordsFast(ent, { freno });
-      const plan = planDuplicados(todos);
+      const plan = planDuplicados(todos, { conservar });
       const revision = revisarPlanDuplicados(plan);
       salida.push({
         entidad: ent,
