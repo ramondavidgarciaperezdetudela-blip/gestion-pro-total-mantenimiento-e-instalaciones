@@ -1,0 +1,215 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Gestión Pro Total — Compilación y publicación",
+    "output": "Workflow-Gestion-Pro-Total.html",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "dev",
+      "label": "Desarrollo"
+    },
+    {
+      "id": "ci",
+      "label": "GitHub Actions (CI/CD)"
+    },
+    {
+      "id": "desktop",
+      "label": "Escritorio (Electron)"
+    },
+    {
+      "id": "mobile",
+      "label": "Móvil (Capacitor)"
+    },
+    {
+      "id": "release",
+      "label": "Publicación"
+    },
+    {
+      "id": "users",
+      "label": "Usuarios"
+    }
+  ],
+  "phases": [
+    {
+      "id": "codigo",
+      "label": "Código",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "cicd",
+      "label": "CI/CD",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "paquete",
+      "label": "Empaquetado",
+      "fromCol": 4,
+      "toCol": 4
+    },
+    {
+      "id": "publicar",
+      "label": "Publicación",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "push",
+    "merge",
+    "trigger",
+    "buildweb",
+    "electron",
+    "release",
+    "autoupdate"
+  ],
+  "nodes": [
+    {
+      "id": "push",
+      "lane": "dev",
+      "col": 0,
+      "type": "frontend",
+      "label": "Commit + push",
+      "sublabel": "rama de trabajo"
+    },
+    {
+      "id": "merge",
+      "lane": "dev",
+      "col": 1,
+      "type": "frontend",
+      "label": "Merge a main",
+      "sublabel": "squash del PR"
+    },
+    {
+      "id": "trigger",
+      "lane": "ci",
+      "col": 2,
+      "type": "cloud",
+      "label": "GitHub Actions",
+      "sublabel": "release-publica · build-apk",
+      "tag": "push / workflow_dispatch"
+    },
+    {
+      "id": "buildweb",
+      "lane": "ci",
+      "col": 3,
+      "type": "backend",
+      "label": "Build web",
+      "sublabel": "vite build"
+    },
+    {
+      "id": "electron",
+      "lane": "desktop",
+      "col": 4,
+      "type": "backend",
+      "label": "Empaquetar escritorio",
+      "sublabel": "electron-builder",
+      "tag": "Windows · Mac · Linux"
+    },
+    {
+      "id": "apk",
+      "lane": "mobile",
+      "col": 4,
+      "type": "backend",
+      "label": "Empaquetar APK",
+      "sublabel": "assembleDebug",
+      "tag": "keystore estable"
+    },
+    {
+      "id": "release",
+      "lane": "release",
+      "col": 5,
+      "type": "cloud",
+      "label": "Crear release",
+      "sublabel": "repo de descargas"
+    },
+    {
+      "id": "autoupdate",
+      "lane": "users",
+      "col": 5,
+      "type": "external",
+      "label": "Auto-update",
+      "sublabel": "descarga en el dispositivo"
+    }
+  ],
+  "edges": [
+    {
+      "from": "push",
+      "to": "merge"
+    },
+    {
+      "from": "merge",
+      "to": "trigger",
+      "label": "squash",
+      "variant": "emphasis",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "trigger",
+      "to": "buildweb"
+    },
+    {
+      "from": "buildweb",
+      "to": "electron",
+      "label": "escritorio"
+    },
+    {
+      "from": "buildweb",
+      "to": "apk",
+      "label": "móvil",
+      "variant": "dashed"
+    },
+    {
+      "from": "electron",
+      "to": "release"
+    },
+    {
+      "from": "apk",
+      "to": "release"
+    },
+    {
+      "from": "release",
+      "to": "autoupdate",
+      "label": "descarga + auto-update",
+      "variant": "emphasis",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Camino principal",
+      "items": [
+        "Al mergear a main se dispara GitHub Actions",
+        "vite build genera la web, base de los paquetes",
+        "Electron (escritorio) y Capacitor (APK) se empaquetan en paralelo"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Publicación",
+      "items": [
+        "Los instaladores y el APK firmado se publican en el repo de descargas",
+        "El APK usa keystore estable para instalar sobre versiones previas"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "En el dispositivo",
+      "items": [
+        "El escritorio se auto-actualiza en el sitio sin perder datos",
+        "El usuario descarga siempre la última versión"
+      ]
+    }
+  ]
+}
