@@ -12,6 +12,7 @@ import {
   runBackupJob, runRestoreJob, contarRegistros,
   analizarDuplicados, borrarDuplicados,
 } from '@/lib/backupEngine';
+import CronoProgreso from '@/components/CronoProgreso';
 import {
   detectarEntorno, nombreCopia, listarCopias,
   abrirCarpetaCopias, leerDestino, guardarDestino, DESTINOS_MOVIL,
@@ -208,6 +209,7 @@ export default function BackupCenter() {
   const [restoreStatus, setRestoreStatus] = useState('');
   const [restoring, setRestoring] = useState(false);
   const [restoreProgress, setRestoreProgress] = useState('');
+  const [restorePct, setRestorePct] = useState(0);
   const [restoreSelectedEntities, setRestoreSelectedEntities] = useState(new Set());
   const [restoreMode, setRestoreMode] = useState('update'); // 'clean' | 'update'
 
@@ -442,6 +444,7 @@ export default function BackupCenter() {
     if (!restoreData) return;
     const entitiesToRestore = ALL_ENTITIES.filter(e => restoreSelectedEntities.has(e) && restoreData[e]?.length > 0);
     setRestoring(true);
+    setRestorePct(0);
 
     if (restoreMode === 'clean') {
       const confirmed = window.confirm(
@@ -474,8 +477,9 @@ export default function BackupCenter() {
     // un falso "completado" si algo no se guarda.
     const { total, failed, sinCambios, avisos } = await runRestoreJob(
       restoreData, entitiesToRestore, restoreMode, KEYERS, ENTITY_LABELS,
-      (msg) => setRestoreProgress(msg)
+      (msg, pct) => { setRestoreProgress(msg); if (pct != null) setRestorePct(pct); },
     );
+    setRestorePct(100);
 
     // Se dice cuántos estaban ya iguales: es lo que explica que ahora vaya
     // rápido, y evita pensar que se ha restaurado de menos.
@@ -728,6 +732,7 @@ export default function BackupCenter() {
                   <div className="w-full bg-blue-200 rounded-full h-2.5">
                     <div className="h-2.5 bg-blue-600 rounded-full transition-all duration-300" style={{ width: `${progressPct}%` }} />
                   </div>
+                  <CronoProgreso active={loading} pct={progressPct} />
                 </div>
               )}
               {!loading && progress && (
@@ -965,6 +970,7 @@ export default function BackupCenter() {
                       {restoreProgress}
                     </div>
                   )}
+                  <CronoProgreso active={restoring} pct={restorePct} />
 
                   <Button
                     onClick={doRestore}
