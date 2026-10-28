@@ -486,28 +486,37 @@ export default function BackupCenter() {
     // grandes. El motor compartido (backupEngine.js) sigue corriendo aunque
     // se navegue a otra pantalla, y cuenta los fallos reales en vez de dar
     // un falso "completado" si algo no se guarda.
-    const { total, failed, sinCambios, avisos } = await runRestoreJob(
-      restoreData, entitiesToRestore, restoreMode, KEYERS, ENTITY_LABELS,
-      (msg, pct) => { setRestoreProgress(msg); if (pct != null) setRestorePct(pct); },
-    );
-    setRestorePct(100);
+    try {
+      const { total, failed, sinCambios, avisos } = await runRestoreJob(
+        restoreData, entitiesToRestore, restoreMode, KEYERS, ENTITY_LABELS,
+        (msg, pct) => { setRestoreProgress(msg); if (pct != null) setRestorePct(pct); },
+      );
+      setRestorePct(100);
 
-    // Se dice cuántos estaban ya iguales: es lo que explica que ahora vaya
-    // rápido, y evita pensar que se ha restaurado de menos.
-    const igualesMsg = sinCambios > 0
-      ? ` ${sinCambios.toLocaleString()} ya estaban igual y no ha hecho falta tocarlos.`
-      : '';
-    const okMsg = `✅ Restauración completa: ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.${igualesMsg}`;
-    const failMsg = `⚠️ ${failed.toLocaleString()} operaciones fallaron al guardar en el servidor (revisa la conexión y vuelve a intentarlo). Consulta la consola para más detalle.`;
-    const avisosMsg = (avisos || []).length > 0 ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : '';
-    setRestoreProgress((failed > 0 ? `${okMsg}\n${failMsg}` : okMsg) + avisosMsg);
-    loadCounts();
-    // Tras restaurar se buscan repetidos en lo que se acaba de restaurar: si
-    // la copia y los datos actuales tenían registros casi iguales, ahora están
-    // duplicados. Se conserva el MÁS RECIENTE y se borra el anterior, previa
-    // confirmación y con copia de rescate.
-    await limpiarDuplicadosTrasRestaurar(entitiesToRestore);
-    setRestoring(false);
+      // Se dice cuántos estaban ya iguales: es lo que explica que ahora vaya
+      // rápido, y evita pensar que se ha restaurado de menos.
+      const igualesMsg = sinCambios > 0
+        ? ` ${sinCambios.toLocaleString()} ya estaban igual y no ha hecho falta tocarlos.`
+        : '';
+      const okMsg = `✅ Restauración completa: ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.${igualesMsg}`;
+      const failMsg = `⚠️ ${failed.toLocaleString()} operaciones fallaron al guardar en el servidor (revisa la conexión y vuelve a intentarlo). Consulta la consola para más detalle.`;
+      const avisosMsg = (avisos || []).length > 0 ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : '';
+      setRestoreProgress((failed > 0 ? `${okMsg}\n${failMsg}` : okMsg) + avisosMsg);
+      loadCounts();
+      // Tras restaurar se buscan repetidos en lo que se acaba de restaurar: si
+      // la copia y los datos actuales tenían registros casi iguales, ahora están
+      // duplicados. Se conserva el MÁS RECIENTE y se borra el anterior, previa
+      // confirmación y con copia de rescate.
+      await limpiarDuplicadosTrasRestaurar(entitiesToRestore);
+    } catch (err) {
+      // Red de seguridad: si algo falla a mitad, el botón no puede quedarse
+      // para siempre en «Restaurando…». Antes un error no capturado dejaba el
+      // state restoring=true clavado y la única salida era recargar.
+      console.error('[BackupCenter] Error durante la restauración:', err);
+      setRestoreProgress(p => `${p ? p + '\n' : ''}❌ La restauración se ha interrumpido por un error: ${err?.message || err}. Vuelve a intentarlo en un par de minutos.`);
+    } finally {
+      setRestoring(false);
+    }
   };
 
   // ─── DUPLICADOS: PRIMERO MIRAR, LUEGO BORRAR ─────────────────────────────

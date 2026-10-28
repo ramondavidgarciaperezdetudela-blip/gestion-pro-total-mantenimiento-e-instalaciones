@@ -54,6 +54,7 @@ const PurchaseSummary = lazy(() => import('./pages/PurchaseSummary'));
 const BackupCenter = lazy(() => import('./pages/BackupCenter'));
 const CapillaryCalc = lazy(() => import('./pages/CapillaryCalc'));
 const InformesTecnicos = lazy(() => import('./pages/InformesTecnicos'));
+const PlanoFrigorifico = lazy(() => import('./pages/PlanoFrigorifico'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-32">
@@ -163,6 +164,7 @@ const AuthenticatedApp = () => {
           <Route path="/BackupCenter" element={<LayoutWrapper currentPageName="BackupCenter"><BackupCenter /></LayoutWrapper>} />
           <Route path="/CapillaryCalc" element={<LayoutWrapper currentPageName="CapillaryCalc"><CapillaryCalc /></LayoutWrapper>} />
           <Route path="/InformesTecnicos" element={<LayoutWrapper currentPageName="InformesTecnicos"><InformesTecnicos /></LayoutWrapper>} />
+          <Route path="/PlanoFrigorifico" element={<LayoutWrapper currentPageName="PlanoFrigorifico"><PlanoFrigorifico /></LayoutWrapper>} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </AnimatedRoutes>
