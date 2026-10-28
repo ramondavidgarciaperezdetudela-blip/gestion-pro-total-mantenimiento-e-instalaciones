@@ -52,7 +52,7 @@ export function construirPDF(plan, elements, walls, connections, { autoPrint = f
   doc.setDrawColor(120); doc.setLineWidth(0.8);
   walls.forEach((w) => doc.line(ox + w.x1 * sc, oy + w.y1 * sc, ox + w.x2 * sc, oy + w.y2 * sc));
 
-  // Conexiones (debajo de los equipos)
+  // Conexiones (debajo de los equipos): polilínea si tiene codos, si no recta
   connections.forEach((c) => {
     const a = elements.find((e) => e.id === c.from_id);
     const b = elements.find((e) => e.id === c.to_id);
@@ -61,7 +61,10 @@ export function construirPDF(plan, elements, walls, connections, { autoPrint = f
     doc.setDrawColor(...rgb);
     doc.setLineWidth(c.type === 'refrigerante' ? 1.1 : 0.7);
     if (c.type === 'refrigerante') doc.setLineDash([3, 1.5]); else doc.setLineDash([]);
-    doc.line(ox + a.x * sc, oy + a.y * sc, ox + b.x * sc, oy + b.y * sc);
+    const pts = [{ x: a.x, y: a.y }, ...(c.path || []), { x: b.x, y: b.y }];
+    for (let i = 1; i < pts.length; i++) {
+      doc.line(ox + pts[i - 1].x * sc, oy + pts[i - 1].y * sc, ox + pts[i].x * sc, oy + pts[i].y * sc);
+    }
     doc.setLineDash([]);
   });
 
@@ -181,6 +184,29 @@ export function construirPDF(plan, elements, walls, connections, { autoPrint = f
     doc.splitTextToSize(presupuesto.aviso, legendW - 4).forEach((l) => esc(l, 2, 6));
     doc.setTextColor(40);
   }
+
+  // ── Leyenda de símbolos ──
+  //
+  // Se dibuja con el mismo cursor que el resto del resumen (esc/sitio), para
+  // que si el listado ha llenado la hoja la leyenda pase a la siguiente en vez
+  // de escribirse encima.
+  titulo('Leyenda');
+  const leyenda = [
+    { c: [0, 160, 233], t: 'Tubería refrigerante (gas/líquido)', raya: true },
+    { c: [245, 130, 35], t: 'Conexión eléctrica (potencia/comunic.)', raya: false },
+    { c: [139, 92, 246], t: 'Comunicación / bus de datos', raya: false },
+    { c: [120, 120, 120], t: 'Pared / mampara', raya: false },
+  ];
+  leyenda.forEach((l) => {
+    sitio();
+    doc.setDrawColor(...l.c); doc.setLineWidth(1.2);
+    if (l.raya) doc.setLineDash([3, 1.5]); else doc.setLineDash([]);
+    doc.line(lxCol, ly - 1.5, lxCol + 8, ly - 1.5); doc.setLineDash([]);
+    doc.setTextColor(60); doc.setFontSize(7); doc.setFont(undefined, 'normal');
+    doc.text(l.t, lxCol + 10, ly);
+    ly += 4.5;
+  });
+  doc.setTextColor(40);
 
   if (plan.description || plan.observations) {
     titulo('Observaciones');

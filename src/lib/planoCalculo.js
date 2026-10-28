@@ -7,12 +7,13 @@
 // La longitud de cada conexión se calcula con la posición de los dos equipos
 // y la escala del plano (px por metro).
 
-export function crearConexion(type, from_id, to_id) {
+export function crearConexion(type, from_id, to_id, path = []) {
   return {
     id: crypto.randomUUID(),
     type,
     from_id,
     to_id,
+    path: path || [],
     gas_diameter: '',
     liquid_diameter: '',
     power_type: '',
@@ -21,12 +22,24 @@ export function crearConexion(type, from_id, to_id) {
   };
 }
 
-// Longitud real (metros) de una conexión, según dónde estén sus extremos.
-export function longitudConexion(conn, elements, scale = 50) {
+// Lista de puntos por los que pasa una conexión: origen → codos → destino.
+export function puntosConexion(conn, elements) {
   const a = elements.find((e) => e.id === conn.from_id);
   const b = elements.find((e) => e.id === conn.to_id);
-  if (!a || !b) return 0;
-  return Math.hypot(a.x - b.x, a.y - b.y) / (scale || 50);
+  if (!a || !b) return [];
+  return [{ x: a.x, y: a.y }, ...(conn.path || []), { x: b.x, y: b.y }];
+}
+
+// Longitud real (metros) de una conexión recorriendo sus codos. Si no tiene
+// path, es la distancia recta entre los dos equipos.
+export function longitudConexion(conn, elements, scale = 50) {
+  const pts = puntosConexion(conn, elements);
+  if (pts.length < 2) return 0;
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    total += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  }
+  return total / (scale || 50);
 }
 
 function nearest(el, list) {
