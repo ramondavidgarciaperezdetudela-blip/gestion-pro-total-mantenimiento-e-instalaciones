@@ -173,11 +173,18 @@ export default function PlanoCanvas({
           const b = elements.find((e) => e.id === c.to_id);
           if (!a || !b) return null;
           const sel = c.id === selectedId;
-          const color = CONN_COLOR[c.type] || '#888';
+          // El bus de datos se pinta de otro color: en el plano hay que verlo
+          // aparte de la fuerza, que es lo que de verdad pasa en la obra.
+          const esDatos = c.type === 'electrica' && c.conn_kind === 'comunicacion';
+          const color = esDatos ? '#8b5cf6' : (CONN_COLOR[c.type] || '#888');
           const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
           const tag = c.type === 'refrigerante'
             ? (c.gas_diameter || c.liquid_diameter ? `G ${c.gas_diameter || '—'} · L ${c.liquid_diameter || '—'}` : 'Tubería')
-            : (c.power_type || c.comm_type ? `${c.power_type || '—'}` : 'Eléctrica');
+            : esDatos
+              ? (c.comm_type || 'Comunicación')
+              : (c.section_mm2
+                ? `${c.section_mm2} mm²${c.power_type ? ` · ${c.power_type}` : ''}`
+                : (c.power_type || 'Eléctrica'));
           return (
             <g key={c.id}>
               <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={color} strokeWidth={sel ? 4 : 2.5}

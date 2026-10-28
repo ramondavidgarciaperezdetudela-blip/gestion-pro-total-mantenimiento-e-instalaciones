@@ -1,5 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { longitudConexion, resumenTuberias } from '@/lib/planoCalculo';
+import { elementoDe } from '@/lib/planoFrigorificoCatalogo';
+import { TIPOS_CONEXION_ELECTRICA } from '@/lib/instalacionCalculos';
 
 // Exportación e impresión del plano frigorífico.
 //
@@ -19,7 +21,7 @@ function hexToRgb(hex) {
 
 const CANVAS = { w: 1400, h: 900 };
 
-export function construirPDF(plan, elements, walls, connections, { autoPrint = false } = {}) {
+export function construirPDF(plan, elements, walls, connections, { autoPrint = false, presupuesto = null } = {}) {
   const scale = plan.scale || 50;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
   const PW = 420, PH = 297, margin = 12;
@@ -79,70 +81,127 @@ export function construirPDF(plan, elements, walls, connections, { autoPrint = f
   });
 
   // ── Resumen lateral ──
+  //
+  // Cuando la instalación es grande, este resumen no cabe en una columna: se
+  // pasa a una hoja nueva en vez de escribir fuera del papel, que es lo que
+  // pasaba al salir con muchos equipos.
   let ly = oy;
-  doc.setFontSize(11); doc.setFont(undefined, 'bold'); doc.setTextColor(20);
-  doc.text('Resumen de la instalación', lx, ly); ly += 6;
+  let lxCol = lx;
+  const FIN = PH - margin;
+
+  const sitio = (alto = 4.5) => {
+    if (ly + alto <= FIN) return;
+    doc.addPage();
+    lxCol = margin;
+    ly = margin + 6;
+    doc.setFontSize(11); doc.setFont(undefined, 'bold'); doc.setTextColor(20);
+    doc.text(`${plan.name || 'Plano frigorífico'} — continuación`, margin, margin);
+    doc.setFontSize(8); doc.setFont(undefined, 'normal'); doc.setTextColor(40);
+  };
+  /** Escribe una línea del resumen y baja el cursor, cambiando de hoja si hace falta. */
+  const esc = (txt, dx = 0, size = 8, negrita = false) => {
+    sitio();
+    doc.setFontSize(size);
+    doc.setFont(undefined, negrita ? 'bold' : 'normal');
+    doc.text(txt, lxCol + dx, ly);
+    ly += size <= 6.5 ? 4 : 4.5;
+  };
+  const titulo = (txt) => { ly += 2; esc(txt, 0, 9, true); ly += 0.5; };
+
+  doc.setTextColor(20);
+  esc('Resumen de la instalación', 0, 11, true);
+  ly += 1.5;
+  doc.setTextColor(40);
 
   const counts = {};
-  elements.forEach((e) => { counts[e.label] = (counts[e.label] || 0) + (parseInt(e.qty) || 1); });
-  doc.setFontSize(8); doc.setFont(undefined, 'bold'); doc.setTextColor(40);
-  doc.text(`Equipos (${elements.length})`, lx, ly); ly += 5;
-  doc.setFont(undefined, 'normal');
-  Object.entries(counts).forEach(([k, v]) => { doc.text(`· ${k}: ${v}`, lx + 2, ly); ly += 4.5; });
-  ly += 2;
+  elements.forEach((e) => { counts[e.label] = (counts[e.label] || 0) + (parseInt(e.qty, 10) || 1); });
+  titulo(`Equipos (${elements.length})`);
+  Object.entries(counts).forEach(([k, v]) => esc(`· ${k}: ${v}`, 2));
+
+  // Los datos que se han rellenado de cada equipo: potencia, refrigerante,
+  // sensibilidad del diferencial, tarado de la válvula… Sin esto, el plano
+  // sale bonito y en la obra hay que llamar por teléfono para cada dato.
+  const conDatos = elements.filter((e) => Object.values(e.datos || {}).some((v) => v !== '' && v != null));
+  if (conDatos.length) {
+    titulo('Datos de los equipos');
+    conDatos.forEach((e) => {
+      const def = elementoDe(e.type || e.id);
+      esc(`· ${e.label || def?.label || '?'}${e.brand ? ` — ${e.brand}` : ''}${e.model ? ` ${e.model}` : ''}`, 2);
+      (def?.campos || []).forEach((c) => {
+        const v = e.datos?.[c.id];
+        if (v === '' || v == null) return;
+        esc(`${c.etiqueta}: ${v}`, 4, 6.5);
+      });
+    });
+  }
 
   const { tub, gas, liq } = resumenTuberias(connections, elements, scale);
-  doc.setFont(undefined, 'bold');
-  doc.text(`Tuberías refrigerantes (${tub.length})`, lx, ly); ly += 5;
-  doc.setFont(undefined, 'normal');
-  if (tub.length === 0) { doc.text('—', lx + 2, ly); ly += 4.5; }
+  titulo(`Tuberías refrigerantes (${tub.length})`);
+  if (tub.length === 0) esc('—', 2);
   tub.forEach((c, i) => {
     const a = elements.find((e) => e.id === c.from_id), b = elements.find((e) => e.id === c.to_id);
     const L = longitudConexion(c, elements, scale);
-    doc.text(`${i + 1}. ${(a?.label) || '?'} → ${(b?.label) || '?'} · ${L.toFixed(2)} m`, lx + 2, ly); ly += 4.5;
-    doc.setFontSize(6.5);
-    doc.text(`Gas: ${c.gas_diameter || '—'}   Líquido: ${c.liquid_diameter || '—'}`, lx + 4, ly); ly += 4;
-    doc.setFontSize(8);
+    esc(`${i + 1}. ${(a?.label) || '?'} → ${(b?.label) || '?'} · ${L.toFixed(2)} m`, 2);
+    esc(`Gas: ${c.gas_diameter || '—'}   Líquido: ${c.liquid_diameter || '—'}`
+      + (c.height_m ? `   Desnivel: ${c.height_m} m` : ''), 4, 6.5);
   });
   if (Object.keys(gas).length || Object.keys(liq).length) {
-    ly += 1; doc.setFont(undefined, 'bold'); doc.text('Totales por diámetro', lx, ly); ly += 5;
-    doc.setFont(undefined, 'normal');
-    Object.entries(gas).forEach(([d, L]) => { doc.text(`Gas ${d}: ${L.toFixed(1)} m`, lx + 2, ly); ly += 4.5; });
-    Object.entries(liq).forEach(([d, L]) => { doc.text(`Líquido ${d}: ${L.toFixed(1)} m`, lx + 2, ly); ly += 4.5; });
+    titulo('Totales por diámetro');
+    Object.entries(gas).forEach(([d, L]) => esc(`Gas ${d}: ${L.toFixed(1)} m`, 2));
+    Object.entries(liq).forEach(([d, L]) => esc(`Líquido ${d}: ${L.toFixed(1)} m`, 2));
   }
 
   const ele = connections.filter((c) => c.type === 'electrica');
-  ly += 2;
-  doc.setFont(undefined, 'bold'); doc.text(`Conexiones eléctricas (${ele.length})`, lx, ly); ly += 5;
-  doc.setFont(undefined, 'normal');
-  if (ele.length === 0) { doc.text('—', lx + 2, ly); ly += 4.5; }
+  titulo(`Conexiones eléctricas (${ele.length})`);
+  if (ele.length === 0) esc('—', 2);
   ele.forEach((c, i) => {
     const a = elements.find((e) => e.id === c.from_id), b = elements.find((e) => e.id === c.to_id);
-    doc.text(`${i + 1}. ${(a?.label) || '?'} → ${(b?.label) || '?'}`, lx + 2, ly); ly += 4.5;
-    doc.setFontSize(6.5);
-    doc.text(`Potencia: ${c.power_type || '—'}`, lx + 4, ly); ly += 4;
-    doc.text(`Comunic.: ${c.comm_type || '—'}`, lx + 4, ly); ly += 4;
-    doc.setFontSize(8);
+    const L = longitudConexion(c, elements, scale);
+    const clase = TIPOS_CONEXION_ELECTRICA.find((t) => t.id === (c.conn_kind || 'potencia'))?.nombre || '';
+    esc(`${i + 1}. ${(a?.label) || '?'} → ${(b?.label) || '?'} · ${L.toFixed(2)} m`, 2);
+    esc(`${clase}`, 4, 6.5);
+    if (c.conn_kind === 'comunicacion') {
+      esc(`Bus: ${c.comm_type || '—'}${c.cable ? `   Cable: ${c.cable}` : ''}`, 4, 6.5);
+    } else {
+      esc(`Potencia: ${c.power_type || '—'}${c.power_w ? `   ${c.power_w} W` : ''}`, 4, 6.5);
+      esc(`Sección: ${c.section_mm2 ? `${c.section_mm2} mm²` : '—'}${c.voltage ? `   ${c.voltage}` : ''}`, 4, 6.5);
+      if (c.comm_type) esc(`Comunic.: ${c.comm_type}`, 4, 6.5);
+    }
   });
 
-  if (plan.description || plan.observations) {
-    ly += 2;
-    doc.setFont(undefined, 'bold'); doc.text('Observaciones', lx, ly); ly += 5;
-    doc.setFont(undefined, 'normal'); doc.setFontSize(7);
-    const lines = doc.splitTextToSize([plan.description, plan.observations].filter(Boolean).join(' — '), legendW - 4);
-    doc.text(lines, lx, ly);
+  if (presupuesto && presupuesto.total > 0) {
+    titulo('Presupuesto aproximado');
+    esc(`Material: ${presupuesto.materiales.toFixed(2)} €`, 2);
+    esc(`Mano de obra (35 %): ${presupuesto.manoObra.toFixed(2)} €`, 2);
+    esc(`TOTAL: ${presupuesto.total.toFixed(2)} €`, 2, 8, true);
+    doc.setTextColor(120);
+    doc.splitTextToSize(presupuesto.aviso, legendW - 4).forEach((l) => esc(l, 2, 6));
+    doc.setTextColor(40);
   }
+
+  if (plan.description || plan.observations) {
+    titulo('Observaciones');
+    doc.splitTextToSize([plan.description, plan.observations].filter(Boolean).join(' — '), legendW - 4)
+      .forEach((l) => esc(l, 0, 7));
+  }
+
+  titulo('Aviso técnico');
+  doc.setTextColor(120);
+  doc.splitTextToSize('Diámetros y secciones ORIENTATIVOS: prevalecen la ficha técnica del fabricante '
+    + 'y el REBT. Requiere revisión y firma de técnico cualificado.', legendW - 4)
+    .forEach((l) => esc(l, 0, 6));
+  doc.setTextColor(40);
 
   if (autoPrint) doc.autoPrint();
   return doc;
 }
 
-export function exportarPDF(plan, elements, walls, connections) {
-  const doc = construirPDF(plan, elements, walls, connections);
+export function exportarPDF(plan, elements, walls, connections, presupuesto = null) {
+  const doc = construirPDF(plan, elements, walls, connections, { presupuesto });
   doc.save(`${(plan.name || 'plano').replace(/[^\w\-]+/g, '_')}.pdf`);
 }
 
-export function imprimirPlano(plan, elements, walls, connections) {
-  const doc = construirPDF(plan, elements, walls, connections, { autoPrint: true });
+export function imprimirPlano(plan, elements, walls, connections, presupuesto = null) {
+  const doc = construirPDF(plan, elements, walls, connections, { autoPrint: true, presupuesto });
   window.open(doc.output('bloburl'), '_blank');
 }

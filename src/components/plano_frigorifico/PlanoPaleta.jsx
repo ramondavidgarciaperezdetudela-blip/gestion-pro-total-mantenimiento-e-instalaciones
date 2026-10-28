@@ -1,9 +1,10 @@
 import React from 'react';
-import { MousePointer2, Minus, Thermometer, Zap, ShieldAlert, Box, Link2 } from 'lucide-react';
+import { MousePointer2, Minus, Thermometer, Zap, ShieldAlert, Box, Link2, Wind } from 'lucide-react';
 import { CATEGORIAS, elementosPorCategoria } from '@/lib/planoFrigorificoCatalogo';
 
 const CAT_ICON = {
   refrigeracion: Thermometer,
+  clima: Wind,
   electrico: Zap,
   seguridad: ShieldAlert,
   estructura: Box,
@@ -33,7 +34,9 @@ export default function PlanoPaleta({ mode, activeType, connectType, onPick }) {
       </div>
 
       {CATEGORIAS.map((cat) => {
-        const Icon = CAT_ICON[cat.id];
+        // Con icono de reserva: una categoría nueva en el catálogo no puede
+        // tumbar la pantalla por no tener su dibujo puesto aquí.
+        const Icon = CAT_ICON[cat.id] || Box;
         const items = porCat[cat.id] || [];
         return (
           <div key={cat.id}>

@@ -14,7 +14,7 @@
  * definitivo del fabricante.
  */
 
-import { elemento } from './instalacionCatalogo.js';
+import { elementoDe } from './planoFrigorificoCatalogo.js';
 
 /* ─── Tubería frigorífica ───────────────────────────────────────────────── */
 
@@ -166,6 +166,14 @@ export function sugerirSeccion({ potenciaW, tension = '230 V monofásica', longi
 
 /* ─── Presupuesto aproximado ────────────────────────────────────────────── */
 
+/** Longitud en metros de una conexión, según dónde estén sus dos extremos. */
+function largoConexion(conn, elements, scale) {
+  const a = elements.find((e) => e.id === conn.from_id);
+  const b = elements.find((e) => e.id === conn.to_id);
+  if (!a || !b) return 0;
+  return Math.hypot(a.x - b.x, a.y - b.y) / (scale || 50);
+}
+
 /**
  * Suma lo que hay en el plano para dar un presupuesto aproximado.
  *
@@ -173,45 +181,54 @@ export function sugerirSeccion({ potenciaW, tension = '230 V monofásica', longi
  * encima de la mesa mientras se dibuja, y para no olvidarse de contar lo que
  * ya está puesto en el plano.
  *
- * @param {object} plano
+ * @param {object} plan        el plano tal y como lo guarda la pantalla:
+ *                             { elements, connections, walls, scale }
  * @param {Function} precioDe  (idElemento) => número | null, para usar las
  *                             tarifas propias en vez de los precios de fábrica
  */
-export function presupuestoAproximado(plano, precioDe = () => null) {
+export function presupuestoAproximado(plan, precioDe = () => null) {
+  const elements = plan?.elements || [];
+  const connections = plan?.connections || [];
+  const scale = plan?.scale || 50;
   const lineas = [];
-  const cuenta = {};
 
-  for (const el of plano?.elementos || []) {
-    cuenta[el.tipo] = (cuenta[el.tipo] || 0) + 1;
+  // Equipos, agrupados por tipo y contando las cantidades de cada uno.
+  const cuenta = {};
+  for (const el of elements) {
+    const tipo = el.type || el.id;
+    cuenta[tipo] = (cuenta[tipo] || 0) + (parseInt(el.qty, 10) || 1);
   }
   for (const [tipo, unidades] of Object.entries(cuenta)) {
-    const def = elemento(tipo);
+    const def = elementoDe(tipo);
     if (!def) continue;
     const precio = precioDe(tipo) ?? def.precio ?? 0;
     if (!precio) continue;
     lineas.push({
-      concepto: def.nombre, unidades, precioUnidad: precio,
-      total: Math.round(precio * unidades * 100) / 100, familia: def.familia,
+      concepto: def.label, unidades, precioUnidad: precio,
+      total: Math.round(precio * unidades * 100) / 100, categoria: def.cat,
     });
   }
 
-  // Tubería frigorífica, por metros dibujados.
-  const metrosTuberia = (plano?.tuberias || []).reduce((n, t) => n + (t.longitudM || 0), 0);
+  // Tubería frigorífica y línea eléctrica, por los metros que hay dibujados.
+  const metros = (tipo) => connections
+    .filter((c) => c.type === tipo)
+    .reduce((n, c) => n + largoConexion(c, elements, scale), 0);
+
+  const metrosTuberia = metros('refrigerante');
   if (metrosTuberia > 0) {
     lineas.push({
       concepto: 'Tubería frigorífica (cobre, aislamiento y accesorios)',
       unidades: Math.round(metrosTuberia * 10) / 10, precioUnidad: 28,
-      total: Math.round(metrosTuberia * 28 * 100) / 100, familia: 'frio', unidad: 'm',
+      total: Math.round(metrosTuberia * 28 * 100) / 100, categoria: 'refrigeracion', unidad: 'm',
     });
   }
 
-  // Línea eléctrica, por metros.
-  const metrosCable = (plano?.lineasElectricas || []).reduce((n, l) => n + (l.longitudM || 0), 0);
+  const metrosCable = metros('electrica');
   if (metrosCable > 0) {
     lineas.push({
       concepto: 'Línea eléctrica (cable, canalización y pequeño material)',
       unidades: Math.round(metrosCable * 10) / 10, precioUnidad: 14,
-      total: Math.round(metrosCable * 14 * 100) / 100, familia: 'electrico', unidad: 'm',
+      total: Math.round(metrosCable * 14 * 100) / 100, categoria: 'electrico', unidad: 'm',
     });
   }
 
@@ -224,6 +241,8 @@ export function presupuestoAproximado(plano, precioDe = () => null) {
   return {
     lineas: lineas.sort((a, b) => b.total - a.total),
     materiales, manoObra, total,
+    metrosTuberia: Math.round(metrosTuberia * 10) / 10,
+    metrosCable: Math.round(metrosCable * 10) / 10,
     aviso: 'Presupuesto APROXIMADO calculado sobre lo que hay dibujado en el plano, con precios '
       + 'orientativos y un 35 % de mano de obra. Sirve para una primera cifra, no para enviar al '
       + 'cliente: revísalo con tus tarifas antes de mandarlo.',

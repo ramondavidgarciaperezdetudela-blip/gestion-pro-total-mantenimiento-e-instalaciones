@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2 } from 'lucide-react';
+import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { getNextAvailableNumber } from '@/components/autoNumber';
@@ -11,7 +11,8 @@ import PlanoPaleta from '@/components/plano_frigorifico/PlanoPaleta';
 import PlanoEquipoDetalles from '@/components/plano_frigorifico/PlanoEquipoDetalles';
 import { exportarPDF, imprimirPlano } from '@/components/plano_frigorifico/PlanoExporter';
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
-import { CAT_COLOR } from '@/lib/planoFrigorificoCatalogo';
+import { CAT_COLOR, elementoDe } from '@/lib/planoFrigorificoCatalogo';
+import { presupuestoAproximado } from '@/lib/instalacionCalculos';
 
 const PLANO_VACIO = {
   id: null, name: '', contact_id: '', contact_name: '', description: '',
@@ -31,16 +32,19 @@ export default function PlanoFrigorifico() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [tarifas, setTarifas] = useState([]);
 
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
-      const [ps, cs] = await Promise.all([
+      const [ps, cs, ts] = await Promise.all([
         base44.entities.RefrigerationPlan.filter({}, { sort: '-created_date', limit: 100 }).catch(() => ({ items: [] })),
         base44.entities.Contact.list({ limit: 500 }).catch(() => []),
+        base44.entities.PriceItem.list().catch(() => []),
       ]);
       setPlanos(ps?.items || []);
       setContacts(cs || []);
+      setTarifas(ts || []);
     } finally { setLoading(false); }
   }, []);
 
@@ -85,6 +89,17 @@ export default function PlanoFrigorifico() {
       setActiveElement(null);
     }
   };
+
+  // Si el usuario tiene sus propios precios en Tarifas, manda el suyo: los del
+  // catálogo son de fábrica y están ahí para que salga una cifra el primer día.
+  const precioDe = useCallback((tipo) => {
+    const def = elementoDe(tipo);
+    if (!def) return null;
+    const t = tarifas.find((x) => `${x.description || ''} ${x.name || ''}`.toLowerCase().includes(def.label.toLowerCase()));
+    return t?.unit_price ?? null;
+  }, [tarifas]);
+
+  const presupuesto = useMemo(() => presupuestoAproximado(plan, precioDe), [plan, precioDe]);
 
   const selectedElement = plan.elements.find((e) => e.id === selectedId) || null;
   const selectedConnection = plan.connections.find((c) => c.id === selectedId) || null;
@@ -166,11 +181,11 @@ export default function PlanoFrigorifico() {
   };
 
   const onExportarPDF = () => {
-    try { exportarPDF(plan, plan.elements, plan.walls, plan.connections); toast.success('PDF generado'); }
+    try { exportarPDF(plan, plan.elements, plan.walls, plan.connections, presupuesto); toast.success('PDF generado'); }
     catch (e) { console.error(e); toast.error('No se pudo generar el PDF', { description: String(e?.message || e) }); }
   };
   const onImprimir = () => {
-    try { imprimirPlano(plan, plan.elements, plan.walls, plan.connections); }
+    try { imprimirPlano(plan, plan.elements, plan.walls, plan.connections, presupuesto); }
     catch (e) { console.error(e); toast.error('No se pudo abrir la impresión', { description: String(e?.message || e) }); }
   };
 
@@ -203,8 +218,10 @@ Descripción: ${plan.description || 'Instalación frigorífica'}
 Equipos / elementos del plano (cantidades):
 ${lista}
 Metros lineales de pared/obra: ${metrosPared.toFixed(1)} m${tubStr}
+Tubería frigorífica dibujada: ${presupuesto.metrosTuberia} m · línea eléctrica: ${presupuesto.metrosCable} m
+Cálculo aproximado del programa (material + 35 % de mano de obra): ${presupuesto.materiales} € + ${presupuesto.manoObra} € = ${presupuesto.total} €
 
-Incluye conceptos de mano de obra, materiales, aparamenta eléctrica y de seguridad necesaria, desplazamiento y puesta en marcha. Precios en euros SIN IVA (21% aparte), realistas para España. Devuelve un JSON con "items" (cada uno con description, quantity y unit_price) y "observations" (resumen técnico breve de 1-3 líneas).`;
+Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano de obra, materiales, aparamenta eléctrica y de seguridad necesaria, desplazamiento y puesta en marcha. Precios en euros SIN IVA (21% aparte), realistas para España. Devuelve un JSON con "items" (cada uno con description, quantity y unit_price) y "observations" (resumen técnico breve de 1-3 líneas).`;
 
       const res = await base44.integrations.Core.InvokeLLM({
         prompt,
@@ -365,6 +382,38 @@ Incluye conceptos de mano de obra, materiales, aparamenta eléctrica y de seguri
             </label>
             <div className="text-[10px] text-muted-foreground">
               {plan.elements.length} elementos · {plan.walls.length} paredes · {plan.connections.length} conexiones
+            </div>
+
+            {/* Lo que va costando esto mientras se dibuja. No es el presupuesto
+                que se manda, es la cifra para hablar con el cliente ahí mismo. */}
+            <div className="rounded-lg border border-border p-2" data-prueba="presupuesto-plano">
+              <div className="tech-label mb-1.5">💶 Presupuesto aproximado</div>
+              {presupuesto.lineas.length === 0 ? (
+                <p className="text-[10px] text-muted-foreground">
+                  Coloca equipos y tira tuberías: la cifra va saliendo aquí sola.
+                </p>
+              ) : (
+                <>
+                  <div className="flex max-h-32 flex-col gap-0.5 overflow-y-auto">
+                    {presupuesto.lineas.map((l, i) => (
+                      <div key={i} className="flex justify-between gap-2 text-[10px]">
+                        <span className="truncate text-muted-foreground">
+                          {l.unidades}{l.unidad ? ` ${l.unidad}` : '×'} {l.concepto}
+                        </span>
+                        <span className="font-mono">{l.total.toFixed(2)} €</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-1.5 flex flex-col gap-0.5 border-t border-border pt-1.5 text-[10px]">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Material</span><span className="font-mono">{presupuesto.materiales.toFixed(2)} €</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Mano de obra (35 %)</span><span className="font-mono">{presupuesto.manoObra.toFixed(2)} €</span></div>
+                    <div className="flex justify-between text-xs font-bold"><span>Total</span><span className="font-mono">{presupuesto.total.toFixed(2)} €</span></div>
+                  </div>
+                  <p className="mt-1.5 flex gap-1 text-[9px] leading-snug text-amber-600">
+                    <AlertTriangle className="mt-0.5 h-2.5 w-2.5 flex-shrink-0" />{presupuesto.aviso}
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -26,7 +26,6 @@
         "nota",
         "foto_equipo",
         "diagnostico_frigorifico",
-        "plano_instalacion",
         "otro"
       ]
     },
