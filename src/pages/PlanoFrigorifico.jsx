@@ -15,6 +15,7 @@ import { exportarDXF } from '@/lib/planoDxfExport';
 import { exportarEsquemaElectrico, imprimirEsquemaElectrico } from '@/lib/planoEsquemaElectrico';
 import InformeAseguradoraDialog from '@/components/plano_frigorifico/InformeAseguradoraDialog';
 import DialogoNuevaConexion from '@/components/plano_frigorifico/DialogoNuevaConexion';
+import GestorCatalogoPlano from '@/components/plano_frigorifico/GestorCatalogoPlano';
 import LeyendaPlano from '@/components/plano_frigorifico/LeyendaPlano';
 import PlanoBarraSuperior from '@/components/plano_frigorifico/PlanoBarraSuperior';
 import Vista3DPlanoFrigorifico from '@/components/plano_frigorifico/Vista3DPlanoFrigorifico';
@@ -70,6 +71,19 @@ export default function PlanoFrigorifico() {
   // más trazar una línea, para que el montador lo tenga anotado.
   const [conexionDialogo, setConexionDialogo] = useState(null);
 
+  // Elementos/maquinaria que el usuario añade al catálogo del plano, para
+  // tenerlos siempre disponibles en su apartado. Se guardan en la entidad
+  // PlanoCatalogItem y aquí se cargan para mezclarlos con los de fábrica.
+  const [catalogoExtra, setCatalogoExtra] = useState([]);
+  const [dialogoCatalogo, setDialogoCatalogo] = useState(false);
+
+  const cargarCatalogoExtra = useCallback(async () => {
+    try {
+      const res = await base44.entities.PlanoCatalogItem.filter({ is_active: true }, { limit: 200 });
+      setCatalogoExtra(res?.items || []);
+    } catch { /* sin catálogo personalizado: la paleta usa solo el de fábrica */ }
+  }, []);
+
   const resetHistorial = () => {
     historial.current = [];
     futuro.current = [];
@@ -101,7 +115,7 @@ export default function PlanoFrigorifico() {
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { cargarDatos(); }, [cargarDatos]);
+  useEffect(() => { cargarDatos(); cargarCatalogoExtra(); }, [cargarDatos, cargarCatalogoExtra]);
 
   // Permite abrir este módulo desde la ficha del cliente con ?contact=<id>
   // para arrancar un plano ya vinculado a ese cliente.
@@ -266,6 +280,21 @@ export default function PlanoFrigorifico() {
   }, [tarifas]);
 
   const presupuesto = useMemo(() => presupuestoAproximado(plan, precioDe), [plan, precioDe]);
+
+  // Los elementos personalizados se normalizan a la misma forma que los del
+  // catálogo de fábrica, y se agrupan por su apartado para la paleta y los
+  // menús a pantalla completa.
+  const extraItems = useMemo(() => catalogoExtra.map((r) => ({
+    id: 'custom_' + r.id, cat: r.cat, label: r.name,
+    w_m: r.w_m || 0.6, h_m: r.h_m || 0.6,
+    glyph: r.glyph || (r.name || '').slice(0, 3).toUpperCase(),
+    precio: r.precio || 0, image_url: r.image_url, _custom: true,
+  })), [catalogoExtra]);
+  const extraPorCat = useMemo(() => {
+    const out = {};
+    extraItems.forEach((it) => { (out[it.cat] = out[it.cat] || []).push(it); });
+    return out;
+  }, [extraItems]);
 
   const selectedElement = plan.elements.find((e) => e.id === selectedId) || null;
   const selectedConnection = plan.connections.find((c) => c.id === selectedId) || null;
@@ -647,6 +676,12 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         <button onClick={autoConectarPlano} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
           <Link2 className="w-3.5 h-3.5" /> Auto-conectar
         </button>
+        <button onClick={() => setDialogoCatalogo(true)}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
+          style={{ background: 'linear-gradient(135deg,#00D4FF,#7C3AED)' }}
+          title="Añadir un elemento o maquinaria propia al catálogo">
+          <Plus className="w-3.5 h-3.5" /> Añadir elemento
+          </button>
         <button onClick={() => setPolyline((v) => !v)}
           className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs"
           style={polyline
@@ -743,7 +778,8 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
               canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
               saving={saving} onSave={guardar} onPDF={onExportarPDF}
-              on3D={() => setVer3D(true)} onExit={() => setFullscreen(false)} />
+              on3D={() => setVer3D(true)} onExit={() => setFullscreen(false)}
+              extraPorCat={extraPorCat} onAddElement={() => setDialogoCatalogo(true)} />
             {Controles}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 flex-1 min-h-0">
               <PlanoCanvas
@@ -759,7 +795,8 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
             <div className="rounded-lg border border-border bg-card p-3">
               <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} onPick={onPick}
                 onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
-                canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste} />
+                canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
+                extraElementos={extraItems} onAddElement={() => setDialogoCatalogo(true)} />
             </div>
             {Controles}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3">
@@ -860,6 +897,14 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         connections={plan.connections}
         empresa={empresa}
         contacts={contacts}
+      />
+
+      {/* Diálogo para añadir un elemento/maquinaria propia al catálogo del
+          plano: se elige el apartado y la IA busca el icono. */}
+      <GestorCatalogoPlano
+        open={dialogoCatalogo}
+        onClose={() => setDialogoCatalogo(false)}
+        onSaved={cargarCatalogoExtra}
       />
 
       {/* Diálogo que pide el diámetro (tubería) o el cable (eléctrica) al

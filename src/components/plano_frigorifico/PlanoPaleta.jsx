@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  Thermometer, Wind, Zap, ShieldAlert, Box, ChevronDown, Search, Boxes,
+  Thermometer, Wind, Zap, ShieldAlert, Box, ChevronDown, Search, Boxes, Plus,
 } from 'lucide-react';
-import { CATEGORIAS, elementosPorCategoria, buscar, DESCRIPCIONES_ELECTRICO } from '@/lib/planoFrigorificoCatalogo';
+import { CATEGORIAS, ELEMENTOS, elementosPorCategoria, buscar, DESCRIPCIONES_ELECTRICO } from '@/lib/planoFrigorificoCatalogo';
 import PlanoSimbolo from './PlanoSimbolo';
 import PlanoBarraHerramientas from './PlanoBarraHerramientas';
 
@@ -27,11 +27,21 @@ const CAT_ICON = {
 export default function PlanoPaleta({
   mode, activeType, connectType, onPick,
   onUndo, onRedo, onCopy, onCut, onPaste, canUndo, canRedo, canCopy, canPaste,
+  extraElementos = [], onAddElement,
 }) {
   const [abierta, setAbierta] = useState(() => Object.fromEntries(CATEGORIAS.map((c) => [c.id, true])));
   const [q, setQ] = useState('');
-  const porCat = elementosPorCategoria();
-  const resultados = q ? buscar(q) : null;
+  // Catálogo de fábrica + los elementos personalizados que el usuario haya
+  // añadido, agrupados por su apartado para que aparezcan donde corresponden.
+  const porCat = useMemo(() => {
+    const out = elementosPorCategoria();
+    (extraElementos || []).forEach((it) => { (out[it.cat] = out[it.cat] || []).push(it); });
+    return out;
+  }, [extraElementos]);
+  const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const resultados = q
+    ? [...ELEMENTOS, ...(extraElementos || [])].filter((e) => norm(`${e.label} ${e.cat}`).includes(norm(q)))
+    : null;
 
   return (
     <div className="flex flex-col gap-2">
@@ -41,11 +51,21 @@ export default function PlanoPaleta({
         onUndo={onUndo} onRedo={onRedo} onCopy={onCopy} onCut={onCut} onPaste={onPaste}
         canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste} />
 
-      {/* Buscador de equipos */}
-      <div className="flex items-center gap-1 rounded-md border border-border bg-input px-2 py-1 self-start">
-        <Search className="w-3.5 h-3.5 text-muted-foreground" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar equipo…"
-          className="bg-transparent text-xs outline-none w-44" />
+      {/* Buscador de equipos + botón para añadir un elemento propio */}
+      <div className="flex items-center gap-2 self-start">
+        <div className="flex items-center gap-1 rounded-md border border-border bg-input px-2 py-1 flex-1">
+          <Search className="w-3.5 h-3.5 text-muted-foreground" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar equipo…"
+            className="bg-transparent text-xs outline-none w-40" />
+        </div>
+        {onAddElement && (
+          <button onClick={onAddElement}
+            className="flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] text-white hover:opacity-90 whitespace-nowrap"
+            style={{ background: 'linear-gradient(135deg,#00D4FF,#7C3AED)' }}
+            title="Añadir un elemento o maquinaria propia al catálogo">
+            <Plus className="w-3.5 h-3.5" /> Añadir elemento
+          </button>
+        )}
       </div>
 
       {/* Resultados de búsqueda */}

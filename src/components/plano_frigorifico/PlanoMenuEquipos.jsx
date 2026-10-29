@@ -11,10 +11,15 @@ import { elementosPorCategoria } from '@/lib/planoFrigorificoCatalogo';
  * sus máquinas con el símbolo y el nombre, y se elige la que se quiera
  * colocar. Así todo está accesible sin hacer scroll.
  */
-export default function PlanoMenuEquipos({ cat, activeType, onPick }) {
+export default function PlanoMenuEquipos({ cat, activeType, onPick, extraPorCat }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const items = (elementosPorCategoria()[cat.id] || []);
+  // Equipos de fábrica + los personalizados que el usuario haya añadido a
+  // este apartado.
+  const items = [
+    ...(elementosPorCategoria()[cat.id] || []),
+    ...(extraPorCat?.[cat.id] || []),
+  ];
 
   // Cerrar al pulsar fuera.
   useEffect(() => {

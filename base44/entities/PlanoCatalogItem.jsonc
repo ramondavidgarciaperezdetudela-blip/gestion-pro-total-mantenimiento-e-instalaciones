@@ -1,0 +1,82 @@
+{
+  "name": "PlanoCatalogItem",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre del elemento/maquinaria personalizada"
+    },
+    "cat": {
+      "type": "string",
+      "enum": [
+        "refrigeracion",
+        "clima",
+        "ventilacion",
+        "electrico",
+        "seguridad",
+        "estructura"
+      ],
+      "description": "Categor\u00eda (apartado) del cat\u00e1logo al que pertenece"
+    },
+    "glyph": {
+      "type": "string",
+      "description": "C\u00f3digo corto de 2-3 letras para identificar el s\u00edmbolo"
+    },
+    "w_m": {
+      "type": "number",
+      "description": "Ancho en metros",
+      "default": 0.6
+    },
+    "h_m": {
+      "type": "number",
+      "description": "Alto en metros",
+      "default": 0.6
+    },
+    "precio": {
+      "type": "number",
+      "description": "Precio orientativo (\u20ac)"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "URL del icono/imagen generado por IA para el s\u00edmbolo"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "cat"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": true,
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

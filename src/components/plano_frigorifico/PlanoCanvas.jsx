@@ -214,7 +214,11 @@ export default function PlanoCanvas({
     if (!def) return;
     const el = {
       id: crypto.randomUUID(), type: def.id, cat: def.cat, label: def.label,
-      glyph: def.glyph, color: CAT_COLOR[def.cat] || def.color || '#888', datos: {},
+      glyph: def.glyph, color: CAT_COLOR[def.cat] || def.color || '#888',
+      // El icono del elemento personalizado va en datos.image_url para que
+      // se guarde con el plano (la imagen es una URL pública, no un campo
+      // grande) y PlanoSimbolo la sepa dibujar.
+      datos: def.image_url ? { image_url: def.image_url } : {},
       x: p.x, y: p.y, w_m: def.w_m, h_m: def.h_m,
       brand: '', model: '', notes: '', qty: 1,
     };

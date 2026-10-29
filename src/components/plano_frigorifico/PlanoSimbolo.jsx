@@ -92,7 +92,15 @@ export default function PlanoSimbolo({ el, scale = 50, selected = false, fromHer
   const borde = fromHere ? '#00D4FF' : (selected ? '#fde047' : color);
   const grosor = selected || fromHere ? 2.5 : 1.6;
 
-  const dibujo = useMemo(() => dibujar(tipoCond, w, h, x0, y0, id, color, datos, mini, el.glyph), [tipoCond, w, h, id, color, datos, mini, el.glyph]);
+  // Si el elemento trae su propia imagen (elemento personalizado del
+  // catálogo, o una condensadora con foto técnica), se dibuja esa imagen
+  // recortada en vez del símbolo vectorial. Así un equipo añadido por el
+  // usuario se ve igual que uno de fábrica.
+  const img = el.image_url || datos?.image_url;
+  const dibujo = useMemo(() => {
+    if (img) return dibujarImagen(w, h, x0, y0, id, img);
+    return dibujar(tipoCond, w, h, x0, y0, id, color, datos, mini, el.glyph);
+  }, [img, tipoCond, w, h, x0, y0, id, color, datos, mini, el.glyph]);
 
   return (
     <g>
@@ -110,6 +118,25 @@ export default function PlanoSimbolo({ el, scale = 50, selected = false, fromHer
 }
 
 /* ─── Dibujos por tipo ──────────────────────────────────────────────────── */
+
+// Imagen (icono) de un elemento personalizado o de una máquina con foto
+// técnica propia. Se recorta a un rectángulo redondeado para que encaje con el
+// resto de los símbolos del plano.
+function dibujarImagen(w, h, x0, y0, id, url) {
+  const radio = Math.min(w, h) * 0.12;
+  return (
+    <g>
+      <defs>
+        <clipPath id={`clipimg-${id}`}>
+          <rect x={x0} y={y0} width={w} height={h} rx={radio} />
+        </clipPath>
+      </defs>
+      <image href={url} x={x0} y={y0} width={w} height={h}
+        preserveAspectRatio="xMidYMid meet" clipPath={`url(#clipimg-${id})`} />
+      <rect x={x0} y={y0} width={w} height={h} rx={radio} fill="none" stroke="#1F2D3D" strokeWidth="1.4" />
+    </g>
+  );
+}
 
 function dibujar(tipo, w, h, x0, y0, id, color, datos, mini, glyph) {
   const cx = 0, cy = 0;

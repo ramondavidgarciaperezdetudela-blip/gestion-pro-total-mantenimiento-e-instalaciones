@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Save, FileDown, Box, Minimize2, Search,
+  Save, FileDown, Box, Minimize2, Search, Plus,
 } from 'lucide-react';
 import { CATEGORIAS } from '@/lib/planoFrigorificoCatalogo';
 import PlanoMenuEquipos from './PlanoMenuEquipos';
@@ -17,6 +17,7 @@ export default function PlanoBarraSuperior({
   mode, activeType, connectType, onPick,
   onUndo, onRedo, onCopy, onCut, onPaste, canUndo, canRedo, canCopy, canPaste,
   saving, onSave, onPDF, on3D, onExit,
+  extraPorCat, onAddElement,
 }) {
   const [q, setQ] = useState('');
 
@@ -54,8 +55,16 @@ export default function PlanoBarraSuperior({
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mr-1">Equipos</span>
         {CATEGORIAS.map((cat) => (
-          <PlanoMenuEquipos key={cat.id} cat={cat} activeType={activeType} onPick={onPick} />
+          <PlanoMenuEquipos key={cat.id} cat={cat} activeType={activeType} onPick={onPick} extraPorCat={extraPorCat} />
         ))}
+        {onAddElement && (
+          <button onClick={onAddElement}
+            className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs text-white hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg,#00D4FF,#7C3AED)' }}
+            title="Añadir un elemento o maquinaria propia al catálogo">
+            <Plus className="w-3.5 h-3.5" /> Añadir
+          </button>
+        )}
         <div className="flex items-center gap-1 ml-auto rounded-md border border-border bg-input px-2 py-1">
           <Search className="w-3.5 h-3.5 text-muted-foreground" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar…"
