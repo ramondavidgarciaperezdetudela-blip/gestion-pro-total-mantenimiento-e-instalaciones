@@ -16,10 +16,10 @@ import MenuElegirVersion from './MenuElegirVersion';
  * con el buscador. El lienzo ocupa todo lo que queda.
  */
 export default function PlanoBarraSuperior({
-  mode, activeType, connectType, onPick,
+  mode, activeType, connectType, onPick, onSala,
   onUndo, onRedo, onCopy, onCut, onPaste, canUndo, canRedo, canCopy, canPaste,
   saving, onSave, onPDF, on3D, onExit,
-  extraPorCat, onAddElement,
+  extraPorCat, onAddElement, onEditarIconos,
 }) {
   const [q, setQ] = useState('');
   const [busqAbierta, setBusqAbierta] = useState(false);
@@ -40,7 +40,7 @@ export default function PlanoBarraSuperior({
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2">
       {/* Fila 1: barra de dibujo y edición (estilo Paint) */}
       <PlanoBarraHerramientas
-        mode={mode} connectType={connectType} onPick={onPick}
+        mode={mode} connectType={connectType} onPick={onPick} onSala={onSala}
         onUndo={onUndo} onRedo={onRedo} onCopy={onCopy} onCut={onCut} onPaste={onPaste}
         canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste} />
 

@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from 'react';
-import { Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle, Ruler } from 'lucide-react';
 import { longitudConexion } from '@/lib/planoCalculo';
 import { elementoDe, valoresPorDefecto } from '@/lib/planoFrigorificoCatalogo';
 import {
@@ -27,7 +27,7 @@ const POWER_OPTS = [
 ];
 const TENSIONES = ['230 V monofásica', '400 V trifásica', '24 V', '12 V'];
 
-export default function PlanoEquipoDetalles({ element, wall, connection, elements, scale, onUpdate, onDelete }) {
+export default function PlanoEquipoDetalles({ element, wall, connection, elements, scale, onUpdate, onDelete, onEditarSala, onBorrarSala }) {
   if (connection) {
     return (
       <DetalleConexion
@@ -38,6 +38,30 @@ export default function PlanoEquipoDetalles({ element, wall, connection, element
 
   if (wall) {
     const len = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+    // Si la pared pertenece a una sala (habitáculo cuadrado/rectangular), se
+    // ofrecen los controles de la sala: cambiar sus medidas redibuja las
+    // cuatro paredes, y borrar la sala quita las cuatro a la vez.
+    if (wall.room_id) {
+      return (
+        <div className="flex flex-col gap-2" data-prueba="detalle-sala">
+          <div className="tech-label" style={{ color: '#0ea5e9' }}>Sala seleccionada</div>
+          <div className="rounded-md px-2 py-1.5 text-[11px]" style={{ background: '#0ea5e915', color: '#0369a1' }}>
+            <b>Medidas:</b> {wall.room_w_m} × {wall.room_h_m} m
+            <br />
+            <span className="text-[10px]">Cambia las medidas para redibujar la sala.</span>
+          </div>
+          <button onClick={() => onEditarSala && onEditarSala(wall.room_id)}
+            className="flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-white hover:opacity-90"
+            style={{ background: '#0ea5e9' }}>
+            <Ruler className="w-3.5 h-3.5" /> Cambiar medidas
+          </button>
+          <button onClick={() => onBorrarSala && onBorrarSala(wall.room_id)}
+            className="flex items-center justify-center gap-1.5 rounded-md border border-destructive/40 px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10">
+            <Trash2 className="w-3.5 h-3.5" /> Borrar sala
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col gap-2" data-prueba="detalle-pared">
         <div className="tech-label">Pared seleccionada</div>

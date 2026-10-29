@@ -15,6 +15,7 @@ import { exportarDXF } from '@/lib/planoDxfExport';
 import { exportarEsquemaElectrico, imprimirEsquemaElectrico } from '@/lib/planoEsquemaElectrico';
 import InformeAseguradoraDialog from '@/components/plano_frigorifico/InformeAseguradoraDialog';
 import DialogoNuevaConexion from '@/components/plano_frigorifico/DialogoNuevaConexion';
+import DialogoSala from '@/components/plano_frigorifico/DialogoSala';
 import GestorCatalogoPlano from '@/components/plano_frigorifico/GestorCatalogoPlano';
 import LeyendaPlano from '@/components/plano_frigorifico/LeyendaPlano';
 import PlanoBarraSuperior from '@/components/plano_frigorifico/PlanoBarraSuperior';
@@ -76,6 +77,10 @@ export default function PlanoFrigorifico() {
   // PlanoCatalogItem y aquí se cargan para mezclarlos con los de fábrica.
   const [catalogoExtra, setCatalogoExtra] = useState([]);
   const [dialogoCatalogo, setDialogoCatalogo] = useState(false);
+  // Diálogo para dibujar o editar una sala (habitáculo cuadrado/rectangular):
+  // pide ancho y largo en metros y dibuja las cuatro paredes. Al variar las
+  // medidas, el rectángulo se redibuja solo.
+  const [dialogoSala, setDialogoSala] = useState(null);
 
   const cargarCatalogoExtra = useCallback(async () => {
     try {
@@ -254,6 +259,66 @@ export default function PlanoFrigorifico() {
   };
 
   const onConexionCreada = (nueva) => setConexionDialogo({ id: nueva.id, tipo: nueva.type });
+
+  // ── Salas (habitáculos cuadrados/rectangulares) ──────────────────────────
+  // Una sala son cuatro paredes que comparten un room_id. Cada pared guarda
+  // además el origen (room_x, room_y) y las medidas (room_w_m, room_h_m) de
+  // la sala, así al cambiar las medidas se pueden recalcular las cuatro
+  // paredes sin perder la posición donde se dibujó.
+  const paredesDeSala = (x, y, w_m, h_m, scale, roomId) => {
+    const w = w_m * scale, h = h_m * scale;
+    const base = { room_id: roomId, room_x: x, room_y: y, room_w_m: w_m, room_h_m: h_m };
+    return [
+      { ...base, id: crypto.randomUUID(), x1: x, y1: y, x2: x + w, y2: y },           // arriba
+      { ...base, id: crypto.randomUUID(), x1: x + w, y1: y, x2: x + w, y2: y + h },  // derecha
+      { ...base, id: crypto.randomUUID(), x1: x + w, y1: y + h, x2: x, y2: y + h },   // abajo
+      { ...base, id: crypto.randomUUID(), x1: x, y1: y + h, x2: x, y2: y },           // izquierda
+    ];
+  };
+
+  const crearSala = ({ ancho, largo }) => {
+    // Se coloca la nueva sala un poco apartada de lo que ya hay, para que no
+    // caiga encima de paredes anteriores.
+    const xs = plan.walls.map((w) => Math.max(w.x1, w.x2)).concat(plan.walls.map((w) => Math.min(w.x1, w.x2)));
+    const baseX = xs.length ? Math.max(...xs) + 60 : 60;
+    const roomId = crypto.randomUUID();
+    const nuevas = paredesDeSala(baseX, 60, ancho, largo, plan.scale || 50, roomId);
+    handleChange({ walls: [...plan.walls, ...nuevas] });
+    setSelectedId(nuevas[0].id);
+    setDialogoSala(null);
+    toast.success(`Sala ${ancho}×${largo} m dibujada`, { description: 'Selecciona una pared para cambiar sus medidas.' });
+  };
+
+  const actualizarSala = (roomId, { ancho, largo }) => {
+    const ref = plan.walls.find((w) => w.room_id === roomId);
+    if (!ref) { setDialogoSala(null); return; }
+    const x = ref.room_x, y = ref.room_y, scale = plan.scale || 50;
+    const w = ancho * scale, h = largo * scale;
+    const coords = [
+      [x, y, x + w, y],
+      [x + w, y, x + w, y + h],
+      [x + w, y + h, x, y + h],
+      [x, y + h, x, y],
+    ];
+    // Se recorren las paredes de la sala en su orden original para asignar a
+    // cada una su nuevo tramo. Así al variar las medidas el rectángulo se
+    // redibuja sin mover la sala de sitio.
+    let i = 0;
+    const nuevas = plan.walls.map((pared) => {
+      if (pared.room_id !== roomId) return pared;
+      const [x1, y1, x2, y2] = coords[i] || coords[0];
+      i += 1;
+      return { ...pared, x1, y1, x2, y2, room_w_m: ancho, room_h_m: largo };
+    });
+    handleChange({ walls: nuevas });
+    setDialogoSala(null);
+    toast.success(`Sala actualizada a ${ancho}×${largo} m`);
+  };
+
+  const borrarSala = (roomId) => {
+    setPlan((p) => ({ ...p, walls: p.walls.filter((w) => w.room_id !== roomId) }));
+    setSelectedId(null);
+  };
 
   const onPick = ({ mode: m, element, connectType: ct }) => {
     setMode(m);
@@ -587,7 +652,12 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         element={selectedElement} connection={selectedConnection} wall={selectedWall}
         elements={plan.elements} scale={plan.scale}
         onUpdate={selectedConnection ? actualizarConexion : actualizarElemento}
-        onDelete={borrarSeleccion} />
+        onDelete={borrarSeleccion}
+        onEditarSala={(roomId) => {
+          const ref = plan.walls.find((w) => w.room_id === roomId);
+          if (ref) setDialogoSala({ roomId, ancho: ref.room_w_m, largo: ref.room_h_m });
+        }}
+        onBorrarSala={borrarSala} />
       <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
         <label className="flex flex-col gap-1">
           <span className="text-[10px] text-muted-foreground">Descripción del proyecto</span>
@@ -775,6 +845,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           <div className="flex flex-col gap-2 min-h-0 flex-1">
             <PlanoBarraSuperior
               mode={mode} activeType={activeType} connectType={connectType} onPick={onPick}
+              onSala={() => setDialogoSala({ nuevo: true })}
               onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
               canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
               saving={saving} onSave={guardar} onPDF={onExportarPDF}
@@ -811,6 +882,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           <div className="flex flex-col gap-3">
             <div className="rounded-lg border border-border bg-card p-3">
               <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} onPick={onPick}
+                onSala={() => setDialogoSala({ nuevo: true })}
                 onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
                 canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
                 extraElementos={extraItems} onAddElement={() => setDialogoCatalogo(true)} />
@@ -923,6 +995,15 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         onClose={() => setDialogoCatalogo(false)}
         onSaved={cargarCatalogoExtra}
       />
+
+      {/* Diálogo para dibujar o editar una sala (habitáculo cuadrado o
+          rectangular). Pide ancho y largo en metros; al confirmar dibuja las
+          cuatro paredes, y al editar, las redibuja con las medidas nuevas. */}
+      <DialogoSala
+        open={!!dialogoSala}
+        valorInicial={dialogoSala && !dialogoSala.nuevo ? { ancho: dialogoSala.ancho, largo: dialogoSala.largo } : null}
+        onConfirm={(dims) => dialogoSala?.nuevo ? crearSala(dims) : actualizarSala(dialogoSala.roomId, dims)}
+        onClose={() => setDialogoSala(null)} />
 
       {/* Diálogo que pide el diámetro (tubería) o el cable (eléctrica) al
           trazar una línea nueva. */}
