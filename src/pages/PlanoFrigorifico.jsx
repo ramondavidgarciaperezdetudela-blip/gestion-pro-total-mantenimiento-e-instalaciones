@@ -16,6 +16,7 @@ import { exportarEsquemaElectrico, imprimirEsquemaElectrico } from '@/lib/planoE
 import InformeAseguradoraDialog from '@/components/plano_frigorifico/InformeAseguradoraDialog';
 import DialogoNuevaConexion from '@/components/plano_frigorifico/DialogoNuevaConexion';
 import DialogoSala from '@/components/plano_frigorifico/DialogoSala';
+import DialogoCamara from '@/components/plano_frigorifico/DialogoCamara';
 import GestorCatalogoPlano from '@/components/plano_frigorifico/GestorCatalogoPlano';
 import LeyendaPlano from '@/components/plano_frigorifico/LeyendaPlano';
 import PlanoBarraSuperior from '@/components/plano_frigorifico/PlanoBarraSuperior';
@@ -81,6 +82,10 @@ export default function PlanoFrigorifico() {
   // pide ancho y largo en metros y dibuja las cuatro paredes. Al variar las
   // medidas, el rectángulo se redibuja solo.
   const [dialogoSala, setDialogoSala] = useState(null);
+  // Diálogo para dibujar o editar una cámara frigorífica: pide medidas, tipo
+  // (positiva/negativa), suelo sanitario y espesor del panel. La cámara se
+  // dibuja distinta a una pared, como un recinto panelado de doble línea.
+  const [dialogoCamara, setDialogoCamara] = useState(null);
 
   const cargarCatalogoExtra = useCallback(async () => {
     try {
@@ -316,6 +321,66 @@ export default function PlanoFrigorifico() {
   };
 
   const borrarSala = (roomId) => {
+    setPlan((p) => ({ ...p, walls: p.walls.filter((w) => w.room_id !== roomId) }));
+    setSelectedId(null);
+  };
+
+  // ── Cámaras frigoríficas ────────────────────────────────────────────────
+  // Una cámara es un recinto panelado (cuatro paredes) con metadatos: tipo
+  // (positiva/negativa), suelo sanitario y espesor del panel. Se dibuja
+  // distinto a una pared (doble línea coloreada según el tipo) para que se
+  // reconozca a primera vista en el plano. Comparte room_id como las salas,
+  // pero lleva `camara: true` y sus datos propios.
+  const paredesDeCamara = (x, y, w_m, h_m, scale, roomId, datos) => {
+    const w = w_m * scale, h = h_m * scale;
+    const base = {
+      room_id: roomId, room_x: x, room_y: y, room_w_m: w_m, room_h_m: h_m,
+      camara: true, ...datos,
+    };
+    return [
+      { ...base, id: crypto.randomUUID(), x1: x, y1: y, x2: x + w, y2: y },
+      { ...base, id: crypto.randomUUID(), x1: x + w, y1: y, x2: x + w, y2: y + h },
+      { ...base, id: crypto.randomUUID(), x1: x + w, y1: y + h, x2: x, y2: y + h },
+      { ...base, id: crypto.randomUUID(), x1: x, y1: y + h, x2: x, y2: y },
+    ];
+  };
+
+  const crearCamara = ({ ancho, largo, tipo, suelo, espesor }) => {
+    const xs = plan.walls.map((w) => Math.max(w.x1, w.x2)).concat(plan.walls.map((w) => Math.min(w.x1, w.x2)));
+    const baseX = xs.length ? Math.max(...xs) + 80 : 80;
+    const roomId = crypto.randomUUID();
+    const nuevas = paredesDeCamara(baseX, 80, ancho, largo, plan.scale || 50, roomId, { tipo, suelo, espesor_mm: espesor });
+    handleChange({ walls: [...plan.walls, ...nuevas] });
+    setSelectedId(nuevas[0].id);
+    setDialogoCamara(null);
+    toast.success(`Cámara ${ancho}×${largo} m · ${tipo}`, { description: `${suelo ? 'Con suelo sanitario' : 'Sin suelo sanitario'} · ${espesor} mm` });
+  };
+
+  const actualizarCamara = (roomId, datos) => {
+    const ref = plan.walls.find((w) => w.room_id === roomId && w.camara);
+    if (!ref) { setDialogoCamara(null); return; }
+    const x = ref.room_x, y = ref.room_y, scale = plan.scale || 50;
+    const { ancho, largo, tipo, suelo, espesor } = datos;
+    const w = ancho * scale, h = largo * scale;
+    const coords = [
+      [x, y, x + w, y],
+      [x + w, y, x + w, y + h],
+      [x + w, y + h, x, y + h],
+      [x, y + h, x, y],
+    ];
+    let i = 0;
+    const nuevas = plan.walls.map((pared) => {
+      if (pared.room_id !== roomId) return pared;
+      const [x1, y1, x2, y2] = coords[i] || coords[0];
+      i += 1;
+      return { ...pared, x1, y1, x2, y2, room_w_m: ancho, room_h_m: largo, tipo, suelo, espesor_mm: espesor };
+    });
+    handleChange({ walls: nuevas });
+    setDialogoCamara(null);
+    toast.success(`Cámara actualizada a ${ancho}×${largo} m`);
+  };
+
+  const borrarCamara = (roomId) => {
     setPlan((p) => ({ ...p, walls: p.walls.filter((w) => w.room_id !== roomId) }));
     setSelectedId(null);
   };
@@ -657,7 +722,12 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           const ref = plan.walls.find((w) => w.room_id === roomId);
           if (ref) setDialogoSala({ roomId, ancho: ref.room_w_m, largo: ref.room_h_m });
         }}
-        onBorrarSala={borrarSala} />
+        onBorrarSala={borrarSala}
+        onEditarCamara={(roomId) => {
+          const ref = plan.walls.find((w) => w.room_id === roomId && w.camara);
+          if (ref) setDialogoCamara({ roomId, ancho: ref.room_w_m, largo: ref.room_h_m, tipo: ref.tipo, suelo: ref.suelo, espesor: ref.espesor_mm });
+        }}
+        onBorrarCamara={borrarCamara} />
       <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
         <label className="flex flex-col gap-1">
           <span className="text-[10px] text-muted-foreground">Descripción del proyecto</span>
@@ -846,6 +916,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
             <PlanoBarraSuperior
               mode={mode} activeType={activeType} connectType={connectType} onPick={onPick}
               onSala={() => setDialogoSala({ nuevo: true })}
+              onCamara={() => setDialogoCamara({ nuevo: true })}
               onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
               canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
               saving={saving} onSave={guardar} onPDF={onExportarPDF}
@@ -869,13 +940,21 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
             </div>
 
             {Controles}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 flex-1 min-h-0">
-              <PlanoCanvas
-                walls={plan.walls} elements={plan.elements} connections={plan.connections}
-                selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-                polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
-                capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen />
-              {PanelLateral}
+            {/* Layout flexible para que el lienzo ocupe el espacio disponible y
+                el panel lateral se vea también en móvil y tablet. Antes usaba
+                grid: en pantalla completa el lienzo colapsaba a altura 0 porque
+                la celda no tenía alto definido y el SVG no se veía. */}
+            <div className="flex flex-col lg:flex-row gap-3 flex-1 min-h-0">
+              <div className="flex-1 min-h-0 min-h-[52vh] lg:min-h-0">
+                <PlanoCanvas
+                  walls={plan.walls} elements={plan.elements} connections={plan.connections}
+                  selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
+                  polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
+                  capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen />
+              </div>
+              <div className="lg:w-[300px] lg:flex-shrink-0 max-h-[44vh] lg:max-h-none overflow-y-auto">
+                {PanelLateral}
+              </div>
             </div>
           </div>
         ) : (
@@ -883,6 +962,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
             <div className="rounded-lg border border-border bg-card p-3">
               <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} onPick={onPick}
                 onSala={() => setDialogoSala({ nuevo: true })}
+                onCamara={() => setDialogoCamara({ nuevo: true })}
                 onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
                 canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
                 extraElementos={extraItems} onAddElement={() => setDialogoCatalogo(true)} />
@@ -1004,6 +1084,17 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         valorInicial={dialogoSala && !dialogoSala.nuevo ? { ancho: dialogoSala.ancho, largo: dialogoSala.largo } : null}
         onConfirm={(dims) => dialogoSala?.nuevo ? crearSala(dims) : actualizarSala(dialogoSala.roomId, dims)}
         onClose={() => setDialogoSala(null)} />
+
+      {/* Diálogo para dibujar o editar una cámara frigorífica. Pide medidas,
+          tipo (positiva/negativa), suelo sanitario y espesor del panel, y la
+          dibuja como un recinto panelado distinto a una pared. */}
+      <DialogoCamara
+        open={!!dialogoCamara}
+        valorInicial={dialogoCamara && !dialogoCamara.nuevo
+          ? { ancho: dialogoCamara.ancho, largo: dialogoCamara.largo, tipo: dialogoCamara.tipo, suelo: dialogoCamara.suelo, espesor: dialogoCamara.espesor }
+          : null}
+        onConfirm={(datos) => dialogoCamara?.nuevo ? crearCamara(datos) : actualizarCamara(dialogoCamara.roomId, datos)}
+        onClose={() => setDialogoCamara(null)} />
 
       {/* Diálogo que pide el diámetro (tubería) o el cable (eléctrica) al
           trazar una línea nueva. */}

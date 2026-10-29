@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  MousePointer2, Minus, Type, Ruler, Spline, Eraser, Square,
+  MousePointer2, Minus, Type, Ruler, Spline, Eraser, Square, Snowflake,
   Undo2, Redo2, Copy, Scissors, ClipboardPaste,
   Link2, Wind, Zap,
 } from 'lucide-react';
@@ -19,7 +19,7 @@ import {
  * en la página, que es quien tiene el historial y el portapapeles.
  */
 export default function PlanoBarraHerramientas({
-  mode, connectType, onPick, onSala,
+  mode, connectType, onPick, onSala, onCamara,
   onUndo, onRedo, onCopy, onCut, onPaste,
   canUndo = true, canRedo = true, canCopy = false, canPaste = false,
 }) {
@@ -31,6 +31,9 @@ export default function PlanoBarraHerramientas({
       <BotonHerr activo={mode === 'wall'} onClick={() => onPick({ mode: 'wall' })} icon={Minus} label="Pared" />
       {onSala && (
         <BotonHerr activo={false} onClick={onSala} icon={Square} label="Sala" color="#0ea5e9" />
+      )}
+      {onCamara && (
+        <BotonHerr activo={false} onClick={onCamara} icon={Snowflake} label="Cámara" color="#3b82f6" />
       )}
       <BotonHerr activo={mode === 'text'} onClick={() => onPick({ mode: 'text' })} icon={Type} label="Texto" color="#64748b" />
       <BotonHerr activo={mode === 'cota'} onClick={() => onPick({ mode: 'cota' })} icon={Ruler} label="Cota" color="#64748b" />
