@@ -11,6 +11,7 @@ import { jsPDF } from 'jspdf';
 import { dibujarPlanoVectorial } from '@/lib/planoDibujoPdf';
 import { longitudConexion, resumenTuberias } from '@/lib/planoCalculo';
 import { elementoDe } from '@/lib/planoFrigorificoCatalogo';
+import { generarVista3DDataUrl, VISTA3D_W, VISTA3D_H } from '@/lib/planoVista3D';
 
 const esc = (t) => String(t ?? '');
 const eu = (n) => `${(Number(n) || 0).toFixed(2)} €`;
@@ -210,6 +211,30 @@ export async function generarInformeAseguradora({
   y += drawH + 4;
   doc.setFontSize(7); doc.setTextColor(110);
   doc.text(`Escala 1 px = ${(1 / (plan.scale || 50)).toFixed(3)} m · ${elements.length} equipos · ${connections.length} conexiones`, M, y);
+
+  // ── Vista 3D de la instalación ──
+  //
+  // La misma vista isométrica que se guarda junto al plano, dibujada aquí a
+  // partir del plano actual (nunca una imagen atrasada). El perito ve así el
+  // volumen de la instalación, no solo la planta.
+  const vista3D = generarVista3DDataUrl({
+    walls: walls || [], elements: elements || [], scale: plan.scale || 50,
+  });
+  if (vista3D) {
+    doc.addPage(); y = M;
+    titulo('Vista 3D de la instalación');
+    const cajaW = W;
+    const cajaH = PH - M - y - 6;
+    const ratio = VISTA3D_W / VISTA3D_H;
+    let w = cajaW, h = w / ratio;
+    if (h > cajaH) { h = cajaH; w = h * ratio; }
+    doc.setDrawColor(203); doc.setLineWidth(0.3);
+    doc.rect(M, y, w, h, 'S');
+    addImg(doc, vista3D, M, y, w, h);
+    y += h + 4;
+    doc.setFontSize(7); doc.setTextColor(110);
+    doc.text(`Vista isométrica · ${elements.length} equipos · ${(walls || []).length} paredes`, M, y);
+  }
 
   // ── Lista de materiales y cálculos ──
   doc.addPage(); y = M;
