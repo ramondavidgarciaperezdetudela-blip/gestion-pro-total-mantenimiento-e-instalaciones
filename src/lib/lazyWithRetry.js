@@ -8,10 +8,19 @@
  * usuario tiene que pulsar "Recargar página" a mano. Con esto, la primera
  * vez que un chunk falla se recarga la página una sola vez: el navegador
  * vuelve a pedir el index.html actual con los hashes correctos y la página
- * carga sola. El guardia `__lazyChunkReloaded` evita bucles si el chunk
- * realmente no existe (entonces el error sube al ErrorBoundary, como antes).
+ * carga sola.
+ *
+ * ANTI-BUCLE: la marca de "ya recargué" se guarda en sessionStorage, no en
+ * window. Si se guarda solo en window, al recargar la página la marca se
+ * pierde y, si el chunk sigue sin cargar, se vuelve a recargar para siempre
+ * ("se queda recargando y no abre"). Con sessionStorage, tras UNA recarga
+ * fallida el error sube al ErrorBoundary y el usuario ve el botón de
+ * "Recargar página" en vez de un bucle sin fin. La marca se limpia cuando la
+ * página carga bien, para no bloquear recargas legítimas del futuro.
  */
 import { lazy } from 'react';
+
+const FLAG = '__lazyChunkReloaded';
 
 // Si un chunk no carga, antes de recargar se tira la caché del service worker
 // y se da de baja el propio SW. Sin esto, la recarga vuelve a servir el chunk
@@ -31,15 +40,27 @@ async function limpiarCacheYSW() {
   } catch { /* sin service worker */ }
 }
 
+function yaSeRecargo() {
+  try { return sessionStorage.getItem(FLAG) === '1'; } catch { return false; }
+}
+function marcarRecargado() {
+  try { sessionStorage.setItem(FLAG, '1'); } catch { /* sessionStorage no disponible */ }
+}
+function limpiarMarca() {
+  try { sessionStorage.removeItem(FLAG); } catch { /* noop */ }
+}
+
 export function lazyWithRetry(loader) {
   return lazy(() =>
-    loader().catch(async (err) => {
-      if (typeof window !== 'undefined' && !window.__lazyChunkReloaded) {
-        window.__lazyChunkReloaded = true;
-        await limpiarCacheYSW();
-        window.location.reload();
-      }
-      throw err;
-    })
+    loader()
+      .then((mod) => { limpiarMarca(); return mod; })
+      .catch(async (err) => {
+        if (typeof window !== 'undefined' && !yaSeRecargo()) {
+          marcarRecargado();
+          await limpiarCacheYSW();
+          window.location.reload();
+        }
+        throw err;
+      })
   );
 }
