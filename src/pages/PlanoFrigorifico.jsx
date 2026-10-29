@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Zap } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { getNextAvailableNumber } from '@/components/autoNumber';
@@ -11,6 +12,7 @@ import PlanoPaleta from '@/components/plano_frigorifico/PlanoPaleta';
 import PlanoEquipoDetalles from '@/components/plano_frigorifico/PlanoEquipoDetalles';
 import { construirPDF, exportarPDF, imprimirPlano } from '@/components/plano_frigorifico/PlanoExporter';
 import { exportarDXF } from '@/lib/planoDxfExport';
+import { exportarEsquemaElectrico, imprimirEsquemaElectrico } from '@/lib/planoEsquemaElectrico';
 import InformeAseguradoraDialog from '@/components/plano_frigorifico/InformeAseguradoraDialog';
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
 import { CAT_COLOR, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
@@ -44,6 +46,15 @@ export default function PlanoFrigorifico() {
   const [enviando, setEnviando] = useState(false);
   const [empresa, setEmpresa] = useState({});
   const [informeDialog, setInformeDialog] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  // Esc cierra la pantalla completa, igual que en el resto del programa.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const h = (e) => { if (e.key === 'Escape') setFullscreen(false); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [fullscreen]);
 
   const cargarDatos = useCallback(async () => {
     setLoading(true);
@@ -237,6 +248,28 @@ export default function PlanoFrigorifico() {
     catch (e) { console.error(e); toast.error('No se pudo abrir la impresión', { description: String(e?.message || e) }); }
   };
 
+  const onEsquemaElectrico = () => {
+    const hayElec = plan.connections.some((c) => c.type === 'electrica');
+    if (!hayElec && !plan.elements.some((e) => e.type === 'cuadro_electrico')) {
+      toast.error('No hay conexiones eléctricas', { description: 'Usa «Conectar» · «Eléctrica» entre los equipos para dibujar el esquema.' });
+      return;
+    }
+    try { exportarEsquemaElectrico(plan, plan.elements, plan.connections, empresa); toast.success('Esquema eléctrico generado'); }
+    catch (e) { console.error(e); toast.error('No se pudo generar el esquema', { description: String(e?.message || e) }); }
+  };
+  const onImprimirEsquema = () => {
+    try { imprimirEsquemaElectrico(plan, plan.elements, plan.connections, empresa); }
+    catch (e) { console.error(e); toast.error('No se pudo imprimir el esquema', { description: String(e?.message || e) }); }
+  };
+
+  const limpiarPlano = () => {
+    if (!plan.elements.length && !plan.walls.length && !plan.connections.length) return;
+    if (!confirm('¿Borrar todo lo dibujado en este plano? No se puede deshacer.')) return;
+    setPlan((p) => ({ ...p, walls: [], elements: [], connections: [] }));
+    setSelectedId(null);
+    toast.success('Plano limpiado');
+  };
+
   // ── Enviar el PDF por Gmail al cliente ───────────────────────────────────
   const enviarPorGmail = async () => {
     if (!gmailForm.to.trim()) { toast.error('Indica el correo del cliente'); return; }
@@ -395,11 +428,20 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           <Spline className="w-3.5 h-3.5" /> {polyline ? 'Polilínea ON' : 'Polilínea (codos)'}
         </button>
         <div className="w-px h-5 bg-border mx-0.5" />
+        <button onClick={() => setFullscreen((v) => !v)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
+          style={{ background: '#0f172a' }}>
+          {fullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          {fullscreen ? 'Salir pantalla' : 'Pantalla completa'}
+        </button>
         <button onClick={onExportarPDF} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
           <FileDown className="w-3.5 h-3.5" /> PDF
         </button>
         <button onClick={() => exportarDXF(plan, plan.elements, plan.walls, plan.connections)} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
           <FileBox className="w-3.5 h-3.5" /> CAD (DXF)
+        </button>
+        <button onClick={onEsquemaElectrico} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted"
+          title="Esquema eléctrico de la instalación (para adjuntar al informe)">
+          <Zap className="w-3.5 h-3.5" /> Esquema eléctrico
         </button>
         <button onClick={onImprimir} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
           <Printer className="w-3.5 h-3.5" /> Imprimir
@@ -407,6 +449,14 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         <button onClick={() => setInformeDialog(true)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
           style={{ background: '#2563eb' }}>
           <ShieldCheck className="w-3.5 h-3.5" /> Informe aseguradora
+        </button>
+        <button onClick={borrarSeleccion} disabled={!selectedId}
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted disabled:opacity-40">
+          <Eraser className="w-3.5 h-3.5" /> Borrar selección
+        </button>
+        <button onClick={limpiarPlano}
+          className="flex items-center gap-1.5 rounded-lg border border-destructive/40 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10">
+          <Trash2 className="w-3.5 h-3.5" /> Limpiar plano
         </button>
         <button onClick={() => setGmailDialog(true)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
           style={{ background: '#D44638' }}>
@@ -456,10 +506,10 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         </div>
       </div>
 
-      {/* Paleta superior: dibujos por categorías con todos los tipos */}
-      <div className="rounded-lg border border-border bg-card p-3">
-        <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} onPick={onPick} />
-      </div>
+      <PantallaCompleta open={fullscreen} onClose={() => setFullscreen(false)}>
+        <div className="rounded-lg border border-border bg-card p-3">
+          <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} onPick={onPick} />
+        </div>
 
       {/* Controles de cuadrícula, movimiento y capas */}
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2">
@@ -506,14 +556,14 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       </div>
 
       {/* Cuerpo: lienzo · detalles */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
+      <div className={`grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 ${fullscreen ? 'flex-1 min-h-0' : ''}`}>
         <PlanoCanvas
           walls={plan.walls} elements={plan.elements} connections={plan.connections}
           selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
           polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
-          capasVisibles={capasVisibles} onChange={handleChange} />
+          capasVisibles={capasVisibles} onChange={handleChange} fullscreen={fullscreen} />
 
-        <div className="rounded-lg border border-border bg-card p-3 lg:max-h-[70vh] overflow-y-auto">
+        <div className={`rounded-lg border border-border bg-card p-3 overflow-y-auto ${fullscreen ? 'min-h-0 max-h-full' : 'lg:max-h-[70vh]'}`}>
           <PlanoEquipoDetalles
             element={selectedElement} connection={selectedConnection} wall={selectedWall}
             elements={plan.elements} scale={plan.scale}
@@ -563,6 +613,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           </div>
         </div>
       </div>
+      </PantallaCompleta>
 
       {/* Diálogo: enviar el plano por Gmail */}
       {gmailDialog && (
@@ -623,5 +674,32 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         contacts={contacts}
       />
     </div>
+  );
+}
+
+// Pantalla completa del editor: cuando está activa, portaliza la paleta, los
+// controles y el lienzo sobre el body para que ocupen todo el dispositivo;
+// cuando no, los deja en su sitio sin tocar el layout.
+function PantallaCompleta({ open, onClose, children }) {
+  if (!open) return <>{children}</>;
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex flex-col gap-2 overflow-hidden"
+      style={{
+        background: 'hsl(var(--background))',
+        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8px)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
+        paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 8px)',
+        paddingRight: 'calc(env(safe-area-inset-right, 0px) + 8px)',
+      }}>
+      <div className="flex justify-end">
+        <button onClick={onClose}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
+          style={{ background: '#0f172a' }}>
+          <Minimize2 className="w-3.5 h-3.5" /> Salir pantalla completa
+        </button>
+      </div>
+      <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">{children}</div>
+    </div>,
+    document.body
   );
 }

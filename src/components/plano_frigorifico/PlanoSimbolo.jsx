@@ -1,4 +1,11 @@
 import React, { useMemo } from 'react';
+
+// Imagen realista (símbolo técnico) de una condensadora por aire, generada
+// como referencia de estilo. Se usa tal cual para que el elemento del plano
+// se vea como la máquina que se va a instalar, no como un icono genérico.
+const IMG_CONDENSADORA_AIRE =
+  'https://media.base44.com/images/public/6994f99700e8a842baf72997/00e8f6bc4_generated_2831fa93.png';
+
 /**
  * PlanoSimbolo — dibuja cada equipo del plano como un símbolo vectorial
  * "realista" (con degradado, sombra y su silueta propia), no como una caja
@@ -162,32 +169,23 @@ function aspas(cx, cy, r, n, id) {
   return out;
 }
 
-// ── Condensadora por aire (axial): caja con ventiladores axiales ──
+// ── Condensadora por aire (axial): imagen técnica realista de la máquina ──
 function condAireAxial(w, h, x0, y0, id, datos, mini) {
-  const nV = Math.max(1, parseInt(datos?.ventiladores) || 2);
-  const fans = [];
-  const r = Math.min(h * 0.34, w / (nV * 2.4));
-  const gap = w / (nV + 0.4);
-  for (let i = 0; i < nV; i++) {
-    const fx = x0 + gap * (i + 0.7);
-    const fy = y0 + h / 2;
-    fans.push(
-      <g key={i}>
-        <circle cx={fx} cy={fy} r={r} fill="#0f172a" stroke="#475569" strokeWidth="1" />
-        <circle cx={fx} cy={fy} r={r * 0.86} fill={`url(#ac-${id})`} />
-        {aspas(fx, fy, r * 0.78, 5, id)}
-      </g>
-    );
-  }
+  const radio = Math.min(w, h) * 0.12;
   return (
     <g>
-      {cuerpo3D(x0, y0, w, h, id)}
-      {/* Rejilla lateral de aletillas del condensador */}
-      {!mini && [...Array(7)].map((_, i) => (
-        <line key={'a' + i} x1={x0 + 3} y1={y0 + h * 0.62 + i * 1.6} x2={x0 + w - 3} y2={y0 + h * 0.62 + i * 1.6}
-          stroke="#64748b" strokeWidth="0.8" opacity="0.6" />
-      ))}
-      {fans}
+      <defs>
+        <clipPath id={`clip-${id}`}>
+          <rect x={x0} y={y0} width={w} height={h} rx={radio} />
+        </clipPath>
+      </defs>
+      <image
+        href={IMG_CONDENSADORA_AIRE}
+        x={x0} y={y0} width={w} height={h}
+        preserveAspectRatio="xMidYMid meet"
+        clipPath={`url(#clip-${id})`}
+      />
+      <rect x={x0} y={y0} width={w} height={h} rx={radio} fill="none" stroke="#1F2D3D" strokeWidth="1.4" />
     </g>
   );
 }

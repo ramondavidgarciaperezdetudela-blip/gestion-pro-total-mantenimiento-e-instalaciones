@@ -54,6 +54,7 @@ function capaConexion(c) {
 export default function PlanoCanvas({
   walls, elements, connections, selectedId, mode, activeElement, connectType, polyline,
   scale = 50, gridMeters = 1, snapMode = 'libre', capasVisibles = {}, onChange,
+  fullscreen = false,
 }) {
   const svgRef = useRef(null);
   const [mouse, setMouse] = useState(null);
@@ -180,11 +181,12 @@ export default function PlanoCanvas({
   const conexionesVisibles = useMemo(() => connections.filter(connVisible), [connections, capasVisibles]);
 
   return (
-    <div className="overflow-auto rounded-lg border border-border bg-card" style={{ maxHeight: '70vh' }}>
+    <div className="overflow-auto rounded-lg border border-border bg-card"
+      style={fullscreen ? { height: '100%', minHeight: 0 } : { maxHeight: '70vh' }}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
-        style={{ width: '100%', minWidth: 720, height: '70vh', display: 'block', touchAction: 'none', cursor: mode === 'wall' || mode === 'connect' ? 'crosshair' : mode === 'select' ? 'default' : 'copy' }}
+        style={{ width: '100%', minWidth: fullscreen ? 0 : 720, height: fullscreen ? '100%' : '70vh', display: 'block', touchAction: 'none', cursor: mode === 'wall' || mode === 'connect' ? 'crosshair' : mode === 'select' ? 'default' : 'copy' }}
         onPointerDown={handleDown}
         onPointerMove={handleMove}
         onPointerUp={handleUp}
