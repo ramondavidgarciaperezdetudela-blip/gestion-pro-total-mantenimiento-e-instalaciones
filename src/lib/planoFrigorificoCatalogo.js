@@ -28,6 +28,9 @@ export const CATEGORIAS = [
   { id: 'electrico', label: 'Electricidad / Aparamenta', color: '#EAB308', capa: 'electrico' },
   { id: 'seguridad', label: 'Seguridad', color: '#EF4444', capa: 'seguridad' },
   { id: 'estructura', label: 'Estructura', color: '#A855F7', capa: 'estructura' },
+  // Apartado aparte para los iconos que el usuario genere con IA: así puede
+  // usar el símbolo de fábrica o el icono IA, el que prefiera en cada caso.
+  { id: 'ia', label: 'Iconos IA', color: '#6366f1', capa: 'estructura' },
 ];
 
 export const CAT_COLOR = CATEGORIAS.reduce((m, c) => { m[c.id] = c.color; return m; }, {});

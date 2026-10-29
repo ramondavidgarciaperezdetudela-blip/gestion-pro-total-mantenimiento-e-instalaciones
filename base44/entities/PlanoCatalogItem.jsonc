@@ -14,9 +14,10 @@
         "ventilacion",
         "electrico",
         "seguridad",
-        "estructura"
+        "estructura",
+        "ia"
       ],
-      "description": "Categor\u00eda (apartado) del cat\u00e1logo al que pertenece"
+      "description": "Categor\u00eda (apartado) del cat\u00e1logo al que pertenece. 'ia' es el apartado de iconos generados por IA."
     },
     "glyph": {
       "type": "string",

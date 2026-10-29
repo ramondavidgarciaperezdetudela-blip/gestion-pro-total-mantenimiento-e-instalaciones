@@ -183,7 +183,7 @@ function BotonEquipo({ el, activo, onClick }) {
           style={{ color, background: color + '1a' }}>{el.glyph}</span>
       )}
       <svg viewBox="-40 -30 80 60" width="84" height="62" style={{ display: 'block' }}>
-        <PlanoSimbolo el={{ ...el, type: el.id, id: 'pal-' + el.id, datos: {}, color, w_m: el.w_m, h_m: el.h_m }} scale={52} mini />
+        <PlanoSimbolo el={{ ...el, type: el.id, id: 'pal-' + el.id, datos: el.image_url ? { image_url: el.image_url } : {}, color, w_m: el.w_m, h_m: el.h_m }} scale={52} mini />
       </svg>
       <span className="text-[10px] leading-tight text-center w-full"
         style={{ color: activo ? color : 'hsl(var(--foreground))', fontWeight: activo ? 700 : 500 }}>

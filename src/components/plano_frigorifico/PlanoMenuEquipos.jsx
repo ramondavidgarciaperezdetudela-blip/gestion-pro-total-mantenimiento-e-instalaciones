@@ -67,7 +67,7 @@ export default function PlanoMenuEquipos({ cat, activeType, onPick, extraPorCat 
                       style={{ color: cat.color, background: cat.color + '1a' }}>{el.glyph}</span>
                   )}
                   <svg viewBox="-40 -30 80 60" width="72" height="54" style={{ display: 'block' }}>
-                    <PlanoSimbolo el={{ ...el, type: el.id, id: 'm-' + el.id, datos: {}, color: cat.color, w_m: el.w_m, h_m: el.h_m }} scale={48} mini />
+                    <PlanoSimbolo el={{ ...el, type: el.id, id: 'm-' + el.id, datos: el.image_url ? { image_url: el.image_url } : {}, color: cat.color, w_m: el.w_m, h_m: el.h_m }} scale={48} mini />
                   </svg>
                   <span className="text-[9px] leading-tight text-center w-full truncate"
                     style={{ color: activo ? cat.color : 'hsl(var(--foreground))', fontWeight: activo ? 700 : 500 }}>

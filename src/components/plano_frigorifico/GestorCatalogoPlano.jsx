@@ -15,7 +15,7 @@ import { CATEGORIAS, CAT_COLOR } from '@/lib/planoFrigorificoCatalogo';
  */
 export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes = [] }) {
   const [name, setName] = useState('');
-  const [cat, setCat] = useState('refrigeracion');
+  const [cat, setCat] = useState('ia');
   const [w_m, setW] = useState(0.6);
   const [h_m, setH] = useState(0.6);
   const [precio, setPrecio] = useState('');
@@ -32,7 +32,7 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
     setBuscando(true);
     try {
       const catLabel = CATEGORIAS.find((c) => c.id === cat)?.label || cat;
-      const prompt = `Icono técnico realista en vista superior de "${name.trim()}" (${catLabel}), símbolo para un plano de instalación frigorífica/climatización, estilo vectorial limpio, centrado sobre fondo blanco, sin texto, nítido, claramente reconocible como la pieza o maquinaria que es`;
+      const prompt = `Símbolo técnico ESTÁNDAR en vista superior de "${name.trim()}" (${catLabel}), icono normalizado para plano de instalación frigorífica/climatización, estilo vectorial de líneas limpias y planas (sin degradados ni sombras), contorno negro grueso, relleno plano de un solo color, centrado sobre fondo blanco, sin texto ni letras, silueta claramente distinta e inconfundible para diferenciarlo a primera vista de otras máquinas, estilo esquema técnico ISO`;
       const res = await base44.integrations.Core.GenerateImage({ prompt });
       if (res?.url) setImageUrl(res.url);
     } catch (e) {

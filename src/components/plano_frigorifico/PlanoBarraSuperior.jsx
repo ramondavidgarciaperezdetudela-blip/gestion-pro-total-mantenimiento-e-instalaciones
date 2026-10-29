@@ -112,7 +112,7 @@ export default function PlanoBarraSuperior({
                           <span className="absolute top-0.5 right-1 text-[8px] font-bold" style={{ color }}>{el.glyph}</span>
                         )}
                         <svg viewBox="-40 -30 80 60" width="64" height="48" style={{ display: 'block' }}>
-                          <PlanoSimbolo el={{ ...el, type: el.id, id: 'b-' + el.id, datos: {}, color, w_m: el.w_m, h_m: el.h_m }} scale={46} mini />
+                          <PlanoSimbolo el={{ ...el, type: el.id, id: 'b-' + el.id, datos: el.image_url ? { image_url: el.image_url } : {}, color, w_m: el.w_m, h_m: el.h_m }} scale={46} mini />
                         </svg>
                         <span className="text-[9px] leading-tight text-center w-full truncate">{el.label}</span>
                       </button>
