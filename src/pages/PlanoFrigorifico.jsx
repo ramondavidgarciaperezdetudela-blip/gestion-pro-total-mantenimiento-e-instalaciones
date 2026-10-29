@@ -20,7 +20,9 @@ import DialogoCamara from '@/components/plano_frigorifico/DialogoCamara';
 import GestorCatalogoPlano from '@/components/plano_frigorifico/GestorCatalogoPlano';
 import LeyendaPlano from '@/components/plano_frigorifico/LeyendaPlano';
 import PlanoBarraSuperior from '@/components/plano_frigorifico/PlanoBarraSuperior';
-import Vista3DPlanoFrigorifico from '@/components/plano_frigorifico/Vista3DPlanoFrigorifico';
+// El visor 3D se carga de forma perezosa y envuelta en su propio ErrorBoundary
+// (Vista3DSegura): si falla, el editor de planos sigue funcionando.
+import Vista3DPlanoFrigorifico from '@/components/plano_frigorifico/Vista3DSegura';
 import ControlMoverFlotante from '@/components/plano_frigorifico/ControlMoverFlotante';
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
 import { CAT_COLOR, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
