@@ -258,8 +258,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'aceptar') {
-      if (!signature) {
-        return Response.json({ error: 'Se requiere firma para aceptar' }, { status: 400 });
+      if (!firma) {
+        return Response.json({ error: 'Se requiere una firma válida para aceptar' }, { status: 400 });
       }
 
       // Subir firma como archivo para evitar el límite de tamaño de entidad

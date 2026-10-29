@@ -34,6 +34,31 @@ export default async function(req) {
     }
     if (!pdf_base64) return Response.json({ error: 'Falta el PDF' }, { status: 400 });
 
+    // El PDF no puede ser de cualquier tamaño: un adjunto desmedido se rechaza.
+    if (String(pdf_base64).length > 28000000) {
+      return Response.json({ error: 'El PDF es demasiado grande (máx. 20 MB)' }, { status: 413 });
+    }
+
+    /*
+     * Solo se escribe a direcciones que ya existen en la ficha de un cliente,
+     * a la del propio usuario o a la de la empresa. Así la cuenta de Gmail de
+     * la empresa no sirve para mandar correos a cualquier dirección externa.
+     */
+    const destino = to.trim().toLowerCase();
+    const autorizados = new Set<string>([String(user.email || '').toLowerCase()]);
+    const contactos = await base44.asServiceRole.entities.Contact.filter({ email: destino }).catch(() => []);
+    if (contactos?.length) autorizados.add(destino);
+    const ajustes = await base44.asServiceRole.entities.CompanySettings.list().catch(() => []);
+    const empresa = (Array.isArray(ajustes) ? ajustes : ajustes?.items ?? [])[0];
+    if (empresa?.email) autorizados.add(String(empresa.email).toLowerCase());
+
+    if (!autorizados.has(destino)) {
+      return Response.json(
+        { error: 'Ese correo no es de ningún cliente dado de alta. Añade el cliente antes de enviarle el plano.' },
+        { status: 403 },
+      );
+    }
+
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
 
     const safeName = (filename || 'plano_frigorifico').replace(/[^\w.\-]+/g, '_');

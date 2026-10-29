@@ -8,7 +8,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'No autorizado' }, { status: 401 });
 
     const body = await req.json();
@@ -27,6 +27,15 @@ Deno.serve(async (req) => {
       const matName = (mat.material || '').toLowerCase().trim();
       if (!matName) continue;
 
+      // Solo se descuenta una cantidad real: un número entero positivo y
+      // razonable. Una cantidad negativa sumaría stock y una enorme vaciaría
+      // el almacén y dispararía el aviso al administrador.
+      const cantidad = Number(mat.quantity);
+      if (!Number.isInteger(cantidad) || cantidad <= 0 || cantidad > 1000) {
+        not_found.push({ material: mat.material, quantity: mat.quantity, motivo: 'cantidad_no_valida' });
+        continue;
+      }
+
       // Buscar por nombre (coincidencia parcial)
       const stockItem = allStock.find(s =>
         s.name.toLowerCase().includes(matName) ||
@@ -39,7 +48,7 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const newQty = Math.max(0, (stockItem.quantity || 0) - (mat.quantity || 1));
+      const newQty = Math.max(0, (stockItem.quantity || 0) - cantidad);
       await base44.asServiceRole.entities.StockItem.update(stockItem.id, { quantity: newQty });
 
       discounted.push({ name: stockItem.name, was: stockItem.quantity, now: newQty });
