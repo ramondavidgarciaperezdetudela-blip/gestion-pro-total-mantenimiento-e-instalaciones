@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Thermometer, SlidersHorizontal, Gauge, Snowflake } from 'lucide-react';
 import ColdRoomCycleDiagram from '@/components/ColdRoomCycleDiagram';
-import { REFRIGERANT_DATABASE } from '@/components/refrigerantData';
+import { CODIGOS_USABLES } from '@/components/refrigerantData';
 import { calcBreakdown, buildResult } from '@/lib/calculoCamara';
 
-const REFRIGERANTS = REFRIGERANT_DATABASE.map(r => r.code);
+const REFRIGERANTS = CODIGOS_USABLES;
 
 function fmt(v, dec = 2) {
   const n = typeof v === 'number' ? v : parseFloat(v);

@@ -17,11 +17,11 @@ import ColdRoomHumidityCalc from '../components/ColdRoomHumidityCalc';
 import RefrigerantSelector from '../components/RefrigerantSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ColdRoomBreakdown, PressureChart, EfficiencyRadar } from '../components/ThermalCharts';
-import EquipmentSelector, { COLD_ROOM_CATALOG } from '../components/EquipmentSelector';
+import EquipmentSelector from '../components/EquipmentSelector';
 
-import { REFRIGERANT_DATABASE } from '../components/refrigerantData';
+import { CODIGOS_USABLES } from '../components/refrigerantData';
 import { calcBreakdown, buildResult } from '@/lib/calculoCamara';
-const REFRIGERANTS = REFRIGERANT_DATABASE.map(r => r.code);
+const REFRIGERANTS = CODIGOS_USABLES;
 
 // ---------------------------------------------------------------------------
 // Componentes eléctricos y de control mínimos de la instalación frigorífica.
