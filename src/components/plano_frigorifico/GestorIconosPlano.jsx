@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Loader2, Sparkles, Upload, Save, Trash2, Plus, Wand2, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { CATEGORIAS, CAT_COLOR, ELEMENTOS, elementosPorCategoria } from '@/lib/planoFrigorificoCatalogo';
+import { generarIconoPlano, guardarIconoPlano } from '@/lib/iconoPlanoIA';
 import PlanoSimbolo from './PlanoSimbolo';
 
 /**
@@ -20,9 +21,6 @@ import PlanoSimbolo from './PlanoSimbolo';
  * de forma pública — cualquiera con el enlace puede abrirlos) porque tienen
  * que verse tanto en el lienzo como en los PDF exportados.
  */
-const promptIA = (nombre, catLabel) =>
-  `Icono técnico realista en vista superior (planta) de "${nombre}" (${catLabel}), para plano de instalación frigorífica y climatización. Render 3D colorido y detallado visto desde arriba, con materiales realistas (metal cepillado, plástico, cobre, goma), sombras suaves y reflejos, colores vivos que diferencian cada parte de la máquina, fondo blanco, sin texto ni letras, silueta nítida e inconfundible a primera vista, estilo catálogo de fabricante de equipamiento industrial.`;
-
 export default function GestorIconosPlano({ open, onClose, onSaved }) {
   const [tab, setTab] = useState('mios');
   const [items, setItems] = useState([]);
@@ -48,8 +46,10 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
 
   const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
+  // Los iconos IA de símbolos de fábrica (std_id) no son equipos propios: se
+  // gestionan desde la pestaña «Estándar», en su símbolo.
   const misItems = useMemo(() => {
-    let out = items;
+    let out = items.filter((it) => !it.std_id);
     if (catFiltro !== 'todos') out = out.filter((it) => it.cat === catFiltro);
     if (q.trim()) out = out.filter((it) => norm(it.name).includes(norm(q)));
     return out;
@@ -63,14 +63,20 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
     return flat;
   }, [qStd, catFiltro]);
 
+  // Icono IA ya creado para cada símbolo de fábrica (std_id -> registro).
+  const iaDe = useMemo(() => {
+    const m = {};
+    items.forEach((it) => { if (it.std_id) m[it.std_id] = it; });
+    return m;
+  }, [items]);
+
   if (!open) return null;
 
   const regenerarIA = async (item) => {
     setBusyId(item.id);
     try {
       const catLabel = CATEGORIAS.find((c) => c.id === item.cat)?.label || item.cat;
-      const res = await base44.integrations.Core.GenerateImage({ prompt: promptIA(item.name, catLabel) });
-      const url = res?.url || '';
+      const url = await generarIconoPlano(item.name, catLabel);
       if (url) {
         await base44.entities.PlanoCatalogItem.update(item.id, { image_url: url });
         setItems((arr) => arr.map((x) => x.id === item.id ? { ...x, image_url: url } : x));
@@ -121,13 +127,14 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
     setGenStd((s) => ({ ...s, [el.id]: true }));
     try {
       const catLabel = CATEGORIAS.find((c) => c.id === el.cat)?.label || el.cat;
-      const res = await base44.integrations.Core.GenerateImage({ prompt: promptIA(el.label, catLabel) });
-      const url = res?.url || '';
+      const url = await generarIconoPlano(el.label, catLabel);
       if (url) {
-        await base44.entities.PlanoCatalogItem.create({
-          name: el.label, cat: 'ia', glyph: el.glyph || (el.label || '').slice(0, 3).toUpperCase(),
-          w_m: el.w_m || 0.6, h_m: el.h_m || 0.6, precio: el.precio || 0,
-          image_url: url, is_active: true,
+        // Se guarda como la versión IA de ESE símbolo (std_id), no como un
+        // equipo aparte: así al pulsarlo en la paleta se elige entre las dos.
+        await guardarIconoPlano({
+          stdId: el.id, nombre: el.label, catLabel, glyph: el.glyph,
+          w_m: el.w_m, h_m: el.h_m, precio: el.precio,
+          imageUrl: url, existenteId: iaDe[el.id]?.id,
         });
         await cargar();
         onSaved?.();
@@ -294,11 +301,17 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
                         scale={48} mini />
                     </svg>
                     <span className="text-[10px] font-medium text-center leading-tight w-full truncate">{el.label}</span>
+                    {/* Si ya tiene icono IA, se enseña para comparar de un vistazo. */}
+                    {iaDe[el.id]?.image_url ? (
+                      <img src={iaDe[el.id].image_url} alt="IA" className="w-[56px] h-[40px] object-contain rounded border border-border" />
+                    ) : (
+                      <span className="text-[9px] text-muted-foreground">Sin icono IA</span>
+                    )}
                     <button onClick={() => crearVersionIAStd(el)} disabled={generando}
                       className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-white hover:opacity-90 disabled:opacity-50 w-full justify-center"
                       style={{ background: 'linear-gradient(135deg,#00D4FF,#7C3AED)' }}>
                       {generando ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                      {generando ? 'Generando…' : 'Crear versión IA'}
+                      {generando ? 'Generando…' : (iaDe[el.id] ? 'Regenerar IA' : 'Crear versión IA')}
                     </button>
                   </div>
                 );
