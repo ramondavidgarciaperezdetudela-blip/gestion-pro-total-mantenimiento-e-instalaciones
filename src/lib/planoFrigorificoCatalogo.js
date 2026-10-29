@@ -22,12 +22,12 @@
  */
 
 export const CATEGORIAS = [
-  { id: 'refrigeracion', label: 'Refrigeración', color: '#00D4FF', capa: 'frio' },
-  { id: 'clima', label: 'Climatización', color: '#22D3EE', capa: 'frio' },
+  { id: 'refrigeracion', label: 'Refrigeración', color: '#06B6D4', capa: 'frio' },
+  { id: 'clima', label: 'Climatización', color: '#F59E0B', capa: 'frio' },
   { id: 'ventilacion', label: 'Ventilación / Conductos', color: '#10b981', capa: 'ventilacion' },
-  { id: 'electrico', label: 'Electricidad / Aparamenta', color: '#F5A623', capa: 'electrico' },
-  { id: 'seguridad', label: 'Seguridad', color: '#E5484D', capa: 'seguridad' },
-  { id: 'estructura', label: 'Estructura', color: '#7C3AED', capa: 'estructura' },
+  { id: 'electrico', label: 'Electricidad / Aparamenta', color: '#EAB308', capa: 'electrico' },
+  { id: 'seguridad', label: 'Seguridad', color: '#EF4444', capa: 'seguridad' },
+  { id: 'estructura', label: 'Estructura', color: '#A855F7', capa: 'estructura' },
 ];
 
 export const CAT_COLOR = CATEGORIAS.reduce((m, c) => { m[c.id] = c.color; return m; }, {});

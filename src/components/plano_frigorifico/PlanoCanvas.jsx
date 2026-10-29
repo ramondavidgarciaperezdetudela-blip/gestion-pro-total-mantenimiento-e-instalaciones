@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { crearConexion } from '@/lib/planoCalculo';
-import { CAT_CAPA } from '@/lib/planoFrigorificoCatalogo';
+import { CAT_CAPA, CAT_COLOR } from '@/lib/planoFrigorificoCatalogo';
 import PlanoSimbolo from './PlanoSimbolo';
 
 // Lienzo SVG del diseñador de planos frigoríficos con distribución de aire.
@@ -150,7 +150,7 @@ export default function PlanoCanvas({
     if (!def) return;
     const el = {
       id: crypto.randomUUID(), type: def.id, cat: def.cat, label: def.label,
-      glyph: def.glyph, color: def.color || '#888', datos: {},
+      glyph: def.glyph, color: CAT_COLOR[def.cat] || def.color || '#888', datos: {},
       x: p.x, y: p.y, w_m: def.w_m, h_m: def.h_m,
       brand: '', model: '', notes: '', qty: 1,
     };

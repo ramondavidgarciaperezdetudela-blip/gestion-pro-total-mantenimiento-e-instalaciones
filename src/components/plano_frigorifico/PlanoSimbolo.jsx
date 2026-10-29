@@ -33,10 +33,10 @@ const IMG_CONDENSADORA_AIRE =
 // Colores base del "cuerpo" según la familia, para que el degradado no sea
 // un gris plano sino el tono de la máquina real.
 const CUERPO = {
-  refrigeracion: ['#0e7490', '#155e75'],
-  clima: ['#0e7490', '#0f766e'],
+  refrigeracion: ['#0e7490', '#155e75'],   // frío: cian/teal
+  clima: ['#d97706', '#b45309'],           // confort: ámbar cálido (se separa del frío)
   ventilacion: ['#047857', '#065f46'],
-  electrico: ['#b45309', '#92400e'],
+  electrico: ['#ca8a04', '#a16207'],       // amarillo/ámbar profundo
   seguridad: ['#b91c1c', '#7f1d1d'],
   estructura: ['#6d28d9', '#4c1d95'],
 };
