@@ -47,7 +47,7 @@ function alturaDe(el) {
   }
 }
 
-export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], scale = 50, alturaSuelo = 2.6, compact = false }) {
+export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], scale = 50, alturaSuelo = 2.6, compact = false, canvasH = 230, canvasW = 460 }) {
   const canvasRef = useRef(null);
   const [giro, setGiro] = useState(Math.PI / 5);
   const [zoom, setZoom] = useState(18);
@@ -196,8 +196,8 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
         <canvas
           ref={canvasRef}
-          width={460}
-          height={230}
+          width={canvasW}
+          height={canvasH}
           className="block touch-none"
           style={{ width: '100%', height: 'auto', pointerEvents: 'none' }}
         />

@@ -780,6 +780,23 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               saving={saving} onSave={guardar} onPDF={onExportarPDF}
               on3D={() => setVer3D(true)} onExit={() => setFullscreen(false)}
               extraPorCat={extraPorCat} onAddElement={() => setDialogoCatalogo(true)} />
+
+            {/* Visor 3D justo debajo de la barra de herramientas avanzada:
+                una tira compacta de la instalación. Al tocarla se abre en
+                grande. Así el instalador ve cómo queda la cámara sin salir del
+                lienzo. */}
+            <div className="rounded-lg border border-border bg-card p-1.5">
+              <div className="flex items-center justify-between px-1 mb-1">
+                <span className="tech-label flex items-center gap-1">
+                  <Box className="w-3 h-3" style={{ color: '#7C3AED' }} /> Visor 3D
+                </span>
+                <button onClick={() => setVer3D(true)} className="text-[10px] text-primary hover:underline">Ampliar ↗</button>
+              </div>
+              <div className="max-h-[150px] overflow-hidden rounded-md">
+                <Vista3DPlanoFrigorifico walls={plan.walls} elements={plan.elements} scale={plan.scale} compact canvasH={150} canvasW={900} />
+              </div>
+            </div>
+
             {Controles}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 flex-1 min-h-0">
               <PlanoCanvas
