@@ -936,22 +936,6 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               on3D={() => setVer3D(true)} onExit={() => setFullscreen(false)}
               extraPorCat={extraPorCat} onAddElement={() => setDialogoCatalogo(true)} />
 
-            {/* Visor 3D justo debajo de la barra de herramientas avanzada:
-                una tira compacta de la instalación. Al tocarla se abre en
-                grande. En móvil se oculta para dejar todo el sitio al lienzo:
-                el botón "Visor 3D" y la miniatura del panel lo abren igual. */}
-            <div className="hidden sm:block rounded-lg border border-border bg-card p-1.5">
-              <div className="flex items-center justify-between px-1 mb-1">
-                <span className="tech-label flex items-center gap-1">
-                  <Box className="w-3 h-3" style={{ color: '#7C3AED' }} /> Visor 3D
-                </span>
-                <button onClick={() => setVer3D(true)} className="text-[10px] text-primary hover:underline">Ampliar ↗</button>
-              </div>
-              <div className="max-h-[150px] overflow-hidden rounded-md">
-                <Vista3DPlanoFrigorifico walls={plan.walls} elements={plan.elements} scale={plan.scale} compact canvasH={150} canvasW={900} />
-              </div>
-            </div>
-
             {Controles}
             {/* Layout flexible para que el lienzo ocupe el espacio disponible y
                 el panel lateral se vea también en móvil y tablet. Antes usaba
