@@ -23,6 +23,7 @@ import {
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
+import PanelControlNegocio from '../components/PanelControlNegocio';
 import { format, startOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -307,6 +308,9 @@ export default function Home() {
           <p className="text-sm font-medium capitalize" style={{ color: '#00D4FF99' }}>{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
         </div>
       </div>
+
+      {/* ── Panel de control inicial: cómo va el negocio de un vistazo ── */}
+      <PanelControlNegocio />
 
       {/* Vista resumen móvil — solo visible en móvil */}
       <div className="sm:hidden">
