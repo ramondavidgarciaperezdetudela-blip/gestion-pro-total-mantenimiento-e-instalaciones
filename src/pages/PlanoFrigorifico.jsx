@@ -14,6 +14,7 @@ import { construirPDF, exportarPDF, imprimirPlano } from '@/components/plano_fri
 import { exportarDXF } from '@/lib/planoDxfExport';
 import { exportarEsquemaElectrico, imprimirEsquemaElectrico } from '@/lib/planoEsquemaElectrico';
 import InformeAseguradoraDialog from '@/components/plano_frigorifico/InformeAseguradoraDialog';
+import LeyendaPlano from '@/components/plano_frigorifico/LeyendaPlano';
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
 import { CAT_COLOR, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
 import { presupuestoAproximado } from '@/lib/instalacionCalculos';
@@ -46,7 +47,9 @@ export default function PlanoFrigorifico() {
   const [enviando, setEnviando] = useState(false);
   const [empresa, setEmpresa] = useState({});
   const [informeDialog, setInformeDialog] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
+  // El editor abre a pantalla completa por defecto: en una pestaña normal el
+  // lienzo queda demasiado pequeño para dibujar cómodamente.
+  const [fullscreen, setFullscreen] = useState(true);
 
   // Esc cierra la pantalla completa, igual que en el resto del programa.
   useEffect(() => {
@@ -610,6 +613,10 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                 </>
               )}
             </div>
+
+            {/* Leyenda de símbolos y conexiones, siempre visible en el panel
+                lateral para que el dibujo se entienda a pantalla completa. */}
+            <LeyendaPlano />
           </div>
         </div>
       </div>
