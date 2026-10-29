@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { dibujarExtra } from './simbolosExtras';
 
 // Imagen realista (símbolo técnico) de una condensadora por aire, generada
 // como referencia de estilo. Se usa tal cual para que el elemento del plano
@@ -145,7 +146,11 @@ function dibujar(tipo, w, h, x0, y0, id, color, datos, mini, glyph) {
     case 'silenciador':              return silenciador(w, h, x0, y0, id, mini);
     case 'caja_toma':                return plenum(w, h, x0, y0, id, mini);
     case 'extractor_eolico':         return extractorEolico(w, h, x0, y0, id, mini);
-    default:                         return generico(w, h, x0, y0, id, color, datos, mini, glyph);
+    default: {
+      const extra = dibujarExtra(tipo, w, h, x0, y0, id, color, datos, mini);
+      if (extra) return extra;
+      return generico(w, h, x0, y0, id, color, datos, mini, glyph);
+    }
   }
 }
 
