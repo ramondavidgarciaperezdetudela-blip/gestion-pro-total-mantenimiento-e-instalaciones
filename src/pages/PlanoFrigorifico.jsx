@@ -21,6 +21,7 @@ import GestorCatalogoPlano from '@/components/plano_frigorifico/GestorCatalogoPl
 import LeyendaPlano from '@/components/plano_frigorifico/LeyendaPlano';
 import PlanoBarraSuperior from '@/components/plano_frigorifico/PlanoBarraSuperior';
 import Vista3DPlanoFrigorifico from '@/components/plano_frigorifico/Vista3DPlanoFrigorifico';
+import ControlMoverFlotante from '@/components/plano_frigorifico/ControlMoverFlotante';
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
 import { CAT_COLOR, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
 import { presupuestoAproximado } from '@/lib/instalacionCalculos';
@@ -440,6 +441,14 @@ export default function PlanoFrigorifico() {
 
   const actualizarElemento = (patch) => {
     setPlan((p) => ({ ...p, elements: p.elements.map((e) => e.id === selectedId ? { ...e, ...patch } : e) }));
+  };
+
+  // Mover el equipo seleccionado en pasos finos (0,1 m). Lo usa el pad flotante
+  // que aparece sobre el lienzo al seleccionar: en el móvil arrastrar con el
+  // dedo es difícil de afinar, y así el ajuste siempre está a mano.
+  const moverElemento = (dx, dy) => {
+    if (!selectedElement) return;
+    actualizarElemento({ x: (selectedElement.x || 0) + dx, y: (selectedElement.y || 0) + dy });
   };
 
   const actualizarConexion = (patch) => {
@@ -925,9 +934,9 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
 
             {/* Visor 3D justo debajo de la barra de herramientas avanzada:
                 una tira compacta de la instalación. Al tocarla se abre en
-                grande. Así el instalador ve cómo queda la cámara sin salir del
-                lienzo. */}
-            <div className="rounded-lg border border-border bg-card p-1.5">
+                grande. En móvil se oculta para dejar todo el sitio al lienzo:
+                el botón "Visor 3D" y la miniatura del panel lo abren igual. */}
+            <div className="hidden sm:block rounded-lg border border-border bg-card p-1.5">
               <div className="flex items-center justify-between px-1 mb-1">
                 <span className="tech-label flex items-center gap-1">
                   <Box className="w-3 h-3" style={{ color: '#7C3AED' }} /> Visor 3D
@@ -945,14 +954,14 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                 grid: en pantalla completa el lienzo colapsaba a altura 0 porque
                 la celda no tenía alto definido y el SVG no se veía. */}
             <div className="flex flex-col lg:flex-row gap-3 flex-1 min-h-0">
-              <div className="flex-1 min-h-0 min-h-[52vh] lg:min-h-0">
+              <div className="flex-1 min-h-0 h-[55vh] lg:h-auto">
                 <PlanoCanvas
                   walls={plan.walls} elements={plan.elements} connections={plan.connections}
                   selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
                   polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
                   capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen />
               </div>
-              <div className="lg:w-[300px] lg:flex-shrink-0 max-h-[44vh] lg:max-h-none overflow-y-auto">
+              <div className="lg:w-[300px] lg:flex-shrink-0 lg:max-h-none">
                 {PanelLateral}
               </div>
             </div>
@@ -979,6 +988,15 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           </div>
         )}
       </PantallaCompleta>
+
+      {/* Pad de movimiento flotante: aparece al seleccionar un equipo para
+          ajustar su posición en el móvil sin arrastrar. */}
+      {selectedElement && (
+        <ControlMoverFlotante
+          step={Math.max(2, 0.1 * (plan.scale || 50))}
+          onMover={moverElemento}
+        />
+      )}
 
       {/* Botón flotante para entrar/salir de pantalla completa: siempre
           accesible aunque el botón de la barra quede fuera de vista. */}
@@ -1133,7 +1151,7 @@ function PantallaCompleta({ open, onClose, children }) {
           <Minimize2 className="w-3.5 h-3.5" /> Salir pantalla completa
         </button>
       </div>
-      <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">{children}</div>
+      <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto lg:overflow-hidden">{children}</div>
     </div>,
     document.body
   );

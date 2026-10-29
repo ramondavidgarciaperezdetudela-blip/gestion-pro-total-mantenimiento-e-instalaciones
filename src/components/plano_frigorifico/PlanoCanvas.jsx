@@ -298,7 +298,7 @@ export default function PlanoCanvas({
       <svg
         ref={svgRef}
         viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
-        style={{ width: '100%', minWidth: fullscreen ? 0 : 720, height: fullscreen ? '100%' : '70vh', display: 'block', touchAction: 'none', cursor: (mode === 'wall' || mode === 'connect' || mode === 'cota' || mode === 'trazo') ? 'crosshair' : mode === 'eraser' ? 'cell' : mode === 'text' ? 'text' : mode === 'select' ? 'default' : 'copy' }}
+        style={{ width: '100%', minWidth: 0, height: fullscreen ? '100%' : '70vh', display: 'block', touchAction: 'none', cursor: (mode === 'wall' || mode === 'connect' || mode === 'cota' || mode === 'trazo') ? 'crosshair' : mode === 'eraser' ? 'cell' : mode === 'text' ? 'text' : mode === 'select' ? 'default' : 'copy' }}
         onPointerDown={handleDown}
         onPointerMove={handleMove}
         onPointerUp={handleUp}

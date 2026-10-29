@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Move3d, RotateCcw, Box } from 'lucide-react';
-import { CAT_COLOR, elementoDe } from '@/lib/planoFrigorificoCatalogo';
+import { CAT_COLOR } from '@/lib/planoFrigorificoCatalogo';
 
 /**
  * Vista3DPlanoFrigorifico — ve la instalación en tres dimensiones.
@@ -11,6 +11,11 @@ import { CAT_COLOR, elementoDe } from '@/lib/planoFrigorificoCatalogo';
  * y los levanta: el suelo, los muros a su altura y cada equipo como un
  * bloque coloreado según su familia, con su etiqueta. Así el cliente ve cómo
  * queda la instalación antes de instalar nada.
+ *
+ * El lienzo se ajusta al ancho real de su contenedor con un ResizeObserver,
+ * así en móvil y en tablet siempre ocupa todo el sitio disponible y el
+ * auto-ajuste del zoom se calcula con el tamaño de verdad (antes usaba un
+ * tamaño fijo y en pantallas pequeñas la pieza se salía o quedaba enana).
  *
  * Arrastra para girar y usa + / − para acercar.
  */
@@ -47,12 +52,31 @@ function alturaDe(el) {
   }
 }
 
-export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], scale = 50, alturaSuelo = 2.6, compact = false, canvasH = 230, canvasW = 460 }) {
+export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], scale = 50, alturaSuelo = 2.6, compact = false }) {
+  const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [giro, setGiro] = useState(Math.PI / 5);
   const [zoom, setZoom] = useState(18);
   const [zoomTocado, setZoomTocado] = useState(false);
   const arrastre = useRef(null);
+  // Tamaño real del lienzo: se mide del contenedor para que en móvil y tablet
+  // el render ocupe todo el ancho disponible y el zoom se calcule con él.
+  const [dims, setDims] = useState({ w: 320, h: 180 });
+  const aspect = compact ? 16 / 7 : 16 / 9;
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const medir = () => {
+      const w = Math.max(160, Math.round(el.clientWidth));
+      setDims({ w, h: Math.round(w / aspect) });
+    };
+    medir();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [aspect]);
 
   // Pasa píxeles del lienzo a metros.
   const m = (px) => px / scale;
@@ -61,7 +85,8 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
+    const W = dims.w, H = dims.h;
+    canvas.width = W; canvas.height = H;
     const cx = W / 2, cy = H * 0.6;
 
     ctx.clearRect(0, 0, W, H);
@@ -161,15 +186,11 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
       ctx.fillText(el.label || el.type, centro.x, centro.y);
       ctx.textAlign = 'left';
     });
-  }, [walls, elements, scale, alturaSuelo, giro, zoom]);
+  }, [walls, elements, scale, alturaSuelo, giro, zoom, dims]);
 
   // Auto-ajustar el zoom a lo dibujado mientras el usuario no lo toque.
-  //
-  // Antes usaba un factor fijo (760 / ancho) sin mirar el tamaño del lienzo:
-  // en la vista compacta (más pequeña) y con instalaciones grandes la pieza
-  // se salía por los bordes y no se veía entera. Ahora se calcula el zoom a
-  // partir del tamaño REAL del canvas y de la proyección isométrica, con un
-  // margen, para que el render completo quepa siempre.
+  // Se calcula con el tamaño REAL del canvas (dims) para que el render
+  // completo quepa siempre, también en pantallas pequeñas.
   useEffect(() => {
     if (zoomTocado) return;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -183,20 +204,18 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
       meter(el.x - w / 2, el.y - h / 2); meter(el.x + w / 2, el.y + h / 2);
     });
     if (!Number.isFinite(minX)) return;
-    // Huella de la instalación en metros, con un poco de aire alrededor.
     const dx = Math.max(2, m(maxX - minX)) + 2;
     const dy = Math.max(2, m(maxY - minY)) + 2;
-    const diag = dx + dy; // lo que ocupa la proyección isométrica
-    const W = compact ? canvasW : 1000;
-    const H = compact ? canvasH : 560;
+    const diag = dx + dy;
+    const W = dims.w, H = dims.h;
     const margen = 36;
-    const cos30 = Math.cos(Math.PI / 6); // 0,866
-    const sin30 = Math.sin(Math.PI / 6); // 0,5
+    const cos30 = Math.cos(Math.PI / 6);
+    const sin30 = Math.sin(Math.PI / 6);
     const zoomW = (W - margen * 2) / (diag * cos30);
     const zoomH = (H - margen * 2) / (diag * sin30 + alturaSuelo);
     setZoom(Math.max(6, Math.min(compact ? 60 : 48, Math.min(zoomW, zoomH))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walls, elements, zoomTocado, canvasW, canvasH, alturaSuelo, compact]);
+  }, [walls, elements, zoomTocado, dims, alturaSuelo, compact]);
 
   const alPulsar = (ev) => { ev.currentTarget.setPointerCapture?.(ev.pointerId); arrastre.current = { x: ev.clientX, giro }; };
   const alMover = (ev) => { if (!arrastre.current) return; setGiro(arrastre.current.giro + (ev.clientX - arrastre.current.x) * 0.01); };
@@ -206,16 +225,13 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
 
   if (compact) {
     // Vista mini para el panel lateral: no se arrastra (no-interactiva) y al
-    // tocarla abre el visor grande. Se reduce el lienzo para que quepa en el
-    // lateral sin comerse todo el alto.
+    // tocarla abre el visor grande. El lienzo se ajusta al ancho del panel.
     return (
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+      <div ref={containerRef} className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50 w-full">
         <canvas
           ref={canvasRef}
-          width={canvasW}
-          height={canvasH}
-          className="block touch-none"
-          style={{ width: '100%', height: 'auto', pointerEvents: 'none' }}
+          className="block w-full"
+          style={{ height: 'auto', pointerEvents: 'none', touchAction: 'none' }}
         />
         {!hayAlgo && (
           <p className="text-[10px] text-slate-400 text-center py-1 flex items-center justify-center gap-1">
@@ -244,17 +260,15 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div ref={containerRef} className="w-full touch-none">
         <canvas
           ref={canvasRef}
-          width={1000}
-          height={560}
           onPointerDown={alPulsar}
           onPointerMove={alMover}
           onPointerUp={alSoltar}
           onPointerCancel={alSoltar}
-          className="border border-slate-200 rounded-lg touch-none cursor-grab active:cursor-grabbing"
-          style={{ width: '100%', height: 'auto', maxWidth: '100%' }}
+          className="block w-full border border-slate-200 rounded-lg cursor-grab active:cursor-grabbing"
+          style={{ height: 'auto', touchAction: 'none' }}
         />
       </div>
 
