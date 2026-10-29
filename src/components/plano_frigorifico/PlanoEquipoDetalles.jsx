@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect } from 'react';
-import { Trash2, AlertTriangle, Ruler } from 'lucide-react';
+import { Trash2, AlertTriangle, Ruler, Move, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import SelectorColor from './SelectorColor';
 import { longitudConexion } from '@/lib/planoCalculo';
 import { elementoDe, valoresPorDefecto } from '@/lib/planoFrigorificoCatalogo';
 import {
@@ -81,7 +82,7 @@ export default function PlanoEquipoDetalles({ element, wall, connection, element
     );
   }
 
-  return <DetalleEquipo element={element} onUpdate={onUpdate} onDelete={onDelete} />;
+  return <DetalleEquipo element={element} onUpdate={onUpdate} onDelete={onDelete} scale={scale} />;
 }
 
 /* ─── Tubería y línea eléctrica ─────────────────────────────────────────── */
@@ -295,10 +296,14 @@ function DetalleConexion({ connection, elements, scale, onUpdate, onDelete }) {
 
 /* ─── Equipo ────────────────────────────────────────────────────────────── */
 
-function DetalleEquipo({ element, onUpdate, onDelete }) {
+function DetalleEquipo({ element, onUpdate, onDelete, scale }) {
   const def = elementoDe(element.type || element.id);
   const datos = element.datos || {};
   const poner = (id, v) => onUpdate({ datos: { ...datos, [id]: v } });
+  // Paso de movimiento fino: 0,1 m en píxeles del lienzo. Sirve para ajustar la
+  // posición del equipo con flechas en móvil, donde arrastrar es incómodo.
+  const paso = Math.max(2, 0.1 * (scale || 50));
+  const mover = (dx, dy) => onUpdate({ x: (element.x || 0) + dx, y: (element.y || 0) + dy });
 
   // La primera vez que se abre un equipo, los valores por defecto de su ficha:
   // un diferencial casi siempre es 30 mA clase A, y escribirlo cada vez sobra.
@@ -366,6 +371,42 @@ function DetalleEquipo({ element, onUpdate, onDelete }) {
             className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
         </Campo>
       </div>
+
+      {/* Mover el equipo con flechas (paso de 0,1 m): útil en móvil donde
+          arrastrar con el dedo es difícil de afinar. */}
+      <div className="flex flex-col gap-1">
+        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+          <Move className="w-3 h-3" /> Mover (0,1 m)
+        </span>
+        <div className="grid grid-cols-3 gap-1 w-fit mx-auto">
+          <span />
+          <button onClick={() => mover(0, -paso)} title="Arriba"
+            className="flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">
+            <ArrowUp className="w-3.5 h-3.5" />
+          </button>
+          <span />
+          <button onClick={() => mover(-paso, 0)} title="Izquierda"
+            className="flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">
+            <ArrowLeft className="w-3.5 h-3.5" />
+          </button>
+          <span className="flex items-center justify-center text-[9px] text-muted-foreground">0,1m</span>
+          <button onClick={() => mover(paso, 0)} title="Derecha"
+            className="flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+          <span />
+          <button onClick={() => mover(0, paso)} title="Abajo"
+            className="flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">
+            <ArrowDown className="w-3.5 h-3.5" />
+          </button>
+          <span />
+        </div>
+      </div>
+
+      {/* Color del elemento: para diferenciar partes de la instalación (una
+          ampliación, un circuito distinto, etc.). El símbolo se repinta en el
+          color elegido. */}
+      <SelectorColor value={element.color || def?.color} onChange={(c) => onUpdate({ color: c })} label="Color del elemento" />
 
       {def?.nota && (
         <p className="flex gap-1 rounded-md px-2 py-1.5 text-[10px] leading-snug"

@@ -29,7 +29,7 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
 
   const generarIconoIA = async () => {
     const catLabel = CATEGORIAS.find((c) => c.id === cat)?.label || cat;
-    const prompt = `Símbolo técnico ESTÁNDAR en vista superior de "${name.trim()}" (${catLabel}), icono normalizado para plano de instalación frigorífica/climatización, estilo vectorial de líneas limpias y planas (sin degradados ni sombras), contorno negro grueso, relleno plano de un solo color, centrado sobre fondo blanco, sin texto ni letras, silueta claramente distinta e inconfundible para diferenciarlo a primera vista de otras máquinas, estilo esquema técnico ISO`;
+    const prompt = `Icono técnico realista en vista superior (planta) de "${name.trim()}" (${catLabel}), para plano de instalación frigorífica y climatización. Render 3D colorido y detallado visto desde arriba, con materiales realistas (metal cepillado, plástico, cobre, goma), sombras suaves y reflejos, colores vivos que diferencian cada parte de la máquina, fondo blanco, sin texto ni letras, silueta nítida e inconfundible a primera vista, estilo catálogo de fabricante de equipamiento industrial.`;
     const res = await base44.integrations.Core.GenerateImage({ prompt });
     return res?.url || '';
   };

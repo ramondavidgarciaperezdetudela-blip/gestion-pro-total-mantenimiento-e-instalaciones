@@ -44,6 +44,20 @@ function ortogonalizar(pts) {
   return out;
 }
 
+// Devuelve los puntos de una polilínea desplazados `off` píxeles a un lado
+// (perpendicular a cada tramo). Sirve para dibujar líneas paralelas: los
+// conductos (doble pared) y las tuberías (línea de gas y de líquido juntas).
+function offsetPts(pts, off) {
+  return pts.map((p, i) => {
+    const prev = pts[i - 1], next = pts[i + 1];
+    let dx = 0, dy = 0;
+    if (next) { dx = next.x - p.x; dy = next.y - p.y; }
+    else if (prev) { dx = p.x - prev.x; dy = p.y - prev.y; }
+    const L = Math.hypot(dx, dy) || 1;
+    return { x: p.x + (-dy / L) * off, y: p.y + (dx / L) * off };
+  });
+}
+
 // Capa a la que pertenece una conexión según su tipo.
 function capaConexion(c) {
   if (c.type === 'conducto') return 'ventilacion';
@@ -265,6 +279,19 @@ export default function PlanoCanvas({
   const elementosVisibles = useMemo(() => elements.filter(visible), [elements, capasVisibles]);
   const conexionesVisibles = useMemo(() => connections.filter(connVisible), [connections, capasVisibles]);
 
+  // Cámaras frigoríficas: se agrupan sus 4 paredes por room_id para dibujarlas
+  // como un recinto panelado de doble línea, coloreado según el tipo (positiva
+  // en azul, negativa en rojo). Las paredes normales y de salas van aparte.
+  const camaras = useMemo(() => {
+    const map = {};
+    walls.forEach((w) => {
+      if (!w.camara) return;
+      (map[w.room_id] = map[w.room_id] || { ref: w, walls: [] }).walls.push(w);
+    });
+    return Object.values(map);
+  }, [walls]);
+  const paredesNormales = useMemo(() => walls.filter((w) => !w.camara), [walls]);
+
   return (
     <div className="overflow-auto rounded-lg border border-border bg-card"
       style={fullscreen ? { height: '100%', minHeight: 0 } : { maxHeight: '70vh' }}>
@@ -292,8 +319,35 @@ export default function PlanoCanvas({
           i % 1 === 0 && i > 0 ? <text key={'gx' + i} x={i * major + 2} y={12} fontSize="9" fill="hsl(var(--muted-foreground))" opacity="0.6">{i * gridMeters}m</text> : null
         ))}
 
-        {/* Paredes */}
-        {walls.map((w) => {
+        {/* Cámaras frigoríficas: recinto panelado de doble línea, coloreado
+            según el tipo. Se dibuja una sola vez por cámara (no pared a pared)
+            para que el panel aislante se vea entero y la etiqueta quede centrada. */}
+        {camaras.map((cm) => {
+          const ref = cm.ref;
+          const w = (ref.room_w_m || 0) * scale, h = (ref.room_h_m || 0) * scale;
+          const x = ref.room_x, y = ref.room_y;
+          const sel = cm.walls.some((wd) => wd.id === selectedId);
+          const color = ref.tipo === 'negativa' ? '#ef4444' : '#3b82f6';
+          const off = 5;
+          return (
+            <g key={ref.room_id}>
+              <rect x={x} y={y} width={w} height={h} fill={color + '12'} />
+              <rect x={x} y={y} width={w} height={h} fill="none" stroke={sel ? '#00D4FF' : color} strokeWidth={sel ? 4 : 3} />
+              <rect x={x + off} y={y + off} width={Math.max(0, w - 2 * off)} height={Math.max(0, h - 2 * off)} fill="none" stroke={sel ? '#00D4FF' : color} strokeWidth={sel ? 2.5 : 1.8} opacity="0.8" />
+              <g transform={`translate(${x + w / 2}, ${y + h / 2})`} style={{ pointerEvents: 'none' }}>
+                <text textAnchor="middle" y={-4} fontSize="12" fontWeight="700" fill={color}>
+                  {ref.tipo === 'negativa' ? '❄ Cámara negativa' : '❄ Cámara positiva'}
+                </text>
+                <text textAnchor="middle" y={10} fontSize="9" fill={color} opacity="0.85">
+                  {ref.room_w_m} × {ref.room_h_m} m · {ref.espesor_mm} mm{ref.suelo ? ' · suelo' : ''}
+                </text>
+              </g>
+            </g>
+          );
+        })}
+
+        {/* Paredes normales y de salas */}
+        {paredesNormales.map((w) => {
           const sel = w.id === selectedId;
           const len = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
           const mx = (w.x1 + w.x2) / 2, my = (w.y1 + w.y2) / 2;
@@ -313,54 +367,60 @@ export default function PlanoCanvas({
           const sel = c.id === selectedId;
           const esDatos = c.type === 'electrica' && c.conn_kind === 'comunicacion';
           const color = esDatos ? '#8b5cf6' : (CONN_COLOR[c.type] || '#888');
+          const esRef = c.type === 'refrigerante';
+          const esConducto = c.type === 'conducto';
+          // La tubería lleva dos circuitos: gas (rojo) y líquido (azul). Van
+          // dibujados como dos líneas paralelas para que se vean los dos a la
+          // vez, igual que en la realidad.
+          const colorGas = '#ef4444';
+          const colorLiq = '#3b82f6';
           const pts = [{ x: a.x, y: a.y }, ...(c.path || []), { x: b.x, y: b.y }];
           const mid = pts[Math.floor(pts.length / 2)] || { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
           let tag;
-          if (c.type === 'conducto') {
+          if (esConducto) {
             tag = c.duct_section ? `${c.duct_section} mm${c.duct_shape && c.duct_shape !== 'Rectangular' ? ' ' + c.duct_shape : ''}` : 'Conducto';
-          } else if (c.type === 'refrigerante') {
+          } else if (esRef) {
             tag = (c.gas_diameter || c.liquid_diameter ? `G ${c.gas_diameter || '—'} · L ${c.liquid_diameter || '—'}` : 'Tubería');
           } else {
             tag = esDatos ? (c.comm_type || 'Comunicación')
               : (c.section_mm2 ? `${c.section_mm2} mm²${c.power_type ? ` · ${c.power_type}` : ''}` : (c.power_type || 'Eléctrica'));
           }
-          const esConducto = c.type === 'conducto';
           return (
             <g key={c.id}>
               {esConducto ? (
                 // Conducto: dos líneas paralelas (las paredes del conducto)
-                (() => {
-                  const paralelo = (off) => pts.map((p, i) => {
-                    const prev = pts[i - 1], next = pts[i + 1];
-                    let dx = 0, dy = 0;
-                    if (next) { dx = next.x - p.x; dy = next.y - p.y; }
-                    else if (prev) { dx = p.x - prev.x; dy = p.y - prev.y; }
-                    const L = Math.hypot(dx, dy) || 1;
-                    return { x: p.x + (-dy / L) * off, y: p.y + (dx / L) * off };
-                  });
-                  const o = 4;
-                  return (
-                    <g>
-                      <polyline points={paralelo(o).map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color} strokeWidth={sel ? 2.2 : 1.5} opacity="0.9" strokeLinejoin="round" />
-                      <polyline points={paralelo(-o).map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color} strokeWidth={sel ? 2.2 : 1.5} opacity="0.9" strokeLinejoin="round" />
-                    </g>
-                  );
-                })()
+                <g>
+                  <polyline points={offsetPts(pts, 4).map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color} strokeWidth={sel ? 2.2 : 1.5} opacity="0.9" strokeLinejoin="round" />
+                  <polyline points={offsetPts(pts, -4).map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color} strokeWidth={sel ? 2.2 : 1.5} opacity="0.9" strokeLinejoin="round" />
+                </g>
+              ) : esRef ? (
+                // Tubería: gas (rojo) y líquido (azul), cada uno con su diámetro
+                <g>
+                  <polyline points={offsetPts(pts, 4).map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={colorGas} strokeWidth={sel ? 3 : 2.2} strokeLinejoin="round" strokeLinecap="round" />
+                  <polyline points={offsetPts(pts, -4).map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={colorLiq} strokeWidth={sel ? 3 : 2.2} strokeLinejoin="round" strokeLinecap="round" />
+                </g>
               ) : (
                 <polyline points={pts.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color}
                   strokeWidth={sel ? 4 : 2.5}
-                  strokeDasharray={c.type === 'refrigerante' ? '8 5' : '2 4'}
+                  strokeDasharray="2 4"
                   strokeLinejoin="round" strokeLinecap="round" />
               )}
               {sel && (c.path || []).map((pp, i) => (
-                <rect key={i} x={pp.x - 3} y={pp.y - 3} width="6" height="6" fill={color} stroke="#fff" strokeWidth="1" />
+                <rect key={i} x={pp.x - 3} y={pp.y - 3} width="6" height="6" fill={esRef ? colorGas : color} stroke="#fff" strokeWidth="1" />
               ))}
-              <circle cx={a.x} cy={a.y} r="3" fill={color} />
-              <circle cx={b.x} cy={b.y} r="3" fill={color} />
+              <circle cx={a.x} cy={a.y} r="3" fill={esRef ? colorGas : color} />
+              <circle cx={b.x} cy={b.y} r="3" fill={esRef ? colorLiq : color} />
               {sel && (
-                <rect x={mid.x - 56} y={mid.y - 9} width={112} height={14} rx="3" fill="hsl(var(--card))" stroke={color} strokeWidth="1" />
+                <rect x={mid.x - 56} y={mid.y - 9} width={112} height={14} rx="3" fill="hsl(var(--card))" stroke={esRef ? colorGas : color} strokeWidth="1" />
               )}
-              <text x={mid.x} y={mid.y + 2} textAnchor="middle" fontSize="9" fill={sel ? color : 'hsl(var(--muted-foreground))'} style={{ pointerEvents: 'none' }}>{tag}</text>
+              <text x={mid.x} y={mid.y + 2} textAnchor="middle" fontSize="9" fill={sel ? (esRef ? colorGas : color) : 'hsl(var(--muted-foreground))'} style={{ pointerEvents: 'none' }}>{tag}</text>
+              {/* Diámetros de gas y líquido junto a cada extremo de la tubería */}
+              {esRef && (c.gas_diameter || c.liquid_diameter) && (
+                <g style={{ pointerEvents: 'none' }}>
+                  <text x={a.x + 8} y={a.y - 8} fontSize="8" fontWeight="600" fill={colorGas}>G {c.gas_diameter || '—'}</text>
+                  <text x={b.x + 8} y={b.y + 12} fontSize="8" fontWeight="600" fill={colorLiq}>L {c.liquid_diameter || '—'}</text>
+                </g>
+              )}
             </g>
           );
         })}
@@ -435,8 +495,17 @@ export default function PlanoCanvas({
         {mode === 'connect' && connFrom && mouse && (() => {
           const a = elements.find((e) => e.id === connFrom);
           if (!a) return null;
-          const color = CONN_COLOR[connectType] || '#00D4FF';
           const preview = ortogonalizar([{ x: a.x, y: a.y }, ...connPath, mouse]);
+          // En tubería se previsualizan las dos líneas (gas rojo + líquido azul).
+          if (connectType === 'refrigerante') {
+            return (
+              <g>
+                <polyline points={offsetPts(preview, 4).map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#ef4444" strokeWidth="2.2" strokeDasharray="6 6" opacity="0.6" strokeLinejoin="round" />
+                <polyline points={offsetPts(preview, -4).map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#3b82f6" strokeWidth="2.2" strokeDasharray="6 6" opacity="0.6" strokeLinejoin="round" />
+              </g>
+            );
+          }
+          const color = CONN_COLOR[connectType] || '#00D4FF';
           return <polyline points={preview.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color} strokeWidth="2.5" strokeDasharray="6 6" opacity="0.6" strokeLinejoin="round" />;
         })()}
 

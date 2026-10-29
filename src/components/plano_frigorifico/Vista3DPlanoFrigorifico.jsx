@@ -238,7 +238,7 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
           onPointerUp={alSoltar}
           onPointerCancel={alSoltar}
           className="border border-slate-200 rounded-lg touch-none cursor-grab active:cursor-grabbing"
-          style={{ minWidth: 600, width: '100%' }}
+          style={{ width: '100%', height: 'auto', maxWidth: '100%' }}
         />
       </div>
 

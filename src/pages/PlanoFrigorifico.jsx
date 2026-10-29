@@ -993,8 +993,8 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
 
       {/* Visor 3D de la instalación */}
       {ver3D && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-4" onClick={() => setVer3D(false)}>
-          <div className="w-full max-w-4xl rounded-xl bg-card border border-border shadow-2xl p-4" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-3 sm:p-4" onClick={() => setVer3D(false)}>
+          <div className="w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-xl bg-card border border-border shadow-2xl p-3 sm:p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-sm font-bold flex items-center gap-2">
