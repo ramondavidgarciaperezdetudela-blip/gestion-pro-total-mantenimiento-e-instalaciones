@@ -164,6 +164,12 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
   }, [walls, elements, scale, alturaSuelo, giro, zoom]);
 
   // Auto-ajustar el zoom a lo dibujado mientras el usuario no lo toque.
+  //
+  // Antes usaba un factor fijo (760 / ancho) sin mirar el tamaño del lienzo:
+  // en la vista compacta (más pequeña) y con instalaciones grandes la pieza
+  // se salía por los bordes y no se veía entera. Ahora se calcula el zoom a
+  // partir del tamaño REAL del canvas y de la proyección isométrica, con un
+  // margen, para que el render completo quepa siempre.
   useEffect(() => {
     if (zoomTocado) return;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -177,10 +183,20 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
       meter(el.x - w / 2, el.y - h / 2); meter(el.x + w / 2, el.y + h / 2);
     });
     if (!Number.isFinite(minX)) return;
-    const ancho = Math.max(4, m(maxX - minX) + m(maxY - minY) + 4);
-    setZoom(Math.max(8, Math.min(40, 760 / ancho)));
+    // Huella de la instalación en metros, con un poco de aire alrededor.
+    const dx = Math.max(2, m(maxX - minX)) + 2;
+    const dy = Math.max(2, m(maxY - minY)) + 2;
+    const diag = dx + dy; // lo que ocupa la proyección isométrica
+    const W = compact ? canvasW : 1000;
+    const H = compact ? canvasH : 560;
+    const margen = 36;
+    const cos30 = Math.cos(Math.PI / 6); // 0,866
+    const sin30 = Math.sin(Math.PI / 6); // 0,5
+    const zoomW = (W - margen * 2) / (diag * cos30);
+    const zoomH = (H - margen * 2) / (diag * sin30 + alturaSuelo);
+    setZoom(Math.max(6, Math.min(compact ? 60 : 48, Math.min(zoomW, zoomH))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walls, elements, zoomTocado]);
+  }, [walls, elements, zoomTocado, canvasW, canvasH, alturaSuelo, compact]);
 
   const alPulsar = (ev) => { ev.currentTarget.setPointerCapture?.(ev.pointerId); arrastre.current = { x: ev.clientX, giro }; };
   const alMover = (ev) => { if (!arrastre.current) return; setGiro(arrastre.current.giro + (ev.clientX - arrastre.current.x) * 0.01); };

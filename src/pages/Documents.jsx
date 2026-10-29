@@ -29,6 +29,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useParametrosUrl } from '@/lib/parametrosUrl';
 import { direccionPublica, AVISO_SIN_DIRECCION, faltaParaAvisos } from '@/lib/copiaFirmada';
 import { abrirEnlaceAvisando, enlaceWhatsApp } from '@/lib/abrirEnlace';
+import { compartirDocumentoWhatsApp } from '@/lib/compartirDocumentoWhatsApp';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo'];
 const STATUSES = ['borrador', 'enviado', 'pagado', 'vencido', 'cancelado'];
@@ -616,7 +617,11 @@ export default function Documents() {
 
   const [showPendientes, setShowPendientes] = useState(true);
 
-  const exportPDF = async (doc) => {
+  // Construye el HTML maquetado del documento (se usa para imprimir y para
+  // mandarlo por WhatsApp con el PDF adjunto). Antes era el cuerpo entero de
+  // exportPDF; ahora va aparte para poder reaprovecharlo sin abrir la vista
+  // previa cuando lo que se quiere es enviarlo, no mirarlo.
+  const construirHtmlDocumento = async (doc) => {
     const csArr = await base44.entities.CompanySettings.list();
     const cs = csArr?.[0] || {};
     // QR de verificación del documento (abre la página pública de verificación).
@@ -709,12 +714,44 @@ export default function Documents() {
     // un cliente: hay que poder mirar cómo ha quedado. Y en el móvil y en el
     // programa instalado la ventana nueva muchas veces ni se abría, así que
     // no pasaba nada y parecía que el botón estaba roto.
-    setVistaPrevia({
-      titulo: `${doc.doc_type === 'factura' ? 'Factura' : doc.doc_type === 'recibo' ? 'Recibo' : 'Presupuesto'} ${doc.doc_number || ''} — ${doc.contact_name || ''}`,
+    return {
       html,
       nombreFichero: `${doc.doc_type || 'documento'}-${doc.doc_number || ''}.html`,
-      doc,
-    });
+      titulo: `${doc.doc_type === 'factura' ? 'Factura' : doc.doc_type === 'recibo' ? 'Recibo' : 'Presupuesto'} ${doc.doc_number || ''} — ${doc.contact_name || ''}`,
+      cs,
+    };
+  };
+
+  const exportPDF = async (doc) => {
+    const v = await construirHtmlDocumento(doc);
+    setVistaPrevia({ titulo: v.titulo, html: v.html, nombreFichero: v.nombreFichero, doc });
+  };
+
+  // Enviar el presupuesto o la factura por WhatsApp con el PDF adjunto.
+  // En el móvil lo entrega como archivo (el cliente lo recibe en el chat); en
+  // el ordenador, donde WhatsApp Web no admite archivos por enlace, cae en un
+  // wa.me con el enlace público del documento.
+  const [enviandoWaPdf, setEnviandoWaPdf] = useState(false);
+  const enviarWhatsAppPDF = async (doc) => {
+    setEnviandoWaPdf(true);
+    try {
+      const { html, cs } = await construirHtmlDocumento(doc);
+      const c = contacts.find((x) => x.id === doc.contact_id);
+      const enlace = getSignLink(doc, 'whatsapp');
+      const r = await compartirDocumentoWhatsApp({
+        doc, html,
+        telefono: c?.phone,
+        enlacePublico: enlace || undefined,
+        onMensaje: (m) => toast({ title: 'WhatsApp', description: m, duration: 9000 }),
+      });
+      if (r.ok && r.via !== 'enlace' && r.via !== 'cancelado' && r.via !== 'sin-teléfono') {
+        toast({ title: 'Documento enviado por WhatsApp', description: 'El PDF se ha adjuntado en WhatsApp.', duration: 6000 });
+      }
+    } catch (e) {
+      toast({ title: 'No se ha podido enviar por WhatsApp', description: String(e?.message || e), variant: 'destructive', duration: 9000 });
+    } finally {
+      setEnviandoWaPdf(false);
+    }
   };
 
   // Filtrado
@@ -1537,7 +1574,8 @@ export default function Documents() {
                     </SelectContent>
                   </Select>
                   {/* Acciones rápidas SIEMPRE visibles: enviar / imprimir / PDF */}
-                  <button onClick={(e) => { e.stopPropagation(); sendWhatsApp(doc); }} className="text-green-600 hover:text-green-800 p-1" title="Enviar por WhatsApp"><MessageCircle className="w-4 h-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); sendWhatsApp(doc); }} className="text-green-600 hover:text-green-800 p-1" title="Enviar por WhatsApp (enlace)"><MessageCircle className="w-4 h-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); enviarWhatsAppPDF(doc); }} disabled={enviandoWaPdf} className="text-emerald-600 hover:text-emerald-800 p-1 disabled:opacity-40" title="Enviar el PDF por WhatsApp"><FileDown className="w-4 h-4" /></button>
                   <button onClick={(e) => { e.stopPropagation(); sendEmail(doc); }} className="text-blue-600 hover:text-blue-800 p-1" title="Enviar por Email"><Mail className="w-4 h-4" /></button>
                   <button onClick={(e) => { e.stopPropagation(); exportPDF(doc); }} className="text-red-600 hover:text-red-800 p-1" title="Imprimir o guardar en PDF"><Printer className="w-4 h-4" /></button>
                   {isPresupuesto && (
