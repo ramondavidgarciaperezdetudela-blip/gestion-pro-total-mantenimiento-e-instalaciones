@@ -725,7 +725,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
 
   // Panel lateral: detalles del elemento, descripción, presupuesto y leyenda.
   const PanelLateral = (
-    <div className="rounded-lg border border-border bg-card p-3 overflow-y-auto min-h-0 h-full">
+    <div className="rounded-lg border border-border bg-card p-3 overflow-y-auto min-h-0 lg:h-full">
       <PlanoEquipoDetalles
         element={selectedElement} connection={selectedConnection} wall={selectedWall}
         elements={plan.elements} scale={plan.scale}
@@ -925,7 +925,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         {fullscreen ? (
           // ── Pantalla completa real: barra superior con menús y el lienzo a
           //    toda la superficie. Sin scroll para alcanzar las herramientas.
-          <div className="flex flex-col gap-2 min-h-0 flex-1">
+          <div className="flex flex-col gap-2 lg:min-h-0 lg:flex-1">
             <PlanoBarraSuperior
               mode={mode} activeType={activeType} connectType={connectType} onPick={onPick}
               onSala={() => setDialogoSala({ nuevo: true })}
@@ -937,12 +937,12 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               extraPorCat={extraPorCat} onAddElement={() => setDialogoCatalogo(true)} />
 
             {Controles}
-            {/* Layout flexible para que el lienzo ocupe el espacio disponible y
-                el panel lateral se vea también en móvil y tablet. Antes usaba
-                grid: en pantalla completa el lienzo colapsaba a altura 0 porque
-                la celda no tenía alto definido y el SVG no se veía. */}
-            <div className="flex flex-col lg:flex-row gap-3 flex-1 min-h-0">
-              <div className="flex-1 min-h-0 h-[55vh] lg:h-auto">
+            {/* En móvil/tablet el contenido fluye en su altura natural y el
+              contenedor exterior hace scroll: así se ven los datos, el visor
+              3D y el presupuesto que van debajo del lienzo. En escritorio el
+              lienzo se reparte el espacio con el panel lateral sin scroll. */}
+            <div className="flex flex-col lg:flex-row gap-3 lg:flex-1 lg:min-h-0">
+              <div className="h-[55vh] lg:h-auto lg:flex-1 lg:min-h-0">
                 <PlanoCanvas
                   walls={plan.walls} elements={plan.elements} connections={plan.connections}
                   selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
