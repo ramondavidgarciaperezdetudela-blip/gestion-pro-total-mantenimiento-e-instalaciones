@@ -172,18 +172,39 @@ export function dibujarVista3D(ctx, W, H, {
   });
 }
 
+// Proporción con la que se genera la imagen de la vista 3D. La usa el PDF del
+// plano para colocarla sin deformarla.
+export const VISTA3D_W = 1400;
+export const VISTA3D_H = 900;
+
+/** Prepara el lienzo con la vista 3D ya dibujada. null si el plano está vacío. */
+function lienzoVista3D({ walls = [], elements = [], scale = 50 } = {}) {
+  if (!walls.length && !elements.length) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = VISTA3D_W; canvas.height = VISTA3D_H;
+  const ctx = canvas.getContext('2d');
+  const zoom = calcularZoomAjustado(VISTA3D_W, VISTA3D_H, { walls, elements, scale, maxZoom: 200 }) || 18;
+  dibujarVista3D(ctx, VISTA3D_W, VISTA3D_H, { walls, elements, scale, giro: Math.PI / 5, zoom });
+  return canvas;
+}
+
+/**
+ * La misma vista 3D como imagen en memoria (data URL), para incrustarla en el
+ * PDF del plano sin depender de la que esté guardada en el servidor.
+ * Devuelve '' si el plano no tiene nada dibujado.
+ */
+export function generarVista3DDataUrl(opciones = {}) {
+  const canvas = lienzoVista3D(opciones);
+  return canvas ? canvas.toDataURL('image/png') : '';
+}
+
 /**
  * Genera el archivo PNG de la vista 3D (para guardarlo con el plano).
  * Devuelve null si el plano no tiene nada dibujado.
  */
 export async function generarVista3DPng({ walls = [], elements = [], scale = 50, nombre = 'plano' } = {}) {
-  if (!walls.length && !elements.length) return null;
-  const W = 1400, H = 900;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
-  const zoom = calcularZoomAjustado(W, H, { walls, elements, scale, maxZoom: 200 }) || 18;
-  dibujarVista3D(ctx, W, H, { walls, elements, scale, giro: Math.PI / 5, zoom });
+  const canvas = lienzoVista3D({ walls, elements, scale });
+  if (!canvas) return null;
   const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
   if (!blob) return null;
   const limpio = String(nombre || 'plano').replace(/[^\w\-]+/g, '_').slice(0, 60);

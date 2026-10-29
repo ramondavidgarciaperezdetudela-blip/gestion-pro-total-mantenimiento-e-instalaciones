@@ -3,6 +3,7 @@ import { longitudConexion, resumenTuberias } from '@/lib/planoCalculo';
 import { elementoDe } from '@/lib/planoFrigorificoCatalogo';
 import { TIPOS_CONEXION_ELECTRICA } from '@/lib/instalacionCalculos';
 import { dibujarPlanoVectorial, PLANO_CANVAS } from '@/lib/planoDibujoPdf';
+import { generarVista3DDataUrl, VISTA3D_W, VISTA3D_H } from '@/lib/planoVista3D';
 
 // Exportación e impresión del plano frigorífico.
 //
@@ -171,6 +172,28 @@ export function construirPDF(plan, elements, walls, connections, { autoPrint = f
     + 'y el REBT. Requiere revisión y firma de técnico cualificado.', legendW - 4)
     .forEach((l) => esc(l, 0, 6));
   doc.setTextColor(40);
+
+  // ── Vista 3D de la instalación ──
+  //
+  // Se añade como última hoja del PDF, con la misma imagen que se guarda
+  // junto al plano: el cliente ve el volumen de la instalación y no solo la
+  // planta. Se dibuja aquí a partir del plano actual, así el PDF nunca lleva
+  // una vista 3D atrasada.
+  const vista3D = generarVista3DDataUrl({ walls: walls || [], elements: elements || [], scale });
+  if (vista3D) {
+    doc.addPage('a3', 'landscape');
+    doc.setTextColor(20); doc.setFontSize(14); doc.setFont(undefined, 'bold');
+    doc.text('Vista 3D de la instalación', margin, margin + 7);
+    doc.setFontSize(9); doc.setFont(undefined, 'normal'); doc.setTextColor(90);
+    doc.text([plan.name || 'Plano frigorífico', plan.contact_name].filter(Boolean).join('     ·     '),
+      margin, margin + 13);
+    const cajaW = PW - margin * 2;
+    const cajaH = PH - margin * 2 - 18;
+    const ratio = VISTA3D_W / VISTA3D_H;
+    let w = cajaW, h = w / ratio;
+    if (h > cajaH) { h = cajaH; w = h * ratio; }
+    doc.addImage(vista3D, 'PNG', margin, margin + 18, w, h);
+  }
 
   if (autoPrint) doc.autoPrint();
   return doc;
