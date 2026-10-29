@@ -13,11 +13,30 @@
  */
 import { lazy } from 'react';
 
+// Si un chunk no carga, antes de recargar se tira la caché del service worker
+// y se da de baja el propio SW. Sin esto, la recarga vuelve a servir el chunk
+// envenenado y la página sigue sin cargar ("Recargar y no hace nada").
+async function limpiarCacheYSW() {
+  try {
+    if (window.caches && caches.keys) {
+      const ks = await caches.keys();
+      await Promise.all(ks.map((k) => caches.delete(k)));
+    }
+  } catch { /* no hay caches disponibles */ }
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      const rs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(rs.map((r) => r.unregister()));
+    }
+  } catch { /* sin service worker */ }
+}
+
 export function lazyWithRetry(loader) {
   return lazy(() =>
-    loader().catch((err) => {
+    loader().catch(async (err) => {
       if (typeof window !== 'undefined' && !window.__lazyChunkReloaded) {
         window.__lazyChunkReloaded = true;
+        await limpiarCacheYSW();
         window.location.reload();
       }
       throw err;
