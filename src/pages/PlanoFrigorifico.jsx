@@ -28,6 +28,7 @@ import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
 import { CAT_COLOR, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
 import { presupuestoAproximado } from '@/lib/instalacionCalculos';
 import { asArray } from '@/lib/asArray';
+import { generarVista3DPng } from '@/lib/planoVista3D';
 
 const PLANO_VACIO = {
   id: null, name: '', contact_id: '', contact_name: '', description: '',
@@ -62,6 +63,11 @@ export default function PlanoFrigorifico() {
   const [fullscreen, setFullscreen] = useState(true);
   // Visor 3D de la instalación: se abre como un panel sobre el editor.
   const [ver3D, setVer3D] = useState(false);
+  // El plano guarda también el archivo PNG de su vista 3D. Guardamos la
+  // "firma" del dibujo (paredes + equipos + escala) para saber cuándo ha
+  // cambiado y regenerar esa imagen sola.
+  const [actualizando3D, setActualizando3D] = useState(false);
+  const firmaVista3D = useRef(null);
 
   // ── Historial (deshacer/rehacer) y portapapeles (copiar/cortar/pegar) ──
   // El historial guarda instantáneas del dibujo (paredes, elementos y
@@ -155,7 +161,11 @@ export default function PlanoFrigorifico() {
     (async () => {
       try {
         const p = await base44.entities.RefrigerationPlan.get(pid);
-        if (p) { setPlan({ ...PLANO_VACIO, ...p, connections: p.connections || [] }); setSelectedId(null); setMode('select'); resetHistorial(); }
+        if (p) {
+          setPlan({ ...PLANO_VACIO, ...p, connections: p.connections || [] });
+          setSelectedId(null); setMode('select'); resetHistorial();
+          firmaVista3D.current = null;
+        }
       } catch { /* plano no encontrado */ }
     })();
   }, []);
@@ -475,36 +485,87 @@ export default function PlanoFrigorifico() {
     setSelectedId(null);
     setMode('select');
     resetHistorial();
+    firmaVista3D.current = null;
   };
 
   const cargarPlano = (id) => {
     if (!id) { nuevoPlano(); return; }
     const p = planos.find((x) => x.id === id);
-    if (p) { setPlan({ ...PLANO_VACIO, ...p, connections: p.connections || [] }); setSelectedId(null); setMode('select'); resetHistorial(); }
+    if (p) {
+      setPlan({ ...PLANO_VACIO, ...p, connections: p.connections || [] });
+      setSelectedId(null); setMode('select'); resetHistorial();
+      // Al cargar otro plano no hay que regenerar su vista 3D: ya está guardada.
+      firmaVista3D.current = null;
+    }
+  };
+
+  // Firma del dibujo (paredes + equipos + escala): solo cambia cuando cambia
+  // de verdad lo que se ve en 3D.
+  const firmaDelDibujo = (p) => JSON.stringify({ w: p.walls || [], e: p.elements || [], s: p.scale || 50 });
+  const firmaActual = firmaDelDibujo(plan);
+
+  // Genera el archivo PNG de la vista 3D y lo sube. Devuelve su URL, o ''
+  // si el plano está vacío (no tiene sentido guardar una imagen en blanco).
+  const subirVista3D = async (p) => {
+    const file = await generarVista3DPng({
+      walls: p.walls || [], elements: p.elements || [], scale: p.scale || 50, nombre: p.name,
+    });
+    if (!file) return '';
+    const up = await base44.integrations.Core.UploadPublicFile({ file });
+    return up?.file_url || up?.url || '';
   };
 
   const guardar = async () => {
     if (!plan.name.trim()) { toast.error('Dale un nombre al plano'); return; }
     setSaving(true);
     try {
+      // La vista 3D se guarda como archivo junto al plano. Si el plano está
+      // vacío se quita la referencia; si falla la subida, el plano se guarda
+      // igualmente con la imagen que ya tuviera.
+      let vista3d_url = plan.vista3d_url || '';
+      try { vista3d_url = await subirVista3D(plan); } catch { /* sin conexión: se reintenta al guardar */ }
       const payload = {
         name: plan.name, contact_id: plan.contact_id, contact_name: plan.contact_name,
         description: plan.description, scale: plan.scale, walls: plan.walls,
         elements: plan.elements, connections: plan.connections, observations: plan.observations, status: plan.status,
+        vista3d_url,
       };
       if (plan.id) {
         await base44.entities.RefrigerationPlan.update(plan.id, payload);
-        toast.success('Plano actualizado');
+        setPlan((p) => ({ ...p, vista3d_url }));
+        toast.success('Plano actualizado', { description: vista3d_url ? 'Vista 3D guardada con el plano' : undefined });
       } else {
         const created = await base44.entities.RefrigerationPlan.create(payload);
-        setPlan((p) => ({ ...p, id: created.id }));
-        toast.success('Plano guardado');
+        setPlan((p) => ({ ...p, id: created.id, vista3d_url }));
+        toast.success('Plano guardado', { description: vista3d_url ? 'Vista 3D guardada con el plano' : undefined });
       }
+      firmaVista3D.current = firmaActual;
       cargarDatos();
     } catch (e) {
       console.error(e); toast.error('No se pudo guardar', { description: String(e?.message || e) });
     } finally { setSaving(false); }
   };
+
+  // Si el plano ya está guardado y se cambia el dibujo, la imagen 3D se
+  // regenera sola (unos segundos después de dejar de dibujar) para que el
+  // archivo guardado nunca se quede atrás.
+  useEffect(() => {
+    if (!plan.id) return;
+    if (firmaVista3D.current === null) { firmaVista3D.current = firmaActual; return; }
+    if (firmaActual === firmaVista3D.current) return;
+    const t = setTimeout(async () => {
+      setActualizando3D(true);
+      try {
+        const url = await subirVista3D(plan);
+        await base44.entities.RefrigerationPlan.update(plan.id, { vista3d_url: url });
+        firmaVista3D.current = firmaActual;
+        setPlan((p) => ({ ...p, vista3d_url: url }));
+      } catch { /* sin conexión: la vista queda como estaba */ }
+      finally { setActualizando3D(false); }
+    }, 2500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firmaActual, plan.id]);
 
   const borrarPlano = async () => {
     if (!plan.id) return;
@@ -781,18 +842,23 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         </div>
         <LeyendaPlano />
 
-        {/* Visor 3D en miniatura, debajo de la leyenda: al tocarlo se abre
-            en grande. El botón "Visor 3D" de la barra superior también lo
-            abre directamente a tamaño completo. */}
+        {/* Botón para abrir el 3D. La vista ocupa toda la pantalla al abrirse,
+            así el panel no le roba espacio al lienzo de dibujo. */}
         <button type="button" onClick={() => setVer3D(true)}
-          className="group w-full rounded-lg border border-border p-2 text-left hover:border-primary/40 transition-colors"
-          title="Ampliar visor 3D">
-          <div className="flex items-center justify-between mb-1">
-            <span className="tech-label">Visor 3D</span>
-            <span className="text-[10px] text-primary group-hover:underline">Ampliar ↗</span>
-          </div>
-          <Vista3DPlanoFrigorifico walls={plan.walls} elements={plan.elements} scale={plan.scale} compact />
+          className="group flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+          style={{ background: 'linear-gradient(135deg,#00D4FF,#7C3AED)' }}>
+          <span className="flex items-center gap-1.5"><Box className="w-3.5 h-3.5" /> Ver en 3D</span>
+          <span className="text-[10px] opacity-80">↗</span>
         </button>
+        {plan.vista3d_url ? (
+          <a href={plan.vista3d_url} target="_blank" rel="noopener"
+            className="flex items-center gap-1 text-[10px] text-primary hover:underline">
+            <FileDown className="w-3 h-3" /> Vista 3D guardada con el plano
+          </a>
+        ) : (
+          <p className="text-[10px] text-muted-foreground">La vista 3D se guarda como imagen al guardar el plano.</p>
+        )}
+        {actualizando3D && <p className="text-[10px] text-primary">Actualizando la vista 3D…</p>}
       </div>
     </div>
   );
@@ -853,6 +919,11 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         </button>
         <button onClick={() => exportarDXF(plan, plan.elements, plan.walls, plan.connections)} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
           <FileBox className="w-3.5 h-3.5" /> CAD (DXF)
+        </button>
+        <button onClick={() => setVer3D(true)}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
+          style={{ background: 'linear-gradient(135deg,#00D4FF,#7C3AED)' }}>
+          <Box className="w-3.5 h-3.5" /> Visor 3D
         </button>
         <button onClick={onEsquemaElectrico} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted"
           title="Esquema eléctrico de la instalación (para adjuntar al informe)">
@@ -942,7 +1013,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               3D y el presupuesto que van debajo del lienzo. En escritorio el
               lienzo se reparte el espacio con el panel lateral sin scroll. */}
             <div className="flex flex-col lg:flex-row gap-3 lg:flex-1 lg:min-h-0">
-              <div className="h-[55vh] lg:h-auto lg:flex-1 lg:min-h-0">
+              <div className="h-[68vh] lg:h-auto lg:flex-1 lg:min-h-0">
                 <PlanoCanvas
                   walls={plan.walls} elements={plan.elements} connections={plan.connections}
                   selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}

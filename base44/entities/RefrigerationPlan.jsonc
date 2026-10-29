@@ -206,6 +206,10 @@
       "type": "string",
       "description": "Notas del plano"
     },
+    "vista3d_url": {
+      "type": "string",
+      "description": "Archivo PNG de la vista 3D del plano, guardado junto a \u00e9l y regenerado cuando cambia el dibujo"
+    },
     "status": {
       "type": "string",
       "enum": [
