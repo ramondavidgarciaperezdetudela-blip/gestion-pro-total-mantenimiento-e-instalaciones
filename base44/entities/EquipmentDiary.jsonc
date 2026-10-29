@@ -98,16 +98,18 @@
           },
           "photo_names": {
             "type": "array",
-            "items": { "type": "string" },
-            "description": "Qué es cada foto (mismo orden que photos)"
+            "items": {
+              "type": "string"
+            },
+            "description": "Qu\u00e9 es cada foto (mismo orden que photos)"
           },
           "signature_technician": {
             "type": "string",
-            "description": "Firma del técnico (base64)"
+            "description": "Firma del t\u00e9cnico (base64)"
           },
           "sign_datetime_technician": {
             "type": "string",
-            "description": "Fecha y hora de la firma del técnico"
+            "description": "Fecha y hora de la firma del t\u00e9cnico"
           },
           "signature_client": {
             "type": "string",
@@ -119,11 +121,11 @@
           },
           "ficha_id": {
             "type": "string",
-            "description": "Ficha de mantenimiento de la que salió esta entrada; sirve para actualizarla en vez de duplicarla al volver a guardar"
+            "description": "Ficha de mantenimiento de la que sali\u00f3 esta entrada; sirve para actualizarla en vez de duplicarla al volver a guardar"
           },
           "ficha_numero": {
             "type": "string",
-            "description": "Número de esa ficha"
+            "description": "N\u00famero de esa ficha"
           }
         }
       }
@@ -137,7 +139,7 @@
     },
     "equipment_year": {
       "type": "string",
-      "description": "Año del equipo"
+      "description": "A\u00f1o del equipo"
     },
     "equipment_refrigerant": {
       "type": "string",
@@ -149,11 +151,61 @@
     },
     "warranty_expires": {
       "type": "string",
-      "description": "Hasta cuándo está en garantía"
+      "description": "Hasta cu\u00e1ndo est\u00e1 en garant\u00eda"
     }
   },
   "required": [
     "contact_id",
     "contact_name"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
 }
