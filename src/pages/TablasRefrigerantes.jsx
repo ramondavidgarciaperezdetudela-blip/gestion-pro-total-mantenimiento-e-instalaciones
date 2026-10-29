@@ -1,28 +1,35 @@
 import { useState } from 'react';
 import NavBar from '@/components/NavBar';
 import { REFRIGERANT_DATABASE, estadoRefrigerante } from '@/components/refrigerantData';
+import { GASES, tablaPT } from '@/lib/presionesRefrigerante';
+import { Input } from '@/components/ui/input';
 import { CalendarClock, Gauge } from 'lucide-react';
 
-// Tabla de Presión (manométrica, bar) vs Temperatura de saturación (°C) — ORIENTATIVA.
-// Para valores exactos, usar la app del fabricante (Danfoss Ref Tool / Coolpack).
-const PT_TEMPS = [-40, -30, -20, -10, 0, 10, 20, 30, 40, 50];
-const PT_TABLE = {
-  'R-410A': [0.8, 1.7, 3.0, 4.7, 7.0, 9.9, 13.7, 18.4, 23.5, 29.7],
-  'R-32':   [0.9, 1.8, 3.2, 5.0, 7.4, 10.5, 14.5, 19.4, 25.4, 32.0],
-  'R-134a': [-0.5, -0.1, 0.3, 1.0, 1.9, 3.2, 4.7, 6.7, 9.2, 12.2],
-  'R-404A': [0.3, 1.0, 2.0, 3.3, 5.1, 7.2, 9.9, 13.1, 17.2, 22.0],
-  'R-407C': [0.2, 1.1, 2.3, 3.8, 5.6, 7.9, 10.8, 14.3, 18.6, 23.7],
-  'R-448A': [0.2, 1.0, 2.1, 3.4, 5.2, 7.4, 10.1, 13.4, 17.5, 22.4],
-  'R-449A': [0.2, 1.0, 2.1, 3.4, 5.2, 7.4, 10.1, 13.4, 17.5, 22.4],
-  'R-452A': [0.3, 1.1, 2.2, 3.6, 5.4, 7.6, 10.4, 13.8, 18.0, 23.0],
-  'R-22':   [0.05, 0.6, 1.45, 2.5, 4.0, 5.8, 8.1, 10.9, 14.3, 18.4],
-  'R-290':  [-0.1, 0.6, 1.6, 2.9, 4.7, 6.9, 9.6, 12.9, 16.8, 21.4],
-  'R-507A': [0.4, 1.2, 2.3, 3.7, 5.5, 7.8, 10.6, 14.0, 18.3, 23.3],
-  'R-1234yf': [-0.4, 0.0, 0.5, 1.3, 2.3, 3.7, 5.4, 7.5, 10.1, 13.2],
+// Tabla de Presión (manómetro) vs Temperatura de saturación. Los valores NO están tecleados: salen de las
+// propiedades de cada gas calculadas con CoolProp (ver lib/saturacion.js). En las mezclas con deslizamiento
+// (R-407C, R-448A, R-449A…) hay dos filas: burbuja (líquido) y rocío (vapor).
+const PT_TEMPS = [-40, -30, -20, -10, 0, 10, 20, 30, 40, 50, 60];
+const PT_FILAS = GASES.flatMap((g) => {
+  const porT = new Map(tablaPT(g.id, { desde: PT_TEMPS[0], hasta: PT_TEMPS[PT_TEMPS.length - 1], paso: 10 }).map((f) => [f.t, f]));
+  const fila = (punto, etiqueta) => ({
+    clave: `${g.id}-${punto}`,
+    gas: g,
+    etiqueta,
+    valores: PT_TEMPS.map((t) => porT.get(t)?.[punto] ?? null),
+  });
+  return g.zeotropo ? [fila('burbuja', 'burbuja'), fila('rocio', 'rocío')] : [fila('burbuja', null)];
+});
+
+const nf = (n, d) => {
+  const f = 10 ** d;
+  const r = Math.round(Number(n) * f) / f + 0; // sin «−0,0»
+  return r.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d }).replace('-', '−');
 };
 
 export default function TablasRefrigerantes() {
   const [tab, setTab] = useState('prohibiciones');
+  const [unidad, setUnidad] = useState('bar'); // bar | psi
+  const [busca, setBusca] = useState('');
   const prohibidos = REFRIGERANT_DATABASE.filter(r => estadoRefrigerante(r.code).prohibido);
   const vigentes = REFRIGERANT_DATABASE.filter(r => !estadoRefrigerante(r.code).prohibido);
 
@@ -82,32 +89,69 @@ export default function TablasRefrigerantes() {
         )}
 
         {tab === 'pt' && (
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white rounded-xl shadow p-4" data-prueba="tabla-pt-general">
             <p className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-1">
-              <Gauge className="w-4 h-4 text-blue-600" />📊 Tabla de Presión vs Temperatura de Gases Refrigerantes ❄️🔧
+              <Gauge className="w-4 h-4 text-blue-600" />📊 Tabla de Presión vs Temperatura de {GASES.length} gases refrigerantes ❄️🔧
             </p>
-            <p className="text-[11px] text-slate-500 mb-2">Presión <b>manométrica (bar)</b> a cada temperatura de saturación (°C). Valores <b>orientativos</b>; para exactitud usa la <b>Regla de Refrigerantes / Danfoss Ref Tool</b>.</p>
+            <p className="text-[11px] text-slate-500 mb-2">
+              Presión <b>de manómetro</b> a cada temperatura de saturación (°C). Calculada con las ecuaciones de estado de
+              referencia (CoolProp), no tecleada a mano. Para el detalle de un gas, de 5 en 5 K y con los bar absolutos,
+              usa «Presiones de trabajo».
+            </p>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <Input
+                data-prueba="pt-buscar"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar gas…"
+                className="max-w-[220px] h-8 text-xs"
+              />
+              <div className="flex rounded-lg overflow-hidden border border-slate-300 text-xs">
+                {[['bar', 'bar'], ['psi', 'psi']].map(([k, l]) => (
+                  <button
+                    key={k}
+                    data-prueba={`pt-unidad-${k}`}
+                    onClick={() => setUnidad(k)}
+                    className={`px-3 py-1 font-medium ${unidad === k ? 'bg-blue-600 text-white' : 'text-slate-600'}`}
+                  >{l}</button>
+                ))}
+              </div>
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-[11px] border-collapse">
+              <table className="w-full max-w-none text-[11px] border-collapse">
                 <thead>
                   <tr className="text-center text-slate-500 border-b">
-                    <th className="p-1.5 text-left sticky left-0 bg-white">Gas \ °C</th>
-                    {PT_TEMPS.map(t => <th key={t} className="p-1.5">{t}</th>)}
+                    <th className="p-1.5 text-left sticky left-0 bg-white whitespace-nowrap">Gas \ °C</th>
+                    {PT_TEMPS.map((t) => <th key={t} className="p-1.5 whitespace-nowrap">{String(t).replace('-', '−')}</th>)}
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(PT_TABLE).map(([g, vals]) => (
-                    <tr key={g} className="border-b hover:bg-blue-50/40">
-                      <td className="p-1.5 font-bold text-left sticky left-0 bg-white">{g}{estadoRefrigerante(g).prohibido ? ' ⛔' : ''}</td>
-                      {vals.map((v, i) => (
-                        <td key={i} className={`p-1.5 text-center ${v < 0 ? 'text-slate-400' : 'text-slate-700'}`}>{v < 0 ? `${v} (vac.)` : v.toFixed(1)}</td>
-                      ))}
+                  {PT_FILAS.filter((f) => f.gas.id.toLowerCase().includes(busca.trim().toLowerCase())).map((f) => (
+                    <tr key={f.clave} className="border-b hover:bg-blue-50/40">
+                      <td className="p-1.5 font-bold text-left sticky left-0 bg-white whitespace-nowrap">
+                        {f.gas.id}{f.gas.estado === 'prohibido' ? ' ⛔' : ''}
+                        {f.etiqueta && <span className="ml-1 font-normal text-slate-400">{f.etiqueta}</span>}
+                      </td>
+                      {f.valores.map((m, i) => {
+                        if (!m) return <td key={i} className="p-1.5 text-center text-slate-300">—</td>;
+                        const v = unidad === 'psi' ? m.psi : m.relativa;
+                        return (
+                          <td key={i} className={`p-1.5 text-center tabular-nums whitespace-nowrap ${v < -0.05 ? 'text-slate-400' : 'text-slate-700'}`}>
+                            {nf(v, unidad === 'psi' ? 0 : 1)}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="text-[10px] text-slate-400 mt-2">Los valores negativos indican <b>vacío</b> (presión por debajo de la atmosférica). En mezclas con deslizamiento (R-407C, R-448A/449A…) es un valor medio orientativo.</p>
+            <p className="text-[10px] text-slate-400 mt-2">
+              Los valores negativos indican <b>vacío</b> (presión por debajo de la atmosférica); «—» = fuera de la tabla del gas
+              (el CO₂ llega a 25 °C, porque su punto crítico está en 31 °C). En las mezclas con deslizamiento (R-407C, R-448A, R-449A…)
+              hay dos filas: <b>burbuja</b> (líquido, para el subenfriamiento) y <b>rocío</b> (vapor, para el recalentamiento y la presión
+              de evaporación).
+            </p>
           </div>
         )}
       </div>

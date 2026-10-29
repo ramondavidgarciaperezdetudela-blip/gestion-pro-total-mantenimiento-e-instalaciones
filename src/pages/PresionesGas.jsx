@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Gauge, Thermometer, Scale, AlertTriangle, ArrowRight, Wrench } from 'lucide-react';
 import {
   GASES, APLICACIONES, gas as buscarGas, presionA, temperaturaA,
-  presionesDeTrabajo, calcularCarga,
+  presionesDeTrabajo, calcularCarga, tablaPT, temperaturasDeTabla,
 } from '@/lib/presionesRefrigerante';
 import { TIPOS_EQUIPO } from '@/lib/modelosDocumentos';
 import { toneladasCO2, periodicidadFugas } from '@/lib/refrigerantes';
@@ -20,9 +20,19 @@ import { toneladasCO2, periodicidadFugas } from '@/lib/refrigerantes';
  * temperatura, que es lo único correcto: la presión en reposo es la del
  * ambiente que haya ese día, y la de aspiración depende de a qué temperatura
  * evapore la instalación. Un número fijo te hace cargar de más en agosto.
+ *
+ * Los valores salen de las propiedades termodinámicas exactas de cada gas
+ * (CoolProp), no de tablas tecleadas. En las mezclas con deslizamiento se dan las
+ * dos columnas, burbuja y rocío, porque a una misma presión hay dos temperaturas.
  */
 
 const AMBIENTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45];
+
+/** Número con coma decimal española. */
+const num = (n, d = 2) => Number(n).toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
+/** Entero con signo menos tipográfico para que no se confunda con un guion. */
+const entero = (n) => String(Math.round(n) + 0).replace('-', '−');
+const bar = (n) => num(Math.round(n * 100) / 100 + 0, 2).replace('-', '−');
 
 function Fila({ etiqueta, valor, fuerte }) {
   if (valor === null || valor === undefined || valor === '') return null;
@@ -30,6 +40,31 @@ function Fila({ etiqueta, valor, fuerte }) {
     <div className="flex items-start justify-between gap-3 py-1 border-b border-gray-100 last:border-0">
       <span className="text-[11px] text-gray-500 flex-shrink-0">{etiqueta}</span>
       <span className={`text-[11px] text-right ${fuerte ? 'font-bold text-gray-900' : 'text-gray-700'}`}>{valor}</span>
+    </div>
+  );
+}
+
+/** Texto de un intervalo de presiones; `null` si alguno de los extremos queda fuera de la tabla del gas. */
+function intervalo(a, b) {
+  if (!a || !b || a.fueraDeTabla || b.fueraDeTabla) return null;
+  const ordenado = a.relativa <= b.relativa ? [a, b] : [b, a];
+  return {
+    bar: ordenado[0].relativa === ordenado[1].relativa ? bar(ordenado[0].relativa) : `${bar(ordenado[0].relativa)} – ${bar(ordenado[1].relativa)}`,
+    psi: ordenado[0].psi === ordenado[1].psi ? entero(ordenado[0].psi) : `${entero(ordenado[0].psi)} – ${entero(ordenado[1].psi)}`,
+    vacio: ordenado[0].relativa < 0,
+  };
+}
+
+function FueraDeTabla({ gas }) {
+  return (
+    <div>
+      <p className="text-sm font-semibold text-gray-500">Fuera de la tabla del gas</p>
+      {gas.id === 'R-744' && (
+        <p className="text-[10px] text-gray-500 mt-1">
+          Con esta temperatura el CO₂ está cerca o por encima de su punto crítico (31 °C): trabaja en transcrítico y la presión
+          la manda la regulación de la instalación, no la temperatura.
+        </p>
+      )}
     </div>
   );
 }
@@ -55,9 +90,16 @@ export default function PresionesGas() {
     [idGas, idApp, ambiente],
   );
   const deLaLectura = useMemo(
-    () => (lectura.trim() ? temperaturaA(idGas, String(lectura).replace(',', '.')) : null),
+    () => (lectura.trim() ? temperaturaA(idGas, lectura) : null),
     [idGas, lectura],
   );
+
+  // Tabla P–T del gas elegido, de 5 en 5 K dentro de lo que cubren los datos.
+  const filasPT = useMemo(() => {
+    const temps = temperaturasDeTabla(idGas);
+    if (!temps.length) return [];
+    return tablaPT(idGas, { desde: temps[0], hasta: temps[temps.length - 1], paso: 5 });
+  }, [idGas]);
 
   const carga = useMemo(
     () => calcularCarga({ cargaFabrica, metrosIncluidos, metrosReales, gramosPorMetro, cargaActual, restarSiCorta }),
@@ -66,6 +108,14 @@ export default function PresionesGas() {
 
   // Lo que arrastra la carga total: toneladas de CO₂ y control de fugas.
   const tCO2 = carga.completo ? toneladasCO2(idGas, carga.total / 1000) : null;
+
+  // El ejemplo de la cabecera sale de la propia tabla, así no puede quedarse desfasado.
+  const ejemplo25 = presionA('R-410A', 25, 'burbuja');
+  const ejemplo40 = presionA('R-410A', 40, 'burbuja');
+
+  const aspiracion = trabajo ? intervalo(trabajo.evapMin, trabajo.evapMax) : null;
+  const alta = trabajo ? intervalo(trabajo.condMin, trabajo.condMax) : null;
+  const reposo = trabajo?.reposo && !trabajo.reposo.fueraDeTabla ? trabajo.reposo : null;
 
   return (
     <div className="space-y-4 max-w-5xl">
@@ -86,8 +136,8 @@ export default function PresionesGas() {
         <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
         <p className="text-xs text-amber-900">
           <strong>No existe «la presión» de un gas.</strong> La presión en reposo es la de saturación
-          <strong> a la temperatura que haya</strong>: el mismo R-410A con la carga perfecta marca 225 psi a
-          25 °C y 336 psi a 40 °C. Y la de aspiración depende de a qué temperatura evapore la instalación.
+          <strong> a la temperatura que haya</strong>: el mismo R-410A con la carga perfecta marca {ejemplo25.psi} psi a
+          25 °C y {ejemplo40.psi} psi a 40 °C. Y la de aspiración depende de a qué temperatura evapore la instalación.
           Por eso aquí eliges gas, tipo de instalación y ambiente, y sale lo tuyo.
         </p>
       </div>
@@ -98,7 +148,7 @@ export default function PresionesGas() {
         <CardContent className="p-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div>
-              <label className="text-xs text-gray-500">Gas refrigerante</label>
+              <label className="text-xs text-gray-500">Gas refrigerante ({GASES.length} gases)</label>
               <Select value={idGas} onValueChange={setIdGas}>
                 <SelectTrigger data-prueba="gas-presion"><SelectValue /></SelectTrigger>
                 <SelectContent className="max-h-72">
@@ -133,6 +183,11 @@ export default function PresionesGas() {
               {g.aviso}
             </p>
           )}
+          {g?.composicion && (
+            <p className="text-[10px] text-gray-500 mt-1.5" data-prueba="composicion-gas">
+              Composición (en masa): {g.composicion.replace(/(\d)\.(\d)/g, '$1,$2')}
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -148,27 +203,39 @@ export default function PresionesGas() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="border rounded-lg p-2.5 bg-white">
                 <p className="text-[11px] font-bold text-blue-700 mb-1">Aspiración (baja)</p>
-                <p className="text-lg font-bold" data-prueba="aspiracion">
-                  {trabajo.evapMin.relativa} – {trabajo.evapMax.relativa} bar
-                </p>
-                <p className="text-xs text-gray-600">{trabajo.evapMin.psi} – {trabajo.evapMax.psi} psi</p>
+                {aspiracion ? (
+                  <>
+                    <p className="text-lg font-bold" data-prueba="aspiracion">{aspiracion.bar} bar</p>
+                    <p className="text-xs text-gray-600">{aspiracion.psi} psi{aspiracion.vacio ? ' (negativo = vacío)' : ''}</p>
+                  </>
+                ) : <FueraDeTabla gas={g} />}
                 <p className="text-[10px] text-gray-400 mt-1">
                   Evaporando entre {trabajo.aplicacion.evaporacion[0]} y {trabajo.aplicacion.evaporacion[1]} °C
+                  {g.zeotropo ? ' (rocío)' : ''}
                 </p>
               </div>
               <div className="border rounded-lg p-2.5 bg-white">
                 <p className="text-[11px] font-bold text-red-700 mb-1">Alta (descarga)</p>
-                <p className="text-lg font-bold" data-prueba="alta">
-                  {trabajo.condMin.relativa} – {trabajo.condMax.relativa} bar
+                {alta ? (
+                  <>
+                    <p className="text-lg font-bold" data-prueba="alta">{alta.bar} bar</p>
+                    <p className="text-xs text-gray-600">{alta.psi} psi</p>
+                  </>
+                ) : <FueraDeTabla gas={g} />}
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Condensando a {trabajo.tCondensacion[0]} – {trabajo.tCondensacion[1]} °C{g.zeotropo ? ' (rocío)' : ''}
+                  {' · '}{trabajo.aplicacion.condensacion}
                 </p>
-                <p className="text-xs text-gray-600">{trabajo.condMin.psi} – {trabajo.condMax.psi} psi</p>
-                <p className="text-[10px] text-gray-400 mt-1">{trabajo.aplicacion.condensacion}</p>
               </div>
               <div className="border rounded-lg p-2.5 bg-white">
                 <p className="text-[11px] font-bold text-gray-700 mb-1">En reposo (parada)</p>
-                <p className="text-lg font-bold" data-prueba="reposo">{trabajo.reposo.relativa} bar</p>
-                <p className="text-xs text-gray-600">{trabajo.reposo.psi} psi</p>
-                <p className="text-[10px] text-gray-400 mt-1">Saturación a {trabajo.ambiente} °C</p>
+                {reposo ? (
+                  <>
+                    <p className="text-lg font-bold" data-prueba="reposo">{bar(reposo.relativa)} bar</p>
+                    <p className="text-xs text-gray-600">{entero(reposo.psi)} psi</p>
+                  </>
+                ) : <FueraDeTabla gas={g} />}
+                <p className="text-[10px] text-gray-400 mt-1">Saturación a {trabajo.ambiente} °C{g.zeotropo ? ' (burbuja)' : ''}</p>
               </div>
             </div>
 
@@ -186,17 +253,19 @@ export default function PresionesGas() {
                 <p className="text-sm font-semibold">{trabajo.aplicacion.saltoAire}</p>
               </div>
               <div className="border rounded p-2 bg-gray-50">
-                <p className="text-[10px] text-gray-500">Ebullición del gas</p>
-                <p className="text-sm font-semibold">{g.ebullicion} °C</p>
+                <p className="text-[10px] text-gray-500">{g.ebullicion === null ? 'Punto crítico' : 'Ebullición a 1 atm'}</p>
+                <p className="text-sm font-semibold">
+                  {g.ebullicion === null ? `${num(g.tCritica, 0)} °C · ${num(g.pCritica, 1)} bar` : `${num(g.ebullicion, 1).replace('-', '−')} °C`}
+                </p>
               </div>
             </div>
 
             {trabajo.aplicacion.nota && (
               <p className="text-[11px] text-gray-500 mt-2">{trabajo.aplicacion.nota}</p>
             )}
-            {g.glide > 0 && (
+            {g.glide > 0 && g.zeotropo && (
               <p className="text-[11px] text-amber-800 mt-1">
-                <strong>Deslizamiento de {g.glide} K:</strong> es una mezcla. Cárgala en fase líquida, y
+                <strong>Deslizamiento de {num(g.glide, 1)} K:</strong> es una mezcla. Cárgala en fase líquida, y
                 para el recalentamiento usa la temperatura de rocío, no la de burbuja.
               </p>
             )}
@@ -212,20 +281,29 @@ export default function PresionesGas() {
         <CardContent className="p-3">
           <div className="flex items-center gap-2 flex-wrap">
             <Input data-prueba="lectura" value={lectura} onChange={(e) => setLectura(e.target.value)}
-              placeholder="bar que marca" className="w-40" />
+              inputMode="decimal" placeholder="bar que marca" className="w-40" />
             <span className="text-xs text-gray-500">bar (los que lee el manómetro)</span>
             <ArrowRight className="w-4 h-4 text-gray-400" />
             <span className="text-lg font-bold" data-prueba="temp-saturacion">
               {deLaLectura?.fueraDeTabla ? 'Fuera de la tabla'
-                : deLaLectura ? `${deLaLectura.temperatura} °C` : '—'}
+                : deLaLectura ? `${num(deLaLectura.temperatura, 1).replace('-', '−')} °C` : '—'}
             </span>
             {deLaLectura && !deLaLectura.fueraDeTabla && (
-              <span className="text-xs text-gray-500">de saturación con {g.nombre}</span>
+              <span className="text-xs text-gray-500">
+                {deLaLectura.zeotropo ? 'de rocío' : 'de saturación'} con {g.nombre}
+              </span>
             )}
           </div>
+          {deLaLectura && !deLaLectura.fueraDeTabla && deLaLectura.burbuja !== null && (
+            <p className="text-xs text-gray-700 mt-1.5" data-prueba="temp-burbuja">
+              Es una mezcla con deslizamiento: a esa presión el <strong>rocío</strong> está a{' '}
+              {num(deLaLectura.temperatura, 1).replace('-', '−')} °C (para el recalentamiento) y la <strong>burbuja</strong> a{' '}
+              {num(deLaLectura.burbuja, 1).replace('-', '−')} °C (para el subenfriamiento).
+            </p>
+          )}
           <p className="text-[11px] text-gray-500 mt-1.5">
             Con esta temperatura y la del tubo sacas el recalentamiento: temperatura del tubo de aspiración
-            menos esta. {g.glide > 0 && 'Ojo, con esta mezcla usa el valor de rocío del fabricante.'}
+            menos esta. {g.zeotropo && 'En el lado de alta, para el subenfriamiento, usa la de burbuja.'}
           </p>
         </CardContent>
       </Card>
@@ -240,25 +318,54 @@ export default function PresionesGas() {
         </CardHeader>
         <CardContent className="p-3">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs" data-prueba="tabla-pt">
+            <table className="w-full max-w-none text-xs" data-prueba="tabla-pt">
               <thead>
-                <tr className="bg-gray-100">
-                  <th className="p-1.5 text-left">Temperatura</th>
-                  <th className="p-1.5 text-right">bar (manómetro)</th>
-                  <th className="p-1.5 text-right">psi</th>
-                  <th className="p-1.5 text-right">bar absolutos</th>
-                </tr>
+                {g.zeotropo ? (
+                  <>
+                    <tr className="bg-gray-100">
+                      <th rowSpan={2} className="p-1.5 text-left align-bottom">Temperatura</th>
+                      <th colSpan={2} className="p-1.5 text-center border-l">Burbuja (líquido)</th>
+                      <th colSpan={2} className="p-1.5 text-center border-l">Rocío (vapor)</th>
+                    </tr>
+                    <tr className="bg-gray-100">
+                      <th className="p-1.5 text-right border-l">bar (man.)</th>
+                      <th className="p-1.5 text-right">psi</th>
+                      <th className="p-1.5 text-right border-l">bar (man.)</th>
+                      <th className="p-1.5 text-right">psi</th>
+                    </tr>
+                  </>
+                ) : (
+                  <tr className="bg-gray-100">
+                    <th className="p-1.5 text-left">Temperatura</th>
+                    <th className="p-1.5 text-right">bar (manómetro)</th>
+                    <th className="p-1.5 text-right">psi</th>
+                    <th className="p-1.5 text-right">bar absolutos</th>
+                  </tr>
+                )}
               </thead>
               <tbody>
-                {g.tabla.map(([t]) => {
-                  const p = presionA(idGas, t);
-                  const esAmbiente = Number(ambiente) === t;
+                {filasPT.map((f) => {
+                  const esAmbiente = Number(ambiente) === f.t;
+                  const b = f.burbuja;
+                  const r = f.rocio;
+                  const celda = (m, campo, fmt) => (m ? fmt(m[campo]) : '—');
                   return (
-                    <tr key={t} className={`border-b ${esAmbiente ? 'bg-sky-50 font-semibold' : ''}`}>
-                      <td className="p-1.5">{t} °C{esAmbiente ? ' ← ambiente' : ''}</td>
-                      <td className="p-1.5 text-right">{p.relativa}</td>
-                      <td className="p-1.5 text-right">{p.psi}</td>
-                      <td className="p-1.5 text-right text-gray-400">{p.absoluta}</td>
+                    <tr key={f.t} className={`border-b ${esAmbiente ? 'bg-sky-50 font-semibold' : ''}`}>
+                      <td className="p-1.5 whitespace-nowrap">{String(f.t).replace('-', '−')} °C{esAmbiente ? ' ← ambiente' : ''}</td>
+                      {g.zeotropo ? (
+                        <>
+                          <td className="p-1.5 text-right border-l tabular-nums">{celda(b, 'relativa', bar)}</td>
+                          <td className="p-1.5 text-right tabular-nums">{celda(b, 'psi', entero)}</td>
+                          <td className="p-1.5 text-right border-l tabular-nums">{celda(r, 'relativa', bar)}</td>
+                          <td className="p-1.5 text-right tabular-nums">{celda(r, 'psi', entero)}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="p-1.5 text-right tabular-nums">{celda(b, 'relativa', bar)}</td>
+                          <td className="p-1.5 text-right tabular-nums">{celda(b, 'psi', entero)}</td>
+                          <td className="p-1.5 text-right text-gray-400 tabular-nums">{celda(b, 'absoluta', bar)}</td>
+                        </>
+                      )}
                     </tr>
                   );
                 })}
@@ -266,9 +373,11 @@ export default function PresionesGas() {
             </table>
           </div>
           <p className="text-[10px] text-gray-400 mt-2">
-            Valores de referencia de las tablas de saturación, redondeados a lo que se lee en un manómetro.
-            En mezclas con deslizamiento se da el punto de burbuja. Para un cálculo fino, la tabla del
-            fabricante del gas.
+            Presiones de saturación calculadas con las ecuaciones de estado de referencia (CoolProp), en bar de
+            manómetro (la atmósfera ya descontada); los valores negativos son vacío. {g.zeotropo
+              ? 'Mezcla con deslizamiento: en cada fila la temperatura es la de burbuja o la de rocío según la columna. Evaporación y recalentamiento, con rocío; subenfriamiento, con burbuja.'
+              : 'En una mezcla casi azeotrópica (deslizamiento menor de 0,3 K) no hay diferencia práctica entre burbuja y rocío.'}
+            {' '}Una tabla comercial de fabricante puede diferir unas décimas de bar; para un cálculo fino, la del fabricante del gas.
           </p>
         </CardContent>
       </Card>

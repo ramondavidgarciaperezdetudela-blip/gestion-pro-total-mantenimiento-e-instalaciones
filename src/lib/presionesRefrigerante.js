@@ -8,7 +8,7 @@
  *
  *   · La presión EN REPOSO es la presión de saturación del gas a la
  *     temperatura que haya. Los 225 psi del R-410A son a 25 °C. En agosto a
- *     40 °C, la misma máquina, con la carga perfecta, marca 350 psi. Si vas
+ *     40 °C, la misma máquina, con la carga perfecta, marca 336 psi. Si vas
  *     con el número de la infografía, "sobra gas" y no sobra nada.
  *
  *   · La presión de ASPIRACIÓN depende de a qué temperatura esté evaporando,
@@ -22,12 +22,21 @@
  *
  * ─── DE DÓNDE SALEN LOS NÚMEROS ──────────────────────────────────────────────
  *
- * Son valores de referencia de las tablas de saturación de cada refrigerante,
- * redondeados a lo que se puede leer en un manómetro. Sirven para trabajar.
- * Para un cálculo fino, la referencia es la tabla del fabricante del gas o del
- * equipo. En las mezclas con deslizamiento (glide) se da el punto de burbuja,
- * que es el que se usa para la presión de alta; para el recalentamiento hay
- * que usar el de rocío, y eso lo indica cada tabla.
+ * Ya no se teclean: salen de `saturacion.js`, que a su vez usa las propiedades
+ * calculadas con CoolProp (ecuaciones de estado de referencia) para los 29
+ * gases del programa. Las tablas que había escritas a mano se desviaban hasta
+ * 5 bar en algunos gases (el R-32 a 50 °C, por ejemplo), y por eso se sustituyeron.
+ *
+ * Mezclas con deslizamiento (R-407C, R-448A, R-449A…): a una misma presión hay
+ * dos temperaturas, la de BURBUJA (empieza a hervir) y la de ROCÍO (acaba). Se
+ * dan las dos, y se usan así:
+ *   · evaporación y recalentamiento  → ROCÍO
+ *   · subenfriamiento                → BURBUJA
+ *   · condensación nominal (EN 12900)→ ROCÍO
+ *   · presión en reposo (hay líquido)→ BURBUJA a la temperatura ambiente
+ *
+ * Los valores de la tabla comercial de un fabricante pueden diferir unas décimas
+ * de bar, porque las mezclas dependen de la composición real del cilindro.
  *
  * ─── LA CARGA ────────────────────────────────────────────────────────────────
  *
@@ -35,224 +44,191 @@
  * en la placa o en el manual, y cambian con el diámetro de la línea y con el
  * modelo. Aquí se piden y se hace la cuenta, que es donde se falla.
  */
-
-const PSI_POR_BAR = 14.5038;
-const ATM = 1.013;
+import { REFRIGERANT_PROPS } from './refrigerantProps.js';
+import { buscarRefrigerante } from './refrigerantes.js';
+import {
+  ATM, PSI_POR_BAR, INHG_POR_BAR, idGasProps, presionSaturacion, temperaturaSaturacion,
+  rangoSaturacion, temperaturaEbullicionNormal,
+} from './saturacion.js';
 
 /** De presión absoluta (bar) a la que marca el manómetro (bar relativos). */
 export const aRelativa = (absoluta) => Math.round((absoluta - ATM) * 100) / 100;
 /** De bar a psi. */
 export const aPsi = (bar) => Math.round(bar * PSI_POR_BAR);
 
-/**
- * Tablas de saturación. `p` son bar ABSOLUTOS a esa temperatura en °C.
- * En las mezclas con glide, el punto de burbuja.
- */
-export const GASES = [
-  {
-    id: 'R-22',
-    nombre: 'R-22',
-    familia: 'HCFC',
-    seguridad: 'A1',
-    ebullicion: -40.8,
-    glide: 0,
-    aceite: 'Mineral / alquilbenceno',
-    aviso: 'Prohibido para recarga en la UE desde 2015. El dato está aquí porque las máquinas antiguas siguen montadas.',
-    tabla: [[-30, 1.64], [-20, 2.45], [-10, 3.55], [-5, 4.22], [0, 4.98], [5, 5.84], [7, 6.22], [10, 6.81], [15, 7.89], [20, 9.10], [25, 10.44], [30, 11.92], [35, 13.55], [40, 15.34], [45, 17.30], [50, 19.42]],
-  },
-  {
-    id: 'R-410A',
-    nombre: 'R-410A',
-    familia: 'HFC (mezcla)',
-    seguridad: 'A1',
-    ebullicion: -51.4,
-    glide: 0.1,
-    aceite: 'POE',
-    aviso: 'Se carga SIEMPRE en fase líquida: es una mezcla y por vapor se descompensa.',
-    tabla: [[-30, 2.72], [-20, 4.00], [-10, 5.72], [-5, 6.77], [0, 7.98], [5, 9.33], [7, 9.94], [10, 10.86], [15, 12.55], [20, 14.42], [25, 16.51], [30, 18.82], [35, 21.37], [40, 24.19], [45, 27.29], [50, 30.71]],
-  },
-  {
-    id: 'R-32',
-    nombre: 'R-32',
-    familia: 'HFC',
-    seguridad: 'A2L',
-    ebullicion: -51.7,
-    glide: 0,
-    aceite: 'POE',
-    aviso: 'A2L, levemente inflamable: carga máxima según el volumen del local (UNE-EN 378) y herramientas adecuadas.',
-    tabla: [[-30, 3.30], [-20, 4.81], [-10, 6.85], [-5, 8.07], [0, 9.51], [5, 11.09], [7, 11.78], [10, 12.87], [15, 14.87], [20, 17.09], [25, 19.56], [30, 22.29], [35, 25.30], [40, 28.62], [45, 32.25], [50, 36.24]],
-  },
-  {
-    id: 'R-454B',
-    nombre: 'R-454B',
-    familia: 'HFO (mezcla)',
-    seguridad: 'A2L',
-    ebullicion: -50.9,
-    glide: 1.5,
-    aceite: 'POE',
-    aviso: 'A2L. Sustituto del R-410A: presiones parecidas pero NO es intercambiable sin comprobar el equipo.',
-    tabla: [[-30, 2.62], [-20, 3.87], [-10, 5.54], [-5, 6.57], [0, 7.74], [5, 9.07], [7, 9.65], [10, 10.57], [15, 12.24], [20, 14.09], [25, 16.15], [30, 18.42], [35, 20.93], [40, 23.69], [45, 26.72], [50, 30.05]],
-  },
-  {
-    id: 'R-134a',
-    nombre: 'R-134a',
-    familia: 'HFC',
-    seguridad: 'A1',
-    ebullicion: -26.1,
-    glide: 0,
-    aceite: 'POE',
-    aviso: null,
-    tabla: [[-30, 0.85], [-20, 1.33], [-10, 2.01], [-5, 2.43], [0, 2.93], [5, 3.50], [7, 3.75], [10, 4.15], [15, 4.88], [20, 5.72], [25, 6.65], [30, 7.70], [35, 8.87], [40, 10.17], [45, 11.60], [50, 13.18]],
-  },
-  {
-    id: 'R-404A',
-    nombre: 'R-404A',
-    familia: 'HFC (mezcla)',
-    seguridad: 'A1',
-    ebullicion: -46.5,
-    glide: 0.7,
-    aceite: 'POE',
-    aviso: 'GWP muy alto (3922). Sustitúyelo por R-448A, R-449A o R-454C cuando toque intervenir.',
-    tabla: [[-40, 1.32], [-35, 1.64], [-30, 2.05], [-25, 2.49], [-20, 3.03], [-15, 3.65], [-10, 4.37], [-5, 5.19], [0, 6.13], [5, 7.19], [10, 8.38], [15, 9.72], [20, 11.21], [25, 12.88], [30, 14.72], [35, 16.76], [40, 19.00], [45, 21.46], [50, 24.15]],
-  },
-  {
-    id: 'R-448A',
-    nombre: 'R-448A',
-    familia: 'HFO (mezcla)',
-    seguridad: 'A1',
-    ebullicion: -45.9,
-    glide: 5.5,
-    aceite: 'POE',
-    aviso: 'Deslizamiento de unos 5-6 K: para el recalentamiento usa la temperatura de ROCÍO, no la de burbuja.',
-    tabla: [[-40, 1.14], [-35, 1.44], [-30, 1.80], [-25, 2.22], [-20, 2.72], [-15, 3.30], [-10, 3.97], [-5, 4.74], [0, 5.62], [5, 6.62], [10, 7.75], [15, 9.02], [20, 10.44], [25, 12.02], [30, 13.78], [35, 15.73], [40, 17.87], [45, 20.23], [50, 22.81]],
-  },
-  {
-    id: 'R-449A',
-    nombre: 'R-449A',
-    familia: 'HFO (mezcla)',
-    seguridad: 'A1',
-    ebullicion: -46.0,
-    glide: 5.5,
-    aceite: 'POE',
-    aviso: 'Deslizamiento de unos 5-6 K: para el recalentamiento usa la temperatura de ROCÍO.',
-    tabla: [[-40, 1.16], [-35, 1.46], [-30, 1.83], [-25, 2.26], [-20, 2.76], [-15, 3.35], [-10, 4.03], [-5, 4.81], [0, 5.70], [5, 6.72], [10, 7.86], [15, 9.14], [20, 10.58], [25, 12.18], [30, 13.96], [35, 15.93], [40, 18.09], [45, 20.47], [50, 23.08]],
-  },
-  {
-    id: 'R-407C',
-    nombre: 'R-407C',
-    familia: 'HFC (mezcla)',
-    seguridad: 'A1',
-    ebullicion: -43.6,
-    glide: 7,
-    aceite: 'POE',
-    aviso: 'Deslizamiento de unos 7 K, el mayor de los habituales. Cárgalo en líquido y usa rocío para el recalentamiento.',
-    tabla: [[-30, 1.62], [-20, 2.51], [-10, 3.72], [-5, 4.47], [0, 5.33], [5, 6.32], [7, 6.75], [10, 7.44], [15, 8.71], [20, 10.14], [25, 11.75], [30, 13.55], [35, 15.55], [40, 17.77], [45, 20.22], [50, 22.92]],
-  },
-  {
-    id: 'R-290',
-    nombre: 'R-290 (propano)',
-    familia: 'Natural (HC)',
-    seguridad: 'A3',
-    ebullicion: -42.1,
-    glide: 0,
-    aceite: 'Mineral / POE',
-    aviso: 'A3, INFLAMABLE. Carga máxima muy limitada por el volumen del local. Herramientas y detección específicas.',
-    tabla: [[-40, 1.11], [-30, 1.68], [-20, 2.45], [-10, 3.45], [-5, 4.05], [0, 4.74], [5, 5.51], [7, 5.85], [10, 6.38], [15, 7.34], [20, 8.37], [25, 9.52], [30, 10.79], [35, 12.17], [40, 13.69], [45, 15.34], [50, 17.13]],
-  },
-  {
-    id: 'R-600a',
-    nombre: 'R-600a (isobutano)',
-    familia: 'Natural (HC)',
-    seguridad: 'A3',
-    ebullicion: -11.7,
-    glide: 0,
-    aceite: 'Mineral / POE',
-    aviso: 'A3, INFLAMABLE. Cargas muy pequeñas (frigoríficos): se pesa en gramos, no en kilos.',
-    tabla: [[-30, 0.37], [-25, 0.51], [-20, 0.72], [-15, 0.87], [-10, 1.09], [-5, 1.30], [0, 1.57], [5, 1.88], [10, 2.23], [15, 2.63], [20, 3.04], [25, 3.51], [30, 4.05], [35, 4.64], [40, 5.31], [45, 6.05], [50, 6.87]],
-  },
-  {
-    id: 'R-744',
-    nombre: 'R-744 (CO₂)',
-    familia: 'Natural',
-    seguridad: 'A1',
-    ebullicion: -78.5,
-    glide: 0,
-    aceite: 'POE',
-    aviso: '⚠️ PRESIONES MUY ALTAS. Punto crítico a 31 °C y 73,8 bar: por encima no hay condensación, trabaja en transcrítico. Manómetros y mangueras específicos.',
-    tabla: [[-40, 10.05], [-35, 12.02], [-30, 14.28], [-25, 16.83], [-20, 19.70], [-15, 22.91], [-10, 26.49], [-5, 30.47], [0, 34.85], [5, 39.69], [10, 45.02], [15, 50.87], [20, 57.29], [25, 64.34], [30, 72.14]],
-  },
-  {
-    id: 'R-717',
-    nombre: 'R-717 (amoníaco)',
-    familia: 'Natural',
-    seguridad: 'B2L',
-    ebullicion: -33.3,
-    glide: 0,
-    aceite: 'Mineral / PAO',
-    aviso: '⚠️ TÓXICO. Sala de máquinas específica, detección y ventilación de emergencia. Nunca manómetros con latón.',
-    tabla: [[-40, 0.72], [-35, 0.93], [-30, 1.19], [-25, 1.51], [-20, 1.90], [-15, 2.36], [-10, 2.91], [-5, 3.55], [0, 4.29], [5, 5.16], [10, 6.15], [15, 7.28], [20, 8.57], [25, 10.03], [30, 11.67], [35, 13.51], [40, 15.55], [45, 17.82], [50, 20.33]],
-  },
-];
+/** Por debajo de este deslizamiento (K, a 0 °C) la mezcla se trata como un gas puro en las tablas. */
+export const UMBRAL_DESLIZAMIENTO = 0.3;
 
-/** Un gas de la tabla. */
-export function gas(id) {
-  return GASES.find((g) => g.id === id) || null;
+// «+ 0» convierte −0 en 0: un −0,00 en pantalla desconcierta a quien lee el manómetro
+const redondear2 = (n) => Math.round(n * 100) / 100 + 0;
+const es1 = (n) => Number(n).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/** Lo que se lee en un manómetro para una presión absoluta, con vacío incluido. */
+function medir(pAbs) {
+  const rel = pAbs - ATM;
+  return {
+    absoluta: redondear2(pAbs),
+    relativa: redondear2(rel),
+    psi: Math.round(rel * PSI_POR_BAR) + 0,
+    vacioInHg: rel < 0 ? Math.round(-rel * INHG_POR_BAR * 10) / 10 : 0,
+  };
 }
 
 /**
- * Presión de saturación a una temperatura, interpolando entre los puntos de
- * la tabla. Devuelve bar absolutos, relativos y psi.
+ * Avisos escritos a mano de los gases de uso más corriente. El resto de gases genera su aviso
+ * a partir de su clasificación de seguridad, su estado normativo y su deslizamiento (ver `avisoDe`).
+ * Lo que dependa de un número (el deslizamiento) NO se escribe aquí: sale de los datos.
  */
-export function presionA(idGas, temperatura) {
+const AVISOS_MANUALES = {
+  'R-22': 'Prohibido para recarga en la UE desde 2015. El dato está aquí porque las máquinas antiguas siguen montadas.',
+  'R-410A': 'Se carga SIEMPRE en fase líquida: es una mezcla y por vapor se descompensa.',
+  'R-32': 'A2L, levemente inflamable: carga máxima según el volumen del local (UNE-EN 378) y herramientas adecuadas.',
+  'R-454B': 'A2L. Sustituto del R-410A: presiones parecidas pero NO es intercambiable sin comprobar el equipo.',
+  'R-404A': 'GWP muy alto (3922). Sustitúyelo por R-448A, R-449A o R-454C cuando toque intervenir.',
+  'R-290': 'A3, INFLAMABLE. Carga máxima muy limitada por el volumen del local. Herramientas y detección específicas.',
+  'R-600a': 'A3, INFLAMABLE. Cargas muy pequeñas (frigoríficos): se pesa en gramos, no en kilos.',
+  'R-744': '⚠️ PRESIONES MUY ALTAS. Punto crítico a 31 °C y 73,8 bar: por encima no hay condensación, trabaja en transcrítico y la presión ya no depende de la temperatura. Manómetros y mangueras específicos. La tabla llega a 25 °C.',
+  'R-717': '⚠️ TÓXICO. Sala de máquinas específica, detección y ventilación de emergencia. Nunca manómetros con latón.',
+};
+
+/** Aviso de un gas: el escrito a mano si lo hay y, en las mezclas, la nota de deslizamiento sacada de los datos. */
+function avisoDe(id, cat, d) {
+  const partes = [];
+  if (AVISOS_MANUALES[id]) partes.push(AVISOS_MANUALES[id]);
+  else {
+    if (cat?.estado === 'prohibido') partes.push('Prohibido para recargar en la UE: agota la capa de ozono. El dato está aquí porque las máquinas antiguas siguen montadas.');
+    if (d.clase === 'A2L') partes.push('A2L, levemente inflamable: carga máxima según el volumen del local (UNE-EN 378) y herramientas adecuadas.');
+    if (d.clase === 'A3') partes.push('A3, INFLAMABLE. Carga máxima muy limitada por el volumen del local. Herramientas y detección específicas.');
+    if (d.clase.startsWith('B')) partes.push('Tóxico: sala de máquinas, detección y ventilación específicas.');
+    if (cat?.estado === 'restringido') partes.push(`Gas fluorado de GWP alto${cat.gwp ? ` (${cat.gwp})` : ''}: sujeto a las cuotas y prohibiciones por tipo de equipo del Reglamento (UE) 2024/573.`);
+  }
+  if (d.mezcla && d.glide0 >= UMBRAL_DESLIZAMIENTO) {
+    partes.push(`Deslizamiento de ${es1(d.glide0)} K a 0 °C: es una mezcla zeótropa. Cárgala en fase líquida; para el recalentamiento usa la temperatura de ROCÍO y para el subenfriamiento la de BURBUJA.`);
+  } else if (d.mezcla && !AVISOS_MANUALES[id]) {
+    partes.push('Es una mezcla: se carga siempre en fase líquida.');
+  }
+  return partes.length ? partes.join(' ') : null;
+}
+
+function familiaDe(cat, d) {
+  if (!cat) return d.mezcla ? 'HFO (mezcla)' : 'Otro';
+  return d.mezcla && !cat.familia.startsWith('Natural') ? `${cat.familia} (mezcla)` : cat.familia;
+}
+
+function construirGas(id) {
+  const d = REFRIGERANT_PROPS[id];
+  const cat = buscarRefrigerante(id);
+  const r = rangoSaturacion(id);
+  return {
+    id,
+    nombre: cat?.nombre || id,
+    familia: familiaDe(cat, d),
+    seguridad: d.clase,
+    ebullicion: temperaturaEbullicionNormal(id) === null ? null : Math.round(temperaturaEbullicionNormal(id) * 10) / 10,
+    glide: Math.round(d.glide0 * 10) / 10,
+    mezcla: d.mezcla,
+    composicion: d.composicion,
+    zeotropo: d.mezcla && d.glide0 >= UMBRAL_DESLIZAMIENTO,
+    aceite: cat?.aceite || null,
+    gwp: cat?.gwp ?? null,
+    estado: cat?.estado || null,
+    uso: cat?.uso || null,
+    tCritica: d.Tcrit,
+    pCritica: d.Pcrit,
+    tMin: r.rocio.tMin,
+    tMax: Math.min(r.burbuja.tMax, r.rocio.tMax),
+    aviso: avisoDe(id, cat, d),
+  };
+}
+
+/** Los gases con tabla, en orden natural (R-12, R-22, R-32, R-134a, R-290, R-404A…). */
+export const GASES = Object.keys(REFRIGERANT_PROPS)
+  .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
+  .map(construirGas);
+
+/** Un gas de la tabla (admite variantes del nombre: «R404A», «R-744 (CO₂)»…). */
+export function gas(id) {
+  const clave = idGasProps(id);
+  return clave ? GASES.find((g) => g.id === clave) || null : null;
+}
+
+/**
+ * Presión de saturación a una temperatura.
+ * @param {string} idGas
+ * @param {number|string} temperatura  °C
+ * @param {'burbuja'|'rocio'} [punto='burbuja']  qué temperatura es en una mezcla (en un gas puro da igual)
+ * @returns {{temperatura, punto, absoluta, relativa, psi, vacioInHg, fueraDeTabla:false}
+ *          | {fueraDeTabla:true, minimo, maximo}|null}  bar absolutos, de manómetro y psi
+ */
+export function presionA(idGas, temperatura, punto = 'burbuja') {
   const g = gas(idGas);
   const t = Number(temperatura);
-  if (!g || !Number.isFinite(t)) return null;
-
-  const tabla = g.tabla;
-  if (t < tabla[0][0] || t > tabla[tabla.length - 1][0]) {
-    return { fueraDeTabla: true, minimo: tabla[0][0], maximo: tabla[tabla.length - 1][0] };
+  if (!g || temperatura === '' || temperatura === null || !Number.isFinite(t)) return null;
+  const pAbs = presionSaturacion(g.id, t, punto);
+  if (pAbs === null) {
+    const r = rangoSaturacion(g.id)[punto === 'burbuja' ? 'burbuja' : 'rocio'];
+    return { fueraDeTabla: true, minimo: r.tMin, maximo: r.tMax };
   }
-  let absoluta = null;
-  for (let i = 0; i < tabla.length - 1; i++) {
-    const [t1, p1] = tabla[i];
-    const [t2, p2] = tabla[i + 1];
-    if (t >= t1 && t <= t2) {
-      absoluta = t2 === t1 ? p1 : p1 + ((p2 - p1) * (t - t1)) / (t2 - t1);
-      break;
-    }
-  }
-  if (absoluta === null) return null;
-  const rel = aRelativa(absoluta);
-  return {
-    temperatura: t,
-    absoluta: Math.round(absoluta * 100) / 100,
-    relativa: rel,
-    psi: aPsi(rel),
-    fueraDeTabla: false,
-  };
+  return { temperatura: t, punto, ...medir(pAbs), fueraDeTabla: false };
 }
 
 /**
  * Qué temperatura de saturación corresponde a una presión leída en el
  * manómetro (bar relativos). Es la operación que se hace de verdad en obra:
  * lees la presión y quieres saber a qué temperatura evapora.
+ *
+ * En una mezcla con deslizamiento devuelve las dos: la de ROCÍO (la que vale para el recalentamiento)
+ * en `temperatura`, y la de BURBUJA (la del subenfriamiento) en `burbuja`.
  */
 export function temperaturaA(idGas, barRelativos) {
   const g = gas(idGas);
-  const pRel = Number(barRelativos);
-  if (!g || !Number.isFinite(pRel)) return null;
+  const texto = String(barRelativos ?? '').replace(',', '.').trim();
+  const pRel = Number(texto);
+  if (!g || texto === '' || !Number.isFinite(pRel)) return null;
   const pAbs = pRel + ATM;
-  const tabla = g.tabla;
-  if (pAbs < tabla[0][1] || pAbs > tabla[tabla.length - 1][1]) return { fueraDeTabla: true };
-  for (let i = 0; i < tabla.length - 1; i++) {
-    const [t1, p1] = tabla[i];
-    const [t2, p2] = tabla[i + 1];
-    if (pAbs >= p1 && pAbs <= p2) {
-      const t = p2 === p1 ? t1 : t1 + ((t2 - t1) * (pAbs - p1)) / (p2 - p1);
-      return { temperatura: Math.round(t * 10) / 10, fueraDeTabla: false };
-    }
+  const rocio = temperaturaSaturacion(g.id, pAbs, 'rocio');
+  if (rocio === null) return { fueraDeTabla: true };
+  const burbuja = temperaturaSaturacion(g.id, pAbs, 'burbuja');
+  return {
+    temperatura: Math.round(rocio * 10) / 10,
+    burbuja: g.zeotropo && burbuja !== null ? Math.round(burbuja * 10) / 10 : null,
+    zeotropo: g.zeotropo,
+    fueraDeTabla: false,
+  };
+}
+
+/**
+ * Tabla presión–temperatura de un gas en una rejilla de temperaturas.
+ * Cada fila: `{ t, burbuja, rocio }`, con `{absoluta, relativa, psi, vacioInHg}` o `null` si ese punto
+ * queda fuera de la tabla del gas. En un gas puro (o casi azeótropo) `rocio` es igual que `burbuja`.
+ */
+export function tablaPT(idGas, { desde = -40, hasta = 60, paso = 5 } = {}) {
+  const g = gas(idGas);
+  if (!g || !(paso > 0)) return [];
+  const n = Math.floor((hasta - desde) / paso + 1e-9);
+  const filas = [];
+  for (let i = 0; i <= n; i++) {
+    const t = Math.round((desde + i * paso) * 1000) / 1000;
+    const b = presionSaturacion(g.id, t, 'burbuja');
+    const r = presionSaturacion(g.id, t, 'rocio');
+    if (b === null && r === null) continue;
+    filas.push({ t, burbuja: b === null ? null : medir(b), rocio: r === null ? null : medir(r) });
   }
-  return null;
+  return filas;
+}
+
+/**
+ * Temperaturas con las que se pinta la tabla de un gas: de 5 en 5 K entre −50 y 60 °C, recortadas a
+ * lo que cubren los datos del gas.
+ */
+export function temperaturasDeTabla(idGas) {
+  const g = gas(idGas);
+  if (!g) return [];
+  const desde = Math.max(-50, Math.ceil(g.tMin / 5) * 5);
+  const hasta = Math.min(60, Math.floor(g.tMax / 5) * 5);
+  const lista = [];
+  for (let t = desde; t <= hasta; t += 5) lista.push(t);
+  return lista;
 }
 
 /**
@@ -265,6 +241,7 @@ export const APLICACIONES = [
     nombre: 'Climatización / split en frío',
     evaporacion: [5, 10],
     condensacion: 'Ambiente exterior + 10 a 15 K',
+    condDelta: [10, 15],
     recalentamiento: [5, 8],
     subenfriamiento: [5, 10],
     saltoAire: '8 a 12 K entre retorno e impulsión',
@@ -275,6 +252,7 @@ export const APLICACIONES = [
     nombre: 'Bomba de calor en calefacción',
     evaporacion: [-5, 5],
     condensacion: '45 a 55 °C',
+    condFija: [45, 55],
     recalentamiento: [5, 8],
     subenfriamiento: [3, 8],
     saltoAire: '15 a 25 K en impulsión',
@@ -285,6 +263,7 @@ export const APLICACIONES = [
     nombre: 'Refrigeración media temperatura (cámara 0 a 4 °C)',
     evaporacion: [-10, -5],
     condensacion: 'Ambiente + 10 a 15 K',
+    condDelta: [10, 15],
     recalentamiento: [4, 8],
     subenfriamiento: [4, 8],
     saltoAire: '6 a 8 K en el evaporador',
@@ -295,6 +274,7 @@ export const APLICACIONES = [
     nombre: 'Congelación (cámara -18 a -22 °C)',
     evaporacion: [-32, -25],
     condensacion: 'Ambiente + 10 a 15 K',
+    condDelta: [10, 15],
     recalentamiento: [4, 8],
     subenfriamiento: [3, 6],
     saltoAire: '5 a 8 K en el evaporador',
@@ -305,6 +285,7 @@ export const APLICACIONES = [
     nombre: 'Mural / vitrina expositora',
     evaporacion: [-12, -6],
     condensacion: 'Ambiente + 10 a 15 K',
+    condDelta: [10, 15],
     recalentamiento: [4, 8],
     subenfriamiento: [4, 8],
     saltoAire: '6 a 9 K',
@@ -315,6 +296,7 @@ export const APLICACIONES = [
     nombre: 'Frigorífico doméstico',
     evaporacion: [-28, -20],
     condensacion: 'Ambiente + 12 a 20 K',
+    condDelta: [12, 20],
     recalentamiento: [3, 6],
     subenfriamiento: [2, 5],
     saltoAire: '—',
@@ -326,20 +308,38 @@ export function aplicacion(id) {
   return APLICACIONES.find((a) => a.id === id) || null;
 }
 
-/** Las presiones que le tocan a una instalación, ya calculadas. */
+/**
+ * Las presiones que le tocan a una instalación, ya calculadas.
+ *
+ *   · aspiración  → saturación en ROCÍO a la temperatura de evaporación de la instalación
+ *   · alta        → saturación en ROCÍO a la temperatura de condensación (ambiente + salto, o la fija
+ *                    de una bomba de calor)
+ *   · reposo      → saturación en BURBUJA a la temperatura ambiente (hay líquido en el depósito)
+ *
+ * Cada presión es `{absoluta, relativa, psi,…}` o `{fueraDeTabla:true,…}` si la temperatura no cae dentro
+ * de la tabla del gas (por ejemplo, el CO₂ por encima de 25 °C: ahí trabaja en transcrítico).
+ */
 export function presionesDeTrabajo(idGas, idAplicacion, ambiente = 30) {
   const g = gas(idGas);
   const a = aplicacion(idAplicacion);
   if (!g || !a) return null;
+  const amb = Number(ambiente);
 
-  const evapMin = presionA(idGas, a.evaporacion[0]);
-  const evapMax = presionA(idGas, a.evaporacion[1]);
-  // La condensación se estima con el ambiente más el salto habitual.
-  const condMin = presionA(idGas, Number(ambiente) + 10);
-  const condMax = presionA(idGas, Number(ambiente) + 15);
-  const reposo = presionA(idGas, Number(ambiente));
+  const [cMin, cMax] = a.condFija
+    ? a.condFija
+    : [amb + (a.condDelta?.[0] ?? 10), amb + (a.condDelta?.[1] ?? 15)];
 
-  return { gas: g, aplicacion: a, ambiente: Number(ambiente), evapMin, evapMax, condMin, condMax, reposo };
+  return {
+    gas: g,
+    aplicacion: a,
+    ambiente: amb,
+    evapMin: presionA(g.id, a.evaporacion[0], 'rocio'),
+    evapMax: presionA(g.id, a.evaporacion[1], 'rocio'),
+    condMin: presionA(g.id, cMin, 'rocio'),
+    condMax: presionA(g.id, cMax, 'rocio'),
+    tCondensacion: [cMin, cMax],
+    reposo: presionA(g.id, amb, 'burbuja'),
+  };
 }
 
 // ─── Cálculo de la carga ─────────────────────────────────────────────────────

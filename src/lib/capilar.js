@@ -30,6 +30,10 @@
  * Autor: David García (Gestión Pro Total). Fichero de cálculo propio.
  */
 import { REFRIGERANT_PROPS } from './refrigerantProps.js';
+import { gasPreparado } from './saturacion.js';
+
+// Los interpoladores de cada gas (PCHIP en ln P) viven en saturacion.js: los comparten las tablas P–T y el capilar.
+export { gasPreparado };
 
 const BAR = 1e5;
 
@@ -43,93 +47,7 @@ const RUGOSIDAD = 1.5e-6; // m — cobre estirado
 const PASOS_ESTRANGULAMIENTO = 160; // nodos para buscar el punto crítico
 const PASOS_INTEGRACION = 240; // intervalos de Simpson (par)
 
-/* ───────────────────────────── Interpolación monótona (PCHIP) ───────────────────────────── */
-
-function derivadaExtremo(h0, h1, d0, d1) {
-  let m = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1);
-  if (Math.sign(m) !== Math.sign(d0)) m = 0;
-  else if (Math.sign(d0) !== Math.sign(d1) && Math.abs(m) > 3 * Math.abs(d0)) m = 3 * d0;
-  return m;
-}
-
-/** Interpolador cúbico de Hermite monótono (Fritsch-Carlson). xs estrictamente creciente. */
-function crearPchip(xs, ys) {
-  const n = xs.length;
-  const h = new Array(n - 1);
-  const d = new Array(n - 1);
-  for (let i = 0; i < n - 1; i++) {
-    h[i] = xs[i + 1] - xs[i];
-    d[i] = (ys[i + 1] - ys[i]) / h[i];
-  }
-  const m = new Array(n);
-  if (n === 2) {
-    m[0] = d[0];
-    m[1] = d[0];
-  } else {
-    for (let i = 1; i < n - 1; i++) {
-      if (d[i - 1] * d[i] <= 0) m[i] = 0;
-      else {
-        const w1 = 2 * h[i] + h[i - 1];
-        const w2 = h[i] + 2 * h[i - 1];
-        m[i] = (w1 + w2) / (w1 / d[i - 1] + w2 / d[i]);
-      }
-    }
-    m[0] = derivadaExtremo(h[0], h[1], d[0], d[1]);
-    m[n - 1] = derivadaExtremo(h[n - 2], h[n - 3], d[n - 2], d[n - 3]);
-  }
-  const x0 = xs[0];
-  const x1 = xs[n - 1];
-  return (xIn) => {
-    const x = xIn <= x0 ? x0 : xIn >= x1 ? x1 : xIn; // sin extrapolar: se limita al rango de la tabla
-    let lo = 0;
-    let hi = n - 2;
-    while (lo < hi) {
-      const mid = (lo + hi + 1) >> 1;
-      if (xs[mid] <= x) lo = mid;
-      else hi = mid - 1;
-    }
-    const t = (x - xs[lo]) / h[lo];
-    const t2 = t * t;
-    const t3 = t2 * t;
-    return (
-      (2 * t3 - 3 * t2 + 1) * ys[lo] +
-      (t3 - 2 * t2 + t) * h[lo] * m[lo] +
-      (-2 * t3 + 3 * t2) * ys[lo + 1] +
-      (t3 - t2) * h[lo] * m[lo + 1]
-    );
-  };
-}
-
 /* ───────────────────────────── Gases ───────────────────────────── */
-
-const CACHE_GASES = new Map();
-
-/** Interpoladores de un gas (variable independiente: s = ln P[bar]). */
-export function gasPreparado(id) {
-  if (CACHE_GASES.has(id)) return CACHE_GASES.get(id);
-  const d = REFRIGERANT_PROPS[id];
-  if (!d) return null;
-  const s = d.P.map((p) => Math.log(p));
-  const g = {
-    id,
-    datos: d,
-    sMin: s[0],
-    sMax: s[s.length - 1],
-    Tb: crearPchip(s, d.T), // temperatura de burbuja (°C)
-    Td: crearPchip(s, d.Td), // temperatura de rocío (°C)
-    lnRl: crearPchip(s, d.rl.map(Math.log)),
-    lnRv: crearPchip(s, d.rv.map(Math.log)),
-    hl: crearPchip(s, d.hl), // kJ/kg
-    hv: crearPchip(s, d.hv),
-    lnMl: crearPchip(s, d.ml.map(Math.log)), // µPa·s
-    lnMv: crearPchip(s, d.mv.map(Math.log)),
-    cpv: crearPchip(s, d.cpv), // kJ/kg·K
-    sDeTb: crearPchip(d.T, s),
-    sDeTd: crearPchip(d.Td, s),
-  };
-  CACHE_GASES.set(id, g);
-  return g;
-}
 
 /** Lista de gases disponibles, ordenada alfabéticamente. */
 export function listaGases() {
