@@ -9,6 +9,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
+    "test:capilar": "node scripts/test-capilar.mjs",
     "preview": "vite preview",
     "cap:add:android": "cap add android",
     "cap:sync": "cap sync",

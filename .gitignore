@@ -55,3 +55,7 @@ dist-offline/
 # Debe ir versionada para que cada APK se firme igual y se actualice sin desinstalar.
 !android-signing/debug.keystore
 base44/.app.jsonc
+
+# Python (scripts de datos)
+__pycache__/
+*.pyc
