@@ -25,6 +25,8 @@ const CARGADORES = [
   () => import('../pages/Maintenance'),
   () => import('../pages/ContactDetail'),
   () => import('../pages/SATChat'),
+  () => import('../pages/PlanoFrigorifico'),
+  () => import('../pages/PlanoIA'),
 ];
 
 export function prefetchPages() {

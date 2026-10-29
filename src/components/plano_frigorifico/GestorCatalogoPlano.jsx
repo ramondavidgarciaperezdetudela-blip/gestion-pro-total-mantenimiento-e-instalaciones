@@ -27,14 +27,21 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
 
   const glyph = (name || '').trim().slice(0, 3).toUpperCase() || 'XX';
 
+  const generarIconoIA = async () => {
+    const catLabel = CATEGORIAS.find((c) => c.id === cat)?.label || cat;
+    const prompt = `Símbolo técnico ESTÁNDAR en vista superior de "${name.trim()}" (${catLabel}), icono normalizado para plano de instalación frigorífica/climatización, estilo vectorial de líneas limpias y planas (sin degradados ni sombras), contorno negro grueso, relleno plano de un solo color, centrado sobre fondo blanco, sin texto ni letras, silueta claramente distinta e inconfundible para diferenciarlo a primera vista de otras máquinas, estilo esquema técnico ISO`;
+    const res = await base44.integrations.Core.GenerateImage({ prompt });
+    return res?.url || '';
+  };
+
+  // Previsualiza el icono IA antes de guardar (opcional). Si no se pulsa, el
+  // icono se genera solo al guardar.
   const buscarIcono = async () => {
     if (!name.trim()) return;
     setBuscando(true);
     try {
-      const catLabel = CATEGORIAS.find((c) => c.id === cat)?.label || cat;
-      const prompt = `Símbolo técnico ESTÁNDAR en vista superior de "${name.trim()}" (${catLabel}), icono normalizado para plano de instalación frigorífica/climatización, estilo vectorial de líneas limpias y planas (sin degradados ni sombras), contorno negro grueso, relleno plano de un solo color, centrado sobre fondo blanco, sin texto ni letras, silueta claramente distinta e inconfundible para diferenciarlo a primera vista de otras máquinas, estilo esquema técnico ISO`;
-      const res = await base44.integrations.Core.GenerateImage({ prompt });
-      if (res?.url) setImageUrl(res.url);
+      const url = await generarIconoIA();
+      if (url) setImageUrl(url);
     } catch (e) {
       console.error(e);
     } finally {
@@ -46,14 +53,25 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
     if (!name.trim() || !cat) return;
     setGuardando(true);
     try {
-      await base44.entities.PlanoCatalogItem.create({
-        name: name.trim(), cat, glyph,
+      // 1. Icono IA: si no se ha previsualizado, se genera ahora automáticamente.
+      let url = image_url;
+      if (!url) {
+        setBuscando(true);
+        try { url = await generarIconoIA(); } finally { setBuscando(false); }
+      }
+      const base = {
+        name: name.trim(), glyph,
         w_m: Number(w_m) || 0.6, h_m: Number(h_m) || 0.6,
-        precio: Number(precio) || 0,
-        image_url: image_url || '',
-        is_active: true,
-      });
-      // Limpia el formulario por si se quiere añadir otro.
+        precio: Number(precio) || 0, is_active: true,
+      };
+      // 2. Símbolo estándar en el apartado elegido (sin imagen: dibujo
+      //    vectorial genérico con su código de 3 letras).
+      await base44.entities.PlanoCatalogItem.create({ ...base, cat, image_url: '' });
+      // 3. Icono IA en su apartado propio ("Iconos IA"), para usar el que se
+      //    quiera en cada plano.
+      if (url) {
+        await base44.entities.PlanoCatalogItem.create({ ...base, cat: 'ia', image_url: url });
+      }
       setName(''); setPrecio(''); setImageUrl(''); setW(0.6); setH(0.6);
       onSaved?.();
       onClose();
@@ -76,7 +94,7 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
           </div>
           <div>
             <h3 className="text-sm font-bold">Añadir elemento al catálogo</h3>
-            <p className="text-[11px] text-muted-foreground">Se guarda en el apartado que elijas para usarlo siempre que quieras</p>
+            <p className="text-[11px] text-muted-foreground">Se crean dos elementos: el símbolo estándar en el apartado elegido y el icono IA en «Iconos IA»</p>
           </div>
         </div>
 
@@ -132,7 +150,7 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
                   : <Search className="w-5 h-5 text-muted-foreground" />}
               </div>
               <p className="text-[10px] leading-snug text-muted-foreground">
-                La IA busca un icono realista a partir del nombre. Si no lo generas, el elemento usa un símbolo genérico con su código «{glyph}».
+                Puedes previsualizar el icono IA o dejarlo en blanco: al guardar se genera solo. El símbolo estándar (código «{glyph}») va al apartado elegido y el icono IA a «Iconos IA».
               </p>
             </div>
           </div>
@@ -144,7 +162,7 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
             className="rounded-md px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
             style={{ background: color }}>
             {guardando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-            Guardar en el apartado
+            Crear estándar + IA
           </button>
         </div>
       </div>
