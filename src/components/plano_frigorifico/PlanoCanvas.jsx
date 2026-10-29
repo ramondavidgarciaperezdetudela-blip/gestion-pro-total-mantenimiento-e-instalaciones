@@ -62,6 +62,10 @@ export default function PlanoCanvas({
   const [drag, setDrag] = useState(null);
   const [connFrom, setConnFrom] = useState(null);
   const [connPath, setConnPath] = useState([]);
+  // Cota: primer clic guarda el origen, el segundo cierra la línea de medida.
+  const [cotaStart, setCotaStart] = useState(null);
+  // Mano alzada: puntos recogidos mientras se arrastra.
+  const [trazoPts, setTrazoPts] = useState(null);
 
   const major = Math.max(8, gridMeters * scale);          // cuadrícula mayor (m)
   const minor = major / 5;                                  // subdivisión fina
@@ -83,6 +87,19 @@ export default function PlanoCanvas({
 
   const hitElement = (p) => [...elements].reverse().find((el) => {
     if (!visible(el)) return false;
+    // Cota: se selecciona tocando su línea de medida, no el recuadro del origen.
+    if (el.type === 'cota') {
+      const x2 = el.datos?.x2 ?? el.x, y2 = el.datos?.y2 ?? el.y;
+      return distSeg(p.x, p.y, el.x, el.y, x2, y2) < 8;
+    }
+    // Mano alzada: se selecciona tocando cualquiera de sus segmentos.
+    if (el.type === 'trazo') {
+      const pts = el.datos?.points || [];
+      for (let i = 1; i < pts.length; i++) {
+        if (distSeg(p.x, p.y, pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y) < 7) return true;
+      }
+      return false;
+    }
     const w = (el.w_m || 0.5) * scale, h = (el.h_m || 0.5) * scale;
     const x0 = el.x - w / 2, y0 = el.y - h / 2;
     return p.x >= x0 && p.x <= x0 + w && p.y >= y0 && p.y <= y0 + h;
@@ -118,6 +135,38 @@ export default function PlanoCanvas({
         onChange({ walls: [...walls, { id: crypto.randomUUID(), x1: wallStart.x, y1: wallStart.y, x2: p.x, y2: p.y }] });
         setWallStart(p);
       }
+      return;
+    }
+
+    // Texto: se pregunta el texto y se suelta como anotación en el plano.
+    if (mode === 'text') {
+      const texto = window.prompt('Texto a añadir en el plano:', 'Nota');
+      if (!texto) return;
+      const el = {
+        id: crypto.randomUUID(), type: 'texto', cat: 'estructura', label: 'Texto',
+        glyph: '', color: '#64748b', datos: { text: texto },
+        x: p.x, y: p.y, w_m: 0.6, h_m: 0.3, qty: 1,
+      };
+      onChange({ elements: [...elements, el], selectedId: el.id });
+      return;
+    }
+
+    // Cota: primer clic = origen, segundo = fin → línea de medida con su longitud.
+    if (mode === 'cota') {
+      if (!cotaStart) { setCotaStart(p); return; }
+      const el = {
+        id: crypto.randomUUID(), type: 'cota', cat: 'estructura', label: 'Cota',
+        glyph: '', color: '#64748b', datos: { x2: p.x, y2: p.y },
+        x: cotaStart.x, y: cotaStart.y, w_m: 0.2, h_m: 0.2, qty: 1,
+      };
+      onChange({ elements: [...elements, el], selectedId: el.id });
+      setCotaStart(null);
+      return;
+    }
+
+    // Mano alzada: al pulsar empieza a recoger puntos; al soltar crea el trazo.
+    if (mode === 'trazo') {
+      setTrazoPts([{ x: p.x, y: p.y }]);
       return;
     }
 
@@ -158,7 +207,7 @@ export default function PlanoCanvas({
   };
 
   const handleMove = (e) => {
-    if (e.buttons === 0 && drag) { setDrag(null); return; }
+    if (e.buttons === 0 && drag) { setDrag(null); }
     const raw = toSvg(e);
     const p = { x: snap(raw.x), y: snap(raw.y) };
     setMouse(p);
@@ -166,12 +215,29 @@ export default function PlanoCanvas({
       const els = elements.map((el) => el.id === drag.id ? { ...el, x: p.x - drag.ox, y: p.y - drag.oy } : el);
       onChange({ elements: els });
     }
+    // Mano alzada: añadir punto si se ha movido lo suficiente.
+    if (mode === 'trazo' && trazoPts && e.buttons === 1) {
+      const last = trazoPts[trazoPts.length - 1];
+      if (Math.hypot(p.x - last.x, p.y - last.y) > 3) setTrazoPts((pp) => [...pp, p]);
+    }
   };
 
-  const handleUp = () => { if (drag) setDrag(null); };
+  const handleUp = () => {
+    if (drag) setDrag(null);
+    // Cerrar el trazo a mano alzada al soltar el puntero.
+    if (mode === 'trazo' && trazoPts && trazoPts.length > 1) {
+      const el = {
+        id: crypto.randomUUID(), type: 'trazo', cat: 'estructura', label: 'Trazo',
+        glyph: '', color: '#64748b', datos: { points: trazoPts },
+        x: trazoPts[0].x, y: trazoPts[0].y, w_m: 0.2, h_m: 0.2, qty: 1,
+      };
+      onChange({ elements: [...elements, el], selectedId: el.id });
+    }
+    setTrazoPts(null);
+  };
 
   useEffect(() => {
-    const h = (e) => { if (e.key === 'Escape') { setWallStart(null); setConnFrom(null); } };
+    const h = (e) => { if (e.key === 'Escape') { setWallStart(null); setConnFrom(null); setCotaStart(null); setTrazoPts(null); } };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, []);
@@ -186,7 +252,7 @@ export default function PlanoCanvas({
       <svg
         ref={svgRef}
         viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
-        style={{ width: '100%', minWidth: fullscreen ? 0 : 720, height: fullscreen ? '100%' : '70vh', display: 'block', touchAction: 'none', cursor: mode === 'wall' || mode === 'connect' ? 'crosshair' : mode === 'select' ? 'default' : 'copy' }}
+        style={{ width: '100%', minWidth: fullscreen ? 0 : 720, height: fullscreen ? '100%' : '70vh', display: 'block', touchAction: 'none', cursor: (mode === 'wall' || mode === 'connect' || mode === 'cota' || mode === 'trazo') ? 'crosshair' : mode === 'text' ? 'text' : mode === 'select' ? 'default' : 'copy' }}
         onPointerDown={handleDown}
         onPointerMove={handleMove}
         onPointerUp={handleUp}
@@ -284,6 +350,53 @@ export default function PlanoCanvas({
         {elementosVisibles.map((el) => {
           const sel = el.id === selectedId;
           const fromHere = el.id === connFrom;
+
+          // ── Texto: anotación libre sobre el plano ──
+          if (el.type === 'texto') {
+            return (
+              <g key={el.id} transform={`translate(${el.x},${el.y})`} style={{ cursor: mode === 'select' ? 'move' : 'default' }}>
+                {sel && <rect x={-4} y={-14} width={Math.max(40, (el.datos?.text || '').length * 6.5)} height={22} rx={3} fill="#64748b22" stroke="#64748b" strokeWidth="1" />}
+                <text x={0} y={2} textAnchor="start" fontSize="13" fontWeight="600" fill={el.color || '#e2e8f0'} style={{ pointerEvents: 'none' }}>{el.datos?.text || 'Texto'}</text>
+              </g>
+            );
+          }
+
+          // ── Cota: línea de medida con flechas y longitud ──
+          if (el.type === 'cota') {
+            const x2 = el.datos?.x2 ?? el.x, y2 = el.datos?.y2 ?? el.y;
+            const len = Math.hypot(x2 - el.x, y2 - el.y);
+            const metros = (len / scale).toFixed(2);
+            const mx = (el.x + x2) / 2, my = (el.y + y2) / 2;
+            const ang = Math.atan2(y2 - el.y, x2 - el.x);
+            const arr = 7;
+            return (
+              <g key={el.id} style={{ cursor: mode === 'select' ? 'move' : 'default' }}>
+                <line x1={el.x} y1={el.y} x2={x2} y2={y2} stroke={el.color || '#64748b'} strokeWidth={sel ? 2 : 1.5} />
+                {/* extensión a ambos extremos */}
+                <line x1={el.x} y1={el.y} x2={el.x + Math.cos(ang + Math.PI / 2) * 5} y2={el.y + Math.sin(ang + Math.PI / 2) * 5} stroke={el.color || '#64748b'} strokeWidth="1" />
+                <line x1={x2} y1={y2} x2={x2 + Math.cos(ang + Math.PI / 2) * 5} y2={y2 + Math.sin(ang + Math.PI / 2) * 5} stroke={el.color || '#64748b'} strokeWidth="1" />
+                {/* flechas */}
+                <polyline points={`${el.x + Math.cos(ang) * arr},${el.y + Math.sin(ang) * arr} ${el.x},${el.y} ${el.x + Math.cos(ang + 2.2) * arr},${el.y + Math.sin(ang + 2.2) * arr}`} fill="none" stroke={el.color || '#64748b'} strokeWidth="1.4" />
+                <polyline points={`${x2 - Math.cos(ang) * arr},${y2 - Math.sin(ang) * arr} ${x2},${y2} ${x2 - Math.cos(ang - 2.2) * arr},${y2 - Math.sin(ang - 2.2) * arr}`} fill="none" stroke={el.color || '#64748b'} strokeWidth="1.4" />
+                <g transform={`translate(${mx},${my}) rotate(${(ang * 180) / Math.PI})`}>
+                  <rect x={-26} y={-9} width={52} height={16} rx={3} fill="hsl(var(--card))" stroke={el.color || '#64748b'} strokeWidth="0.8" />
+                  <text x={0} y={3} textAnchor="middle" fontSize="11" fontWeight="700" fill={el.color || '#64748b'} style={{ pointerEvents: 'none' }}>{metros} m</text>
+                </g>
+              </g>
+            );
+          }
+
+          // ── Mano alzada: polilínea libre ──
+          if (el.type === 'trazo') {
+            const pts = el.datos?.points || [];
+            if (pts.length < 2) return null;
+            return (
+              <polyline key={el.id} points={pts.map((p) => `${p.x},${p.y}`).join(' ')}
+                fill="none" stroke={el.color || '#64748b'} strokeWidth={sel ? 3 : 2} strokeLinecap="round" strokeLinejoin="round"
+                style={{ cursor: mode === 'select' ? 'move' : 'default' }} />
+            );
+          }
+
           const w = (el.w_m || 0.5) * scale, h = (el.h_m || 0.5) * scale;
           const y0 = el.y - h / 2;
           return (
@@ -315,6 +428,21 @@ export default function PlanoCanvas({
           </g>
         )}
 
+        {/* Vista previa de la cota en curso */}
+        {mode === 'cota' && cotaStart && mouse && (
+          <g>
+            <line x1={cotaStart.x} y1={cotaStart.y} x2={mouse.x} y2={mouse.y} stroke="#64748b" strokeWidth="1.5" strokeDasharray="4 3" />
+            <text x={(cotaStart.x + mouse.x) / 2} y={(cotaStart.y + mouse.y) / 2 - 6} textAnchor="middle" fontSize="11" fill="#64748b">
+              {(Math.hypot(mouse.x - cotaStart.x, mouse.y - cotaStart.y) / scale).toFixed(2)} m
+            </text>
+          </g>
+        )}
+
+        {/* Vista previa del trazo a mano alzada */}
+        {mode === 'trazo' && trazoPts && trazoPts.length > 1 && (
+          <polyline points={trazoPts.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+        )}
+
         {/* Cursor de coordenadas */}
         {mouse && (
           <text x={12} y={CANVAS_H - 14} fontSize="12" fill="hsl(var(--muted-foreground))" style={{ pointerEvents: 'none' }}>
@@ -322,7 +450,11 @@ export default function PlanoCanvas({
               ? (polyline
                   ? `Codos: ${connPath.length} · clic en el equipo destino para cerrar (Esc cancela)`
                   : `Conectando: clic en el equipo destino · ${connectType === 'refrigerante' ? 'tubería' : connectType === 'conducto' ? 'conducto' : 'eléctrica'}`)
-              : `${m(mouse.x)} m × ${m(mouse.y)} m`}
+              : mode === 'cota' && cotaStart
+                ? `Cota: clic en el segundo punto (Esc cancela) · ${m(mouse.x)} × ${m(mouse.y)} m`
+                : mode === 'trazo'
+                  ? `Mano alzada: pulsa y arrastra para dibujar (Esc cancela)`
+                  : `${m(mouse.x)} m × ${m(mouse.y)} m`}
           </text>
         )}
       </svg>

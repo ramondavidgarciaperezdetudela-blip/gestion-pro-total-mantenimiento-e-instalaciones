@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Zap } from 'lucide-react';
+import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Zap, Box } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { getNextAvailableNumber } from '@/components/autoNumber';
@@ -15,6 +15,8 @@ import { exportarDXF } from '@/lib/planoDxfExport';
 import { exportarEsquemaElectrico, imprimirEsquemaElectrico } from '@/lib/planoEsquemaElectrico';
 import InformeAseguradoraDialog from '@/components/plano_frigorifico/InformeAseguradoraDialog';
 import LeyendaPlano from '@/components/plano_frigorifico/LeyendaPlano';
+import PlanoBarraSuperior from '@/components/plano_frigorifico/PlanoBarraSuperior';
+import Vista3DPlanoFrigorifico from '@/components/plano_frigorifico/Vista3DPlanoFrigorifico';
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
 import { CAT_COLOR, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
 import { presupuestoAproximado } from '@/lib/instalacionCalculos';
@@ -50,6 +52,8 @@ export default function PlanoFrigorifico() {
   // El editor abre a pantalla completa por defecto: en una pestaña normal el
   // lienzo queda demasiado pequeño para dibujar cómodamente.
   const [fullscreen, setFullscreen] = useState(true);
+  // Visor 3D de la instalación: se abre como un panel sobre el editor.
+  const [ver3D, setVer3D] = useState(false);
 
   // Esc cierra la pantalla completa, igual que en el resto del programa.
   useEffect(() => {
@@ -391,6 +395,104 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
     } finally { setGenerating(false); }
   };
 
+  // Controles de cuadrícula, movimiento y capas: se reutilizan tal cual en
+  // modo normal y en pantalla completa.
+  const Controles = (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2">
+      <div className="flex items-center gap-1.5 text-xs">
+        <Grid3x3 className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-muted-foreground">Cuadrícula</span>
+        {[1, 0.5].map((g) => (
+          <button key={g} onClick={() => setGridMeters(g)}
+            className="rounded-md border px-2 py-1 text-xs transition-all"
+            style={gridMeters === g ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
+            {g} m
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-1.5 text-xs">
+        <Ruler className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-muted-foreground">Movimiento</span>
+        <button onClick={() => setSnapMode('libre')}
+          className="rounded-md border px-2 py-1 text-xs transition-all"
+          style={snapMode === 'libre' ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
+          Libre (0,1 m)
+        </button>
+        <button onClick={() => setSnapMode('cuadricula')}
+          className="rounded-md border px-2 py-1 text-xs transition-all"
+          style={snapMode === 'cuadricula' ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
+          A cuadrícula
+        </button>
+      </div>
+      <div className="w-px h-6 bg-border" />
+      <div className="flex items-center gap-1.5 text-xs">
+        <span className="text-muted-foreground">Capas</span>
+        {CAPAS.map((capa) => {
+          const on = capasVisibles[capa.id] !== false;
+          return (
+            <button key={capa.id} onClick={() => setCapasVisibles((v) => ({ ...v, [capa.id]: !on }))}
+              className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-all"
+              style={{ borderColor: on ? capa.color : 'hsl(var(--border))', color: on ? capa.color : 'hsl(var(--muted-foreground))', background: on ? capa.color + '15' : 'transparent' }}>
+              {on ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+              {capa.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // Panel lateral: detalles del elemento, descripción, presupuesto y leyenda.
+  const PanelLateral = (
+    <div className="rounded-lg border border-border bg-card p-3 overflow-y-auto min-h-0 h-full">
+      <PlanoEquipoDetalles
+        element={selectedElement} connection={selectedConnection} wall={selectedWall}
+        elements={plan.elements} scale={plan.scale}
+        onUpdate={selectedConnection ? actualizarConexion : actualizarElemento}
+        onDelete={borrarSeleccion} />
+      <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] text-muted-foreground">Descripción del proyecto</span>
+          <textarea value={plan.description || ''} onChange={(e) => setPlan((p) => ({ ...p, description: e.target.value }))}
+            rows={2} className="rounded-md border border-border bg-input px-2 py-1 text-xs resize-none" />
+        </label>
+        <div className="text-[10px] text-muted-foreground">
+          {plan.elements.length} elementos · {plan.walls.length} paredes · {plan.connections.length} conexiones
+        </div>
+        <div className="rounded-lg border border-border p-2" data-prueba="presupuesto-plano">
+          <div className="tech-label mb-1.5">💶 Presupuesto aproximado</div>
+          {presupuesto.lineas.length === 0 ? (
+            <p className="text-[10px] text-muted-foreground">
+              Coloca equipos y tira tuberías: la cifra va saliendo aquí sola.
+            </p>
+          ) : (
+            <>
+              <div className="flex max-h-32 flex-col gap-0.5 overflow-y-auto">
+                {presupuesto.lineas.map((l, i) => (
+                  <div key={i} className="flex justify-between gap-2 text-[10px]">
+                    <span className="truncate text-muted-foreground">
+                      {l.unidades}{l.unidad ? ` ${l.unidad}` : '×'} {l.concepto}
+                    </span>
+                    <span className="font-mono">{l.total.toFixed(2)} €</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1.5 flex flex-col gap-0.5 border-t border-border pt-1.5 text-[10px]">
+                <div className="flex justify-between"><span className="text-muted-foreground">Material</span><span className="font-mono">{presupuesto.materiales.toFixed(2)} €</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Mano de obra (35 %)</span><span className="font-mono">{presupuesto.manoObra.toFixed(2)} €</span></div>
+                <div className="flex justify-between text-xs font-bold"><span>Total</span><span className="font-mono">{presupuesto.total.toFixed(2)} €</span></div>
+              </div>
+              <p className="mt-1.5 flex gap-1 text-[9px] leading-snug text-amber-600">
+                <AlertTriangle className="mt-0.5 h-2.5 w-2.5 flex-shrink-0" />{presupuesto.aviso}
+              </p>
+            </>
+          )}
+        </div>
+        <LeyendaPlano />
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -510,117 +612,70 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       </div>
 
       <PantallaCompleta open={fullscreen} onClose={() => setFullscreen(false)}>
-        <div className="rounded-lg border border-border bg-card p-3">
-          <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} onPick={onPick} />
-        </div>
-
-      {/* Controles de cuadrícula, movimiento y capas */}
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2">
-        <div className="flex items-center gap-1.5 text-xs">
-          <Grid3x3 className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-muted-foreground">Cuadrícula</span>
-          {[1, 0.5].map((g) => (
-            <button key={g} onClick={() => setGridMeters(g)}
-              className="rounded-md border px-2 py-1 text-xs transition-all"
-              style={gridMeters === g ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
-              {g} m
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1.5 text-xs">
-          <Ruler className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-muted-foreground">Movimiento</span>
-          <button onClick={() => setSnapMode('libre')}
-            className="rounded-md border px-2 py-1 text-xs transition-all"
-            style={snapMode === 'libre' ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
-            Libre (0,1 m)
-          </button>
-          <button onClick={() => setSnapMode('cuadricula')}
-            className="rounded-md border px-2 py-1 text-xs transition-all"
-            style={snapMode === 'cuadricula' ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
-            A cuadrícula
-          </button>
-        </div>
-        <div className="w-px h-6 bg-border" />
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-muted-foreground">Capas</span>
-          {CAPAS.map((capa) => {
-            const on = capasVisibles[capa.id] !== false;
-            return (
-              <button key={capa.id} onClick={() => setCapasVisibles((v) => ({ ...v, [capa.id]: !on }))}
-                className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-all"
-                style={{ borderColor: on ? capa.color : 'hsl(var(--border))', color: on ? capa.color : 'hsl(var(--muted-foreground))', background: on ? capa.color + '15' : 'transparent' }}>
-                {on ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                {capa.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Cuerpo: lienzo · detalles */}
-      <div className={`grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 ${fullscreen ? 'flex-1 min-h-0' : ''}`}>
-        <PlanoCanvas
-          walls={plan.walls} elements={plan.elements} connections={plan.connections}
-          selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-          polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
-          capasVisibles={capasVisibles} onChange={handleChange} fullscreen={fullscreen} />
-
-        <div className={`rounded-lg border border-border bg-card p-3 overflow-y-auto ${fullscreen ? 'min-h-0 max-h-full' : 'lg:max-h-[70vh]'}`}>
-          <PlanoEquipoDetalles
-            element={selectedElement} connection={selectedConnection} wall={selectedWall}
-            elements={plan.elements} scale={plan.scale}
-            onUpdate={selectedConnection ? actualizarConexion : actualizarElemento}
-            onDelete={borrarSeleccion} />
-          <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
-            <label className="flex flex-col gap-1">
-              <span className="text-[10px] text-muted-foreground">Descripción del proyecto</span>
-              <textarea value={plan.description || ''} onChange={(e) => setPlan((p) => ({ ...p, description: e.target.value }))}
-                rows={2} className="rounded-md border border-border bg-input px-2 py-1 text-xs resize-none" />
-            </label>
-            <div className="text-[10px] text-muted-foreground">
-              {plan.elements.length} elementos · {plan.walls.length} paredes · {plan.connections.length} conexiones
+        {fullscreen ? (
+          // ── Pantalla completa real: barra superior con menús y el lienzo a
+          //    toda la superficie. Sin scroll para alcanzar las herramientas.
+          <div className="flex flex-col gap-2 min-h-0 flex-1">
+            <PlanoBarraSuperior
+              mode={mode} activeType={activeType} connectType={connectType} onPick={onPick}
+              saving={saving} onSave={guardar} onPDF={onExportarPDF}
+              on3D={() => setVer3D(true)} onExit={() => setFullscreen(false)} />
+            {Controles}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 flex-1 min-h-0">
+              <PlanoCanvas
+                walls={plan.walls} elements={plan.elements} connections={plan.connections}
+                selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
+                polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
+                capasVisibles={capasVisibles} onChange={handleChange} fullscreen />
+              {PanelLateral}
             </div>
-
-            {/* Lo que va costando esto mientras se dibuja. No es el presupuesto
-                que se manda, es la cifra para hablar con el cliente ahí mismo. */}
-            <div className="rounded-lg border border-border p-2" data-prueba="presupuesto-plano">
-              <div className="tech-label mb-1.5">💶 Presupuesto aproximado</div>
-              {presupuesto.lineas.length === 0 ? (
-                <p className="text-[10px] text-muted-foreground">
-                  Coloca equipos y tira tuberías: la cifra va saliendo aquí sola.
-                </p>
-              ) : (
-                <>
-                  <div className="flex max-h-32 flex-col gap-0.5 overflow-y-auto">
-                    {presupuesto.lineas.map((l, i) => (
-                      <div key={i} className="flex justify-between gap-2 text-[10px]">
-                        <span className="truncate text-muted-foreground">
-                          {l.unidades}{l.unidad ? ` ${l.unidad}` : '×'} {l.concepto}
-                        </span>
-                        <span className="font-mono">{l.total.toFixed(2)} €</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-1.5 flex flex-col gap-0.5 border-t border-border pt-1.5 text-[10px]">
-                    <div className="flex justify-between"><span className="text-muted-foreground">Material</span><span className="font-mono">{presupuesto.materiales.toFixed(2)} €</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Mano de obra (35 %)</span><span className="font-mono">{presupuesto.manoObra.toFixed(2)} €</span></div>
-                    <div className="flex justify-between text-xs font-bold"><span>Total</span><span className="font-mono">{presupuesto.total.toFixed(2)} €</span></div>
-                  </div>
-                  <p className="mt-1.5 flex gap-1 text-[9px] leading-snug text-amber-600">
-                    <AlertTriangle className="mt-0.5 h-2.5 w-2.5 flex-shrink-0" />{presupuesto.aviso}
-                  </p>
-                </>
-              )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="rounded-lg border border-border bg-card p-3">
+              <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} onPick={onPick} />
             </div>
+            {Controles}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3">
+              <PlanoCanvas
+                walls={plan.walls} elements={plan.elements} connections={plan.connections}
+                selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
+                polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
+                capasVisibles={capasVisibles} onChange={handleChange} fullscreen={false} />
+              {PanelLateral}
+            </div>
+          </div>
+        )}
+      </PantallaCompleta>
 
-            {/* Leyenda de símbolos y conexiones, siempre visible en el panel
-                lateral para que el dibujo se entienda a pantalla completa. */}
-            <LeyendaPlano />
+      {/* Botón flotante para entrar/salir de pantalla completa: siempre
+          accesible aunque el botón de la barra quede fuera de vista. */}
+      <button
+        onClick={() => setFullscreen((v) => !v)}
+        title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+        className="fixed bottom-20 lg:bottom-6 right-4 z-[9998] flex items-center gap-1.5 rounded-full px-3.5 py-3 text-xs font-bold text-white shadow-2xl hover:scale-105 transition-transform"
+        style={{ background: 'linear-gradient(135deg,#00D4FF,#7C3AED)' }}>
+        {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+        {fullscreen ? 'Salir' : 'Pantalla completa'}
+      </button>
+
+      {/* Visor 3D de la instalación */}
+      {ver3D && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-4" onClick={() => setVer3D(false)}>
+          <div className="w-full max-w-4xl rounded-xl bg-card border border-border shadow-2xl p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <Box className="w-4 h-4" style={{ color: '#7C3AED' }} /> Visor 3D de la instalación
+                </h3>
+                <p className="text-[11px] text-muted-foreground">Así vería el cliente cómo queda la instalación</p>
+              </div>
+              <button onClick={() => setVer3D(false)} className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-muted">Cerrar</button>
+            </div>
+            <Vista3DPlanoFrigorifico walls={plan.walls} elements={plan.elements} scale={plan.scale} />
           </div>
         </div>
-      </div>
-      </PantallaCompleta>
+      )}
 
       {/* Diálogo: enviar el plano por Gmail */}
       {gmailDialog && (

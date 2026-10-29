@@ -156,14 +156,22 @@ function tomaCorriente(w, h, x0, y0, id, datos, mini) {
 }
 
 // Interruptor: símbolo IEC de interruptor unipolar (línea con contacto inclinado).
+// Lleva un fondo semicircular para que se distinga de un simple cable aunque el
+// dibujo sea pequeño.
 function interruptor(w, h, x0, y0, id, datos, mini) {
   const cx = 0;
+  const r = Math.min(w, h) * 0.46;
   return (
     <g>
-      <line x1={cx - w * 0.42} y1={0} x2={cx - w * 0.12} y2={0} stroke={LINEA} strokeWidth="1.6" />
-      <line x1={cx - w * 0.12} y1={0} x2={cx + w * 0.26} y2={-h * 0.34} stroke={LINEA} strokeWidth="1.6" />
-      <circle cx={cx + w * 0.26} cy={-h * 0.34} r={1.2} fill={LINEA} />
-      <line x1={cx + w * 0.26} y1={0} x2={cx + w * 0.42} y2={0} stroke={LINEA} strokeWidth="1.6" />
+      <circle cx={cx} cy={0} r={r} fill="#0f172a" stroke={ACENT} strokeWidth="1.2" opacity="0.92" />
+      {/* borne de entrada */}
+      <circle cx={cx - r * 0.78} cy={0} r={1.5} fill={LINEA} />
+      {/* contacto abierto (incl inado) */}
+      <line x1={cx - r * 0.6} y1={0} x2={cx + r * 0.4} y2={-r * 0.62} stroke={LINEA} strokeWidth="2" strokeLinecap="round" />
+      <circle cx={cx + r * 0.4} cy={-r * 0.62} r={1.8} fill={LINEA} />
+      {/* borne de salida */}
+      <line x1={cx + r * 0.4} y1={0} x2={cx + r * 0.78} y2={0} stroke={LINEA} strokeWidth="2" />
+      {!mini && <text x={0} y={r + 7} textAnchor="middle" fontSize="6" fill={ACENT} fontWeight="700">IN</text>}
     </g>
   );
 }
@@ -180,15 +188,23 @@ function luminaria(w, h, x0, y0, id, datos, mini) {
   );
 }
 
-// Puesta a tierra: símbolo IEC de toma de tierra (3 líneas horizontales decrecientes).
+// Puesta a tierra: símbolo IEC de toma de tierra (3 líneas horizontales
+// decrecientes). Trazos gruesos y fondo redondo para que se vea claro aún
+// pequeño en la paleta.
 function puestaTierra(w, h, x0, y0, id, datos, mini) {
   const cx = 0;
+  const r = Math.min(w, h) * 0.48;
+  const sw = Math.max(1.6, r * 0.16);
   return (
     <g>
-      <line x1={cx} y1={y0} x2={cx} y2={y0 + h * 0.4} stroke={LINEA} strokeWidth="1.6" />
-      <line x1={cx - w * 0.4} y1={y0 + h * 0.4} x2={cx + w * 0.4} y2={y0 + h * 0.4} stroke={LINEA} strokeWidth="1.6" />
-      <line x1={cx - w * 0.28} y1={y0 + h * 0.58} x2={cx + w * 0.28} y2={y0 + h * 0.58} stroke={LINEA} strokeWidth="1.4" />
-      <line x1={cx - w * 0.16} y1={y0 + h * 0.74} x2={cx + w * 0.16} y2={y0 + h * 0.74} stroke={LINEA} strokeWidth="1.2" />
+      <circle cx={cx} cy={0} r={r} fill="#0f172a" stroke={ACENT} strokeWidth="1.2" opacity="0.92" />
+      {/* conductor vertical */}
+      <line x1={cx} y1={-r * 0.55} x2={cx} y2={-r * 0.1} stroke={LINEA} strokeWidth={sw} />
+      {/* tres horizontales decrecientes (PE) */}
+      <line x1={cx - r * 0.7} y1={-r * 0.1} x2={cx + r * 0.7} y2={-r * 0.1} stroke={ACENT} strokeWidth={sw} />
+      <line x1={cx - r * 0.5} y1={r * 0.18} x2={cx + r * 0.5} y2={r * 0.18} stroke={ACENT} strokeWidth={sw} />
+      <line x1={cx - r * 0.3} y1={r * 0.46} x2={cx + r * 0.3} y2={r * 0.46} stroke={ACENT} strokeWidth={sw} />
+      {!mini && <text x={0} y={r + 8} textAnchor="middle" fontSize="6" fill={ACENT} fontWeight="700">PE</text>}
     </g>
   );
 }
@@ -347,13 +363,55 @@ function pilar(w, h, x0, y0, id, datos, mini) {
 }
 
 function puerta(w, h, x0, y0, id, datos, mini) {
+  // Símbolo arquitectónico de puerta: la hoja se dibuja abatida 90° desde la
+  // bisagra y un cuarto de círculo marca el barrido de giro. El ancho del
+  // hueco es `w` y la hoja mide lo mismo, así que el arco sale hacia dentro
+  // de la estancia (hacia arriba en planta), aunque rebase el recuadro.
+  const apertura = (datos && datos.apertura) || 'Derecha';
+  const bisagra = apertura === 'Izquierda' ? { x: x0 + w, y: y0 + h } : { x: x0, y: y0 + h };
+  const cerrada = apertura === 'Izquierda' ? { x: x0, y: y0 + h } : { x: x0 + w, y: y0 + h };
+  const abierta = apertura === 'Izquierda' ? { x: x0 + w, y: y0 + h - w } : { x: x0, y: y0 + h - w };
+
+  if (apertura === 'Corredera') {
+    return (
+      <g>
+        {/* Hueco del muro */}
+        <line x1={x0} y1={y0 + h / 2} x2={x0 + w} y2={y0 + h / 2} stroke="#7c3aed" strokeWidth="2.2" />
+        {/* Hoja corredera (paralela, desplazada) con flecha */}
+        <line x1={x0} y1={y0 + h / 2 - 3} x2={x0 + w * 0.7} y2={y0 + h / 2 - 3} stroke="#a78bfa" strokeWidth="1.6" />
+        <polyline points={`${x0 + w * 0.7},${y0 + h / 2 - 5} ${x0 + w * 0.78},${y0 + h / 2 - 3} ${x0 + w * 0.7},${y0 + h / 2 - 1}`}
+          fill="none" stroke="#a78bfa" strokeWidth="1.2" />
+      </g>
+    );
+  }
+
+  if (apertura === 'Doble hoja') {
+    const mit = x0 + w / 2;
+    return (
+      <g>
+        {/* Barrido izquierdo */}
+        <path d={`M ${x0} ${y0 + h} A ${w / 2} ${w / 2} 0 0 1 ${mit} ${y0 + h - w / 2}`} fill="none" stroke="#7c3aed" strokeWidth="1.1" />
+        <line x1={x0} y1={y0 + h} x2={mit} y2={y0 + h - w / 2} stroke="#a78bfa" strokeWidth="1.8" />
+        {/* Barrido derecho */}
+        <path d={`M ${x0 + w} ${y0 + h} A ${w / 2} ${w / 2} 0 0 0 ${mit} ${y0 + h - w / 2}`} fill="none" stroke="#7c3aed" strokeWidth="1.1" />
+        <line x1={x0 + w} y1={y0 + h} x2={mit} y2={y0 + h - w / 2} stroke="#a78bfa" strokeWidth="1.8" />
+        {/* Hueco cerrado (punteado) */}
+        <line x1={x0} y1={y0 + h} x2={x0 + w} y2={y0 + h} stroke="#7c3aed" strokeWidth="1" strokeDasharray="3 2" />
+      </g>
+    );
+  }
+
   return (
     <g>
-      {/* Hoja */}
-      <line x1={x0} y1={y0 + h} x2={x0 + w} y2={y0} stroke="#a78bfa" strokeWidth="1.6" />
-      {/* Arco de giro */}
-      <path d={`M ${x0 + w} ${y0} a ${w} ${w} 0 0 0 ${-w} ${w}`} fill="none" stroke="#7c3aed" strokeWidth="1" strokeDasharray="2 2" />
-      <line x1={x0} y1={y0 + h} x2={x0} y2={y0} stroke="#7c3aed" strokeWidth="1" strokeDasharray="2 2" />
+      {/* Hoja abierta (sólida) */}
+      <line x1={bisagra.x} y1={bisagra.y} x2={abierta.x} y2={abierta.y} stroke="#a78bfa" strokeWidth="2" />
+      {/* Arco de barrido */}
+      <path d={`M ${cerrada.x} ${cerrada.y} A ${w} ${w} 0 0 ${apertura === 'Izquierda' ? 1 : 0} ${abierta.x} ${abierta.y}`}
+        fill="none" stroke="#7c3aed" strokeWidth="1.2" />
+      {/* Hoja cerrada en el muro (punteada) */}
+      <line x1={bisagra.x} y1={bisagra.y} x2={cerrada.x} y2={cerrada.y} stroke="#7c3aed" strokeWidth="1" strokeDasharray="3 2" />
+      {/* Bisagra */}
+      <circle cx={bisagra.x} cy={bisagra.y} r="2" fill="#7c3aed" />
     </g>
   );
 }
