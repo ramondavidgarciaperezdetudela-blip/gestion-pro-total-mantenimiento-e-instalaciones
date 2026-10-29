@@ -104,8 +104,9 @@ export default function InformeAseguradoraDialog({ open, onClose, plan, elements
     if (!open) return;
     (async () => {
       try {
-        const existentes = await base44.entities.InsuranceReport.list({ limit: 1000 }).catch(() => []);
-        const nums = (existentes || []).map((r) => (r.report_number || '').replace(/^INF-/, '')).filter(Boolean);
+        const existentes = await base44.entities.InsuranceReport.list({ limit: 1000 }).catch(() => ({ items: [] }));
+        const arr = Array.isArray(existentes) ? existentes : (existentes?.items ?? []);
+        const nums = arr.map((r) => (r.report_number || '').replace(/^INF-/, '')).filter(Boolean);
         const num = getNextAvailableNumber(nums);
         setDatos((d) => ({ ...d, report_number: `INF-${num}` }));
       } catch {}

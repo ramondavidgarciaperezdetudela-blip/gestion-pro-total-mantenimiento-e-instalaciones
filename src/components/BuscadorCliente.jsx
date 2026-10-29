@@ -82,14 +82,23 @@ export default function BuscadorCliente({
   const [resaltado, setResaltado] = useState(0);
   const caja = useRef(null);
 
+  // Defensa: el SDK de Base44 (>= 0.8.49) devuelve un objeto página `{items,...}`
+  // en list()/filter(), no un array. Si alguna página pasa ese objeto aquí sin
+  // normalizar, `.find` revienta y tumba toda la página. Se normaliza una vez
+  // y se trabaja siempre con un array de verdad.
+  const lista = useMemo(
+    () => (Array.isArray(contacts) ? contacts : (contacts?.items ?? [])),
+    [contacts],
+  );
+
   const elegido = useMemo(
-    () => (contacts || []).find((c) => c.id === value) || null,
-    [contacts, value],
+    () => lista.find((c) => c.id === value) || null,
+    [lista, value],
   );
 
   const encontrados = useMemo(
-    () => filtrarClientes(contacts, texto),
-    [contacts, texto],
+    () => filtrarClientes(lista, texto),
+    [lista, texto],
   );
 
   // Cerrar al tocar fuera. Sin esto, la lista se queda abierta tapando lo de

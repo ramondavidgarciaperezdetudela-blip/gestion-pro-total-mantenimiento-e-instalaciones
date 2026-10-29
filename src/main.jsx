@@ -24,8 +24,14 @@ aplicarTema()
 // abrir el programa y que Ollama tarde en levantarse, o arrancarlo justo
 // después de ver el aviso de que no quedan consultas. Antes se miraba UNA vez
 // al arrancar y, si no estaba, se quedaba en OpenRouter para siempre.
+// La IA gratuita (Ollama local) solo se busca en el programa de escritorio
+// instalado (puente window.gptIA) o en la app nativa del móvil. En la versión
+// web publicada no existe ningún localhost:11434: esa sonda siempre falla,
+// ensucia la consola y, al ser http desde https, el navegador la bloquea como
+// contenido mixto. Así que aquí no se lanza.
 import('@/lib/proveedorIA')
-  .then(async ({ autoConfigurarIALibre, vigilarOllama }) => {
+  .then(async ({ autoConfigurarIALibre, vigilarOllama, hayPuenteEscritorio, esMovil }) => {
+    if (!hayPuenteEscritorio() && !esMovil()) return;
     const r = await autoConfigurarIALibre()
     if (!r.puesto) vigilarOllama()
   })

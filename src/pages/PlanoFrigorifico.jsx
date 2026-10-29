@@ -27,6 +27,7 @@ import ControlMoverFlotante from '@/components/plano_frigorifico/ControlMoverFlo
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
 import { CAT_COLOR, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
 import { presupuestoAproximado } from '@/lib/instalacionCalculos';
+import { asArray } from '@/lib/asArray';
 
 const PLANO_VACIO = {
   id: null, name: '', contact_id: '', contact_name: '', description: '',
@@ -117,14 +118,15 @@ export default function PlanoFrigorifico() {
     try {
       const [ps, cs, ts, emps] = await Promise.all([
         base44.entities.RefrigerationPlan.filter({}, { sort: '-created_date', limit: 100 }).catch(() => ({ items: [] })),
-        base44.entities.Contact.list({ limit: 500 }).catch(() => []),
-        base44.entities.PriceItem.list().catch(() => []),
-        base44.entities.CompanySettings.list().catch(() => []),
+        base44.entities.Contact.list({ limit: 500 }).catch(() => ({ items: [] })),
+        base44.entities.PriceItem.list().catch(() => ({ items: [] })),
+        base44.entities.CompanySettings.list().catch(() => ({ items: [] })),
       ]);
-      setPlanos(ps?.items || []);
-      setContacts(cs || []);
-      setTarifas(ts || []);
-      if (emps && emps.length) setEmpresa(emps[0]);
+      setPlanos(asArray(ps));
+      setContacts(asArray(cs));
+      setTarifas(asArray(ts));
+      const empsArr = asArray(emps);
+      if (empsArr.length) setEmpresa(empsArr[0]);
     } finally { setLoading(false); }
   }, []);
 
