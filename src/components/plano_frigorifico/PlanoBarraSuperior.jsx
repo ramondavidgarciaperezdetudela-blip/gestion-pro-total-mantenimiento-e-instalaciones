@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Save, FileDown, Box, Minimize2, Search, Plus,
 } from 'lucide-react';
-import { CATEGORIAS } from '@/lib/planoFrigorificoCatalogo';
+import { CATEGORIAS, ELEMENTOS } from '@/lib/planoFrigorificoCatalogo';
 import PlanoMenuEquipos from './PlanoMenuEquipos';
+import PlanoSimbolo from './PlanoSimbolo';
 import PlanoBarraHerramientas from './PlanoBarraHerramientas';
 
 /**
@@ -20,6 +21,19 @@ export default function PlanoBarraSuperior({
   extraPorCat, onAddElement,
 }) {
   const [q, setQ] = useState('');
+  const [busqAbierta, setBusqAbierta] = useState(false);
+  // Catálogo de fábrica + los elementos personalizados del usuario, en una
+  // sola lista para poder buscar en todos a la vez desde la barra superior.
+  const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const todos = useMemo(() => {
+    const out = [...ELEMENTOS];
+    if (extraPorCat) Object.values(extraPorCat).forEach((arr) => { if (arr?.length) out.push(...arr); });
+    return out;
+  }, [extraPorCat]);
+  const resultados = q.trim()
+    ? todos.filter((e) => norm(`${e.label} ${e.cat}`).includes(norm(q))).slice(0, 24)
+    : [];
+  const elegir = (el) => { onPick({ mode: 'place', element: el }); setQ(''); setBusqAbierta(false); };
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2">
@@ -65,10 +79,49 @@ export default function PlanoBarraSuperior({
             <Plus className="w-3.5 h-3.5" /> Añadir
           </button>
         )}
-        <div className="flex items-center gap-1 ml-auto rounded-md border border-border bg-input px-2 py-1">
-          <Search className="w-3.5 h-3.5 text-muted-foreground" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar…"
-            className="bg-transparent text-xs outline-none w-28" />
+        <div className="relative ml-auto">
+          <div className="flex items-center gap-1 rounded-md border border-border bg-input px-2 py-1">
+            <Search className="w-3.5 h-3.5 text-muted-foreground" />
+            <input value={q}
+              onChange={(e) => { setQ(e.target.value); setBusqAbierta(true); }}
+              onFocus={() => setBusqAbierta(true)}
+              placeholder="Buscar equipo…"
+              className="bg-transparent text-xs outline-none w-32" />
+            {q && (
+              <button onClick={() => { setQ(''); setBusqAbierta(false); }}
+                className="text-[10px] text-muted-foreground hover:text-foreground">✕</button>
+            )}
+          </div>
+          {/* Resultados: lista ágil de todas las categorías a la vez. */}
+          {busqAbierta && q.trim() && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setBusqAbierta(false)} />
+              <div className="absolute right-0 top-full mt-1 z-50 rounded-lg border border-border bg-card shadow-2xl p-2 max-h-[60vh] overflow-y-auto"
+                style={{ width: 'max-content', maxWidth: '90vw', minWidth: 224 }}>
+                {resultados.length === 0 && (
+                  <span className="text-xs text-muted-foreground px-2 py-1">Nada encontrado</span>
+                )}
+                <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}>
+                  {resultados.map((el) => {
+                    const color = CATEGORIAS.find((c) => c.id === el.cat)?.color || '#888';
+                    return (
+                      <button key={el.id} onClick={() => elegir(el)} title={el.label}
+                        className="relative flex flex-col items-center gap-0.5 rounded-md border px-1 py-1 w-[96px] transition-all hover:scale-[1.03]"
+                        style={{ borderColor: color + '66', borderTopColor: color, borderTopWidth: 2 }}>
+                        {el.glyph && (
+                          <span className="absolute top-0.5 right-1 text-[8px] font-bold" style={{ color }}>{el.glyph}</span>
+                        )}
+                        <svg viewBox="-40 -30 80 60" width="64" height="48" style={{ display: 'block' }}>
+                          <PlanoSimbolo el={{ ...el, type: el.id, id: 'b-' + el.id, datos: {}, color, w_m: el.w_m, h_m: el.h_m }} scale={46} mini />
+                        </svg>
+                        <span className="text-[9px] leading-tight text-center w-full truncate">{el.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
