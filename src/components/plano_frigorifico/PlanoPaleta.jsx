@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Thermometer, Wind, Zap, ShieldAlert, Box, ChevronDown, Search, Boxes, Plus,
+  Thermometer, Wind, Zap, ShieldAlert, Box, ChevronDown, Search, Boxes, Plus, Wand2, Sparkles,
 } from 'lucide-react';
 import { CATEGORIAS, ELEMENTOS, elementosPorCategoria, buscar, DESCRIPCIONES_ELECTRICO } from '@/lib/planoFrigorificoCatalogo';
 import PlanoSimbolo from './PlanoSimbolo';
 import PlanoBarraHerramientas from './PlanoBarraHerramientas';
+import MenuElegirVersion from './MenuElegirVersion';
 
 const CAT_ICON = {
   refrigeracion: Thermometer,
@@ -27,13 +28,15 @@ const CAT_ICON = {
 export default function PlanoPaleta({
   mode, activeType, connectType, onPick,
   onUndo, onRedo, onCopy, onCut, onPaste, canUndo, canRedo, canCopy, canPaste,
-  extraElementos = [], onAddElement,
+  extraElementos = [], onAddElement, onEditarIconos,
 }) {
   // Filtro de categoría activo: 'todos' o el id de una. Al elegir un chip se
   // muestra solo ese apartado, desplegado, para llegar al símbolo sin tener que
   // navegar por todos los demás.
   const [catFiltro, setCatFiltro] = useState('todos');
-  const [abierta, setAbierta] = useState(() => Object.fromEntries(CATEGORIAS.map((c) => [c.id, true])));
+  // Por defecto los apartados van cerrados (menús con icono): así no se tienen
+  // todas las listas abiertas a la vez. El chip de categoría abre solo ese.
+  const [abierta, setAbierta] = useState(() => Object.fromEntries(CATEGORIAS.map((c) => [c.id, false])));
   const [q, setQ] = useState('');
   // Catálogo de fábrica + los elementos personalizados que el usuario haya
   // añadido, agrupados por su apartado para que aparezcan donde corresponden.
@@ -78,6 +81,13 @@ export default function PlanoPaleta({
             <Plus className="w-3.5 h-3.5" /> Añadir
           </button>
         )}
+        {onEditarIconos && (
+          <button onClick={onEditarIconos}
+            className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-[11px] hover:bg-muted whitespace-nowrap"
+            title="Editar iconos del catálogo: regenerar con IA, editar a mano y elegir la mejor versión">
+            <Wand2 className="w-3.5 h-3.5" style={{ color: '#7C3AED' }} /> Editar iconos
+          </button>
+        )}
       </div>
 
       {/* Chips de categoría: salto rápido a un apartado sin buscar. Cada uno
@@ -104,7 +114,7 @@ export default function PlanoPaleta({
           {resultados.length === 0 && <span className="text-xs text-muted-foreground p-1">Nada encontrado</span>}
           {resultados.map((el) => (
             <BotonEquipo key={el.id} el={el} activo={mode === 'place' && activeType === el.id}
-              onClick={() => onPick({ mode: 'place', element: el })} />
+              onClick={(variant) => onPick({ mode: 'place', element: variant || el })} />
           ))}
         </div>
       ) : (
@@ -133,7 +143,7 @@ export default function PlanoPaleta({
                   <div className="flex flex-wrap gap-2 p-2 bg-card/40">
                     {items.map((el) => (
                       <BotonEquipo key={el.id} el={el} activo={mode === 'place' && activeType === el.id}
-                        onClick={() => onPick({ mode: 'place', element: el })} />
+                        onClick={(variant) => onPick({ mode: 'place', element: variant || el })} />
                     ))}
                   </div>
                 )}
@@ -164,39 +174,58 @@ function ChipCat({ label, icon: Icon, count, activo, color, onClick }) {
 
 function BotonEquipo({ el, activo, onClick }) {
   const color = CAT_COLOR(el.cat);
+  const [menu, setMenu] = useState(false);
+  // Si el equipo tiene icono IA, al pulsarlo se abre el menú para elegir la
+  // versión (estándar/IA). Si no, se coloca el símbolo estándar directamente.
+  const pulsar = () => {
+    if (el.image_url) setMenu((v) => !v);
+    else onClick();
+  };
+  const elegir = (variant) => onClick(variant);
   return (
-    <button
-      onClick={onClick}
-      title={el.label}
-      className="relative flex flex-col items-center gap-1 rounded-lg border px-1.5 py-1.5 w-[104px] transition-all hover:scale-[1.03]"
-      style={{
-        borderColor: activo ? color : 'hsl(var(--border))',
-        background: activo ? color + '22' : 'transparent',
-        borderTopColor: color,
-        borderTopWidth: 3,
-        boxShadow: activo ? `0 0 0 2px ${color}55` : 'none',
-      }}
-    >
-      {/* Código corto de la máquina, como pista rápida de identificación */}
-      {el.glyph && (
-        <span className="absolute top-1 right-1.5 text-[9px] font-bold px-1 rounded leading-none"
-          style={{ color, background: color + '1a' }}>{el.glyph}</span>
-      )}
-      <svg viewBox="-40 -30 80 60" width="84" height="62" style={{ display: 'block' }}>
-        <PlanoSimbolo el={{ ...el, type: el.id, id: 'pal-' + el.id, datos: el.image_url ? { image_url: el.image_url } : {}, color, w_m: el.w_m, h_m: el.h_m }} scale={52} mini />
-      </svg>
-      <span className="text-[10px] leading-tight text-center w-full"
-        style={{ color: activo ? color : 'hsl(var(--foreground))', fontWeight: activo ? 700 : 500 }}>
-        {el.label}
-      </span>
-      {/* Descripción clara de los símbolos eléctricos, para facilitar la
-          lectura de la aparamenta en la paleta. */}
-      {el.cat === 'electrico' && DESCRIPCIONES_ELECTRICO[el.id] && (
-        <span className="text-[9px] leading-tight text-center w-full text-muted-foreground italic">
-          {DESCRIPCIONES_ELECTRICO[el.id]}
+    <div className="relative">
+      <button
+        onClick={pulsar}
+        title={el.label}
+        className="relative flex flex-col items-center gap-1 rounded-lg border px-1.5 py-1.5 w-[104px] transition-all hover:scale-[1.03]"
+        style={{
+          borderColor: activo ? color : 'hsl(var(--border))',
+          background: activo ? color + '22' : 'transparent',
+          borderTopColor: color,
+          borderTopWidth: 3,
+          boxShadow: activo ? `0 0 0 2px ${color}55` : 'none',
+        }}
+      >
+        {/* Código corto de la máquina, como pista rápida de identificación */}
+        {el.glyph && (
+          <span className="absolute top-1 right-1.5 text-[9px] font-bold px-1 rounded leading-none"
+            style={{ color, background: color + '1a' }}>{el.glyph}</span>
+        )}
+        {el.image_url && (
+          <span className="absolute top-1 left-1 text-[8px] font-bold px-1 rounded leading-none flex items-center gap-0.5"
+            style={{ color: '#7C3AED', background: '#7C3AED1a' }} title="Tiene versión IA">
+            <Sparkles className="w-2 h-2" />IA
+          </span>
+        )}
+        <svg viewBox="-40 -30 80 60" width="84" height="62" style={{ display: 'block' }}>
+          <PlanoSimbolo el={{ ...el, type: el.id, id: 'pal-' + el.id, datos: el.image_url ? { image_url: el.image_url } : {}, color, w_m: el.w_m, h_m: el.h_m }} scale={52} mini />
+        </svg>
+        <span className="text-[10px] leading-tight text-center w-full"
+          style={{ color: activo ? color : 'hsl(var(--foreground))', fontWeight: activo ? 700 : 500 }}>
+          {el.label}
         </span>
+        {/* Descripción clara de los símbolos eléctricos, para facilitar la
+            lectura de la aparamenta en la paleta. */}
+        {el.cat === 'electrico' && DESCRIPCIONES_ELECTRICO[el.id] && (
+          <span className="text-[9px] leading-tight text-center w-full text-muted-foreground italic">
+            {DESCRIPCIONES_ELECTRICO[el.id]}
+          </span>
+        )}
+      </button>
+      {menu && el.image_url && (
+        <MenuElegirVersion el={el} onChoose={elegir} onClose={() => setMenu(false)} />
       )}
-    </button>
+    </div>
   );
 }
 

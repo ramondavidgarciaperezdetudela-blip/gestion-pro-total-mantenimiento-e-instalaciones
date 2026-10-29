@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Save, FileDown, Box, Minimize2, Search, Plus,
+  Save, FileDown, Box, Minimize2, Search, Plus, Wand2, Sparkles,
 } from 'lucide-react';
 import { CATEGORIAS, ELEMENTOS } from '@/lib/planoFrigorificoCatalogo';
 import PlanoMenuEquipos from './PlanoMenuEquipos';
 import PlanoSimbolo from './PlanoSimbolo';
 import PlanoBarraHerramientas from './PlanoBarraHerramientas';
+import MenuElegirVersion from './MenuElegirVersion';
 
 /**
  * PlanoBarraSuperior — barra de herramientas del editor a pantalla completa.
