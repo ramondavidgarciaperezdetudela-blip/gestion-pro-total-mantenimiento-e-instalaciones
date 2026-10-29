@@ -98,7 +98,7 @@ function BotonEquipo({ el, activo, onClick }) {
       }}
     >
       <svg viewBox="-30 -22 60 44" width="58" height="40" style={{ display: 'block' }}>
-        <PlanoSimbolo el={{ ...el, id: 'pal-' + el.id, datos: {}, color: CAT_COLOR(el.cat), w_m: el.w_m, h_m: el.h_m }} scale={42} mini />
+        <PlanoSimbolo el={{ ...el, type: el.id, id: 'pal-' + el.id, datos: {}, color: CAT_COLOR(el.cat), w_m: el.w_m, h_m: el.h_m }} scale={42} mini />
       </svg>
       <span className="text-[9px] leading-tight text-center truncate w-full" style={{ color: activo ? CAT_COLOR(el.cat) : 'hsl(var(--foreground))', fontWeight: activo ? 600 : 400 }}>
         {el.label}

@@ -311,7 +311,7 @@ export default function PlanoCanvas({
         {/* Vista previa fantasma del elemento a colocar */}
         {mode === 'place' && activeElement && mouse && !drag && (
           <g transform={`translate(${mouse.x},${mouse.y})`} opacity="0.6">
-            <PlanoSimbolo el={{ ...activeElement, id: 'ghost', color: activeElement.color, datos: {} }} scale={scale} />
+            <PlanoSimbolo el={{ ...activeElement, type: activeElement.type || activeElement.id, id: 'ghost', color: activeElement.color, datos: {} }} scale={scale} />
           </g>
         )}
 

@@ -59,7 +59,10 @@ export default function PlanoSimbolo({ el, scale = 50, selected = false, fromHer
 
   // El "grano" del degradado depende del tipo de condensadora, para que se
   // note a cuál pertenece aunque el color de la familia sea el mismo.
-  const tipoCond = el.type;
+  // La paleta y el fantasma de colocación pasan el elemento del catálogo, que
+  // lleva el tipo en `id` (no en `type`): sin este fallback TODOS los iconos
+  // de la paleta caían al dibujo genérico y no se diferenciaba ninguno.
+  const tipoCond = el.type || el.id;
   const defs = (
     <defs>
       <linearGradient id={`g-${id}`} x1="0" y1="0" x2="0" y2="1">
@@ -121,9 +124,9 @@ function dibujar(tipo, w, h, x0, y0, id, color, datos, mini, glyph) {
     case 'grupo_frio':              return grupoFrio(w, h, x0, y0, id, mini);
     case 'central_frigorifica':     return centralFrio(w, h, x0, y0, id, mini);
     case 'camara_frigorifica':      return camara(w, h, x0, y0, id, datos, mini);
-    case 'ventilador':
-    case 'ventilador_extraccion':
-    case 'ventilador_impulsion':    return ventilador(w, h, x0, y0, id, mini);
+    case 'ventilador':               return ventilador(w, h, x0, y0, id, mini);
+    case 'ventilador_impulsion':     return ventilador(w, h, x0, y0, id, mini, 'impulsion');
+    case 'ventilador_extraccion':    return ventilador(w, h, x0, y0, id, mini, 'extraccion');
     case 'exterior_clima':           return unidadExterior(w, h, x0, y0, id, mini);
     case 'cassette':                return cassette(w, h, x0, y0, id, datos, mini);
     case 'conductos':                return unidadConductos(w, h, x0, y0, id, mini);
@@ -141,6 +144,7 @@ function dibujar(tipo, w, h, x0, y0, id, color, datos, mini, glyph) {
     case 'compuerta_cortafuego':     return cortafuegos(w, h, x0, y0, id, mini);
     case 'silenciador':              return silenciador(w, h, x0, y0, id, mini);
     case 'caja_toma':                return plenum(w, h, x0, y0, id, mini);
+    case 'extractor_eolico':         return extractorEolico(w, h, x0, y0, id, mini);
     default:                         return generico(w, h, x0, y0, id, color, datos, mini, glyph);
   }
 }
@@ -364,14 +368,50 @@ function camara(w, h, x0, y0, id, datos, mini) {
   );
 }
 
-// ── Ventilador: círculo con aspas ──
-function ventilador(w, h, x0, y0, id, mini) {
-  const r = Math.min(w, h) * 0.38;
+// ── Ventilador: círculo con aspas. Impulsión saca aire (flecha azul →), extracción lo mete (← naranja) ──
+function ventilador(w, h, x0, y0, id, mini, sentido) {
+  const r = Math.min(w, h) * 0.34;
+  const col = sentido === 'impulsion' ? '#38bdf8' : sentido === 'extraccion' ? '#f97316' : '#475569';
   return (
     <g>
       <circle cx={0} cy={0} r={r + 2} fill="#0f172a" stroke="#475569" strokeWidth="1" />
       <circle cx={0} cy={0} r={r} fill={`url(#ac-${id})`} />
       {aspas(0, 0, r * 0.86, 6, id)}
+      {sentido === 'impulsion' && (
+        <g stroke={col} strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <line x1={r * 0.2} y1={0} x2={r * 1.5} y2={0} />
+          <polyline points={`${r * 1.1},${-r * 0.4} ${r * 1.5},0 ${r * 1.1},${r * 0.4}`} />
+        </g>
+      )}
+      {sentido === 'extraccion' && (
+        <g stroke={col} strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <line x1={-r * 0.2} y1={0} x2={-r * 1.5} y2={0} />
+          <polyline points={`${-r * 1.1},${-r * 0.4} ${-r * 1.5},0 ${-r * 1.1},${r * 0.4}`} />
+        </g>
+      )}
+    </g>
+  );
+}
+
+// ── Extractor eólico: cabeza giratoria (venturi) sobre base, sin motor ──
+function extractorEolico(w, h, x0, y0, id, mini) {
+  const r = Math.min(w, h) * 0.36;
+  return (
+    <g>
+      {/* Base / soporte */}
+      <rect x={-r * 0.35} y={r * 0.15} width={r * 0.7} height={r * 0.85} fill="#1e293b" stroke="#475569" strokeWidth="1" />
+      {/* Cabeza giratoria inclinada que aprovecha el viento */}
+      <ellipse cx={0} cy={-r * 0.25} rx={r * 1.05} ry={r * 0.5} fill={`url(#g-${id})`} stroke="#0f172a" strokeWidth="1" />
+      {/* Aletas de la turbina */}
+      {[...Array(7)].map((_, i) => {
+        const t = i / 6;
+        const xa = -r * 0.85 + t * r * 1.7;
+        return <line key={i} x1={xa} y1={-r * 0.25 - r * 0.4} x2={xa + r * 0.12} y2={-r * 0.25 + r * 0.4}
+          stroke="#cbd5e1" strokeWidth="0.9" opacity="0.85" />;
+      })}
+      {/* Eje */}
+      <circle cx={0} cy={-r * 0.25} r={r * 0.12} fill="#0f172a" />
+      {!mini && <text x={0} y={r * 0.95} textAnchor="middle" fontSize="6" fill="#34d399">eólico</text>}
     </g>
   );
 }
