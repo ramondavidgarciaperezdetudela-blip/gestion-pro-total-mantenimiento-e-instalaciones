@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { esc, firmaValida, validarTokenCambio, marcarTokenUsado } from '../../shared/seguridadPublica.ts';
 
 async function sendWhatsApp(phone, message) {
   if (!phone) return;
@@ -46,6 +47,31 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Parámetros requeridos: doc_id, action' }, { status: 400 });
     }
 
+    if (action !== 'aceptar' && action !== 'rechazar') {
+      return Response.json({ error: 'Acción no válida' }, { status: 400 });
+    }
+
+    // La firma tiene que ser una imagen embebida (data URL acotado). Así no
+    // puede colarse HTML ni una imagen ajena en el correo que se manda al
+    // cliente y al administrador.
+    const firma = signature ? firmaValida(signature) : '';
+    if (signature && !firma) {
+      return Response.json({ error: 'La firma recibida no es válida' }, { status: 400 });
+    }
+
+    // Si la petición trae token de cambio de opinión, se comprueba contra la
+    // solicitud guardada en servidor: tiene que existir, ser de ESTE documento
+    // y seguir pendiente. Un token inventado no permite reescribir nada.
+    if (change_opinion_token) {
+      const tokenOk = await validarTokenCambio(base44, change_opinion_token, doc_id);
+      if (!tokenOk.ok) {
+        return Response.json(
+          { error: 'El enlace de cambio de opinión no es válido o ya se ha usado.' },
+          { status: 403 },
+        );
+      }
+    }
+
     // Get document
     const docs = await base44.asServiceRole.entities.Invoice.filter({ id: doc_id });
     const doc = docs?.[0];
@@ -53,6 +79,9 @@ Deno.serve(async (req) => {
     if (!doc) {
       return Response.json({ error: 'Documento no encontrado' }, { status: 404 });
     }
+
+    // Nombre tal y como llegará al correo, ya escapado.
+    const nombreCliente = esc(doc.contact_name);
 
     const now = new Date().toISOString();
     // Formato legible para España: DD/MM/YYYY HH:MM:SS
@@ -70,9 +99,9 @@ Deno.serve(async (req) => {
 
     if (action === 'rechazar') {
       let signatureUrl = null;
-      if (signature) {
+      if (firma) {
         try {
-          const base64Data = signature.replace(/^data:image\/\w+;base64,/, '');
+          const base64Data = firma.replace(/^data:image\/\w+;base64,/, '');
           const binaryStr = atob(base64Data);
           const bytes = new Uint8Array(binaryStr.length);
           for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
@@ -80,7 +109,7 @@ Deno.serve(async (req) => {
           const uploadResult = await base44.asServiceRole.integrations.Core.UploadFile({ file: blob });
           signatureUrl = uploadResult.file_url;
         } catch (_) {
-          signatureUrl = signature;
+          signatureUrl = firma;
         }
       }
 
@@ -112,13 +141,14 @@ Deno.serve(async (req) => {
       };
 
       await base44.asServiceRole.entities.Invoice.update(doc_id, updateData);
+      await marcarTokenUsado(base44, change_opinion_token);
 
       // Archivar en ClientDocument como rechazado
       if (doc.contact_id) {
         await base44.asServiceRole.entities.ClientDocument.create({
           contact_id: doc.contact_id,
           contact_name: doc.contact_name,
-          title: `RECHAZADO Y FIRMADO - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''} - ${doc.contact_name}`,
+          title: `RECHAZADO Y FIRMADO - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''} - ${nombreCliente}`,
           doc_type: 'presupuesto',
           description: `Presupuesto rechazado y firmado digitalmente por el cliente el ${signDatetime}. Total: ${doc.total?.toFixed(2)} €`,
           date: signDateOnly,
@@ -155,13 +185,13 @@ Deno.serve(async (req) => {
       </div>
       <div style="border:1px solid #fca5a5;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
       <table style="width:100%;border-collapse:collapse;font-size:14px">
-      <tr><td style="padding:8px 0;color:#666;width:40%"><strong>Cliente:</strong></td><td style="padding:8px 0">${doc.contact_name}</td></tr>
+      <tr><td style="padding:8px 0;color:#666;width:40%"><strong>Cliente:</strong></td><td style="padding:8px 0">${nombreCliente}</td></tr>
       <tr style="background:#fef2f2"><td style="padding:8px 0;color:#666"><strong>Documento:</strong></td><td style="padding:8px 0">${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</td></tr>
       <tr><td style="padding:8px 0;color:#666"><strong>Importe:</strong></td><td style="padding:8px 0;font-weight:bold;color:#1e3a5f">${(doc.total || 0).toFixed(2)} €</td></tr>
       <tr style="background:#fef2f2"><td style="padding:8px 0;color:#666"><strong>🕐 Fecha y hora firma:</strong></td><td style="padding:8px 0;font-weight:bold;color:#dc2626">${signDatetime}</td></tr>
       </table>
       <p style="margin-top:16px;color:#555;font-size:13px">El cliente ha firmado digitalmente el rechazo del presupuesto.</p>
-      ${signature ? `<div style="margin-top:16px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Firma digital del cliente:</strong></p><img src="${signature}" alt="Firma" style="max-width:280px;border:1px solid #fca5a5;border-radius:6px;background:#fff;padding:4px"/></div>` : ''}
+      ${firma ? `<div style="margin-top:16px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Firma digital del cliente:</strong></p><img src="${firma}" alt="Firma" style="max-width:280px;border:1px solid #fca5a5;border-radius:6px;background:#fff;padding:4px"/></div>` : ''}
       ${historyHTML}
       <div style="margin-top:16px;padding:12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px">
       <p style="margin:0;color:#dc2626;font-size:12px;font-weight:bold">💡 Cliente puede cambiar de opinión</p>
@@ -179,14 +209,14 @@ Deno.serve(async (req) => {
       </div>
       <div style="border:1px solid #e5e7eb;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
       <h3 style="color:#dc2626">❌ Confirmación de rechazo del presupuesto</h3>
-      <p style="color:#555;font-size:14px">Estimado/a <strong>${doc.contact_name}</strong>,</p>
+      <p style="color:#555;font-size:14px">Estimado/a <strong>${nombreCliente}</strong>,</p>
       <p style="color:#555;font-size:14px">Le confirmamos que hemos registrado su <strong>rechazo firmado</strong> del siguiente presupuesto:</p>
       <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0">
       <tr style="background:#f9fafb"><td style="padding:8px;color:#666"><strong>Documento:</strong></td><td style="padding:8px">${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</td></tr>
       <tr><td style="padding:8px;color:#666"><strong>Importe:</strong></td><td style="padding:8px;font-weight:bold">${(doc.total || 0).toFixed(2)} €</td></tr>
       <tr style="background:#f9fafb"><td style="padding:8px;color:#666"><strong>🕐 Firmado el:</strong></td><td style="padding:8px;font-weight:bold;color:#dc2626">${signDatetime}</td></tr>
       </table>
-      ${signature ? `<div style="margin-top:12px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Su firma digital registrada:</strong></p><img src="${signature}" alt="Firma" style="max-width:250px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;padding:4px"/></div>` : ''}
+      ${firma ? `<div style="margin-top:12px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Su firma digital registrada:</strong></p><img src="${firma}" alt="Firma" style="max-width:250px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;padding:4px"/></div>` : ''}
       ${historyHTML}
       <p style="color:#555;font-size:13px;margin-top:16px">Si ha cambiado de opinión o desea más información, no dude en contactarnos.</p>
       ${baseCliente ? `<div style="margin-top:16px;padding:12px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px">
@@ -203,7 +233,7 @@ Deno.serve(async (req) => {
         if (company?.email) {
           await base44.asServiceRole.integrations.Core.SendEmail({
             to: company.email,
-            subject: `❌ Presupuesto rechazado y firmado - ${doc.contact_name} (${signDatetime})`,
+            subject: `❌ Presupuesto rechazado y firmado - ${nombreCliente} (${signDatetime})`,
             body: emailBodyRechazoAdmin
           });
         }
@@ -217,7 +247,7 @@ Deno.serve(async (req) => {
         }
 
         // Generar enlace WhatsApp para el cliente con resumen del rechazo
-        const waMsg = `❌ *PRESUPUESTO RECHAZADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}\n👤 ${doc.contact_name}\n💶 ${(doc.total || 0).toFixed(2)} €\n🕐 Firmado el: ${signDatetime}\n\nHemos recibido su firma de rechazo. Si desea revisarlo o tiene alguna consulta, contáctenos.\n\n— ${company?.company_name || ''}`;
+        const waMsg = `❌ *PRESUPUESTO RECHAZADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}\n👤 ${nombreCliente}\n💶 ${(doc.total || 0).toFixed(2)} €\n🕐 Firmado el: ${signDatetime}\n\nHemos recibido su firma de rechazo. Si desea revisarlo o tiene alguna consulta, contáctenos.\n\n— ${company?.company_name || ''}`;
         const waUrl = await sendWhatsApp(contactPhone, waMsg);
         return Response.json({ ok: true, action: 'rechazado', whatsapp_url: waUrl, sign_datetime: signDatetime });
       } catch (_emailErr) {
@@ -228,14 +258,14 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'aceptar') {
-      if (!signature) {
-        return Response.json({ error: 'Se requiere firma para aceptar' }, { status: 400 });
+      if (!firma) {
+        return Response.json({ error: 'Se requiere una firma válida para aceptar' }, { status: 400 });
       }
 
       // Subir firma como archivo para evitar el límite de tamaño de entidad
-      let signatureUrl = signature;
+      let signatureUrl = firma;
       try {
-        const base64Data = signature.replace(/^data:image\/\w+;base64,/, '');
+        const base64Data = firma.replace(/^data:image\/\w+;base64,/, '');
         const binaryStr = atob(base64Data);
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
@@ -273,13 +303,14 @@ Deno.serve(async (req) => {
         signature_method: method,
         signature_history: updatedHistory
       });
+      await marcarTokenUsado(base44, change_opinion_token);
 
       // Archivar en ClientDocument como aceptado y firmado
       if (doc.contact_id) {
         await base44.asServiceRole.entities.ClientDocument.create({
           contact_id: doc.contact_id,
           contact_name: doc.contact_name,
-          title: `ACEPTADO Y FIRMADO - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''} - ${doc.contact_name}`,
+          title: `ACEPTADO Y FIRMADO - ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''} - ${nombreCliente}`,
           doc_type: 'presupuesto',
           description: `Presupuesto aceptado y firmado digitalmente por el cliente el ${signDatetime}. Total: ${(doc.total || 0).toFixed(2)} €`,
           date: signDateOnly,
@@ -306,13 +337,13 @@ Deno.serve(async (req) => {
         </div>
         <div style="border:1px solid #86efac;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
         <table style="width:100%;border-collapse:collapse;font-size:14px">
-        <tr><td style="padding:8px 0;color:#666;width:40%"><strong>Cliente:</strong></td><td style="padding:8px 0">${doc.contact_name}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;width:40%"><strong>Cliente:</strong></td><td style="padding:8px 0">${nombreCliente}</td></tr>
         <tr style="background:#f0fdf4"><td style="padding:8px 0;color:#666"><strong>Documento:</strong></td><td style="padding:8px 0">${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</td></tr>
         <tr><td style="padding:8px 0;color:#666"><strong>Importe:</strong></td><td style="padding:8px 0;font-weight:bold;color:#1e3a5f">${(doc.total || 0).toFixed(2)} €</td></tr>
         <tr style="background:#f0fdf4"><td style="padding:8px 0;color:#666"><strong>🕐 Fecha y hora firma:</strong></td><td style="padding:8px 0;font-weight:bold;color:#16a34a">${signDatetime}</td></tr>
         </table>
         <p style="margin-top:16px;color:#555;font-size:13px">El cliente ha firmado digitalmente el presupuesto. El documento ha sido archivado en su ficha de cliente.</p>
-        <div style="margin-top:16px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Firma digital del cliente:</strong></p><img src="${signature}" alt="Firma" style="max-width:280px;border:1px solid #86efac;border-radius:6px;background:#fff;padding:4px"/></div>
+        <div style="margin-top:16px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Firma digital del cliente:</strong></p><img src="${firma}" alt="Firma" style="max-width:280px;border:1px solid #86efac;border-radius:6px;background:#fff;padding:4px"/></div>
         ${historyHTML}
         <div style="margin-top:16px;padding:12px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px">
         <p style="margin:0;color:#16a34a;font-size:12px;font-weight:bold">ℹ️ Cliente puede cambiar de opinión</p>
@@ -330,14 +361,14 @@ Deno.serve(async (req) => {
         </div>
         <div style="border:1px solid #e5e7eb;border-top:none;padding:20px;border-radius:0 0 8px 8px;background:#fff">
         <h3 style="color:#16a34a">✅ Confirmación de aceptación del presupuesto</h3>
-        <p style="color:#555;font-size:14px">Estimado/a <strong>${doc.contact_name}</strong>,</p>
+        <p style="color:#555;font-size:14px">Estimado/a <strong>${nombreCliente}</strong>,</p>
         <p style="color:#555;font-size:14px">Le confirmamos que hemos registrado su <strong>aceptación firmada</strong> del siguiente presupuesto:</p>
         <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0">
         <tr style="background:#f9fafb"><td style="padding:8px;color:#666"><strong>Documento:</strong></td><td style="padding:8px">${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}</td></tr>
         <tr><td style="padding:8px;color:#666"><strong>Importe:</strong></td><td style="padding:8px;font-weight:bold">${(doc.total || 0).toFixed(2)} €</td></tr>
         <tr style="background:#f9fafb"><td style="padding:8px;color:#666"><strong>🕐 Firmado el:</strong></td><td style="padding:8px;font-weight:bold;color:#16a34a">${signDatetime}</td></tr>
         </table>
-        <div style="margin-top:12px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Su firma digital registrada:</strong></p><img src="${signature}" alt="Firma" style="max-width:250px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;padding:4px"/></div>
+        <div style="margin-top:12px"><p style="font-size:13px;color:#666;margin-bottom:6px"><strong>Su firma digital registrada:</strong></p><img src="${firma}" alt="Firma" style="max-width:250px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;padding:4px"/></div>
         ${historyHTML}
         <p style="color:#555;font-size:13px;margin-top:16px">Nos pondremos en contacto con usted en breve para coordinar los trabajos. ¡Gracias por confiar en nosotros!</p>
         <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb"/>
@@ -349,7 +380,7 @@ Deno.serve(async (req) => {
         if (company?.email) {
           await base44.asServiceRole.integrations.Core.SendEmail({
             to: company.email,
-            subject: `✅ Presupuesto aceptado y firmado - ${doc.contact_name} (${signDatetime})`,
+            subject: `✅ Presupuesto aceptado y firmado - ${nombreCliente} (${signDatetime})`,
             body: emailBodyAceptadoAdmin
           });
         }
@@ -363,7 +394,7 @@ Deno.serve(async (req) => {
         }
 
         // Generar enlace WhatsApp para el cliente con resumen de aceptación
-        const waMsg = `✅ *PRESUPUESTO ACEPTADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}\n👤 ${doc.contact_name}\n💶 ${(doc.total || 0).toFixed(2)} €\n🕐 Firmado el: ${signDatetime}\n\nHemos recibido su firma de aceptación. Nos pondremos en contacto con usted en breve para coordinar los trabajos.\n\nGracias por confiar en nosotros.\n\n— ${company?.company_name || ''}`;
+        const waMsg = `✅ *PRESUPUESTO ACEPTADO*\n\n📄 ${doc.doc_type?.toUpperCase()} Nº${doc.doc_number || ''}\n👤 ${nombreCliente}\n💶 ${(doc.total || 0).toFixed(2)} €\n🕐 Firmado el: ${signDatetime}\n\nHemos recibido su firma de aceptación. Nos pondremos en contacto con usted en breve para coordinar los trabajos.\n\nGracias por confiar en nosotros.\n\n— ${company?.company_name || ''}`;
         const waUrl = await sendWhatsApp(contactPhone, waMsg);
         return Response.json({ ok: true, action: 'aceptado', whatsapp_url: waUrl, sign_datetime: signDatetime });
       } catch (_emailErr) {

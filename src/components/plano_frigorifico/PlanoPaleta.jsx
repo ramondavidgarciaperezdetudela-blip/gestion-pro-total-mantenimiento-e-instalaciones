@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Thermometer, Wind, Zap, ShieldAlert, Box, ChevronDown, Search, Boxes, Plus, Wand2, Sparkles,
+  Thermometer, Wind, Zap, ShieldAlert, Box, ChevronDown, Search, Boxes, Plus, Wand2, Sparkles, Loader2,
 } from 'lucide-react';
 import { CATEGORIAS, ELEMENTOS, elementosPorCategoria, buscar, DESCRIPCIONES_ELECTRICO } from '@/lib/planoFrigorificoCatalogo';
 import PlanoSimbolo from './PlanoSimbolo';
@@ -28,7 +28,7 @@ const CAT_ICON = {
 export default function PlanoPaleta({
   mode, activeType, connectType, onPick, onSala, onCamara,
   onUndo, onRedo, onCopy, onCut, onPaste, canUndo, canRedo, canCopy, canPaste,
-  extraElementos = [], onAddElement, onEditarIconos,
+  extraElementos = [], onAddElement, onEditarIconos, iaIcons = {}, onCrearIconoIA,
 }) {
   // Filtro de categoría activo: 'todos' o el id de una. Al elegir un chip se
   // muestra solo ese apartado, desplegado, para llegar al símbolo sin tener que
@@ -40,14 +40,32 @@ export default function PlanoPaleta({
   const [q, setQ] = useState('');
   // Catálogo de fábrica + los elementos personalizados que el usuario haya
   // añadido, agrupados por su apartado para que aparezcan donde corresponden.
+  // Cada símbolo de fábrica lleva pegada su versión IA si la tiene generada:
+  // así al pulsarlo se elige entre el símbolo técnico y el icono IA.
+  const conIA = (el) => (iaIcons[el.id] ? { ...el, image_url: iaIcons[el.id] } : el);
   const porCat = useMemo(() => {
     const out = elementosPorCategoria();
+    Object.keys(out).forEach((k) => { out[k] = out[k].map(conIA); });
     (extraElementos || []).forEach((it) => { (out[it.cat] = out[it.cat] || []).push(it); });
+    // El apartado «Iconos IA» enseña TODO el catálogo, no solo lo ya generado:
+    // de un golpe se ve qué equipos tienen ya su icono y cuáles se pueden crear.
+    out.ia = [
+      ...ELEMENTOS.map(conIA),
+      ...(extraElementos || []).filter((it) => it.cat === 'ia'),
+    ];
     return out;
-  }, [extraElementos]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extraElementos, iaIcons]);
+  // Icono que se está generando ahora mismo (para el giro del botón).
+  const [creandoIA, setCreandoIA] = useState(null);
+  const crearIA = async (el) => {
+    if (!onCrearIconoIA) return;
+    setCreandoIA(el.id);
+    try { await onCrearIconoIA(el); } finally { setCreandoIA(null); }
+  };
   const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const resultados = q
-    ? [...ELEMENTOS, ...(extraElementos || [])].filter((e) => norm(`${e.label} ${e.cat}`).includes(norm(q)))
+    ? [...ELEMENTOS.map(conIA), ...(extraElementos || [])].filter((e) => norm(`${e.label} ${e.cat}`).includes(norm(q)))
     : null;
   // Si hay chip de categoría activo se estrecha el listado a ese apartado.
   const catsVisibles = catFiltro === 'todos'
@@ -143,7 +161,9 @@ export default function PlanoPaleta({
                   <div className="flex flex-wrap gap-2 p-2 bg-card/40">
                     {items.map((el) => (
                       <BotonEquipo key={el.id} el={el} activo={mode === 'place' && activeType === el.id}
-                        onClick={(variant) => onPick({ mode: 'place', element: variant || el })} />
+                        onClick={(variant) => onPick({ mode: 'place', element: variant || el })}
+                        onCrearIA={cat.id === 'ia' && onCrearIconoIA ? () => crearIA(el) : null}
+                        creando={creandoIA === el.id} />
                     ))}
                   </div>
                 )}
@@ -172,7 +192,7 @@ function ChipCat({ label, icon: Icon, count, activo, color, onClick }) {
   );
 }
 
-function BotonEquipo({ el, activo, onClick }) {
+function BotonEquipo({ el, activo, onClick, onCrearIA, creando }) {
   const color = CAT_COLOR(el.cat);
   const [menu, setMenu] = useState(false);
   // Si el equipo tiene icono IA, al pulsarlo se abre el menú para elegir la
@@ -222,6 +242,16 @@ function BotonEquipo({ el, activo, onClick }) {
           </span>
         )}
       </button>
+      {/* En el apartado «Iconos IA», los equipos que aún no tienen su icono
+          llevan aquí el botón para crearlo. */}
+      {onCrearIA && !el.image_url && (
+        <button onClick={onCrearIA} disabled={creando} title="Crear el icono IA de este equipo"
+          className="mt-1 w-[104px] flex items-center justify-center gap-1 rounded-md border border-dashed px-1 py-1 text-[9px] font-semibold hover:bg-muted disabled:opacity-50"
+          style={{ borderColor: '#7C3AED77', color: '#7C3AED' }}>
+          {creando ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Sparkles className="w-2.5 h-2.5" />}
+          {creando ? 'Creando…' : 'Crear IA'}
+        </button>
+      )}
       {menu && el.image_url && (
         <MenuElegirVersion el={el} onChoose={elegir} onClose={() => setMenu(false)} />
       )}

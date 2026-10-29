@@ -41,6 +41,10 @@
       "type": "string",
       "description": "URL del icono/imagen generado por IA para el s\u00edmbolo"
     },
+    "std_id": {
+      "type": "string",
+      "description": "Identificador del s\u00edmbolo est\u00e1ndar del cat\u00e1logo al que corresponde este icono IA. Vac\u00edo = elemento propio del usuario (no es la versi\u00f3n IA de un s\u00edmbolo de f\u00e1brica)."
+    },
     "is_active": {
       "type": "boolean",
       "default": true

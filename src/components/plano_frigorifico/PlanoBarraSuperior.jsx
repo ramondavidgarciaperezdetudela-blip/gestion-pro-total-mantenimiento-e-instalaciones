@@ -19,7 +19,7 @@ export default function PlanoBarraSuperior({
   mode, activeType, connectType, onPick, onSala, onCamara,
   onUndo, onRedo, onCopy, onCut, onPaste, canUndo, canRedo, canCopy, canPaste,
   saving, onSave, onPDF, on3D, onExit,
-  extraPorCat, onAddElement, onEditarIconos,
+  extraPorCat, onAddElement, onEditarIconos, iaIcons = {},
 }) {
   const [q, setQ] = useState('');
   const [busqAbierta, setBusqAbierta] = useState(false);
@@ -27,10 +27,12 @@ export default function PlanoBarraSuperior({
   // sola lista para poder buscar en todos a la vez desde la barra superior.
   const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const todos = useMemo(() => {
-    const out = [...ELEMENTOS];
+    // Cada símbolo lleva su versión IA si la tiene, igual que en la paleta.
+    const conIA = (el) => (iaIcons[el.id] ? { ...el, image_url: iaIcons[el.id] } : el);
+    const out = ELEMENTOS.map(conIA);
     if (extraPorCat) Object.values(extraPorCat).forEach((arr) => { if (arr?.length) out.push(...arr); });
     return out;
-  }, [extraPorCat]);
+  }, [extraPorCat, iaIcons]);
   const resultados = q.trim()
     ? todos.filter((e) => norm(`${e.label} ${e.cat}`).includes(norm(q))).slice(0, 24)
     : [];
@@ -70,7 +72,7 @@ export default function PlanoBarraSuperior({
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mr-1">Equipos</span>
         {CATEGORIAS.map((cat) => (
-          <PlanoMenuEquipos key={cat.id} cat={cat} activeType={activeType} onPick={onPick} extraPorCat={extraPorCat} />
+          <PlanoMenuEquipos key={cat.id} cat={cat} activeType={activeType} onPick={onPick} extraPorCat={extraPorCat} iaIcons={iaIcons} />
         ))}
         {onAddElement && (
           <button onClick={onAddElement}
@@ -78,6 +80,13 @@ export default function PlanoBarraSuperior({
             style={{ background: 'linear-gradient(135deg,#00D4FF,#7C3AED)' }}
             title="Añadir un elemento o maquinaria propia al catálogo">
             <Plus className="w-3.5 h-3.5" /> Añadir
+          </button>
+        )}
+        {onEditarIconos && (
+          <button onClick={onEditarIconos}
+            className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"
+            title="Crear la versión IA de cualquier equipo, regenerarla o editarla a mano">
+            <Wand2 className="w-3.5 h-3.5" style={{ color: '#7C3AED' }} /> Editar iconos
           </button>
         )}
         <div className="relative ml-auto">

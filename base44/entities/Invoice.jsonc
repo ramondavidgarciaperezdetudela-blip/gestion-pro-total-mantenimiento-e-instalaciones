@@ -178,15 +178,65 @@
     "verify_enabled": {
       "type": "boolean",
       "default": true,
-      "description": "Si el QR de verificación de este documento está activo"
+      "description": "Si el QR de verificaci\u00f3n de este documento est\u00e1 activo"
     },
     "verify_expires": {
       "type": "string",
-      "description": "Hasta cuándo es verificable (vacío = sin caducidad)"
+      "description": "Hasta cu\u00e1ndo es verificable (vac\u00edo = sin caducidad)"
     }
   },
   "required": [
     "doc_type",
     "contact_name"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
 }

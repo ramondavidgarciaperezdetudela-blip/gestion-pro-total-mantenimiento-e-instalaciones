@@ -652,9 +652,28 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Crear las plantillas
-    const created = await base44.asServiceRole.entities.DocumentTemplate.bulkCreate(templates);
-    
+    /*
+     * Solo se crean las que FALTAN.
+     *
+     * Antes se volcaban todas cada vez: con dos ejecuciones la lista de
+     * plantillas aparecía duplicada (y así se quedaba). Ahora se compara por
+     * nombre con lo que ya hay guardado.
+     */
+    const existentes = await base44.asServiceRole.entities.DocumentTemplate.list('-created_date', 1000).catch(() => []);
+    const nombres = new Set((existentes || []).map((t) => t.name));
+    const faltan = templates.filter((t) => !nombres.has(t.name));
+
+    if (faltan.length === 0) {
+      return Response.json({
+        success: true,
+        message: 'Las plantillas de legalización ya estaban descargadas',
+        templates: []
+      });
+    }
+
+    // Crear solo las que faltan
+    const created = await base44.asServiceRole.entities.DocumentTemplate.bulkCreate(faltan);
+
     return Response.json({
       success: true,
       message: `Se descargaron ${created.length} plantillas de legalización estándar`,

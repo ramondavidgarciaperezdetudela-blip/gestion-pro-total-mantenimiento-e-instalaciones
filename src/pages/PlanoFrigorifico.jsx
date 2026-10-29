@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Zap, Box } from 'lucide-react';
+import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Zap, Box, ZoomIn, Wand2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { getNextAvailableNumber } from '@/components/autoNumber';
@@ -18,6 +18,7 @@ import DialogoNuevaConexion from '@/components/plano_frigorifico/DialogoNuevaCon
 import DialogoSala from '@/components/plano_frigorifico/DialogoSala';
 import DialogoCamara from '@/components/plano_frigorifico/DialogoCamara';
 import GestorCatalogoPlano from '@/components/plano_frigorifico/GestorCatalogoPlano';
+import GestorIconosPlano from '@/components/plano_frigorifico/GestorIconosPlano';
 import LeyendaPlano from '@/components/plano_frigorifico/LeyendaPlano';
 import PlanoBarraSuperior from '@/components/plano_frigorifico/PlanoBarraSuperior';
 // El visor 3D se carga de forma perezosa y envuelta en su propio ErrorBoundary
@@ -25,7 +26,8 @@ import PlanoBarraSuperior from '@/components/plano_frigorifico/PlanoBarraSuperio
 import Vista3DPlanoFrigorifico from '@/components/plano_frigorifico/Vista3DSegura';
 import ControlMoverFlotante from '@/components/plano_frigorifico/ControlMoverFlotante';
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
-import { CAT_COLOR, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
+import { CAT_COLOR, CATEGORIAS, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
+import { generarIconoPlano, guardarIconoPlano } from '@/lib/iconoPlanoIA';
 import { presupuestoAproximado } from '@/lib/instalacionCalculos';
 import { asArray } from '@/lib/asArray';
 import { generarVista3DPng } from '@/lib/planoVista3D';
@@ -51,6 +53,9 @@ export default function PlanoFrigorifico() {
   const [tarifas, setTarifas] = useState([]);
   const [polyline, setPolyline] = useState(false);
   const [gridMeters, setGridMeters] = useState(1);
+  // Zoom del lienzo: agranda el dibujo y sus medidas para trabajar en planos
+  // grandes sin que las cotas queden diminutas. El lienzo se desplaza.
+  const [zoom, setZoom] = useState(1);
   const [snapMode, setSnapMode] = useState('libre');
   const [capasVisibles, setCapasVisibles] = useState(() => Object.fromEntries(CAPAS.map((c) => [c.id, true])));
   const [gmailDialog, setGmailDialog] = useState(false);
@@ -88,6 +93,9 @@ export default function PlanoFrigorifico() {
   // PlanoCatalogItem y aquí se cargan para mezclarlos con los de fábrica.
   const [catalogoExtra, setCatalogoExtra] = useState([]);
   const [dialogoCatalogo, setDialogoCatalogo] = useState(false);
+  // Gestor de iconos del catálogo: elegir qué equipos tienen icono IA, crearlo
+  // o regenerarlo y editarlo a mano.
+  const [iconosDialog, setIconosDialog] = useState(false);
   // Diálogo para dibujar o editar una sala (habitáculo cuadrado/rectangular):
   // pide ancho y largo en metros y dibuja las cuatro paredes. Al variar las
   // medidas, el rectángulo se redibuja solo.
@@ -103,6 +111,29 @@ export default function PlanoFrigorifico() {
       setCatalogoExtra(res?.items || []);
     } catch { /* sin catálogo personalizado: la paleta usa solo el de fábrica */ }
   }, []);
+
+  // Crea el icono IA de un equipo del catálogo (o lo regenera si ya existía).
+  // A partir de ahí ese equipo ofrece las dos versiones al colocarlo.
+  const crearIconoIA = async (el) => {
+    try {
+      const catLabel = CATEGORIAS.find((c) => c.id === el.cat)?.label || el.cat;
+      const url = await generarIconoPlano(el.label, catLabel);
+      if (!url) { toast.error('No se pudo generar el icono'); return; }
+      const previo = catalogoExtra.find((r) => r.std_id === el.id);
+      await guardarIconoPlano({
+        stdId: el.id, nombre: el.label, catLabel, glyph: el.glyph,
+        w_m: el.w_m, h_m: el.h_m, precio: el.precio,
+        imageUrl: url, existenteId: previo?.id,
+      });
+      await cargarCatalogoExtra();
+      toast.success(`Icono IA de ${el.label} listo`, {
+        description: 'Púlsalo en la paleta para elegir símbolo estándar o icono IA.',
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error('No se pudo crear el icono', { description: String(e?.message || e) });
+    }
+  };
 
   const resetHistorial = () => {
     historial.current = [];
@@ -429,7 +460,15 @@ export default function PlanoFrigorifico() {
   // Los elementos personalizados se normalizan a la misma forma que los del
   // catálogo de fábrica, y se agrupan por su apartado para la paleta y los
   // menús a pantalla completa.
-  const extraItems = useMemo(() => catalogoExtra.map((r) => ({
+  // Los iconos IA de los símbolos de fábrica (std_id) no son equipos aparte:
+  // son la segunda versión de ese mismo equipo. Se indexan por tipo para que
+  // en la paleta se pueda elegir entre el símbolo técnico y el icono IA.
+  const iaIcons = useMemo(() => {
+    const m = {};
+    catalogoExtra.forEach((r) => { if (r.std_id && r.image_url) m[r.std_id] = r.image_url; });
+    return m;
+  }, [catalogoExtra]);
+  const extraItems = useMemo(() => catalogoExtra.filter((r) => !r.std_id).map((r) => ({
     id: 'custom_' + r.id, cat: r.cat, label: r.name,
     w_m: r.w_m || 0.6, h_m: r.h_m || 0.6,
     glyph: r.glyph || (r.name || '').slice(0, 3).toUpperCase(),
@@ -768,6 +807,18 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       </div>
       <div className="w-px h-6 bg-border" />
       <div className="flex items-center gap-1.5 text-xs">
+        <ZoomIn className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-muted-foreground">Zoom</span>
+        {[0.75, 1, 1.5, 2, 3].map((z) => (
+          <button key={z} onClick={() => setZoom(z)}
+            className="rounded-md border px-2 py-1 text-xs transition-all"
+            style={zoom === z ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
+            {z}×
+          </button>
+        ))}
+      </div>
+      <div className="w-px h-6 bg-border" />
+      <div className="flex items-center gap-1.5 text-xs">
         <span className="text-muted-foreground">Capas</span>
         {CAPAS.map((capa) => {
           const on = capasVisibles[capa.id] !== false;
@@ -901,7 +952,11 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           title="Añadir un elemento o maquinaria propia al catálogo">
           <Plus className="w-3.5 h-3.5" /> Añadir elemento
           </button>
-        <button onClick={() => setPolyline((v) => !v)}
+        <button onClick={() => setIconosDialog(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted"
+          title="Editar los iconos existentes: regenerar con IA, cambiar la imagen o quitar el icono">
+          <Wand2 className="w-3.5 h-3.5" style={{ color: '#7C3AED' }} /> Editar iconos
+        </button>        <button onClick={() => setPolyline((v) => !v)}
           className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs"
           style={polyline
             ? { borderColor: '#00A0E9', background: '#00A0E922', color: '#00A0E9', fontWeight: 600 }
@@ -1005,7 +1060,8 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
               saving={saving} onSave={guardar} onPDF={onExportarPDF}
               on3D={() => setVer3D(true)} onExit={() => setFullscreen(false)}
-              extraPorCat={extraPorCat} onAddElement={() => setDialogoCatalogo(true)} />
+              extraPorCat={extraPorCat} iaIcons={iaIcons} onAddElement={() => setDialogoCatalogo(true)}
+              onEditarIconos={() => setIconosDialog(true)} />
 
             {Controles}
             {/* En móvil/tablet el contenido fluye en su altura natural y el
@@ -1017,7 +1073,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                 <PlanoCanvas
                   walls={plan.walls} elements={plan.elements} connections={plan.connections}
                   selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-                  polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
+                  polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom}
                   capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen />
               </div>
               <div className="lg:w-[300px] lg:flex-shrink-0 lg:max-h-none">
@@ -1033,14 +1089,16 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                 onCamara={() => setDialogoCamara({ nuevo: true })}
                 onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
                 canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
-                extraElementos={extraItems} onAddElement={() => setDialogoCatalogo(true)} />
+                extraElementos={extraItems} iaIcons={iaIcons} onCrearIconoIA={crearIconoIA}
+                onAddElement={() => setDialogoCatalogo(true)}
+                onEditarIconos={() => setIconosDialog(true)} />
             </div>
             {Controles}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3">
               <PlanoCanvas
                 walls={plan.walls} elements={plan.elements} connections={plan.connections}
                 selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-                polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
+                polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom}
                 capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen={false} />
               {PanelLateral}
             </div>
@@ -1150,6 +1208,14 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       <GestorCatalogoPlano
         open={dialogoCatalogo}
         onClose={() => setDialogoCatalogo(false)}
+        onSaved={cargarCatalogoExtra}
+      />
+
+      {/* Gestor de iconos: crear la versión IA de cualquier símbolo, elegirla
+          o editarla a mano. */}
+      <GestorIconosPlano
+        open={iconosDialog}
+        onClose={() => setIconosDialog(false)}
         onSaved={cargarCatalogoExtra}
       />
 

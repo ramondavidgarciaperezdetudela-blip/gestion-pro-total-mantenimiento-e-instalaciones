@@ -43,20 +43,40 @@
       "properties": {
         "dias_laborables": {
           "type": "array",
-          "description": "Días laborables: 1=lunes … 7=domingo",
-          "items": { "type": "number" }
+          "description": "D\u00edas laborables: 1=lunes \u2026 7=domingo",
+          "items": {
+            "type": "number"
+          }
         },
-        "hora_inicio": { "type": "string", "description": "Hora de inicio de jornada (HH:MM)" },
-        "hora_fin": { "type": "string", "description": "Hora de fin de jornada (HH:MM)" },
-        "descanso_inicio": { "type": "string", "description": "Inicio de la pausa (HH:MM). Vacío = sin pausa" },
-        "descanso_fin": { "type": "string", "description": "Fin de la pausa (HH:MM)" },
-        "duracion_cita": { "type": "number", "description": "Duración de cada hueco en minutos" },
-        "dias_vista": { "type": "number", "description": "Días de antelación que se muestran" }
+        "hora_inicio": {
+          "type": "string",
+          "description": "Hora de inicio de jornada (HH:MM)"
+        },
+        "hora_fin": {
+          "type": "string",
+          "description": "Hora de fin de jornada (HH:MM)"
+        },
+        "descanso_inicio": {
+          "type": "string",
+          "description": "Inicio de la pausa (HH:MM). Vac\u00edo = sin pausa"
+        },
+        "descanso_fin": {
+          "type": "string",
+          "description": "Fin de la pausa (HH:MM)"
+        },
+        "duracion_cita": {
+          "type": "number",
+          "description": "Duraci\u00f3n de cada hueco en minutos"
+        },
+        "dias_vista": {
+          "type": "number",
+          "description": "D\u00edas de antelaci\u00f3n que se muestran"
+        }
       }
     },
     "storage_config": {
       "type": "object",
-      "description": "Almacén externo de fotos y documentos (Cloudinary). Permite subirlos en calidad completa sin gastar crédito de Base44.",
+      "description": "Almac\u00e9n externo de fotos y documentos (Cloudinary). Permite subirlos en calidad completa sin gastar cr\u00e9dito de Base44.",
       "properties": {
         "provider": {
           "type": "string",
@@ -73,7 +93,7 @@
         },
         "enabled": {
           "type": "boolean",
-          "description": "Si está activo, las fotos y documentos se suben aquí en vez de a Base44",
+          "description": "Si est\u00e1 activo, las fotos y documentos se suben aqu\u00ed en vez de a Base44",
           "default": false
         }
       }
@@ -149,15 +169,65 @@
     },
     "public_app_url": {
       "type": "string",
-      "description": "Dirección pública del programa. Con ella se arma el QR de verificación de los documentos; sin ella el QR apunta al aparato desde el que se imprime y al cliente no le abre nada"
+      "description": "Direcci\u00f3n p\u00fablica del programa. Con ella se arma el QR de verificaci\u00f3n de los documentos; sin ella el QR apunta al aparato desde el que se imprime y al cliente no le abre nada"
     },
     "verify_default_days": {
       "type": "number",
       "default": 365,
-      "description": "Días de validez de la verificación en los documentos nuevos (0 = sin caducidad)"
+      "description": "D\u00edas de validez de la verificaci\u00f3n en los documentos nuevos (0 = sin caducidad)"
     }
   },
   "required": [
     "company_name"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
 }

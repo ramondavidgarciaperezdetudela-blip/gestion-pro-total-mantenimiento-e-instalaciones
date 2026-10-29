@@ -4,14 +4,64 @@
   "properties": {
     "key": {
       "type": "string",
-      "description": "Clave única del ajuste (p.ej. update_normativas, update_data_normativas)"
+      "description": "Clave \u00fanica del ajuste (p.ej. update_normativas, update_data_normativas)"
     },
     "value": {
       "type": "string",
-      "description": "Valor del ajuste. Para los resultados de auto-actualización, JSON serializado."
+      "description": "Valor del ajuste. Para los resultados de auto-actualizaci\u00f3n, JSON serializado."
     }
   },
   "required": [
     "key"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
 }

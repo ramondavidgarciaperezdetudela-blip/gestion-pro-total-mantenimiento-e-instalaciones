@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Sparkles } from 'lucide-react';
 import PlanoSimbolo from './PlanoSimbolo';
 import MenuElegirVersion from './MenuElegirVersion';
-import { elementosPorCategoria } from '@/lib/planoFrigorificoCatalogo';
+import { ELEMENTOS, elementosPorCategoria } from '@/lib/planoFrigorificoCatalogo';
 
 /**
  * PlanoMenuEquipos — menú desplegable de una categoría de equipos.
@@ -12,15 +12,22 @@ import { elementosPorCategoria } from '@/lib/planoFrigorificoCatalogo';
  * sus máquinas con el símbolo y el nombre, y se elige la que se quiera
  * colocar. Así todo está accesible sin hacer scroll.
  */
-export default function PlanoMenuEquipos({ cat, activeType, onPick, extraPorCat }) {
+export default function PlanoMenuEquipos({ cat, activeType, onPick, extraPorCat, iaIcons = {} }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  // Equipos de fábrica + los personalizados que el usuario haya añadido a
-  // este apartado.
-  const items = [
-    ...(elementosPorCategoria()[cat.id] || []),
-    ...(extraPorCat?.[cat.id] || []),
-  ];
+  // Cada equipo con su versión IA si la tiene, para poder elegir al colocar.
+  const conIA = (el) => (iaIcons[el.id] ? { ...el, image_url: iaIcons[el.id] } : el);
+  // El apartado «Iconos IA» junta las versiones IA de todo el catálogo con los
+  // iconos propios; el resto de apartados, sus equipos + los personalizados.
+  const items = cat.id === 'ia'
+    ? [
+        ...ELEMENTOS.filter((e) => iaIcons[e.id]).map(conIA),
+        ...(extraPorCat?.ia || []),
+      ]
+    : [
+        ...(elementosPorCategoria()[cat.id] || []).map(conIA),
+        ...(extraPorCat?.[cat.id] || []),
+      ];
 
   // Cerrar al pulsar fuera.
   useEffect(() => {

@@ -235,11 +235,11 @@
     },
     "compressor_application": {
       "type": "string",
-      "description": "Aplicación: HBP, MBP, LBP…"
+      "description": "Aplicaci\u00f3n: HBP, MBP, LBP\u2026"
     },
     "compressor_supply": {
       "type": "string",
-      "description": "Alimentación (ej: 220-240V 1PH 50Hz)"
+      "description": "Alimentaci\u00f3n (ej: 220-240V 1PH 50Hz)"
     },
     "compressor_refrigerants": {
       "type": "string",
@@ -247,7 +247,7 @@
     },
     "compressor_technology": {
       "type": "string",
-      "description": "Tecnología: recíproco, scroll, tornillo…"
+      "description": "Tecnolog\u00eda: rec\u00edproco, scroll, tornillo\u2026"
     },
     "compressor_power_hp": {
       "type": "string",
@@ -259,7 +259,7 @@
     },
     "sign_datetime_technician": {
       "type": "string",
-      "description": "Fecha y hora de la firma del técnico"
+      "description": "Fecha y hora de la firma del t\u00e9cnico"
     },
     "sign_datetime_client": {
       "type": "string",
@@ -267,18 +267,43 @@
     },
     "inspeccion_sanitaria": {
       "type": "object",
-      "description": "Hoja de inspección técnico-sanitaria de cámaras frigoríficas",
+      "description": "Hoja de inspecci\u00f3n t\u00e9cnico-sanitaria de c\u00e1maras frigor\u00edficas",
       "properties": {
-        "activa": { "type": "boolean", "default": false },
-        "establecimiento": { "type": "string" },
-        "actividad": { "type": "string" },
-        "registro_sanitario": { "type": "string" },
-        "motivo": { "type": "string" },
-        "carne_instalador": { "type": "string" },
-        "respuestas": { "type": "object", "description": "Lo marcado en cada punto" },
-        "medidas": { "type": "object", "description": "Valores medidos (bar, °C…)" },
-        "observaciones": { "type": "object", "description": "Texto libre por apartado" },
-        "fotos": { "type": "object", "description": "Fotos de la intervención por bloque" }
+        "activa": {
+          "type": "boolean",
+          "default": false
+        },
+        "establecimiento": {
+          "type": "string"
+        },
+        "actividad": {
+          "type": "string"
+        },
+        "registro_sanitario": {
+          "type": "string"
+        },
+        "motivo": {
+          "type": "string"
+        },
+        "carne_instalador": {
+          "type": "string"
+        },
+        "respuestas": {
+          "type": "object",
+          "description": "Lo marcado en cada punto"
+        },
+        "medidas": {
+          "type": "object",
+          "description": "Valores medidos (bar, \u00b0C\u2026)"
+        },
+        "observaciones": {
+          "type": "object",
+          "description": "Texto libre por apartado"
+        },
+        "fotos": {
+          "type": "object",
+          "description": "Fotos de la intervenci\u00f3n por bloque"
+        }
       }
     }
   },
@@ -286,5 +311,55 @@
     "contact_name",
     "date",
     "type"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
 }
