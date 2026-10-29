@@ -47,7 +47,7 @@ function alturaDe(el) {
   }
 }
 
-export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], scale = 50, alturaSuelo = 2.6 }) {
+export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], scale = 50, alturaSuelo = 2.6, compact = false }) {
   const canvasRef = useRef(null);
   const [giro, setGiro] = useState(Math.PI / 5);
   const [zoom, setZoom] = useState(18);
@@ -187,6 +187,28 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
   const alSoltar = () => { arrastre.current = null; };
 
   const hayAlgo = walls.length > 0 || elements.some((e) => e.type !== 'texto' && e.type !== 'cota' && e.type !== 'trazo');
+
+  if (compact) {
+    // Vista mini para el panel lateral: no se arrastra (no-interactiva) y al
+    // tocarla abre el visor grande. Se reduce el lienzo para que quepa en el
+    // lateral sin comerse todo el alto.
+    return (
+      <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+        <canvas
+          ref={canvasRef}
+          width={460}
+          height={230}
+          className="block touch-none"
+          style={{ width: '100%', height: 'auto', pointerEvents: 'none' }}
+        />
+        {!hayAlgo && (
+          <p className="text-[10px] text-slate-400 text-center py-1 flex items-center justify-center gap-1">
+            <Box className="w-3 h-3" /> Coloca equipos y aparecerán aquí en 3D.
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">

@@ -54,7 +54,7 @@ function capaConexion(c) {
 export default function PlanoCanvas({
   walls, elements, connections, selectedId, mode, activeElement, connectType, polyline,
   scale = 50, gridMeters = 1, snapMode = 'libre', capasVisibles = {}, onChange,
-  fullscreen = false,
+  onConexionCreada, fullscreen = false,
 }) {
   const svgRef = useRef(null);
   const [mouse, setMouse] = useState(null);
@@ -123,6 +123,9 @@ export default function PlanoCanvas({
     onChange({ connections: [...connections, nueva], selectedId: nueva.id });
     setConnFrom(null);
     setConnPath([]);
+    // Avisa a la página de que se acaba de trazar una línea: así puede abrir
+    // el diálogo que pide el diámetro (tubería) o el tipo de cable (eléctrica).
+    if (onConexionCreada) onConexionCreada(nueva);
   };
 
   const handleDown = (e) => {
@@ -167,6 +170,18 @@ export default function PlanoCanvas({
     // Mano alzada: al pulsar empieza a recoger puntos; al soltar crea el trazo.
     if (mode === 'trazo') {
       setTrazoPts([{ x: p.x, y: p.y }]);
+      return;
+    }
+
+    // Borrador: al tocar un elemento, conexión o pared la borra directamente,
+    // igual que la goma de Paint. No pide confirmación: para eso está Deshacer.
+    if (mode === 'eraser') {
+      const hit = hitElement(p);
+      if (hit) { onChange({ elements: elements.filter((e) => e.id !== hit.id), selectedId: null }); return; }
+      const c = hitConnection(p);
+      if (c) { onChange({ connections: connections.filter((x) => x.id !== c.id), selectedId: null }); return; }
+      const wall = walls.find((w) => distSeg(p.x, p.y, w.x1, w.y1, w.x2, w.y2) < 8);
+      if (wall) { onChange({ walls: walls.filter((w) => w.id !== wall.id), selectedId: null }); return; }
       return;
     }
 
@@ -252,7 +267,7 @@ export default function PlanoCanvas({
       <svg
         ref={svgRef}
         viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
-        style={{ width: '100%', minWidth: fullscreen ? 0 : 720, height: fullscreen ? '100%' : '70vh', display: 'block', touchAction: 'none', cursor: (mode === 'wall' || mode === 'connect' || mode === 'cota' || mode === 'trazo') ? 'crosshair' : mode === 'text' ? 'text' : mode === 'select' ? 'default' : 'copy' }}
+        style={{ width: '100%', minWidth: fullscreen ? 0 : 720, height: fullscreen ? '100%' : '70vh', display: 'block', touchAction: 'none', cursor: (mode === 'wall' || mode === 'connect' || mode === 'cota' || mode === 'trazo') ? 'crosshair' : mode === 'eraser' ? 'cell' : mode === 'text' ? 'text' : mode === 'select' ? 'default' : 'copy' }}
         onPointerDown={handleDown}
         onPointerMove={handleMove}
         onPointerUp={handleUp}

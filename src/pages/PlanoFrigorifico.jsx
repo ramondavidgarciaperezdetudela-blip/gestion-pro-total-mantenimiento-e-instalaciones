@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ import { construirPDF, exportarPDF, imprimirPlano } from '@/components/plano_fri
 import { exportarDXF } from '@/lib/planoDxfExport';
 import { exportarEsquemaElectrico, imprimirEsquemaElectrico } from '@/lib/planoEsquemaElectrico';
 import InformeAseguradoraDialog from '@/components/plano_frigorifico/InformeAseguradoraDialog';
+import DialogoNuevaConexion from '@/components/plano_frigorifico/DialogoNuevaConexion';
 import LeyendaPlano from '@/components/plano_frigorifico/LeyendaPlano';
 import PlanoBarraSuperior from '@/components/plano_frigorifico/PlanoBarraSuperior';
 import Vista3DPlanoFrigorifico from '@/components/plano_frigorifico/Vista3DPlanoFrigorifico';
@@ -54,6 +55,27 @@ export default function PlanoFrigorifico() {
   const [fullscreen, setFullscreen] = useState(true);
   // Visor 3D de la instalación: se abre como un panel sobre el editor.
   const [ver3D, setVer3D] = useState(false);
+
+  // ── Historial (deshacer/rehacer) y portapapeles (copiar/cortar/pegar) ──
+  // El historial guarda instantáneas del dibujo (paredes, elementos y
+  // conexiones). Se empuja una antes de cada cambio, agrupando los movimientos
+  // continuos (arrastrar) en un solo paso para que Deshacer sea útil y no vaya
+  // píxel a píxel.
+  const historial = useRef([]);
+  const futuro = useRef([]);
+  const ultimoPush = useRef(Date.now());
+  const [histTick, setHistTick] = useState(0);
+  const [portapapeles, setPortapapeles] = useState(null);
+  // Diálogo que pide el diámetro (tubería) o el tipo de cable (eléctrica) nada
+  // más trazar una línea, para que el montador lo tenga anotado.
+  const [conexionDialogo, setConexionDialogo] = useState(null);
+
+  const resetHistorial = () => {
+    historial.current = [];
+    futuro.current = [];
+    ultimoPush.current = Date.now();
+    setHistTick((t) => t + 1);
+  };
 
   // Esc cierra la pantalla completa, igual que en el resto del programa.
   useEffect(() => {
@@ -104,7 +126,7 @@ export default function PlanoFrigorifico() {
     (async () => {
       try {
         const p = await base44.entities.RefrigerationPlan.get(pid);
-        if (p) { setPlan({ ...PLANO_VACIO, ...p, connections: p.connections || [] }); setSelectedId(null); setMode('select'); }
+        if (p) { setPlan({ ...PLANO_VACIO, ...p, connections: p.connections || [] }); setSelectedId(null); setMode('select'); resetHistorial(); }
       } catch { /* plano no encontrado */ }
     })();
   }, []);
@@ -132,14 +154,92 @@ export default function PlanoFrigorifico() {
   });
 
   const handleChange = (patch) => {
-    setPlan((p) => ({
-      ...p,
-      walls: patch.walls !== undefined ? patch.walls : p.walls,
-      elements: patch.elements !== undefined ? patch.elements : p.elements,
-      connections: patch.connections !== undefined ? patch.connections : p.connections,
-    }));
+    setPlan((p) => {
+      // Antes de aplicar, guarda el estado previo en el historial. Se agrupan
+      // los cambios rápidos (arrastrar): si no ha pasado suficiente tiempo y
+      // no es un cambio estructural (añadir/borrar), no se empuja otro paso.
+      const snap = { walls: p.walls, elements: p.elements, connections: p.connections };
+      const ult = historial.current[historial.current.length - 1];
+      const estructural = !ult
+        || ult.elements.length !== snap.elements.length
+        || ult.walls.length !== snap.walls.length
+        || ult.connections.length !== snap.connections.length;
+      const ahora = Date.now();
+      if (estructural || ahora - ultimoPush.current > 800) {
+        historial.current.push(snap);
+        if (historial.current.length > 80) historial.current.shift();
+        futuro.current = [];
+        ultimoPush.current = ahora;
+        setHistTick((t) => t + 1);
+      }
+      return {
+        ...p,
+        walls: patch.walls !== undefined ? patch.walls : p.walls,
+        elements: patch.elements !== undefined ? patch.elements : p.elements,
+        connections: patch.connections !== undefined ? patch.connections : p.connections,
+      };
+    });
     if (patch.selectedId !== undefined) setSelectedId(patch.selectedId);
   };
+
+  const undo = () => {
+    setPlan((p) => {
+      const prev = historial.current.pop();
+      if (!prev) return p;
+      futuro.current.push({ walls: p.walls, elements: p.elements, connections: p.connections });
+      ultimoPush.current = Date.now();
+      setHistTick((t) => t + 1);
+      return { ...p, walls: prev.walls, elements: prev.elements, connections: prev.connections };
+    });
+    setSelectedId(null);
+  };
+
+  const redo = () => {
+    setPlan((p) => {
+      const next = futuro.current.pop();
+      if (!next) return p;
+      historial.current.push({ walls: p.walls, elements: p.elements, connections: p.connections });
+      ultimoPush.current = Date.now();
+      setHistTick((t) => t + 1);
+      return { ...p, walls: next.walls, elements: next.elements, connections: next.connections };
+    });
+    setSelectedId(null);
+  };
+
+  const copiar = () => {
+    if (selectedElement) setPortapapeles({ tipo: 'elemento', data: selectedElement });
+    else if (selectedWall) setPortapapeles({ tipo: 'pared', data: selectedWall });
+    else if (selectedConnection) setPortapapeles({ tipo: 'conexion', data: selectedConnection });
+  };
+  const cortar = () => { copiar(); borrarSeleccion(); };
+  const pegar = () => {
+    if (!portapapeles) return;
+    historial.current.push({ walls: plan.walls, elements: plan.elements, connections: plan.connections });
+    futuro.current = [];
+    ultimoPush.current = Date.now();
+    setHistTick((t) => t + 1);
+    if (portapapeles.tipo === 'elemento') {
+      const copia = { ...portapapeles.data, id: crypto.randomUUID(), x: portapapeles.data.x + 50, y: portapapeles.data.y + 50, label: `${portapapeles.data.label || 'Elemento'} (copia)` };
+      setPlan((p) => ({ ...p, elements: [...p.elements, copia] }));
+      setSelectedId(copia.id);
+    } else if (portapapeles.tipo === 'pared') {
+      const copia = { ...portapapeles.data, id: crypto.randomUUID(), x1: portapapeles.data.x1 + 50, y1: portapapeles.data.y1 + 50, x2: portapapeles.data.x2 + 50, y2: portapapeles.data.y2 + 50 };
+      setPlan((p) => ({ ...p, walls: [...p.walls, copia] }));
+      setSelectedId(copia.id);
+    } else if (portapapeles.tipo === 'conexion') {
+      const copia = { ...portapapeles.data, id: crypto.randomUUID() };
+      setPlan((p) => ({ ...p, connections: [...p.connections, copia] }));
+      setSelectedId(copia.id);
+    }
+  };
+
+  // Actualiza una conexión por id (no por selección): lo usa el diálogo que
+  // pide el diámetro/cable al trazar una línea.
+  const actualizarConexionPorId = (id, patch) => {
+    setPlan((p) => ({ ...p, connections: p.connections.map((c) => c.id === id ? { ...c, ...patch } : c) }));
+  };
+
+  const onConexionCreada = (nueva) => setConexionDialogo({ id: nueva.id, tipo: nueva.type });
 
   const onPick = ({ mode: m, element, connectType: ct }) => {
     setMode(m);
@@ -171,6 +271,14 @@ export default function PlanoFrigorifico() {
   const selectedConnection = plan.connections.find((c) => c.id === selectedId) || null;
   const selectedWall = !selectedElement && !selectedConnection ? plan.walls.find((w) => w.id === selectedId) || null : null;
 
+  // Estado de los botones de edición (deshacer/rehacer/copiar/pegar). canUndo
+  // y canRedo leen los refs; histTick fuerza el repintado cuando cambian.
+  void histTick;
+  const canUndo = historial.current.length > 0;
+  const canRedo = futuro.current.length > 0;
+  const canCopy = !!(selectedElement || selectedWall || selectedConnection);
+  const canPaste = !!portapapeles;
+
   const actualizarElemento = (patch) => {
     setPlan((p) => ({ ...p, elements: p.elements.map((e) => e.id === selectedId ? { ...e, ...patch } : e) }));
   };
@@ -194,12 +302,13 @@ export default function PlanoFrigorifico() {
     setPlan({ ...PLANO_VACIO });
     setSelectedId(null);
     setMode('select');
+    resetHistorial();
   };
 
   const cargarPlano = (id) => {
     if (!id) { nuevoPlano(); return; }
     const p = planos.find((x) => x.id === id);
-    if (p) { setPlan({ ...PLANO_VACIO, ...p, connections: p.connections || [] }); setSelectedId(null); setMode('select'); }
+    if (p) { setPlan({ ...PLANO_VACIO, ...p, connections: p.connections || [] }); setSelectedId(null); setMode('select'); resetHistorial(); }
   };
 
   const guardar = async () => {
@@ -489,6 +598,19 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           )}
         </div>
         <LeyendaPlano />
+
+        {/* Visor 3D en miniatura, debajo de la leyenda: al tocarlo se abre
+            en grande. El botón "Visor 3D" de la barra superior también lo
+            abre directamente a tamaño completo. */}
+        <button type="button" onClick={() => setVer3D(true)}
+          className="group w-full rounded-lg border border-border p-2 text-left hover:border-primary/40 transition-colors"
+          title="Ampliar visor 3D">
+          <div className="flex items-center justify-between mb-1">
+            <span className="tech-label">Visor 3D</span>
+            <span className="text-[10px] text-primary group-hover:underline">Ampliar ↗</span>
+          </div>
+          <Vista3DPlanoFrigorifico walls={plan.walls} elements={plan.elements} scale={plan.scale} compact />
+        </button>
       </div>
     </div>
   );
@@ -618,6 +740,8 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           <div className="flex flex-col gap-2 min-h-0 flex-1">
             <PlanoBarraSuperior
               mode={mode} activeType={activeType} connectType={connectType} onPick={onPick}
+              onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
+              canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
               saving={saving} onSave={guardar} onPDF={onExportarPDF}
               on3D={() => setVer3D(true)} onExit={() => setFullscreen(false)} />
             {Controles}
@@ -626,14 +750,16 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                 walls={plan.walls} elements={plan.elements} connections={plan.connections}
                 selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
                 polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
-                capasVisibles={capasVisibles} onChange={handleChange} fullscreen />
+                capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen />
               {PanelLateral}
             </div>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             <div className="rounded-lg border border-border bg-card p-3">
-              <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} onPick={onPick} />
+              <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} onPick={onPick}
+                onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
+                canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste} />
             </div>
             {Controles}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3">
@@ -641,7 +767,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                 walls={plan.walls} elements={plan.elements} connections={plan.connections}
                 selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
                 polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
-                capasVisibles={capasVisibles} onChange={handleChange} fullscreen={false} />
+                capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen={false} />
               {PanelLateral}
             </div>
           </div>
@@ -735,6 +861,19 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         empresa={empresa}
         contacts={contacts}
       />
+
+      {/* Diálogo que pide el diámetro (tubería) o el cable (eléctrica) al
+          trazar una línea nueva. */}
+      {conexionDialogo && (() => {
+        const conn = plan.connections.find((c) => c.id === conexionDialogo.id);
+        if (!conn) return null;
+        return (
+          <DialogoNuevaConexion
+            connection={conn} elements={plan.elements} scale={plan.scale}
+            onSave={(patch) => actualizarConexionPorId(conn.id, patch)}
+            onClose={() => setConexionDialogo(null)} />
+        );
+      })()}
     </div>
   );
 }

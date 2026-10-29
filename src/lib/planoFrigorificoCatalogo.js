@@ -281,3 +281,23 @@ export function buscar(texto) {
   return ELEMENTOS.filter((e) => `${e.label} ${e.cat}`
     .normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes(q));
 }
+
+/**
+ * Descripción corta de cada símbolo ELÉCTRICO, para que se lea clara junto al
+ * símbolo en la paleta y en el plano. No es el nombre (eso ya está en `label`):
+ * es para qué sirve, de una frase, para el que no domine la aparamenta.
+ */
+export const DESCRIPCIONES_ELECTRICO = {
+  cuadro_electrico: 'Cuadro de distribución y mando de la instalación',
+  magnetotermico: 'Protege contra cortocircuitos y sobrecargas',
+  diferencial: 'Protege contra contactos indirectos (fuga a tierra)',
+  contactor: 'Conmutador de potencia accionado por mando',
+  guardamotor: 'Relé térmico de protección del motor',
+  variador: 'Regula la velocidad del motor (VFD)',
+  automata: 'Autómata programable (PLC) de control',
+  cableado: 'Tramo de conductor / línea',
+  toma_corriente: 'Base de enchufe (Schuko / CETAC)',
+  interruptor: 'Interruptor unipolar de corte',
+  luminaria: 'Punto de luz',
+  puesta_tierra: 'Toma de tierra (PE)',
+};

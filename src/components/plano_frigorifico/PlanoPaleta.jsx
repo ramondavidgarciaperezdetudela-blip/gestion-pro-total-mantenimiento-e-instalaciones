@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import {
-  MousePointer2, Minus, Link2, Zap, Wind, Thermometer, ShieldAlert, Box,
-  ChevronDown, Search, Type, Ruler, Spline, Eraser, Boxes,
+  Thermometer, Wind, Zap, ShieldAlert, Box, ChevronDown, Search, Boxes,
 } from 'lucide-react';
-import { CATEGORIAS, elementosPorCategoria, buscar } from '@/lib/planoFrigorificoCatalogo';
+import { CATEGORIAS, elementosPorCategoria, buscar, DESCRIPCIONES_ELECTRICO } from '@/lib/planoFrigorificoCatalogo';
 import PlanoSimbolo from './PlanoSimbolo';
+import PlanoBarraHerramientas from './PlanoBarraHerramientas';
 
 const CAT_ICON = {
   refrigeracion: Thermometer,
@@ -24,7 +24,10 @@ const CAT_ICON = {
 // La barra de herramientas de dibujo incluye además de Pared y Conexiones:
 // Texto (notas), Cota (línea de medida) y Mano alzada (trazo libre), que
 // faltaban para hacer un plano completo.
-export default function PlanoPaleta({ mode, activeType, connectType, onPick }) {
+export default function PlanoPaleta({
+  mode, activeType, connectType, onPick,
+  onUndo, onRedo, onCopy, onCut, onPaste, canUndo, canRedo, canCopy, canPaste,
+}) {
   const [abierta, setAbierta] = useState(() => Object.fromEntries(CATEGORIAS.map((c) => [c.id, true])));
   const [q, setQ] = useState('');
   const porCat = elementosPorCategoria();
@@ -32,25 +35,17 @@ export default function PlanoPaleta({ mode, activeType, connectType, onPick }) {
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Barra de herramientas de dibujo */}
-      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-card p-1.5">
-        <BotonHerr activo={mode === 'select'} onClick={() => onPick({ mode: 'select' })} icon={MousePointer2} label="Seleccionar" />
-        <BotonHerr activo={mode === 'wall'} onClick={() => onPick({ mode: 'wall' })} icon={Minus} label="Pared" />
-        <BotonHerr activo={mode === 'text'} onClick={() => onPick({ mode: 'text' })} icon={Type} label="Texto" color="#64748b" />
-        <BotonHerr activo={mode === 'cota'} onClick={() => onPick({ mode: 'cota' })} icon={Ruler} label="Cota" color="#64748b" />
-        <BotonHerr activo={mode === 'trazo'} onClick={() => onPick({ mode: 'trazo' })} icon={Spline} label="Mano alzada" color="#64748b" />
-        <div className="w-px h-6 bg-border mx-0.5" />
-        <BotonHerr activo={mode === 'connect' && connectType === 'refrigerante'}
-          onClick={() => onPick({ mode: 'connect', connectType: 'refrigerante' })} icon={Link2} label="Tubería" color="#00A0E9" />
-        <BotonHerr activo={mode === 'connect' && connectType === 'conducto'}
-          onClick={() => onPick({ mode: 'connect', connectType: 'conducto' })} icon={Wind} label="Conducto" color="#10b981" />
-        <BotonHerr activo={mode === 'connect' && connectType === 'electrica'}
-          onClick={() => onPick({ mode: 'connect', connectType: 'electrica' })} icon={Zap} label="Eléctrica" color="#F5821F" />
-        <div className="flex items-center gap-1 ml-auto rounded-md border border-border bg-input px-2 py-1">
-          <Search className="w-3.5 h-3.5 text-muted-foreground" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar equipo…"
-            className="bg-transparent text-xs outline-none w-36" />
-        </div>
+      {/* Barra de herramientas de dibujo y edición (estilo Paint) */}
+      <PlanoBarraHerramientas
+        mode={mode} connectType={connectType} onPick={onPick}
+        onUndo={onUndo} onRedo={onRedo} onCopy={onCopy} onCut={onCut} onPaste={onPaste}
+        canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste} />
+
+      {/* Buscador de equipos */}
+      <div className="flex items-center gap-1 rounded-md border border-border bg-input px-2 py-1 self-start">
+        <Search className="w-3.5 h-3.5 text-muted-foreground" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar equipo…"
+          className="bg-transparent text-xs outline-none w-44" />
       </div>
 
       {/* Resultados de búsqueda */}
@@ -126,27 +121,17 @@ function BotonEquipo({ el, activo, onClick }) {
         style={{ color: activo ? color : 'hsl(var(--foreground))', fontWeight: activo ? 700 : 500 }}>
         {el.label}
       </span>
+      {/* Descripción clara de los símbolos eléctricos, para facilitar la
+          lectura de la aparamenta en la paleta. */}
+      {el.cat === 'electrico' && DESCRIPCIONES_ELECTRICO[el.id] && (
+        <span className="text-[9px] leading-tight text-center w-full text-muted-foreground italic">
+          {DESCRIPCIONES_ELECTRICO[el.id]}
+        </span>
+      )}
     </button>
   );
 }
 
 function CAT_COLOR(cat) {
   return CATEGORIAS.find((c) => c.id === cat)?.color || '#888';
-}
-
-function BotonHerr({ activo, onClick, icon: Icon, label, color }) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] transition-all"
-      style={{
-        borderColor: activo ? (color || 'hsl(var(--primary))') : 'hsl(var(--border))',
-        background: activo ? (color ? color + '22' : 'hsl(var(--primary) / 0.15)') : 'transparent',
-        color: activo ? (color || 'hsl(var(--primary))') : 'hsl(var(--foreground))',
-        fontWeight: activo ? 700 : 500,
-      }}
-    >
-      <Icon className="w-4 h-4" /> {label}
-    </button>
-  );
 }

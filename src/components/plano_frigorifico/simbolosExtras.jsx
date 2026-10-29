@@ -155,23 +155,32 @@ function tomaCorriente(w, h, x0, y0, id, datos, mini) {
   );
 }
 
-// Interruptor: símbolo IEC de interruptor unipolar (línea con contacto inclinado).
-// Lleva un fondo semicircular para que se distinga de un simple cable aunque el
-// dibujo sea pequeño.
+// Interruptor: símbolo IEC de interruptor unipolar (contacto abierto con la
+// palanca inclinada). Se dibuja MÁS GRANDE y realista: cuerpo redondo, dos
+// bornes marcados, palanca gruesa y pivote, para que se lea claro aunque el
+// símbolo sea pequeño en la paleta o en el plano.
 function interruptor(w, h, x0, y0, id, datos, mini) {
   const cx = 0;
-  const r = Math.min(w, h) * 0.46;
+  const r = Math.min(w, h) * 0.5;          // aprovecha todo el recuadro
+  const sw = Math.max(1.8, r * 0.26);       // palanca gruesa
   return (
     <g>
-      <circle cx={cx} cy={0} r={r} fill="#0f172a" stroke={ACENT} strokeWidth="1.2" opacity="0.92" />
-      {/* borne de entrada */}
-      <circle cx={cx - r * 0.78} cy={0} r={1.5} fill={LINEA} />
-      {/* contacto abierto (incl inado) */}
-      <line x1={cx - r * 0.6} y1={0} x2={cx + r * 0.4} y2={-r * 0.62} stroke={LINEA} strokeWidth="2" strokeLinecap="round" />
-      <circle cx={cx + r * 0.4} cy={-r * 0.62} r={1.8} fill={LINEA} />
-      {/* borne de salida */}
-      <line x1={cx + r * 0.4} y1={0} x2={cx + r * 0.78} y2={0} stroke={LINEA} strokeWidth="2" />
-      {!mini && <text x={0} y={r + 7} textAnchor="middle" fontSize="6" fill={ACENT} fontWeight="700">IN</text>}
+      {/* Cuerpo redondo del interruptor */}
+      <circle cx={cx} cy={0} r={r} fill="#0f172a" stroke={ACENT} strokeWidth="1.4" opacity="0.95" />
+      <circle cx={cx} cy={0} r={r * 0.86} fill="none" stroke={ACENT} strokeWidth="0.6" opacity="0.4" />
+      {/* Borne de entrada (izquierda) */}
+      <circle cx={cx - r * 0.8} cy={0} r={Math.max(2, r * 0.14)} fill={LINEA} stroke="#0f172a" strokeWidth="0.6" />
+      <line x1={cx - r * 0.8} y1={0} x2={cx - r * 0.55} y2={0} stroke={LINEA} strokeWidth={sw} strokeLinecap="round" />
+      {/* Pivote de la palanca */}
+      <circle cx={cx - r * 0.55} cy={0} r={Math.max(1.6, r * 0.12)} fill={ACENT} />
+      {/* Palanca del contacto abierta (inclinada hacia arriba a la derecha) */}
+      <line x1={cx - r * 0.55} y1={0} x2={cx + r * 0.42} y2={-r * 0.66} stroke={LINEA} strokeWidth={sw} strokeLinecap="round" />
+      {/* Punta de la palanca */}
+      <circle cx={cx + r * 0.42} cy={-r * 0.66} r={Math.max(2, r * 0.14)} fill={LINEA} stroke="#0f172a" strokeWidth="0.6" />
+      {/* Borne de salida (derecha) */}
+      <line x1={cx + r * 0.42} y1={0} x2={cx + r * 0.8} y2={0} stroke={LINEA} strokeWidth={sw} strokeLinecap="round" />
+      <circle cx={cx + r * 0.8} cy={0} r={Math.max(2, r * 0.14)} fill={LINEA} stroke="#0f172a" strokeWidth="0.6" />
+      {!mini && <text x={0} y={r + 8} textAnchor="middle" fontSize="6.5" fill={ACENT} fontWeight="700">IN</text>}
     </g>
   );
 }
@@ -188,23 +197,28 @@ function luminaria(w, h, x0, y0, id, datos, mini) {
   );
 }
 
-// Puesta a tierra: símbolo IEC de toma de tierra (3 líneas horizontales
-// decrecientes). Trazos gruesos y fondo redondo para que se vea claro aún
-// pequeño en la paleta.
+// Puesta a tierra: símbolo IEC de toma de tierra (conductor vertical y tres
+// barras horizontales decrecientes). Se dibuja MÁS GRANDE y realista: barras
+// gruesas y largas, con el conductor y el borne marcados, para que se lea
+// claro aunque el símbolo sea pequeño en la paleta o en el plano.
 function puestaTierra(w, h, x0, y0, id, datos, mini) {
   const cx = 0;
-  const r = Math.min(w, h) * 0.48;
-  const sw = Math.max(1.6, r * 0.16);
+  const r = Math.min(w, h) * 0.5;          // aprovecha todo el recuadro
+  const sw = Math.max(2, r * 0.24);         // barras gruesas
   return (
     <g>
-      <circle cx={cx} cy={0} r={r} fill="#0f172a" stroke={ACENT} strokeWidth="1.2" opacity="0.92" />
-      {/* conductor vertical */}
-      <line x1={cx} y1={-r * 0.55} x2={cx} y2={-r * 0.1} stroke={LINEA} strokeWidth={sw} />
-      {/* tres horizontales decrecientes (PE) */}
-      <line x1={cx - r * 0.7} y1={-r * 0.1} x2={cx + r * 0.7} y2={-r * 0.1} stroke={ACENT} strokeWidth={sw} />
-      <line x1={cx - r * 0.5} y1={r * 0.18} x2={cx + r * 0.5} y2={r * 0.18} stroke={ACENT} strokeWidth={sw} />
-      <line x1={cx - r * 0.3} y1={r * 0.46} x2={cx + r * 0.3} y2={r * 0.46} stroke={ACENT} strokeWidth={sw} />
-      {!mini && <text x={0} y={r + 8} textAnchor="middle" fontSize="6" fill={ACENT} fontWeight="700">PE</text>}
+      <circle cx={cx} cy={0} r={r} fill="#0f172a" stroke={ACENT} strokeWidth="1.4" opacity="0.95" />
+      {/* Borne de conexión arriba */}
+      <circle cx={cx} cy={-r * 0.72} r={Math.max(2, r * 0.16)} fill={LINEA} stroke="#0f172a" strokeWidth="0.6" />
+      {/* Conductor vertical (PE) */}
+      <line x1={cx} y1={-r * 0.56} x2={cx} y2={-r * 0.12} stroke={LINEA} strokeWidth={sw} strokeLinecap="round" />
+      {/* Tres barras horizontales decrecientes (símbolo de tierra IEC) */}
+      <line x1={cx - r * 0.82} y1={-r * 0.12} x2={cx + r * 0.82} y2={-r * 0.12} stroke={ACENT} strokeWidth={sw} strokeLinecap="round" />
+      <line x1={cx - r * 0.58} y1={r * 0.16} x2={cx + r * 0.58} y2={r * 0.16} stroke={ACENT} strokeWidth={sw} strokeLinecap="round" />
+      <line x1={cx - r * 0.34} y1={r * 0.44} x2={cx + r * 0.34} y2={r * 0.44} stroke={ACENT} strokeWidth={sw} strokeLinecap="round" />
+      {/* Pequeña punta de clavo bajo la última barra (realismo de la picada) */}
+      <line x1={cx} y1={r * 0.44} x2={cx} y2={r * 0.62} stroke={ACENT} strokeWidth={sw * 0.7} strokeLinecap="round" />
+      {!mini && <text x={0} y={r + 8} textAnchor="middle" fontSize="6.5" fill={ACENT} fontWeight="700">PE</text>}
     </g>
   );
 }
