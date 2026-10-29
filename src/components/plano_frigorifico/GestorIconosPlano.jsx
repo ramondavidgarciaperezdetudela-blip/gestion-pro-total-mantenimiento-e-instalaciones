@@ -46,10 +46,11 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
 
   const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-  // Los iconos IA de símbolos de fábrica (std_id) no son equipos propios: se
-  // gestionan desde la pestaña «Estándar», en su símbolo.
+  // Todos los iconos guardados: los elementos propios del usuario y también las
+  // versiones IA de los símbolos de fábrica. Así cualquier icono que ya exista
+  // se puede regenerar, sustituir por otro o quitar desde un solo sitio.
   const misItems = useMemo(() => {
-    let out = items.filter((it) => !it.std_id);
+    let out = items.filter((it) => !!it.image_url || !it.std_id);
     if (catFiltro !== 'todos') out = out.filter((it) => it.cat === catFiltro);
     if (q.trim()) out = out.filter((it) => norm(it.name).includes(norm(q)));
     return out;
@@ -75,8 +76,11 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
   const regenerarIA = async (item) => {
     setBusyId(item.id);
     try {
-      const catLabel = CATEGORIAS.find((c) => c.id === item.cat)?.label || item.cat;
-      const url = await generarIconoPlano(item.name, catLabel);
+      // Si el icono es la versión IA de un símbolo de fábrica, el nombre y el
+      // apartado que se le pasan a la IA son los de ese símbolo, no «Iconos IA».
+      const origen = item.std_id ? ELEMENTOS.find((e) => e.id === item.std_id) : null;
+      const catLabel = CATEGORIAS.find((c) => c.id === (origen?.cat || item.cat))?.label || item.cat;
+      const url = await generarIconoPlano(origen?.label || item.name, catLabel);
       if (url) {
         await base44.entities.PlanoCatalogItem.update(item.id, { image_url: url });
         setItems((arr) => arr.map((x) => x.id === item.id ? { ...x, image_url: url } : x));
@@ -244,7 +248,7 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
         {/* Pestañas */}
         <div className="flex gap-1 px-4 pt-2">
           {[
-            { id: 'mios', label: 'Mis iconos' },
+            { id: 'mios', label: 'Iconos guardados' },
             { id: 'estandar', label: 'Estándar (catálogo)' },
           ].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}

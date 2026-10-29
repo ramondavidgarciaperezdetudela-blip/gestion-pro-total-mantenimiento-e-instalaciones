@@ -4,10 +4,20 @@ import { addDays, differenceInDays, format } from 'npm:date-fns@3.6.0';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
 
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    /*
+     * Esta función la lanza el recordatorio diario, que no entra con la sesión
+     * de ningún usuario: pedir `auth.me()` la dejaba contestando «no
+     * autorizado» y no se generaba ningún mantenimiento. Como no tiene
+     * pantalla, el candado de una vez al día es lo que impide que alguien la
+     * dispare en bucle y llene la agenda de citas.
+     */
+    const hoy = new Date().toISOString().slice(0, 10);
+    const yaEjecutada = await base44.asServiceRole.entities.ChangeLog
+      .filter({ entity_type: 'Sistema_MantenimientosPreventivos', date: hoy })
+      .catch(() => []);
+    if ((yaEjecutada || []).length > 0) {
+      return Response.json({ success: true, skipped: true, motivo: 'ya_ejecutada_hoy' });
     }
 
     // Obtener máquinas y citas
@@ -21,11 +31,20 @@ Deno.serve(async (req) => {
     const today = new Date();
 
     for (const machine of machines) {
-      if (!machine.maintenance_days || !machine.last_maintenance_date) continue;
+      // La ficha del equipo guarda la frecuencia en MESES y la próxima fecha.
+      // Antes solo se miraban unos campos que no existen en la ficha, así que
+      // el bucle se saltaba todos los equipos y nunca generaba nada.
+      const frecuenciaDias = Number(machine.maintenance_days || 0)
+        || Number(machine.maintenance_interval_months || 0) * 30;
+      const proximaProgramada = machine.next_maintenance_date || '';
+      const ultimaRevision = machine.last_maintenance_date || '';
+      if (!proximaProgramada && (!ultimaRevision || !frecuenciaDias)) continue;
 
       // Calcular próxima fecha de mantenimiento
-      const lastDate = new Date(machine.last_maintenance_date);
-      const nextDate = addDays(lastDate, machine.maintenance_days);
+      const nextDate = proximaProgramada
+        ? new Date(proximaProgramada)
+        : addDays(new Date(ultimaRevision), frecuenciaDias);
+      if (isNaN(nextDate.getTime())) continue;
       const daysUntil = differenceInDays(nextDate, today);
 
       // Generar orden si está vencido o dentro de 7 días
@@ -51,7 +70,7 @@ Deno.serve(async (req) => {
               time_start: '09:00',
               type: 'mantenimiento',
               status: 'confirmada',
-              priority: machine.maintenance_days <= 30 ? 'alta' : machine.maintenance_days <= 90 ? 'media' : 'baja',
+              priority: frecuenciaDias && frecuenciaDias <= 30 ? 'alta' : frecuenciaDias && frecuenciaDias <= 90 ? 'media' : 'baja',
               address: contact?.address || '',
             });
 
@@ -90,6 +109,15 @@ ${company?.[0]?.company_name || 'Tu empresa'}`,
         }
       }
     }
+
+    // Ejecución del día apuntada (candado), solo al terminar el trabajo.
+    await base44.asServiceRole.entities.ChangeLog.create({
+      entity_type: 'Sistema_MantenimientosPreventivos',
+      action: 'editar',
+      changes_summary: `Mantenimientos preventivos: ${created} cita(s) creadas`,
+      date: hoy,
+      datetime: new Date().toLocaleString('es-ES'),
+    }).catch(() => {});
 
     return Response.json({
       success: true,

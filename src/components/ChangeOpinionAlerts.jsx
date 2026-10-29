@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, MessageCircle, Check } from 'lucide-react';
+import { AlertCircle, MessageCircle, Check, Send } from 'lucide-react';
 
 export default function ChangeOpinionAlerts() {
   const [requests, setRequests] = useState([]);
@@ -29,6 +29,29 @@ export default function ChangeOpinionAlerts() {
       setRequests(prev => prev.filter(r => r.id !== id));
     } catch (error) {
       console.error('Error actualizando solicitud:', error);
+    }
+  };
+
+  // Reenvía al cliente el enlace para volver a aceptar o rechazar su
+  // presupuesto (y avisa al administrador). Es la función del programa que se
+  // encarga de generar el enlace con token y de mandarlo; antes existía pero
+  // ningún botón la llamaba.
+  const [enviandoId, setEnviandoId] = useState(null);
+  const handleSendLink = async (request) => {
+    setEnviandoId(request.id);
+    try {
+      const res = await base44.functions.invoke('notifyChangeOpinionRequest', { doc_id: request.doc_id });
+      const data = res?.data || {};
+      if (data.ok) {
+        alert(`Enlace enviado a ${request.contact_name}.`);
+        await handleMarkAsAttended(request.id);
+      } else {
+        alert(data.aviso || data.error || 'No se pudo enviar el enlace.');
+      }
+    } catch (e) {
+      alert('No se pudo enviar el enlace: ' + (e?.message || e));
+    } finally {
+      setEnviandoId(null);
     }
   };
 
@@ -75,6 +98,15 @@ export default function ChangeOpinionAlerts() {
                   onClick={() => handleContactClient(request.contact_phone, request.contact_name, request.doc_number)}
                 >
                   <MessageCircle className="w-3 h-3 mr-1" /> WhatsApp
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 text-xs"
+                  disabled={enviandoId === request.id}
+                  onClick={() => handleSendLink(request)}
+                >
+                  <Send className="w-3 h-3 mr-1" /> {enviandoId === request.id ? 'Enviando…' : 'Enviar enlace'}
                 </Button>
                 <Button
                   size="sm"

@@ -4,6 +4,22 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
+    /*
+     * Candado de una vez al día.
+     *
+     * Esta función no tiene pantalla: la lanza el recordatorio diario. Al
+     * estar abierta, cualquiera podía llamarla en bucle y llenar el correo de
+     * la empresa con el mismo listado. Si ya se ha ejecutado hoy, se responde
+     * sin leer facturas ni enviar nada.
+     */
+    const hoy = new Date().toISOString().slice(0, 10);
+    const yaEjecutada = await base44.asServiceRole.entities.ChangeLog
+      .filter({ entity_type: 'Sistema_AlertasFacturas', date: hoy })
+      .catch(() => []);
+    if ((yaEjecutada || []).length > 0) {
+      return Response.json({ ok: true, skipped: true, motivo: 'ya_ejecutada_hoy' });
+    }
+
     // Obtener todas las facturas y recibos enviados hace 2-3 días sin firma
     const facturas = await base44.asServiceRole.entities.Invoice.filter({ status: 'enviado' });
     const documentosSinFirma = (facturas || []).filter(f => ['factura', 'recibo'].includes(f.doc_type));
@@ -88,6 +104,16 @@ Deno.serve(async (req) => {
         }
       }
     }
+
+    // Se apunta la ejecución del día justo al terminar, para que el candado
+    // solo cuente cuando de verdad se ha hecho el trabajo.
+    await base44.asServiceRole.entities.ChangeLog.create({
+      entity_type: 'Sistema_AlertasFacturas',
+      action: 'editar',
+      changes_summary: `Alerta de facturas sin firmar: ${diasSinFirma.length} documento(s)`,
+      date: hoy,
+      datetime: new Date().toLocaleString('es-ES'),
+    }).catch(() => {});
 
     return Response.json({ ok: true, processed: diasSinFirma.length });
   } catch (error) {

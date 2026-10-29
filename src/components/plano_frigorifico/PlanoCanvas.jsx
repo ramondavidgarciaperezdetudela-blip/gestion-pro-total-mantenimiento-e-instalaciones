@@ -17,8 +17,11 @@ import PlanoSimbolo from './PlanoSimbolo';
 // a la cuadrícula. Las capas (frigorífico, ventilación, eléctrico, seguridad,
 // estructura) se muestran u ocultan sin borrar lo que ya está dibujado.
 
-export const CANVAS_W = 1400;
-export const CANVAS_H = 900;
+// Superficie de dibujo. Se ha ampliado para que quepan instalaciones grandes
+// (varias cámaras y salas) sin quedarse sin sitio. Las coordenadas guardadas de
+// los planos antiguos no cambian: siguen en su sitio, solo hay más lienzo.
+export const CANVAS_W = 1600;
+export const CANVAS_H = 1100;
 
 function distSeg(px, py, x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1;
@@ -68,7 +71,7 @@ function capaConexion(c) {
 export default function PlanoCanvas({
   walls, elements, connections, selectedId, mode, activeElement, connectType, polyline,
   scale = 50, gridMeters = 1, snapMode = 'libre', capasVisibles = {}, onChange,
-  onConexionCreada, fullscreen = false,
+  onConexionCreada, fullscreen = false, zoom = 1,
 }) {
   const svgRef = useRef(null);
   const [mouse, setMouse] = useState(null);
@@ -129,6 +132,14 @@ export default function PlanoCanvas({
       if (distSeg(p.x, p.y, pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y) < 7) return true;
     }
     return false;
+  });
+
+  // Sala o cámara bajo el puntero: se busca por el recinto completo (no pared a
+  // pared) para poder seleccionarla y arrastrarla entera de una vez.
+  const roomAt = (p) => walls.find((w) => {
+    if (!w.room_id || !w.room_w_m || !w.room_h_m) return false;
+    const x0 = w.room_x, y0 = w.room_y;
+    return p.x >= x0 && p.x <= x0 + w.room_w_m * scale && p.y >= y0 && p.y <= y0 + w.room_h_m * scale;
   });
 
   const cerrarConexion = (hit) => {
@@ -217,6 +228,20 @@ export default function PlanoCanvas({
       if (hit) { onChange({ selectedId: hit.id }); setDrag({ id: hit.id, ox: p.x - hit.x, oy: p.y - hit.y }); return; }
       const c = hitConnection(p);
       if (c) { onChange({ selectedId: c.id }); return; }
+      // Sala o cámara frigorífica: se selecciona y se arrastra ENTERA (sus
+      // cuatro paredes a la vez), tanto pulsando dentro del recinto como sobre
+      // cualquiera de sus paredes. Antes solo se podía tocar una pared suelta y
+      // no había forma de cambiarla de sitio.
+      const room = roomAt(p) || walls.find((w) => w.room_id && distSeg(p.x, p.y, w.x1, w.y1, w.x2, w.y2) < 12);
+      if (room) {
+        onChange({ selectedId: room.id });
+        setDrag({
+          tipo: 'sala', roomId: room.room_id,
+          ox: p.x - room.room_x, oy: p.y - room.room_y,
+          base: walls.filter((w) => w.room_id === room.room_id),
+        });
+        return;
+      }
       const wall = walls.find((w) => distSeg(p.x, p.y, w.x1, w.y1, w.x2, w.y2) < 8);
       if (wall) { onChange({ selectedId: wall.id }); return; }
       onChange({ selectedId: null });
@@ -244,6 +269,28 @@ export default function PlanoCanvas({
     const raw = toSvg(e);
     const p = { x: snap(raw.x), y: snap(raw.y) };
     setMouse(p);
+    // Arrastre de una sala o cámara: se desplazan sus cuatro paredes a la vez,
+    // tomando como referencia dónde estaba la sala al empezar a arrastrar.
+    if (drag?.tipo === 'sala') {
+      const dx = (p.x - drag.ox) - drag.base[0].room_x;
+      const dy = (p.y - drag.oy) - drag.base[0].room_y;
+      if (dx === 0 && dy === 0) return;
+      // Las posiciones se calculan siempre desde la foto del inicio del
+      // arrastre, no sobre lo ya movido: si no, el desplazamiento se sumaría
+      // en cada movimiento del ratón.
+      onChange({
+        walls: walls.map((w) => {
+          if (w.room_id !== drag.roomId) return w;
+          const ini = drag.base.find((b) => b.id === w.id) || w;
+          return {
+            ...w,
+            x1: ini.x1 + dx, y1: ini.y1 + dy, x2: ini.x2 + dx, y2: ini.y2 + dy,
+            room_x: ini.room_x + dx, room_y: ini.room_y + dy,
+          };
+        }),
+      });
+      return;
+    }
     if (drag) {
       const els = elements.map((el) => el.id === drag.id ? { ...el, x: p.x - drag.ox, y: p.y - drag.oy } : el);
       onChange({ elements: els });
@@ -294,11 +341,20 @@ export default function PlanoCanvas({
 
   return (
     <div className="overflow-auto rounded-lg border border-border bg-card"
-      style={fullscreen ? { height: '100%', minHeight: 0 } : { maxHeight: '70vh' }}>
+      style={fullscreen ? { height: '100%', minHeight: 0, overflow: 'auto' } : { maxHeight: '75vh', overflow: 'auto' }}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
-        style={{ width: '100%', minWidth: 0, height: fullscreen ? '100%' : '70vh', display: 'block', touchAction: 'none', cursor: (mode === 'wall' || mode === 'connect' || mode === 'cota' || mode === 'trazo') ? 'crosshair' : mode === 'eraser' ? 'cell' : mode === 'text' ? 'text' : mode === 'select' ? 'default' : 'copy' }}
+        style={{
+          // El zoom agranda el dibujo (y sus medidas) y el contenedor deja
+          // desplazarse: así se trabaja cómodo en planos grandes.
+          width: `${Math.round(zoom * 100)}%`,
+          minWidth: 0,
+          height: fullscreen && zoom <= 1 ? '100%' : 'auto',
+          display: 'block',
+          touchAction: 'none',
+          cursor: (mode === 'wall' || mode === 'connect' || mode === 'cota' || mode === 'trazo') ? 'crosshair' : mode === 'eraser' ? 'cell' : mode === 'text' ? 'text' : mode === 'select' ? 'default' : 'copy',
+        }}
         onPointerDown={handleDown}
         onPointerMove={handleMove}
         onPointerUp={handleUp}
@@ -316,7 +372,7 @@ export default function PlanoCanvas({
 
         {/* Etiquetas de metro en la cuadrícula mayor */}
         {capasVisibles.estructura !== false && [...Array(Math.floor(CANVAS_W / major) + 1)].map((_, i) => (
-          i % 1 === 0 && i > 0 ? <text key={'gx' + i} x={i * major + 2} y={12} fontSize="9" fill="hsl(var(--muted-foreground))" opacity="0.6">{i * gridMeters}m</text> : null
+          i % 1 === 0 && i > 0 ? <text key={'gx' + i} x={i * major + 2} y={14} fontSize="13" fontWeight="600" fill="hsl(var(--muted-foreground))" opacity="0.75">{i * gridMeters}m</text> : null
         ))}
 
         {/* Cámaras frigoríficas: recinto panelado de doble línea, coloreado
@@ -330,15 +386,15 @@ export default function PlanoCanvas({
           const color = ref.tipo === 'negativa' ? '#ef4444' : '#3b82f6';
           const off = 5;
           return (
-            <g key={ref.room_id}>
+            <g key={ref.room_id} style={{ cursor: mode === 'select' ? 'move' : 'default' }}>
               <rect x={x} y={y} width={w} height={h} fill={color + '12'} />
               <rect x={x} y={y} width={w} height={h} fill="none" stroke={sel ? '#00D4FF' : color} strokeWidth={sel ? 4 : 3} />
               <rect x={x + off} y={y + off} width={Math.max(0, w - 2 * off)} height={Math.max(0, h - 2 * off)} fill="none" stroke={sel ? '#00D4FF' : color} strokeWidth={sel ? 2.5 : 1.8} opacity="0.8" />
               <g transform={`translate(${x + w / 2}, ${y + h / 2})`} style={{ pointerEvents: 'none' }}>
-                <text textAnchor="middle" y={-4} fontSize="12" fontWeight="700" fill={color}>
+                <text textAnchor="middle" y={-8} fontSize="17" fontWeight="700" fill={color}>
                   {ref.tipo === 'negativa' ? '❄ Cámara negativa' : '❄ Cámara positiva'}
                 </text>
-                <text textAnchor="middle" y={10} fontSize="9" fill={color} opacity="0.85">
+                <text textAnchor="middle" y={12} fontSize="13" fontWeight="600" fill={color} opacity="0.9">
                   {ref.room_w_m} × {ref.room_h_m} m · {ref.espesor_mm} mm{ref.suelo ? ' · suelo' : ''}
                 </text>
               </g>
@@ -352,9 +408,9 @@ export default function PlanoCanvas({
           const len = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
           const mx = (w.x1 + w.x2) / 2, my = (w.y1 + w.y2) / 2;
           return (
-            <g key={w.id}>
+            <g key={w.id} style={{ cursor: mode === 'select' ? 'move' : 'default' }}>
               <line x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2} stroke={sel ? '#00D4FF' : '#cbd5e1'} strokeWidth={sel ? 7 : 5} strokeLinecap="round" />
-              <text x={mx} y={my - 6} textAnchor="middle" fontSize="11" fill="hsl(var(--muted-foreground))" style={{ pointerEvents: 'none' }}>{m(len)} m</text>
+              <text x={mx} y={my - 8} textAnchor="middle" fontSize="15" fontWeight="700" fill={sel ? '#00A0E9' : 'hsl(var(--foreground))'} style={{ pointerEvents: 'none' }}>{m(len)} m</text>
             </g>
           );
         })}
@@ -411,14 +467,14 @@ export default function PlanoCanvas({
               <circle cx={a.x} cy={a.y} r="3" fill={esRef ? colorGas : color} />
               <circle cx={b.x} cy={b.y} r="3" fill={esRef ? colorLiq : color} />
               {sel && (
-                <rect x={mid.x - 56} y={mid.y - 9} width={112} height={14} rx="3" fill="hsl(var(--card))" stroke={esRef ? colorGas : color} strokeWidth="1" />
+                <rect x={mid.x - 78} y={mid.y - 12} width={156} height={19} rx="3" fill="hsl(var(--card))" stroke={esRef ? colorGas : color} strokeWidth="1" />
               )}
-              <text x={mid.x} y={mid.y + 2} textAnchor="middle" fontSize="9" fill={sel ? (esRef ? colorGas : color) : 'hsl(var(--muted-foreground))'} style={{ pointerEvents: 'none' }}>{tag}</text>
+              <text x={mid.x} y={mid.y + 3} textAnchor="middle" fontSize="12" fontWeight="600" fill={sel ? (esRef ? colorGas : color) : 'hsl(var(--muted-foreground))'} style={{ pointerEvents: 'none' }}>{tag}</text>
               {/* Diámetros de gas y líquido junto a cada extremo de la tubería */}
               {esRef && (c.gas_diameter || c.liquid_diameter) && (
                 <g style={{ pointerEvents: 'none' }}>
-                  <text x={a.x + 8} y={a.y - 8} fontSize="8" fontWeight="600" fill={colorGas}>G {c.gas_diameter || '—'}</text>
-                  <text x={b.x + 8} y={b.y + 12} fontSize="8" fontWeight="600" fill={colorLiq}>L {c.liquid_diameter || '—'}</text>
+                  <text x={a.x + 8} y={a.y - 10} fontSize="11" fontWeight="700" fill={colorGas}>G {c.gas_diameter || '—'}</text>
+                  <text x={b.x + 8} y={b.y + 16} fontSize="11" fontWeight="700" fill={colorLiq}>L {c.liquid_diameter || '—'}</text>
                 </g>
               )}
             </g>
@@ -435,7 +491,7 @@ export default function PlanoCanvas({
             return (
               <g key={el.id} transform={`translate(${el.x},${el.y})`} style={{ cursor: mode === 'select' ? 'move' : 'default' }}>
                 {sel && <rect x={-4} y={-14} width={Math.max(40, (el.datos?.text || '').length * 6.5)} height={22} rx={3} fill="#64748b22" stroke="#64748b" strokeWidth="1" />}
-                <text x={0} y={2} textAnchor="start" fontSize="13" fontWeight="600" fill={el.color || '#e2e8f0'} style={{ pointerEvents: 'none' }}>{el.datos?.text || 'Texto'}</text>
+                <text x={0} y={2} textAnchor="start" fontSize="16" fontWeight="700" fill={el.color || '#e2e8f0'} style={{ pointerEvents: 'none' }}>{el.datos?.text || 'Texto'}</text>
               </g>
             );
           }
@@ -458,8 +514,8 @@ export default function PlanoCanvas({
                 <polyline points={`${el.x + Math.cos(ang) * arr},${el.y + Math.sin(ang) * arr} ${el.x},${el.y} ${el.x + Math.cos(ang + 2.2) * arr},${el.y + Math.sin(ang + 2.2) * arr}`} fill="none" stroke={el.color || '#64748b'} strokeWidth="1.4" />
                 <polyline points={`${x2 - Math.cos(ang) * arr},${y2 - Math.sin(ang) * arr} ${x2},${y2} ${x2 - Math.cos(ang - 2.2) * arr},${y2 - Math.sin(ang - 2.2) * arr}`} fill="none" stroke={el.color || '#64748b'} strokeWidth="1.4" />
                 <g transform={`translate(${mx},${my}) rotate(${(ang * 180) / Math.PI})`}>
-                  <rect x={-26} y={-9} width={52} height={16} rx={3} fill="hsl(var(--card))" stroke={el.color || '#64748b'} strokeWidth="0.8" />
-                  <text x={0} y={3} textAnchor="middle" fontSize="11" fontWeight="700" fill={el.color || '#64748b'} style={{ pointerEvents: 'none' }}>{metros} m</text>
+                  <rect x={-38} y={-12} width={76} height={22} rx={3} fill="hsl(var(--card))" stroke={el.color || '#64748b'} strokeWidth="0.8" />
+                  <text x={0} y={4} textAnchor="middle" fontSize="14" fontWeight="700" fill={el.color || '#64748b'} style={{ pointerEvents: 'none' }}>{metros} m</text>
                 </g>
               </g>
             );
@@ -481,7 +537,7 @@ export default function PlanoCanvas({
           return (
             <g key={el.id} transform={`translate(${el.x},${el.y})`} style={{ cursor: mode === 'select' ? 'move' : 'default' }}>
               <PlanoSimbolo el={el} scale={scale} selected={sel} fromHere={fromHere} />
-              <text x={0} y={y0 + h + 12} textAnchor="middle" fontSize="10" fill="hsl(var(--muted-foreground))" style={{ pointerEvents: 'none' }}>{el.label}</text>
+              <text x={0} y={y0 + h + 15} textAnchor="middle" fontSize="13" fontWeight="600" fill="hsl(var(--foreground))" style={{ pointerEvents: 'none' }}>{el.label}</text>
             </g>
           );
         })}
@@ -520,7 +576,7 @@ export default function PlanoCanvas({
         {mode === 'cota' && cotaStart && mouse && (
           <g>
             <line x1={cotaStart.x} y1={cotaStart.y} x2={mouse.x} y2={mouse.y} stroke="#64748b" strokeWidth="1.5" strokeDasharray="4 3" />
-            <text x={(cotaStart.x + mouse.x) / 2} y={(cotaStart.y + mouse.y) / 2 - 6} textAnchor="middle" fontSize="11" fill="#64748b">
+            <text x={(cotaStart.x + mouse.x) / 2} y={(cotaStart.y + mouse.y) / 2 - 8} textAnchor="middle" fontSize="14" fontWeight="600" fill="#64748b">
               {(Math.hypot(mouse.x - cotaStart.x, mouse.y - cotaStart.y) / scale).toFixed(2)} m
             </text>
           </g>
@@ -533,7 +589,7 @@ export default function PlanoCanvas({
 
         {/* Cursor de coordenadas */}
         {mouse && (
-          <text x={12} y={CANVAS_H - 14} fontSize="12" fill="hsl(var(--muted-foreground))" style={{ pointerEvents: 'none' }}>
+          <text x={12} y={CANVAS_H - 14} fontSize="14" fontWeight="600" fill="hsl(var(--muted-foreground))" style={{ pointerEvents: 'none' }}>
             {mode === 'connect' && connFrom
               ? (polyline
                   ? `Codos: ${connPath.length} · clic en el equipo destino para cerrar (Esc cancela)`

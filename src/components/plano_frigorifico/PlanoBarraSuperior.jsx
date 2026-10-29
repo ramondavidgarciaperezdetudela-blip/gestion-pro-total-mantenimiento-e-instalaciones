@@ -86,7 +86,7 @@ export default function PlanoBarraSuperior({
           <button onClick={onEditarIconos}
             className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"
             title="Crear la versión IA de cualquier equipo, regenerarla o editarla a mano">
-            <Wand2 className="w-3.5 h-3.5" style={{ color: '#7C3AED' }} /> Iconos
+            <Wand2 className="w-3.5 h-3.5" style={{ color: '#7C3AED' }} /> Editar iconos
           </button>
         )}
         <div className="relative ml-auto">

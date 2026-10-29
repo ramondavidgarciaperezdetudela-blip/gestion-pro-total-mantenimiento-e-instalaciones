@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Zap, Box } from 'lucide-react';
+import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Zap, Box, ZoomIn, Wand2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { getNextAvailableNumber } from '@/components/autoNumber';
@@ -53,6 +53,9 @@ export default function PlanoFrigorifico() {
   const [tarifas, setTarifas] = useState([]);
   const [polyline, setPolyline] = useState(false);
   const [gridMeters, setGridMeters] = useState(1);
+  // Zoom del lienzo: agranda el dibujo y sus medidas para trabajar en planos
+  // grandes sin que las cotas queden diminutas. El lienzo se desplaza.
+  const [zoom, setZoom] = useState(1);
   const [snapMode, setSnapMode] = useState('libre');
   const [capasVisibles, setCapasVisibles] = useState(() => Object.fromEntries(CAPAS.map((c) => [c.id, true])));
   const [gmailDialog, setGmailDialog] = useState(false);
@@ -804,6 +807,18 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       </div>
       <div className="w-px h-6 bg-border" />
       <div className="flex items-center gap-1.5 text-xs">
+        <ZoomIn className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-muted-foreground">Zoom</span>
+        {[0.75, 1, 1.5, 2, 3].map((z) => (
+          <button key={z} onClick={() => setZoom(z)}
+            className="rounded-md border px-2 py-1 text-xs transition-all"
+            style={zoom === z ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
+            {z}×
+          </button>
+        ))}
+      </div>
+      <div className="w-px h-6 bg-border" />
+      <div className="flex items-center gap-1.5 text-xs">
         <span className="text-muted-foreground">Capas</span>
         {CAPAS.map((capa) => {
           const on = capasVisibles[capa.id] !== false;
@@ -937,7 +952,11 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           title="Añadir un elemento o maquinaria propia al catálogo">
           <Plus className="w-3.5 h-3.5" /> Añadir elemento
           </button>
-        <button onClick={() => setPolyline((v) => !v)}
+        <button onClick={() => setIconosDialog(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted"
+          title="Editar los iconos existentes: regenerar con IA, cambiar la imagen o quitar el icono">
+          <Wand2 className="w-3.5 h-3.5" style={{ color: '#7C3AED' }} /> Editar iconos
+        </button>        <button onClick={() => setPolyline((v) => !v)}
           className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs"
           style={polyline
             ? { borderColor: '#00A0E9', background: '#00A0E922', color: '#00A0E9', fontWeight: 600 }
@@ -1054,7 +1073,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                 <PlanoCanvas
                   walls={plan.walls} elements={plan.elements} connections={plan.connections}
                   selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-                  polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
+                  polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom}
                   capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen />
               </div>
               <div className="lg:w-[300px] lg:flex-shrink-0 lg:max-h-none">
@@ -1079,7 +1098,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               <PlanoCanvas
                 walls={plan.walls} elements={plan.elements} connections={plan.connections}
                 selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-                polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode}
+                polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom}
                 capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen={false} />
               {PanelLateral}
             </div>
