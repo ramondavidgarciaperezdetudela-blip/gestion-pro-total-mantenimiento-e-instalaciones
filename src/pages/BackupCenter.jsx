@@ -488,7 +488,7 @@ export default function BackupCenter() {
     // se navegue a otra pantalla, y cuenta los fallos reales en vez de dar
     // un falso "completado" si algo no se guarda.
     try {
-      const { total, failed, sinCambios, avisos } = await runRestoreJob(
+      const { total, failed, sinCambios, avisos, invisibles = [] } = await runRestoreJob(
         restoreData, entitiesToRestore, restoreMode, KEYERS, ENTITY_LABELS,
         (msg, pct) => { setRestoreProgress(msg); if (pct != null) setRestorePct(pct); },
       );
@@ -499,7 +499,7 @@ export default function BackupCenter() {
       const igualesMsg = sinCambios > 0
         ? ` ${sinCambios.toLocaleString()} ya estaban igual y no ha hecho falta tocarlos.`
         : '';
-      const okMsg = `✅ Restauración completa: ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.${igualesMsg}`;
+      const okMsg = `${invisibles.length ? '⚠️ Restauración enviada al servidor, pero NO se ve:' : '✅ Restauración completa:'} ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.${igualesMsg}`;
       const failMsg = `⚠️ ${failed.toLocaleString()} operaciones fallaron al guardar en el servidor (revisa la conexión y vuelve a intentarlo). Consulta la consola para más detalle.`;
       const avisosMsg = (avisos || []).length > 0 ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : '';
       setRestoreProgress((failed > 0 ? `${okMsg}\n${failMsg}` : okMsg) + avisosMsg);
@@ -517,7 +517,7 @@ export default function BackupCenter() {
       // duplicados. Se conserva el MÁS RECIENTE y se borra el anterior, previa
       // confirmación y con copia de rescate.
       await limpiarDuplicadosTrasRestaurar(entitiesToRestore);
-      if (total > 0 || sinCambios > 0) {
+      if (invisibles.length === 0 && (total > 0 || sinCambios > 0)) {
         setRestoreProgress((p) => `${p}\n🔄 Recargando el programa para mostrar los datos restaurados…`);
         setTimeout(() => window.location.reload(), 3500);
       }

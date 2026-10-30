@@ -1,6 +1,8 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { crearConexion } from '@/lib/planoCalculo';
 import { CAT_CAPA, CAT_COLOR } from '@/lib/planoFrigorificoCatalogo';
+import { contarCodos } from '@/lib/planoRecorrido';
+import { esHueco, encajarEnPared, TIPOS_HUECO } from '@/lib/planoHuecos';
 import PlanoSimbolo from './PlanoSimbolo';
 
 // Lienzo SVG del diseñador de planos frigoríficos con distribución de aire.
@@ -76,7 +78,7 @@ function capaConexion(c) {
 }
 
 export default function PlanoCanvas({
-  walls, elements, connections, selectedId, mode, activeElement, connectType, polyline,
+  walls, elements, connections, selectedId, mode, activeElement, connectType, polyline, orto = true,
   scale = 50, gridMeters = 1, snapMode = 'libre', capasVisibles = {}, onChange,
   onConexionCreada, fullscreen = false, zoom = 1, onZoom, vistaKey = 0,
 }) {
@@ -103,6 +105,7 @@ export default function PlanoCanvas({
   const [cotaStart, setCotaStart] = useState(null);
   // Mano alzada: puntos recogidos mientras se arrastra.
   const [trazoPts, setTrazoPts] = useState(null);
+  const ultimoToque = useRef({});
 
   const major = Math.max(8, gridMeters * scale);          // cuadrícula mayor (m)
   const minor = major / 5;                                  // subdivisión fina
@@ -181,7 +184,15 @@ export default function PlanoCanvas({
   });
 
   const cerrarConexion = (hit) => {
-    const pts = polyline ? ortogonalizar(connPath) : [];
+    // En trazado a mano el recorrido es el que se ha ido marcando, desde el
+    // primer equipo hasta el último: con «90°» activado se añaden los codos
+    // que hagan falta para que cada tramo salga recto, también el primero y el último.
+    const a = elements.find((e) => e.id === connFrom);
+    let pts = [];
+    if (polyline && a) {
+      const camino = [{ x: a.x, y: a.y }, ...connPath, { x: hit.x, y: hit.y }];
+      pts = (orto ? ortogonalizar(camino) : camino).slice(1, -1);
+    }
     const nueva = crearConexion(connectType || 'refrigerante', connFrom, hit.id, pts);
     onChange({ connections: [...connections, nueva], selectedId: nueva.id });
     setConnFrom(null);
@@ -264,6 +275,40 @@ export default function PlanoCanvas({
     }
 
     if (mode === 'select') {
+      // Recorrido de una tubería o cable seleccionado: se arrastran sus puntos,
+      // un doble clic en un punto lo borra y un clic en el «+» de un tramo
+      // añade un punto nuevo para doblar por donde se quiera.
+      const selC = connections.find((c) => c.id === selectedId);
+      if (selC && connVisible(selC)) {
+        const a = elements.find((e2) => e2.id === selC.from_id);
+        const b = elements.find((e2) => e2.id === selC.to_id);
+        if (a && b) {
+          const path = selC.path || [];
+          const cambiar = (nuevoPath) => onChange({ connections: connections.map((c) => (c.id === selC.id ? { ...c, path: nuevoPath } : c)) });
+          for (let i = 0; i < path.length; i++) {
+            if (Math.hypot(p.x - path[i].x, p.y - path[i].y) < 9) {
+              const clave = `${selC.id}:${i}`;
+              if (ultimoToque.current.clave === clave && Date.now() - ultimoToque.current.t < 400) {
+                ultimoToque.current = {};
+                cambiar(path.filter((_, k) => k !== i));
+                return;
+              }
+              ultimoToque.current = { clave, t: Date.now() };
+              setDrag({ tipo: 'punto', connId: selC.id, idx: i });
+              return;
+            }
+          }
+          const pts = [{ x: a.x, y: a.y }, ...path, { x: b.x, y: b.y }];
+          for (let j = 0; j < pts.length - 1; j++) {
+            const mx = (pts[j].x + pts[j + 1].x) / 2, my = (pts[j].y + pts[j + 1].y) / 2;
+            if (Math.hypot(pts[j + 1].x - pts[j].x, pts[j + 1].y - pts[j].y) > 18 && Math.hypot(p.x - mx, p.y - my) < 8) {
+              cambiar([...path.slice(0, j), { x: mx, y: my }, ...path.slice(j)]);
+              setDrag({ tipo: 'punto', connId: selC.id, idx: j });
+              return;
+            }
+          }
+        }
+      }
       const hit = hitElement(p);
       if (hit) { onChange({ selectedId: hit.id }); setDrag({ id: hit.id, ox: p.x - hit.x, oy: p.y - hit.y }); return; }
       const c = hitConnection(p);
@@ -303,6 +348,14 @@ export default function PlanoCanvas({
       x: p.x, y: p.y, w_m: def.w_m, h_m: def.h_m,
       brand: '', model: '', notes: '', qty: 1,
     };
+    // Puertas y ventanas se pegan a la pared más cercana: toman su ángulo,
+    // su espesor y el ancho de la ficha, y abren hacia el interior.
+    if (esHueco(el)) {
+      const ancho = TIPOS_HUECO[el.type].ancho;
+      el.w_m = ancho;
+      el.datos = { ...el.datos, ancho_cm: Math.round(ancho * 100) };
+      Object.assign(el, encajarEnPared(el, walls, scale, { orientar: true, maxPx: 44 }) || {});
+    }
     onChange({ elements: [...elements, el], selectedId: el.id });
   };
 
@@ -320,6 +373,13 @@ export default function PlanoCanvas({
     setMouse(p);
     // Arrastre de una sala o cámara: se desplazan sus cuatro paredes a la vez,
     // tomando como referencia dónde estaba la sala al empezar a arrastrar.
+    if (drag?.tipo === 'punto') {
+      onChange({
+        connections: connections.map((c) => (c.id === drag.connId
+          ? { ...c, path: (c.path || []).map((q, i) => (i === drag.idx ? { x: p.x, y: p.y } : q)) } : c)),
+      });
+      return;
+    }
     if (drag?.tipo === 'sala') {
       const dx = (p.x - drag.ox) - drag.base[0].room_x;
       const dy = (p.y - drag.oy) - drag.base[0].room_y;
@@ -341,7 +401,17 @@ export default function PlanoCanvas({
       return;
     }
     if (drag) {
-      const els = elements.map((el) => el.id === drag.id ? { ...el, x: p.x - drag.ox, y: p.y - drag.oy } : el);
+      const els = elements.map((el) => {
+        if (el.id !== drag.id) return el;
+        const movido = { ...el, x: p.x - drag.ox, y: p.y - drag.oy };
+        // Un hueco sigue la pared: se desliza por ella y salta a otra si se acerca.
+        if (esHueco(el)) {
+          const pegado = encajarEnPared(movido, walls, scale, { maxPx: 44 });
+          if (pegado) return { ...movido, ...pegado };
+          return { ...movido, pared_id: undefined };
+        }
+        return movido;
+      });
       onChange({ elements: els });
     }
     // Mano alzada: añadir punto si se ha movido lo suficiente.
@@ -371,6 +441,18 @@ export default function PlanoCanvas({
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, []);
+
+  // Retroceso: en el trazado a mano borra el último punto marcado.
+  useEffect(() => {
+    if (mode !== 'connect' || !connFrom || !connPath.length) return undefined;
+    const h = (e) => {
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (e.key === 'Backspace') { e.preventDefault(); setConnPath((pp) => pp.slice(0, -1)); }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [mode, connFrom, connPath.length]);
 
   // Barra espaciadora: mientras se mantiene, arrastrar desplaza el plano.
   useEffect(() => {
@@ -563,8 +645,19 @@ export default function PlanoCanvas({
                   strokeLinejoin="round" strokeLinecap="round" />
               )}
               {sel && (c.path || []).map((pp, i) => (
-                <rect key={i} x={pp.x - 3} y={pp.y - 3} width="6" height="6" fill={esRef ? colorGas : color} stroke="#fff" strokeWidth="1" />
+                <rect key={i} x={pp.x - 5} y={pp.y - 5} width="10" height="10" rx="2" fill={esRef ? colorGas : color} stroke="#fff" strokeWidth="1.5" style={{ cursor: 'move' }} data-prueba="punto-ruta" />
               ))}
+              {sel && pts.slice(0, -1).map((q, j) => {
+                const r = pts[j + 1];
+                if (Math.hypot(r.x - q.x, r.y - q.y) <= 18) return null;
+                const mx = (q.x + r.x) / 2, my = (q.y + r.y) / 2;
+                return (
+                  <g key={`m${j}`} style={{ cursor: 'copy' }} data-prueba="punto-medio">
+                    <circle cx={mx} cy={my} r="6" fill="#fff" stroke={esRef ? colorGas : color} strokeWidth="1.5" opacity="0.9" />
+                    <path d={`M${mx - 3},${my} H${mx + 3} M${mx},${my - 3} V${my + 3}`} stroke={esRef ? colorGas : color} strokeWidth="1.5" />
+                  </g>
+                );
+              })}
               <circle cx={a.x} cy={a.y} r="3" fill={esRef ? colorGas : color} />
               <circle cx={b.x} cy={b.y} r="3" fill={esRef ? colorLiq : color} />
               {sel && (
@@ -655,18 +748,36 @@ export default function PlanoCanvas({
         {mode === 'connect' && connFrom && mouse && (() => {
           const a = elements.find((e) => e.id === connFrom);
           if (!a) return null;
-          const preview = ortogonalizar([{ x: a.x, y: a.y }, ...connPath, mouse]);
+          const bruto = [{ x: a.x, y: a.y }, ...connPath, mouse];
+          const preview = !polyline ? [{ x: a.x, y: a.y }, mouse] : (orto ? ortogonalizar(bruto) : bruto);
+          const largoM = preview.reduce((t, q, i) => (i ? t + Math.hypot(q.x - preview[i - 1].x, q.y - preview[i - 1].y) : 0), 0) / scale;
+          const codos = contarCodos(preview);
+          const etiqueta = (
+            <g style={{ pointerEvents: 'none' }}>
+              {connPath.map((q, i) => <circle key={i} cx={q.x} cy={q.y} r="4" fill="#fff" stroke={CONN_COLOR[connectType] || '#00D4FF'} strokeWidth="2" />)}
+              <rect x={mouse.x + 12} y={mouse.y - 30} width={polyline ? 120 : 70} height="20" rx="4" fill="hsl(var(--card))" stroke={CONN_COLOR[connectType] || '#00D4FF'} />
+              <text x={mouse.x + 18} y={mouse.y - 16} fontSize="12" fontWeight="700" fill="hsl(var(--foreground))" data-prueba="trazo-longitud">
+                {String(Math.round(largoM * 100) / 100).replace('.', ',')} m{polyline ? ` · ${codos} codo${codos === 1 ? '' : 's'}` : ''}
+              </text>
+            </g>
+          );
           // En tubería se previsualizan las dos líneas (gas rojo + líquido azul).
           if (connectType === 'refrigerante') {
             return (
               <g>
                 <polyline points={offsetPts(preview, 4).map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#ef4444" strokeWidth="2.2" strokeDasharray="6 6" opacity="0.6" strokeLinejoin="round" />
                 <polyline points={offsetPts(preview, -4).map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#3b82f6" strokeWidth="2.2" strokeDasharray="6 6" opacity="0.6" strokeLinejoin="round" />
+                {etiqueta}
               </g>
             );
           }
           const color = CONN_COLOR[connectType] || '#00D4FF';
-          return <polyline points={preview.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color} strokeWidth="2.5" strokeDasharray="6 6" opacity="0.6" strokeLinejoin="round" />;
+          return (
+            <g>
+              <polyline points={preview.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color} strokeWidth="2.5" strokeDasharray="6 6" opacity="0.6" strokeLinejoin="round" />
+              {etiqueta}
+            </g>
+          );
         })()}
 
         {/* Vista previa fantasma del elemento a colocar */}
@@ -696,7 +807,7 @@ export default function PlanoCanvas({
           <text x={12} y={CANVAS_H - 14} fontSize="14" fontWeight="600" fill="hsl(var(--muted-foreground))" style={{ pointerEvents: 'none' }}>
             {mode === 'connect' && connFrom
               ? (polyline
-                  ? `Codos: ${connPath.length} · clic en el equipo destino para cerrar (Esc cancela)`
+                  ? `Trazado a mano: clic para marcar cada punto del recorrido (${connPath.length} marcados) · clic en el equipo destino para terminar · Retroceso borra el último punto · Esc cancela`
                   : `Conectando: clic en el equipo destino · ${connectType === 'refrigerante' ? 'tubería' : connectType === 'conducto' ? 'conducto' : 'eléctrica'}`)
               : mode === 'cota' && cotaStart
                 ? `Cota: clic en el segundo punto (Esc cancela) · ${m(mouse.x)} × ${m(mouse.y)} m`

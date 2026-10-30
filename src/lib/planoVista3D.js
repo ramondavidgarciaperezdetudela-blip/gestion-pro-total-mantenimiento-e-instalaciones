@@ -1,4 +1,5 @@
 import { CAT_COLOR } from '@/lib/planoFrigorificoCatalogo';
+import { esHueco, estaEnPared, huecosDePared, anchoHueco, altoHueco, antepechoHueco } from '@/lib/planoHuecos';
 
 /**
  * planoVista3D — dibujo isométrico 3D de un plano frigorífico.
@@ -599,7 +600,7 @@ function dibujarEquipo(M, b) {
 
 /** Dibuja la vista 3D completa sobre el contexto de un canvas W×H. */
 export function dibujarVista3D(ctx, W, H, {
-  walls = [], elements = [], scale = 50, alturaSuelo = ALTURA_SUELO,
+  walls = [], elements = [], connections = [], scale = 50, alturaSuelo = ALTURA_SUELO,
   giro = Math.PI / 5, zoom = 18, desp = { x: 0, y: 0 },
 } = {}) {
   const m = (px) => px / scale;
@@ -656,6 +657,9 @@ export function dibujarVista3D(ctx, W, H, {
   const etiquetas = [];
 
   // Paredes: cada tramo de 1 m es un prisma con espesor, para ordenarlas bien con los equipos.
+  // Las puertas y ventanas ABREN HUECO en el muro (con dintel y, en ventanas, antepecho)
+  // y llevan su marco y su hoja, que se ve por dentro y por fuera.
+  const arcos = [];
   walls.forEach((w) => {
     const x1 = m(w.x1), y1 = m(w.y1), x2 = m(w.x2), y2 = m(w.y2);
     const largo = Math.hypot(x2 - x1, y2 - y1);
@@ -663,28 +667,117 @@ export function dibujarVista3D(ctx, W, H, {
     const alto = altoPared(w, alturaSuelo);
     const esp = w.camara ? Math.max(0.06, (num(w.espesor_mm) || 100) / 1000) : ESPESOR_PARED;
     const ux = (x2 - x1) / largo, uy = (y2 - y1) / largo;
-    const nx = -uy * esp / 2, ny = ux * esp / 2;
     const tipoCol = w.tipo === 'negativa' ? '#6366f1' : '#3b82f6';
     const color = w.camara ? '#f1f5f9' : '#d6d3d1';
-    const piezas = Math.max(1, Math.ceil(largo / 1));
-    for (let k = 0; k < piezas; k++) {
-      const t0 = (k * largo) / piezas, t1 = ((k + 1) * largo) / piezas;
-      const ax = x1 + ux * t0, ay = y1 + uy * t0, bx = x1 + ux * t1, by = y1 + uy * t1;
+    const opcionesMuro = {
+      alfa: w.camara ? 0.78 : 0.6,
+      borde: w.camara ? tono(tipoCol, 0.9, 0.7) : 'rgba(87,83,78,0.55)',
+      oscuro: 0.9,
+    };
+    // Caja alineada con la pared entre ta y tb (m desde el inicio), con su espesor.
+    const caja = (ta, tb, z0, z1, e, col, o = {}, desplaza = 0, extraProf = 0.3) => {
+      const nx = -uy * e / 2, ny = ux * e / 2;
+      const dx = -uy * desplaza, dy = ux * desplaza;
+      const ax = x1 + ux * ta + dx, ay = y1 + uy * ta + dy, bx = x1 + ux * tb + dx, by = y1 + uy * tb + dy;
       const pts = [[ax - nx, ay - ny], [bx - nx, by - ny], [bx + nx, by + ny], [ax + nx, ay + ny]];
-      items.push({
-        prof: prof((ax + bx) / 2, (ay + by) / 2) + 0.3,
-        draw: () => prisma(M, pts, 0, alto, color, {
-          alfa: w.camara ? 0.78 : 0.6,
-          borde: w.camara ? tono(tipoCol, 0.9, 0.7) : 'rgba(87,83,78,0.55)',
-          oscuro: 0.9,
-        }),
-      });
-    }
+      items.push({ prof: prof((ax + bx) / 2, (ay + by) / 2) + extraProf, draw: () => prisma(M, pts, z0, z1, col, o) });
+    };
+    // Tramos de como mucho 1 m para que se ordenen bien con los equipos.
+    const tramo = (ta, tb, z0, z1) => {
+      const n = Math.max(1, Math.ceil((tb - ta) / 1));
+      for (let k = 0; k < n; k++) caja(ta + ((tb - ta) * k) / n, ta + ((tb - ta) * (k + 1)) / n, z0, z1, esp, color, opcionesMuro);
+    };
+
+    const huecos = huecosDePared(w, elements, scale, walls);
+    let cursor = 0;
+    huecos.forEach((h) => {
+      if (h.t0 > cursor + 0.001) tramo(cursor, h.t0, 0, alto);
+      if (h.z0 > 0.02) tramo(h.t0, h.t1, 0, Math.min(h.z0, alto));
+      if (h.z1 < alto - 0.02) tramo(h.t0, h.t1, Math.min(h.z1, alto), alto);
+      cursor = h.t1;
+    });
+    if (cursor < largo - 0.001) tramo(cursor, largo, 0, alto);
+
+    // Marco y hoja de cada hueco.
+    huecos.forEach((h) => {
+      const el = h.el;
+      const z0 = h.z0, z1 = Math.min(h.z1, alto);
+      const ancho = h.t1 - h.t0;
+      const marco = el.type === 'ventana' ? '#e2e8f0' : (w.camara ? '#94a3b8' : '#78716c');
+      const grosor = 0.05;
+      caja(h.t0, h.t0 + grosor, z0, z1, esp + 0.02, marco, { borde: 'rgba(15,23,42,0.5)' }, 0, 0.45);
+      caja(h.t1 - grosor, h.t1, z0, z1, esp + 0.02, marco, { borde: 'rgba(15,23,42,0.5)' }, 0, 0.45);
+      caja(h.t0, h.t1, z1 - grosor, z1, esp + 0.02, marco, { borde: 'rgba(15,23,42,0.5)' }, 0, 0.45);
+      if (el.type === 'ventana') {
+        caja(h.t0 + grosor, h.t1 - grosor, z0, z0 + grosor, esp + 0.04, marco, { borde: 'rgba(15,23,42,0.5)' }, 0, 0.45);
+        caja(h.t0 + grosor, h.t1 - grosor, z0 + grosor, z1 - grosor, 0.02, '#7dd3fc', { alfa: 0.4, borde: 'rgba(14,116,144,0.6)', sinTapa: true }, 0, 0.5);
+        caja((h.t0 + h.t1) / 2 - 0.015, (h.t0 + h.t1) / 2 + 0.015, z0 + grosor, z1 - grosor, 0.03, marco, { borde: null }, 0, 0.55);
+        return;
+      }
+      // Puerta: la hoja se dibuja ABIERTA unos 65° hacia el lado que se haya elegido.
+      const datos = el.datos || {};
+      const apertura = String(datos.apertura || datos.variante || '');
+      const corredera = /corredera/i.test(apertura);
+      const doble = /doble/i.test(apertura);
+      const bisagraEnX = (/izquierda|_izda/i.test(apertura)) ? 1 : -1;     // lado del símbolo donde está la bisagra
+      const r = ((Number(el.rot) || 0) * Math.PI) / 180;
+      const sentido = (ux * Math.cos(r) + uy * Math.sin(r)) >= 0 ? 1 : -1;   // t crece con la x del símbolo
+      let nsx = Math.sin(r), nsy = -Math.cos(r);
+      if (el.flip_y) { nsx = -nsx; nsy = -nsy; }
+      const colHoja = el.type === 'camara_puerta' || w.camara ? '#e2e8f0' : '#b45309';
+      const hoja = (tb, dirT, anchoHoja, grados) => {
+        const phi = (grados * Math.PI) / 180;
+        const ax = x1 + ux * tb, ay = y1 + uy * tb;
+        const vx = anchoHoja * (Math.cos(phi) * ux * dirT + Math.sin(phi) * nsx);
+        const vy = anchoHoja * (Math.cos(phi) * uy * dirT + Math.sin(phi) * nsy);
+        const l = Math.hypot(vx, vy) || 1;
+        const px = (-vy / l) * 0.025, py = (vx / l) * 0.025;
+        const pts = [[ax - px, ay - py], [ax + vx - px, ay + vy - py], [ax + vx + px, ay + vy + py], [ax + px, ay + py]];
+        items.push({
+          prof: prof(ax + vx / 2, ay + vy / 2) + 0.5,
+          draw: () => {
+            prisma(M, pts, z0, z1 - grosor, colHoja, { borde: 'rgba(15,23,42,0.55)', oscuro: 0.85 });
+            // tirador
+            const hx = ax + vx * 0.85, hy = ay + vy * 0.85;
+            const A = M.P(hx, hy, z0 + (z1 - z0) * 0.48), B = M.P(hx, hy, z0 + (z1 - z0) * 0.52);
+            ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y);
+            ctx.strokeStyle = '#111827'; ctx.lineWidth = 3; ctx.stroke();
+          },
+        });
+        // Barrido sobre el suelo (cuarto de círculo discontinuo).
+        const arco = [];
+        for (let k = 0; k <= 12; k++) {
+          const f = (k / 12) * (Math.PI / 2);
+          arco.push([ax + anchoHoja * (Math.cos(f) * ux * dirT + Math.sin(f) * nsx), ay + anchoHoja * (Math.cos(f) * uy * dirT + Math.sin(f) * nsy)]);
+        }
+        arcos.push(arco);
+      };
+      if (corredera) {
+        const desp = ancho * 0.5 * (-bisagraEnX * sentido);
+        caja(h.t0 + grosor + Math.max(0, desp), h.t1 - grosor + Math.min(0, desp), z0, z1 - grosor, 0.04, colHoja, { borde: 'rgba(15,23,42,0.55)' }, esp / 2 + 0.03, 0.55);
+      } else if (doble) {
+        hoja(h.t0 + grosor, 1, (ancho - 2 * grosor) / 2, 65);
+        hoja(h.t1 - grosor, -1, (ancho - 2 * grosor) / 2, 65);
+      } else {
+        const tBis = h.t0 + ancho / 2 + bisagraEnX * sentido * (ancho / 2 - grosor);
+        hoja(tBis, -bisagraEnX * sentido, ancho - 2 * grosor, 65);
+      }
+    });
   });
+  // Barridos de puertas, sobre el suelo, antes que todo lo demás que se levanta.
+  ctx.save();
+  ctx.setLineDash([4, 3]);
+  arcos.forEach((arco) => {
+    ctx.beginPath();
+    arco.forEach(([x, y], i) => { const q = P(x, y, 0.015); if (i) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y); });
+    ctx.strokeStyle = 'rgba(124,58,237,0.75)'; ctx.lineWidth = 1.2; ctx.stroke();
+  });
+  ctx.restore();
 
   // Equipos.
   elements
     .filter((el) => el.type !== 'texto' && el.type !== 'cota' && el.type !== 'trazo')
+    .filter((el) => !(esHueco(el) && estaEnPared(el, walls, scale)))
     .forEach((el) => {
       let w = (el.w_m || 0.5), h = (el.h_m || 0.5);
       if ((Math.round((Number(el.rot) || 0) / 90) % 2 + 2) % 2 === 1) [w, h] = [h, w];
@@ -703,7 +796,50 @@ export function dibujarVista3D(ctx, W, H, {
       etiquetas.push({ x: (x0 + x1) / 2, y: (y0 + y1) / 2, z: z0 + alto + 0.12, texto: `${el.label || el.type}${cota}`, color: catColor });
     });
 
+  elements.filter((el) => esHueco(el) && estaEnPared(el, walls, scale)).forEach((el) => {
+    const nombre = el.type === 'ventana' ? 'Ventana' : (el.type === 'camara_puerta' ? 'Puerta de cámara' : 'Puerta');
+    const f = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
+    const z = antepechoHueco(el) + altoHueco(el);
+    etiquetas.push({ x: m(el.x), y: m(el.y), z: z + 0.12, texto: `${nombre} ${f(anchoHueco(el))}×${f(altoHueco(el))} m`, color: '#7c3aed' });
+  });
+
   items.sort((a, b) => a.prof - b.prof).forEach((it) => it.draw());
+
+  // Tuberías, cables y conductos, a la altura a la que van por la instalación
+  // (tubería y bandeja bajo el techo, conducto algo más arriba), con su bajada
+  // hasta cada equipo. Se ven por encima de todo para poder seguir el recorrido.
+  const porId = new Map(elements.map((e) => [e.id, e]));
+  const ALT_RUTA = { refrigerante: 2.25, electrica: 2.0, conducto: 2.4 };
+  connections.forEach((c) => {
+    const a = porId.get(c.from_id), b = porId.get(c.to_id);
+    if (!a || !b) return;
+    const zr = Math.min(ALT_RUTA[c.type] || 2.2, (techoEn(a, walls, scale, alturaSuelo) || alturaSuelo) - 0.15);
+    const pts = [a, ...(c.path || []), b].map((q) => [m(q.x), m(q.y)]);
+    const lineas = c.type === 'refrigerante'
+      ? [{ d: 0.035, col: '#ef4444', w: 2.4 }, { d: -0.035, col: '#3b82f6', w: 2.4 }]
+      : [{ d: 0, col: c.type === 'conducto' ? '#10b981' : '#f59e0b', w: c.type === 'conducto' ? 4 : 2.6, dash: c.type === 'electrica' ? [5, 3] : null }];
+    lineas.forEach(({ d, col, w, dash }) => {
+      ctx.save();
+      if (dash) ctx.setLineDash(dash);
+      ctx.beginPath();
+      pts.forEach(([x, y], i) => {
+        const nx = i < pts.length - 1 ? pts[i + 1][0] - x : x - pts[i - 1][0];
+        const ny = i < pts.length - 1 ? pts[i + 1][1] - y : y - pts[i - 1][1];
+        const l = Math.hypot(nx, ny) || 1;
+        const q = P(x + (-ny / l) * d, y + (nx / l) * d, zr);
+        if (i) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y);
+      });
+      ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.restore();
+    });
+    // Bajantes hasta los equipos.
+    [a, b].forEach((e) => {
+      const top = cotaEquipo(e, walls, scale, alturaSuelo) + altoEquipo(e);
+      const p0 = P(m(e.x), m(e.y), top), p1 = P(m(e.x), m(e.y), zr);
+      ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y);
+      ctx.strokeStyle = c.type === 'electrica' ? '#f59e0b' : (c.type === 'conducto' ? '#10b981' : '#64748b'); ctx.lineWidth = 2; ctx.stroke();
+    });
+  });
 
   // Rótulos de salas y cámaras, sobre el suelo.
   recintos.forEach((r) => {
@@ -740,13 +876,13 @@ export const VISTA3D_W = 1400;
 export const VISTA3D_H = 900;
 
 /** Prepara el lienzo con la vista 3D ya dibujada. null si el plano está vacío. */
-function lienzoVista3D({ walls = [], elements = [], scale = 50 } = {}) {
+function lienzoVista3D({ walls = [], elements = [], connections = [], scale = 50 } = {}) {
   if (!walls.length && !elements.length) return null;
   const canvas = document.createElement('canvas');
   canvas.width = VISTA3D_W; canvas.height = VISTA3D_H;
   const ctx = canvas.getContext('2d');
   const zoom = calcularZoomAjustado(VISTA3D_W, VISTA3D_H, { walls, elements, scale, maxZoom: 200 }) || 18;
-  dibujarVista3D(ctx, VISTA3D_W, VISTA3D_H, { walls, elements, scale, giro: Math.PI / 5, zoom });
+  dibujarVista3D(ctx, VISTA3D_W, VISTA3D_H, { walls, elements, connections, scale, giro: Math.PI / 5, zoom });
   return canvas;
 }
 
@@ -764,8 +900,8 @@ export function generarVista3DDataUrl(opciones = {}) {
  * Genera el archivo PNG de la vista 3D (para guardarlo con el plano).
  * Devuelve null si el plano no tiene nada dibujado.
  */
-export async function generarVista3DPng({ walls = [], elements = [], scale = 50, nombre = 'plano' } = {}) {
-  const canvas = lienzoVista3D({ walls, elements, scale });
+export async function generarVista3DPng({ walls = [], elements = [], connections = [], scale = 50, nombre = 'plano' } = {}) {
+  const canvas = lienzoVista3D({ walls, elements, connections, scale });
   if (!canvas) return null;
   const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
   if (!blob) return null;

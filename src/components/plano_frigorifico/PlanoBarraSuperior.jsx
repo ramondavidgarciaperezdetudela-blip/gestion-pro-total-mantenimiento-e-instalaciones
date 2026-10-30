@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Save, FileDown, Box, Minimize2, Search, Plus, Wand2, Sparkles,
+  Save, FileDown, Box, Minimize2, Search, Plus, Wand2,
 } from 'lucide-react';
 import { CATEGORIAS, ELEMENTOS } from '@/lib/planoFrigorificoCatalogo';
 import PlanoMenuEquipos from './PlanoMenuEquipos';
 import PlanoSimbolo from './PlanoSimbolo';
 import PlanoBarraHerramientas from './PlanoBarraHerramientas';
-import MenuElegirVersion from './MenuElegirVersion';
 
 /**
  * PlanoBarraSuperior — barra de herramientas del editor a pantalla completa.
@@ -16,7 +15,7 @@ import MenuElegirVersion from './MenuElegirVersion';
  * con el buscador. El lienzo ocupa todo lo que queda.
  */
 export default function PlanoBarraSuperior({
-  mode, activeType, connectType, onPick, onSala, onCamara,
+  mode, activeType, connectType, manual, onPick, onSala, onCamara,
   onUndo, onRedo, onCopy, onCut, onPaste, canUndo, canRedo, canCopy, canPaste,
   saving, onSave, onPDF, on3D, onExit,
   extraPorCat, onAddElement, onEditarIconos, iaIcons = {},
@@ -42,7 +41,7 @@ export default function PlanoBarraSuperior({
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2">
       {/* Fila 1: barra de dibujo y edición (estilo Paint) */}
       <PlanoBarraHerramientas
-        mode={mode} connectType={connectType} onPick={onPick} onSala={onSala} onCamara={onCamara}
+        mode={mode} connectType={connectType} manual={manual} onPick={onPick} onSala={onSala} onCamara={onCamara}
         onUndo={onUndo} onRedo={onRedo} onCopy={onCopy} onCut={onCut} onPaste={onPaste}
         canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste} />
 

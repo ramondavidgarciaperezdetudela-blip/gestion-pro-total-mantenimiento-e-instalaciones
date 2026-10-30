@@ -21,7 +21,7 @@ import { dibujarVista3D, calcularZoomAjustado, ALTURA_SUELO } from '@/lib/planoV
  *
  * Arrastra para girar y usa + / − para acercar.
  */
-export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], scale = 50, alturaSuelo = ALTURA_SUELO }) {
+export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], connections = [], scale = 50, alturaSuelo = ALTURA_SUELO }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [giro, setGiro] = useState(Math.PI / 5);
@@ -53,8 +53,8 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     canvas.width = dims.w; canvas.height = dims.h;
-    dibujarVista3D(ctx, dims.w, dims.h, { walls, elements, scale, alturaSuelo, giro, zoom, desp });
-  }, [walls, elements, scale, alturaSuelo, giro, zoom, dims, desp]);
+    dibujarVista3D(ctx, dims.w, dims.h, { walls, elements, connections, scale, alturaSuelo, giro, zoom, desp });
+  }, [walls, elements, connections, scale, alturaSuelo, giro, zoom, dims, desp]);
 
   // Auto-ajustar el zoom a lo dibujado mientras el usuario no lo toque.
   // Se calcula con el tamaño REAL del canvas (dims) para que el render

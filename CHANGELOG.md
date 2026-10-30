@@ -6,6 +6,28 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.76.1] — 2026-10-30
+
+### Añadido
+- **Plano frigorífico más técnico**: puertas, puertas de cámara y ventanas se encajan solas en la pared (ancho de la pared o de la cámara), se pueden mover a lo largo de ella, cambiar de ancho, centrar, abrir hacia dentro o fuera; en el visor 3D se ven los huecos, marcos y hojas también desde dentro.
+- **Tubería frigorífica, cableado eléctrico y conductos «a mano»**: botones de trazado manual, punto a punto por el recorrido que elijas, con longitud y codos en vivo, modo ortogonal, y edición de puntos (arrastrar, insertar, borrar). Las tuberías y cables también se dibujan en el visor 3D y en los informes.
+
+### Corregido
+- **QR y enlaces al cliente**: llevan de serie una dirección pública (la del programa publicado), sin tener que configurarla; si se pone otra en Configuración, manda esa.
+- **Documentos ↔ cliente**: al abrir el programa se unen solos con su cliente (por identificador o por nombre) los documentos, facturas, órdenes y fichas que hubieran quedado sueltos.
+- **Pantalla «La página no se cargó correctamente»** (APK): ahora muestra el motivo real del fallo, lo guarda para diagnóstico y el botón «Limpiar caché y recargar» vacía solo cachés y service workers, sin tocar datos ni documentos.
+- **Restauración de copia de seguridad**: tras restaurar se lee cada entidad del servidor para comprobar que los datos son visibles; si no lo son, se avisa claramente en vez de decir que está todo bien. Se reenlazan clientes y ficheros por id y por nombre.
+
+## [1.75.1] — 2026-10-30
+
+### Corregido
+- **«Añadir elemento al catálogo» → «Crear estándar + IA»** ya no depende de que la IA responda: si ninguna vía de IA da el icono, se avisa y se guarda con el icono propio (sin IA), que se puede cambiar después. Antes, si fallaba el generador, no se guardaba nada.
+
+## [1.75.0] — 2026-10-30
+
+### Mejorado
+- **Iconos con IA en ordenador, móvil y tablet**: si el generador de imágenes del servicio no está disponible o no da permiso, el programa prueba solo con tu clave de OpenRouter (modelo de imagen) y, si tampoco, hace que la IA de texto configurada dibuje el icono en SVG. Si ninguna responde, sigue existiendo el icono propio sin IA, así que siempre se puede guardar.
+
 ## [1.74.2] — 2026-10-30
 
 ### Corregido

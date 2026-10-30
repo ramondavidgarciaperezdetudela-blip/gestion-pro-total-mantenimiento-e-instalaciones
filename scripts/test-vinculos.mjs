@@ -20,5 +20,8 @@ ok(r.filas[0].contact_id === 'n1', 'vinculo por identificador');
 ok(r.filas[1].contact_id === 'n2', 'vinculo por nombre cuando el identificador está roto');
 ok(r.filas[2].contact_id !== 'n1' && r.filas[2].contact_id !== 'n2', 'cliente desconocido no se vincula a otro');
 ok(r.porId === 1 && r.porNombre === 1 && r.sinVincular === 1, 'contadores correctos');
+import { cambiosDeVinculo } from '../src/lib/vincularAuto.js';
+const cb = cambiosDeVinculo([{ id: 'd1', contact_id: 'roto', contact_name: 'Bar Sol' }, { id: 'd2', contact_id: 'n1', contact_name: 'Ana López' }, { id: 'd3', contact_name: 'Nadie' }], actuales);
+ok(cb.length === 1 && cb[0].id === 'd1' && cb[0].contact_id === 'n2', 'vínculo automático: solo cambia la ficha suelta');
 console.log(fallos ? `\n${fallos} FALLOS` : '\nTODO OK');
 process.exit(fallos ? 1 : 0);

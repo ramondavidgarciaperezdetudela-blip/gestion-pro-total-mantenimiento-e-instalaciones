@@ -313,17 +313,19 @@ export async function runRestoreJob(
       sinVincular += r.sinVincular;
     }
   };
+  const visibles = {}; // ent -> { copia, visibles }
   const aprenderIds = async (lista) => {
     for (const ent of lista) {
       const clave = keyers[ent];
       const rows = restoreData[ent] || [];
-      if (!clave || !rows.length) continue;
+      if (!rows.length) continue;
       try {
         const actuales = await fetchAllRecordsFast(ent, { freno });
-        mapaIds(rows, actuales, clave).forEach((nuevo, viejo) => idMap.set(viejo, nuevo));
+        visibles[ent] = { copia: rows.length, visibles: actuales.length };
+        if (clave) mapaIds(rows, actuales, clave).forEach((nuevo, viejo) => idMap.set(viejo, nuevo));
         if (ent === 'Contact') clientes = actuales;
       } catch (err) {
-        avisos.push(`No se han podido enlazar los registros de «${entityLabels[ent] || ent}» con los nuevos identificadores (${err?.message || 'error de lectura'}).`);
+        avisos.push(`No se han podido comprobar los registros de «${entityLabels[ent] || ent}» (${err?.message || 'error de lectura'}).`);
       }
     }
   };
@@ -433,6 +435,17 @@ export async function runRestoreJob(
     await runTanda(tanda);
     await aprenderIds(tanda);
   }
+  // ¿Se ve lo restaurado? El servidor guarda cada ficha a nombre de quien la
+  // crea y solo se la enseña a esa cuenta (o al administrador). Si se restaura
+  // con una cuenta y se mira con otra, «se restaura bien» y no aparece nada.
+  const invisibles = Object.entries(visibles)
+    .filter(([, v]) => v.copia > 0 && v.visibles === 0)
+    .map(([ent, v]) => ({ ent, etiqueta: entityLabels[ent] || ent, copia: v.copia }));
+  if (invisibles.length > 0) {
+    avisos.push(`❌ El servidor ha aceptado datos de ${invisibles.map((i) => `«${i.etiqueta}» (${i.copia})`).join(', ')} pero NO los devuelve al leerlos. `
+      + 'Cada ficha solo la ve la cuenta que la creó o el administrador: cierra sesión y entra con la cuenta administradora (o con la que usabas), y comprueba otra vez. '
+      + 'Si ya eres esa cuenta, avisa: el permiso de esas secciones en el servidor está bloqueando la lectura.');
+  }
   if (sinVincular > 0) {
     avisos.push(`${sinVincular.toLocaleString()} registros apuntan a un cliente que no está en la copia ni en el programa; `
       + 'se dejan sin vincular (el nombre del cliente sí se conserva).');
@@ -440,7 +453,7 @@ export async function runRestoreJob(
   if (vinculadas > 0) avisos.push(`${vinculadas.toLocaleString()} registros se han vuelto a vincular con su cliente.`);
 
   publish({ active: false, message: '', pct: 100 });
-  return { total, failed, sinCambios, avisos };
+  return { total, failed, sinCambios, avisos, visibles, invisibles };
 }
 
 /**

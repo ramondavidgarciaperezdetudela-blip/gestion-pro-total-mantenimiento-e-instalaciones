@@ -2,7 +2,7 @@ import React from 'react';
 import {
   MousePointer2, Minus, Type, Ruler, Spline, Eraser, Square, Snowflake,
   Undo2, Redo2, Copy, Scissors, ClipboardPaste,
-  Link2, Wind, Zap,
+  Link2, Wind, Zap, PenLine,
 } from 'lucide-react';
 
 /**
@@ -19,7 +19,7 @@ import {
  * en la página, que es quien tiene el historial y el portapapeles.
  */
 export default function PlanoBarraHerramientas({
-  mode, connectType, onPick, onSala, onCamara,
+  mode, connectType, manual = false, onPick, onSala, onCamara,
   onUndo, onRedo, onCopy, onCut, onPaste,
   canUndo = true, canRedo = true, canCopy = false, canPaste = false,
 }) {
@@ -54,12 +54,18 @@ export default function PlanoBarraHerramientas({
 
       {/* ── CONEXIONES ── */}
       <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mr-1">Conexiones</span>
-      <BotonHerr activo={mode === 'connect' && connectType === 'refrigerante'}
-        onClick={() => onPick({ mode: 'connect', connectType: 'refrigerante' })} icon={Link2} label="Tubería" color="#00A0E9" />
-      <BotonHerr activo={mode === 'connect' && connectType === 'conducto'}
-        onClick={() => onPick({ mode: 'connect', connectType: 'conducto' })} icon={Wind} label="Conducto" color="#10b981" />
-      <BotonHerr activo={mode === 'connect' && connectType === 'electrica'}
-        onClick={() => onPick({ mode: 'connect', connectType: 'electrica' })} icon={Zap} label="Eléctrica" color="#F5821F" />
+      <BotonHerr activo={mode === 'connect' && connectType === 'refrigerante' && !manual}
+        onClick={() => onPick({ mode: 'connect', connectType: 'refrigerante', manual: false })} icon={Link2} label="Tubería" color="#00A0E9" />
+      <BotonHerr activo={mode === 'connect' && connectType === 'refrigerante' && manual} dato="tuberia-mano"
+        onClick={() => onPick({ mode: 'connect', connectType: 'refrigerante', manual: true })} icon={PenLine} label="Tubería a mano" color="#00A0E9" />
+      <BotonHerr activo={mode === 'connect' && connectType === 'conducto' && !manual}
+        onClick={() => onPick({ mode: 'connect', connectType: 'conducto', manual: false })} icon={Wind} label="Conducto" color="#10b981" />
+      <BotonHerr activo={mode === 'connect' && connectType === 'conducto' && manual} dato="conducto-mano"
+        onClick={() => onPick({ mode: 'connect', connectType: 'conducto', manual: true })} icon={PenLine} label="Conducto a mano" color="#10b981" />
+      <BotonHerr activo={mode === 'connect' && connectType === 'electrica' && !manual}
+        onClick={() => onPick({ mode: 'connect', connectType: 'electrica', manual: false })} icon={Zap} label="Eléctrica" color="#F5821F" />
+      <BotonHerr activo={mode === 'connect' && connectType === 'electrica' && manual} dato="cable-mano"
+        onClick={() => onPick({ mode: 'connect', connectType: 'electrica', manual: true })} icon={PenLine} label="Cable a mano" color="#F5821F" />
     </div>
   );
 }
@@ -68,11 +74,12 @@ function Sep() {
   return <div className="w-px h-7 bg-border mx-0.5" />;
 }
 
-function BotonHerr({ activo, onClick, icon: Icon, label, color }) {
+function BotonHerr({ activo, onClick, icon: Icon, label, color, dato }) {
   return (
     <button
       onClick={onClick}
       title={label}
+      data-prueba={dato}
       className="flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] transition-all"
       style={{
         borderColor: activo ? (color || 'hsl(var(--primary))') : 'hsl(var(--border))',
