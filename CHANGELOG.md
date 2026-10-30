@@ -6,6 +6,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.77.1] — 2026-10-30
+
+### Añadido
+- **Accesos directos en la pantalla de inicio (Android)**: al mantener pulsado el icono salen Nueva orden SAT, Agenda, Clientes, Documentos, Plano frigorífico y Copia de seguridad, y se pueden arrastrar a la pantalla de inicio como iconos propios. Abren la app directamente en esa pantalla, esté cerrada o abierta. En la web instalada (PWA) se han añadido también Plano y Copias a sus accesos. En Windows el instalador ya crea el acceso en el escritorio y en el menú Inicio.
+
 ## [1.77.0] — 2026-10-30
 
 ### Añadido
