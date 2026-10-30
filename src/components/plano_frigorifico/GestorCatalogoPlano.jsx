@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { useState } from 'react';
 import { Plus, Search, Loader2, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -77,7 +78,7 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
       onClose();
     } catch (e) {
       console.error(e);
-      alert('No se pudo guardar el elemento: ' + (e?.message || e));
+      alert('No se pudo guardar el elemento: ' + (/permission denied/i.test(e?.message || '') ? 'tu usuario no tiene permiso en el catálogo del plano. Avisa al administrador.' : (e?.message || e)));
     } finally {
       setGuardando(false);
     }
@@ -85,7 +86,7 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
 
   const color = CAT_COLOR[cat];
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[10002] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-xl bg-card border border-border shadow-2xl p-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 mb-3">
@@ -166,6 +167,7 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

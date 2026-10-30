@@ -1,6 +1,8 @@
 import React, { useMemo, useEffect } from 'react';
-import { Trash2, AlertTriangle, Ruler, Move, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import { RotateCcw, RotateCw, FlipHorizontal, FlipVertical, Trash2, AlertTriangle, Ruler, Move, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import SelectorColor from './SelectorColor';
+import { NumberField } from '@/components/ui/number-field';
+import { ALTURA_SUELO, ALTURA_CAMARA, altoEquipo, altoPared, cotaEquipo, techoEn, tieneCotaPropia } from '@/lib/planoVista3D';
 import { longitudConexion } from '@/lib/planoCalculo';
 import { elementoDe, valoresPorDefecto } from '@/lib/planoFrigorificoCatalogo';
 import {
@@ -28,7 +30,10 @@ const POWER_OPTS = [
 ];
 const TENSIONES = ['230 V monofásica', '400 V trifásica', '24 V', '12 V'];
 
-export default function PlanoEquipoDetalles({ element, wall, connection, elements, scale, onUpdate, onDelete, onEditarSala, onBorrarSala }) {
+export default function PlanoEquipoDetalles({
+  element, wall, connection, elements, walls = [], scale, onUpdate, onDelete,
+  onEditarSala, onBorrarSala, onEditarCamara, onBorrarCamara, onAltoRecinto, onAltoPared,
+}) {
   if (connection) {
     return (
       <DetalleConexion
@@ -43,22 +48,32 @@ export default function PlanoEquipoDetalles({ element, wall, connection, element
     // ofrecen los controles de la sala: cambiar sus medidas redibuja las
     // cuatro paredes, y borrar la sala quita las cuatro a la vez.
     if (wall.room_id) {
+      const camara = !!wall.camara;
+      const color = camara ? (wall.tipo === 'negativa' ? '#ef4444' : '#3b82f6') : '#0ea5e9';
+      const alto = altoPared(wall);
       return (
-        <div className="flex flex-col gap-2" data-prueba="detalle-sala">
-          <div className="tech-label" style={{ color: '#0ea5e9' }}>Sala seleccionada</div>
-          <div className="rounded-md px-2 py-1.5 text-[11px]" style={{ background: '#0ea5e915', color: '#0369a1' }}>
-            <b>Medidas:</b> {wall.room_w_m} × {wall.room_h_m} m
+        <div className="flex flex-col gap-2" data-prueba={camara ? 'detalle-camara' : 'detalle-sala'}>
+          <div className="tech-label" style={{ color }}>{camara ? `Cámara ${wall.tipo === 'negativa' ? 'negativa' : 'positiva'} seleccionada` : 'Sala seleccionada'}</div>
+          <div className="rounded-md px-2 py-1.5 text-[11px]" style={{ background: color + '15', color }}>
+            <b>Medidas:</b> {wall.room_w_m} × {wall.room_h_m} m · <b>alto</b> {String(alto).replace('.', ',')} m
+            {camara && <><br /><b>Panel:</b> {wall.espesor_mm || 100} mm{wall.suelo ? ' · con suelo sanitario' : ''}</>}
             <br />
-            <span className="text-[10px]">Cambia las medidas para redibujar la sala.</span>
+            <span className="text-[10px]">Cambia las medidas y el alto para redibujarla; el 3D usa este alto.</span>
           </div>
-          <button onClick={() => onEditarSala && onEditarSala(wall.room_id)}
+          <Campo label="Alto de las paredes (m)">
+            <NumberField value={wall.alto_m ?? ''} data-prueba="alto-recinto"
+              placeholder={String(camara ? ALTURA_CAMARA : ALTURA_SUELO).replace('.', ',')}
+              onChange={(v) => onAltoRecinto && onAltoRecinto(wall.room_id, v)}
+              className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+          </Campo>
+          <button onClick={() => (camara ? onEditarCamara : onEditarSala) && (camara ? onEditarCamara : onEditarSala)(wall.room_id)}
             className="flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-white hover:opacity-90"
-            style={{ background: '#0ea5e9' }}>
-            <Ruler className="w-3.5 h-3.5" /> Cambiar medidas
+            style={{ background: color }}>
+            <Ruler className="w-3.5 h-3.5" /> {camara ? 'Editar cámara' : 'Cambiar medidas'}
           </button>
-          <button onClick={() => onBorrarSala && onBorrarSala(wall.room_id)}
+          <button onClick={() => (camara ? onBorrarCamara : onBorrarSala) && (camara ? onBorrarCamara : onBorrarSala)(wall.room_id)}
             className="flex items-center justify-center gap-1.5 rounded-md border border-destructive/40 px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10">
-            <Trash2 className="w-3.5 h-3.5" /> Borrar sala
+            <Trash2 className="w-3.5 h-3.5" /> {camara ? 'Borrar cámara' : 'Borrar sala'}
           </button>
         </div>
       );
@@ -67,6 +82,12 @@ export default function PlanoEquipoDetalles({ element, wall, connection, element
       <div className="flex flex-col gap-2" data-prueba="detalle-pared">
         <div className="tech-label">Pared seleccionada</div>
         <div className="text-sm">Longitud: <span className="font-mono font-bold">{(len / scale).toFixed(2)} m</span></div>
+        <Campo label="Alto de la pared (m)">
+          <NumberField value={wall.alto_m ?? ''} data-prueba="alto-pared"
+            placeholder={String(ALTURA_SUELO).replace('.', ',')}
+            onChange={(v) => onAltoPared && onAltoPared(wall.id, v)}
+            className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+        </Campo>
         <button onClick={onDelete} className="flex items-center justify-center gap-1.5 rounded-md border border-destructive/40 px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10">
           <Trash2 className="w-3.5 h-3.5" /> Borrar pared
         </button>
@@ -82,7 +103,7 @@ export default function PlanoEquipoDetalles({ element, wall, connection, element
     );
   }
 
-  return <DetalleEquipo element={element} onUpdate={onUpdate} onDelete={onDelete} scale={scale} />;
+  return <DetalleEquipo element={element} walls={walls} onUpdate={onUpdate} onDelete={onDelete} scale={scale} />;
 }
 
 /* ─── Tubería y línea eléctrica ─────────────────────────────────────────── */
@@ -296,8 +317,16 @@ function DetalleConexion({ connection, elements, scale, onUpdate, onDelete }) {
 
 /* ─── Equipo ────────────────────────────────────────────────────────────── */
 
-function DetalleEquipo({ element, onUpdate, onDelete, scale }) {
+function DetalleEquipo({ element, walls = [], onUpdate, onDelete, scale }) {
   const def = elementoDe(element.type || element.id);
+  const techo = techoEn(element, walls, scale || 50);
+  const alto = altoEquipo(element);
+  const cota = cotaEquipo(element, walls, scale || 50);
+  const propia = tieneCotaPropia(element);
+  const coma = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
+  // Los botones cambian valores desde fuera: se vuelve a montar el campo para que los muestre.
+  const [kb, setKb] = React.useState(0);
+  const act = (patch) => { onUpdate(patch); setKb((n) => n + 1); };
   const datos = element.datos || {};
   const poner = (id, v) => onUpdate({ datos: { ...datos, [id]: v } });
   // Paso de movimiento fino: 0,1 m en píxeles del lienzo. Sirve para ajustar la
@@ -357,11 +386,11 @@ function DetalleEquipo({ element, onUpdate, onDelete, scale }) {
       ))}
 
       <div className="grid grid-cols-2 gap-2">
-        <Campo label="Tamaño (m)">
+        <Campo label="Ancho × fondo (m)">
           <div className="flex gap-1">
-            <input type="number" step="0.1" value={element.w_m ?? ''} onChange={(e) => onUpdate({ w_m: parseFloat(e.target.value) || 0 })}
+            <NumberField value={element.w_m ?? ''} onChange={(v) => onUpdate({ w_m: v })} data-prueba="ancho-equipo"
               className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
-            <input type="number" step="0.1" value={element.h_m ?? ''} onChange={(e) => onUpdate({ h_m: parseFloat(e.target.value) || 0 })}
+            <NumberField value={element.h_m ?? ''} onChange={(v) => onUpdate({ h_m: v })} data-prueba="fondo-equipo"
               className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
           </div>
         </Campo>
@@ -370,6 +399,66 @@ function DetalleEquipo({ element, onUpdate, onDelete, scale }) {
             data-prueba="cantidad-equipo"
             className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
         </Campo>
+      </div>
+
+      {/* Girar e invertir el icono (por ejemplo, una puerta que abre hacia fuera). */}
+      <div className="flex flex-col gap-1.5 rounded-md border border-border p-2" data-prueba="girar-equipo">
+        <span className="tech-label">Girar e invertir</span>
+        <div className="flex flex-wrap gap-1">
+          <button type="button" data-prueba="girar-izq" onClick={() => act({ rot: (((Number(element.rot) || 0) - 90) % 360 + 360) % 360 })}
+            className="flex items-center gap-1 rounded border border-border px-2 py-1 text-[11px] hover:bg-muted"><RotateCcw className="w-3 h-3" /> 90°</button>
+          <button type="button" data-prueba="girar-der" onClick={() => act({ rot: ((Number(element.rot) || 0) + 90) % 360 })}
+            className="flex items-center gap-1 rounded border border-border px-2 py-1 text-[11px] hover:bg-muted"><RotateCw className="w-3 h-3" /> 90°</button>
+          <button type="button" data-prueba="invertir-h" onClick={() => act({ flip_x: !element.flip_x })}
+            className={`flex items-center gap-1 rounded border px-2 py-1 text-[11px] hover:bg-muted ${element.flip_x ? 'border-primary text-primary' : 'border-border'}`}><FlipHorizontal className="w-3 h-3" /> Izq/Der</button>
+          <button type="button" data-prueba="invertir-v" onClick={() => act({ flip_y: !element.flip_y })}
+            className={`flex items-center gap-1 rounded border px-2 py-1 text-[11px] hover:bg-muted ${element.flip_y ? 'border-primary text-primary' : 'border-border'}`}><FlipVertical className="w-3 h-3" /> Arriba/Abajo</button>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground">Ángulo (°)</span>
+          <NumberField key={`rot${kb}`} value={element.rot ?? ''} onChange={(v) => onUpdate({ rot: ((v % 360) + 360) % 360 })} data-prueba="angulo-equipo"
+            className="w-20 rounded-md border border-border bg-input px-2 py-1 text-xs" />
+          <button type="button" onClick={() => act({ rot: 0, flip_x: false, flip_y: false })} className="text-[10px] underline text-muted-foreground">Restablecer</button>
+        </div>
+        {(element.type === 'puerta') && (
+          <span className="text-[10px] text-muted-foreground">Puerta: elige «Apertura» arriba (derecha, izquierda…) y usa «Arriba/Abajo» para que abra hacia fuera o hacia dentro.</span>
+        )}
+      </div>
+
+      {/* Alturas para la vista 3D: lo alto que es el equipo y a qué altura del suelo
+          está colocado (por ejemplo, un evaporador colgado del techo de la cámara). */}
+      <div className="flex flex-col gap-1.5 rounded-md border border-border p-2" data-prueba="alturas-equipo">
+        <span className="tech-label">Alturas (vista 3D)</span>
+        <div className="grid grid-cols-2 gap-2">
+          <Campo label="Alto del equipo (m)">
+            <NumberField value={element.alto_m ?? ''} placeholder={coma(alturaDefecto(element))} data-prueba="alto-equipo"
+              onChange={(v) => onUpdate({ alto_m: v > 0 ? v : undefined })}
+              className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+          </Campo>
+          <Campo label="Altura sobre el suelo (m)">
+            <NumberField key={`z${kb}`} value={element.z_m ?? ''} placeholder={`auto ${coma(cota)}`} data-prueba="cota-equipo"
+              onChange={(v) => onUpdate({ z_m: v })}
+              className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+          </Campo>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {[['Suelo', 0], ['0,5 m', 0.5], ['1 m', 1], ['1,5 m', 1.5], ['2 m', 2]].map(([t, v]) => (
+            <button key={t} type="button" onClick={() => act({ z_m: v })} data-prueba={`cota-${v}`}
+              className="rounded border border-border px-1.5 py-0.5 text-[10px] hover:bg-muted">{t}</button>
+          ))}
+          {techo != null && (
+            <button type="button" onClick={() => act({ z_m: Math.max(0, Math.round((techo - alto) * 100) / 100) })} data-prueba="cota-techo"
+              className="rounded border border-border px-1.5 py-0.5 text-[10px] hover:bg-muted">Pegado al techo</button>
+          )}
+          <button type="button" onClick={() => act({ z_m: undefined })} data-prueba="cota-auto"
+            className="rounded border border-border px-1.5 py-0.5 text-[10px] hover:bg-muted">{propia ? 'Automática' : 'Automática ✓'}</button>
+        </div>
+        <span className="text-[10px] text-muted-foreground">
+          Parte baja a {coma(cota)} m del suelo y parte alta a {coma(cota + alto)} m.
+          {techo != null && cota + alto > techo + 0.01 && (
+            <b className="text-destructive"> Sobrepasa el techo ({coma(techo)} m).</b>
+          )}
+        </span>
       </div>
 
       {/* Mover el equipo con flechas (paso de 0,1 m): útil en móvil donde
@@ -434,6 +523,11 @@ function Avisos({ lista = [] }) {
       ))}
     </div>
   );
+}
+
+// Alto habitual del tipo de equipo (lo que se usa si no se ha escrito otro).
+function alturaDefecto(el) {
+  return altoEquipo({ ...el, alto_m: undefined });
 }
 
 function Campo({ label, children }) {

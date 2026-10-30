@@ -13,6 +13,7 @@ import {
   analizarDuplicados, borrarDuplicados,
 } from '@/lib/backupEngine';
 import { crearFrenoGlobal } from '@/lib/limiteServidor';
+import { queryClientInstance } from '@/lib/query-client';
 import CronoProgreso from '@/components/CronoProgreso';
 import SeccionesProgreso from '@/components/SeccionesProgreso';
 import {
@@ -56,7 +57,7 @@ const KEYERS = {
   CompanySettings:    () => 'singleton',
   Appointment:        (r) => (_s(r.date) && `${_s(r.date)}|${_s(r.time_start)}|${_s(r.title)}`) || null,
   Note:               (r) => _s(r.title) || null,
-  ClientDocument:     (r) => (_s(r.contact_id) && `${_s(r.contact_id)}|${_s(r.name)}`) || null,
+  ClientDocument:     (r) => (_s(r.contact_id) && `${_s(r.contact_id)}|${_s(r.title || r.name)}|${_s(r.date)}|${_s(r.reference_id)}|${_s(r.file_url).slice(-40)}`) || null,
   ClientNote:         (r) => (_s(r.contact_id) && `${_s(r.contact_id)}|${_s(r.content).slice(0,60)}`) || null,
   ClientMachine:      (r) => _s(r.serial_number) || (_s(r.contact_id) && `${_s(r.contact_id)}|${_s(r.brand)}|${_s(r.model)}`) || null,
   DocumentTemplate:   (r) => _s(r.name) || null,
@@ -503,11 +504,23 @@ export default function BackupCenter() {
       const avisosMsg = (avisos || []).length > 0 ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : '';
       setRestoreProgress((failed > 0 ? `${okMsg}\n${failMsg}` : okMsg) + avisosMsg);
       loadCounts();
+      // Los apartados del programa guardan lo que leyeron (hasta 1 hora en
+      // memoria y una copia sin conexión en el dispositivo). Sin vaciar eso, tras
+      // restaurar seguían enseñando lo de antes —es decir, nada— y parecía que la
+      // copia no había cargado. Se vacía y luego se recarga el programa.
+      queryClientInstance.clear();
+      try {
+        Object.keys(localStorage).filter((k) => k.startsWith('offline_cache_')).forEach((k) => localStorage.removeItem(k));
+      } catch { /* sin acceso al almacenamiento local */ }
       // Tras restaurar se buscan repetidos en lo que se acaba de restaurar: si
       // la copia y los datos actuales tenían registros casi iguales, ahora están
       // duplicados. Se conserva el MÁS RECIENTE y se borra el anterior, previa
       // confirmación y con copia de rescate.
       await limpiarDuplicadosTrasRestaurar(entitiesToRestore);
+      if (total > 0 || sinCambios > 0) {
+        setRestoreProgress((p) => `${p}\n🔄 Recargando el programa para mostrar los datos restaurados…`);
+        setTimeout(() => window.location.reload(), 3500);
+      }
     } catch (err) {
       // Red de seguridad: si algo falla a mitad, el botón no puede quedarse
       // para siempre en «Restaurando…». Antes un error no capturado dejaba el

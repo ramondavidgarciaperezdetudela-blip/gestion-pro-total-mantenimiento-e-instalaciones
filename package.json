@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.73.0",
+  "version": "1.74.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,6 +9,12 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
+    "test:capilar": "node scripts/test-capilar.mjs",
+    "test:gases": "node scripts/test-saturacion.mjs",
+    "test:equivalencias": "node scripts/test-equivalencias.mjs",
+    "test:clima": "node scripts/test-clima.mjs",
+    "test:vinculos": "node scripts/test-vinculos.mjs",
+    "test:filtro": "node scripts/test-filtro.mjs",
     "preview": "vite preview",
     "cap:add:android": "cap add android",
     "cap:sync": "cap sync",

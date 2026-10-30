@@ -22,6 +22,7 @@ const SECTION_THEME = {
   SolarBatteryCalc: { tint: 'rgba(245,158,11,0.09)', label: 'Solar + batería' },
   ElectricalCalc: { tint: 'rgba(250,204,21,0.08)', label: 'Cálculo eléctrico' },
   CapillaryCalc: { tint: 'rgba(6,182,212,0.09)', label: 'Tubo capilar' },
+  FilterCalc: { tint: 'rgba(217,119,6,0.09)', label: 'Filtro deshidratador' },
   RefrigerantEquiv: { tint: 'rgba(6,182,212,0.08)', label: 'Refrigerantes' },
   Regulations: { tint: 'rgba(148,163,184,0.08)', label: 'Normativas' },
   Reports: { tint: 'rgba(34,197,94,0.07)', label: 'Informes' },

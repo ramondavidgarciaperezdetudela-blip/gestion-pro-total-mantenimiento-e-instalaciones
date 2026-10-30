@@ -17,24 +17,32 @@ import { diagnosticoClima, GASES_CLIMA, tempSaturacion, RANGOS_CLIMA, nivelRango
 import { useParametrosUrl } from '@/lib/parametrosUrl';
 import { imprimirPantalla } from '@/lib/printHelper';
 import BuscadorCliente from '@/components/BuscadorCliente';
+import { presionesDeTrabajo } from '@/lib/presionesRefrigerante';
+import { sustitucionesDe, buscarSustitucion, TIPOS } from '@/lib/equivalenciasGases';
+import { DatosFicha, AvisoInflamable, CargaConvertida, ComparacionFisica, GasesParecidos, PasosConversion } from '@/components/ConversionGas';
 
-// Presiones ORIENTATIVAS manométricas (bar) por refrigerante y aplicación.
-const PRES = {
-  'R-410A': { clima: { baja: 8.5, alta: 30 }, refrigeracion: { baja: 5.0, alta: 30 }, congelacion: { baja: 2.5, alta: 30 } },
-  'R-32':   { clima: { baja: 8.5, alta: 30 }, refrigeracion: { baja: 5.0, alta: 30 }, congelacion: { baja: 2.5, alta: 30 } },
-  'R-454B': { clima: { baja: 8.0, alta: 29 }, refrigeracion: { baja: 4.8, alta: 29 }, congelacion: { baja: 2.4, alta: 29 } },
-  'R-134a': { clima: { baja: 3.0, alta: 12 }, refrigeracion: { baja: 1.2, alta: 12 }, congelacion: { baja: 0.3, alta: 12 } },
-  'R-404A': { clima: { baja: 6.0, alta: 20 }, refrigeracion: { baja: 2.6, alta: 19 }, congelacion: { baja: 0.6, alta: 18 } },
-  'R-507A': { clima: { baja: 6.2, alta: 21 }, refrigeracion: { baja: 2.7, alta: 20 }, congelacion: { baja: 0.7, alta: 19 } },
-  'R-448A': { clima: { baja: 5.5, alta: 20 }, refrigeracion: { baja: 2.3, alta: 19 }, congelacion: { baja: 0.5, alta: 18 } },
-  'R-449A': { clima: { baja: 5.5, alta: 20 }, refrigeracion: { baja: 2.3, alta: 19 }, congelacion: { baja: 0.5, alta: 18 } },
-  'R-407C': { clima: { baja: 5.0, alta: 20 }, refrigeracion: { baja: 2.2, alta: 19 }, congelacion: { baja: 0.5, alta: 18 } },
-  'R-22':   { clima: { baja: 5.0, alta: 18 }, refrigeracion: { baja: 2.0, alta: 17 }, congelacion: { baja: 0.3, alta: 16 } },
-  'R-290':  { clima: { baja: 4.5, alta: 15 }, refrigeracion: { baja: 2.0, alta: 15 }, congelacion: { baja: 0.6, alta: 14 } },
-  // Gases prohibidos (para instalaciones antiguas): presiones orientativas
-  'R-12':   { clima: { baja: 2.0, alta: 10 }, refrigeracion: { baja: 0.8, alta: 9 },  congelacion: { baja: 0.2, alta: 8 } },
-  'R-502':  { clima: { baja: 5.5, alta: 19 }, refrigeracion: { baja: 2.6, alta: 18 }, congelacion: { baja: 0.7, alta: 17 } },
-};
+// Presiones de referencia (bar de manómetro) de cada gas y aplicación. No están escritas a mano: salen de las
+// tablas de saturación de cada gas (CoolProp), con evaporación y condensación en ROCÍO. Si el gas no tiene tabla
+// de propiedades, `hay` es falso y no se compara nada.
+const APP_PRESIONES = { clima: 'clima', refrigeracion: 'media', congelacion: 'baja' };
+function referenciaPresiones(gas, app, tAmbiente) {
+  const t = String(tAmbiente ?? '').replace(',', '.').trim();
+  const amb = t !== '' && Number.isFinite(Number(t)) ? Number(t) : 30;
+  const p = presionesDeTrabajo(gas, APP_PRESIONES[app] || 'clima', amb);
+  const ok = p && [p.evapMin, p.evapMax, p.condMin, p.condMax].every((x) => x && !x.fueraDeTabla);
+  if (!ok) return { hay: false, baja: 0, alta: 0, bajaMin: 0, bajaMax: 0, altaMin: 0, altaMax: 0, amb };
+  const medio = (a, b) => Math.round(((a.relativa + b.relativa) / 2) * 10) / 10;
+  return {
+    hay: true, amb,
+    baja: medio(p.evapMin, p.evapMax), alta: medio(p.condMin, p.condMax),
+    bajaMin: p.evapMin.relativa, bajaMax: p.evapMax.relativa, altaMin: p.condMin.relativa, altaMax: p.condMax.relativa,
+  };
+}
+// Margen de tolerancia alrededor del rango de referencia: el 10 % de la presión, y nunca menos de 0,3 bar.
+const margenBar = (v) => Math.max(0.1 * Math.abs(v), 0.3);
+// Para los esquemas: presiones medias de refrigeración (media temperatura, 30 °C de ambiente), o «—» sin tabla.
+const refPres = (g) => { const r = referenciaPresiones(g, 'refrigeracion', 30); return r.hay ? { baja: r.baja, alta: r.alta } : { baja: '—', alta: '—' }; };
+const fmtBar = (v) => Number(v).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).replace('-', '−');
 // Lista completa de gases (base de datos), para selectores y tabla — incluye prohibidos.
 const ALL_GASES = REFRIGERANT_DATABASE.map(r => r.code);
 const APPS = [
@@ -42,16 +50,6 @@ const APPS = [
   { k: 'refrigeracion', l: 'Refrigeración (positivo)' },
   { k: 'congelacion', l: 'Congelación (negativo)' },
 ];
-
-// Conversión orientativa: gas origen -> sustitutos (factor de carga y aceite).
-const CONV = {
-  'R-22':   [{ g: 'R-407C', f: 0.95, aceite: 'POE (cambiar)', vaciar: true }, { g: 'R-422D', f: 0.90, aceite: 'Mineral (mantener)', vaciar: false }, { g: 'R-438A', f: 0.90, aceite: 'Mineral (mantener)', vaciar: false }],
-  'R-404A': [{ g: 'R-448A', f: 0.95, aceite: 'POE (mantener)', vaciar: false }, { g: 'R-449A', f: 0.95, aceite: 'POE (mantener)', vaciar: false }, { g: 'R-452A', f: 0.93, aceite: 'POE (mantener)', vaciar: false }],
-  'R-410A': [{ g: 'R-32', f: 0.70, aceite: 'POE (cambiar)', vaciar: true }, { g: 'R-454B', f: 0.75, aceite: 'POE A2L (cambiar)', vaciar: true }],
-  'R-134a': [{ g: 'R-513A', f: 0.97, aceite: 'POE (mantener)', vaciar: false }, { g: 'R-450A', f: 0.97, aceite: 'POE (mantener)', vaciar: false }],
-  'R-407C': [{ g: 'R-448A', f: 0.97, aceite: 'POE (mantener)', vaciar: false }, { g: 'R-449A', f: 0.97, aceite: 'POE (mantener)', vaciar: false }],
-  'R-507A': [{ g: 'R-448A', f: 0.95, aceite: 'POE (mantener)', vaciar: false }, { g: 'R-449A', f: 0.95, aceite: 'POE (mantener)', vaciar: false }],
-};
 
 // Cuadro numérico que sale vacío, se escribe del tirón y admite decimales
 // con coma o punto. Guarda la cadena (vacío = '') para conservar la lógica de
@@ -388,7 +386,6 @@ export default function DiagnosticoCarga() {
   // ── comunes ──
   const [gas, setGas] = useState('R-410A');
   const [app, setApp] = useState('clima');
-  const rec = PRES[gas]?.[app] || { baja: 0, alta: 0 };
 
   // ── TAB 1: presiones + temperaturas ──
   const [pBaja, setPBaja] = useState('');
@@ -398,6 +395,7 @@ export default function DiagnosticoCarga() {
   const [tCond, setTCond] = useState('');   // T saturación alta (manómetro alta)
   const [tLiq, setTLiq] = useState('');     // T línea de líquido
   const [tAmb, setTAmb] = useState('');     // T ambiente
+  const rec = useMemo(() => referenciaPresiones(gas, app, tAmb), [gas, app, tAmb]);
   const [tFiltroIn, setTFiltroIn] = useState('');   // T entrada filtro deshidratador
   const [tFiltroOut, setTFiltroOut] = useState(''); // T salida filtro deshidratador
   const [tValvOut, setTValvOut] = useState('');     // T salida válvula (entrada evaporador)
@@ -433,8 +431,8 @@ export default function DiagnosticoCarga() {
   const valoresReferencia = (motivo) => ({
     recalentamiento: '~5-8 °C (orientativo)',
     subenfriamiento: '~4-10 °C (orientativo)',
-    presion_baja: rec.baja ? `~${rec.baja} bar` : '—',
-    presion_alta: rec.alta ? `~${rec.alta} bar` : '—',
+    presion_baja: rec.hay ? `${fmtBar(rec.bajaMin)} a ${fmtBar(rec.bajaMax)} bar` : '—',
+    presion_alta: rec.hay ? `${fmtBar(rec.altaMin)} a ${fmtBar(rec.altaMax)} bar` : '—',
     aceite: getRefrigerantInfo(gas)?.compressor_oil || '—',
     notas: motivo,
   });
@@ -510,9 +508,9 @@ export default function DiagnosticoCarga() {
     const mB = pBaja !== '' ? parseFloat(pBaja) : null;
     const mA = pAlta !== '' ? parseFloat(pAlta) : null;
     const items = [];
-    const bajaBaja = mB != null && mB < rec.baja * 0.9;
-    const altaAlta = mA != null && mA > rec.alta * 1.1;
-    const altaBaja = mA != null && mA < rec.alta * 0.9;
+    const bajaBaja = rec.hay && mB != null && mB < rec.bajaMin - margenBar(rec.bajaMin);
+    const altaAlta = rec.hay && mA != null && mA > rec.altaMax + margenBar(rec.altaMax);
+    const altaBaja = rec.hay && mA != null && mA < rec.altaMin - margenBar(rec.altaMin);
     if (recal != null && recal > 12 && (bajaBaja || (subenf != null && subenf < 3)))
       items.push({ e: 'FALTA DE REFRIGERANTE', c: '#dc2626', t: `Recalentamiento alto (${recal.toFixed(0)} °C) y subenfriamiento bajo/baja presión baja: falta carga o fuga. Detecta fugas y carga poco a poco hasta recalentamiento ~5-8 °C.` });
     if (subenf != null && subenf > 12 && (recal != null && recal < 4))
@@ -534,10 +532,16 @@ export default function DiagnosticoCarga() {
     if (!items.length && mB != null && mA != null)
       items.push({ e: 'PARÁMETROS EN RANGO', c: '#16a34a', t: 'Presiones y recalentamiento/subenfriamiento dentro de lo orientativo. Confirma con la ficha del fabricante.' });
     return items;
-  }, [pBaja, pAlta, recal, subenf, dtFiltro, dpSolen, rec.baja, rec.alta, tAmb]);
+  }, [pBaja, pAlta, recal, subenf, dtFiltro, dpSolen, rec, tAmb]);
 
-  const cB = pBaja === '' ? '#64748b' : (parseFloat(pBaja) < rec.baja * 0.9 ? '#dc2626' : parseFloat(pBaja) > rec.baja * 1.1 ? '#d97706' : '#16a34a');
-  const cA = pAlta === '' ? '#64748b' : (parseFloat(pAlta) < rec.alta * 0.9 ? '#dc2626' : parseFloat(pAlta) > rec.alta * 1.1 ? '#d97706' : '#16a34a');
+  const colorPresion = (txt, min, max) => {
+    if (txt === '' || !rec.hay) return '#64748b';
+    const v = parseFloat(String(txt).replace(',', '.'));
+    if (!Number.isFinite(v)) return '#64748b';
+    return v < min - margenBar(min) ? '#dc2626' : v > max + margenBar(max) ? '#d97706' : '#16a34a';
+  };
+  const cB = colorPresion(pBaja, rec.bajaMin, rec.bajaMax);
+  const cA = colorPresion(pAlta, rec.altaMin, rec.altaMax);
 
   // ── TAB 2: conversión ──
   const [convGas, setConvGas] = useState('R-404A');
@@ -546,16 +550,10 @@ export default function DiagnosticoCarga() {
   const [compresor, setCompresor] = useState('');
   const [compInfo, setCompInfo] = useState('');
   const [buscComp, setBuscComp] = useState(false);
-  // Sustitutos: de la tabla CONV (con factor/aceite) o, si no hay, de la base de datos.
-  const convList = CONV[convGas] || (getRefrigerantInfo(convGas)?.replacement || '')
-    .split(',').map(s => s.trim()).filter(Boolean)
-    .map(name => {
-      const g = REFRIGERANT_DATABASE.find(r => r.name.includes(name) || r.code === name)?.code || name;
-      const info = getRefrigerantInfo(g);
-      return { g, f: 1.0, aceite: info?.compressor_oil || 'Ver ficha', vaciar: /cambio|poe|cambiar/i.test(info?.retrofit_type || '') };
-    });
-  const destInfo = convList.find(x => x.g === convDest);
-  const pesoNuevo = (pesoAct && destInfo) ? (parseFloat(pesoAct) * destInfo.f).toFixed(2) : null;
+  // Sustituciones posibles desde el gas actual, con su ficha (tipo, aceite, carga, estado legal).
+  const sustitutos = useMemo(() => sustitucionesDe(convGas), [convGas]);
+  const fichaConv = convDest ? buscarSustitucion(convGas, convDest) : null;
+  const pesoNum = parseFloat(String(pesoAct).replace(',', '.'));
   const buscarCompresor = async () => {
     if (!compresor.trim()) return;
     setBuscComp(true); setCompInfo('');
@@ -876,12 +874,12 @@ export default function DiagnosticoCarga() {
               {estadoRefrigerante(gas).prohibido && (
                 <div className="flex items-start gap-2 text-[11px] bg-red-50 border border-red-200 text-red-700 rounded-md p-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span><b>{gas} está PROHIBIDO.</b> {estadoRefrigerante(gas).reciclado === 'solo'
-                    ? 'Solo se permite gas reciclado/regenerado para mantener equipos existentes; el gas virgen está prohibido. Valora convertir a un sustituto (pestaña Conversión).'
-                    : 'No se permite ni reciclado. Requiere sustituir el equipo o convertir a un refrigerante permitido (pestaña Conversión).'}</span>
+                  <span><b>{gas} está PROHIBIDO.</b> No se permite ni gas virgen ni reciclado o regenerado. Requiere sustituir el equipo o convertir a un refrigerante permitido (pestaña Conversión).</span>
                 </div>
               )}
-              <p className="text-[11px] text-slate-500">Recomendado orientativo — Baja: <b>{rec.baja} bar</b> · Alta: <b>{rec.alta} bar</b>{PRES[gas] ? '' : ' (sin tabla orientativa para este gas)'}</p>
+              <p className="text-[11px] text-slate-500" data-prueba="presiones-referencia">{rec.hay
+                ? <>Presiones de referencia a {rec.amb} °C de ambiente — Baja: <b>{fmtBar(rec.bajaMin)} a {fmtBar(rec.bajaMax)} bar</b> · Alta: <b>{fmtBar(rec.altaMin)} a {fmtBar(rec.altaMax)} bar</b> (manómetro, calculadas con la tabla del gas)</>
+                : 'Este gas no tiene tabla de propiedades en el programa: no hay presiones de referencia para comparar.'}</p>
 
               {/* LADO BAJA (aspiración) — recalentamiento */}
               <div className="rounded-lg border-2 border-sky-200 bg-sky-50/40 p-3 space-y-2">
@@ -1459,7 +1457,7 @@ export default function DiagnosticoCarga() {
                 <div><label className="text-xs text-slate-500 mb-1 block">Gas nuevo</label>
                   <select value={convDest} onChange={(e) => setConvDest(e.target.value)} className="w-full border border-input rounded-md px-3 py-2 text-sm">
                     <option value="">— Elegir —</option>
-                    {convList.map(x => <option key={x.g} value={x.g}>{x.g}</option>)}
+                    {sustitutos.map(x => <option key={x.a} value={x.a}>{x.a} — {TIPOS[x.tipo]?.etiqueta}{x.prohibido ? ' (PROHIBIDO)' : ''}</option>)}
                   </select>
                 </div>
                 <div><label className="text-xs text-slate-500 mb-1 block">Peso de gas actual (kg)</label>{N(pesoAct, setPesoAct, 'Ej: 3.5')}</div>
@@ -1474,9 +1472,7 @@ export default function DiagnosticoCarga() {
               {estadoRefrigerante(convGas).prohibido && (
                 <div className="flex items-start gap-2 text-[12px] bg-red-50 border border-red-200 text-red-700 rounded-md p-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span><b>{convGas} está PROHIBIDO.</b> {getRefrigerantInfo(convGas)?.fgas_status || ''}. {estadoRefrigerante(convGas).reciclado === 'solo'
-                    ? 'Solo se permite gas RECICLADO/REGENERADO para mantener equipos existentes (el gas virgen está prohibido). Se recomienda convertir a un sustituto.'
-                    : 'NO se permite ni reciclado: hay que convertir a un refrigerante permitido o sustituir el equipo.'}</span>
+                  <span><b>{convGas} está PROHIBIDO.</b> {getRefrigerantInfo(convGas)?.fgas_status || ''}. No se permite ni gas virgen ni reciclado: hay que convertir a un refrigerante permitido o sustituir el equipo.</span>
                 </div>
               )}
             </div>
@@ -1500,7 +1496,7 @@ export default function DiagnosticoCarga() {
                           <td className="p-1 font-bold">{r.code}{e.prohibido ? ' ⛔' : ''}</td>
                           <td className="p-1">{r.type}</td>
                           <td className="p-1">{e.prohibido ? <span className="text-red-600 font-semibold">Prohibido</span> : <span className="text-green-700">Permitido</span>}</td>
-                          <td className="p-1">{e.reciclado === 'solo' ? 'Solo reciclado' : e.reciclado === 'no' ? 'No' : '—'}</td>
+                          <td className="p-1">{e.reciclado === 'no' ? 'No' : '—'}</td>
                           <td className="p-1">{r.gwp}</td>
                           <td className="p-1">{r.replacement || '—'}</td>
                           <td className="p-1">{r.compressor_oil || '—'}</td>
@@ -1510,20 +1506,33 @@ export default function DiagnosticoCarga() {
                   </tbody>
                 </table>
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">⛔ Prohibido. «Solo reciclado» = únicamente gas recuperado/regenerado para equipos existentes (gas virgen prohibido).</p>
+              <p className="text-[10px] text-slate-400 mt-1">⛔ Prohibido: ni gas virgen ni reciclado o regenerado.</p>
             </details>
 
-            {destInfo && (
+            {!fichaConv && sustitutos.length > 0 && (
+              <GasesParecidos key={convGas} de={convGas} onElegir={(id) => { setConvGas(id); setConvDest(''); }} />
+            )}
+
+            {fichaConv && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="bg-white rounded-xl shadow p-3"><EsquemaFrig titulo={`ACTUAL · ${convGas}`} alta={PRES[convGas]?.refrigeracion?.alta ?? '—'} baja={PRES[convGas]?.refrigeracion?.baja ?? '—'} colorAlta="#2563eb" colorBaja="#16a34a" /></div>
-                  <div className="bg-white rounded-xl shadow p-3"><EsquemaFrig titulo={`NUEVO · ${convDest}`} alta={PRES[convDest]?.refrigeracion?.alta ?? '—'} baja={PRES[convDest]?.refrigeracion?.baja ?? '—'} colorAlta="#7c3aed" colorBaja="#0891b2" /></div>
+                  <div className="bg-white rounded-xl shadow p-3"><EsquemaFrig titulo={`ACTUAL · ${convGas}`} alta={refPres(convGas).alta} baja={refPres(convGas).baja} colorAlta="#2563eb" colorBaja="#16a34a" /></div>
+                  <div className="bg-white rounded-xl shadow p-3"><EsquemaFrig titulo={`NUEVO · ${convDest}`} alta={refPres(convDest).alta} baja={refPres(convDest).baja} colorAlta="#7c3aed" colorBaja="#0891b2" /></div>
                 </div>
-                <div className="bg-white rounded-xl shadow p-4 text-sm space-y-2">
-                  <p><b>{convGas} → {convDest}</b></p>
-                  <p>Peso de gas nuevo estimado: <b className="text-green-700">{pesoNuevo ? pesoNuevo + ' kg' : '—'}</b> (factor ×{destInfo.f})</p>
-                  <p className="flex items-center gap-1"><Droplets className="w-4 h-4 text-amber-600" />Aceite: <b>{destInfo.aceite}</b> {destInfo.vaciar ? '· ⚠ Vaciar y cambiar' : '· ✓ Mantener'}</p>
-                  <p className="text-[11px] text-slate-500">Recuerda: cambiar filtro deshidratador, hacer vacío y ajustar recalentamiento. Verifica compatibilidad del compresor arriba.</p>
+                <div className="bg-card text-card-foreground rounded-xl shadow p-4 space-y-3" data-prueba="conv-ficha">
+                  <p className="font-bold text-foreground">{convGas} → {convDest} <span className="text-xs font-normal text-muted-foreground">· {TIPOS[fichaConv.tipo]?.etiqueta}</span></p>
+                  <DatosFicha ficha={fichaConv} />
+                  <AvisoInflamable ficha={fichaConv} />
+                  {pesoNum > 0
+                    ? <CargaConvertida de={convGas} a={convDest} kg={pesoNum} />
+                    : <p className="text-xs text-muted-foreground">Escribe el peso de gas actual para calcular cuánto cargar.</p>}
+                  {fichaConv.tieneFisica && (
+                    <div>
+                      <div className="tech-label mb-1">Presiones y capacidad con el mismo compresor</div>
+                      <ComparacionFisica de={convGas} a={convDest} />
+                    </div>
+                  )}
+                  <PasosConversion />
                 </div>
                 <div className="flex gap-2" data-fin-impresion>
                   <Button onClick={printAll} className="gap-2"><Printer className="w-4 h-4" />Imprimir</Button>

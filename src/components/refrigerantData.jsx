@@ -1,335 +1,127 @@
-// Datos completos de gases refrigerantes con información de sustitución, aceites y retrofit
-export const REFRIGERANT_DATABASE = [
-  // Gases antiguos (CFC y HCFC)
-  {
-    code: 'R-11',
-    name: 'R-11 (CFC - Prohibido)',
-    category: 'antiguo',
-    type: 'CFC',
-    replacement: 'R-123 o R-134a',
-    compressor_oil: 'Mineral (Naphthenic)',
-    retrofit_type: 'NO - Cambio completo necesario',
-    can_mix: false,
-    notes: 'Completamente prohibido. Requiere cambio de equipo o retrofit completo con extracción de aceite antiguo',
-    ozone_depletion: 1.0,
-    gwp: 0,
-    fgas_ban_date: '1995-01-01',
-    fgas_status: 'Prohibido desde 1995'
-  },
-  {
-    code: 'R-12',
-    name: 'R-12 (CFC - Prohibido)',
-    category: 'antiguo',
-    type: 'CFC',
-    replacement: 'R-134a',
-    compressor_oil: 'Mineral (Naphthenic)',
-    retrofit_type: 'NO - Cambio completo necesario',
-    can_mix: false,
-    notes: 'Prohibido desde 1995. Cambio total de equipo o aceite PAO + limpieza de sistema',
-    ozone_depletion: 1.0,
-    gwp: 10200,
-    fgas_ban_date: '1995-01-01',
-    fgas_status: 'Prohibido desde 1995'
-  },
-  {
-    code: 'R-22',
-    name: 'R-22 (HCFC - Prohibido 2020)',
-    category: 'antiguo',
-    type: 'HCFC',
-    replacement: 'R-410A, R-407C, R-32, R-452A, R-290',
-    compressor_oil: 'Mineral o PAO (según equipo)',
-    retrofit_type: 'NO - Cambio completo necesario',
-    can_mix: false,
-    notes: 'Prohibido desde enero 2020. Requiere cambio total de compresor y tuberías. Extracción completa de aceite mineral',
-    ozone_depletion: 0.055,
-    gwp: 1810,
-    fgas_ban_date: '2020-01-01',
-    fgas_status: 'Prohibido desde 01/01/2020'
-  },
-  {
-    code: 'R-502',
-    name: 'R-502 (Mezcla - Prohibido)',
-    category: 'antiguo',
-    type: 'CFC/HCFC',
-    replacement: 'R-407A, R-404A, R-448A',
-    compressor_oil: 'Mineral',
-    retrofit_type: 'NO - Cambio completo',
-    can_mix: false,
-    notes: 'Mezcla de R-22 + R-115. Prohibido. Cambio total necesario',
-    ozone_depletion: 0.33,
-    gwp: 4657,
-    fgas_ban_date: '2015-01-01',
-    fgas_status: 'Prohibido desde 2015'
-  },
+// Datos de gases refrigerantes para los selectores, los informes y los avisos de mantenimiento.
+//
+// Ya no hay una lista aparte escrita a mano: se construye a partir del catálogo único
+// (`src/lib/refrigerantes.js`) y de las fichas de conversión (`src/lib/equivalenciasGases.js`), de modo que
+// el PCA (GWP), el estado legal, el aceite y los sustitutos son los mismos en todo el programa.
+//
+// Fechas: solo se escribe una fecha de prohibición cuando es firme y está en un reglamento:
+//   · CFC: producción prohibida en la UE desde el 1 de enero de 1995 (Reglamento (CEE) 3093/94).
+//   · HCFC: desde el 1 de enero de 2015 está prohibido TODO uso en mantenimiento, también el gas reciclado
+//     o regenerado (Reglamento (CE) 1005/2009, art. 11; el gas virgen ya lo estaba desde 2010).
+//   · HFC: no hay una fecha única: las prohibiciones van por tipo de equipo (Reglamento (UE) 2024/573).
+import { REFRIGERANTES, buscarRefrigerante } from '@/lib/refrigerantes';
+import { sustitucionesDe } from '@/lib/equivalenciasGases';
 
-  // Gases HCFC (transitorios, siendo eliminados)
-  {
-    code: 'R-407C',
-    name: 'R-407C (HCFC - Transición)',
-    category: 'transicion',
-    type: 'HCFC',
-    replacement: 'R-32, R-452A, R-449A',
-    compressor_oil: 'POE (Polyol Ester)',
-    retrofit_type: 'RETROFIT posible desde R-22',
-    can_mix: true,
-    notes: 'Sustituto directo de R-22. Compatible con POE. Deslizamiento de temperatura ~8°C',
-    ozone_depletion: 0.0,
-    gwp: 1626,
-    fgas_ban_date: '2030-12-31',
-    fgas_status: 'Prohibido desde 31/12/2030'
-  },
+const FECHA_CFC = '1995-01-01';
+const FECHA_HCFC = '2015-01-01';
 
-  // Gases HFC (siendo eliminados - F-Gas)
-  {
-    code: 'R-134a',
-    name: 'R-134a (HFC)',
-    category: 'transicion',
-    type: 'HFC',
-    replacement: 'R-1234yf, R-32',
-    compressor_oil: 'POE (Polyol Ester) obligatorio',
-    retrofit_type: 'NO desde R-22 o R-11',
-    can_mix: false,
-    notes: 'Requiere cambio completo de aceite (POE). No miscible con aceite mineral. Fue común en automoción',
-    ozone_depletion: 0.0,
-    gwp: 1430,
-    fgas_ban_date: '2026-12-31',
-    fgas_status: 'Prohibido desde 31/12/2026'
-  },
-  {
-    code: 'R-404A',
-    name: 'R-404A (HFC)',
-    category: 'transicion',
-    type: 'HFC',
-    replacement: 'R-448A, R-449A, R-452A',
-    compressor_oil: 'POE (Polyol Ester)',
-    retrofit_type: 'NO desde gases antiguos',
-    can_mix: false,
-    notes: 'Prohibido en equipos nuevos desde 2020. Aún permitido para mantenimiento hasta 2030',
-    ozone_depletion: 0.0,
-    gwp: 3922,
-    fgas_ban_date: '2030-12-31',
-    fgas_status: 'Permitido solo mantenimiento hasta 31/12/2030'
-  },
+function categoria(r) {
+  if (r.estado === 'prohibido') return 'antiguo';
+  if (String(r.familia).startsWith('Natural')) return 'natural';
+  if (r.estado === 'restringido') return 'transicion';
+  // HFO puros (un solo componente): R-1234yf, R-1234ze(E), R-1233zd(E), R-1336mzz(Z)
+  if (/^R-1(23[3-4]|336)/.test(r.id)) return 'futuro';
+  return 'moderno';
+}
 
-  // Gases HFO (Bajo GWP - Nuevas generaciones)
-  {
-    code: 'R-32',
-    name: 'R-32 (HFC - Bajo GWP)',
-    category: 'moderno',
-    type: 'HFC-32',
-    replacement: 'Alternativa moderna a R-410A',
-    compressor_oil: 'POE (Polyol Ester)',
-    retrofit_type: 'SI - Directo desde R-410A',
-    can_mix: false,
-    notes: 'Mayor eficiencia que R-410A. Ligeramente inflamable (A2L). Cambio de compresor recomendado pero no obligatorio',
-    ozone_depletion: 0.0,
-    gwp: 675,
-    fgas_ban_date: null,
-    fgas_status: 'Permitido - Transición hacia HFO'
-  },
-  {
-    code: 'R-410A',
-    name: 'R-410A (HFC)',
-    category: 'moderno',
-    type: 'HFC',
-    replacement: 'R-32, R-452A, R-449A',
-    compressor_oil: 'POE (Polyol Ester)',
-    retrofit_type: 'SI - Directo a R-32',
-    can_mix: false,
-    notes: 'Muy común en aires acondicionados. Presiones más altas que R-22. Requiere POE siempre',
-    ozone_depletion: 0.0,
-    gwp: 2088,
-    fgas_ban_date: '2025-01-01',
-    fgas_status: 'Prohibido para nuevos equipos desde 01/01/2025'
-  },
-
-  // Gases HFO (Ultra bajo GWP - Futuro)
-  {
-    code: 'R-1234yf',
-    name: 'R-1234yf (HFO)',
-    category: 'futuro',
-    type: 'HFO',
-    replacement: 'Alternativa ultra-ecológica',
-    compressor_oil: 'POE (Polyol Ester)',
-    retrofit_type: 'NO - Cambio completo',
-    can_mix: false,
-    notes: 'GWP muy bajo (4). Inflamable (A2L). Caro. Futuro estándar en automoción',
-    ozone_depletion: 0.0,
-    gwp: 4,
-    fgas_ban_date: null,
-    fgas_status: 'Permitido - Estándar futuro'
-  },
-  {
-    code: 'R-1234ze',
-    name: 'R-1234ze (HFO)',
-    category: 'futuro',
-    type: 'HFO',
-    replacement: 'Alternativa para equipos grandes',
-    compressor_oil: 'POE (Polyol Ester)',
-    retrofit_type: 'NO - Cambio completo',
-    can_mix: false,
-    notes: 'GWP = 6. No inflamable. Eficiencia similar a R-134a pero ecológico',
-    ozone_depletion: 0.0,
-    gwp: 6,
-    fgas_ban_date: null,
-    fgas_status: 'Permitido - Recomendado para nuevos equipos'
-  },
-
-  // Gases de cuarta generación (HFC-HFO blend)
-  {
-    code: 'R-448A',
-    name: 'R-448A (HFC/HFO)',
-    category: 'moderno',
-    type: 'HFC/HFO',
-    replacement: 'Sustituto R-404A',
-    compressor_oil: 'POE (Polyol Ester)',
-    retrofit_type: 'SI - Directo desde R-404A',
-    can_mix: false,
-    notes: 'Drop-in para R-404A. GWP 48% menor. Cambio mínimo de aceite. Muy recomendado',
-    ozone_depletion: 0.0,
-    gwp: 1387,
-    fgas_ban_date: null,
-    fgas_status: 'Permitido - Transición para refrigeración'
-  },
-  {
-    code: 'R-449A',
-    name: 'R-449A (HFC/HFO)',
-    category: 'moderno',
-    type: 'HFC/HFO',
-    replacement: 'Sustituto R-404A/R-22',
-    compressor_oil: 'POE (Polyol Ester)',
-    retrofit_type: 'SI - Directo desde R-404A',
-    can_mix: false,
-    notes: 'Alternativa R-448A con ligeramente menor GWP. Drop-in compatible',
-    ozone_depletion: 0.0,
-    gwp: 1397,
-    fgas_ban_date: null,
-    fgas_status: 'Permitido - Transición para refrigeración'
-  },
-  {
-    code: 'R-452A',
-    name: 'R-452A (HFC/HFO)',
-    category: 'moderno',
-    type: 'HFC/HFO',
-    replacement: 'Sustituto R-410A',
-    compressor_oil: 'POE (Polyol Ester)',
-    retrofit_type: 'SI - Directo desde R-410A',
-    can_mix: false,
-    notes: 'Drop-in para R-410A con 65% menos GWP. Compatible con sistemas existentes',
-    ozone_depletion: 0.0,
-    gwp: 2141,
-    fgas_ban_date: null,
-    fgas_status: 'Permitido - Transición para clima'
-  },
-
-  // Gases naturales
-  {
-    code: 'R-290',
-    name: 'R-290 (Propano - Natural)',
-    category: 'natural',
-    type: 'Hidrocarburo',
-    replacement: 'Alternativa ecológica',
-    compressor_oil: 'POE o Mineral (según equipo)',
-    retrofit_type: 'NO - Cambio completo',
-    can_mix: false,
-    notes: 'GWP = 3. Inflamable (A3). Requiere seguridad especial. Excelente eficiencia. Caro a instalar',
-    ozone_depletion: 0.0,
-    gwp: 3,
-    fgas_ban_date: null,
-    fgas_status: 'Permitido - No regulado por F-Gas'
-  },
-  {
-    code: 'R-600a',
-    name: 'R-600a (Isobutano - Natural)',
-    category: 'natural',
-    type: 'Hidrocarburo',
-    replacement: 'Para pequeños equipos',
-    compressor_oil: 'Mineral o POE',
-    retrofit_type: 'NO - Cambio completo',
-    can_mix: false,
-    notes: 'GWP = 3. Inflamable. Usado en frigoríficos domésticos. Menor eficiencia',
-    ozone_depletion: 0.0,
-    gwp: 3,
-    fgas_ban_date: null,
-    fgas_status: 'Permitido - No regulado por F-Gas'
-  },
-  {
-    code: 'R-744',
-    name: 'R-744 (CO2 - Natural)',
-    category: 'natural',
-    type: 'Gas natural',
-    replacement: 'Alternativa segura y ecológica',
-    compressor_oil: 'POE especial para CO2',
-    retrofit_type: 'NO - Cambio completo',
-    can_mix: false,
-    notes: 'GWP = 1. Presiones muy altas (>70 bar). Requiere compresor especial. Excelente seguridad',
-    ozone_depletion: 0.0,
-    gwp: 1,
-    fgas_ban_date: null,
-    fgas_status: 'Permitido - No regulado por F-Gas'
+function estadoLegal(r) {
+  if (r.familia === 'CFC') {
+    return { fecha: FECHA_CFC, texto: 'Prohibido: producción prohibida en la UE desde 1995 y sin uso permitido (sustancia que agota el ozono)' };
   }
-];
+  if (r.familia === 'HCFC') {
+    return { fecha: FECHA_HCFC, texto: 'Prohibido en mantenimiento desde 2015, también el gas reciclado o regenerado (Reglamento (CE) 1005/2009)' };
+  }
+  if (r.estado === 'prohibido') return { fecha: null, texto: 'Prohibido' };
+  if (r.estado === 'restringido') {
+    return { fecha: null, texto: 'Restringido: cuotas de producción y prohibiciones por tipo de equipo (Reglamento (UE) 2024/573)' };
+  }
+  return { fecha: null, texto: 'Permitido' };
+}
+
+function cambioDeEquipo(id) {
+  const fichas = sustitucionesDe(id).filter((s) => !s.prohibido);
+  if (fichas.some((s) => s.tipo === 'directo')) return 'SÍ - hay sustitución directa (ver Equivalencias de gases)';
+  if (fichas.some((s) => s.tipo === 'conversion')) return 'Con cambios - ver Equivalencias de gases';
+  if (fichas.length) return 'NO - solo en equipo nuevo';
+  return 'NO - sin conversión conocida';
+}
+
+export const REFRIGERANT_DATABASE = REFRIGERANTES.filter((r) => r.id !== 'otro').map((r) => {
+  const legal = estadoLegal(r);
+  return {
+    code: r.id,
+    name: r.nombre,
+    category: categoria(r),
+    type: r.familia,
+    replacement: (r.sustitutos || []).join(', '),
+    compressor_oil: r.aceite,
+    retrofit_type: cambioDeEquipo(r.id),
+    can_mix: false, // nunca se mezclan gases
+    notes: r.nota || r.uso || '',
+    ozone_depletion: r.odp ?? 0,
+    gwp: r.gwp ?? 0,
+    fgas_ban_date: legal.fecha,
+    fgas_status: legal.texto,
+    safety: r.seguridad,
+  };
+});
+
+/** Gases que se pueden ofrecer para instalaciones nuevas (sin los prohibidos). */
+export const CODIGOS_USABLES = REFRIGERANT_DATABASE.filter((r) => r.category !== 'antiguo').map((r) => r.code);
+
+const usan = (patron) => REFRIGERANTES.filter((r) => r.id !== 'otro' && r.id !== 'R-744' && patron.test(r.aceite || '')).map((r) => r.id);
 
 export const OIL_TYPES = {
-  'Mineral': {
-    name: 'Mineral (Naphthenic)',
-    compatibility: ['R-11', 'R-12', 'R-22', 'R-502'],
-    notes: 'Aceite mineral tradicional. Incompatible con HFC/HFO puro',
-    cost: 'Muy bajo'
+  Mineral: {
+    name: 'Mineral (nafténico)',
+    compatibility: usan(/mineral/i),
+    notes: 'Aceite mineral tradicional. No es miscible con los HFC y HFO puros.',
+    cost: 'Muy bajo',
   },
-  'POE': {
-    name: 'POE (Polyol Ester)',
-    compatibility: ['R-134a', 'R-407C', 'R-410A', 'R-32', 'R-404A', 'R-448A', 'R-449A', 'R-452A', 'R-290', 'R-1234yf', 'R-1234ze'],
-    notes: 'Aceite sintético. Absorbe agua fácilmente. Requiere filtros deshidratadores frecuentes',
-    cost: 'Alto'
+  POE: {
+    name: 'POE (éster de poliol)',
+    compatibility: usan(/POE/),
+    notes: 'Aceite sintético. Absorbe la humedad del aire con facilidad: no dejes el circuito abierto y cambia el filtro deshidratador.',
+    cost: 'Alto',
   },
-  'PAO': {
-    name: 'PAO (Polyalphaolefin)',
-    compatibility: ['R-22', 'R-290', 'R-600a'],
-    notes: 'Aceite sintético alternativo. Mejor estabilidad que POE',
-    cost: 'Medio-Alto'
+  PAO: {
+    name: 'PAO (polialfaolefina)',
+    compatibility: usan(/PAO/),
+    notes: 'Aceite sintético, más estable que el mineral. Habitual con amoniaco e hidrocarburos.',
+    cost: 'Medio-alto',
   },
   'CO2-POE': {
-    name: 'POE especial para CO2',
+    name: 'Aceite especial para CO₂',
     compatibility: ['R-744'],
-    notes: 'Aceite POE modificado para soportar presiones extremas',
-    cost: 'Muy alto'
-  }
+    notes: 'Aceite sintético preparado para las presiones extremas del CO₂. Usa el que indique el fabricante del compresor.',
+    cost: 'Muy alto',
+  },
 };
 
 export function getRefrigerantInfo(code) {
-  return REFRIGERANT_DATABASE.find(r => r.code === code) || null;
+  return REFRIGERANT_DATABASE.find((r) => r.code === code) || null;
 }
 
+/** Códigos de los gases a los que se puede pasar desde `code` (los que cita el catálogo). */
 export function getReplacementGases(code) {
-  const current = getRefrigerantInfo(code);
-  if (!current || !current.replacement) return [];
-  return current.replacement.split(', ').map(name => {
-    const gas = REFRIGERANT_DATABASE.find(r => r.name.includes(name.trim()));
-    return gas ? gas.code : name.trim();
-  });
+  const actual = getRefrigerantInfo(code);
+  if (!actual || !actual.replacement) return [];
+  return actual.replacement.split(', ').filter((id) => buscarRefrigerante(id));
 }
 
 export function getCompatibleOils(code) {
   return Object.entries(OIL_TYPES)
-    .filter(([_, oil]) => oil.compatibility.includes(code))
+    .filter(([, oil]) => oil.compatibility.includes(code))
     .map(([key, oil]) => ({ key, ...oil }));
 }
 
-// Estado legal del refrigerante: prohibido y si admite gas reciclado/regenerado.
-// - CFC (R-11/R-12/R-502...): prohibido total, NO se puede usar ni reciclado.
-// - HCFC (R-22): prohibido el gas virgen; solo se permite gas RECICLADO/REGENERADO
-//   para mantener equipos existentes (hasta agotar existencias).
+/**
+ * Estado legal de un gas: si está prohibido y si admite gas reciclado.
+ * Desde 2015 no se admite ni reciclado ni regenerado de ningún gas prohibido (CFC y HCFC).
+ */
 export function estadoRefrigerante(code) {
   const r = getRefrigerantInfo(code);
   if (!r) return { prohibido: false, reciclado: null, motivo: '' };
-  const txt = `${r.name || ''} ${r.fgas_status || ''} ${r.notes || ''}`.toLowerCase();
-  const prohibido = /prohib/.test(txt) || r.type === 'CFC' || r.type === 'HCFC';
-  let reciclado = null; // null = no aplica (gas vigente)
-  let motivo = r.fgas_status || '';
-  if (prohibido) {
-    if (r.type === 'HCFC') { reciclado = 'solo'; motivo = motivo || 'Gas virgen prohibido; solo reciclado/regenerado para equipos existentes.'; }
-    else { reciclado = 'no'; motivo = motivo || 'Prohibido; no se permite ni reciclado.'; }
-  }
-  return { prohibido, reciclado, motivo };
+  const prohibido = r.category === 'antiguo';
+  return { prohibido, reciclado: prohibido ? 'no' : null, motivo: r.fgas_status };
 }

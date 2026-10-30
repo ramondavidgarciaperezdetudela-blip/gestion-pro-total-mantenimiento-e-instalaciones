@@ -915,6 +915,8 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
               <Link to={createPageUrl('SolarCalc')}><Button size="sm" variant="outline">+ Solar</Button></Link>
               <Link to={createPageUrl('BatteryCalc')}><Button size="sm" variant="outline">+ Baterías</Button></Link>
               <Link to={createPageUrl('ElectricalCalc')}><Button size="sm" variant="outline">+ Eléctrico</Button></Link>
+              <Link to={createPageUrl(`CapillaryCalc?contact_id=${contactId}`)}><Button size="sm" variant="outline" className="bg-cyan-50 border-cyan-200 text-cyan-800">+ Capilar</Button></Link>
+              <Link to={createPageUrl(`FilterCalc?contact_id=${contactId}`)}><Button size="sm" variant="outline" className="bg-amber-50 border-amber-200 text-amber-800">+ Filtros</Button></Link>
             </div>
 
             {calculations.length > 0 && (
@@ -949,7 +951,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
               </Card>
             )}
 
-            {calculations.length === 0 && (
+            {calculations.length === 0 && !documents.some((d) => ['calculo_termico', 'calculo_solar'].includes(d.doc_type)) && (
               <div className="text-center py-8 text-gray-400">
                 <Calculator className="w-10 h-10 mx-auto mb-2 opacity-30" />
                 <p className="text-sm">Sin cálculos guardados</p>

@@ -27,6 +27,7 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
   const [giro, setGiro] = useState(Math.PI / 5);
   const [zoom, setZoom] = useState(18);
   const [zoomTocado, setZoomTocado] = useState(false);
+  const [desp, setDesp] = useState({ x: 0, y: 0 });
   const arrastre = useRef(null);
   // Tamaño real del lienzo: se mide del contenedor para que en móvil y tablet
   // el render ocupe todo el ancho disponible y el zoom se calcule con él.
@@ -52,8 +53,8 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     canvas.width = dims.w; canvas.height = dims.h;
-    dibujarVista3D(ctx, dims.w, dims.h, { walls, elements, scale, alturaSuelo, giro, zoom });
-  }, [walls, elements, scale, alturaSuelo, giro, zoom, dims]);
+    dibujarVista3D(ctx, dims.w, dims.h, { walls, elements, scale, alturaSuelo, giro, zoom, desp });
+  }, [walls, elements, scale, alturaSuelo, giro, zoom, dims, desp]);
 
   // Auto-ajustar el zoom a lo dibujado mientras el usuario no lo toque.
   // Se calcula con el tamaño REAL del canvas (dims) para que el render
@@ -62,12 +63,33 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
     if (zoomTocado) return;
     const z = calcularZoomAjustado(dims.w, dims.h, { walls, elements, scale, alturaSuelo, maxZoom: 48 });
     if (z != null) setZoom(z);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [walls, elements, zoomTocado, dims, alturaSuelo, scale]);
 
-  const alPulsar = (ev) => { ev.currentTarget.setPointerCapture?.(ev.pointerId); arrastre.current = { x: ev.clientX, giro }; };
-  const alMover = (ev) => { if (!arrastre.current) return; setGiro(arrastre.current.giro + (ev.clientX - arrastre.current.x) * 0.01); };
+  // Arrastrar con el botón izquierdo gira la vista; con Mayús, el botón central o el derecho la desplaza.
+  const alPulsar = (ev) => {
+    ev.currentTarget.setPointerCapture?.(ev.pointerId);
+    const mover = ev.shiftKey || ev.button === 1 || ev.button === 2;
+    arrastre.current = { x: ev.clientX, y: ev.clientY, giro, desp, mover };
+  };
+  const alMover = (ev) => {
+    const a = arrastre.current;
+    if (!a) return;
+    if (a.mover) setDesp({ x: a.desp.x + (ev.clientX - a.x) * (dims.w / (ev.currentTarget.clientWidth || dims.w)), y: a.desp.y + (ev.clientY - a.y) * (dims.w / (ev.currentTarget.clientWidth || dims.w)) });
+    else setGiro(a.giro + (ev.clientX - a.x) * 0.01);
+  };
   const alSoltar = () => { arrastre.current = null; };
+  const alRueda = (ev) => {
+    ev.preventDefault();
+    setZoomTocado(true);
+    setZoom((z) => Math.min(48, Math.max(6, z * (ev.deltaY < 0 ? 1.1 : 1 / 1.1))));
+  };
+  useEffect(() => {
+    const c = canvasRef.current;
+    if (!c) return undefined;
+    c.addEventListener('wheel', alRueda, { passive: false });
+    return () => c.removeEventListener('wheel', alRueda);
+  }, []);
 
   const hayAlgo = walls.length > 0 || elements.some((e) => e.type !== 'texto' && e.type !== 'cota' && e.type !== 'trazo');
 
@@ -75,14 +97,14 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-xs text-slate-500 flex items-center gap-1">
-          <Move3d className="w-3.5 h-3.5" /> Arrastra para girar la vista
+          <Move3d className="w-3.5 h-3.5" /> Arrastra para girar · Mayús + arrastrar (o botón derecho) para desplazar · rueda para acercar
         </p>
         <div className="flex items-center gap-2">
           <button onClick={() => { setZoomTocado(true); setZoom((z) => Math.max(6, z - 3)); }}
             className="px-2 py-1 text-xs border rounded hover:bg-slate-50">−</button>
           <button onClick={() => { setZoomTocado(true); setZoom((z) => Math.min(48, z + 3)); }}
             className="px-2 py-1 text-xs border rounded hover:bg-slate-50">+</button>
-          <button onClick={() => { setGiro(Math.PI / 5); setZoomTocado(false); }}
+          <button onClick={() => { setGiro(Math.PI / 5); setZoomTocado(false); setDesp({ x: 0, y: 0 }); }}
             className="px-2 py-1 text-xs border rounded hover:bg-slate-50 flex items-center gap-1">
             <RotateCcw className="w-3 h-3" /> Centrar
           </button>
@@ -96,6 +118,7 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], sca
           onPointerMove={alMover}
           onPointerUp={alSoltar}
           onPointerCancel={alSoltar}
+          onContextMenu={(e) => e.preventDefault()}
           className="block w-full border border-slate-200 rounded-lg cursor-grab active:cursor-grabbing"
           style={{ height: 'auto', touchAction: 'none' }}
         />

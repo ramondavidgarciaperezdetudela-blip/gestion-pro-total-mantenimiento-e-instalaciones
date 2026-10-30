@@ -21,6 +21,8 @@
  * de verdad es el de la ficha técnica del equipo.
  */
 
+import { ATM, temperaturaSaturacion, presionSaturacion as presionSat } from './saturacion.js';
+
 const num = (v) => {
   if (v === '' || v === null || v === undefined) return null;
   const n = parseFloat(String(v).replace(',', '.'));
@@ -30,68 +32,39 @@ const num = (v) => {
 const redondear = (n, d = 1) => (n == null ? null : Math.round(n * 10 ** d) / 10 ** d);
 
 /**
- * Tabla de saturación: presión MANOMÉTRICA (bar) para cada temperatura.
+ * Presión ↔ temperatura de saturación, con presión MANOMÉTRICA (bar).
  *
- * Es una comodidad, no la referencia: el manómetro del técnico ya trae la
- * escala de temperatura impresa para su gas, y esa es la que manda. Aquí está
- * para poder meter la presión cuando se lee en un manómetro digital que solo
- * da bares, y para cruzar las dos lecturas y ver si el manómetro desvía.
+ * No hay tabla escrita aquí: sale de las propiedades de cada gas (CoolProp, ver `saturacion.js`), las mismas que
+ * usan «Presiones de trabajo» y las tablas P–T, así que los números coinciden en todo el programa.
  *
- * Los valores son de las tablas de saturación estándar de cada refrigerante,
- * en presión manométrica (absoluta − 1,013 bar). Entre dos puntos se
- * interpola en línea recta: en tramos de 5 °C el error es pequeño frente a la
- * precisión con la que se lee un manómetro en obra.
- *
- * En las mezclas con deslizamiento (R-407C sobre todo) se usa el punto de
- * ROCÍO, que es el que vale para calcular el recalentamiento en la aspiración.
+ * En las mezclas con deslizamiento (R-407C, R-454B…) hay dos temperaturas a la misma presión:
+ *   · ROCÍO  → recalentamiento y evaporación (es el punto que vale en la aspiración)
+ *   · BURBUJA → subenfriamiento (es el punto que vale en la línea de líquido)
+ * En un gas puro las dos coinciden. Fuera de la tabla del gas se devuelve `null`: no se extrapola.
  */
-export const TABLA_SATURACION = {
-  // °C: [-25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
-  'R-410A': { glide: 0.2, bar: [2.30, 2.99, 3.80, 4.72, 5.78, 6.97, 8.31, 9.82, 11.50, 13.37, 15.43, 17.71, 20.21, 22.95, 25.94, 29.21] },
-  'R-32':   { glide: 0,   bar: [2.31, 3.02, 3.84, 4.79, 5.86, 7.09, 8.47, 10.01, 11.74, 13.67, 15.81, 18.18, 20.79, 23.67, 26.82, 30.27] },
-  'R-454B': { glide: 1.5, bar: [2.18, 2.84, 3.62, 4.51, 5.52, 6.67, 7.96, 9.41, 11.03, 12.83, 14.82, 17.02, 19.44, 22.09, 24.99, 28.15] },
-  'R-22':   { glide: 0,   bar: [1.01, 1.44, 1.95, 2.54, 3.21, 3.97, 4.83, 5.80, 6.88, 8.09, 9.43, 10.91, 12.54, 14.33, 16.28, 18.41] },
-  'R-407C': { glide: 6,   bar: [1.19, 1.74, 2.31, 2.97, 3.72, 4.57, 5.53, 6.61, 7.82, 9.16, 10.65, 12.29, 14.10, 16.08, 18.24, 20.60] },
-  'R-134a': { glide: 0,   bar: [-0.06, 0.32, 0.63, 1.00, 1.42, 1.92, 2.49, 3.14, 3.87, 4.71, 5.64, 6.69, 7.86, 9.16, 10.59, 12.17] },
-};
-
-const TEMPS_TABLA = [-25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+const manometro = (bar) => Number(bar) + ATM;
 
 /** Gases del selector de clima, los que se ven de verdad en un split. */
-export const GASES_CLIMA = ['R-410A', 'R-32', 'R-454B', 'R-22', 'R-407C', 'R-134a'];
+export const GASES_CLIMA = ['R-410A', 'R-32', 'R-454B', 'R-22', 'R-407C', 'R-134a', 'R-290'];
 
 /**
  * Temperatura de saturación (°C) para una presión manométrica (bar).
- * Devuelve null si el gas no está en la tabla o la presión se sale de ella.
+ * @param {'rocio'|'burbuja'} [punto='rocio']
+ * Devuelve null si el gas no tiene tabla o la presión se sale de ella.
  */
-export function tempSaturacion(gas, presionBar) {
+export function tempSaturacion(gas, presionBar, punto = 'rocio') {
   const p = num(presionBar);
-  const t = TABLA_SATURACION[gas];
-  if (p == null || !t) return null;
-  const bar = t.bar;
-  if (p < bar[0] || p > bar[bar.length - 1]) return null;
-  for (let i = 0; i < bar.length - 1; i++) {
-    if (p >= bar[i] && p <= bar[i + 1]) {
-      const f = (p - bar[i]) / (bar[i + 1] - bar[i] || 1);
-      return redondear(TEMPS_TABLA[i] + f * (TEMPS_TABLA[i + 1] - TEMPS_TABLA[i]), 1);
-    }
-  }
-  return null;
+  if (p == null) return null;
+  const t = temperaturaSaturacion(gas, manometro(p), punto);
+  return t == null ? null : redondear(t, 1);
 }
 
 /** Presión manométrica (bar) para una temperatura de saturación (°C). */
-export function presionSaturacion(gas, tempC) {
+export function presionSaturacion(gas, tempC, punto = 'rocio') {
   const t = num(tempC);
-  const tab = TABLA_SATURACION[gas];
-  if (t == null || !tab) return null;
-  if (t < TEMPS_TABLA[0] || t > TEMPS_TABLA[TEMPS_TABLA.length - 1]) return null;
-  for (let i = 0; i < TEMPS_TABLA.length - 1; i++) {
-    if (t >= TEMPS_TABLA[i] && t <= TEMPS_TABLA[i + 1]) {
-      const f = (t - TEMPS_TABLA[i]) / (TEMPS_TABLA[i + 1] - TEMPS_TABLA[i]);
-      return redondear(tab.bar[i] + f * (tab.bar[i + 1] - tab.bar[i]), 2);
-    }
-  }
-  return null;
+  if (t == null) return null;
+  const p = presionSat(gas, t, punto);
+  return p == null ? null : redondear(p - ATM, 2);
 }
 
 /**
@@ -159,7 +132,9 @@ export function calculoClima(d = {}) {
   const tEvapLeida = num(d.tEvapManual);
   const tEvap = tEvapLeida != null ? tEvapLeida : tEvapDePresion;
 
+  // Condensación: el rocío es la temperatura nominal de condensación; el subenfriamiento se mide contra la burbuja.
   const tCondDePresion = tempSaturacion(gas, d.pAlta);
+  const tCondBurbuja = tempSaturacion(gas, d.pAlta, 'burbuja');
   const tCondLeida = num(d.tCondManual);
   const tCond = tCondLeida != null ? tCondLeida : tCondDePresion;
   const hayAlta = tCond != null;
@@ -168,7 +143,8 @@ export function calculoClima(d = {}) {
   const recalentamiento = (tAsp != null && tEvap != null) ? redondear(tAsp - tEvap) : null;
 
   const tLiq = num(d.tLiquido);
-  const subenfriamiento = (hayAlta && tLiq != null) ? redondear(tCond - tLiq) : null;
+  const tCondSub = tCondLeida != null ? tCondLeida : tCondBurbuja;
+  const subenfriamiento = (hayAlta && tLiq != null && tCondSub != null) ? redondear(tCondSub - tLiq) : null;
 
   const aIn = num(d.aireIntEntra), aOut = num(d.aireIntSale);
   // En frío la interior enfría: el salto es retorno − impulsión. En calor
@@ -189,8 +165,8 @@ export function calculoClima(d = {}) {
     ? redondear(eIn + 13) : null;
   const saltoCondensacion = (hayAlta && eIn != null) ? redondear(tCond - eIn) : null;
 
-  const relacionCompresion = (num(d.pAlta) != null && num(d.pBaja) != null && num(d.pBaja) > -1)
-    ? redondear((num(d.pAlta) + 1.013) / (num(d.pBaja) + 1.013), 2) : null;
+  const relacionCompresion = (num(d.pAlta) != null && num(d.pBaja) != null && num(d.pBaja) > -ATM)
+    ? redondear((num(d.pAlta) + ATM) / (num(d.pBaja) + ATM), 2) : null;
 
   // Descuadre entre lo leído en el manómetro y lo que dice la tabla.
   const desvioManometro = (tEvapLeida != null && tEvapDePresion != null)
