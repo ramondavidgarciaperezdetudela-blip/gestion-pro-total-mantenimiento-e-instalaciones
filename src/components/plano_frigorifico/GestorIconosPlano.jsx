@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Loader2, Sparkles, Upload, Save, Trash2, Wand2, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -237,7 +238,7 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
     );
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[10003] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="w-full max-w-2xl max-h-[88vh] flex flex-col rounded-xl bg-card border border-border shadow-2xl"
         onClick={(e) => e.stopPropagation()}>
@@ -337,6 +338,7 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
           <button onClick={onClose} className="rounded-md border border-border px-4 py-1.5 text-xs hover:bg-muted">Cerrar</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
