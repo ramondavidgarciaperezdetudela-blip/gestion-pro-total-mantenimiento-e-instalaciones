@@ -1,0 +1,3 @@
+## 2025-05-20 - Memoization in Reports Dashboard
+**Learning:** Data-heavy dashboard pages like `Reports.jsx` often derive complex chart data (e.g., monthly time-series) by performing multiple consecutive `.filter()` or `.reduce()` passes over the same dataset. Without memoization, these (N)$ operations trigger on every state change, such as switching tabs or selecting a period, causing visible UI lag even if the underlying data hasn't changed.
+**Action:** Consolidate all derived financial KPIs and chart data transformations into a single memoized `stats` object using `useMemo`. This ensures that expensive dataset iterations only occur when the source data or configuration (like time period) actually changes.
