@@ -1,0 +1,3 @@
+## 2026-06-18 - Optimized Report Generation in Reports.jsx
+**Learning:** Dashboard pages often have multiple charts and KPI blocks that each perform their own `.filter()` and `.reduce()` passes on the same large datasets (Invoices, SAT, Contacts, etc.). This leads to O(N * M) complexity where N is the dataset size and M is the number of visualizations, executed on every render (including tab switches).
+**Action:** Consolidate all data transformations into a single `useMemo` block that produces a `stats` object. This reduces processing to O(N) per dataset update and ensures that UI-only state changes (like tab switching) are virtually instantaneous by reusing the memoized result.
