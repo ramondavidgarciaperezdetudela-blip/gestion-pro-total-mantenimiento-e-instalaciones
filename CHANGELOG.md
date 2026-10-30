@@ -6,6 +6,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.78.0] — 2026-10-31
+
+### Añadido
+- **Activos HVAC (CMMS)**, en el menú Clima: ficha técnica del equipo con refrigerante, carga en kg, toneladas de CO₂ equivalente calculadas, tipo de aceite (POE, PVE, mineral, AB, PAG), dispositivo de expansión, presiones nominales de trabajo, presión PS de placa y consignas de frío, calor y humedad.
+- **Control de fugas según el Reglamento (UE) 2024/573**: periodicidad de 3, 6, 12 o 24 meses por toneladas de CO₂e (anexo I) y por kilos de HFO (anexo II, también la parte HFO de mezclas como R-454B o R-513A), exenciones de equipos herméticos, aviso de detección de fugas obligatoria y registro de cada control con técnico, método, resultado y kilos añadidos o recuperados.
+- **Carga térmica del local**: capacidad requerida en kW, Btu/h y toneladas de refrigeración a partir del área y de las cargas sensible y latente, y comprobación de si el equipo cubre la demanda (insuficiente, justo, adecuado o sobredimensionado, con la parte sensible y la latente por separado).
+- **Diagnóstico con mediciones obligatorias**: presiones de succión y descarga (bar o psi, manométricas o absolutas), temperaturas de línea y de aire a la entrada y salida de evaporador y condensador. Calcula recalentamiento (con rocío) y subenfriamiento (con burbuja), saltos de aire y aproximación del condensador, y propone la causa probable (falta o exceso de carga, restricción, condensador sucio, no condensables, poco caudal de aire, expansión abierta, compresor ineficiente) con lo que hay que comprobar.
+- **Alertas del plan preventivo**: lista de equipos con el control de fugas o el mantenimiento vencido o a punto de vencer.
+
 ## [1.77.2] — 2026-10-30
 
 ### Añadido

@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import { base44 } from '@/api/base44Client';
 import {
-  Home, Users, FileText, Calendar, Wrench, ClipboardList,
+  Home, Gauge, Users, FileText, Calendar, Wrench, ClipboardList,
   Thermometer, Sun, BookOpen, Shield, ShieldCheck, Bot, Settings,
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette,
@@ -185,6 +185,7 @@ const navItems = [
 { name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Droplets },
 { name: 'Informes Aseguradora', page: 'InformesTecnicos', icon: ShieldCheck },
 { name: 'Tablas Gases', page: 'TablasRefrigerantes', icon: FileBarChart },
+{ name: 'Activos HVAC', page: 'ActivosHVAC', icon: Gauge },
 ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
 // ─── Agrupación técnica de la navegación ──────────────────────────────────────
@@ -210,7 +211,7 @@ const PAGE_SECTION = {
   // quiere pasar por delante de lo eléctrico cada vez que abre el menú.
   ElectricalCalc: 'Electricidad',
   ACPotenciaCalc: 'Clima', ACPlanAnalysis: 'Clima', ThermalCalc: 'Clima',
-  MultiAreaCalc: 'Clima', PlanoIA: 'Clima', CodigosError: 'Clima',
+  MultiAreaCalc: 'Clima', PlanoIA: 'Clima', CodigosError: 'Clima', ActivosHVAC: 'Clima',
   ColdRoomCalc: 'Refrigeración', CapillaryCalc: 'Refrigeración', FilterCalc: 'Refrigeración',
   DiagnosticoCarga: 'Refrigeración', RefrigerantEquiv: 'Refrigeración',
   DanfossTools: 'Refrigeración', PresionesGas: 'Refrigeración', PlanoFrigorifico: 'Refrigeración',

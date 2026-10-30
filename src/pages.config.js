@@ -114,6 +114,7 @@ const AISupport = lazy(() => import('./pages/AISupport'));
 const DiagnosticoCarga = lazy(() => import('./pages/DiagnosticoCarga'));
 const TablasRefrigerantes = lazy(() => import('./pages/TablasRefrigerantes'));
 const PlanoIA = lazy(() => import('./pages/PlanoIA'));
+const ActivosHVAC = lazy(() => import('./pages/ActivosHVAC'));
 import __Layout from './Layout.jsx';
 
 
@@ -183,6 +184,7 @@ export const PAGES = {
     "DiagnosticoCarga": DiagnosticoCarga,
     "TablasRefrigerantes": TablasRefrigerantes,
     "PlanoIA": PlanoIA,
+    "ActivosHVAC": ActivosHVAC,
 }
 
 export const pagesConfig = {

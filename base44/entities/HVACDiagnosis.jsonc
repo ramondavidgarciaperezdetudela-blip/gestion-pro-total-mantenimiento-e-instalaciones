@@ -1,0 +1,268 @@
+{
+  "name": "HVACDiagnosis",
+  "type": "object",
+  "properties": {
+    "machine_id": {
+      "type": "string",
+      "description": "ID del equipo (ClientMachine)"
+    },
+    "machine_name": {
+      "type": "string",
+      "description": "Nombre del equipo"
+    },
+    "contact_id": {
+      "type": "string",
+      "description": "ID del cliente"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Cliente"
+    },
+    "date": {
+      "type": "string",
+      "description": "Fecha de la medición",
+      "format": "date"
+    },
+    "technician": {
+      "type": "string",
+      "description": "Técnico"
+    },
+    "refrigerant": {
+      "type": "string",
+      "description": "Refrigerante del circuito"
+    },
+    "mode": {
+      "type": "string",
+      "description": "Modo de funcionamiento",
+      "enum": [
+        "frio",
+        "calor"
+      ],
+      "default": "frio"
+    },
+    "expansion_device": {
+      "type": "string",
+      "description": "Expansión",
+      "enum": [
+        "valvula",
+        "capilar",
+        "electronica"
+      ],
+      "default": "valvula"
+    },
+    "pressure_unit": {
+      "type": "string",
+      "description": "Unidad de presión introducida",
+      "enum": [
+        "bar",
+        "psi"
+      ],
+      "default": "bar"
+    },
+    "pressure_reference": {
+      "type": "string",
+      "description": "Referencia de presión",
+      "enum": [
+        "manometrica",
+        "absoluta"
+      ],
+      "default": "manometrica"
+    },
+    "suction_pressure": {
+      "type": "number",
+      "description": "Presión de succión medida"
+    },
+    "discharge_pressure": {
+      "type": "number",
+      "description": "Presión de descarga medida"
+    },
+    "suction_line_temp_c": {
+      "type": "number",
+      "description": "T línea de aspiración (°C)"
+    },
+    "liquid_line_temp_c": {
+      "type": "number",
+      "description": "T línea de líquido (°C)"
+    },
+    "discharge_line_temp_c": {
+      "type": "number",
+      "description": "T línea de descarga (°C), opcional"
+    },
+    "evap_air_in_c": {
+      "type": "number",
+      "description": "T bulbo seco aire entrada evaporador (°C)"
+    },
+    "evap_air_out_c": {
+      "type": "number",
+      "description": "T bulbo seco aire salida evaporador (°C)"
+    },
+    "cond_air_in_c": {
+      "type": "number",
+      "description": "T bulbo seco aire entrada condensador (°C)"
+    },
+    "cond_air_out_c": {
+      "type": "number",
+      "description": "T bulbo seco aire salida condensador (°C)"
+    },
+    "evap_airflow_m3h": {
+      "type": "number",
+      "description": "Caudal de aire en el evaporador (m³/h), opcional"
+    },
+    "compressor_current_a": {
+      "type": "number",
+      "description": "Consumo del compresor (A), opcional"
+    },
+    "evaporating_temp_c": {
+      "type": "number",
+      "description": "T evaporación (rocío) calculada"
+    },
+    "condensing_temp_c": {
+      "type": "number",
+      "description": "T condensación (rocío) calculada"
+    },
+    "superheat_k": {
+      "type": "number",
+      "description": "Recalentamiento calculado (K)"
+    },
+    "subcooling_k": {
+      "type": "number",
+      "description": "Subenfriamiento calculado (K)"
+    },
+    "evap_delta_t_k": {
+      "type": "number",
+      "description": "ΔT aire evaporador (K)"
+    },
+    "cond_delta_t_k": {
+      "type": "number",
+      "description": "ΔT aire condensador (K)"
+    },
+    "condenser_approach_k": {
+      "type": "number",
+      "description": "Aproximación del condensador (K)"
+    },
+    "compression_ratio": {
+      "type": "number",
+      "description": "Relación de compresión"
+    },
+    "verdict": {
+      "type": "string",
+      "description": "Código del diagnóstico principal"
+    },
+    "hypotheses": {
+      "type": "array",
+      "description": "Causas probables",
+      "items": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "confianza": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Avisos del diagnóstico"
+    },
+    "failure_id": {
+      "type": "string",
+      "description": "Avería asociada (EquipmentFailure), si existe"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Observaciones del técnico"
+    }
+  },
+  "required": [
+    "machine_id",
+    "date",
+    "refrigerant",
+    "suction_pressure",
+    "discharge_pressure",
+    "suction_line_temp_c",
+    "liquid_line_temp_c",
+    "evap_air_in_c",
+    "evap_air_out_c",
+    "cond_air_in_c",
+    "cond_air_out_c"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    }
+  }
+}

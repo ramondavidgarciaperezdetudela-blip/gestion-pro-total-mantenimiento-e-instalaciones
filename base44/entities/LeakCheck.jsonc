@@ -1,0 +1,170 @@
+{
+  "name": "LeakCheck",
+  "type": "object",
+  "properties": {
+    "machine_id": {
+      "type": "string",
+      "description": "ID del equipo (ClientMachine)"
+    },
+    "machine_name": {
+      "type": "string",
+      "description": "Nombre del equipo"
+    },
+    "contact_id": {
+      "type": "string",
+      "description": "ID del cliente"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Cliente"
+    },
+    "date": {
+      "type": "string",
+      "description": "Fecha del control",
+      "format": "date"
+    },
+    "technician": {
+      "type": "string",
+      "description": "Técnico certificado"
+    },
+    "technician_certificate": {
+      "type": "string",
+      "description": "Nº de certificado de manipulador de gases fluorados"
+    },
+    "refrigerant": {
+      "type": "string",
+      "description": "Refrigerante"
+    },
+    "charge_kg": {
+      "type": "number",
+      "description": "Carga del equipo (kg)"
+    },
+    "co2e_tonnes": {
+      "type": "number",
+      "description": "t CO2 equivalente"
+    },
+    "method": {
+      "type": "string",
+      "description": "Método",
+      "enum": [
+        "directo_detector",
+        "directo_espuma",
+        "directo_uv",
+        "indirecto_parametros",
+        "nitrogeno"
+      ],
+      "default": "directo_detector"
+    },
+    "result": {
+      "type": "string",
+      "description": "Resultado",
+      "enum": [
+        "sin_fugas",
+        "fuga_detectada",
+        "fuga_reparada"
+      ],
+      "default": "sin_fugas"
+    },
+    "leak_location": {
+      "type": "string",
+      "description": "Ubicación de la fuga"
+    },
+    "refrigerant_added_kg": {
+      "type": "number",
+      "description": "Refrigerante añadido (kg)"
+    },
+    "refrigerant_recovered_kg": {
+      "type": "number",
+      "description": "Refrigerante recuperado (kg)"
+    },
+    "follow_up_check_date": {
+      "type": "string",
+      "description": "Control de verificación tras la reparación",
+      "format": "date"
+    },
+    "next_check_date": {
+      "type": "string",
+      "description": "Próximo control según periodicidad legal",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Observaciones"
+    }
+  },
+  "required": [
+    "machine_id",
+    "date",
+    "result"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    }
+  }
+}
