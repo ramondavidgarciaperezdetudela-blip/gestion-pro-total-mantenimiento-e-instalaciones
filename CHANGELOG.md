@@ -6,6 +6,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.77.0] — 2026-10-30
+
+### Añadido
+- **Cálculo frigorífico en el plano** («Cálculo frío»): carga de cada cámara, potencia del equipo y escalón comercial; busca evaporadores y condensadoras en la tarifa del proveedor que elijas y los añade al plano con su precio.
+- **La copia de seguridad guarda la configuración completa del programa** (aspecto, letra, IA, impresión, carpeta de copias…) y la restaura sola. Nunca copia sesiones ni licencias.
+
 ## [1.76.3] — 2026-10-30
 
 ### Añadido

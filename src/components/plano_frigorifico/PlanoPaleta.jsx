@@ -26,7 +26,7 @@ const CAT_ICON = {
 // Texto (notas), Cota (línea de medida) y Mano alzada (trazo libre), que
 // faltaban para hacer un plano completo.
 export default function PlanoPaleta({
-  mode, activeType, connectType, manual, onPick, onSala, onCamara,
+  mode, activeType, connectType, manual, onPick, onSala, onCamara, onCalculo,
   onUndo, onRedo, onCopy, onCut, onPaste, canUndo, canRedo, canCopy, canPaste,
   extraElementos = [], onAddElement, onEditarIconos, iaIcons = {}, onCrearIconoIA,
 }) {
@@ -77,7 +77,7 @@ export default function PlanoPaleta({
     <div className="flex flex-col gap-2">
       {/* Barra de herramientas de dibujo y edición (estilo Paint) */}
       <PlanoBarraHerramientas
-        mode={mode} connectType={connectType} manual={manual} onPick={onPick} onSala={onSala} onCamara={onCamara}
+        mode={mode} connectType={connectType} manual={manual} onPick={onPick} onSala={onSala} onCamara={onCamara} onCalculo={onCalculo}
         onUndo={onUndo} onRedo={onRedo} onCopy={onCopy} onCut={onCut} onPaste={onPaste}
         canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste} />
 
