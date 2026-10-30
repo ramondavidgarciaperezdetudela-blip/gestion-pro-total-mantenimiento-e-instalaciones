@@ -64,7 +64,12 @@
                   "user_condition": {
                       "role": "admin"
                   }
-              }
+              },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
           ]
       },
       "read": {
@@ -76,7 +81,12 @@
                   "user_condition": {
                       "role": "admin"
                   }
-              }
+              },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
           ]
       },
       "update": {
@@ -88,7 +98,12 @@
                   "user_condition": {
                       "role": "admin"
                   }
-              }
+              },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
           ]
       },
       "delete": {
@@ -100,7 +115,12 @@
                   "user_condition": {
                       "role": "admin"
                   }
-              }
+              },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
           ]
       }
   }

@@ -1266,9 +1266,11 @@ function UserManager() {
   const [inviteRole, setInviteRole] = useState('user');
   const [inviting, setInviting] = useState(false);
   const [inviteMsg, setInviteMsg] = useState('');
+  const [yo, setYo] = useState(null);
 
   useEffect(() => {
-    base44.entities.User.list().then(u => { setUsers(u); setLoading(false); });
+    base44.entities.User.list().then(u => { setUsers(u); setLoading(false); }).catch(() => setLoading(false));
+    base44.auth.me().then(setYo).catch(() => {});
   }, []);
 
   const handleInvite = async () => {
@@ -1282,7 +1284,10 @@ function UserManager() {
       const u = await base44.entities.User.list();
       setUsers(u);
     } catch (e) {
-      setInviteMsg('❌ Error al enviar la invitación.');
+      const motivo = e?.response?.data?.message || e?.data?.message || e?.message || 'sin detalle';
+      const noAdmin = yo && yo.role !== 'admin';
+      setInviteMsg(`❌ No se pudo enviar la invitación (${motivo}).`
+        + (noAdmin ? ` Has entrado con ${yo.email}, que NO es administradora de la aplicación: solo una cuenta administradora puede invitar. Cierra sesión y entra con la cuenta administradora.` : ''));
     }
     setInviting(false);
   };
@@ -1297,6 +1302,13 @@ function UserManager() {
         <p>Los usuarios con rol <strong>Admin</strong> tienen acceso completo. Los usuarios normales tienen acceso estándar.
         Cada usuario accede con su propio correo y contraseña desde cualquier dispositivo.</p>
       </div>
+
+      {yo && yo.role !== 'admin' && (
+        <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 text-xs text-amber-800" data-prueba="aviso-no-admin">
+          <p className="font-semibold">⚠️ Esta cuenta ({yo.email}) no es administradora.</p>
+          <p>Por eso no se pueden invitar usuarios y, tras restaurar una copia, los datos creados por otra cuenta no se ven. Entra con la cuenta administradora de la aplicación.</p>
+        </div>
+      )}
 
       {/* Invitar usuario */}
       <div className="bg-white border rounded-lg p-4 space-y-3">

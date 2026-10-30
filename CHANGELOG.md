@@ -6,6 +6,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.76.2] — 2026-10-30
+
+### Corregido
+- **Invitar usuarios o administradores**: si falla, ahora dice el motivo real y avisa de que la cuenta con la que has entrado no es administradora (solo una administradora puede invitar).
+- **Restauración «pero NO se ve»**: indica con qué cuenta has entrado y si es administradora; los datos solo se ven con la cuenta que los creó o con la administradora.
+
+### Cambiado
+- **Administradora de serie**: la cuenta kairigardia.gestionprototal@gmail.com figura en las reglas de acceso de todas las tablas, así que ve todos los datos sin depender de quién los creó. Requiere publicar los cambios de entidades en Base44.
+
 ## [1.76.1] — 2026-10-30
 
 ### Añadido
