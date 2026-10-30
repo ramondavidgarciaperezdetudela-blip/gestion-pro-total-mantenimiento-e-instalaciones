@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { mapaIds, reenlazarFilas } from '@/lib/vinculos';
 import {
   enLotes, sinMetadatos, planRestauracion,
   planDuplicados, revisarPlanDuplicados, quitarDuplicados,
@@ -284,7 +285,50 @@ export async function runRestoreJob(
   const trackFail = (err) => { failed++; console.error('[backupEngine] Error real al restaurar:', err); };
   let done = 0;
 
-  await runPool(entities, async (ent) => {
+  // Primero lo que los demás registros señalan (clientes, proveedores), luego
+  // facturas/órdenes/fichas y al final el resto. Tras cada tanda se averigua el
+  // identificador nuevo de cada registro y se cambia en las tandas siguientes,
+  // así cada ficha sigue unida a su cliente.
+  const TANDAS = [['Contact', 'Supplier'], ['Invoice', 'SATOrder', 'MaintenanceSheet', 'Project']];
+  const enTandas = [];
+  const usadas = new Set();
+  TANDAS.forEach((t) => {
+    const v = t.filter((e) => entities.includes(e));
+    v.forEach((e) => usadas.add(e));
+    if (v.length) enTandas.push(v);
+  });
+  const resto = entities.filter((e) => !usadas.has(e));
+  if (resto.length) enTandas.push(resto);
+  const idMap = new Map();
+  let clientes = [];
+  let vinculadas = 0, sinVincular = 0;
+
+  const prepararVinculos = (lista) => {
+    for (const ent of lista) {
+      const rows = restoreData[ent] || [];
+      if (!rows.length || ent === 'Contact') continue;
+      const r = reenlazarFilas(rows, idMap, clientes);
+      restoreData[ent] = r.filas;
+      vinculadas += r.porId + r.porNombre;
+      sinVincular += r.sinVincular;
+    }
+  };
+  const aprenderIds = async (lista) => {
+    for (const ent of lista) {
+      const clave = keyers[ent];
+      const rows = restoreData[ent] || [];
+      if (!clave || !rows.length) continue;
+      try {
+        const actuales = await fetchAllRecordsFast(ent, { freno });
+        mapaIds(rows, actuales, clave).forEach((nuevo, viejo) => idMap.set(viejo, nuevo));
+        if (ent === 'Contact') clientes = actuales;
+      } catch (err) {
+        avisos.push(`No se han podido enlazar los registros de «${entityLabels[ent] || ent}» con los nuevos identificadores (${err?.message || 'error de lectura'}).`);
+      }
+    }
+  };
+
+  const runTanda = (lista) => runPool(lista, async (ent) => {
     const label = entityLabels[ent] || ent;
     const rows = restoreData[ent] || [];
     const report = (extra = '') => {
@@ -383,6 +427,17 @@ export async function runRestoreJob(
     done++;
     report(` (${done}/${entities.length})`);
   }, ENTITY_CONCURRENCY);
+
+  for (const tanda of enTandas) {
+    prepararVinculos(tanda);
+    await runTanda(tanda);
+    await aprenderIds(tanda);
+  }
+  if (sinVincular > 0) {
+    avisos.push(`${sinVincular.toLocaleString()} registros apuntan a un cliente que no está en la copia ni en el programa; `
+      + 'se dejan sin vincular (el nombre del cliente sí se conserva).');
+  }
+  if (vinculadas > 0) avisos.push(`${vinculadas.toLocaleString()} registros se han vuelto a vincular con su cliente.`);
 
   publish({ active: false, message: '', pct: 100 });
   return { total, failed, sinCambios, avisos };
