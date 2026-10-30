@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { Plus, Search, Loader2, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { CATEGORIAS, CAT_COLOR } from '@/lib/planoFrigorificoCatalogo';
+import { iconoConRespaldo } from '@/lib/iconoPlanoIA';
+import { toast } from 'sonner';
 
 /**
  * GestorCatalogoPlano — diálogo para añadir un elemento o maquinaria propia
@@ -28,11 +30,11 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
 
   const glyph = (name || '').trim().slice(0, 3).toUpperCase() || 'XX';
 
-  const generarIconoIA = async () => {
+  const generarIconoIA = async (avisar = false) => {
     const catLabel = CATEGORIAS.find((c) => c.id === cat)?.label || cat;
-    const prompt = `Icono técnico realista en vista superior (planta) de "${name.trim()}" (${catLabel}), para plano de instalación frigorífica y climatización. Render 3D colorido y detallado visto desde arriba, con materiales realistas (metal cepillado, plástico, cobre, goma), sombras suaves y reflejos, colores vivos que diferencian cada parte de la máquina, fondo blanco, sin texto ni letras, silueta nítida e inconfundible a primera vista, estilo catálogo de fabricante de equipamiento industrial.`;
-    const res = await base44.integrations.Core.GenerateImage({ prompt });
-    return res?.url || '';
+    const r = await iconoConRespaldo({ id: 'nuevo', cat, catLabel, label: name.trim(), glyph, w_m: Number(w_m) || 0.6, h_m: Number(h_m) || 0.6 });
+    if (!r.conIA && avisar) toast.warning(`${r.motivo} Se usa el icono propio (sin IA); puedes cambiarlo después.`);
+    return r.url;
   };
 
   // Previsualiza el icono IA antes de guardar (opcional). Si no se pulsa, el
@@ -41,7 +43,7 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
     if (!name.trim()) return;
     setBuscando(true);
     try {
-      const url = await generarIconoIA();
+      const url = await generarIconoIA(true);
       if (url) setImageUrl(url);
     } catch (e) {
       console.error(e);
@@ -58,7 +60,7 @@ export default function GestorCatalogoPlano({ open, onClose, onSaved, existentes
       let url = image_url;
       if (!url) {
         setBuscando(true);
-        try { url = await generarIconoIA(); } finally { setBuscando(false); }
+        try { url = await generarIconoIA(true); } finally { setBuscando(false); }
       }
       const base = {
         name: name.trim(), glyph,

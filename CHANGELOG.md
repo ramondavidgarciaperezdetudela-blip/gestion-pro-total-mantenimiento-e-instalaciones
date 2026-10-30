@@ -6,6 +6,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.75.1] — 2026-10-30
+
+### Corregido
+- **«Añadir elemento al catálogo» → «Crear estándar + IA»** ya no depende de que la IA responda: si ninguna vía de IA da el icono, se avisa y se guarda con el icono propio (sin IA), que se puede cambiar después. Antes, si fallaba el generador, no se guardaba nada.
+
 ## [1.75.0] — 2026-10-30
 
 ### Mejorado

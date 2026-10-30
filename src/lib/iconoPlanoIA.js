@@ -149,6 +149,20 @@ export async function iconoPropio(el) {
 }
 
 /**
+ * Icono para un elemento: primero con IA (todas las vías) y, si ninguna
+ * responde, el icono propio. Así NUNCA falla el guardado por culpa de la IA.
+ * Devuelve { url, conIA, motivo }.
+ */
+export async function iconoConRespaldo(el) {
+  const catLabel = el.catLabel || el.cat;
+  try {
+    return { url: await generarIconoPlano(el.label, catLabel), conIA: true, motivo: '' };
+  } catch (e) {
+    return { url: await iconoPropio({ ...el, id: el.id || 'nuevo' }), conIA: false, motivo: e.message };
+  }
+}
+
+/**
  * Guarda (o actualiza) el icono IA de un símbolo del catálogo.
  * Si ese símbolo ya tenía icono, se reemplaza; si no, se crea la versión IA.
  */
