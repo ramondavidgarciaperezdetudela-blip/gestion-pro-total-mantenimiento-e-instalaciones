@@ -1,5 +1,5 @@
-appId: com.gestionprototal.fuera
-productName: Gestión Pro Total Local
+appId: com.gestionprototal.desktop
+productName: Gestión Pro Total
 copyright: © Ramón David García Pérez de Tudela
 
 # Inyecta el punto de entrada de Electron en el paquete final.
