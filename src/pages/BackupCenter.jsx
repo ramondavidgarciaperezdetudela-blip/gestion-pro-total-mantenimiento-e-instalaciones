@@ -1,4 +1,6 @@
 import { base44 } from '@/api/base44Client';
+import { recogerConfigLocal, aplicarConfigLocal } from '@/lib/configLocal';
+import { toast } from 'sonner';
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -284,6 +286,9 @@ export default function BackupCenter() {
       version: '3.0',
       app: 'TechManager Pro',
       entities_count: secciones.length,
+      // Los ajustes del propio aparato (aspecto, IA, impresión…) para no tener
+      // que ponerlos a mano al restaurar.
+      config_local: recogerConfigLocal(),
       ...extra,
     };
 
@@ -445,7 +450,8 @@ export default function BackupCenter() {
         const available = ALL_ENTITIES.filter(e => parsed[e]?.length > 0);
         setRestoreSelectedEntities(new Set(available));
         const total = available.reduce((s, e) => s + (parsed[e]?.length || 0), 0);
-        setRestoreStatus(`ok:Archivo válido · ${available.length} secciones · ${total.toLocaleString()} registros`);
+        const nAjustes = Object.keys(parsed.config_local || {}).length;
+        setRestoreStatus(`ok:Archivo válido · ${available.length} secciones · ${total.toLocaleString()} registros${nAjustes ? ` · ${nAjustes} ajustes del programa` : ''}`);
       } catch {
         setRestoreStatus('err:Archivo no válido. Asegúrate de que es un backup JSON generado por esta aplicación.');
       }
@@ -518,6 +524,8 @@ export default function BackupCenter() {
       // memoria y una copia sin conexión en el dispositivo). Sin vaciar eso, tras
       // restaurar seguían enseñando lo de antes —es decir, nada— y parecía que la
       // copia no había cargado. Se vacía y luego se recarga el programa.
+      const ajustesPuestos = aplicarConfigLocal(restoreData?.config_local);
+      if (ajustesPuestos > 0) toast.success(`Configuración del programa restaurada (${ajustesPuestos} ajustes)`);
       queryClientInstance.clear();
       try {
         Object.keys(localStorage).filter((k) => k.startsWith('offline_cache_')).forEach((k) => localStorage.removeItem(k));
