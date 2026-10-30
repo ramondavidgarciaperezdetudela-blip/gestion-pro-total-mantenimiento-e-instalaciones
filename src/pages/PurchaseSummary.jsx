@@ -1,12 +1,78 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Package, Building2, TrendingDown, Loader2, Search, FolderOpen } from 'lucide-react';
 
 const COLORS = ['#1e3a5f', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
+
+// ⚡ Bolt: Extracted sub-components to prevent redundant re-renders
+function SupplierCard({ s, i, maxAvgPrice }) {
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl border hover:bg-gray-50 transition-colors">
+      <span className="text-lg font-black text-gray-300 w-6 text-center">{i + 1}</span>
+      <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+        {s.logo_url
+          ? <img src={s.logo_url} alt="" className="w-full h-full object-cover" />
+          : <Building2 className="w-4 h-4 text-gray-400" />
+        }
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-gray-900 truncate">{s.name}</p>
+        <p className="text-xs text-gray-400">{s.count} productos · desde {s.minPrice.toFixed(2)} €</p>
+      </div>
+      <div className="text-right flex-shrink-0">
+        <p className={`text-sm font-bold ${i === 0 ? 'text-emerald-600' : 'text-gray-700'}`}>
+          {i === 0 && '⭐ '}{s.avgPrice.toFixed(2)} €
+        </p>
+        <p className="text-[10px] text-gray-400">precio medio</p>
+      </div>
+      <div className="w-20 bg-gray-100 rounded-full h-2 flex-shrink-0">
+        <div
+          className="h-2 rounded-full transition-all duration-500"
+          style={{
+            width: `${Math.min(100, (s.avgPrice / (maxAvgPrice || 1)) * 100)}%`,
+            background: COLORS[i % COLORS.length],
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MaterialRow({ m, i }) {
+  return (
+    <tr className="hover:bg-blue-50/30 transition-colors">
+      <td className="p-3 text-gray-400 font-mono text-xs">{i + 1}</td>
+      <td className="p-3">
+        <p className="font-medium text-gray-900 line-clamp-2">{m.name}</p>
+      </td>
+      <td className="p-3 text-center">
+        <div className="flex items-center justify-center gap-1.5">
+          <div className="bg-blue-100 rounded-full px-2 py-0.5 text-blue-700 text-xs font-bold">
+            {m.count}x
+          </div>
+        </div>
+      </td>
+      <td className="p-3 text-right font-semibold text-gray-800">
+        {m.count > 0 ? `${(m.totalCost / m.count).toFixed(2)} €` : '—'}
+      </td>
+      <td className="p-3 hidden sm:table-cell">
+        <div className="flex flex-wrap gap-1">
+          {m.suppliers.slice(0, 3).map((s, j) => (
+            <Badge key={j} variant="outline" className="text-[10px] py-0">{s}</Badge>
+          ))}
+          {m.suppliers.length > 3 && (
+            <Badge variant="outline" className="text-[10px] py-0">+{m.suppliers.length - 3}</Badge>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+const MemoizedSupplierCard = React.memo(SupplierCard);
+const MemoizedMaterialRow = React.memo(MaterialRow);
 
 export default function PurchaseSummary() {
   const [prices, setPrices] = useState([]);
@@ -29,67 +95,92 @@ export default function PurchaseSummary() {
     });
   }, []);
 
-  // ── Top materiales más comprados (por aparición en facturas + tarifas) ──────
-  const topMaterials = useMemo(() => {
-    const counter = {};
-    // Contar por nombre de producto en tarifas
-    prices.forEach(p => {
-      const key = p.product_name?.trim().toLowerCase();
-      if (!key) return;
-      if (!counter[key]) counter[key] = { name: p.product_name, count: 0, totalCost: 0, suppliers: new Set() };
-      counter[key].count += 1;
-      counter[key].totalCost += p.cost_price || 0;
-      if (p.supplier_name) counter[key].suppliers.add(p.supplier_name);
-    });
-    return Object.values(counter)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 20)
-      .map(m => ({ ...m, suppliers: [...m.suppliers] }));
-  }, [prices]);
+  // ⚡ Bolt: Consolidated O(N) data processing to minimize iterations and stabilize KPIs
+  const stats = useMemo(() => {
+    const materialCounter = {};
+    const supplierMap = {};
+    const categoryMap = {};
+    const activeSupplierIds = new Set();
 
-  // ── Proveedores más baratos (precio medio de sus productos) ──────────────────
-  const supplierStats = useMemo(() => {
-    const map = {};
+    // O(1) Map for supplier metadata
+    const supplierMetaMap = new Map(suppliers.map(s => [s.id, s]));
+
+    // Single pass over prices (up to 1000 items)
     prices.forEach(p => {
+      // 1. Process Materials
+      const mKey = p.product_name?.trim().toLowerCase();
+      if (mKey) {
+        if (!materialCounter[mKey]) {
+          materialCounter[mKey] = { name: p.product_name, count: 0, totalCost: 0, suppliers: new Set() };
+        }
+        materialCounter[mKey].count += 1;
+        materialCounter[mKey].totalCost += p.cost_price || 0;
+        if (p.supplier_name) materialCounter[mKey].suppliers.add(p.supplier_name);
+      }
+
+      // 2. Process Supplier stats
       const sid = p.supplier_id || p.supplier_name;
-      if (!sid) return;
-      if (!map[sid]) map[sid] = { name: p.supplier_name || sid, logo_url: suppliers.find(s => s.id === sid)?.logo_url, totalCost: 0, count: 0, minPrice: Infinity, maxPrice: 0 };
-      const cost = p.cost_price || 0;
-      map[sid].totalCost += cost;
-      map[sid].count += 1;
-      if (cost > 0 && cost < map[sid].minPrice) map[sid].minPrice = cost;
-      if (cost > map[sid].maxPrice) map[sid].maxPrice = cost;
+      if (sid) {
+        activeSupplierIds.add(p.supplier_id);
+        if (!supplierMap[sid]) {
+          supplierMap[sid] = {
+            name: p.supplier_name || sid,
+            logo_url: supplierMetaMap.get(p.supplier_id)?.logo_url,
+            totalCost: 0,
+            count: 0,
+            minPrice: Infinity,
+            maxPrice: 0
+          };
+        }
+        const cost = p.cost_price || 0;
+        supplierMap[sid].totalCost += cost;
+        supplierMap[sid].count += 1;
+        if (cost > 0 && cost < supplierMap[sid].minPrice) supplierMap[sid].minPrice = cost;
+        if (cost > supplierMap[sid].maxPrice) supplierMap[sid].maxPrice = cost;
+      }
     });
-    return Object.values(map)
-      .filter(s => s.count > 0)
-      .map(s => ({ ...s, avgPrice: s.totalCost / s.count, minPrice: s.minPrice === Infinity ? 0 : s.minPrice }))
-      .sort((a, b) => a.avgPrice - b.avgPrice);
-  }, [prices, suppliers]);
 
-  // ── Gasto por categoría/proyecto (agrupado por tipo de trabajo en facturas) ─
-  const spendByCategory = useMemo(() => {
-    const map = {};
+    // Single pass over invoices (up to 500 items)
+    let totalGastoVal = 0;
     invoices.forEach(inv => {
+      totalGastoVal += (inv.total || 0);
       const cat = inv.work_type || inv.doc_type || 'otro';
-      if (!map[cat]) map[cat] = { name: cat, total: 0, count: 0 };
-      map[cat].total += inv.total || 0;
-      map[cat].count += 1;
+      if (!categoryMap[cat]) categoryMap[cat] = { name: cat, total: 0, count: 0 };
+      categoryMap[cat].total += inv.total || 0;
+      categoryMap[cat].count += 1;
     });
-    return Object.values(map).sort((a, b) => b.total - a.total);
-  }, [invoices]);
 
+    return {
+      allMaterials: Object.values(materialCounter)
+        .sort((a, b) => b.count - a.count)
+        .map(m => ({ ...m, suppliers: [...m.suppliers] })),
+      supplierStats: Object.values(supplierMap)
+        .filter(s => s.count > 0)
+        .map(s => ({ ...s, avgPrice: s.totalCost / s.count, minPrice: s.minPrice === Infinity ? 0 : s.minPrice }))
+        .sort((a, b) => a.avgPrice - b.avgPrice),
+      spendByCategory: Object.values(categoryMap).sort((a, b) => b.total - a.total),
+      totalGasto: totalGastoVal,
+      totalProductos: prices.length,
+      totalProveedores: activeSupplierIds.size
+    };
+  }, [prices, suppliers, invoices]);
+
+  // ⚡ Bolt: Efficient filtering logic on memoized results
   const filteredMaterials = useMemo(() => {
     const q = search.toLowerCase();
-    return topMaterials.filter(m => {
-      const matchQ = !q || m.name.toLowerCase().includes(q);
-      const matchS = filterSupplier === 'all' || m.suppliers.some(s => s.toLowerCase().includes(filterSupplier.toLowerCase()));
-      return matchQ && matchS;
-    });
-  }, [topMaterials, search, filterSupplier]);
+    const sFilter = filterSupplier === 'all' ? null : filterSupplier.toLowerCase();
 
-  const totalGasto = invoices.reduce((s, inv) => s + (inv.total || 0), 0);
-  const totalProductos = prices.length;
-  const totalProveedores = new Set(prices.map(p => p.supplier_id).filter(Boolean)).size;
+    return stats.allMaterials
+      .filter(m => {
+        const matchQ = !q || m.name.toLowerCase().includes(q);
+        const matchS = !sFilter || m.suppliers.some(s => s.toLowerCase().includes(sFilter));
+        return matchQ && matchS;
+      })
+      .slice(0, 50); // Limit rendered list for DOM performance while allowing deeper search
+  }, [stats.allMaterials, search, filterSupplier]);
+
+  const handleSearch = useCallback((e) => setSearch(e.target.value), []);
+  const handleFilterSupplier = useCallback((val) => setFilterSupplier(val), []);
 
   if (loading) {
     return (
@@ -98,6 +189,9 @@ export default function PurchaseSummary() {
       </div>
     );
   }
+
+  const { totalGasto, totalProductos, totalProveedores, spendByCategory, supplierStats } = stats;
+  const maxAvgPrice = supplierStats[supplierStats.length - 1]?.avgPrice || 1;
 
   return (
     <div className="space-y-6">
@@ -133,7 +227,7 @@ export default function PurchaseSummary() {
             <BarChart data={spendByCategory} margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${v.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €`} />
-              <Tooltip formatter={(v) => [`${Number(v).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €`, 'Total']} />
+              <Tooltip formatter={(v) => [`${typeof v === 'number' ? v.toLocaleString('es-ES', { minimumFractionDigits: 2 }) : v} €`, 'Total']} />
               <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                 {spendByCategory.map((_, idx) => (
                   <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
@@ -161,45 +255,17 @@ export default function PurchaseSummary() {
           <div className="flex items-center gap-2 mb-4">
             <TrendingDown className="w-5 h-5 text-emerald-600" />
             <h2 className="font-bold text-gray-900">Proveedores por precio medio</h2>
-            <Badge className="bg-emerald-100 text-emerald-700 text-xs ml-auto">más barato primero</Badge>
+            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-xs ml-auto border-transparent shadow-none">más barato primero</Badge>
           </div>
           <div className="space-y-2">
             {supplierStats.map((s, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-xl border hover:bg-gray-50 transition-colors">
-                <span className="text-lg font-black text-gray-300 w-6 text-center">{i + 1}</span>
-                <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {s.logo_url
-                    ? <img src={s.logo_url} alt="" className="w-full h-full object-cover" />
-                    : <Building2 className="w-4 h-4 text-gray-400" />
-                  }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{s.name}</p>
-                  <p className="text-xs text-gray-400">{s.count} productos · desde {s.minPrice.toFixed(2)} €</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className={`text-sm font-bold ${i === 0 ? 'text-emerald-600' : 'text-gray-700'}`}>
-                    {i === 0 && '⭐ '}{s.avgPrice.toFixed(2)} €
-                  </p>
-                  <p className="text-[10px] text-gray-400">precio medio</p>
-                </div>
-                {/* Barra visual relativa */}
-                <div className="w-20 bg-gray-100 rounded-full h-2 flex-shrink-0">
-                  <div
-                    className="h-2 rounded-full"
-                    style={{
-                      width: `${Math.min(100, (s.avgPrice / (supplierStats[supplierStats.length - 1]?.avgPrice || 1)) * 100)}%`,
-                      background: COLORS[i % COLORS.length],
-                    }}
-                  />
-                </div>
-              </div>
+              <MemoizedSupplierCard key={s.name} s={s} i={i} maxAvgPrice={maxAvgPrice} />
             ))}
           </div>
         </div>
       )}
 
-      {/* Materiales más comprados */}
+      {/* Materiales más frecuentes */}
       <div className="bg-white border rounded-xl p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <Package className="w-5 h-5 text-blue-600" />
@@ -207,22 +273,21 @@ export default function PurchaseSummary() {
           <div className="ml-auto flex gap-2 flex-wrap">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-              <Input
+              <input
                 placeholder="Buscar material..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-8 text-sm h-8 w-44"
+                onChange={handleSearch}
+                className="flex h-8 w-44 rounded-md border border-input bg-transparent pl-8 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
-            <Select value={filterSupplier} onValueChange={setFilterSupplier}>
-              <SelectTrigger className="w-40 h-8 text-sm">
-                <SelectValue placeholder="Todos los proveedores" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {suppliers.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <select
+              value={filterSupplier}
+              onChange={(e) => handleFilterSupplier(e.target.value)}
+              className="w-40 h-8 text-sm rounded-md border border-input bg-transparent px-2 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="all">Todos los proveedores</option>
+              {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+            </select>
           </div>
         </div>
 
@@ -242,32 +307,7 @@ export default function PurchaseSummary() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredMaterials.map((m, i) => (
-                  <tr key={i} className="hover:bg-blue-50/30 transition-colors">
-                    <td className="p-3 text-gray-400 font-mono text-xs">{i + 1}</td>
-                    <td className="p-3">
-                      <p className="font-medium text-gray-900 line-clamp-2">{m.name}</p>
-                    </td>
-                    <td className="p-3 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <div className="bg-blue-100 rounded-full px-2 py-0.5 text-blue-700 text-xs font-bold">
-                          {m.count}x
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-3 text-right font-semibold text-gray-800">
-                      {m.count > 0 ? `${(m.totalCost / m.count).toFixed(2)} €` : '—'}
-                    </td>
-                    <td className="p-3 hidden sm:table-cell">
-                      <div className="flex flex-wrap gap-1">
-                        {m.suppliers.slice(0, 3).map((s, j) => (
-                          <Badge key={j} variant="outline" className="text-[10px] py-0">{s}</Badge>
-                        ))}
-                        {m.suppliers.length > 3 && (
-                          <Badge variant="outline" className="text-[10px] py-0">+{m.suppliers.length - 3}</Badge>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                  <MemoizedMaterialRow key={m.name} m={m} i={i} />
                 ))}
               </tbody>
             </table>
