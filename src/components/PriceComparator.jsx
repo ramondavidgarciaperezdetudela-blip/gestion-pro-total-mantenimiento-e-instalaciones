@@ -6,35 +6,68 @@ import { toast } from 'sonner';
 import ComparatorToBudgetDialog from './ComparatorToBudgetDialog';
 
 // ── Similitud de nombres ──────────────────────────────────────────────────────
-function similarity(a, b) {
-  const wordsA = a.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  const wordsB = b.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+/**
+ * Calculates similarity between two pre-tokenized word arrays.
+ * Optimized to avoid redundant string operations in nested loops.
+ */
+function similarity(wordsA, wordsB) {
   if (!wordsA.length || !wordsB.length) return 0;
   const matches = wordsA.filter(w => wordsB.some(wb => wb.includes(w) || w.includes(wb)));
   return matches.length / Math.max(wordsA.length, wordsB.length);
 }
 
 // ── Agrupa productos similares de distintos proveedores ───────────────────────
+/**
+ * Groups similar products from different suppliers.
+ * Optimization: Uses O(N) pre-processing and Map-based lookups to reduce O(N^2) complexity.
+ */
 function buildComparisons(prices) {
   const used = new Set();
   const groups = [];
 
-  for (let i = 0; i < prices.length; i++) {
+  // Pre-procesamiento: O(N) para normalizar datos y tokenizar nombres una sola vez
+  const processedPrices = prices.map((p, idx) => ({
+    ...p,
+    _idx: idx,
+    _normCode: p.product_code?.trim().toLowerCase() || null,
+    _tokens: (p.product_name || '').toLowerCase().split(/\s+/).filter(w => w.length > 3)
+  }));
+
+  // Índice por código de producto para búsqueda O(1) de coincidencias exactas
+  const codeMap = new Map();
+  processedPrices.forEach(p => {
+    if (p._normCode) {
+      if (!codeMap.has(p._normCode)) codeMap.set(p._normCode, []);
+      codeMap.get(p._normCode).push(p);
+    }
+  });
+
+  for (let i = 0; i < processedPrices.length; i++) {
     if (used.has(i)) continue;
-    const base = prices[i];
+    const base = processedPrices[i];
     const group = [base];
     used.add(i);
 
-    for (let j = i + 1; j < prices.length; j++) {
+    // 1. Intentar encontrar coincidencias exactas por código primero (O(S) donde S es # de proveedores)
+    if (base._normCode) {
+      const candidates = codeMap.get(base._normCode) || [];
+      for (const candidate of candidates) {
+        if (used.has(candidate._idx) || candidate.supplier_id === base.supplier_id) continue;
+        group.push(candidate);
+        used.add(candidate._idx);
+      }
+    }
+
+    // 2. Búsqueda difusa para el resto (solo si no se ha marcado como usado)
+    for (let j = i + 1; j < processedPrices.length; j++) {
       if (used.has(j)) continue;
-      const candidate = prices[j];
+      const candidate = processedPrices[j];
       if (candidate.supplier_id === base.supplier_id) continue;
 
-      const sameCode = base.product_code && candidate.product_code &&
-        base.product_code.trim().toLowerCase() === candidate.product_code.trim().toLowerCase();
-      const nameSim = similarity(base.product_name || '', candidate.product_name || '');
+      // Usamos los tokens ya calculados para la similitud
+      const nameSim = similarity(base._tokens, candidate._tokens);
 
-      if (sameCode || nameSim >= 0.55) {
+      if (nameSim >= 0.55) {
         group.push(candidate);
         used.add(j);
       }
@@ -45,7 +78,8 @@ function buildComparisons(prices) {
     }
   }
 
-  return groups;
+  // Limpiar metadatos internos antes de devolver
+  return groups.map(g => g.map(({ _idx, _normCode, _tokens, ...p }) => p));
 }
 
 // ── Highlight texto buscado ───────────────────────────────────────────────────
