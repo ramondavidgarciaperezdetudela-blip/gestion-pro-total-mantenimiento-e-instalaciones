@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Zap, Box, ZoomIn, Wand2 } from 'lucide-react';
+import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Zap, Box, ZoomIn, Wand2, Move } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { getNextAvailableNumber } from '@/components/autoNumber';
@@ -27,7 +27,7 @@ import Vista3DPlanoFrigorifico from '@/components/plano_frigorifico/Vista3DSegur
 import ControlMoverFlotante from '@/components/plano_frigorifico/ControlMoverFlotante';
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
 import { CAT_COLOR, CATEGORIAS, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
-import { generarIconoPlano, guardarIconoPlano } from '@/lib/iconoPlanoIA';
+import { generarIconoPlano, guardarIconoPlano, iconoPropio } from '@/lib/iconoPlanoIA';
 import { presupuestoAproximado } from '@/lib/instalacionCalculos';
 import { asArray } from '@/lib/asArray';
 import { generarVista3DPng } from '@/lib/planoVista3D';
@@ -56,6 +56,7 @@ export default function PlanoFrigorifico() {
   // Zoom del lienzo: agranda el dibujo y sus medidas para trabajar en planos
   // grandes sin que las cotas queden diminutas. El lienzo se desplaza.
   const [zoom, setZoom] = useState(1);
+  const [vistaKey, setVistaKey] = useState(0);
   const [snapMode, setSnapMode] = useState('libre');
   const [capasVisibles, setCapasVisibles] = useState(() => Object.fromEntries(CAPAS.map((c) => [c.id, true])));
   const [gmailDialog, setGmailDialog] = useState(false);
@@ -117,7 +118,13 @@ export default function PlanoFrigorifico() {
   const crearIconoIA = async (el) => {
     try {
       const catLabel = CATEGORIAS.find((c) => c.id === el.cat)?.label || el.cat;
-      const url = await generarIconoPlano(el.label, catLabel);
+      let url = '';
+      try {
+        url = await generarIconoPlano(el.label, catLabel);
+      } catch (errIA) {
+        toast.warning('La IA no ha podido generar el icono', { description: `${errIA.message} Se guarda el icono propio del equipo.` });
+        url = await iconoPropio(el);
+      }
       if (!url) { toast.error('No se pudo generar el icono'); return; }
       const previo = catalogoExtra.find((r) => r.std_id === el.id);
       await guardarIconoPlano({
@@ -142,13 +149,26 @@ export default function PlanoFrigorifico() {
     setHistTick((t) => t + 1);
   };
 
-  // Esc cierra la pantalla completa, igual que en el resto del programa.
+  // Esc: lo primero que hace es soltar lo que se está colocando (elemento del
+  // catálogo, pared, cota, conexión…) y quitar la selección. Solo si ya no hay
+  // nada en la mano cierra la pantalla completa, igual que en el resto del programa.
   useEffect(() => {
-    if (!fullscreen) return;
-    const h = (e) => { if (e.key === 'Escape') setFullscreen(false); };
+    const h = (e) => {
+      if (e.key !== 'Escape') return;
+      if (dialogoSala || dialogoCamara || ver3D || informeDialog || gmailDialog || conexionDialogo || iconosDialog || dialogoCatalogo) return;
+      if (mode !== 'select' || activeElement || activeType || selectedId) {
+        e.preventDefault();
+        setMode('select');
+        setActiveElement(null);
+        setActiveType(null);
+        setSelectedId(null);
+        return;
+      }
+      if (fullscreen) setFullscreen(false);
+    };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [fullscreen]);
+  }, [fullscreen, mode, activeElement, activeType, selectedId, dialogoSala, dialogoCamara, ver3D, informeDialog, gmailDialog, conexionDialogo, iconosDialog, dialogoCatalogo]);
 
   const cargarDatos = useCallback(async () => {
     setLoading(true);
@@ -316,9 +336,9 @@ export default function PlanoFrigorifico() {
   // además el origen (room_x, room_y) y las medidas (room_w_m, room_h_m) de
   // la sala, así al cambiar las medidas se pueden recalcular las cuatro
   // paredes sin perder la posición donde se dibujó.
-  const paredesDeSala = (x, y, w_m, h_m, scale, roomId) => {
+  const paredesDeSala = (x, y, w_m, h_m, scale, roomId, alto) => {
     const w = w_m * scale, h = h_m * scale;
-    const base = { room_id: roomId, room_x: x, room_y: y, room_w_m: w_m, room_h_m: h_m };
+    const base = { room_id: roomId, room_x: x, room_y: y, room_w_m: w_m, room_h_m: h_m, alto_m: alto };
     return [
       { ...base, id: crypto.randomUUID(), x1: x, y1: y, x2: x + w, y2: y },           // arriba
       { ...base, id: crypto.randomUUID(), x1: x + w, y1: y, x2: x + w, y2: y + h },  // derecha
@@ -327,20 +347,20 @@ export default function PlanoFrigorifico() {
     ];
   };
 
-  const crearSala = ({ ancho, largo }) => {
+  const crearSala = ({ ancho, largo, alto }) => {
     // Se coloca la nueva sala un poco apartada de lo que ya hay, para que no
     // caiga encima de paredes anteriores.
     const xs = plan.walls.map((w) => Math.max(w.x1, w.x2)).concat(plan.walls.map((w) => Math.min(w.x1, w.x2)));
     const baseX = xs.length ? Math.max(...xs) + 60 : 60;
     const roomId = crypto.randomUUID();
-    const nuevas = paredesDeSala(baseX, 60, ancho, largo, plan.scale || 50, roomId);
+    const nuevas = paredesDeSala(baseX, 60, ancho, largo, plan.scale || 50, roomId, alto);
     handleChange({ walls: [...plan.walls, ...nuevas] });
     setSelectedId(nuevas[0].id);
     setDialogoSala(null);
-    toast.success(`Sala ${ancho}×${largo} m dibujada`, { description: 'Selecciona una pared para cambiar sus medidas.' });
+    toast.success(`Sala ${ancho}×${largo} m, alto ${alto} m`, { description: 'Selecciona una pared para cambiar sus medidas o su alto.' });
   };
 
-  const actualizarSala = (roomId, { ancho, largo }) => {
+  const actualizarSala = (roomId, { ancho, largo, alto }) => {
     const ref = plan.walls.find((w) => w.room_id === roomId);
     if (!ref) { setDialogoSala(null); return; }
     const x = ref.room_x, y = ref.room_y, scale = plan.scale || 50;
@@ -359,11 +379,11 @@ export default function PlanoFrigorifico() {
       if (pared.room_id !== roomId) return pared;
       const [x1, y1, x2, y2] = coords[i] || coords[0];
       i += 1;
-      return { ...pared, x1, y1, x2, y2, room_w_m: ancho, room_h_m: largo };
+      return { ...pared, x1, y1, x2, y2, room_w_m: ancho, room_h_m: largo, alto_m: alto };
     });
     handleChange({ walls: nuevas });
     setDialogoSala(null);
-    toast.success(`Sala actualizada a ${ancho}×${largo} m`);
+    toast.success(`Sala actualizada a ${ancho}×${largo} m, alto ${alto} m`);
   };
 
   const borrarSala = (roomId) => {
@@ -391,22 +411,22 @@ export default function PlanoFrigorifico() {
     ];
   };
 
-  const crearCamara = ({ ancho, largo, tipo, suelo, espesor }) => {
+  const crearCamara = ({ ancho, largo, alto, tipo, suelo, espesor }) => {
     const xs = plan.walls.map((w) => Math.max(w.x1, w.x2)).concat(plan.walls.map((w) => Math.min(w.x1, w.x2)));
     const baseX = xs.length ? Math.max(...xs) + 80 : 80;
     const roomId = crypto.randomUUID();
-    const nuevas = paredesDeCamara(baseX, 80, ancho, largo, plan.scale || 50, roomId, { tipo, suelo, espesor_mm: espesor });
+    const nuevas = paredesDeCamara(baseX, 80, ancho, largo, plan.scale || 50, roomId, { tipo, suelo, espesor_mm: espesor, alto_m: alto });
     handleChange({ walls: [...plan.walls, ...nuevas] });
     setSelectedId(nuevas[0].id);
     setDialogoCamara(null);
-    toast.success(`Cámara ${ancho}×${largo} m · ${tipo}`, { description: `${suelo ? 'Con suelo sanitario' : 'Sin suelo sanitario'} · ${espesor} mm` });
+    toast.success(`Cámara ${ancho}×${largo} m, alto ${alto} m · ${tipo}`, { description: `${suelo ? 'Con suelo sanitario' : 'Sin suelo sanitario'} · ${espesor} mm` });
   };
 
   const actualizarCamara = (roomId, datos) => {
     const ref = plan.walls.find((w) => w.room_id === roomId && w.camara);
     if (!ref) { setDialogoCamara(null); return; }
     const x = ref.room_x, y = ref.room_y, scale = plan.scale || 50;
-    const { ancho, largo, tipo, suelo, espesor } = datos;
+    const { ancho, largo, alto, tipo, suelo, espesor } = datos;
     const w = ancho * scale, h = largo * scale;
     const coords = [
       [x, y, x + w, y],
@@ -419,16 +439,24 @@ export default function PlanoFrigorifico() {
       if (pared.room_id !== roomId) return pared;
       const [x1, y1, x2, y2] = coords[i] || coords[0];
       i += 1;
-      return { ...pared, x1, y1, x2, y2, room_w_m: ancho, room_h_m: largo, tipo, suelo, espesor_mm: espesor };
+      return { ...pared, x1, y1, x2, y2, room_w_m: ancho, room_h_m: largo, alto_m: alto, tipo, suelo, espesor_mm: espesor };
     });
     handleChange({ walls: nuevas });
     setDialogoCamara(null);
-    toast.success(`Cámara actualizada a ${ancho}×${largo} m`);
+    toast.success(`Cámara actualizada a ${ancho}×${largo} m, alto ${alto} m`);
   };
 
   const borrarCamara = (roomId) => {
     setPlan((p) => ({ ...p, walls: p.walls.filter((w) => w.room_id !== roomId) }));
     setSelectedId(null);
+  };
+
+  // Alto de las paredes de una sala o cámara (las cuatro a la vez) y de una pared suelta.
+  const cambiarAltoRecinto = (roomId, alto) => {
+    handleChange({ walls: plan.walls.map((w) => (w.room_id === roomId ? { ...w, alto_m: alto > 0 ? alto : undefined } : w)) });
+  };
+  const cambiarAltoPared = (wallId, alto) => {
+    handleChange({ walls: plan.walls.map((w) => (w.id === wallId ? { ...w, alto_m: alto > 0 ? alto : undefined } : w)) });
   };
 
   const onPick = ({ mode: m, element, connectType: ct }) => {
@@ -603,7 +631,7 @@ export default function PlanoFrigorifico() {
       finally { setActualizando3D(false); }
     }, 2500);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [firmaActual, plan.id]);
 
   const borrarPlano = async () => {
@@ -816,6 +844,16 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
             {z}×
           </button>
         ))}
+        <button onClick={() => { setZoom(1); setVistaKey((k) => k + 1); }} data-prueba="plano-centrar"
+          className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted" title="Volver a la vista inicial">
+          Centrar
+        </button>
+        <button onClick={() => setMode(mode === 'pan' ? 'select' : 'pan')} data-prueba="plano-mover"
+          className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-all"
+          title="Arrastra para desplazar el plano. También: botón central o derecho, barra espaciadora o arrastrar en un hueco."
+          style={mode === 'pan' ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
+          <Move className="w-3 h-3" /> Mover plano
+        </button>
       </div>
       <div className="w-px h-6 bg-border" />
       <div className="flex items-center gap-1.5 text-xs">
@@ -840,17 +878,18 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
     <div className="rounded-lg border border-border bg-card p-3 overflow-y-auto min-h-0 lg:h-full">
       <PlanoEquipoDetalles
         element={selectedElement} connection={selectedConnection} wall={selectedWall}
-        elements={plan.elements} scale={plan.scale}
+        elements={plan.elements} walls={plan.walls} scale={plan.scale}
+        onAltoRecinto={cambiarAltoRecinto} onAltoPared={cambiarAltoPared}
         onUpdate={selectedConnection ? actualizarConexion : actualizarElemento}
         onDelete={borrarSeleccion}
         onEditarSala={(roomId) => {
           const ref = plan.walls.find((w) => w.room_id === roomId);
-          if (ref) setDialogoSala({ roomId, ancho: ref.room_w_m, largo: ref.room_h_m });
+          if (ref) setDialogoSala({ roomId, ancho: ref.room_w_m, largo: ref.room_h_m, alto: ref.alto_m });
         }}
         onBorrarSala={borrarSala}
         onEditarCamara={(roomId) => {
           const ref = plan.walls.find((w) => w.room_id === roomId && w.camara);
-          if (ref) setDialogoCamara({ roomId, ancho: ref.room_w_m, largo: ref.room_h_m, tipo: ref.tipo, suelo: ref.suelo, espesor: ref.espesor_mm });
+          if (ref) setDialogoCamara({ roomId, ancho: ref.room_w_m, largo: ref.room_h_m, alto: ref.alto_m, tipo: ref.tipo, suelo: ref.suelo, espesor: ref.espesor_mm });
         }}
         onBorrarCamara={borrarCamara} />
       <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
@@ -1073,7 +1112,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                 <PlanoCanvas
                   walls={plan.walls} elements={plan.elements} connections={plan.connections}
                   selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-                  polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom}
+                  polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
                   capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen />
               </div>
               <div className="lg:w-[300px] lg:flex-shrink-0 lg:max-h-none">
@@ -1098,7 +1137,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               <PlanoCanvas
                 walls={plan.walls} elements={plan.elements} connections={plan.connections}
                 selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-                polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom}
+                polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
                 capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen={false} />
               {PanelLateral}
             </div>
@@ -1127,7 +1166,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       </button>
 
       {/* Visor 3D de la instalación */}
-      {ver3D && (
+      {ver3D && createPortal(
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-3 sm:p-4" onClick={() => setVer3D(false)}>
           <div className="w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-xl bg-card border border-border shadow-2xl p-3 sm:p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
@@ -1141,7 +1180,8 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
             </div>
             <Vista3DPlanoFrigorifico walls={plan.walls} elements={plan.elements} scale={plan.scale} />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Diálogo: enviar el plano por Gmail */}
@@ -1224,7 +1264,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           cuatro paredes, y al editar, las redibuja con las medidas nuevas. */}
       <DialogoSala
         open={!!dialogoSala}
-        valorInicial={dialogoSala && !dialogoSala.nuevo ? { ancho: dialogoSala.ancho, largo: dialogoSala.largo } : null}
+        valorInicial={dialogoSala && !dialogoSala.nuevo ? { ancho: dialogoSala.ancho, largo: dialogoSala.largo, alto: dialogoSala.alto } : null}
         onConfirm={(dims) => dialogoSala?.nuevo ? crearSala(dims) : actualizarSala(dialogoSala.roomId, dims)}
         onClose={() => setDialogoSala(null)} />
 
@@ -1234,7 +1274,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       <DialogoCamara
         open={!!dialogoCamara}
         valorInicial={dialogoCamara && !dialogoCamara.nuevo
-          ? { ancho: dialogoCamara.ancho, largo: dialogoCamara.largo, tipo: dialogoCamara.tipo, suelo: dialogoCamara.suelo, espesor: dialogoCamara.espesor }
+          ? { ancho: dialogoCamara.ancho, largo: dialogoCamara.largo, alto: dialogoCamara.alto, tipo: dialogoCamara.tipo, suelo: dialogoCamara.suelo, espesor: dialogoCamara.espesor }
           : null}
         onConfirm={(datos) => dialogoCamara?.nuevo ? crearCamara(datos) : actualizarCamara(dialogoCamara.roomId, datos)}
         onClose={() => setDialogoCamara(null)} />

@@ -296,6 +296,15 @@ export async function runRestoreJob(
     report();
 
     const E = entidades[ent];
+    // Una sección que el servidor no conoce no se puede restaurar: antes se
+    // contaba como hecha sin guardar nada y salía «Restauración completa».
+    if (!E || typeof E.bulkCreate !== 'function') {
+      avisos.push(`«${label}» no se ha restaurado: el servidor no tiene esa sección.`);
+      failed++;
+      setSeccion(ent, { fase: 'fallo' });
+      done++; report();
+      return;
+    }
     // Cuenta cuántos registros de ESTA sección se han mandado ya, para el
     // progreso por apartado.
     let hechosEnEnt = 0;

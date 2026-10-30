@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Loader2, Sparkles, Upload, Save, Trash2, Plus, Wand2, X } from 'lucide-react';
+import { Search, Loader2, Sparkles, Upload, Save, Trash2, Wand2, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { CATEGORIAS, CAT_COLOR, ELEMENTOS, elementosPorCategoria } from '@/lib/planoFrigorificoCatalogo';
-import { generarIconoPlano, guardarIconoPlano } from '@/lib/iconoPlanoIA';
+import { toast } from 'sonner';
+import { uploadFile } from '@/lib/uploadImage';
+import { generarIconoPlano, guardarIconoPlano, iconoPropio } from '@/lib/iconoPlanoIA';
 import PlanoSimbolo from './PlanoSimbolo';
 
 /**
@@ -85,7 +87,7 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
         await base44.entities.PlanoCatalogItem.update(item.id, { image_url: url });
         setItems((arr) => arr.map((x) => x.id === item.id ? { ...x, image_url: url } : x));
       }
-    } catch (e) { alert('No se pudo generar el icono: ' + (e?.message || e)); }
+    } catch (e) { toast.error('No se pudo generar el icono:', { description: String(e?.message || e) }); }
     finally { setBusyId(null); }
   };
 
@@ -93,14 +95,13 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
     if (!file) return;
     setBusyId(item.id);
     try {
-      const up = await base44.integrations.Core.UploadPublicFile({ file });
-      const url = up?.file_url || up?.url || '';
+      const url = await uploadFile(file);
       if (url) {
         await base44.entities.PlanoCatalogItem.update(item.id, { image_url: url });
         setItems((arr) => arr.map((x) => x.id === item.id ? { ...x, image_url: url } : x));
         setManualUrl('');
       }
-    } catch (e) { alert('No se pudo subir la imagen: ' + (e?.message || e)); }
+    } catch (e) { toast.error('No se pudo subir la imagen:', { description: String(e?.message || e) }); }
     finally { setBusyId(null); }
   };
 
@@ -111,17 +112,17 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
       await base44.entities.PlanoCatalogItem.update(item.id, { image_url: manualUrl.trim() });
       setItems((arr) => arr.map((x) => x.id === item.id ? { ...x, image_url: manualUrl.trim() } : x));
       setManualUrl('');
-    } catch (e) { alert('No se pudo guardar la URL: ' + (e?.message || e)); }
+    } catch (e) { toast.error('No se pudo guardar la URL:', { description: String(e?.message || e) }); }
     finally { setBusyId(null); }
   };
 
   const borrar = async (item) => {
-    if (!confirm(`¿Borrar «${item.name}» del catálogo?`)) return;
+    
     try {
       await base44.entities.PlanoCatalogItem.delete(item.id);
       setItems((arr) => arr.filter((x) => x.id !== item.id));
       onSaved?.();
-    } catch (e) { alert('No se pudo borrar: ' + (e?.message || e)); }
+    } catch (e) { toast.error('No se pudo borrar:', { description: String(e?.message || e) }); }
   };
 
   // Crea la versión IA de un símbolo de fábrica: lo guarda como PlanoCatalogItem
@@ -131,7 +132,15 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
     setGenStd((s) => ({ ...s, [el.id]: true }));
     try {
       const catLabel = CATEGORIAS.find((c) => c.id === el.cat)?.label || el.cat;
-      const url = await generarIconoPlano(el.label, catLabel);
+      let url = '';
+      try {
+        url = await generarIconoPlano(el.label, catLabel);
+      } catch (errIA) {
+        // La IA no está disponible (sin permiso, sin créditos, sin conexión…):
+        // se crea igualmente el icono con el dibujo del equipo.
+        toast.warning('La IA no ha podido generar el icono', { description: `${errIA.message} Se guarda el icono propio del equipo; podrás regenerarlo con IA más tarde.` });
+        url = await iconoPropio(el);
+      }
       if (url) {
         // Se guarda como la versión IA de ESE símbolo (std_id), no como un
         // equipo aparte: así al pulsarlo en la paleta se elige entre las dos.
@@ -143,7 +152,7 @@ export default function GestorIconosPlano({ open, onClose, onSaved }) {
         await cargar();
         onSaved?.();
       }
-    } catch (e) { alert('No se pudo generar: ' + (e?.message || e)); }
+    } catch (e) { toast.error('No se pudo generar:', { description: String(e?.message || e) }); }
     finally { setGenStd((s) => ({ ...s, [el.id]: false })); }
   };
 

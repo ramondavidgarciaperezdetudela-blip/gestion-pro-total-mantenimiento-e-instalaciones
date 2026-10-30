@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Snowflake, Ruler, Layers } from 'lucide-react';
 
 /**
@@ -16,9 +17,13 @@ import { Snowflake, Ruler, Layers } from 'lucide-react';
  * Si llega `valorInicial` (al editar una cámara ya dibujada), parte de esos
  * valores y el botón dice "Actualizar".
  */
+// Admite coma o punto decimal (3,5 o 3.5).
+const aNum = (t) => parseFloat(String(t).replace(',', '.'));
+
 export default function DialogoCamara({ open, valorInicial, onConfirm, onClose }) {
   const [ancho, setAncho] = useState('3');
   const [largo, setLargo] = useState('3');
+  const [alto, setAlto] = useState('2.5');
   const [tipo, setTipo] = useState('positiva');
   const [suelo, setSuelo] = useState(true);
   const [espesor, setEspesor] = useState('100');
@@ -28,6 +33,7 @@ export default function DialogoCamara({ open, valorInicial, onConfirm, onClose }
     if (!open) return;
     setAncho(valorInicial?.ancho != null ? String(valorInicial.ancho) : '3');
     setLargo(valorInicial?.largo != null ? String(valorInicial.largo) : '3');
+    setAlto(valorInicial?.alto != null ? String(valorInicial.alto) : '2.5');
     setTipo(valorInicial?.tipo || 'positiva');
     setSuelo(valorInicial?.suelo !== false);
     setEspesor(valorInicial?.espesor != null ? String(valorInicial.espesor) : '100');
@@ -37,15 +43,17 @@ export default function DialogoCamara({ open, valorInicial, onConfirm, onClose }
   if (!open) return null;
 
   const aceptar = () => {
-    const a = parseFloat(ancho);
-    const l = parseFloat(largo);
-    if (!(a > 0) || !(l > 0)) { setError('Las dos medidas deben ser mayores que 0.'); return; }
-    onConfirm({ ancho: a, largo: l, tipo, suelo: !!suelo, espesor: parseInt(espesor, 10) || 100 });
+    const a = aNum(ancho);
+    const l = aNum(largo);
+    const h = aNum(alto);
+    if (!(a > 0) || !(l > 0) || !(h > 0)) { setError('El ancho, el largo y el alto deben ser mayores que 0.'); return; }
+    onConfirm({ ancho: a, largo: l, alto: h, tipo, suelo: !!suelo, espesor: parseInt(espesor, 10) || 100 });
   };
 
   const colorTipo = tipo === 'positiva' ? '#3b82f6' : '#ef4444';
 
-  return (
+  // En un portal sobre <body>: así queda por encima de la pantalla completa del editor.
+  return createPortal(
     <div className="fixed inset-0 z-[10002] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-xl bg-card border border-border p-4 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 mb-3">
@@ -60,7 +68,7 @@ export default function DialogoCamara({ open, valorInicial, onConfirm, onClose }
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <label className="flex flex-col gap-1">
             <span className="text-[10px] text-muted-foreground flex items-center gap-1">
               <Ruler className="w-3 h-3" /> Ancho (m)
@@ -74,6 +82,13 @@ export default function DialogoCamara({ open, valorInicial, onConfirm, onClose }
             </span>
             <input inputMode="decimal" value={largo} onChange={(e) => setLargo(e.target.value)} placeholder="3"
               className="rounded-md border border-border bg-input px-2 py-1.5 text-xs" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <Ruler className="w-3 h-3" /> Alto (m)
+            </span>
+            <input inputMode="decimal" value={alto} onChange={(e) => setAlto(e.target.value)} placeholder="2,5"
+              data-prueba="camara-alto" className="rounded-md border border-border bg-input px-2 py-1.5 text-xs" />
           </label>
         </div>
 
@@ -132,8 +147,8 @@ export default function DialogoCamara({ open, valorInicial, onConfirm, onClose }
         {/* Vista previa de la proporción */}
         <div className="mt-3 flex items-end justify-center rounded-md border border-border bg-muted/30 py-3" style={{ height: 90 }}>
           {(() => {
-            const a = Math.max(parseFloat(ancho) || 0, 0.1);
-            const l = Math.max(parseFloat(largo) || 0, 0.1);
+            const a = Math.max(aNum(ancho) || 0, 0.1);
+            const l = Math.max(aNum(largo) || 0, 0.1);
             const maxW = 140, maxH = 60;
             const k = Math.min(maxW / a, maxH / l);
             return (
@@ -159,6 +174,7 @@ export default function DialogoCamara({ open, valorInicial, onConfirm, onClose }
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

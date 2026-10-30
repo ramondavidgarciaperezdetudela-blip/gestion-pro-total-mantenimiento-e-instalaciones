@@ -23,6 +23,13 @@ import PlanoSimbolo from './PlanoSimbolo';
 export const CANVAS_W = 1600;
 export const CANVAS_H = 1100;
 
+// Giro (grados) y espejo de un icono: se guardan en el elemento como rot, flip_x, flip_y.
+export function transformacionIcono(el) {
+  const r = Number(el.rot) || 0;
+  const fx = el.flip_x ? -1 : 1, fy = el.flip_y ? -1 : 1;
+  return `translate(${el.x},${el.y})${r ? ` rotate(${r})` : ''}${fx === -1 || fy === -1 ? ` scale(${fx},${fy})` : ''}`;
+}
+
 function distSeg(px, py, x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1;
   const l2 = dx * dx + dy * dy;
@@ -71,9 +78,22 @@ function capaConexion(c) {
 export default function PlanoCanvas({
   walls, elements, connections, selectedId, mode, activeElement, connectType, polyline,
   scale = 50, gridMeters = 1, snapMode = 'libre', capasVisibles = {}, onChange,
-  onConexionCreada, fullscreen = false, zoom = 1,
+  onConexionCreada, fullscreen = false, zoom = 1, onZoom, vistaKey = 0,
 }) {
   const svgRef = useRef(null);
+  // Desplazamiento de la vista: esquina superior izquierda de lo que se ve, en
+  // unidades del lienzo. El zoom y el desplazamiento se hacen con el viewBox,
+  // no con barras de scroll, así se puede arrastrar el plano en cualquier
+  // pantalla (ratón, trackpad o dedo).
+  const [vista, setVista] = useState({ x: 0, y: 0 });
+  const [panDrag, setPanDrag] = useState(null);
+  const [espacio, setEspacio] = useState(false);
+  const vistaRef = useRef(vista);
+  const zoomRef = useRef(zoom);
+  const zoomPrevio = useRef(zoom);
+  vistaRef.current = vista;
+  zoomRef.current = zoom;
+  const vw = CANVAS_W / zoom, vh = CANVAS_H / zoom;
   const [mouse, setMouse] = useState(null);
   const [wallStart, setWallStart] = useState(null);
   const [drag, setDrag] = useState(null);
@@ -94,11 +114,28 @@ export default function PlanoCanvas({
   const visible = (el) => capasVisibles[capaDe(el)] !== false;
   const connVisible = (c) => capasVisibles[capaConexion(c)] !== false;
 
+  // Punto del lienzo bajo el puntero. Usa la matriz real del SVG, así es exacto
+  // con cualquier zoom, desplazamiento o bandas laterales de la pantalla.
   const toSvg = (e) => {
-    const rect = svgRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * CANVAS_W;
-    const y = ((e.clientY - rect.top) / rect.height) * CANVAS_H;
-    return { x, y };
+    const svg = svgRef.current;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    const r = pt.matrixTransform(ctm.inverse());
+    return { x: r.x, y: r.y };
+  };
+  const limitarVista = (v, z = zoomRef.current) => {
+    const ancho = CANVAS_W / z, alto = CANVAS_H / z;
+    const mx = ancho * 0.15, my = alto * 0.15;
+    return {
+      x: Math.min(Math.max(v.x, Math.min(0, CANVAS_W - ancho) - mx), Math.max(0, CANVAS_W - ancho) + mx),
+      y: Math.min(Math.max(v.y, Math.min(0, CANVAS_H - alto) - my), Math.max(0, CANVAS_H - alto) + my),
+    };
+  };
+  const iniciarPan = (e) => {
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    setPanDrag({ sx: e.clientX, sy: e.clientY, vx: vista.x, vy: vista.y });
   };
   const snap = (v) => Math.round(v / snapStep) * snapStep;
 
@@ -117,7 +154,8 @@ export default function PlanoCanvas({
       }
       return false;
     }
-    const w = (el.w_m || 0.5) * scale, h = (el.h_m || 0.5) * scale;
+    let w = (el.w_m || 0.5) * scale, h = (el.h_m || 0.5) * scale;
+    if ((Math.round((Number(el.rot) || 0) / 90) % 2 + 2) % 2 === 1) [w, h] = [h, w];
     const x0 = el.x - w / 2, y0 = el.y - h / 2;
     return p.x >= x0 && p.x <= x0 + w && p.y >= y0 && p.y <= y0 + h;
   });
@@ -154,6 +192,8 @@ export default function PlanoCanvas({
   };
 
   const handleDown = (e) => {
+    // Desplazar el plano: botón central o derecho, barra espaciadora o herramienta «Mover plano».
+    if (e.button === 1 || e.button === 2 || espacio || mode === 'pan') { e.preventDefault(); iniciarPan(e); return; }
     const raw = toSvg(e);
     const p = { x: snap(raw.x), y: snap(raw.y) };
 
@@ -244,7 +284,9 @@ export default function PlanoCanvas({
       }
       const wall = walls.find((w) => distSeg(p.x, p.y, w.x1, w.y1, w.x2, w.y2) < 8);
       if (wall) { onChange({ selectedId: wall.id }); return; }
+      // Pulsar en un hueco: se deselecciona y, si se arrastra, se desplaza el plano.
       onChange({ selectedId: null });
+      iniciarPan(e);
       return;
     }
 
@@ -265,6 +307,13 @@ export default function PlanoCanvas({
   };
 
   const handleMove = (e) => {
+    if (panDrag) {
+      if (e.buttons === 0) { setPanDrag(null); return; }
+      const ctm = svgRef.current.getScreenCTM();
+      const k = ctm ? ctm.a : 1;
+      setVista(limitarVista({ x: panDrag.vx - (e.clientX - panDrag.sx) / k, y: panDrag.vy - (e.clientY - panDrag.sy) / k }));
+      return;
+    }
     if (e.buttons === 0 && drag) { setDrag(null); }
     const raw = toSvg(e);
     const p = { x: snap(raw.x), y: snap(raw.y) };
@@ -303,6 +352,7 @@ export default function PlanoCanvas({
   };
 
   const handleUp = () => {
+    if (panDrag) { setPanDrag(null); return; }
     if (drag) setDrag(null);
     // Cerrar el trazo a mano alzada al soltar el puntero.
     if (mode === 'trazo' && trazoPts && trazoPts.length > 1) {
@@ -322,6 +372,57 @@ export default function PlanoCanvas({
     return () => window.removeEventListener('keydown', h);
   }, []);
 
+  // Barra espaciadora: mientras se mantiene, arrastrar desplaza el plano.
+  useEffect(() => {
+    const enCampo = (t) => t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+    const abajo = (e) => { if (e.code === 'Space' && !enCampo(e.target)) { e.preventDefault(); setEspacio(true); } };
+    const arriba = (e) => { if (e.code === 'Space') setEspacio(false); };
+    window.addEventListener('keydown', abajo);
+    window.addEventListener('keyup', arriba);
+    return () => { window.removeEventListener('keydown', abajo); window.removeEventListener('keyup', arriba); };
+  }, []);
+
+  // Rueda: desplaza el plano; con Ctrl (o pellizco del trackpad) acerca o aleja
+  // manteniendo fijo el punto que hay bajo el puntero.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return undefined;
+    const rueda = (e) => {
+      e.preventDefault();
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return;
+      const z = zoomRef.current, v = vistaRef.current;
+      if (e.ctrlKey || e.metaKey) {
+        const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+        const q = pt.matrixTransform(ctm.inverse());
+        const z2 = Math.min(4, Math.max(0.5, z * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+        const f = z / z2;
+        zoomPrevio.current = z2;
+        setVista(limitarVista({ x: q.x - (q.x - v.x) * f, y: q.y - (q.y - v.y) * f }, z2));
+        if (onZoom) onZoom(Math.round(z2 * 100) / 100);
+      } else {
+        setVista(limitarVista({ x: v.x + e.deltaX / ctm.a, y: v.y + e.deltaY / ctm.a }));
+      }
+    };
+    svg.addEventListener('wheel', rueda, { passive: false });
+    return () => svg.removeEventListener('wheel', rueda);
+     
+  }, [onZoom]);
+
+  // Si el zoom cambia con los botones, se conserva el centro de lo que se ve.
+  useEffect(() => {
+    if (zoomPrevio.current === zoom) return;
+    const previo = zoomPrevio.current;
+    zoomPrevio.current = zoom;
+    const v = vistaRef.current;
+    const cxv = v.x + CANVAS_W / previo / 2, cyv = v.y + CANVAS_H / previo / 2;
+    setVista(limitarVista({ x: cxv - CANVAS_W / zoom / 2, y: cyv - CANVAS_H / zoom / 2 }, zoom));
+     
+  }, [zoom]);
+
+  // «Centrar»: vuelve a la esquina inicial.
+  useEffect(() => { setVista({ x: 0, y: 0 }); }, [vistaKey]);
+
   const m = (px) => (px / scale).toFixed(2);
   const elementosVisibles = useMemo(() => elements.filter(visible), [elements, capasVisibles]);
   const conexionesVisibles = useMemo(() => connections.filter(connVisible), [connections, capasVisibles]);
@@ -340,20 +441,20 @@ export default function PlanoCanvas({
   const paredesNormales = useMemo(() => walls.filter((w) => !w.camara), [walls]);
 
   return (
-    <div className="overflow-auto rounded-lg border border-border bg-card"
-      style={fullscreen ? { height: '100%', minHeight: 0, overflow: 'auto' } : { maxHeight: '75vh', overflow: 'auto' }}>
+    <div className="overflow-hidden rounded-lg border border-border bg-card"
+      style={fullscreen ? { height: '100%', minHeight: 0 } : { aspectRatio: `${CANVAS_W} / ${CANVAS_H}`, maxHeight: '75vh', width: '100%' }}>
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
+        viewBox={`${vista.x} ${vista.y} ${vw} ${vh}`}
+        data-prueba="plano-svg"
+        data-vista={`${Math.round(vista.x)},${Math.round(vista.y)}`}
+        onContextMenu={(e) => e.preventDefault()}
         style={{
-          // El zoom agranda el dibujo (y sus medidas) y el contenedor deja
-          // desplazarse: así se trabaja cómodo en planos grandes.
-          width: `${Math.round(zoom * 100)}%`,
-          minWidth: 0,
-          height: fullscreen && zoom <= 1 ? '100%' : 'auto',
+          width: '100%',
+          height: '100%',
           display: 'block',
           touchAction: 'none',
-          cursor: (mode === 'wall' || mode === 'connect' || mode === 'cota' || mode === 'trazo') ? 'crosshair' : mode === 'eraser' ? 'cell' : mode === 'text' ? 'text' : mode === 'select' ? 'default' : 'copy',
+          cursor: panDrag ? 'grabbing' : (espacio || mode === 'pan') ? 'grab' : (mode === 'wall' || mode === 'connect' || mode === 'cota' || mode === 'trazo') ? 'crosshair' : mode === 'eraser' ? 'cell' : mode === 'text' ? 'text' : mode === 'select' ? 'default' : 'copy',
         }}
         onPointerDown={handleDown}
         onPointerMove={handleMove}
@@ -489,7 +590,7 @@ export default function PlanoCanvas({
           // ── Texto: anotación libre sobre el plano ──
           if (el.type === 'texto') {
             return (
-              <g key={el.id} transform={`translate(${el.x},${el.y})`} style={{ cursor: mode === 'select' ? 'move' : 'default' }}>
+              <g key={el.id} transform={transformacionIcono(el)} style={{ cursor: mode === 'select' ? 'move' : 'default' }}>
                 {sel && <rect x={-4} y={-14} width={Math.max(40, (el.datos?.text || '').length * 6.5)} height={22} rx={3} fill="#64748b22" stroke="#64748b" strokeWidth="1" />}
                 <text x={0} y={2} textAnchor="start" fontSize="16" fontWeight="700" fill={el.color || '#e2e8f0'} style={{ pointerEvents: 'none' }}>{el.datos?.text || 'Texto'}</text>
               </g>
@@ -532,12 +633,15 @@ export default function PlanoCanvas({
             );
           }
 
-          const w = (el.w_m || 0.5) * scale, h = (el.h_m || 0.5) * scale;
-          const y0 = el.y - h / 2;
+          let h = (el.h_m || 0.5) * scale;
+          if ((Math.round((Number(el.rot) || 0) / 90) % 2 + 2) % 2 === 1) h = (el.w_m || 0.5) * scale;
+          h = Math.max(14, h);
           return (
             <g key={el.id} transform={`translate(${el.x},${el.y})`} style={{ cursor: mode === 'select' ? 'move' : 'default' }}>
-              <PlanoSimbolo el={el} scale={scale} selected={sel} fromHere={fromHere} />
-              <text x={0} y={y0 + h + 15} textAnchor="middle" fontSize="13" fontWeight="600" fill="hsl(var(--foreground))" style={{ pointerEvents: 'none' }}>{el.label}</text>
+              <g transform={transformacionIcono({ ...el, x: 0, y: 0 })}>
+                <PlanoSimbolo el={el} scale={scale} selected={sel} fromHere={fromHere} />
+              </g>
+              <text x={0} y={h / 2 + 15} textAnchor="middle" fontSize="13" fontWeight="600" fill="hsl(var(--foreground))" style={{ pointerEvents: 'none' }}>{el.label}</text>
             </g>
           );
         })}
