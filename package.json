@@ -1,7 +1,7 @@
 {
   "name": "gestion-pro-total-fuera-base44",
   "private": true,
-  "version": "1.77.0",
+  "version": "1.77.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -35,6 +35,7 @@
   "dependencies": {
     "@bcyesil/capacitor-plugin-printer": "^0.0.6",
     "@capacitor/android": "^8.4.0",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.4.0",
     "@capacitor/filesystem": "^8.1.3",
     "@capacitor/share": "^8.0.1",

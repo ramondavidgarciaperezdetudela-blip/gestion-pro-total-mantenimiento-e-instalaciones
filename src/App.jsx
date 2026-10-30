@@ -29,6 +29,7 @@ import AvisoDireccionPublica from '@/components/AvisoDireccionPublica';
 import RecordarTrabajo from '@/components/RecordarTrabajo';
 import AvisoRecuperado from '@/components/AvisoRecuperado';
 import VinculadorAutomatico from '@/components/VinculadorAutomatico';
+import AccesosDirectos from '@/components/AccesosDirectos';
 const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
 
 class ErrorBoundary extends Component {
@@ -240,6 +241,7 @@ function App() {
         <QueryClientProvider client={queryClientInstance}>
           <Router>
             <NavigationTracker />
+            <AccesosDirectos />
             {/* Recuerda la pantalla y lo escrito por si Android cierra la
                 aplicación mientras se consulta otra cosa en el móvil. */}
             <RecordarTrabajo />

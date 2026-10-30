@@ -107,6 +107,11 @@ jobs:
         # Va DESPUES de cap add/sync, que regeneran el proyecto entero.
         run: python3 scripts/permitir-ia-en-red-local.py android
 
+      - name: Accesos directos en la pantalla de inicio de Android
+        # Mantener pulsado el icono: SAT, Agenda, Clientes, Documentos, Plano y
+        # Copias. Va DESPUÉS de cap add/sync, que regeneran el proyecto entero.
+        run: python3 scripts/anadir-accesos-directos.py android
+
       - name: Generate Android app icon (same icon as desktop installers)
         run: npx @capacitor/assets generate --android
 
