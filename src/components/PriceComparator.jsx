@@ -158,13 +158,26 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
   };
 
   // Calcular columnas únicas de proveedores que aparecen en los grupos filtrados
+  // Optimización Bolt: O(N+S) usando Maps para evitar búsquedas repetidas en arrays grandes
   const supplierCols = useMemo(() => {
-    const ids = [...new Set(filtered.flatMap(g => g.map(p => p.supplier_id)))];
-    return ids.map(id => {
-      const supp = suppliers.find(s => s.id === id);
-      const sample = filtered.flatMap(g => g).find(p => p.supplier_id === id);
-      return { id, name: supp?.name || sample?.supplier_name || id, logo_url: supp?.logo_url };
-    }).sort((a, b) => a.name.localeCompare(b.name));
+    const supplierMap = new Map(suppliers.map(s => [s.id, s]));
+    const foundSuppliers = new Map();
+
+    for (const group of filtered) {
+      for (const item of group) {
+        const sId = item.supplier_id;
+        if (sId && !foundSuppliers.has(sId)) {
+          const supp = supplierMap.get(sId);
+          foundSuppliers.set(sId, {
+            id: sId,
+            name: supp?.name || item.supplier_name || sId,
+            logo_url: supp?.logo_url
+          });
+        }
+      }
+    }
+
+    return Array.from(foundSuppliers.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [filtered, suppliers]);
 
   if (prices.length === 0) {
