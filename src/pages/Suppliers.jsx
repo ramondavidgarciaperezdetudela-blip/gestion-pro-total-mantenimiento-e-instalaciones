@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,6 +83,94 @@ const EMPTY_FORM = {
 
 const EMPTY_COMMERCIAL = { name: '', phone: '', whatsapp: '', email: '', notes: '' };
 
+const getDaysUntilReorder = (lastDate, frequency) => {
+  if (!lastDate) return 0;
+  const last = new Date(lastDate);
+  const nextDate = new Date(last.getTime() + (frequency || 30) * 24 * 60 * 60 * 1000);
+  const days = Math.ceil((nextDate - new Date()) / (24 * 60 * 60 * 1000));
+  return days;
+};
+
+const SupplierCard = React.memo(({ s, onEdit, onDelete }) => {
+  const daysUntilReorder = getDaysUntilReorder(s.last_order_date, s.reorder_frequency_days);
+  const needsReorder = daysUntilReorder <= 7 && s.enable_notifications;
+
+  return (
+    <Card className={`hover:shadow-md transition-shadow ${needsReorder ? 'border-amber-300 bg-amber-50' : ''}`}>
+       <CardContent className="p-4">
+         <div className="flex items-start gap-3">
+           {/* Logo como foto del proveedor */}
+           <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden border border-slate-200 flex-shrink-0">
+             {s.logo_url ?
+            <img src={s.logo_url} alt={s.name} className="w-full h-full object-cover" /> :
+
+            <Building2 className="w-6 h-6 text-slate-400" />
+            }
+           </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <h3 className="px-2 py-1 font-semibold">{s.name}</h3>
+              <Badge variant="outline" className="text-[10px]">{s.category}</Badge>
+              {s.api_key && <Badge className="bg-green-100 text-green-700 text-[10px]"><Key className="w-2.5 h-2.5 mr-1" />API</Badge>}
+              {needsReorder && <Badge className="bg-amber-100 text-amber-700 text-[10px]"><Bell className="w-2.5 h-2.5 mr-1" />Revisar</Badge>}
+            </div>
+
+            {s.enable_notifications && s.last_order_date &&
+            <div className="mb-2 p-2 bg-white rounded border border-amber-200 text-xs">
+                <div className="flex items-center gap-1 text-gray-700">
+                  <Clock className="w-3 h-3" />
+                  <span>Próximo pedido: {daysUntilReorder > 0 ? `en ${daysUntilReorder} días` : 'HOY'}</span>
+                </div>
+              </div>
+            }
+
+            {s.notes && <p className="text-gray-500 mb-2 text-sm font-black">{s.notes}</p>}
+            <div className="flex flex-wrap gap-3 text-xs mb-2">
+              {s.phone && <a href={`tel:${s.phone}`} className="flex items-center gap-1 text-blue-600"><Phone className="w-3 h-3" />{s.phone}</a>}
+              {s.email && <a href={`mailto:${s.email}`} className="flex items-center gap-1 text-blue-600"><Mail className="w-3 h-3" />{s.email}</a>}
+            </div>
+
+            {s.commercials?.length > 0 &&
+            <div className="pt-2 border-t">
+                <p className="text-[10px] font-semibold text-gray-500 flex items-center gap-1 mb-1"><Users className="w-3 h-3" />Comerciales:</p>
+                <div className="flex flex-wrap gap-2">
+                  {s.commercials.map((c, i) =>
+                <div key={i} className="flex items-center gap-1 text-xs bg-gray-100 rounded px-2 py-1">
+                      <span className="font-medium text-gray-700">{c.name}</span>
+                      {c.phone && <a href={`tel:${c.phone}`} className="text-blue-500"><Phone className="w-3 h-3" /></a>}
+                      {c.whatsapp &&
+                  <a href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500">
+                          <MessageCircle className="w-3 h-3" />
+                        </a>
+                  }
+                    </div>
+                )}
+                </div>
+              </div>
+            }
+          </div>
+
+          <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+            {s.login_url &&
+            <a href={s.login_url} target="_blank" rel="noopener noreferrer"
+            className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Tienda online">
+                <ShoppingCart className="w-4 h-4" />
+              </a>
+            }
+            {s.website &&
+            <a href={s.website} target="_blank" rel="noopener noreferrer"
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Sitio web">
+                <Globe className="w-4 h-4" />
+              </a>
+            }
+            <button onClick={() => onEdit(s)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"><Edit className="w-4 h-4" /></button>
+            <button onClick={() => onDelete(s.id)} className="p-2 text-red-400 hover:text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>);
+});
+
 export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -130,7 +218,7 @@ export default function Suppliers() {
     }
   };
 
-  const handleEdit = (s) => {
+  const handleEdit = useCallback((s) => {
     setEditing(s);
     setForm({
       name: s.name || '', website: s.website || '', login_url: s.login_url || '',
@@ -144,7 +232,7 @@ export default function Suppliers() {
       enable_notifications: s.enable_notifications !== false, province: s.province || '', city: s.city || ''
     });
     setDialogOpen(true);
-  };
+  }, []);
 
   const handleAutoFetchLogo = async () => {
     setFetchingLogo(true);
@@ -218,102 +306,13 @@ export default function Suppliers() {
   const updateCommercial = (i, field, val) => setForm((prev) => ({ ...prev, commercials: prev.commercials.map((c, idx) => idx === i ? { ...c, [field]: val } : c) }));
   const removeCommercial = (i) => setForm((prev) => ({ ...prev, commercials: prev.commercials.filter((_, idx) => idx !== i) }));
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     await base44.entities.Supplier.delete(id);
-    setSuppliers(suppliers.filter((s) => s.id !== id));
-  };
+    setSuppliers(prev => prev.filter((s) => s.id !== id));
+  }, []);
 
-  const activeSuppliers = suppliers.filter((s) => s.is_active !== false);
-  const inactiveSuppliers = suppliers.filter((s) => s.is_active === false);
-
-  const getDaysUntilReorder = (lastDate, frequency) => {
-    if (!lastDate) return 0;
-    const last = new Date(lastDate);
-    const nextDate = new Date(last.getTime() + (frequency || 30) * 24 * 60 * 60 * 1000);
-    const days = Math.ceil((nextDate - new Date()) / (24 * 60 * 60 * 1000));
-    return days;
-  };
-
-  const SupplierCard = ({ s }) => {
-    const daysUntilReorder = getDaysUntilReorder(s.last_order_date, s.reorder_frequency_days);
-    const needsReorder = daysUntilReorder <= 7 && s.enable_notifications;
-
-    return (
-      <Card className={`hover:shadow-md transition-shadow ${needsReorder ? 'border-amber-300 bg-amber-50' : ''}`}>
-         <CardContent className="p-4">
-           <div className="flex items-start gap-3">
-             {/* Logo como foto del proveedor */}
-             <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden border border-slate-200 flex-shrink-0">
-               {s.logo_url ?
-              <img src={s.logo_url} alt={s.name} className="w-full h-full object-cover" /> :
-
-              <Building2 className="w-6 h-6 text-slate-400" />
-              }
-             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <h3 className="px-2 py-1 font-semibold">{s.name}</h3>
-                <Badge variant="outline" className="text-[10px]">{s.category}</Badge>
-                {s.api_key && <Badge className="bg-green-100 text-green-700 text-[10px]"><Key className="w-2.5 h-2.5 mr-1" />API</Badge>}
-                {needsReorder && <Badge className="bg-amber-100 text-amber-700 text-[10px]"><Bell className="w-2.5 h-2.5 mr-1" />Revisar</Badge>}
-              </div>
-              
-              {s.enable_notifications && s.last_order_date &&
-              <div className="mb-2 p-2 bg-white rounded border border-amber-200 text-xs">
-                  <div className="flex items-center gap-1 text-gray-700">
-                    <Clock className="w-3 h-3" />
-                    <span>Próximo pedido: {daysUntilReorder > 0 ? `en ${daysUntilReorder} días` : 'HOY'}</span>
-                  </div>
-                </div>
-              }
-              
-              {s.notes && <p className="text-gray-500 mb-2 text-sm font-black">{s.notes}</p>}
-              <div className="flex flex-wrap gap-3 text-xs mb-2">
-                {s.phone && <a href={`tel:${s.phone}`} className="flex items-center gap-1 text-blue-600"><Phone className="w-3 h-3" />{s.phone}</a>}
-                {s.email && <a href={`mailto:${s.email}`} className="flex items-center gap-1 text-blue-600"><Mail className="w-3 h-3" />{s.email}</a>}
-              </div>
-              
-              {s.commercials?.length > 0 &&
-              <div className="pt-2 border-t">
-                  <p className="text-[10px] font-semibold text-gray-500 flex items-center gap-1 mb-1"><Users className="w-3 h-3" />Comerciales:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {s.commercials.map((c, i) =>
-                  <div key={i} className="flex items-center gap-1 text-xs bg-gray-100 rounded px-2 py-1">
-                        <span className="font-medium text-gray-700">{c.name}</span>
-                        {c.phone && <a href={`tel:${c.phone}`} className="text-blue-500"><Phone className="w-3 h-3" /></a>}
-                        {c.whatsapp &&
-                    <a href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500">
-                            <MessageCircle className="w-3 h-3" />
-                          </a>
-                    }
-                      </div>
-                  )}
-                  </div>
-                </div>
-              }
-            </div>
-            
-            <div className="flex items-center gap-1 ml-auto flex-shrink-0">
-              {s.login_url &&
-              <a href={s.login_url} target="_blank" rel="noopener noreferrer"
-              className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Tienda online">
-                  <ShoppingCart className="w-4 h-4" />
-                </a>
-              }
-              {s.website &&
-              <a href={s.website} target="_blank" rel="noopener noreferrer"
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Sitio web">
-                  <Globe className="w-4 h-4" />
-                </a>
-              }
-              <button onClick={() => handleEdit(s)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"><Edit className="w-4 h-4" /></button>
-              <button onClick={() => handleDelete(s.id)} className="p-2 text-red-400 hover:text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>);
-
-  };
+  const activeSuppliers = useMemo(() => suppliers.filter((s) => s.is_active !== false), [suppliers]);
+  const inactiveSuppliers = useMemo(() => suppliers.filter((s) => s.is_active === false), [suppliers]);
 
   return (
     <div className="space-y-4">
@@ -598,11 +597,11 @@ export default function Suppliers() {
       </div>
 
       <div className="space-y-3">
-        {activeSuppliers.map((s) => <SupplierCard key={s.id} s={s} />)}
+        {activeSuppliers.map((s) => <SupplierCard key={s.id} s={s} onEdit={handleEdit} onDelete={handleDelete} />)}
         {inactiveSuppliers.length > 0 &&
         <div>
             <p className="text-xs text-gray-400 mb-2">Inactivos</p>
-            {inactiveSuppliers.map((s) => <SupplierCard key={s.id} s={s} />)}
+            {inactiveSuppliers.map((s) => <SupplierCard key={s.id} s={s} onEdit={handleEdit} onDelete={handleDelete} />)}
           </div>
         }
         {suppliers.length === 0 && <p className="text-center text-gray-400 py-6">No hay proveedores configurados</p>}
