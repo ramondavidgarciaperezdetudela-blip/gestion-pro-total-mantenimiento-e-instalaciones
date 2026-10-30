@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +13,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend
 } from 'recharts';
-import { format, subMonths, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, subMonths, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import CompanyHeader from '../components/CompanyHeader';
 import PrintButton from '../components/PrintButton';
@@ -40,79 +40,147 @@ export default function Reports() {
     });
   }, []);
 
-  const months = parseInt(period);
+  const stats = useMemo(() => {
+    const months = parseInt(period);
+    const cutoff = subMonths(new Date(), months);
+    const now = new Date();
 
-  // Facturas filtradas por período
-  const cutoff = subMonths(new Date(), months);
-  const filteredInvoices = data.invoices.filter(i => {
-    try { return i.date && parseISO(i.date) >= cutoff; } catch { return false; }
-  });
+    // Init single-pass buckets for monthly data
+    const monthlyBuckets = {};
+    for (let i = 0; i < Math.min(months, 12); i++) {
+      const d = subMonths(now, i);
+      const key = format(d, 'yyyy-MM');
+      monthlyBuckets[key] = {
+        name: format(d, 'MMM yy', { locale: es }),
+        facturado: 0,
+        cobrado: 0,
+        presupuestos: 0
+      };
+    }
 
-  // KPIs principales
-  const totalFacturado = filteredInvoices.filter(i => i.doc_type === 'factura').reduce((s, i) => s + (i.total || 0), 0);
-  const totalPagado = filteredInvoices.filter(i => i.status === 'pagado').reduce((s, i) => s + (i.total || 0), 0);
-  const pendienteCobro = filteredInvoices.filter(i => i.status === 'enviado').reduce((s, i) => s + (i.total || 0), 0);
-  const totalPresupuestado = filteredInvoices.filter(i => i.doc_type === 'presupuesto').reduce((s, i) => s + (i.total || 0), 0);
-  const factVencidas = data.invoices.filter(i => i.status === 'vencido').length;
-  const satCompletadas = data.sat.filter(s => s.status === 'completada').length;
-  const satPendientes = data.sat.filter(s => s.status === 'pendiente').length;
-  const satEnCurso = data.sat.filter(s => s.status === 'en_curso').length;
-  const stockBajoMinimo = data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock).length;
-  const clientesActivos = data.contacts.filter(c => c.type === 'cliente' && c.is_active !== false).length;
-  const ticketMedio = filteredInvoices.filter(i => i.doc_type === 'factura' && i.total > 0).length > 0
-    ? totalFacturado / filteredInvoices.filter(i => i.doc_type === 'factura' && i.total > 0).length
-    : 0;
+    // Single-pass processing for Invoices
+    let totalFacturado = 0;
+    let totalPagado = 0;
+    let pendienteCobro = 0;
+    let totalPresupuestado = 0;
+    let factVencidas = 0;
+    let invoiceCountForAvg = 0;
+    const clientMap = {};
+    const filteredInvoices = [];
 
-  // Gráfico mensual de facturación
-  const monthlyData = Array.from({ length: Math.min(months, 12) }, (_, i) => {
-    const d = subMonths(new Date(), i);
-    const label = format(d, 'MMM yy', { locale: es });
-    const start = startOfMonth(d);
-    const end = endOfMonth(d);
-    const monthInvoices = data.invoices.filter(inv => {
-      try { const dt = parseISO(inv.date); return isWithinInterval(dt, { start, end }); } catch { return false; }
+    data.invoices.forEach(i => {
+      const total = i.total || 0;
+      if (i.status === 'vencido') factVencidas++;
+
+      try {
+        if (!i.date) return;
+        const dt = parseISO(i.date);
+        if (dt < cutoff) return;
+
+        filteredInvoices.push(i);
+
+        // Monthly bucketing
+        const mKey = format(dt, 'yyyy-MM');
+        if (monthlyBuckets[mKey]) {
+          if (i.doc_type === 'factura') monthlyBuckets[mKey].facturado += total;
+          if (i.status === 'pagado') monthlyBuckets[mKey].cobrado += total;
+          if (i.doc_type === 'presupuesto') monthlyBuckets[mKey].presupuestos += total;
+        }
+
+        // Global KPIs
+        if (i.doc_type === 'factura') {
+          totalFacturado += total;
+          if (total > 0) invoiceCountForAvg++;
+          if (i.contact_name) {
+            clientMap[i.contact_name] = (clientMap[i.contact_name] || 0) + total;
+          }
+        }
+        if (i.status === 'pagado') totalPagado += total;
+        if (i.status === 'enviado') pendienteCobro += total;
+        if (i.doc_type === 'presupuesto') totalPresupuestado += total;
+      } catch (e) { /* skip invalid dates */ }
     });
+
+    const monthlyData = Object.values(monthlyBuckets).reverse();
+    const topClients = Object.entries(clientMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([name, total]) => ({ name, total }));
+
+    // SAT analytics
+    const satCounts = {};
+    const techMap = {};
+    let satCompletadas = 0;
+    let satPendientes = 0;
+    let satEnCurso = 0;
+
+    data.sat.forEach(s => {
+      if (s.status === 'completada') satCompletadas++;
+      else if (s.status === 'pendiente') satPendientes++;
+      else if (s.status === 'en_curso') satEnCurso++;
+
+      if (s.type) satCounts[s.type] = (satCounts[s.type] || 0) + 1;
+      if (s.technician) techMap[s.technician] = (techMap[s.technician] || 0) + 1;
+    });
+
+    const satByType = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia']
+      .map(t => ({
+        name: t.charAt(0).toUpperCase() + t.slice(1),
+        value: satCounts[t] || 0
+      }))
+      .filter(i => i.value > 0);
+
+    const techData = Object.entries(techMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value]) => ({ name, value }));
+
+    // Contacts & Stock
+    const contactsByType = ['cliente', 'proveedor', 'colaborador', 'otro']
+      .map(t => ({
+        name: t.charAt(0).toUpperCase() + t.slice(1),
+        value: data.contacts.filter(c => c.type === t).length
+      }))
+      .filter(i => i.value > 0);
+
+    const clientesActivos = data.contacts.filter(c => c.type === 'cliente' && c.is_active !== false).length;
+    const lowStock = data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock);
+    const stockBajoMinimo = lowStock.length;
+
+    const ticketMedio = invoiceCountForAvg > 0 ? totalFacturado / invoiceCountForAvg : 0;
+
+    const kpis = [
+      { title: 'Facturado', value: `${totalFacturado.toFixed(0)} €`, sub: `${months} meses`, icon: TrendingUp, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
+      { title: 'Cobrado', value: `${totalPagado.toFixed(0)} €`, sub: `${Math.round(totalPagado / Math.max(totalFacturado, 1) * 100)}% del total`, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
+      { title: 'Pendiente cobro', value: `${pendienteCobro.toFixed(0)} €`, sub: `${factVencidas} vencidas`, icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
+      { title: 'Presupuestado', value: `${totalPresupuestado.toFixed(0)} €`, sub: 'en presupuestos', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
+      { title: 'Ticket medio', value: `${ticketMedio.toFixed(0)} €`, sub: 'por factura', icon: DollarSign, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200' },
+      { title: 'Clientes activos', value: clientesActivos, sub: `${data.contacts.length} total`, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
+      { title: 'SAT completadas', value: satCompletadas, sub: `${satPendientes} pendientes`, icon: Wrench, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200' },
+      { title: 'Stock bajo mínimo', value: stockBajoMinimo, sub: 'artículos', icon: Package, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
+    ];
+
     return {
-      name: label,
-      facturado: monthInvoices.filter(i => i.doc_type === 'factura').reduce((s, i) => s + (i.total || 0), 0),
-      cobrado: monthInvoices.filter(i => i.status === 'pagado').reduce((s, i) => s + (i.total || 0), 0),
-      presupuestos: monthInvoices.filter(i => i.doc_type === 'presupuesto').reduce((s, i) => s + (i.total || 0), 0),
+      filteredInvoices,
+      monthlyData,
+      topClients,
+      satByType,
+      techData,
+      contactsByType,
+      clientesActivos,
+      lowStock,
+      stockBajoMinimo,
+      kpis,
+      satCompletadas,
+      satEnCurso,
+      satPendientes
     };
-  }).reverse();
+  }, [data, period]);
 
-  // Distribución trabajo por tipo
-  const satByType = ['reparacion', 'mantenimiento', 'instalacion', 'revision', 'urgencia'].map(t => ({
-    name: t.charAt(0).toUpperCase() + t.slice(1),
-    value: data.sat.filter(s => s.type === t).length
-  })).filter(i => i.value > 0);
-
-  // Contactos por tipo
-  const contactsByType = ['cliente', 'proveedor', 'colaborador', 'otro'].map(t => ({
-    name: t.charAt(0).toUpperCase() + t.slice(1),
-    value: data.contacts.filter(c => c.type === t).length
-  })).filter(i => i.value > 0);
-
-  // Top clientes por facturación
-  const clientMap = {};
-  filteredInvoices.filter(i => i.doc_type === 'factura').forEach(i => {
-    if (!i.contact_name) return;
-    clientMap[i.contact_name] = (clientMap[i.contact_name] || 0) + (i.total || 0);
-  });
-  const topClients = Object.entries(clientMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, total]) => ({ name, total }));
-
-  // Stock bajo mínimos
-  const lowStock = data.stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock);
-
-  const kpis = [
-    { title: 'Facturado', value: `${totalFacturado.toFixed(0)} €`, sub: `${months} meses`, icon: TrendingUp, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
-    { title: 'Cobrado', value: `${totalPagado.toFixed(0)} €`, sub: `${Math.round(totalPagado/Math.max(totalFacturado,1)*100)}% del total`, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
-    { title: 'Pendiente cobro', value: `${pendienteCobro.toFixed(0)} €`, sub: `${factVencidas} vencidas`, icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
-    { title: 'Presupuestado', value: `${totalPresupuestado.toFixed(0)} €`, sub: 'en presupuestos', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-    { title: 'Ticket medio', value: `${ticketMedio.toFixed(0)} €`, sub: 'por factura', icon: DollarSign, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200' },
-    { title: 'Clientes activos', value: clientesActivos, sub: `${data.contacts.length} total`, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-    { title: 'SAT completadas', value: satCompletadas, sub: `${satPendientes} pendientes`, icon: Wrench, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200' },
-    { title: 'Stock bajo mínimo', value: stockBajoMinimo, sub: 'artículos', icon: Package, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
-  ];
+  const {
+    filteredInvoices, monthlyData, topClients, satByType, techData,
+    contactsByType, lowStock, kpis,
+    satCompletadas, satEnCurso, satPendientes
+  } = stats;
 
   return (
     <div className="space-y-4">
@@ -176,7 +244,7 @@ export default function Reports() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip formatter={v => `${v.toFixed(2)} €`} />
+                      <Tooltip formatter={v => `${typeof v === 'number' ? v.toFixed(2) : v} €`} />
                       <Legend />
                       <Line type="monotone" dataKey="facturado" stroke="#8b5cf6" strokeWidth={2} dot={false} name="Facturado" />
                       <Line type="monotone" dataKey="cobrado" stroke="#10b981" strokeWidth={2} dot={false} name="Cobrado" />
