@@ -10,7 +10,7 @@
     },
     "name": {
       "type": "string",
-      "description": "Nombre o descripci\u00f3n del equipo"
+      "description": "Nombre o descripción del equipo"
     },
     "machine_type": {
       "type": "string",
@@ -44,7 +44,7 @@
     },
     "location": {
       "type": "string",
-      "description": "Ubicaci\u00f3n del equipo (ej: planta 1, sala t\u00e9cnica)"
+      "description": "Ubicación del equipo (ej: planta 1, sala técnica)"
     },
     "refrigerant_type": {
       "type": "string"
@@ -103,6 +103,162 @@
           }
         }
       }
+    },
+    "refrigerant_charge_kg": {
+      "type": "number",
+      "description": "Carga total de refrigerante del circuito (kg)"
+    },
+    "gwp_override": {
+      "type": "number",
+      "description": "PCA a usar si difiere del catálogo (anexo del Reglamento UE 2024/573)"
+    },
+    "co2e_tonnes": {
+      "type": "number",
+      "description": "Toneladas de CO2 equivalente (calculado: kg × PCA / 1000)"
+    },
+    "hermetically_sealed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Aparato sellado herméticamente y etiquetado como tal"
+    },
+    "leak_detection_system": {
+      "type": "boolean",
+      "default": false,
+      "description": "Sistema de detección de fugas instalado (art. 6)"
+    },
+    "residential": {
+      "type": "boolean",
+      "default": false,
+      "description": "Instalado en edificio residencial"
+    },
+    "leak_check_interval_months": {
+      "type": "number",
+      "description": "Periodicidad legal del control de fugas (calculada)"
+    },
+    "last_leak_check_date": {
+      "type": "string",
+      "description": "Fecha del último control de fugas",
+      "format": "date"
+    },
+    "next_leak_check_date": {
+      "type": "string",
+      "description": "Fecha del próximo control de fugas (calculada)",
+      "format": "date"
+    },
+    "last_detector_check_date": {
+      "type": "string",
+      "description": "Última revisión del sistema de detección de fugas",
+      "format": "date"
+    },
+    "last_maintenance_date": {
+      "type": "string",
+      "description": "Fecha del último mantenimiento preventivo",
+      "format": "date"
+    },
+    "oil_type": {
+      "type": "string",
+      "description": "Tipo de aceite del compresor",
+      "enum": [
+        "POE",
+        "PVE",
+        "Mineral",
+        "AB",
+        "PAG"
+      ]
+    },
+    "oil_charge_l": {
+      "type": "number",
+      "description": "Carga de aceite (litros)"
+    },
+    "expansion_device": {
+      "type": "string",
+      "description": "Dispositivo de expansión",
+      "enum": [
+        "valvula",
+        "capilar",
+        "electronica"
+      ],
+      "default": "valvula"
+    },
+    "compressor_type": {
+      "type": "string",
+      "description": "Tipo de compresor",
+      "enum": [
+        "rotativo",
+        "scroll",
+        "piston",
+        "tornillo",
+        "centrifugo",
+        "otro"
+      ]
+    },
+    "nominal_suction_pressure_bar": {
+      "type": "number",
+      "description": "Presión nominal de baja / succión (bar manométricos)"
+    },
+    "nominal_discharge_pressure_bar": {
+      "type": "number",
+      "description": "Presión nominal de alta / descarga (bar manométricos)"
+    },
+    "max_allowable_pressure_ps_bar": {
+      "type": "number",
+      "description": "Presión máxima admisible PS de placa (bar)"
+    },
+    "setpoint_cooling_c": {
+      "type": "number",
+      "description": "Consigna en modo frío (°C)"
+    },
+    "setpoint_heating_c": {
+      "type": "number",
+      "description": "Consigna en modo calor (°C)"
+    },
+    "setpoint_humidity_pct": {
+      "type": "number",
+      "description": "Consigna de humedad relativa (%)"
+    },
+    "cooling_capacity_kw": {
+      "type": "number",
+      "description": "Potencia frigorífica nominal total (kW)"
+    },
+    "cooling_sensible_kw": {
+      "type": "number",
+      "description": "Potencia frigorífica sensible nominal (kW)"
+    },
+    "heating_capacity_kw": {
+      "type": "number",
+      "description": "Potencia calorífica nominal (kW)"
+    },
+    "room_area_m2": {
+      "type": "number",
+      "description": "Área del local servido (m²)"
+    },
+    "room_sensible_load_w": {
+      "type": "number",
+      "description": "Carga sensible del local (W)"
+    },
+    "room_latent_load_w": {
+      "type": "number",
+      "description": "Carga latente del local (W)"
+    },
+    "load_safety_factor": {
+      "type": "number",
+      "description": "Factor de seguridad del cálculo de carga (0,10 = 10 %)",
+      "default": 0.1
+    },
+    "load_coverage_ratio": {
+      "type": "number",
+      "description": "Capacidad del equipo / demanda del local (calculado)"
+    },
+    "load_verdict": {
+      "type": "string",
+      "description": "Resultado de la verificación de carga",
+      "enum": [
+        "insuficiente",
+        "insuficiente_sensible",
+        "justo",
+        "adecuado",
+        "sobredimensionado"
+      ]
     }
   },
   "required": [
