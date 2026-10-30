@@ -5,43 +5,78 @@ import { Search, TrendingDown, Building2, Award, AlertCircle, X, Zap, FileText, 
 import { toast } from 'sonner';
 import ComparatorToBudgetDialog from './ComparatorToBudgetDialog';
 
-// ── Similitud de nombres ──────────────────────────────────────────────────────
-function similarity(a, b) {
-  const wordsA = a.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  const wordsB = b.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+// ── Similitud de nombres (Optimizado) ─────────────────────────────────────────
+/**
+ * Calcula la similitud entre dos conjuntos de palabras.
+ * @param {string[]} wordsA - Array de palabras del primer producto
+ * @param {string[]} wordsB - Array de palabras del segundo producto
+ */
+function similarity(wordsA, wordsB) {
   if (!wordsA.length || !wordsB.length) return 0;
-  const matches = wordsA.filter(w => wordsB.some(wb => wb.includes(w) || w.includes(wb)));
-  return matches.length / Math.max(wordsA.length, wordsB.length);
+
+  // Contamos coincidencias parciales (una palabra contenida en otra)
+  let matches = 0;
+  for (const wa of wordsA) {
+    for (const wb of wordsB) {
+      if (wa.includes(wb) || wb.includes(wa)) {
+        matches++;
+        break;
+      }
+    }
+  }
+
+  return matches / Math.max(wordsA.length, wordsB.length);
 }
 
-// ── Agrupa productos similares de distintos proveedores ───────────────────────
+// ── Agrupa productos similares de distintos proveedores (Optimizado) ──────────
 function buildComparisons(prices) {
   const used = new Set();
   const groups = [];
 
-  for (let i = 0; i < prices.length; i++) {
+  // Pre-procesado: Normalizar códigos y tokenizar nombres una sola vez O(N)
+  const prepared = prices.map(p => ({
+    ...p,
+    _code: p.product_code?.trim().toLowerCase() || null,
+    _tokens: (p.product_name || '').toLowerCase()
+      .split(/\s+/)
+      .filter(w => w.length > 3)
+  }));
+
+  for (let i = 0; i < prepared.length; i++) {
     if (used.has(i)) continue;
-    const base = prices[i];
+    const base = prepared[i];
     const group = [base];
     used.add(i);
 
-    for (let j = i + 1; j < prices.length; j++) {
+    for (let j = i + 1; j < prepared.length; j++) {
       if (used.has(j)) continue;
-      const candidate = prices[j];
+      const candidate = prepared[j];
+
+      // No comparar productos del mismo proveedor
       if (candidate.supplier_id === base.supplier_id) continue;
 
-      const sameCode = base.product_code && candidate.product_code &&
-        base.product_code.trim().toLowerCase() === candidate.product_code.trim().toLowerCase();
-      const nameSim = similarity(base.product_name || '', candidate.product_name || '');
+      // 1. Coincidencia exacta de código (O(1) tras normalización)
+      const sameCode = base._code && candidate._code && base._code === candidate._code;
 
-      if (sameCode || nameSim >= 0.55) {
+      if (sameCode) {
+        group.push(candidate);
+        used.add(j);
+        continue; // Saltar similitud de nombre si el código ya coincide
+      }
+
+      // 2. Similitud de nombre (O(M*K)) solo si falla el código
+      const nameSim = similarity(base._tokens, candidate._tokens);
+      if (nameSim >= 0.55) {
         group.push(candidate);
         used.add(j);
       }
     }
 
     if (group.length > 1) {
-      groups.push(group.sort((a, b) => (a.cost_price || 0) - (b.cost_price || 0)));
+      // Limpiar campos temporales y ordenar por precio
+      const cleanGroup = group.map(({ _code, _tokens, ...rest }) => rest)
+        .sort((a, b) => (a.cost_price || 0) - (b.cost_price || 0));
+      groups.push(cleanGroup);
     }
   }
 
@@ -208,7 +243,7 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
             </button>
           )}
           {search && (
-            <Badge className="bg-blue-100 text-blue-700 text-xs">
+                    <Badge variant="outline" className="bg-blue-100 text-blue-700 text-xs">
               {filtered.length} resultados
             </Badge>
           )}
@@ -320,8 +355,10 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
               {filtered.map((group, idx) => {
                 const best = group[0];
                 const worst = group[group.length - 1];
-                const savingPct = worst.cost_price > 0
-                  ? ((worst.cost_price - best.cost_price) / worst.cost_price * 100).toFixed(0)
+                const worstPrice = Number(worst.cost_price || 0);
+                const bestPrice = Number(best.cost_price || 0);
+                const savingPct = worstPrice > 0
+                  ? ((worstPrice - bestPrice) / worstPrice * 100).toFixed(0)
                   : 0;
 
                 // Mapa supplierId → item de este grupo
@@ -363,8 +400,10 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
                     {supplierCols.map(s => {
                       const item = bySupplier[s.id];
                       const isBest = item && item.id === best.id;
-                      const diffPct = item && best.cost_price > 0
-                        ? ((item.cost_price - best.cost_price) / best.cost_price * 100).toFixed(0)
+                      const bestCost = Number(best.cost_price || 0);
+                      const itemCost = item ? Number(item.cost_price || 0) : 0;
+                      const diffPct = item && bestCost > 0
+                        ? ((itemCost - bestCost) / bestCost * 100).toFixed(0)
                         : null;
 
                       return (
@@ -379,7 +418,7 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
                               </div>
                               {isBest
                                 ? <span className="text-[10px] text-emerald-600 font-semibold">✓ más barato</span>
-                                : diffPct > 0
+                                : (diffPct !== null && Number(diffPct) > 0)
                                   ? <span className="text-[10px] text-red-500">+{diffPct}% más caro</span>
                                   : null
                               }
@@ -404,11 +443,11 @@ export default function PriceComparator({ prices = [], suppliers = [] }) {
 
                     {/* Ahorro máximo */}
                     <td className="px-3 py-3 text-center bg-emerald-50">
-                      {savingPct > 0 ? (
+                      {Number(savingPct) > 0 ? (
                         <div className="flex flex-col items-center gap-0.5">
                           <span className="text-sm font-bold text-emerald-700">-{savingPct}%</span>
                           <span className="text-[10px] text-emerald-600">
-                            {((worst.cost_price || 0) - (best.cost_price || 0)).toFixed(2)} €
+                            {(Number(worst.cost_price || 0) - Number(best.cost_price || 0)).toFixed(2)} €
                           </span>
                         </div>
                       ) : (
