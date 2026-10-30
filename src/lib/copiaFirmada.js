@@ -25,6 +25,8 @@
  * recibe algo que puede imprimir en vez de un correo que a lo mejor ni mira.
  */
 
+export const DIRECCION_PUBLICA_DE_SERIE = 'https://gestion-pro-total.base44.app';
+
 /** ¿Desde dónde se abre la página pública del documento? */
 export function direccionPublica(empresa) {
   const puesta = String(empresa?.public_app_url || '').trim().replace(/\/$/, '');
@@ -36,7 +38,10 @@ export function direccionPublica(empresa) {
     const o = window.location.origin;
     if (/^https?:/.test(o) && !/localhost|127\.0\.0\.1|^file:/.test(o)) return o;
   } catch { /* sin ventana */ }
-  return '';
+  // Dirección pública de serie: la del propio programa publicado. Así el QR de
+  // verificación y los enlaces para el cliente funcionan sin configurar nada;
+  // si se pone otra en Configuración, esa manda.
+  return String(import.meta.env?.VITE_BASE44_APP_BASE_URL || DIRECCION_PUBLICA_DE_SERIE).trim().replace(/\/$/, '');
 }
 
 /*

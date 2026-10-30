@@ -27,6 +27,7 @@ import StorageSetupNotice from '@/components/StorageSetupNotice';
 import AvisoDireccionPublica from '@/components/AvisoDireccionPublica';
 import RecordarTrabajo from '@/components/RecordarTrabajo';
 import AvisoRecuperado from '@/components/AvisoRecuperado';
+import VinculadorAutomatico from '@/components/VinculadorAutomatico';
 const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
 
 class ErrorBoundary extends Component {
@@ -223,6 +224,7 @@ const AuthenticatedApp = () => {
           se estaba escribiendo, decirlo: si no, los campos aparecen rellenos sin
           explicación y parece que te has equivocado de ficha. */}
       <AvisoRecuperado />
+      <VinculadorAutomatico />
     </Suspense>
   );
 };
