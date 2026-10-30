@@ -1,3 +1,4 @@
+import { base44 } from '@/api/base44Client';
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -500,9 +501,18 @@ export default function BackupCenter() {
         ? ` ${sinCambios.toLocaleString()} ya estaban igual y no ha hecho falta tocarlos.`
         : '';
       const okMsg = `${invisibles.length ? '⚠️ Restauración enviada al servidor, pero NO se ve:' : '✅ Restauración completa:'} ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.${igualesMsg}`;
+      let cuentaMsg = '';
+      if (invisibles.length) {
+        try {
+          const yo = await base44.auth.me();
+          cuentaMsg = yo?.role === 'admin'
+            ? `\n⚠️ Has entrado como administradora (${yo.email}); si aun así no se ven, pulsa «Recargar» en unos segundos.`
+            : `\n⚠️ Has entrado con ${yo?.email || 'una cuenta'} que NO es administradora de la aplicación: solo ve lo que ella misma creó. Entra con la cuenta administradora y se verán todos los datos.`;
+        } catch { /* sin datos de la cuenta */ }
+      }
       const failMsg = `⚠️ ${failed.toLocaleString()} operaciones fallaron al guardar en el servidor (revisa la conexión y vuelve a intentarlo). Consulta la consola para más detalle.`;
       const avisosMsg = (avisos || []).length > 0 ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : '';
-      setRestoreProgress((failed > 0 ? `${okMsg}\n${failMsg}` : okMsg) + avisosMsg);
+      setRestoreProgress((failed > 0 ? `${okMsg}\n${failMsg}` : okMsg) + cuentaMsg + avisosMsg);
       loadCounts();
       // Los apartados del programa guardan lo que leyeron (hasta 1 hora en
       // memoria y una copia sin conexión en el dispositivo). Sin vaciar eso, tras
