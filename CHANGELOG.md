@@ -6,6 +6,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.77.2] — 2026-10-30
+
+### Añadido
+- **Eliminar tarifas antiguas**: en Tarifas por proveedor, dentro de cada proveedor hay casillas para elegir líneas y botones para eliminar las **seleccionadas**, las **caducadas** (vigencia ya pasada) o **toda la tarifa de ese proveedor**. Se borra por lotes con contador, dice cuántas no se pudieron borrar y por qué, y deja **Deshacer** durante 15 segundos.
+
+### Corregido
+- Al eliminar una tarifa o un catálogo que falla (casi siempre porque lo creó otra cuenta), ahora lo dice en vez de no hacer nada.
+
 ## [1.77.1] — 2026-10-30
 
 ### Añadido

@@ -70,7 +70,13 @@ export default function SupplierCatalogManager({ supplierId, supplierName, suppl
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.SupplierCatalog.delete(id);
+    if (!window.confirm('¿Eliminar este catálogo?')) return;
+    try {
+      await base44.entities.SupplierCatalog.delete(id);
+      toast.success('Catálogo eliminado');
+    } catch (e) {
+      toast.error(`No se pudo eliminar: ${e?.response?.data?.message || e?.message || 'sin permiso'}. Si lo creó otra cuenta, entra con la cuenta administradora.`);
+    }
     await loadCatalogs();
   };
 
