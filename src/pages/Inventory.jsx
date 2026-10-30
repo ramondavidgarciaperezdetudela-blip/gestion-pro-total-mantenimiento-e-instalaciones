@@ -26,6 +26,111 @@ const EMPTY_CM = { contact_id: '', contact_name: '', name: '', machine_type: 'ot
 const EMPTY_EQ = { name: '', brand: '', model: '', serial_number: '', category: 'herramienta', status: 'operativo', purchase_date: '', purchase_price: '', next_revision_date: '', location: '', assigned_to: '', notes: '', photo_url: '' };
 const EMPTY_STOCK = { name: '', reference: '', barcode: '', category: 'otro', supplier_name: '', quantity: '', unit: 'uds', min_stock: '', unit_price: '', location: '', notes: '', photo_url: '' };
 
+// Optimized sub-components with React.memo
+const EquipmentCard = React.memo(({ eq, onView, onEdit, onDelete }) => (
+  <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => onView(eq)}>
+    <CardContent className="p-4">
+      <div className="flex gap-3">
+        {eq.photo_url ? (
+          <img src={eq.photo_url} alt="" className="w-16 h-16 object-cover rounded-lg border flex-shrink-0" />
+        ) : (
+          <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Wrench className="w-6 h-6 text-gray-300" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-sm truncate">{eq.name}</h3>
+              {eq.brand && <p className="text-xs text-gray-500">{eq.brand} {eq.model}</p>}
+              {eq.serial_number && <p className="text-xs text-gray-400 font-mono">S/N: {eq.serial_number}</p>}
+            </div>
+            <div className="flex gap-1 flex-shrink-0 ml-1" onClick={e => e.stopPropagation()}>
+              <button onClick={() => onEdit(eq)} className="p-1 text-gray-400 hover:text-blue-500" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
+              <button onClick={() => onDelete(eq.id)} className="p-1 text-red-400 hover:text-red-600" title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></button>
+            </div>
+          </div>
+          <Badge className={`text-[10px] mt-1 ${STATUS_COLORS[eq.status] || 'bg-gray-100'}`}>{eq.status}</Badge>
+          {eq.next_revision_date && <p className="text-[10px] text-orange-500 mt-1">🔧 Rev: {eq.next_revision_date}</p>}
+          {eq.location && <p className="text-[10px] text-gray-500 truncate">📍 {eq.location}</p>}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+));
+EquipmentCard.displayName = 'EquipmentCard';
+
+const StockRow = React.memo(({ s, onView, onEdit, onDelete }) => (
+  <tr className={`hover:bg-gray-50 cursor-pointer ${s.min_stock > 0 && s.quantity <= s.min_stock ? 'bg-orange-50' : ''}`}
+    onClick={() => onView(s)}>
+    <td className="p-3">
+      <div className="flex items-center gap-2">
+        {s.photo_url ? (
+          <img src={s.photo_url} alt="" className="w-10 h-10 object-cover rounded border flex-shrink-0" />
+        ) : (
+          <div className="w-10 h-10 bg-gray-100 rounded border flex items-center justify-center flex-shrink-0">
+            <Package className="w-4 h-4 text-gray-300" />
+          </div>
+        )}
+        <div>
+          <p className="font-medium">{s.name}</p>
+          {s.reference && <p className="text-xs text-gray-400">Ref: {s.reference}</p>}
+          {s.barcode && <p className="text-xs text-gray-400 font-mono flex items-center gap-1"><Barcode className="w-3 h-3" />{s.barcode}</p>}
+        </div>
+      </div>
+    </td>
+    <td className="p-3 hidden sm:table-cell"><Badge variant="outline" className="text-[10px]">{s.category?.replace(/_/g, ' ')}</Badge></td>
+    <td className="p-3 text-center">
+      <span className={`font-bold ${s.min_stock > 0 && s.quantity <= s.min_stock ? 'text-orange-600' : 'text-gray-800'}`}>
+        {s.quantity} {s.unit}
+      </span>
+    </td>
+    <td className="p-3 text-center text-gray-500 hidden md:table-cell">{s.min_stock || '-'}</td>
+    <td className="p-3 text-right hidden md:table-cell">{s.unit_price ? `${s.unit_price} €` : '-'}</td>
+    <td className="p-3 text-gray-500 text-xs hidden lg:table-cell">{s.supplier_name || '-'}</td>
+    <td className="p-3" onClick={e => e.stopPropagation()}>
+      <div className="flex gap-1 justify-end">
+        <button onClick={() => onEdit(s)} className="p-1 text-gray-400 hover:text-blue-500" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
+        <button onClick={() => onDelete(s.id)} className="p-1 text-red-400 hover:text-red-600" title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></button>
+      </div>
+    </td>
+  </tr>
+));
+StockRow.displayName = 'StockRow';
+
+const ClientMachineCard = React.memo(({ cm, onView, onEdit, onDelete }) => (
+  <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => onView(cm)}>
+    <CardContent className="p-4">
+      <div className="flex gap-3">
+        {cm.photo_url ? (
+          <img src={cm.photo_url} alt="" className="w-16 h-16 object-cover rounded-lg border flex-shrink-0" />
+        ) : (
+          <div className="w-16 h-16 bg-teal-50 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Wrench className="w-6 h-6 text-teal-200" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-sm truncate">{cm.name}</h3>
+              {cm.brand && <p className="text-xs text-gray-500">{cm.brand} {cm.model}</p>}
+              {cm.serial_number && <p className="text-xs text-gray-400 font-mono">S/N: {cm.serial_number}</p>}
+            </div>
+            <div className="flex gap-1 flex-shrink-0 ml-1" onClick={e => e.stopPropagation()}>
+              <button onClick={() => onEdit(cm)} className="p-1 text-gray-400 hover:text-blue-500" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
+              <button onClick={() => onDelete(cm.id)} className="p-1 text-red-400 hover:text-red-600" title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></button>
+            </div>
+          </div>
+          <Badge className={`text-[10px] mt-1 ${STATUS_COLORS[cm.status] || 'bg-gray-100'}`}>{cm.status?.replace(/_/g,' ')}</Badge>
+          {cm.contact_name && <p className="text-[10px] text-teal-600 mt-1 truncate">👤 {cm.contact_name}</p>}
+          {cm.next_maintenance_date && <p className="text-[10px] text-orange-500 mt-0.5">🔧 Mant: {cm.next_maintenance_date}</p>}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+));
+ClientMachineCard.displayName = 'ClientMachineCard';
+
 function BarcodeImage({ barcode }) {
   if (!barcode || barcode.length < 4) return null;
   const barcodeUrl = `https://barcodeapi.org/api/auto/${encodeURIComponent(barcode)}`;
@@ -85,9 +190,7 @@ export default function Inventory() {
   const fileCmRef = useRef(null);
   const barcodeRef = useRef(null);
 
-  useEffect(() => { loadAll(); }, []);
-
-  const loadAll = async () => {
+  const loadAll = React.useCallback(async () => {
     // Carga secuencial con pequeñas pausas para evitar rate limit
     try {
       const eq = await cargarTodo('Equipment', 'name');
@@ -108,7 +211,9 @@ export default function Inventory() {
       const co = await cargarTodo('Contact', 'name');
       setContacts(co);
     } catch {}
-  };
+  }, []);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   const handleSaveEq = async () => {
     if (!eqForm.name) return;
@@ -117,12 +222,38 @@ export default function Inventory() {
     setEqDialog(false); setEditingEq(null); setEqForm(EMPTY_EQ); loadAll();
   };
 
+  const handleEditEq = React.useCallback((eq) => {
+    setEditingEq(eq);
+    setEqForm({ ...EMPTY_EQ, ...eq });
+    setEqDialog(true);
+  }, []);
+
+  const handleDeleteEq = React.useCallback(async (id) => {
+    if (confirm('¿Eliminar?')) {
+      await base44.entities.Equipment.delete(id);
+      loadAll();
+    }
+  }, [loadAll]);
+
   const handleSaveStock = async () => {
     if (!stockForm.name) return;
     if (editingStock) await base44.entities.StockItem.update(editingStock.id, stockForm);
     else await base44.entities.StockItem.create(stockForm);
     setStockDialog(false); setEditingStock(null); setStockForm(EMPTY_STOCK); loadAll();
   };
+
+  const handleEditStock = React.useCallback((s) => {
+    setEditingStock(s);
+    setStockForm({ ...EMPTY_STOCK, ...s });
+    setStockDialog(true);
+  }, []);
+
+  const handleDeleteStock = React.useCallback(async (id) => {
+    if (confirm('¿Eliminar?')) {
+      await base44.entities.StockItem.delete(id);
+      loadAll();
+    }
+  }, [loadAll]);
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0]; if (!file) return;
@@ -173,16 +304,44 @@ export default function Inventory() {
     setCmDialog(false); setEditingCm(null); setCmForm(EMPTY_CM); loadAll();
   };
 
-  const filteredEq = equipment.filter(e =>
-    `${e.name} ${e.brand} ${e.model} ${e.serial_number}`.toLowerCase().includes(eqSearch.toLowerCase())
-  );
-  const filteredStock = stock.filter(s =>
-    `${s.name} ${s.reference} ${s.barcode} ${s.category}`.toLowerCase().includes(stockSearch.toLowerCase())
-  );
-  const filteredCm = clientMachines.filter(m =>
-    `${m.name} ${m.brand} ${m.model} ${m.serial_number} ${m.contact_name}`.toLowerCase().includes(cmSearch.toLowerCase())
-  );
-  const lowStock = stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock);
+  const handleEditCm = React.useCallback((cm) => {
+    setEditingCm(cm);
+    setCmForm({ ...EMPTY_CM, ...cm });
+    setCmDialog(true);
+  }, []);
+
+  const handleDeleteCm = React.useCallback(async (id) => {
+    if (confirm('¿Eliminar?')) {
+      await base44.entities.ClientMachine.delete(id);
+      loadAll();
+    }
+  }, [loadAll]);
+
+  // Memoized filters to prevent O(N) recalculations on every render
+  const filteredEq = React.useMemo(() => {
+    const searchLower = eqSearch.toLowerCase();
+    return equipment.filter(e =>
+      `${e.name} ${e.brand} ${e.model} ${e.serial_number}`.toLowerCase().includes(searchLower)
+    );
+  }, [equipment, eqSearch]);
+
+  const filteredStock = React.useMemo(() => {
+    const searchLower = stockSearch.toLowerCase();
+    return stock.filter(s =>
+      `${s.name} ${s.reference} ${s.barcode} ${s.category}`.toLowerCase().includes(searchLower)
+    );
+  }, [stock, stockSearch]);
+
+  const filteredCm = React.useMemo(() => {
+    const searchLower = cmSearch.toLowerCase();
+    return clientMachines.filter(m =>
+      `${m.name} ${m.brand} ${m.model} ${m.serial_number} ${m.contact_name}`.toLowerCase().includes(searchLower)
+    );
+  }, [clientMachines, cmSearch]);
+
+  const lowStock = React.useMemo(() =>
+    stock.filter(s => s.min_stock > 0 && s.quantity <= s.min_stock)
+  , [stock]);
 
   // Barcode scanner: focus input, reads via keyboard (lector USB actúa como teclado)
   const handleBarcodeKey = (e) => {
@@ -243,35 +402,7 @@ export default function Inventory() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {filteredEq.map(eq => (
-                <Card key={eq.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setViewEq(eq)}>
-                  <CardContent className="p-4">
-                    <div className="flex gap-3">
-                      {eq.photo_url ? (
-                        <img src={eq.photo_url} alt="" className="w-16 h-16 object-cover rounded-lg border flex-shrink-0" />
-                      ) : (
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Wrench className="w-6 h-6 text-gray-300" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-sm truncate">{eq.name}</h3>
-                            {eq.brand && <p className="text-xs text-gray-500">{eq.brand} {eq.model}</p>}
-                            {eq.serial_number && <p className="text-xs text-gray-400 font-mono">S/N: {eq.serial_number}</p>}
-                          </div>
-                          <div className="flex gap-1 flex-shrink-0 ml-1" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => { setEditingEq(eq); setEqForm({ ...EMPTY_EQ, ...eq }); setEqDialog(true); }} className="p-1 text-gray-400 hover:text-blue-500"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={async () => { if (confirm('¿Eliminar?')) { await base44.entities.Equipment.delete(eq.id); loadAll(); } }} className="p-1 text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </div>
-                        <Badge className={`text-[10px] mt-1 ${STATUS_COLORS[eq.status] || 'bg-gray-100'}`}>{eq.status}</Badge>
-                        {eq.next_revision_date && <p className="text-[10px] text-orange-500 mt-1">🔧 Rev: {eq.next_revision_date}</p>}
-                        {eq.location && <p className="text-[10px] text-gray-500 truncate">📍 {eq.location}</p>}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <EquipmentCard key={eq.id} eq={eq} onView={setViewEq} onEdit={handleEditEq} onDelete={handleDeleteEq} />
               ))}
               {filteredEq.length === 0 && <p className="text-center text-gray-400 py-8 col-span-3">No hay equipos registrados</p>}
             </div>
@@ -304,40 +435,7 @@ export default function Inventory() {
                 </thead>
                 <tbody className="divide-y">
                   {filteredStock.map(s => (
-                    <tr key={s.id} className={`hover:bg-gray-50 cursor-pointer ${s.min_stock > 0 && s.quantity <= s.min_stock ? 'bg-orange-50' : ''}`}
-                      onClick={() => setViewStock(s)}>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          {s.photo_url ? (
-                            <img src={s.photo_url} alt="" className="w-10 h-10 object-cover rounded border flex-shrink-0" />
-                          ) : (
-                            <div className="w-10 h-10 bg-gray-100 rounded border flex items-center justify-center flex-shrink-0">
-                              <Package className="w-4 h-4 text-gray-300" />
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-medium">{s.name}</p>
-                            {s.reference && <p className="text-xs text-gray-400">Ref: {s.reference}</p>}
-                            {s.barcode && <p className="text-xs text-gray-400 font-mono flex items-center gap-1"><Barcode className="w-3 h-3" />{s.barcode}</p>}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-3 hidden sm:table-cell"><Badge variant="outline" className="text-[10px]">{s.category?.replace(/_/g, ' ')}</Badge></td>
-                      <td className="p-3 text-center">
-                        <span className={`font-bold ${s.min_stock > 0 && s.quantity <= s.min_stock ? 'text-orange-600' : 'text-gray-800'}`}>
-                          {s.quantity} {s.unit}
-                        </span>
-                      </td>
-                      <td className="p-3 text-center text-gray-500 hidden md:table-cell">{s.min_stock || '-'}</td>
-                      <td className="p-3 text-right hidden md:table-cell">{s.unit_price ? `${s.unit_price} €` : '-'}</td>
-                      <td className="p-3 text-gray-500 text-xs hidden lg:table-cell">{s.supplier_name || '-'}</td>
-                      <td className="p-3" onClick={e => e.stopPropagation()}>
-                        <div className="flex gap-1 justify-end">
-                          <button onClick={() => { setEditingStock(s); setStockForm({ ...EMPTY_STOCK, ...s }); setStockDialog(true); }} className="p-1 text-gray-400 hover:text-blue-500"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={async () => { if (confirm('¿Eliminar?')) { await base44.entities.StockItem.delete(s.id); loadAll(); } }} className="p-1 text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </td>
-                    </tr>
+                    <StockRow key={s.id} s={s} onView={setViewStock} onEdit={handleEditStock} onDelete={handleDeleteStock} />
                   ))}
                 </tbody>
               </table>
@@ -358,35 +456,7 @@ export default function Inventory() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {filteredCm.map(cm => (
-                <Card key={cm.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setViewCm(cm)}>
-                  <CardContent className="p-4">
-                    <div className="flex gap-3">
-                      {cm.photo_url ? (
-                        <img src={cm.photo_url} alt="" className="w-16 h-16 object-cover rounded-lg border flex-shrink-0" />
-                      ) : (
-                        <div className="w-16 h-16 bg-teal-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Wrench className="w-6 h-6 text-teal-200" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-sm truncate">{cm.name}</h3>
-                            {cm.brand && <p className="text-xs text-gray-500">{cm.brand} {cm.model}</p>}
-                            {cm.serial_number && <p className="text-xs text-gray-400 font-mono">S/N: {cm.serial_number}</p>}
-                          </div>
-                          <div className="flex gap-1 flex-shrink-0 ml-1" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => { setEditingCm(cm); setCmForm({ ...EMPTY_CM, ...cm }); setCmDialog(true); }} className="p-1 text-gray-400 hover:text-blue-500"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={async () => { if (confirm('¿Eliminar?')) { await base44.entities.ClientMachine.delete(cm.id); loadAll(); } }} className="p-1 text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </div>
-                        <Badge className={`text-[10px] mt-1 ${STATUS_COLORS[cm.status] || 'bg-gray-100'}`}>{cm.status?.replace(/_/g,' ')}</Badge>
-                        {cm.contact_name && <p className="text-[10px] text-teal-600 mt-1 truncate">👤 {cm.contact_name}</p>}
-                        {cm.next_maintenance_date && <p className="text-[10px] text-orange-500 mt-0.5">🔧 Mant: {cm.next_maintenance_date}</p>}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <ClientMachineCard key={cm.id} cm={cm} onView={setViewCm} onEdit={handleEditCm} onDelete={handleDeleteCm} />
               ))}
               {filteredCm.length === 0 && <p className="text-center text-gray-400 py-8 col-span-3">No hay equipos de clientes registrados</p>}
             </div>
