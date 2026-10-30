@@ -179,7 +179,7 @@ export function construirPDF(plan, elements, walls, connections, { autoPrint = f
   // junto al plano: el cliente ve el volumen de la instalación y no solo la
   // planta. Se dibuja aquí a partir del plano actual, así el PDF nunca lleva
   // una vista 3D atrasada.
-  const vista3D = generarVista3DDataUrl({ walls: walls || [], elements: elements || [], scale });
+  const vista3D = generarVista3DDataUrl({ walls: walls || [], elements: elements || [], connections: connections || [], scale });
   if (vista3D) {
     doc.addPage('a3', 'landscape');
     doc.setTextColor(20); doc.setFontSize(14); doc.setFont(undefined, 'bold');

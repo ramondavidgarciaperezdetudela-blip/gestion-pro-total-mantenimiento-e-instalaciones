@@ -2,8 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Link2, Wind, Zap, AlertTriangle } from 'lucide-react';
 import { longitudConexion } from '@/lib/planoCalculo';
 import {
-  sugerirDiametros, sugerirSeccion, DIAMETROS, SECCIONES,
-  TIPOS_CONEXION_ELECTRICA, BUSES_COMUNICACION,
+  sugerirDiametros, sugerirSeccion, DIAMETROS, SECCIONES, BUSES_COMUNICACION,
 } from '@/lib/instalacionCalculos';
 
 /**

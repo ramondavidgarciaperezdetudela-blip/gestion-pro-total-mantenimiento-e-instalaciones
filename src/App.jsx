@@ -30,17 +30,54 @@ import AvisoRecuperado from '@/components/AvisoRecuperado';
 const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
 
 class ErrorBoundary extends Component {
-  constructor(props) { super(props); this.state = { hasError: false }; }
-  static getDerivedStateFromError() { return { hasError: true }; }
+  constructor(props) { super(props); this.state = { hasError: false, detalle: '' }; }
+  static getDerivedStateFromError(error) {
+    const detalle = String((error && (error.message || error)) || 'error desconocido').slice(0, 300);
+    return { hasError: true, detalle };
+  }
+  componentDidCatch(error, info) {
+    // Se guarda el motivo real para poder verlo en pantalla y en Novedades/Actualizaciones.
+    try {
+      localStorage.setItem('gpt_ultimo_error', JSON.stringify({
+        cuando: new Date().toISOString(),
+        mensaje: String((error && error.message) || error).slice(0, 500),
+        pila: String((error && error.stack) || '').slice(0, 1500),
+        componentes: String((info && info.componentStack) || '').slice(0, 1200),
+        ruta: typeof window !== 'undefined' ? window.location.pathname + window.location.hash : '',
+      }));
+    } catch { /* sin almacenamiento */ }
+    console.error('ErrorBoundary:', error, info && info.componentStack);
+  }
+  // Reintenta SIN borrar datos ni documentos: solo vacía cachés de ficheros y
+  // bajas de service worker (lo que puede dejar ficheros viejos), nunca el
+  // almacenamiento de la aplicación.
+  async reintentar() {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      if (window.caches) {
+        const claves = await window.caches.keys();
+        await Promise.all(claves.map((k) => window.caches.delete(k)));
+      }
+    } catch { /* se recarga igualmente */ }
+    this.setState({ hasError: false, detalle: '' });
+    window.location.reload();
+  }
   render() {
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-6 text-center">
           <p className="text-gray-600 text-lg font-medium">La página no se cargó correctamente</p>
+          <p className="text-xs text-gray-500 max-w-md break-words" data-prueba="error-detalle">
+            Motivo: {this.state.detalle}
+          </p>
+          <p className="text-xs text-gray-500 max-w-md">Tus datos y documentos no se borran.</p>
           <button
             className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
-            onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}
-          >Recargar página</button>
+            onClick={() => this.reintentar()}
+          >Limpiar caché y recargar</button>
         </div>
       );
     }

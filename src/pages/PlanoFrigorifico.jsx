@@ -52,6 +52,7 @@ export default function PlanoFrigorifico() {
   const [generating, setGenerating] = useState(false);
   const [tarifas, setTarifas] = useState([]);
   const [polyline, setPolyline] = useState(false);
+  const [orto, setOrto] = useState(true); // codos a 90° en el trazado a mano
   const [gridMeters, setGridMeters] = useState(1);
   // Zoom del lienzo: agranda el dibujo y sus medidas para trabajar en planos
   // grandes sin que las cotas queden diminutas. El lienzo se desplaza.
@@ -459,13 +460,15 @@ export default function PlanoFrigorifico() {
     handleChange({ walls: plan.walls.map((w) => (w.id === wallId ? { ...w, alto_m: alto > 0 ? alto : undefined } : w)) });
   };
 
-  const onPick = ({ mode: m, element, connectType: ct }) => {
+  const onPick = ({ mode: m, element, connectType: ct, manual }) => {
     setMode(m);
     if (m === 'place' && element) {
       setActiveType(element.id);
       setActiveElement({ ...element, color: CAT_COLOR[element.cat] });
     } else if (m === 'connect') {
       setConnectType(ct || 'refrigerante');
+      // «A mano»: se traza punto a punto por donde se quiera; sin él, recta entre equipos.
+      if (manual !== undefined) setPolyline(!!manual);
       setActiveType(null);
       setActiveElement(null);
     } else {
@@ -575,7 +578,7 @@ export default function PlanoFrigorifico() {
   // si el plano está vacío (no tiene sentido guardar una imagen en blanco).
   const subirVista3D = async (p) => {
     const file = await generarVista3DPng({
-      walls: p.walls || [], elements: p.elements || [], scale: p.scale || 50, nombre: p.name,
+      walls: p.walls || [], elements: p.elements || [], connections: p.connections || [], scale: p.scale || 50, nombre: p.name,
     });
     if (!file) return '';
     const up = await base44.integrations.Core.UploadPublicFile({ file });
@@ -1000,7 +1003,15 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           style={polyline
             ? { borderColor: '#00A0E9', background: '#00A0E922', color: '#00A0E9', fontWeight: 600 }
             : { borderColor: 'hsl(var(--border))' }}>
-          <Spline className="w-3.5 h-3.5" /> {polyline ? 'Polilínea ON' : 'Polilínea (codos)'}
+          <Spline className="w-3.5 h-3.5" /> {polyline ? 'Trazado a mano ON' : 'Trazado a mano'}
+        </button>
+        <button onClick={() => setOrto((v) => !v)} data-prueba="orto"
+          title="Con los 90° activados cada tramo sale recto en horizontal o vertical; desactívalos para trazar en cualquier ángulo"
+          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs"
+          style={orto
+            ? { borderColor: '#10b981', background: '#10b98122', color: '#10b981', fontWeight: 600 }
+            : { borderColor: 'hsl(var(--border))' }}>
+          {orto ? 'Codos a 90° ON' : 'Ángulo libre'}
         </button>
         <div className="w-px h-5 bg-border mx-0.5" />
         <button onClick={() => setFullscreen((v) => !v)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
@@ -1092,7 +1103,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           //    toda la superficie. Sin scroll para alcanzar las herramientas.
           <div className="flex flex-col gap-2 lg:min-h-0 lg:flex-1">
             <PlanoBarraSuperior
-              mode={mode} activeType={activeType} connectType={connectType} onPick={onPick}
+              mode={mode} activeType={activeType} connectType={connectType} manual={polyline} onPick={onPick}
               onSala={() => setDialogoSala({ nuevo: true })}
               onCamara={() => setDialogoCamara({ nuevo: true })}
               onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
@@ -1112,7 +1123,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                 <PlanoCanvas
                   walls={plan.walls} elements={plan.elements} connections={plan.connections}
                   selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-                  polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
+                  polyline={polyline} orto={orto} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
                   capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen />
               </div>
               <div className="lg:w-[300px] lg:flex-shrink-0 lg:max-h-none">
@@ -1123,7 +1134,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         ) : (
           <div className="flex flex-col gap-3">
             <div className="rounded-lg border border-border bg-card p-3">
-              <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} onPick={onPick}
+              <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} manual={polyline} onPick={onPick}
                 onSala={() => setDialogoSala({ nuevo: true })}
                 onCamara={() => setDialogoCamara({ nuevo: true })}
                 onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
@@ -1137,7 +1148,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               <PlanoCanvas
                 walls={plan.walls} elements={plan.elements} connections={plan.connections}
                 selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-                polyline={polyline} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
+                polyline={polyline} orto={orto} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
                 capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen={false} />
               {PanelLateral}
             </div>
@@ -1178,7 +1189,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               </div>
               <button onClick={() => setVer3D(false)} className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-muted">Cerrar</button>
             </div>
-            <Vista3DPlanoFrigorifico walls={plan.walls} elements={plan.elements} scale={plan.scale} />
+            <Vista3DPlanoFrigorifico walls={plan.walls} elements={plan.elements} connections={plan.connections} scale={plan.scale} />
           </div>
         </div>,
         document.body

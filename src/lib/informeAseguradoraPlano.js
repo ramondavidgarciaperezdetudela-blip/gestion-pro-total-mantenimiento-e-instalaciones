@@ -218,7 +218,7 @@ export async function generarInformeAseguradora({
   // partir del plano actual (nunca una imagen atrasada). El perito ve así el
   // volumen de la instalación, no solo la planta.
   const vista3D = generarVista3DDataUrl({
-    walls: walls || [], elements: elements || [], scale: plan.scale || 50,
+    walls: walls || [], elements: elements || [], connections: plan.connections || [], scale: plan.scale || 50,
   });
   if (vista3D) {
     doc.addPage(); y = M;

@@ -6,6 +6,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.76.0] — 2026-10-30
+
+### Añadido
+- **Plano frigorífico más técnico**: puertas, puertas de cámara y ventanas se encajan solas en la pared (ancho de la pared o de la cámara), se pueden mover a lo largo de ella, cambiar de ancho, centrar, abrir hacia dentro o fuera; en el visor 3D se ven los huecos, marcos y hojas también desde dentro.
+- **Tubería frigorífica, cableado eléctrico y conductos «a mano»**: botones de trazado manual, punto a punto por el recorrido que elijas, con longitud y codos en vivo, modo ortogonal, y edición de puntos (arrastrar, insertar, borrar). Las tuberías y cables también se dibujan en el visor 3D y en los informes.
+
+### Corregido
+- **Pantalla «La página no se cargó correctamente»** (APK): ahora muestra el motivo real del fallo, lo guarda para diagnóstico y el botón «Limpiar caché y recargar» vacía solo cachés y service workers, sin tocar datos ni documentos.
+- **Restauración de copia de seguridad**: tras restaurar se lee cada entidad del servidor para comprobar que los datos son visibles; si no lo son, se avisa claramente en vez de decir que está todo bien. Se reenlazan clientes y ficheros por id y por nombre.
+
 ## [1.75.1] — 2026-10-30
 
 ### Corregido

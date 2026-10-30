@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   Thermometer, Wind, Zap, ShieldAlert, Box, ChevronDown, Search, Boxes, Plus, Wand2, Sparkles, Loader2,
 } from 'lucide-react';
-import { CATEGORIAS, ELEMENTOS, elementosPorCategoria, buscar, DESCRIPCIONES_ELECTRICO } from '@/lib/planoFrigorificoCatalogo';
+import { CATEGORIAS, ELEMENTOS, elementosPorCategoria, DESCRIPCIONES_ELECTRICO } from '@/lib/planoFrigorificoCatalogo';
 import PlanoSimbolo from './PlanoSimbolo';
 import PlanoBarraHerramientas from './PlanoBarraHerramientas';
 import MenuElegirVersion from './MenuElegirVersion';
@@ -26,7 +26,7 @@ const CAT_ICON = {
 // Texto (notas), Cota (línea de medida) y Mano alzada (trazo libre), que
 // faltaban para hacer un plano completo.
 export default function PlanoPaleta({
-  mode, activeType, connectType, onPick, onSala, onCamara,
+  mode, activeType, connectType, manual, onPick, onSala, onCamara,
   onUndo, onRedo, onCopy, onCut, onPaste, canUndo, canRedo, canCopy, canPaste,
   extraElementos = [], onAddElement, onEditarIconos, iaIcons = {}, onCrearIconoIA,
 }) {
@@ -77,7 +77,7 @@ export default function PlanoPaleta({
     <div className="flex flex-col gap-2">
       {/* Barra de herramientas de dibujo y edición (estilo Paint) */}
       <PlanoBarraHerramientas
-        mode={mode} connectType={connectType} onPick={onPick} onSala={onSala} onCamara={onCamara}
+        mode={mode} connectType={connectType} manual={manual} onPick={onPick} onSala={onSala} onCamara={onCamara}
         onUndo={onUndo} onRedo={onRedo} onCopy={onCopy} onCut={onCut} onPaste={onPaste}
         canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste} />
 

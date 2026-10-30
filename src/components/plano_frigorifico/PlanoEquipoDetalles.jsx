@@ -3,6 +3,10 @@ import { RotateCcw, RotateCw, FlipHorizontal, FlipVertical, Trash2, AlertTriangl
 import SelectorColor from './SelectorColor';
 import { NumberField } from '@/components/ui/number-field';
 import { ALTURA_SUELO, ALTURA_CAMARA, altoEquipo, altoPared, cotaEquipo, techoEn, tieneCotaPropia } from '@/lib/planoVista3D';
+import {
+  esHueco, paredDeHueco, paredOrdenada, posicionEnPared, colocarEnPared, anchoDePared, anchoHueco,
+  largoPared, encajarEnPared, TIPOS_HUECO,
+} from '@/lib/planoHuecos';
 import { longitudConexion } from '@/lib/planoCalculo';
 import { elementoDe, valoresPorDefecto } from '@/lib/planoFrigorificoCatalogo';
 import {
@@ -328,7 +332,12 @@ function DetalleEquipo({ element, walls = [], onUpdate, onDelete, scale }) {
   const [kb, setKb] = React.useState(0);
   const act = (patch) => { onUpdate(patch); setKb((n) => n + 1); };
   const datos = element.datos || {};
-  const poner = (id, v) => onUpdate({ datos: { ...datos, [id]: v } });
+  const poner = (id, v) => {
+    // El «Ancho (cm)» de una puerta o ventana ES el ancho del hueco: el icono lo sigue.
+    const ancho = esHueco(element) && id === 'ancho_cm' && Number(String(v).replace(',', '.')) >= 20
+      ? { w_m: Number(String(v).replace(',', '.')) / 100 } : {};
+    onUpdate({ datos: { ...datos, [id]: v }, ...ancho });
+  };
   // Paso de movimiento fino: 0,1 m en píxeles del lienzo. Sirve para ajustar la
   // posición del equipo con flechas en móvil, donde arrastrar es incómodo.
   const paso = Math.max(2, 0.1 * (scale || 50));
@@ -400,6 +409,78 @@ function DetalleEquipo({ element, walls = [], onUpdate, onDelete, scale }) {
             className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
         </Campo>
       </div>
+
+      {/* Puertas y ventanas: son huecos de una pared (posición, ancho, hoja). */}
+      {esHueco(element) && (() => {
+        const pared = paredDeHueco(element, walls, scale || 50);
+        const sc = scale || 50;
+        const po = pared ? paredOrdenada(pared) : null;
+        const ancho = anchoHueco(element);
+        const largo = po ? largoPared(po) / sc : 0;
+        const pos = po ? posicionEnPared(element, po, sc) : 0;
+        const aplicarAncho = (v) => {
+          const nuevo = { ...element, w_m: v, datos: { ...datos, ancho_cm: Math.round(v * 100) } };
+          const cambio = { w_m: v, datos: nuevo.datos };
+          if (po) Object.assign(cambio, colocarEnPared(nuevo, po, pos, sc));
+          onUpdate(cambio);
+        };
+        const nombre = element.type === 'ventana' ? 'Ventana' : 'Puerta';
+        return (
+          <div className="flex flex-col gap-1.5 rounded-md border border-border p-2" data-prueba="hueco-pared">
+            <span className="tech-label">{nombre} en la pared</span>
+            {!po ? (
+              <div className="rounded bg-amber-500/10 p-2 text-[11px] text-amber-600">
+                Esta {nombre.toLowerCase()} no está sobre ninguna pared. Arrástrala hasta una pared (se pega sola) o pulsa «Pegar a la pared más cercana».
+                <button type="button" data-prueba="hueco-pegar" className="mt-1 block rounded border border-amber-500/50 px-2 py-1 text-[11px]"
+                  onClick={() => { const c = encajarEnPared(element, walls, sc, { maxPx: 400, orientar: true }); if (c) act(c); }}>Pegar a la pared más cercana</button>
+              </div>
+            ) : (
+              <>
+                <div className="text-[11px] text-muted-foreground">Pared de <b>{coma(largo)} m</b>{po.camara ? ' (panel de cámara)' : ''} · hueco de {coma(ancho)} m</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Campo label="Ancho del hueco (m)">
+                    <NumberField key={`hw${kb}`} value={Math.round(ancho * 100) / 100} data-prueba="hueco-ancho"
+                      onChange={(v) => { if (v >= 0.2 && v <= largo) aplicarAncho(v); }}
+                      className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+                  </Campo>
+                  <Campo label="Del extremo izq./arriba al centro (m)">
+                    <NumberField key={`hp${kb}`} value={Math.round(pos * 100) / 100} data-prueba="hueco-posicion"
+                      onChange={(v) => { if (v >= 0) onUpdate(colocarEnPared(element, po, v, sc)); }}
+                      className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+                  </Campo>
+                </div>
+                <input type="range" min="0" max={Math.max(0.1, largo)} step="0.05" value={pos} data-prueba="hueco-deslizador"
+                  onChange={(e) => onUpdate(colocarEnPared(element, po, Number(e.target.value), sc))} className="w-full" />
+                <div className="flex flex-wrap gap-1">
+                  <button type="button" data-prueba="hueco-centrar" onClick={() => act(colocarEnPared(element, po, largo / 2, sc))}
+                    className="rounded border border-border px-2 py-1 text-[11px] hover:bg-muted">Centrar</button>
+                  <button type="button" data-prueba="hueco-todo" onClick={() => act(anchoDePared(element, po, sc))}
+                    className="rounded border border-border px-2 py-1 text-[11px] hover:bg-muted">Ancho de toda la pared</button>
+                  <button type="button" data-prueba="hueco-tipico" onClick={() => aplicarAncho(TIPOS_HUECO[element.type].ancho) || setKb((n) => n + 1)}
+                    className="rounded border border-border px-2 py-1 text-[11px] hover:bg-muted">Ancho habitual ({coma(TIPOS_HUECO[element.type].ancho)} m)</button>
+                </div>
+                {element.type !== 'ventana' && (
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground">La hoja abre hacia</span>
+                    <button type="button" data-prueba="hueco-abre-dentro" onClick={() => act({ flip_y: false })}
+                      className={`rounded border px-2 py-1 text-[11px] ${!element.flip_y ? 'border-primary text-primary' : 'border-border'}`}>un lado</button>
+                    <button type="button" data-prueba="hueco-abre-fuera" onClick={() => act({ flip_y: true })}
+                      className={`rounded border px-2 py-1 text-[11px] ${element.flip_y ? 'border-primary text-primary' : 'border-border'}`}>el otro</button>
+                    <span className="text-[10px] text-muted-foreground">· bisagra:</span>
+                    {['Derecha', 'Izquierda'].map((o) => (
+                      <button key={o} type="button" onClick={() => poner('apertura', o)}
+                        className={`rounded border px-2 py-1 text-[11px] ${(datos.apertura || 'Derecha') === o ? 'border-primary text-primary' : 'border-border'}`}>{o}</button>
+                    ))}
+                  </div>
+                )}
+                <span className="text-[10px] text-muted-foreground">
+                  Alto del hueco = «Alto del equipo» más abajo{element.type === 'ventana' ? '; el antepecho es «Altura sobre el suelo»' : ''}. En el visor 3D el hueco se abre en el muro y se ve la hoja por dentro y por fuera.
+                </span>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Girar e invertir el icono (por ejemplo, una puerta que abre hacia fuera). */}
       <div className="flex flex-col gap-1.5 rounded-md border border-border p-2" data-prueba="girar-equipo">
