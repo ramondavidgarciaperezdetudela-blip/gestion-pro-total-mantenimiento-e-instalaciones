@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data: blob:; connect-src https://script.google.com https://script.googleusercontent.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<title>Solicitud de Licencia — Gestión Pro Total</title>
+<style>
+  * { box-sizing:border-box; font-family:system-ui,"Segoe UI",Roboto,sans-serif; }
+  body { margin:0; background:#0f172a; color:#0f172a; }
+  .box { max-width:560px; margin:30px auto; background:#fff; border-radius:14px; padding:26px; box-shadow:0 10px 30px rgba(0,0,0,.3); }
+  h1 { font-size:20px; color:#1e40af; margin:0 0 4px; }
+  p.sub { color:#64748b; margin:0 0 20px; font-size:14px; }
+  label { display:block; font-weight:600; font-size:13px; margin:12px 0 4px; }
+  input, textarea, select { width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:14px; background:#fff; }
+  .device { background:#0f172a; color:#7dd3fc; padding:12px; border-radius:8px; font-family:ui-monospace,monospace; text-align:center; font-size:18px; letter-spacing:1px; margin:6px 0; }
+  button { width:100%; background:#16a34a; color:#fff; border:0; padding:13px; border-radius:8px; font-size:15px; font-weight:700; cursor:pointer; margin-top:18px; }
+  button.sec { background:#475569; margin-top:8px; }
+  .muted { color:#64748b; font-size:12px; }
+  .out { background:#f1f5f9; border-radius:8px; padding:12px; margin-top:14px; font-family:ui-monospace,monospace; font-size:12px; word-break:break-all; display:none; }
+  .drop { border:2px dashed #cbd5e1; border-radius:8px; padding:16px; text-align:center; cursor:pointer; color:#64748b; }
+  .rgpd { display:flex; gap:8px; align-items:flex-start; margin-top:14px; font-size:12px; color:#475569; }
+  .rgpd input { width:auto; margin-top:2px; }
+  .ok { color:#16a34a; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>📝 Solicitar licencia de Gestión Pro Total</h1>
+  <p class="sub">Rellena tus datos, elige plan y adjunta el comprobante de pago. Te enviaremos tu clave de activación.</p>
+
+  <label>Tu identificador de equipo (no lo cambies)</label>
+  <div class="device" id="device">Generando…</div>
+  <p class="muted">Este código identifica tu ordenador. Tu licencia solo funcionará en él.</p>
+
+  <label>Nombre / Empresa *</label>
+  <input id="cliente" maxlength="120" placeholder="Mantenimientos García S.L." />
+  <label>Email *</label>
+  <input id="email" type="email" maxlength="120" placeholder="tucorreo@empresa.com" />
+  <label>Teléfono</label>
+  <input id="tel" maxlength="30" placeholder="600 000 000" />
+
+  <label>Plan deseado *</label>
+  <select id="plan">
+    <option value="Demo">Demo — 7 días (gratis)</option>
+    <option value="Mensual">Mensual — 19 €</option>
+    <option value="Trimestral">Trimestral — 49 €</option>
+    <option value="Semestral">Semestral — 89 €</option>
+    <option value="Anual" selected>Anual — 149 €</option>
+    <option value="Perpetuo">Perpetuo — 599 €</option>
+    <option value="Estudiantes">Estudiantes — gratis (con matrícula)</option>
+    <option value="Empresa">Empresa (packs)</option>
+  </select>
+
+  <label id="lbl-pago">Comprobante de pago (o matrícula si eres estudiante)</label>
+  <div class="drop" id="drop">📎 Haz clic o arrastra aquí tu justificante (JPG, PNG o PDF · máx 8 MB)</div>
+  <input type="file" id="file" accept="image/*,.pdf" style="display:none" />
+  <div id="file-info" class="muted" style="margin-top:6px"></div>
+
+  <label>Comentarios (nº de empleados, dudas…)</label>
+  <textarea id="notas" rows="3" maxlength="1000"></textarea>
+
+  <label class="rgpd"><input type="checkbox" id="rgpd">
+    <span>He leído y acepto la <b>Política de Privacidad</b> y el tratamiento de mis datos
+    (nombre, email, equipo y justificante) con la única finalidad de gestionar mi licencia
+    y soporte. Responsable: Gestión Pro Total · kairigarcia.gestionprototal@gmail.com.
+    Puedo ejercer mis derechos (acceso, rectificación, supresión) escribiendo a ese correo. (RGPD/LOPDGDD)</span>
+  </label>
+
+  <button onclick="enviar()">Enviar solicitud</button>
+  <button class="sec" onclick="copiar()">Copiar datos (enviar por WhatsApp/email)</button>
+  <div class="out" id="out"></div>
+  <p class="muted" style="margin-top:14px">Soporte: kairigarcia.gestionprototal@gmail.com</p>
+</div>
+
+<script>
+// Si el propietario despliega el backend en la nube, pega aquí la URL /exec para
+// que el comprobante se suba automáticamente a su Google Drive. Si se deja vacío,
+// la solicitud se envía por email (adjunta el comprobante manualmente).
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwzhYoqLgif9YEUVbosytFDII_9wyZtLCN2_gxau4VwlfcOUpxcPyQqM-ondccvL3uc/exec";
+
+const ADMIN_EMAIL = "kairigarcia.gestionprototal@gmail.com";
+const LS='gpt_device_id_v1';
+function getDeviceId(){
+  let id=localStorage.getItem(LS); if(id)return id;
+  const seed=[navigator.userAgent,navigator.language,navigator.platform||'',screen.width+'x'+screen.height,new Date().getTimezoneOffset(),(crypto.randomUUID&&crypto.randomUUID())||Math.random()].join('|');
+  let h=0; for(let i=0;i<seed.length;i++)h=(Math.imul(31,h)+seed.charCodeAt(i))|0;
+  id='DEV-'+(h>>>0).toString(16).toUpperCase().padStart(8,'0');
+  localStorage.setItem(LS,id); return id;
+}
+const device=getDeviceId();
+document.getElementById('device').textContent=device;
+
+let fichero=null;
+const drop=document.getElementById('drop'), fileIn=document.getElementById('file');
+drop.onclick=()=>fileIn.click();
+drop.ondragover=e=>{e.preventDefault();drop.style.borderColor='#2563eb';};
+drop.ondragleave=()=>drop.style.borderColor='#cbd5e1';
+drop.ondrop=e=>{e.preventDefault();drop.style.borderColor='#cbd5e1';if(e.dataTransfer.files[0])cargar(e.dataTransfer.files[0]);};
+fileIn.onchange=()=>{ if(fileIn.files[0]) cargar(fileIn.files[0]); };
+function cargar(f){
+  if(f.size>8*1024*1024){ alert('Archivo demasiado grande (máx 8 MB).'); return; }
+  const r=new FileReader();
+  r.onload=()=>{ fichero={name:f.name,type:f.type,b64:r.result}; document.getElementById('file-info').innerHTML='<span class="ok">✓ '+f.name+'</span>'; };
+  r.readAsDataURL(f);
+}
+function datos(){
+  return `SOLICITUD DE LICENCIA - Gestion Pro Total
+Equipo: ${device}
+Cliente: ${document.getElementById('cliente').value}
+Email: ${document.getElementById('email').value}
+Telefono: ${document.getElementById('tel').value}
+Plan: ${document.getElementById('plan').value}
+Notas: ${document.getElementById('notas').value}`;
+}
+function validar(){
+  if(!document.getElementById('cliente').value.trim()||!document.getElementById('email').value.trim()){ alert('Pon al menos nombre y email.'); return false; }
+  if(!document.getElementById('rgpd').checked){ alert('Debes aceptar la Política de Privacidad para continuar.'); return false; }
+  return true;
+}
+async function enviar(){
+  if(!validar()) return;
+  const payload={ tipo:'SOLICITUD_LICENCIA', accion:'SOLICITUD_LICENCIA',
+    nombre:document.getElementById('cliente').value.trim(),
+    email:document.getElementById('email').value.trim(),
+    telefono:document.getElementById('tel').value.trim(),
+    plan:document.getElementById('plan').value,
+    deviceId:device, obs:document.getElementById('notas').value.trim(),
+    comprobante: fichero ? {name:fichero.name, b64:fichero.b64} : null,
+    consentimiento:true, fecha:new Date().toISOString() };
+  if(SCRIPT_URL){
+    try{
+      await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+      alert('✅ Solicitud enviada'+(fichero?' con tu comprobante':'')+'. Te enviaremos la clave por email.');
+      return;
+    }catch(e){ /* cae a email */ }
+  }
+  // Sin nube: email (el comprobante se adjunta a mano)
+  const body=encodeURIComponent(datos()+(fichero?'\n\n(IMPORTANTE: adjunta tu comprobante "'+fichero.name+'" a este email)':''));
+  window.location.href=`mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent('Solicitud licencia Gestion Pro Total - '+device)}&body=${body}`;
+}
+function copiar(){
+  if(!validar()) return;
+  navigator.clipboard.writeText(datos());
+  const o=document.getElementById('out'); o.style.display='block'; o.textContent=datos();
+  alert('Datos copiados. Pégalos en un email o WhatsApp y adjunta el comprobante.');
+}
+</script>
+</body>
+</html>

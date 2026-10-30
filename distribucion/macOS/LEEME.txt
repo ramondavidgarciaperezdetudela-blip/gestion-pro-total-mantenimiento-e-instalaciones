@@ -1,0 +1,14 @@
+GESTIÓN PRO TOTAL — macOS
+=========================
+
+RECOMENDADO:
+  > "...-Mac.dmg"
+    Ábrelo y arrastra "Gestión Pro Total" a la carpeta Aplicaciones.
+
+NOTA: la primera vez, si macOS dice que no se puede abrir, ve a
+Ajustes del Sistema > Privacidad y seguridad > "Abrir de todas formas".
+(Esto desaparece cuando la app esté firmada/notarizada por Apple.)
+
+>> Coloca aquí el .dmg descargado de la Release antes de enviar. <<
+
+SOPORTE Y CONTACTO: kairigarcia.gestionprototal@gmail.com

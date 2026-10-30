@@ -1,0 +1,28 @@
+CÓMO INSTALAR / ABRIR GESTIÓN PRO TOTAL
+=======================================
+
+LO RECOMENDADO — usa el MENÚ DE INSTALACIÓN de tu carpeta:
+
+  Windows    → doble clic en  "INSTALAR-Gestion-Pro-Total.bat"
+  Mac        → doble clic en  "INSTALAR-Gestion-Pro-Total.command"
+  Linux/CB   → ejecutar       "INSTALAR-Gestion-Pro-Total.sh"  (carpeta ChromeBook)
+  Android    → instala         gestion-pro-total.apk
+
+El menú te ofrece 3 formas de usarlo:
+
+  [1] INSTALAR EN EL PC  → se instala como una aplicación normal del sistema
+      (icono, menú de inicio y desinstalador). Descarga el instalador oficial
+      (.exe en Windows, .dmg en Mac, .AppImage/.deb en Linux).
+
+  [2] SERVIDOR LOCAL     → lo usas desde varios equipos de tu red (móvil,
+      tablet, otro PC) escribiendo la dirección http://IP:8080 que te muestra.
+
+  [3] NUBE / APP WEB     → lo abres en el navegador y, si quieres, lo instalas
+      como app con el botón "Instalar".
+
+----------------------------------------------------------------------
+SIN INSTALAR NADA (opción rápida): doble clic en "ABRIR-Gestion-Pro-Total.html"
+(se abre en el navegador). Útil para probar; para uso diario es mejor [1].
+
+La primera vez te pedirá la CLAVE DE LICENCIA o podrás suscribirte
+(Demo 7 días gratis · Estudiantes gratis con matrícula).

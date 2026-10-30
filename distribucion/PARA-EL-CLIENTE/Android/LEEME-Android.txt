@@ -1,0 +1,7 @@
+GESTION PRO TOTAL — Android
+===========================
+1. Copia "gestion-pro-total.apk" a tu movil/tablet.
+2. Abrelo. Si te pide permiso, activa "Instalar apps desconocidas".
+3. Acepta la instalacion y abre la app.
+Tambien puedes instalarla como PWA desde Chrome (icono "Anadir a pantalla de inicio").
+Soporte: kairigarcia.gestionprototal@gmail.com

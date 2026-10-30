@@ -1,0 +1,102 @@
+appId: com.gestionprototal.fuera
+productName: Gestión Pro Total Local
+copyright: © Ramón David García Pérez de Tudela
+
+# Inyecta el punto de entrada de Electron en el paquete final.
+extraMetadata:
+  main: electron/main.cjs
+
+directories:
+  output: release
+  buildResources: build
+
+# Icono de la aplicación (build/icon.png 1024px y build/icon.ico para Windows).
+# electron-builder genera automáticamente los tamaños/formatos por sistema.
+icon: build/icon.png
+
+# Publicación de releases en el repo PÚBLICO de releases (habilita la
+# auto-actualización con electron-updater sin credenciales para el cliente).
+# El código permanece en el repo privado; solo los binarios van al repo público.
+publish:
+  provider: github
+  owner: ramondavidgarciaperezdetudela-blip
+  repo: gestion-pro-total-releases
+  # Publica la release directamente (no como borrador) para que sea visible
+  # en /releases/latest y la auto-actualización la detecte sin pasos manuales.
+  releaseType: release
+
+# Lo que se empaqueta dentro de la aplicación.
+#
+# OJO con node_modules: electron-builder mete SIEMPRE las dependencias de
+# producción, y aquí eso son React, Radix, los iconos... 171 MB de librerías
+# que la aplicación de escritorio NO usa nunca, porque Vite ya las ha metido
+# dentro de dist/ al compilar. El resultado eran instaladores de 120-160 MB
+# para una aplicación que ocupa 6.
+#
+# Así que se excluyen todas y se vuelve a meter SOLO el árbol de
+# electron-updater, que es lo único que se carga en tiempo de ejecución
+# (electron/main.cjs lo pide con require). Si faltara alguno de estos, la
+# actualización automática dejaría de funcionar en silencio, porque el require
+# va dentro de un try: por eso están puestos uno a uno y comprobados.
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+  - '!node_modules/**/*'
+  - node_modules/electron-updater/**/*
+  - node_modules/builder-util-runtime/**/*
+  - node_modules/fs-extra/**/*
+  - node_modules/graceful-fs/**/*
+  - node_modules/jsonfile/**/*
+  - node_modules/universalify/**/*
+  - node_modules/js-yaml/**/*
+  - node_modules/argparse/**/*
+  - node_modules/lazy-val/**/*
+  - node_modules/lodash.escaperegexp/**/*
+  - node_modules/lodash.isequal/**/*
+  - node_modules/semver/**/*
+  - node_modules/tiny-typed-emitter/**/*
+  - node_modules/debug/**/*
+  - node_modules/ms/**/*
+  - node_modules/sax/**/*
+
+# ---------- Windows ----------
+win:
+  target:
+    - nsis        # Instalador con desinstalador integrado (.exe)
+    - portable    # Versión portable sin instalación (un solo .exe: doble clic y a usar)
+
+# Instalador clásico (Siguiente -> Siguiente -> Instalar)
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Gestión Pro Total
+  artifactName: Gestion-Pro-Total-${version}-Windows-Instalador.${ext}
+  # NSIS genera automáticamente el desinstalador (Unins000.exe) y la entrada en
+  # "Aplicaciones y características" de Windows.
+
+# Portable: un único .exe que el usuario ejecuta directamente, sin instalar.
+portable:
+  artifactName: Gestion-Pro-Total-${version}-Windows-Portable.${ext}
+
+# ---------- macOS ----------
+mac:
+  target:
+    - dmg         # Imagen de disco para instalar arrastrando a Aplicaciones
+  category: public.app-category.business
+  artifactName: Gestion-Pro-Total-${version}-Mac.${ext}
+
+dmg:
+  title: Gestión Pro Total
+
+# ---------- Linux (incluye contenedor Linux de Chromebook) ----------
+linux:
+  target:
+    - AppImage    # Ejecutable portable, no requiere instalación
+    - deb         # Paquete instalable/desinstalable con apt/dpkg
+  category: Office
+  maintainer: Ramón David García Pérez de Tudela
+  artifactName: Gestion-Pro-Total-${version}-Linux.${ext}

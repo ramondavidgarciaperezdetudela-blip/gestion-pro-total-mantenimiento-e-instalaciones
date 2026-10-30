@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Gestión Pro Total",
+    "slug": "gestion-pro-total",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": { "backgroundColor": "#0b1220", "resizeMode": "contain" },
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": true },
+    "android": { "package": "com.gestionprototal.app" },
+    "extra": {
+      "appUrl": "http://localhost:3000"
+    }
+  }
+}

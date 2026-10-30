@@ -1,0 +1,100 @@
+name: Build Desktop Installers
+
+# Compila los instaladores de escritorio (Windows, macOS y Linux) y los publica
+# como Release. Linux (.deb/.AppImage) sirve también para el contenedor Linux de
+# Chromebook.
+# - Disparo manual sin "version": actualiza la release rodante "desktop-fuera-latest".
+# - Disparo manual con "version" (ej: v1.0.0) o al empujar una etiqueta vX.Y.Z:
+#   publica una Release oficial con ese número (creando la etiqueta si no existe).
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Etiqueta de versión a publicar (ej: v1.0.0). Vacío = release rodante desktop-fuera-latest."
+        required: false
+        default: ""
+      mac:
+        description: "¿Compilar también la versión de Mac? Cuesta 10 veces más minutos."
+        type: boolean
+        required: false
+        default: false
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # 1) Asegura que la Release existe antes de subir binarios (evita carreras).
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Crear/actualizar Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-fuera-latest') }}
+          name: ${{ (inputs.version != '' || startsWith(github.ref, 'refs/tags/')) && format('Gestión Pro Total {0}', inputs.version != '' && inputs.version || github.ref_name) || 'Gestión Pro Total — Instaladores de escritorio' }}
+          body: |
+            Gestión Pro Total — descargas de esta versión.
+
+            **Móvil (Android)**
+            - `gestion-pro-total.apk` — se instala encima de la versión anterior sin desinstalar.
+
+            **Escritorio**
+            - Windows: `*-Windows-Instalador.exe` (instalador con desinstalador)
+              o `*-Windows-Portable.exe` (un solo fichero, sin instalar).
+            - macOS: `*-Mac.dmg`. Al no estar firmado con certificado de Apple, la
+              primera vez hay que abrirlo con botón derecho → Abrir.
+            - Linux y contenedor Linux de Chromebook: `*-Linux.AppImage` (portable,
+              hay que darle permiso de ejecución) o `*-Linux.deb` (se instala con
+              `sudo dpkg -i` y se desinstala con `apt remove`).
+          make_latest: ${{ inputs.version != '' || startsWith(github.ref, 'refs/tags/') }}
+
+  # 2) Compila en cada sistema operativo y sube los instaladores a la Release.
+  build-desktop:
+    needs: create-release
+    permissions:
+      contents: write
+    # El Mac se compila SOLO si se pide. GitHub cobra el Mac a razón de DIEZ
+    # veces el Linux (Windows va a dos), así que una versión completa con Mac
+    # se lleva unos 130 minutos del cupo y sin Mac unos 30. Con 2.000 minutos
+    # al mes eso es la diferencia entre 15 versiones y más de 60. Ya se agotó
+    # el cupo una vez y dejó de poder publicarse nada durante días.
+    #
+    # Para sacar la versión de Mac: lanzar el workflow a mano marcando "mac".
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ (inputs.mac || startsWith(github.ref, 'refs/tags/')) && fromJSON('["ubuntu-latest","windows-latest","macos-latest"]') || fromJSON('["ubuntu-latest","windows-latest"]') }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app (base relativa para Electron)
+        run: npm run build:electron
+
+      - name: Build desktop installers
+        run: npx electron-builder --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish installers to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-fuera-latest') }}
+          files: |
+            release/*.exe
+            release/*.dmg
+            release/*.AppImage
+            release/*.deb
+          fail_on_unmatched_files: false

@@ -1,0 +1,352 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Gestión Pro Total — Arquitectura",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "hidden"
+    },
+    "views": [
+      {
+        "id": "runtime",
+        "label": "Tiempo de ejecución",
+        "focus": [
+          "users",
+          "app",
+          "base44",
+          "entities"
+        ],
+        "note": "Camino principal: del usuario a los datos a través de la app y base44."
+      },
+      {
+        "id": "backend",
+        "label": "Backend base44",
+        "focus": [
+          "base44",
+          "entities",
+          "functions",
+          "ai"
+        ],
+        "note": "Datos, funciones Deno e integraciones de IA/Core."
+      },
+      {
+        "id": "dist",
+        "label": "Compilación y distribución",
+        "focus": [
+          "github",
+          "actions",
+          "electron",
+          "capacitor",
+          "releases"
+        ],
+        "note": "GitHub Actions compila instaladores y APK y publica con auto-update."
+      }
+    ],
+    "output": "Arquitectura-Gestion-Pro-Total.html"
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "Usuarios",
+      "sublabel": "Web · escritorio · móvil",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        150,
+        66
+      ]
+    },
+    {
+      "id": "app",
+      "type": "frontend",
+      "label": "App Gestión Pro Total",
+      "sublabel": "React + Vite",
+      "tag": "offline / auto-update",
+      "pos": [
+        300,
+        300
+      ],
+      "size": [
+        180,
+        66
+      ]
+    },
+    {
+      "id": "base44",
+      "type": "backend",
+      "label": "base44",
+      "sublabel": "Backend (BaaS)",
+      "pos": [
+        590,
+        300
+      ],
+      "size": [
+        160,
+        66
+      ]
+    },
+    {
+      "id": "entities",
+      "type": "database",
+      "label": "Entidades",
+      "sublabel": "Clientes · documentos · tarifas",
+      "pos": [
+        850,
+        300
+      ],
+      "size": [
+        190,
+        66
+      ]
+    },
+    {
+      "id": "functions",
+      "type": "backend",
+      "label": "Funciones (Deno)",
+      "sublabel": "verificar · correo · CP",
+      "pos": [
+        590,
+        130
+      ],
+      "size": [
+        170,
+        60
+      ]
+    },
+    {
+      "id": "ai",
+      "type": "cloud",
+      "label": "Integraciones IA / Core",
+      "sublabel": "InvokeLLM · UploadFile · Email",
+      "pos": [
+        850,
+        130
+      ],
+      "size": [
+        200,
+        60
+      ]
+    },
+    {
+      "id": "github",
+      "type": "external",
+      "label": "GitHub",
+      "sublabel": "Código fuente",
+      "pos": [
+        300,
+        490
+      ],
+      "size": [
+        160,
+        60
+      ]
+    },
+    {
+      "id": "actions",
+      "type": "cloud",
+      "label": "GitHub Actions",
+      "sublabel": "release · build-apk",
+      "pos": [
+        560,
+        490
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "electron",
+      "type": "external",
+      "label": "Electron",
+      "sublabel": "Escritorio",
+      "pos": [
+        820,
+        452
+      ],
+      "size": [
+        150,
+        58
+      ]
+    },
+    {
+      "id": "capacitor",
+      "type": "external",
+      "label": "Capacitor",
+      "sublabel": "APK Android",
+      "pos": [
+        820,
+        542
+      ],
+      "size": [
+        150,
+        58
+      ]
+    },
+    {
+      "id": "releases",
+      "type": "cloud",
+      "label": "Repo de descargas",
+      "sublabel": "Instaladores + auto-update",
+      "pos": [
+        1060,
+        490
+      ],
+      "size": [
+        190,
+        66
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "base44 (BaaS)",
+      "wraps": [
+        "base44",
+        "entities",
+        "functions",
+        "ai"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "CI/CD y distribución (GitHub)",
+      "wraps": [
+        "github",
+        "actions",
+        "electron",
+        "capacitor",
+        "releases"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "users-app",
+      "from": "users",
+      "to": "app",
+      "label": "HTTPS · offline",
+      "variant": "emphasis"
+    },
+    {
+      "id": "app-base44",
+      "from": "app",
+      "to": "base44",
+      "label": "base44 SDK",
+      "variant": "emphasis"
+    },
+    {
+      "id": "base44-entities",
+      "from": "base44",
+      "to": "entities",
+      "label": "CRUD"
+    },
+    {
+      "id": "base44-functions",
+      "from": "base44",
+      "to": "functions",
+      "label": "invoke",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelDx": -34
+    },
+    {
+      "id": "base44-ai",
+      "from": "base44",
+      "to": "ai",
+      "label": "IA · correo · ficheros",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "app-github",
+      "from": "app",
+      "to": "github",
+      "label": "push",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "github-actions",
+      "from": "github",
+      "to": "actions",
+      "label": "workflow"
+    },
+    {
+      "id": "actions-electron",
+      "from": "actions",
+      "to": "electron",
+      "label": "electron-builder",
+      "labelDx": -42
+    },
+    {
+      "id": "actions-capacitor",
+      "from": "actions",
+      "to": "capacitor",
+      "label": "assembleDebug",
+      "labelDy": 16
+    },
+    {
+      "id": "electron-releases",
+      "from": "electron",
+      "to": "releases"
+    },
+    {
+      "id": "capacitor-releases",
+      "from": "capacitor",
+      "to": "releases"
+    },
+    {
+      "id": "releases-users",
+      "from": "releases",
+      "to": "users",
+      "label": "descarga + auto-update",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "via": [
+        [
+          1155,
+          660
+        ],
+        [
+          115,
+          660
+        ]
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Aplicación",
+      "items": [
+        "React + Vite — web, escritorio (Electron) y móvil (Capacitor)",
+        "Funciona sin conexión y se auto-actualiza en el sitio"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Backend base44",
+      "items": [
+        "Entidades (datos) y CRUD desde el SDK",
+        "Funciones Deno: verificar documento, correo, códigos postales",
+        "Integraciones IA/Core: InvokeLLM, UploadFile, SendEmail"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Distribución",
+      "items": [
+        "GitHub Actions compila instaladores y APK firmado",
+        "Repo público de descargas con auto-update"
+      ]
+    }
+  ]
+}

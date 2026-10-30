@@ -1,0 +1,11 @@
+{
+  "appId": "com.gestionprototal.fuera",
+  "appName": "Gestión Pro Total Local",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

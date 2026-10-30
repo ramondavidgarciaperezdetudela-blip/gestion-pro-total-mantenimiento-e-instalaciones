@@ -1,0 +1,2716 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gestión Pro Total — Panel de Licencias</title>
+<!-- bcryptjs eliminado: se usa hash SHA-256 nativo del navegador -->
+<style>
+:root{--bg:#0a0e1a;--p:#111827;--c:#1a2235;--brd:#2a3a55;--ac:#3b82f6;--ac2:#06b6d4;--gr:#10b981;--rd:#ef4444;--am:#f59e0b;--pu:#8b5cf6;--tx:#f1f5f9;--mt:#64748b;--r:12px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',Arial,sans-serif;min-height:100vh}
+#login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:radial-gradient(ellipse at 20% 50%,#1e3a5f33,transparent 60%),radial-gradient(ellipse at 80% 20%,#06b6d422,transparent 50%)}
+.lbox{background:var(--p);border:1px solid var(--brd);border-radius:20px;padding:44px;width:100%;max-width:420px;box-shadow:0 25px 60px #00000066}
+.lbadge{display:inline-flex;align-items:center;justify-content:center;width:72px;height:72px;background:linear-gradient(135deg,var(--ac),var(--ac2));border-radius:18px;font-size:38px;margin-bottom:12px}
+#app{display:none}
+.hdr{background:var(--p);border-bottom:1px solid var(--brd);padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:10px;flex-wrap:wrap}
+.hdr-l{display:flex;align-items:center;gap:10px}
+.hdr-logo{width:32px;height:32px;background:linear-gradient(135deg,var(--ac),var(--ac2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.main{padding:20px;max-width:1300px;margin:0 auto}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--p);border:1px solid var(--brd);border-radius:var(--r);padding:16px;display:flex;align-items:center;gap:12px}
+.nav-tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.ntab{padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:var(--p);border:1px solid var(--brd);color:var(--mt);transition:all .2s}
+.ntab.act{background:var(--ac);color:#fff;border-color:var(--ac)}
+.ntab.ia-tab{border-color:var(--pu);color:var(--pu)}
+.ntab.ia-tab.act{background:var(--pu)}
+.ntab.cfg-tab{border-color:var(--am);color:var(--am)}
+.ntab.cfg-tab.act{background:var(--am);color:#000}
+.card{background:var(--p);border:1px solid var(--brd);border-radius:var(--r);overflow:hidden;margin-bottom:16px}
+.card-hdr{padding:14px 18px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.card-hdr h2{font-size:14px;font-weight:700}
+.card-body{padding:20px}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--mt);text-transform:uppercase;background:var(--c);border-bottom:1px solid var(--brd)}
+td{padding:11px 14px;font-size:12px;border-bottom:1px solid #2a3a5530}
+tr:hover td{background:#ffffff05}
+.pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700}
+.p-ac{background:#10b98122;color:var(--gr)} .p-in{background:#ef444422;color:var(--rd)}
+.p-tr{background:#f59e0b22;color:var(--am)} .p-pe{background:#06b6d422;color:var(--ac2)}
+.key-mono{font-family:monospace;font-size:11px;color:var(--ac2);cursor:pointer}
+label{display:block;font-size:11px;color:var(--mt);margin-bottom:4px;margin-top:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:9px 12px;color:var(--tx);font-size:13px;outline:none;transition:border .2s;font-family:inherit}
+input:focus,select:focus,textarea:focus{border-color:var(--ac)}
+textarea{resize:vertical;min-height:70px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .2s}
+.btn:hover{opacity:.85} .btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-ac{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff}
+.btn-gr{background:var(--gr);color:#fff} .btn-rd{background:var(--rd);color:#fff}
+.btn-am{background:var(--am);color:#111} .btn-pu{background:var(--pu);color:#fff}
+.btn-ghost{background:transparent;border:1px solid var(--brd);color:var(--tx)}
+.btn-full{width:100%;margin-top:12px}
+.btn-sm{padding:6px 12px;font-size:11px}
+.sync-pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 9px;border-radius:6px}
+.sync-ok{background:#10b98115;color:var(--gr)} .sync-warn{background:#f59e0b15;color:var(--am)}
+.pulse{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.pg{background:var(--gr);animation:blink 2s infinite} .pa{background:var(--am)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.modal-bg{display:none;position:fixed;inset:0;background:#00000099;z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:var(--p);border:1px solid var(--brd);border-radius:18px;padding:28px;width:100%;max-width:540px;box-shadow:0 30px 80px #000}
+.key-res{display:none;background:var(--bg);border:2px dashed var(--ac);border-radius:var(--r);padding:18px;text-align:center;margin-top:14px}
+.key-res.show{display:block}
+.key-big{font-family:monospace;font-size:18px;font-weight:900;letter-spacing:.1em;color:var(--ac2);word-break:break-all}
+#toast{position:fixed;bottom:20px;right:20px;z-index:999;background:var(--gr);color:#fff;padding:12px 18px;border-radius:var(--r);font-size:13px;font-weight:700;transform:translateY(60px);transition:transform .3s;box-shadow:0 8px 24px #00000066}
+#toast.show{transform:translateY(0)} #toast.err{background:var(--rd)}
+/* IA chat */
+.chat-wrap{display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--brd);border-radius:var(--r);height:420px;overflow:hidden}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.msg-ai{max-width:85%;padding:10px 14px;border-radius:14px 14px 14px 4px;background:var(--c);border:1px solid var(--brd);font-size:13px;line-height:1.6;align-self:flex-start}
+.msg-user{max-width:85%;padding:10px 14px;border-radius:14px 14px 4px 14px;background:var(--ac);color:#fff;font-size:13px;line-height:1.6;align-self:flex-end}
+.msg-lbl{font-size:10px;color:var(--mt);margin-bottom:4px;font-weight:700}
+.chat-in{padding:12px;border-top:1px solid var(--brd);display:flex;gap:8px}
+.dots{display:flex;gap:4px;align-items:center;padding:10px;align-self:flex-start}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:bounce .8s infinite}
+.dot:nth-child(2){animation-delay:.15s} .dot:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+/* Grid layouts */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.bk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-bottom:14px}
+.bk-card{background:var(--c);border:1px solid var(--brd);border-radius:var(--r);padding:18px}
+.bk-card h3{font-size:13px;font-weight:700;margin-bottom:6px}
+.bk-status{font-size:10px;color:var(--mt);margin-top:6px}
+/* Config section */
+.cfg-section{background:var(--c);border:1px solid var(--brd);border-radius:var(--r);padding:18px;margin-bottom:14px}
+.cfg-section h3{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;color:var(--tx)}
+.search{background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:7px 12px;color:var(--tx);font-size:12px;outline:none;width:200px}
+@media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}.search{width:130px}#panel-licencias>[style*='grid-template-columns:300px']{grid-template-columns:1fr!important}}
+</style>
+</head>
+<body>
+<!-- LOGIN -->
+<div id="login-wrap">
+  <div class="lbox">
+    <div style="text-align:center;margin-bottom:28px">
+      <div class="lbadge">⚙️</div>
+      <h1 style="font-size:20px;font-weight:800">Gestión Pro Total</h1>
+      <p style="font-size:12px;color:var(--mt);margin-top:4px">Panel de Administración de Licencias</p>
+    </div>
+    <label>Contraseña de administrador</label>
+    <input type="password" id="pwd-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    <div id="login-err" style="color:var(--rd);font-size:12px;margin-top:8px;display:none">Contraseña incorrecta</div>
+    <button class="btn btn-ac btn-full" onclick="doLogin()">🔑 Entrar al panel</button>
+    <div style="text-align:center;margin-top:14px">
+      <button onclick="recoverPass()" style="background:none;border:none;cursor:pointer;color:var(--ac2);font-size:12px;text-decoration:underline">¿Olvidaste la contraseña?</button>
+    </div>
+    <p style="font-size:10px;color:var(--mt);text-align:center;margin-top:10px">kairigarcia.gestionprototal@gmail.com</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-l">
+      <div class="hdr-logo">⚙️</div>
+      <div><div style="font-size:15px;font-weight:700">Panel de Licencias</div><div style="font-size:10px;color:var(--mt)">Gestión Pro Total</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div class="sync-pill sync-ok" id="sync-pill"><div class="pulse pg"></div><span id="sync-txt">Sincronizado</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="exportData()">📤 Exportar</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('imp').click()">📥 Importar</button>
+      <input type="file" id="imp" accept=".json" style="display:none" onchange="importData(event)">
+      <button class="btn btn-ac btn-sm" onclick="openModal()">+ Nueva licencia</button>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="stats" id="stats-grid"></div>
+
+    <div class="nav-tabs">
+      <button class="ntab" onclick="setTab('solicitudes',this)" style="border-color:var(--am);color:var(--am)">📬 Solicitudes</button>
+      <button class="ntab" id="tab-btn-clientes" onclick="setTab('clientes',this)">👥 Clientes</button>
+      <button class="ntab act" onclick="setTab('todas',this)">📋 Todas</button>
+      <button class="ntab" onclick="setTab('activa',this)">✅ Activas</button>
+      <button class="ntab" onclick="setTab('demo',this)">🎁 Demo</button>
+      <button class="ntab" onclick="setTab('pendiente',this)">⏳ Pendientes</button>
+      <button class="ntab" onclick="setTab('inactiva',this)">🚫 Revocadas</button>
+      <button class="ntab" onclick="setTab('backup',this)">💾 Backup</button>
+      <button class="ntab" onclick="setTab('distribuidor',this)">🏢 Distribuidor</button>
+      <button class="ntab" onclick="setTab('auditoria',this)">🔍 Auditoría</button>
+      <button class="ntab ia-tab" onclick="setTab('ia',this)">🤖 Agente IA</button>
+      <button class="ntab cfg-tab" onclick="setTab('config',this)">⚙️ Configuración</button>
+    </div>
+
+    <!-- ── LICENCIAS ── -->
+    <!-- ── SOLICITUDES PENDIENTES + ANTI-COMPARTICIÓN ── -->
+    <div id="panel-solicitudes" style="display:none">
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-hdr">
+          <h2>🚨 Alerta: claves en múltiples dispositivos</h2>
+          <span style="font-size:11px;color:var(--mt)">Actualiza automáticamente al abrir esta pestaña</span>
+        </div>
+        <div id="sharing-tabla" style="overflow-x:auto">
+          <div style="padding:20px;text-align:center;color:var(--mt);font-size:13px">Cargando...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <h2>📬 Solicitudes de licencia recibidas</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-ghost btn-sm" onclick="renderSolicitudes()">🔄 Actualizar</button>
+            <button class="btn btn-am btn-sm" onclick="exportarSolicitudes()">📤 Exportar CSV</button>
+            <button class="btn btn-rd btn-sm" onclick="if(confirm('¿Borrar todas las solicitudes procesadas?'))clearSolicitudes()">🗑️ Limpiar</button>
+          </div>
+        </div>
+        <div id="sol-tabla" style="overflow-x:auto"></div>
+        <div style="padding:16px;background:var(--bg);border-top:1px solid var(--brd);font-size:12px;color:var(--mt)">
+          <strong>¿Cómo llegan las solicitudes aquí?</strong><br>
+          Las solicitudes llegan a tu email. Cuando las proceses, puedes registrarlas manualmente pulsando el botón de abajo.
+          <br><br>
+          <button class="btn btn-ac btn-sm" onclick="abrirRegistrarSolicitud()">➕ Registrar solicitud recibida por email</button>
+        </div>
+      </div>
+
+      <!-- Modal registrar solicitud -->
+      <div id="modal-solicitud" style="display:none;position:fixed;inset:0;background:#00000099;z-index:200;align-items:center;justify-content:center;padding:20px">
+        <div style="background:var(--p);border:1px solid var(--brd);border-radius:18px;padding:28px;width:100%;max-width:520px;box-shadow:0 30px 80px #000">
+          <h2 style="font-size:16px;font-weight:800;margin-bottom:16px">📬 Registrar solicitud recibida</h2>
+          <div class="grid-2">
+            <div>
+              <label>Nombre del cliente *</label>
+              <input type="text" id="sol-nombre" placeholder="Nombre completo">
+              <label>Email *</label>
+              <input type="email" id="sol-email" placeholder="cliente@email.com">
+              <label>Empresa</label>
+              <input type="text" id="sol-empresa" placeholder="Empresa (opcional)">
+              <label>Teléfono</label>
+              <input type="tel" id="sol-tel" placeholder="+34 6XX XXX XXX">
+            </div>
+            <div>
+              <label>Plan solicitado</label>
+              <select id="sol-plan">
+                <option value="demo">Demo 7 días</option>
+                <option value="mensual">Mensual — 9,99 €</option>
+                <option value="anual" selected>Anual — 79,99 €</option>
+                <option value="permanente">Permanente — 199 €</option>
+                <option value="escuela">Estudiantes (1 año · matrícula)</option>
+              </select>
+              <label>Método de pago</label>
+              <select id="sol-metodo">
+                <option value="bizum">Bizum</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="otro">Otro</option>
+              </select>
+              <label>Estado del pago</label>
+              <select id="sol-estado">
+                <option value="pendiente">⏳ Pendiente verificación</option>
+                <option value="verificado">✅ Pago verificado</option>
+                <option value="rechazado">❌ Rechazado</option>
+              </select>
+              <label>Observaciones</label>
+              <textarea id="sol-obs" style="min-height:60px" placeholder="Notas sobre esta solicitud..."></textarea>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn btn-ac" style="flex:1" onclick="guardarSolicitud()">💾 Guardar solicitud</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('modal-solicitud').style.display='none'">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── CLIENTES ── -->
+    <div id="panel-clientes" style="display:none">
+      <div style="display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start">
+
+        <!-- Ficha de cliente seleccionado -->
+        <div class="card" style="position:sticky;top:76px">
+          <div class="card-hdr">
+            <h2>👤 Ficha del cliente</h2>
+            <button class="btn btn-ghost btn-sm" id="btn-nueva-ficha" onclick="abrirNuevoCliente()">+ Nuevo</button>
+          </div>
+          <div style="padding:16px" id="ficha-cliente">
+            <div style="text-align:center;padding:30px 0;color:var(--mt);font-size:13px">
+              Selecciona un cliente de la lista<br>o crea uno nuevo
+            </div>
+          </div>
+        </div>
+
+        <!-- Lista de clientes -->
+        <div class="card">
+          <div class="card-hdr">
+            <h2>👥 Clientes registrados</h2>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <input class="search" id="cli-srch" placeholder="🔍 Buscar cliente..." oninput="renderClientes()">
+              <span id="cli-count" style="font-size:11px;color:var(--mt)"></span>
+            </div>
+          </div>
+          <div id="clientes-lista" style="overflow-x:auto"></div>
+        </div>
+
+      </div>
+    </div>
+
+        <div id="panel-licencias">
+      <!-- Grid: formulario rápido + tabla -->
+      <div style="display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start">
+
+        <!-- ── FORMULARIO ASIGNACIÓN MANUAL (sin IA, siempre visible) ── -->
+        <div class="card" style="position:sticky;top:76px">
+          <div class="card-hdr">
+            <h2>📝 Asignación manual</h2>
+            <span style="font-size:10px;color:var(--gr);font-weight:700">SIN IA</span>
+          </div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:2px">
+            <label>Nombre del cliente *</label>
+            <input type="text" id="q-nombre" placeholder="Nombre completo o empresa">
+
+            <label>Email *</label>
+            <input type="email" id="q-email" placeholder="cliente@email.com">
+
+            <label>Tipo de licencia</label>
+            <select id="q-tipo" onchange="qResetPrecio(this.value)">
+              <option value="demo">🎁 Demo 7 días — GRATIS</option>
+              <option value="mensual">📆 Mensual — 9,99 €</option>
+              <option value="anual" selected>📅 Anual — 79,99 €</option>
+              <option value="permanente">♾️ Permanente — 199 €</option>
+              <option value="escuela">🎓 Estudiantes (1 año · matrícula)</option>
+              <optgroup label="─── Packs empresariales ───">
+                <option value="pack10">📦 Pack 10 licencias — 69,90 €</option>
+                <option value="pack25">📦 Pack 25 licencias — 149,75 €</option>
+                <option value="pack50">📦 Pack 50 licencias — 249,50 €</option>
+                <option value="pack100">📦 Pack 100 licencias — 399,00 €</option>
+              </optgroup>
+            </select>
+
+            <label>Precio (€)</label>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="q-precio" value="79.99" step="0.01" style="flex:1">
+              <button type="button" onclick="qAnularPrecio()"
+                style="background:var(--am);color:#111;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0"
+                title="Poner precio a 0 — licencia de cortesía">
+                🎁 0€
+              </button>
+            </div>
+
+            <div id="q-motivo-row" style="display:none">
+              <label>Motivo (precio anulado)</label>
+              <input type="text" id="q-motivo" placeholder="Cortesía, promoción, error...">
+            </div>
+
+            <label>Fecha de pago</label>
+            <input type="date" id="q-fecha">
+
+            <label>Notas internas</label>
+            <input type="text" id="q-notas" placeholder="Observaciones...">
+
+            <button class="btn btn-ac" style="margin-top:12px;width:100%" id="btn-quick-gen" onclick="generarLicenciaRapida()">
+              ⚡ Generar clave
+            </button>
+
+            <!-- Resultado -->
+            <div id="q-resultado" style="display:none;margin-top:12px;background:var(--bg);border:2px dashed var(--ac);border-radius:var(--r);padding:14px;text-align:center">
+              <div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Clave generada</div>
+              <div id="q-key-val" style="font-family:monospace;font-size:13px;line-height:1.7;font-weight:800;color:var(--ac2);white-space:pre-wrap;word-break:break-all;background:#0b1220;border:1px solid var(--brd);border-radius:8px;padding:12px;text-align:left;max-height:none;overflow-wrap:anywhere"></div>
+              <div id="q-key-exp" style="font-size:11px;color:var(--mt);margin-top:4px"></div>
+              <div style="display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap">
+                <button class="btn btn-gr btn-sm" id="q-btn-copiar" onclick="">📋 Copiar</button>
+                <button class="btn btn-ac btn-sm" id="q-btn-email"  onclick="">📧 Email</button>
+                <button class="btn btn-ghost btn-sm" onclick="resetFormRapido()">Nueva</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TABLA DE LICENCIAS ── -->
+        <div>
+          <div class="card">
+            <div class="card-hdr">
+              <h2 id="tab-title">📋 Todas las licencias</h2>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <input class="search" placeholder="🔍 Buscar..." oninput="renderTable()" id="srch">
+                <button class="btn btn-ghost btn-sm" onclick="renderTable()">🔄</button>
+              </div>
+            </div>
+            <div id="table-area" style="overflow-x:auto"></div>
+          </div>
+        </div>
+
+      </div><!-- /grid -->
+    </div>
+
+    <!-- ── BACKUP ── -->
+    <div id="panel-backup" style="display:none">
+      <div class="bk-grid">
+        <div class="bk-card">
+          <h3>🖥️ Almacenamiento local (siempre activo)</h3>
+          <p style="font-size:11px;color:var(--mt);margin-bottom:10px">IndexedDB — 50+ MB. Sin servidor. Siempre disponible.</p>
+          <div class="bk-status" id="idb-info">Cargando...</div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:10px;width:100%" onclick="exportData()">💾 Descargar copia</button>
+        </div>
+        <div class="bk-card">
+          <h3>💾 Disco / USB / Red local</h3>
+          <label>Nombre del fichero</label>
+          <input type="text" id="bk-fname" value="GPT-Licencias-backup.json">
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-gr btn-sm" style="flex:1" onclick="backupLocal()">💾 Guardar</button>
+            <button class="btn btn-ghost btn-sm" id="btn-auto-local" onclick="toggleAutoLocal()">⏱️ Auto: OFF</button>
+          </div>
+          <div class="bk-status" id="bk-local-last">Sin copias</div>
+        </div>
+        <div class="bk-card">
+          <h3>🌐 Servidor externo / API REST</h3>
+          <label>URL del servidor</label>
+          <input type="url" id="bk-srv-url" placeholder="https://mi-servidor.com/api/backup" oninput="saveBkCfg()">
+          <label>Token de autenticación (opcional)</label>
+          <input type="text" id="bk-srv-token" placeholder="Bearer mi-token" oninput="saveBkCfg()">
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-ac btn-sm" style="flex:1" onclick="backupServer()">☁️ Enviar</button>
+            <button class="btn btn-ghost btn-sm" onclick="testServer()">🔍 Test</button>
+          </div>
+          <div class="bk-status" id="bk-srv-last">Sin configurar</div>
+        </div>
+        <div class="bk-card">
+          <h3>📁 Google Drive (Apps Script)</h3>
+          <label>URL del Apps Script</label>
+          <input type="url" id="bk-drive-url" placeholder="https://script.google.com/macros/s/.../exec" oninput="saveBkCfg()">
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-gr btn-sm" style="flex:1" onclick="backupDrive(false)">☁️ Diario</button>
+            <button class="btn btn-am btn-sm" onclick="backupDrive(true)">📸 Manual</button>
+          </div>
+          <div class="bk-status" id="bk-drive-last">Sin configurar</div>
+          <a href="https://drive.google.com/drive/folders/1jijk-S2WNJRn7Jvy3arSGDtW5eAbaC8L" target="_blank" style="font-size:10px;color:var(--ac2);display:block;margin-top:8px">📂 Abrir carpeta Drive</a>
+        </div>
+        <div class="bk-card">
+          <h3>📧 Email de respaldo</h3>
+          <label>Email de destino</label>
+          <input type="email" id="bk-email" value="kairigarcia.gestionprototal@gmail.com">
+          <button class="btn btn-ghost btn-sm" style="margin-top:10px;width:100%" onclick="backupEmail()">📧 Enviar copia</button>
+          <div class="bk-status" id="bk-email-last">Nunca enviado</div>
+        </div>
+        <div class="bk-card">
+          <h3>📊 Estado del sistema</h3>
+          <div id="bk-summary" style="font-size:12px;line-height:1.9"></div>
+          <button class="btn btn-ac" style="width:100%;margin-top:12px" onclick="backupAll()">🚀 Backup en TODOS</button>
+          <div class="bk-status" id="bk-all-last"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DISTRIBUIDOR ── -->
+    <div id="panel-distribuidor" style="display:none">
+      <div id="dist-locked">
+        <div style="text-align:center;padding:50px 20px">
+          <div style="font-size:56px;margin-bottom:14px">🏢</div>
+          <h2 style="font-size:20px;font-weight:800;margin-bottom:8px">Módulo de Distribuidores</h2>
+          <p style="font-size:13px;color:var(--mt);margin-bottom:20px;max-width:400px;margin-inline:auto">Genera paquetes y claves para empresas distribuidoras. Protegido con contraseña de administrador.</p>
+          <div style="max-width:300px;margin:0 auto">
+            <label>Confirma contraseña de administrador</label>
+            <input type="password" id="dist-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')unlockDist()">
+            <button class="btn btn-pu btn-full" onclick="unlockDist()">🔓 Acceder al módulo</button>
+          </div>
+          <div id="dist-err" style="color:var(--rd);font-size:12px;margin-top:8px;display:none">Contraseña incorrecta</div>
+        </div>
+      </div>
+      <div id="dist-content" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div><h2 style="font-size:18px;font-weight:800">🏢 Módulo de Distribuidores</h2><p style="font-size:12px;color:var(--mt)">Genera claves y paquetes para empresas distribuidoras</p></div>
+          <button class="btn btn-ghost btn-sm" onclick="lockDist()">🔒 Bloquear</button>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><h2>📦 Crear paquete distribuidor</h2></div>
+          <div class="card-body">
+            <div class="grid-2">
+              <div>
+                <label>Nombre de la empresa *</label><input type="text" id="d-empresa" placeholder="Empresa Distribuidora SL">
+                <label>Email de contacto *</label><input type="email" id="d-email" placeholder="contacto@empresa.com">
+                <label>CIF/NIF</label><input type="text" id="d-cif" placeholder="B12345678">
+                <label>Persona de contacto</label><input type="text" id="d-contacto" placeholder="Nombre del responsable">
+              </div>
+              <div>
+                <label>Tipo de distribución</label>
+                <select id="d-tipo">
+                  <option value="regional">🗺️ Regional (1 comunidad)</option>
+                  <option value="nacional">🇪🇸 Nacional</option>
+                  <option value="franquicia">🏭 Franquicia (uso interno)</option>
+                  <option value="revendedor">🤝 Revendedor autorizado</option>
+                </select>
+                <label>Número máximo de sublicencias</label>
+                <select id="d-maxlic">
+                  <option value="0" selected>♾️ Sin límite (ilimitadas)</option>
+                  <option value="10">10 sublicencias</option>
+                  <option value="25">25 sublicencias</option>
+                  <option value="50">50 sublicencias</option>
+                  <option value="100">100 sublicencias</option>
+                  <option value="250">250 sublicencias</option>
+                  <option value="500">500 sublicencias</option>
+                </select>
+                <label>Precio acordado (€)</label><input type="number" id="d-precio" placeholder="0.00" step="0.01">
+                <label>Vigencia del contrato</label>
+                <select id="d-vigencia">
+                  <option value="1">1 año</option><option value="2">2 años</option>
+                  <option value="3">3 años</option><option value="vitalicia">♾️ Vitalicia</option>
+                </select>
+              </div>
+              <div style="grid-column:1/-1">
+                <label>Notas / condiciones especiales</label>
+                <textarea id="d-notas" placeholder="Territorios, restricciones, condiciones especiales..."></textarea>
+              </div>
+              <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn btn-pu" onclick="generarDistribuidor()">📦 Generar clave + paquete</button>
+                <button class="btn btn-ghost" onclick="resetDist()">Limpiar</button>
+              </div>
+            </div>
+            <div id="d-result" style="display:none;margin-top:18px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><h2>🏢 Distribuidores registrados</h2></div>
+          <div id="dist-lista" style="overflow-x:auto"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PACKS ── -->
+    <div id="panel-packs" style="display:none">
+      <div style="display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start">
+
+        <!-- Formulario nuevo pack -->
+        <div class="card" style="position:sticky;top:76px">
+          <div class="card-hdr"><h2>📦 Crear nuevo pack</h2></div>
+          <div style="padding:16px">
+            <label>Empresa / cliente del pack *</label>
+            <input type="text" id="pk-empresa" placeholder="Nombre de la empresa">
+            <label>Email de contacto *</label>
+            <input type="email" id="pk-email" placeholder="empresa@email.com">
+            <label>Tamaño del pack</label>
+            <select id="pk-tamano" onchange="updatePackPrecio()">
+              <option value="10">📦 Pack 10 licencias</option>
+              <option value="25">📦 Pack 25 licencias</option>
+              <option value="50">📦 Pack 50 licencias</option>
+              <option value="100">📦 Pack 100 licencias</option>
+              <option value="personalizado">✏️ Personalizado</option>
+            </select>
+            <div id="pk-personalizado-row" style="display:none">
+              <label>Número de licencias</label>
+              <input type="number" id="pk-num-custom" placeholder="Ej: 15" min="1">
+            </div>
+            <label>Tipo de licencias del pack</label>
+            <select id="pk-tipo">
+              <option value="mensual">📆 Mensual</option>
+              <option value="anual" selected>📅 Anual</option>
+              <option value="permanente">♾️ Permanente</option>
+            </select>
+            <label>Precio del pack (€)</label>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="pk-precio" step="0.01" style="flex:1">
+              <button type="button" onclick="pk_precio0()" style="background:var(--am);color:#111;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer">🎁 0€</button>
+            </div>
+            <div id="pk-precio-ref" style="font-size:11px;color:var(--mt);margin-top:4px"></div>
+            <label>URL Apps Script del creador *</label>
+            <input type="url" id="pk-script-url" placeholder="https://script.google.com/macros/s/.../exec"
+              value="">
+            <p style="font-size:10px;color:var(--mt);margin-top:3px">Esta URL se incrustará en el portal del cliente para la sincronización anti-fraude.</p>
+            <label>Notas internas</label>
+            <textarea id="pk-notas" style="min-height:56px" placeholder="Observaciones, condiciones especiales..."></textarea>
+            <button class="btn btn-pu" style="width:100%;margin-top:14px" onclick="generarPack()">⚡ Generar pack de licencias</button>
+          </div>
+        </div>
+
+        <!-- Tabla de packs -->
+        <div class="card">
+          <div class="card-hdr">
+            <h2>📦 Packs emitidos</h2>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="renderPacks()">🔄</button>
+              <button class="btn btn-ac btn-sm" onclick="exportPacks()">📤 Exportar</button>
+            </div>
+          </div>
+          <div id="packs-tabla" style="overflow-x:auto"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── AUDITORÍA ── -->
+    <div id="panel-auditoria" style="display:none">
+      <div class="card">
+        <div class="card-hdr">
+          <h2>🔍 Registro de Auditoría</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="audit-filter" onchange="renderAudit()" style="background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:7px 10px;color:var(--tx);font-size:12px;outline:none">
+              <option value="">Todos</option><option value="LOGIN">Accesos</option>
+              <option value="LIC">Licencias</option><option value="BACKUP">Backups</option>
+              <option value="ERROR">Errores</option><option value="BLOQUEO">Bloqueos</option>
+              <option value="IA">Agente IA</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="exportAudit()">📤 Exportar CSV</button>
+            <button class="btn btn-rd btn-sm" onclick="clearAudit()">🗑️ Limpiar</button>
+          </div>
+        </div>
+        <div id="audit-area" style="overflow-x:auto;max-height:500px;overflow-y:auto"></div>
+      </div>
+    </div>
+
+    <!-- ── AGENTE IA ── -->
+    <div id="panel-ia" style="display:none">
+      <div class="card">
+        <div class="card-hdr">
+          <h2>🤖 Agente IA — Gestión automática de licencias</h2>
+          <div class="sync-pill sync-warn" id="ia-pill">
+            <div class="pulse pa" id="ia-pulse"></div>
+            <span id="ia-txt">Sin configurar</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;padding:20px" id="ia-grid">
+          <!-- Sidebar -->
+          <div style="display:flex;flex-direction:column;gap:14px">
+                        <div class="cfg-section">
+              <h3>🤖 Proveedor de IA</h3>
+              <label>Motor de IA — elige el que prefieras</label>
+              <select id="ia-proveedor" onchange="cambiarProveedor(this.value)" style="margin-bottom:8px">
+                <option value="openrouter" selected>🌐 OpenRouter — GRATIS · Sin instalación · Solo registro</option>
+                <option value="groq">⚡ Groq — GRATIS · Sin instalación · Solo registro</option>
+                <option value="ollama">🦙 Ollama — GRATIS · Requiere instalación en el PC</option>
+                <option value="lmstudio">🖥️ LM Studio — GRATIS · Requiere instalación en el PC</option>
+                <option value="anthropic">🔵 Anthropic Claude — De pago</option>
+              </select>
+              <div id="ia-proveedor-info" style="font-size:11px;background:var(--bg);border-radius:8px;padding:10px;margin-bottom:8px;line-height:1.7;color:var(--mt)">Selecciona un proveedor</div>
+              <div id="ia-url-row">
+                <label>URL del servidor local</label>
+                <input type="text" id="ia-url" placeholder="http://localhost:11434" value="http://localhost:11434" oninput="saveIACfg()">
+              </div>
+              <div id="ia-modelo-row">
+                <label>Modelo</label>
+                <input type="text" id="ia-modelo" placeholder="meta-llama/llama-3.1-8b-instruct:free" value="meta-llama/llama-3.1-8b-instruct:free" oninput="saveIACfg()">
+              </div>
+              <div id="ia-key-row" style="display:none">
+                <label id="ia-key-label">API Key</label>
+                <div style="display:flex;gap:6px">
+                  <input type="password" id="ia-key" placeholder="Clave API..." style="flex:1" oninput="saveIACfg()">
+                  <button class="btn btn-ghost btn-sm" onclick="toggleShowKey()" id="btn-show-key">👁</button>
+                </div>
+              </div>
+              <div id="ia-key-status" style="font-size:11px;color:var(--mt);margin-top:8px">Sin configurar</div>
+              <button class="btn btn-ac btn-full" onclick="activarAgente()" id="btn-activar" style="margin-top:10px">⚡ Activar Agente IA</button>
+              <div id="ia-links" style="font-size:11px;text-align:center;margin-top:8px;line-height:1.8"></div>
+            </div>
+            <div class="cfg-section">
+              <h3>💳 Datos de pago</h3>
+              <label>Número de Bizum</label>
+              <input type="tel" id="ia-bizum" placeholder="+34 6XX XXX XXX" oninput="saveIACfg()">
+              <label>IBAN para transferencias</label>
+              <input type="text" id="ia-iban" placeholder="ES00 0000 0000 0000 0000 0000" oninput="saveIACfg()">
+              <label>Titular de la cuenta</label>
+              <input type="text" id="ia-titular" placeholder="Nombre titular" oninput="saveIACfg()">
+              <label>Nombre del banco</label>
+              <input type="text" id="ia-banco" placeholder="Banco / Caja" oninput="saveIACfg()">
+            </div>
+            <div class="cfg-section">
+              <h3>➕ Asignación manual con IA</h3>
+              <label>Nombre del cliente</label>
+              <input type="text" id="ia-m-nombre" placeholder="Nombre completo">
+              <label>Email</label>
+              <input type="email" id="ia-m-email" placeholder="cliente@email.com">
+              <label>Tipo de licencia</label>
+              <select id="ia-m-tipo">
+                <option value="demo">🎁 Demo 7 días</option>
+                <option value="mensual">📆 Mensual — 9,99 €</option>
+                <option value="anual" selected>📅 Anual — 79,99 €</option>
+                <option value="permanente">♾️ Permanente — 199 €</option>
+                <option value="escuela">🎓 Estudiantes (1 año · matrícula)</option>
+              </select>
+              <label>Precio (€)</label>
+              <div style="display:flex;gap:6px">
+                <input type="number" id="ia-m-precio" placeholder="0.00" step="0.01" style="flex:1">
+                <button type="button" onclick="document.getElementById('ia-m-precio').value='0';document.getElementById('ia-m-precio').style.borderColor='var(--am)'" 
+                  style="background:var(--am);color:#111;border:none;border-radius:8px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">
+                  🎁 0€
+                </button>
+              </div>
+              <label>Notas / motivo</label>
+              <input type="text" id="ia-m-notas" placeholder="Cortesía, promoción, error previo...">
+              <label>Fecha de pago</label>
+              <input type="date" id="ia-m-fecha">
+              <button class="btn btn-pu btn-full" id="btn-ia-manual" onclick="asignarManualIA()" disabled>
+                🤖 Asignar clave con IA
+              </button>
+            </div>
+          </div>
+          <!-- Chat -->
+          <div class="chat-wrap">
+            <div class="chat-msgs" id="ia-chat">
+              <div style="text-align:center;padding:40px 20px">
+                <div style="font-size:48px;margin-bottom:12px">🤖</div>
+                <p style="color:var(--mt);font-size:13px">Introduce la API key de Anthropic en el panel izquierdo y pulsa <strong style="color:var(--ac)">Activar Agente IA</strong> para empezar.</p>
+              </div>
+            </div>
+            <div class="chat-in">
+              <input type="text" id="ia-input" placeholder="Escribe al agente IA... (ej: procesar solicitud, generar clave para Juan)" style="flex:1" onkeydown="if(event.key==='Enter')sendIA()">
+              <button class="btn btn-ac btn-sm" onclick="sendIA()">Enviar ↵</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CONFIGURACIÓN ── -->
+    <div id="panel-config" style="display:none">
+      <div class="cfg-section">
+        <h3>🔐 Seguridad y Acceso</h3>
+        <div class="grid-2">
+          <div>
+            <label>Contraseña actual de administrador</label>
+            <input type="password" id="cfg-pwd-actual" placeholder="Contraseña actual">
+            <label>Nueva contraseña</label>
+            <input type="password" id="cfg-pwd-nueva" placeholder="Nueva contraseña">
+            <label>Confirmar nueva contraseña</label>
+            <input type="password" id="cfg-pwd-conf" placeholder="Repite la nueva contraseña">
+            <button class="btn btn-am" style="margin-top:12px;width:100%" onclick="cambiarPassword()">🔑 Cambiar contraseña</button>
+            <p style="font-size:11px;color:var(--mt);margin-top:8px">⚠️ La contraseña del módulo distribuidor cambia automáticamente.</p>
+          </div>
+          <div>
+            <label>Email del administrador</label>
+            <input type="email" id="cfg-email" placeholder="kairigarcia.gestionprototal@gmail.com" oninput="saveProgramCfg()">
+            <label>Clave privada de licencias (ECDSA, JSON)</label>
+            <textarea id="cfg-secret" rows="3" placeholder='{"kty":"EC","crv":"P-256","x":"...","y":"...","d":"..."}' oninput="saveProgramCfg();checkKeyMatch()" style="width:100%;font-family:ui-monospace,monospace;font-size:12px"></textarea>
+            <div id="key-match" style="font-size:12px;font-weight:700;margin-top:6px"></div>
+            <p style="font-size:11px;color:var(--mt);margin-top:6px">🔒 Pega el contenido de <b>SOLO-PARA-MI/CLAVE-PRIVADA-MAESTRA.json</b>. Se guarda solo en este navegador. Con ella se firman las claves que valida la app.</p>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+              <button type="button" class="btn btn-pu btn-sm" onclick="generarClavesMaestras()">🔑 Generar claves (si no las tienes)</button>
+              <button type="button" class="btn btn-gr btn-sm" onclick="exportConfig()">💾 Guardar copia de la clave</button>
+              <button type="button" class="btn btn-ac btn-sm" onclick="document.getElementById('imp-config').click()">📥 Restaurar clave/config</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="verClavePrivada()">👁 Ver / copiar clave</button>
+              <input type="file" id="imp-config" accept="application/json,.json" style="display:none" onchange="importConfig(this)">
+            </div>
+            <p style="font-size:11px;color:var(--mt);margin-top:6px">✅ La clave queda <b>guardada automáticamente</b> en este equipo: solo la pegas una vez. Para llevarla a otro equipo o no perderla, usa <b>"Guardar copia de la clave"</b> y luego <b>"Restaurar"</b>.</p>
+            <p style="font-size:11px;color:var(--am);margin-top:6px">⚠️ Si generas claves NUEVAS, la app debe llevar la nueva clave PÚBLICA y volver a publicarse, o las licencias no validarán.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <h3>🏷️ Datos del programa</h3>
+        <div class="grid-2">
+          <div>
+            <label>Nombre del programa</label>
+            <input type="text" id="cfg-app-name" placeholder="Gestión Pro Total" oninput="saveProgramCfg()">
+            <label>Versión</label>
+            <input type="text" id="cfg-version" placeholder="1.0" oninput="saveProgramCfg()">
+            <label>Soporte / contacto público</label>
+            <input type="email" id="cfg-soporte" placeholder="email de soporte" oninput="saveProgramCfg()">
+            <label>WhatsApp de soporte (con prefijo país)</label>
+            <input type="tel" id="cfg-whatsapp" placeholder="+34612345678" oninput="saveProgramCfg()">
+          </div>
+          <div>
+            <label>URL Base44 / App base URL</label>
+            <input type="url" id="cfg-base-url" placeholder="https://...base44.app" oninput="saveProgramCfg()">
+            <label>Google Drive — carpeta ID</label>
+            <input type="text" id="cfg-drive-id" placeholder="1jijk-S2WNJRn7Jvy3arSGDtW5eAbaC8L" oninput="saveProgramCfg()">
+            <label>URL Apps Script (panel cloud)</label>
+            <input type="url" id="cfg-script-url" placeholder="https://script.google.com/macros/s/.../exec" oninput="saveProgramCfg();guardarScriptUrlLocal()">
+            <p style="font-size:11px;color:var(--mt);margin-top:4px">Cuando el programa instalado detecte compartición, notificará automáticamente a esta URL.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <h3>💶 Precios de licencias individuales</h3>
+        <div class="grid-3">
+          <div><label>🎁 Demo (días)</label><input type="number" id="cfg-p-demo-dias" placeholder="7" min="1" oninput="saveProgramCfg()"></div>
+          <div><label>📆 Mensual (€/mes)</label><input type="number" id="cfg-p-mensual" placeholder="9.99" step="0.01" oninput="saveProgramCfg()"></div>
+          <div><label>📅 Anual (€/año)</label><input type="number" id="cfg-p-anual" placeholder="79.99" step="0.01" oninput="saveProgramCfg()"></div>
+          <div><label>♾️ Permanente (€)</label><input type="number" id="cfg-p-permanente" placeholder="199" step="0.01" oninput="saveProgramCfg()"></div>
+          <div><label>🎓 Estudiantes (años, matrícula)</label><input type="number" id="cfg-p-escuela-anos" placeholder="1" min="1" oninput="saveProgramCfg()"></div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <h3>📦 Precios de packs empresariales</h3>
+        <p style="font-size:12px;color:var(--mt);margin-bottom:12px">Los packs incluyen claves anuales (1 año). El cliente las activa cuando las necesita.</p>
+        <div class="grid-2">
+          <div>
+            <label>Pack 10 licencias (€)</label>
+            <input type="number" id="cfg-pack10" placeholder="69.90" step="0.01" oninput="saveProgramCfg()" title="Precio total del pack de 10 claves (ej: 6.99€/clave)">
+            <label>Pack 25 licencias (€)</label>
+            <input type="number" id="cfg-pack25" placeholder="149.75" step="0.01" oninput="saveProgramCfg()" title="Precio total del pack de 25 claves (ej: 5.99€/clave)">
+          </div>
+          <div>
+            <label>Pack 50 licencias (€)</label>
+            <input type="number" id="cfg-pack50" placeholder="249.50" step="0.01" oninput="saveProgramCfg()" title="Precio total del pack de 50 claves (ej: 4.99€/clave)">
+            <label>Pack 100 licencias (€)</label>
+            <input type="number" id="cfg-pack100" placeholder="399.00" step="0.01" oninput="saveProgramCfg()" title="Precio total del pack de 100 claves (ej: 3.99€/clave)">
+          </div>
+        </div>
+        <div style="background:var(--bg);border-radius:8px;padding:10px;margin-top:10px;font-size:11px;color:var(--mt)">
+          💡 <strong>Funcionamiento de los packs:</strong><br>
+          Al asignar un pack, se generan TODAS las claves de golpe y se envía al cliente una página web donde puede verlas y activarlas cuando las necesite. La página web está vinculada con tu Apps Script para control y sincronización.
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <h3>📦 Precios de packs de licencias</h3>
+        <div class="grid-3">
+          <div><label>Pack 10 licencias (€)</label><input type="number" id="cfg-p-pack10" placeholder="69.99" step="0.01" oninput="saveProgramCfg()"></div>
+          <div><label>Pack 25 licencias (€)</label><input type="number" id="cfg-p-pack25" placeholder="149.99" step="0.01" oninput="saveProgramCfg()"></div>
+          <div><label>Pack 50 licencias (€)</label><input type="number" id="cfg-p-pack50" placeholder="249.99" step="0.01" oninput="saveProgramCfg()"></div>
+          <div><label>Pack 100 licencias (€)</label><input type="number" id="cfg-p-pack100" placeholder="399.99" step="0.01" oninput="saveProgramCfg()"></div>
+          <div><label>Por licencia extra (€)</label><input type="number" id="cfg-p-extra" placeholder="5.99" step="0.01" oninput="saveProgramCfg()"></div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <h3>⏱️ Backup automático</h3>
+        <div class="grid-2">
+          <div>
+            <label>Hora de backup diario (0-23)</label>
+            <input type="number" id="cfg-bk-hora" placeholder="3" min="0" max="23" oninput="saveProgramCfg()">
+            <label>Intervalo entre backups (horas)</label>
+            <input type="number" id="cfg-bk-intervalo" placeholder="20" min="1" oninput="saveProgramCfg()">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px">
+            <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px">
+              <input type="checkbox" id="cfg-bk-drive" onclick="saveProgramCfg()" style="width:18px;height:18px"> Backup automático en Google Drive
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px">
+              <input type="checkbox" id="cfg-bk-servidor" onclick="saveProgramCfg()" style="width:18px;height:18px"> Backup automático en servidor externo
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px">
+              <input type="checkbox" id="cfg-bk-local" onclick="saveProgramCfg()" style="width:18px;height:18px"> Backup automático en disco local
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <h3>📊 Información del sistema</h3>
+        <div id="cfg-sysinfo" style="font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="renderSysInfo()">🔄 Actualizar</button>
+          <button class="btn btn-am btn-sm" onclick="if(confirm('¿Borrar TODAS las licencias y datos?'))clearAllData()">⚠️ Borrar todos los datos</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODAL NUEVA LICENCIA -->
+<div class="modal-bg" id="modal-nueva">
+  <div class="modal">
+    <h2 style="font-size:18px;font-weight:800;margin-bottom:4px">Nueva Licencia</h2>
+    <div style="font-size:12px;color:var(--mt);margin-bottom:14px">Genera una clave de licencia para el cliente</div>
+    <label>Nombre del cliente *</label>
+    <input type="text" id="m-nombre" placeholder="Nombre completo o empresa">
+    <label>Email *</label>
+    <input type="email" id="m-email" placeholder="cliente@email.com">
+    <div class="grid-2">
+      <div>
+        <label>Tipo de licencia</label>
+        <select id="m-tipo" onchange="resetPrecio(this.value)">
+          <option value="demo">🎁 Demo</option>
+          <option value="mensual">📆 Mensual</option>
+          <option value="anual" selected>📅 Anual</option>
+          <option value="permanente">♾️ Permanente</option>
+          <option value="escuela">🎓 Estudiantes (1 año · matrícula)</option>
+        </select>
+      </div>
+      <div>
+        <label>Precio (€)</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="number" id="m-precio" value="79.99" step="0.01" style="flex:1">
+          <button type="button" onclick="anularPrecio()" 
+            title="Anular precio → poner a 0 (licencia gratuita / cortesía)"
+            style="background:var(--am);color:#111;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">
+            🎁 Sin coste
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Motivo de licencia sin coste (aparece al pulsar Sin coste) -->
+    <div id="m-motivo-row" style="display:none">
+      <label>Motivo / nota interna <span style="font-size:10px;color:var(--am)">(precio anulado)</span></label>
+      <input type="text" id="m-motivo" placeholder="Ej: promoción, error previo, colaborador, cortesía...">
+    </div>
+    <label>Fecha de pago / asignación</label>
+    <input type="date" id="m-fecha">
+    <label>Notas internas</label>
+    <textarea id="m-notas" placeholder="Notas para el administrador..."></textarea>
+    <div class="key-res" id="key-res">
+      <div style="font-size:10px;color:var(--mt);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Clave generada</div>
+      <div class="key-big" id="key-val"></div>
+      <div style="font-size:11px;color:var(--mt);margin-top:5px" id="key-exp"></div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-gr btn-sm" onclick="copiarClave()">📋 Copiar</button>
+        <button class="btn btn-ac btn-sm" onclick="enviarEmailClave()">📧 Enviar email</button>
+        <button class="btn btn-ghost btn-sm" onclick="cerrarModal()">Cerrar</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px" id="modal-btns">
+      <button class="btn btn-ac" style="flex:1" id="btn-gen" onclick="generarLicencia()">⚡ Generar licencia</button>
+      <button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// GESTIÓN PRO TOTAL — Panel de Licencias v1.0
+// ═══════════════════════════════════════════════════════════════════════════
+const ADMIN_EMAIL = 'kairigarcia.gestionprototal@gmail.com';
+const ADMIN_PLAIN = 'NiMiXaGa271110'; // contraseña por defecto (cambiar en ⚙️ Configuración)
+const B32 = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const DB_KEY  = 'gpt_lic_v2';
+const DIST_KEY    = 'gpt_dist';
+const CLIENTES_KEY    = 'gpt_clientes_v1';
+const SOL_KEY         = 'gpt_solicitudes_v1';
+const PACKS_KEY       = 'gpt_packs_v1';
+const CFG_KEY = 'gpt_prog_cfg';
+const IA_KEY  = 'gpt_ia_cfg';
+const BK_KEY  = 'gpt_bk_cfg';
+const LOG_KEY = 'gpt_audit';
+const RL_KEY  = 'gpt_rl';
+const LK_KEY  = 'gpt_lockout';
+
+let licencias=[], distribuidores=[], clientes=[], solicitudes=[], packs=[], programCfg={}, iaCfg={}, bkCfg={};
+let currentTab='todas', currentLic=null, iaActive=false, iaHist=[];
+let autoLocal=false, distUnlocked=false;
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+const $  = id => document.getElementById(id);
+const on = (id,fn) => { const el=$(id); if(el) el.addEventListener('input',fn); };
+function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg,err=false){ const t=$('toast'); t.textContent=msg; t.className='toast show'+(err?' err':''); setTimeout(()=>t.className='toast',3500); }
+// Parte una clave larga en 4 líneas legibles para mostrarla (NO altera la clave real)
+function fmtKeyLines(key,lineas=4){ if(!key) return ''; const n=Math.ceil(key.length/lineas); const out=[]; for(let i=0;i<key.length;i+=n) out.push(key.slice(i,i+n)); return out.join('\n'); }
+
+// ── Crypto ────────────────────────────────────────────────────────────────
+async function hmac(msg,key){ const e=new TextEncoder(),ck=await crypto.subtle.importKey('raw',e.encode(key),{name:'HMAC',hash:'SHA-256'},false,['sign']),s=await crypto.subtle.sign('HMAC',ck,e.encode(msg)); return Array.from(new Uint8Array(s)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+function b32x(h,l){ let n=BigInt('0x'+h),s=''; while(s.length<l){s=B32[Number(n%32n)]+s;n=n/32n;} return s.slice(-l); }
+function getSecret(){ return programCfg.secret||'GPT-SECRET-KEY-2024-GestionProTotal-v1'; }
+/* ===== Firma ECDSA P-256 — compatible con la app (clave pública en la app) ===== */
+function _b64url(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function getPrivJwk(){
+  const raw=(programCfg.secret||'').trim();
+  if(!raw) throw new Error('Falta la clave privada: pégala en ⚙️ Configuración. Si no la tienes, pulsa "Generar claves maestras".');
+  let j; try{ j=JSON.parse(raw); }catch{ throw new Error('La clave privada (Configuración) no es un JSON válido.'); }
+  if(!j.d) throw new Error('Esa clave no es privada (falta "d"). Pega el contenido de CLAVE-PRIVADA-MAESTRA.json.');
+  return j;
+}
+// Si una firma/generación falla (p.ej. falta la clave privada), mostrar el motivo
+// y desbloquear los botones que se quedaron en "Generando...".
+window.addEventListener('unhandledrejection', (e)=>{
+  const msg=(e.reason && (e.reason.message||e.reason)) || 'Error al generar la clave';
+  try{ toast(String(msg), true); }catch(_){ alert(String(msg)); }
+  ['btn-quick-gen','btn-ia-manual'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.disabled=false; if(/Generando/i.test(b.textContent)) b.textContent='⚡ Generar clave'; } });
+});
+// ── Generar par de claves maestras (ECDSA P-256) ──────────────────────────
+async function generarClavesMaestras(){
+  try{
+    const kp=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'}, true, ['sign','verify']);
+    const priv=await crypto.subtle.exportKey('jwk', kp.privateKey);
+    const pub =await crypto.subtle.exportKey('jwk', kp.publicKey);
+    delete priv.key_ops; delete priv.ext; delete pub.key_ops; delete pub.ext;
+    const privStr=JSON.stringify(priv), pubStr=JSON.stringify({kty:pub.kty,crv:pub.crv,x:pub.x,y:pub.y});
+    // Cargar la privada en Configuración para poder firmar ya
+    const cs=document.getElementById('cfg-secret'); if(cs){ cs.value=privStr; cs.dispatchEvent(new Event('input',{bubbles:true})); }
+    const aviso=
+      'CLAVES MAESTRAS GENERADAS\n\n'+
+      '1) GUARDA la CLAVE PRIVADA en un sitio seguro (SOLO-PARA-MI/CLAVE-PRIVADA-MAESTRA.json).\n'+
+      '   NUNCA la compartas. Ya queda cargada en este equipo para firmar.\n\n'+
+      'CLAVE PRIVADA (guárdala):\n'+privStr+'\n\n'+
+      '2) Para que la app valide tus licencias, su CLAVE PÚBLICA debe ser esta:\n'+pubStr+'\n'+
+      '   (Si cambias de claves, hay que poner esta pública en la app y volver a publicarla.)';
+    // Descargar ambos como archivos
+    const dl=(nombre,txt)=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'})); a.download=nombre; a.click(); };
+    dl('CLAVE-PRIVADA-MAESTRA.json', privStr);
+    dl('CLAVE-PUBLICA.txt', pubStr);
+    try{ toast('Claves generadas y descargadas. Privada cargada en Configuración.'); }catch(_){}
+    alert(aviso);
+  }catch(e){ try{ toast('No se pudieron generar las claves: '+e.message, true); }catch(_){ alert(e.message); } }
+}
+// Envía datos al backend de licencias en la nube (Apps Script). Fire-and-forget.
+function cloudPost(obj){
+  const u=programCfg.scriptUrl||localStorage.getItem('gpt_script_url')||'';
+  if(!u) return;
+  try{ fetch(u,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(obj)}); }catch(e){}
+}
+// Clave PÚBLICA que lleva la app publicada. La privada cargada debe tener esta x/y.
+const APP_PUBLIC = { x:'GVRs2q7_P5nhqdC7AhpNftcw2ovLkauL_H9aAEd800o', y:'0G5uk7mC3roiruWZE_vWzpiw2PzNEI2B7MdGVGUV5js' };
+function checkKeyMatch(){
+  const el=document.getElementById('key-match'); if(!el) return;
+  const raw=(document.getElementById('cfg-secret')?.value||'').trim();
+  if(!raw){ el.textContent=''; return; }
+  let j; try{ j=JSON.parse(raw); }catch{ el.textContent='⚠️ La clave no es un JSON válido.'; el.style.color='#ef4444'; return; }
+  if(!j.d){ el.textContent='⚠️ Esto no es una clave PRIVADA (falta "d").'; el.style.color='#ef4444'; return; }
+  if(j.x===APP_PUBLIC.x && j.y===APP_PUBLIC.y){ el.textContent='✓ Clave correcta: coincide con la app publicada.'; el.style.color='#16a34a'; }
+  else{ el.textContent='⛔ Esta clave NO corresponde a la app publicada: las licencias darán "no auténtica". Pega tu CLAVE-PRIVADA-MAESTRA.json original (la entregada).'; el.style.color='#ef4444'; }
+}
+function _expiraMs(tipo){
+  const dias=parseInt(programCfg.precio_demo_dias)||7; const d=new Date();
+  if(tipo==='demo'){ d.setDate(d.getDate()+dias); }
+  else if(tipo==='mensual'){ d.setMonth(d.getMonth()+1); }
+  else if(tipo==='trimestral'){ d.setMonth(d.getMonth()+3); }
+  else if(tipo==='semestral'){ d.setMonth(d.getMonth()+6); }
+  else if(tipo==='anual'){ d.setFullYear(d.getFullYear()+1); }
+  else if(tipo==='escuela'){ d.setFullYear(d.getFullYear()+1); } // Estudiantes: 1 año (renovable con matrícula)
+  else { return 0; } // permanente / distribuidor = perpetua
+  return d.getTime();
+}
+// Genera la clave de licencia como token ECDSA firmado que la app valida.
+async function genKey(cli,tipo){
+  const jwk=getPrivJwk();
+  const payload={ cliente:String(cli||''), email:'', deviceId:'', plan:tipo, emitida:Date.now(), expira:_expiraMs(tipo), v:1 };
+  const pB64=_b64url(new TextEncoder().encode(JSON.stringify(payload)));
+  const key=await crypto.subtle.importKey('jwk',jwk,{name:'ECDSA',namedCurve:'P-256'},false,['sign']);
+  const sig=await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},key,new TextEncoder().encode(pB64));
+  return pB64+'.'+_b64url(sig);
+}
+function calcExp(tipo,desde){
+  const d=new Date(desde||Date.now()), n=parseInt(programCfg['precio_demo_dias'])||7;
+  if(tipo==='demo'){d.setDate(d.getDate()+n);}
+  else if(tipo==='mensual'){d.setMonth(d.getMonth()+1);}
+  else if(tipo==='anual'){d.setFullYear(d.getFullYear()+1);}
+  else if(tipo==='escuela'){d.setFullYear(d.getFullYear()+(parseInt(programCfg['precio_escuela_anos'])||1));}
+  else return null;
+  return d.toISOString();
+}
+function getPrecio(tipo){ const m={
+  'demo':0,
+  'mensual':parseFloat(programCfg.precio_mensual)||9.99,
+  'anual':parseFloat(programCfg.precio_anual)||79.99,
+  'permanente':parseFloat(programCfg.precio_permanente)||199,
+  'escuela':0,
+  'pack10':parseFloat(programCfg.precio_pack10)||69.90,
+  'pack25':parseFloat(programCfg.precio_pack25)||149.75,
+  'pack50':parseFloat(programCfg.precio_pack50)||249.50,
+  'pack100':parseFloat(programCfg.precio_pack100)||399.00,
+};
+return m[tipo]!=null?m[tipo]:0; }
+
+// ── Rate Limiting ─────────────────────────────────────────────────────────
+function checkRL(){ const now=Date.now(), lk=localStorage.getItem(LK_KEY); if(lk&&now<parseInt(lk)){const m=Math.ceil((parseInt(lk)-now)/60000);return{blocked:true,mins:m};} let atts=[]; try{atts=JSON.parse(localStorage.getItem(RL_KEY)||'[]');}catch{} atts=atts.filter(t=>now-t<15*60*1000); if(atts.length>=5){localStorage.setItem(LK_KEY,String(now+30*60*1000));auditLog('BLOQUEO','Demasiados intentos','WARN');return{blocked:true,mins:30};} return{blocked:false,atts}; }
+function regFail(){ let atts=[]; try{atts=JSON.parse(localStorage.getItem(RL_KEY)||'[]');}catch{} atts.push(Date.now()); localStorage.setItem(RL_KEY,JSON.stringify(atts)); const r=5-atts.length; auditLog('LOGIN_FAIL','Intento fallido. Restantes: '+r,'WARN'); return r; }
+function clearRL(){ localStorage.removeItem(RL_KEY); localStorage.removeItem(LK_KEY); }
+
+// ── Audit Log ─────────────────────────────────────────────────────────────
+function auditLog(ev,det,sev='INFO'){ let logs=[]; try{logs=JSON.parse(localStorage.getItem(LOG_KEY)||'[]');}catch{} logs.unshift({ts:new Date().toISOString(),ev,det,sev,ua:navigator.userAgent.slice(0,60)}); if(logs.length>500)logs=logs.slice(0,500); localStorage.setItem(LOG_KEY,JSON.stringify(logs)); }
+function getLogs(){ try{return JSON.parse(localStorage.getItem(LOG_KEY)||'[]');}catch{return[];} }
+
+// ── Login / Logout ────────────────────────────────────────────────────────
+async function sha256(str){ const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str)); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+
+async function doLogin(){
+  const rl=checkRL();
+  if(rl.blocked){$('login-err').textContent='⛔ Bloqueado. Espera '+rl.mins+' min.';$('login-err').style.display='block';return;}
+  const pwd=$('pwd-input').value;
+  const adminPass = programCfg.adminPass||ADMIN_PLAIN;
+  const ok = (pwd === adminPass);
+  if(ok){
+    clearRL(); auditLog('LOGIN_OK','Sesión iniciada','INFO');
+    $('login-wrap').style.display='none'; $('app').style.display='block';
+    loadAll(); renderStats(); renderTable(); initFormRapido();
+    toast('✅ Sesión iniciada correctamente');
+    setInterval(autoBackupCheck,3600000); setTimeout(autoBackupCheck,5000);
+  } else {
+    const r=regFail();
+    $('login-err').textContent=r>0?'Contraseña incorrecta. '+r+' intento'+(r===1?'':'s')+' restante.':'⛔ Cuenta bloqueada 30 minutos.';
+    $('login-err').style.display='block'; $('pwd-input').value='';
+  }
+}
+function doLogout(){ location.reload(); }
+function recoverPass(){
+  const m=document.createElement('div'); m.style.cssText='position:fixed;inset:0;background:#00000099;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  const pass=programCfg.adminPass||ADMIN_PLAIN;
+  m.innerHTML=`<div style="background:#111827;border:1px solid #2a3a55;border-radius:16px;padding:32px;max-width:360px;text-align:center;box-shadow:0 25px 60px #000">
+    <div style="font-size:48px;margin-bottom:12px">🔑</div>
+    <h3 style="color:#fff;font-size:18px;font-weight:800;margin-bottom:8px">Clave de acceso</h3>
+    <div style="background:#0a0e1a;border:2px dashed #3b82f6;border-radius:10px;padding:16px;margin:12px 0">
+      <div style="font-family:monospace;font-size:22px;font-weight:900;color:#06b6d4;letter-spacing:.1em">${pass}</div>
+    </div>
+    <button onclick="navigator.clipboard.writeText('${pass}').then(()=>{this.textContent='✓ Copiada'})"
+      style="background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px">📋 Copiar clave</button>
+    <button onclick="this.closest('[style*=position]').remove()" style="background:transparent;color:#64748b;border:none;font-size:12px;cursor:pointer">Cerrar</button>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+// ── Datos ─────────────────────────────────────────────────────────────────
+function loadAll(){
+  try{licencias=JSON.parse(localStorage.getItem(DB_KEY)||'[]');}catch{licencias=[];}
+  try{distribuidores=JSON.parse(localStorage.getItem(DIST_KEY)||'[]');}catch{distribuidores=[];}
+  try{clientes=JSON.parse(localStorage.getItem(CLIENTES_KEY)||'[]');}catch{clientes=[];}
+  try{solicitudes=JSON.parse(localStorage.getItem(SOL_KEY)||'[]');}catch{solicitudes=[];}
+  try{packs=JSON.parse(localStorage.getItem(PACKS_KEY)||'[]');}catch{packs=[];}
+  try{programCfg=JSON.parse(localStorage.getItem(CFG_KEY)||'{}');}catch{programCfg={};}
+  try{iaCfg=JSON.parse(localStorage.getItem(IA_KEY)||'{}');}catch{iaCfg={};}
+  try{bkCfg=JSON.parse(localStorage.getItem(BK_KEY)||'{}');}catch{bkCfg={};}
+  syncSolicitudesFromPrograma();
+  autoLocal=bkCfg.autoLocal||false;
+}
+function saveData(){
+  localStorage.setItem(DB_KEY,JSON.stringify(licencias));
+  localStorage.setItem(DIST_KEY,JSON.stringify(distribuidores));
+  localStorage.setItem(CLIENTES_KEY,JSON.stringify(clientes));
+  localStorage.setItem(SOL_KEY,JSON.stringify(solicitudes));
+  localStorage.setItem(PACKS_KEY,JSON.stringify(packs));
+  updateIdbInfo(); autoBackupCheck();
+}
+function saveIACfg(){ iaCfg={apikey:$('ia-key')?.value.trim()||iaCfg.apikey||'',bizum:$('ia-bizum')?.value||'',iban:$('ia-iban')?.value||'',titular:$('ia-titular')?.value||'',banco:$('ia-banco')?.value||''}; localStorage.setItem(IA_KEY,JSON.stringify(iaCfg)); }
+function saveBkCfg(){ bkCfg.driveUrl=$('bk-drive-url')?.value.trim()||''; bkCfg.srvUrl=$('bk-srv-url')?.value.trim()||''; bkCfg.srvToken=$('bk-srv-token')?.value.trim()||''; localStorage.setItem(BK_KEY,JSON.stringify(bkCfg)); }
+function saveProgramCfg(){
+  programCfg={
+    adminEmail:$('cfg-email')?.value||'', appName:$('cfg-app-name')?.value||'',
+    version:$('cfg-version')?.value||'', soporte:$('cfg-soporte')?.value||'',
+    whatsapp:$('cfg-whatsapp')?.value||'',
+    baseUrl:$('cfg-base-url')?.value||'', driveId:$('cfg-drive-id')?.value||'',
+    scriptUrl:$('cfg-script-url')?.value||'', secret:$('cfg-secret')?.value||'',
+    precio_mensual:$('cfg-p-mensual')?.value||'9.99', precio_anual:$('cfg-p-anual')?.value||'79.99',
+    precio_permanente:$('cfg-p-permanente')?.value||'199', precio_demo_dias:$('cfg-p-demo-dias')?.value||'7',
+    precio_escuela_anos:$('cfg-p-escuela-anos')?.value||'1',
+    precio_pack10:$('cfg-p-pack10')?.value||'69.99',
+    precio_pack25:$('cfg-p-pack25')?.value||'149.99',
+    precio_pack50:$('cfg-p-pack50')?.value||'249.99',
+    precio_pack100:$('cfg-p-pack100')?.value||'399.99',
+    precio_extra:$('cfg-p-extra')?.value||'5.99',
+    precio_pack10:$('cfg-pack10')?.value||'69.90',
+    precio_pack25:$('cfg-pack25')?.value||'149.75',
+    precio_pack50:$('cfg-pack50')?.value||'249.50',
+    precio_pack100:$('cfg-pack100')?.value||'399.00',
+    bk_hora:$('cfg-bk-hora')?.value||'3', bk_intervalo:$('cfg-bk-intervalo')?.value||'20',
+    bk_drive:$('cfg-bk-drive')?.checked, bk_servidor:$('cfg-bk-servidor')?.checked,
+    bk_local:$('cfg-bk-local')?.checked,
+    adminPass:programCfg.adminPass||ADMIN_PLAIN,
+  };
+  localStorage.setItem(CFG_KEY,JSON.stringify(programCfg));
+}
+// ── Copia de seguridad de la CONFIGURACIÓN (incluye la clave privada) ──────
+function exportConfig(){
+  try{
+    const cfg=JSON.parse(localStorage.getItem(CFG_KEY)||'{}');
+    if(!cfg.secret){ toast('No hay clave privada guardada que exportar. Pégala o genérala primero.',true); return; }
+    const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='GPT-Config-Licencias.json'; a.click();
+    toast('💾 Configuración guardada (incluye tu clave privada). Guárdala en lugar seguro.');
+  }catch(e){ toast('Error al exportar configuración: '+e.message,true); }
+}
+function importConfig(input){
+  const file=input&&input.files&&input.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{
+    const cfg=JSON.parse(r.result);
+    programCfg=Object.assign({}, programCfg, cfg);
+    localStorage.setItem(CFG_KEY, JSON.stringify(programCfg));
+    if(typeof renderConfig==='function') renderConfig();
+    toast('✅ Configuración restaurada. Tu clave privada queda cargada y guardada.');
+  }catch(e){ toast('Fichero de configuración no válido: '+e.message,true); } input.value=''; };
+  r.readAsText(file);
+}
+function verClavePrivada(){
+  const k=(programCfg.secret||(document.getElementById('cfg-secret')&&document.getElementById('cfg-secret').value)||'').trim();
+  if(!k){ toast('No hay clave privada guardada.',true); return; }
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(k).then(()=>toast('🔑 Clave privada copiada al portapapeles.')).catch(()=>alert(k)); }
+  else alert(k);
+}
+function exportData(){
+  const ts=new Date().toISOString().slice(0,19).replace(/:/g,'-');
+  const fn=$('bk-fname')?.value||'GPT-Licencias-backup.json';
+  const blob=new Blob([JSON.stringify({licencias,distribuidores,exportado:new Date().toISOString()},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fn; a.click();
+  bkCfg.localLastTs=new Date().toISOString(); localStorage.setItem(BK_KEY,JSON.stringify(bkCfg));
+  if($('bk-local-last')) $('bk-local-last').textContent='Último: '+new Date().toLocaleTimeString('es-ES');
+  auditLog('BACKUP_LOCAL','Fichero: '+fn,'INFO'); toast('💾 Fichero guardado');
+}
+function importData(e){
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader(); r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result), antes=licencias.length;
+      if(d.licencias) d.licencias.forEach(l=>{if(!licencias.find(x=>x.id===l.id))licencias.push(l);});
+      if(d.distribuidores) d.distribuidores.forEach(d2=>{if(!distribuidores.find(x=>x.id===d2.id))distribuidores.push(d2);});
+      saveData(); renderStats(); renderTable();
+      auditLog('IMPORT','Importados '+(licencias.length-antes)+' registros','INFO');
+      toast('✅ Importados '+(licencias.length-antes)+' registros nuevos');
+    }catch(err){toast('Error al importar: '+err.message,true);}
+  }; r.readAsText(f);
+}
+function updateIdbInfo(){ const el=$('idb-info'); if(el) el.textContent=licencias.length+' licencias · '+distribuidores.length+' distribuidores'; }
+function clearAllData(){ localStorage.removeItem(DB_KEY); localStorage.removeItem(DIST_KEY); licencias=[]; distribuidores=[]; renderStats(); renderTable(); auditLog('CLEAR_DATA','Todos los datos borrados','WARN'); toast('Datos borrados'); }
+
+// ── Stats ─────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+// PACKS DE LICENCIAS
+// ══════════════════════════════════════════════════════════════════════════
+
+const PACK_PRECIOS_DEFAULT = { 10:69.99, 25:149.99, 50:249.99, 100:399.99 };
+
+function getPreciosPacks(){
+  return {
+    10:  parseFloat(programCfg['precio_pack10'] )||PACK_PRECIOS_DEFAULT[10],
+    25:  parseFloat(programCfg['precio_pack25'] )||PACK_PRECIOS_DEFAULT[25],
+    50:  parseFloat(programCfg['precio_pack50'] )||PACK_PRECIOS_DEFAULT[50],
+    100: parseFloat(programCfg['precio_pack100'])||PACK_PRECIOS_DEFAULT[100],
+  };
+}
+
+function updatePackPrecio(){
+  const t=$('pk-tamano')?.value;
+  const ref=$('pk-precio-ref');
+  const pi=$('pk-precio');
+  const customRow=$('pk-personalizado-row');
+  if(t==='personalizado'){
+    if(customRow) customRow.style.display='block';
+    if(ref) ref.textContent='Precio personalizado';
+    return;
+  }
+  if(customRow) customRow.style.display='none';
+  const precios=getPreciosPacks();
+  const n=parseInt(t);
+  if(pi) pi.value=(precios[n]||0).toFixed(2);
+  if(ref) ref.textContent='Precio recomendado: '+((precios[n]||0).toFixed(2))+'€ · '+(((precios[n]||0)/n).toFixed(2))+'€/licencia';
+}
+
+function pk_precio0(){
+  const pi=$('pk-precio'); if(pi) pi.value='0';
+}
+
+function loadPackScriptUrl(){
+  const url=localStorage.getItem('gpt_script_url')||programCfg.scriptUrl||'';
+  if($('pk-script-url')&&!$('pk-script-url').value) $('pk-script-url').value=url;
+  updatePackPrecio();
+}
+
+async function generarPack(){
+  const empresa=$('pk-empresa')?.value.trim();
+  const email  =$('pk-email')?.value.trim();
+  if(!empresa||!email){toast('Empresa y email son obligatorios',true);return;}
+  const t=$('pk-tamano')?.value;
+  const num=t==='personalizado'?(parseInt($('pk-num-custom')?.value)||0):parseInt(t);
+  if(!num||num<1){toast('Indica el número de licencias',true);return;}
+  const tipo  =$('pk-tipo')?.value||'anual';
+  const precio=parseFloat($('pk-precio')?.value)||0;
+  const scriptUrl=$('pk-script-url')?.value.trim()||localStorage.getItem('gpt_script_url')||'';
+  const notas =$('pk-notas')?.value.trim()||'';
+
+  const btn=document.querySelector('[onclick="generarPack()"]');
+  if(btn){btn.disabled=true;btn.textContent='Generando...';}
+
+  // Generar N claves
+  const claves=[];
+  const packId='PACK-'+Date.now().toString(36).toUpperCase();
+  for(let i=0;i<num;i++){
+    const licId='LIC-'+Date.now().toString(36).toUpperCase()+'-'+i.toString(36).toUpperCase();
+    const key=await genKey(licId+empresa, tipo);
+    const exp=calcExp(tipo,new Date());
+    const lic={id:licId,key,cliente:empresa,email,tipo,
+      precio:precio>0?parseFloat((precio/num).toFixed(2)):0,
+      notas:'Pack '+packId+' · Licencia '+(i+1)+'/'+num+(notas?' · '+notas:''),
+      estado:'pendiente',fechaPago:new Date().toISOString(),
+      expira:exp,creada:new Date().toISOString(),activaciones:[],
+      packId,packNum:i+1};
+    licencias.unshift(lic);
+    claves.push({id:licId,key,exp,estado:'pendiente',activada:false});
+  }
+
+  // Crear el pack
+  const pack={
+    id:packId,empresa,email,tipo,numLicencias:num,
+    precio,scriptUrl,notas,
+    claves,creado:new Date().toISOString(),estado:'activo',
+  };
+  packs.unshift(pack);
+
+  // Actualizar ficha del cliente
+  upsertCliente({id:packId,cliente:empresa,email,tipo,precio,
+    notas:notas||'Pack de '+num+' licencias',
+    estado:'activo',fechaPago:new Date().toISOString(),
+    expira:calcExp(tipo,new Date()),creada:new Date().toISOString()});
+
+  saveData(); renderStats(); renderTable();
+  if(btn){btn.disabled=false;btn.textContent='⚡ Generar pack de licencias';}
+
+  auditLog('PACK_GENERADO',empresa+' — '+num+' licencias — '+packId,'INFO');
+  toast('✅ Pack de '+num+' licencias generado');
+
+  // Mostrar resultado y generar portal
+  renderPacks();
+  setTimeout(()=>{ verPortalPack(packId); },300);
+}
+
+function renderPacks(){
+  const el=$('packs-tabla'); if(!el)return;
+  if(!packs.length){
+    el.innerHTML='<div style="padding:30px;text-align:center;color:var(--mt)">Sin packs emitidos</div>';
+    return;
+  }
+  el.innerHTML='<table><thead><tr><th>Empresa</th><th>Licencias</th><th>Tipo</th><th>Precio</th><th>Usadas</th><th>Creado</th><th>Acciones</th></tr></thead><tbody>'+
+    packs.map(pk=>{
+      const usadas=pk.claves.filter(c=>c.activada||c.estado==='activa').length;
+      const disp=pk.numLicencias-usadas;
+      return `<tr>
+        <td><div style="font-weight:600">${escHtml(pk.empresa)}</div><div style="font-size:10px;color:var(--mt)">${escHtml(pk.email)}</div></td>
+        <td style="text-align:center"><span class="pill p-ac">${pk.numLicencias}</span></td>
+        <td style="font-size:11px">${pk.tipo}</td>
+        <td>${pk.precio>0?pk.precio.toFixed(2)+' €':'GRATIS'}</td>
+        <td><div style="font-size:12px">${usadas} usadas / ${disp} disponibles</div><div style="height:4px;background:#2a3a55;border-radius:2px;margin-top:3px"><div style="height:4px;background:var(--ac);border-radius:2px;width:${Math.round(usadas/pk.numLicencias*100)}%"></div></div></td>
+        <td style="font-size:11px">${new Date(pk.creado).toLocaleDateString('es-ES')}</td>
+        <td><div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-ac btn-sm" onclick="verPortalPack('${pk.id}')">🌐 Portal</button>
+          <button class="btn btn-gr btn-sm" onclick="descargarPortalPack('${pk.id}')">⬇️ HTML</button>
+          <button class="btn btn-ghost btn-sm" onclick="enviarPortalPack('${pk.id}')">📧 Email</button>
+        </div></td>
+      </tr>`;
+    }).join('')+'</tbody></table>';
+}
+
+function exportPacks(){
+  const nl4=String.fromCharCode(10);
+  const csv=['ID,Empresa,Email,Licencias,Tipo,Precio,Usadas,Creado'].concat(packs.map(pk=>{
+      const usadas=pk.claves.filter(c=>c.activada).length;
+      return `"${pk.id}","${pk.empresa}","${pk.email}","${pk.numLicencias}","${pk.tipo}","${pk.precio}","${usadas}","${pk.creado}"`;
+    })).join(nl4);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='Packs-GPT-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); toast('Packs exportados');
+}
+
+// ── Portal del cliente (página web con sus claves) ─────────────────────────
+function generarPortalJS(packId, empresa, scriptUrl){
+  return [
+    'var P='+JSON.stringify(packId)+';',
+    'var E='+JSON.stringify(empresa)+';',
+    'var S='+JSON.stringify(scriptUrl)+';',
+    'var FT=null,FS=600;',
+    'function vU(){var u=localStorage.getItem("pu_"+P);if(!u){localStorage.setItem("pu_"+P,S);return;}if(u!==S){aF();}}',
+    'function aF(){document.getElementById("af").style.display="block";rF("url_mod");if(!FT){FT=setInterval(function(){FS--;var el=document.getElementById("ft");if(el)el.textContent=Math.floor(FS/60)+":"+(FS%60<10?"0":"")+FS%60;if(FS<=0){clearInterval(FT);iK();}},1000);}}',
+    'function rU(){localStorage.setItem("pu_"+P,S);clearInterval(FT);FT=null;document.getElementById("af").style.display="none";}',
+    'function iK(){document.querySelectorAll("tbody tr").forEach(function(t){t.style.opacity="0.3";t.style.pointerEvents="none";});rF("invalidadas");}',
+    'function rF(ac){if(!S)return;fetch(S,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify({tipo:"ALERTA_FRAUDE_URL",packId:P,empresa:E,accion:ac})}).catch(function(){});}',
+    'function sy(){var el=document.getElementById("sy");if(!S){if(el){el.className="se";el.innerHTML="Sin URL";}return;}fetch(S,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify({tipo:"PACK_SYNC",packId:P,empresa:E})}).then(function(){if(el){el.className="so";el.innerHTML="Sincronizado "+new Date().toLocaleTimeString("es-ES");}}).catch(function(){if(el){el.className="se";el.innerHTML="Sin conexion";}});}',
+    'function cpBtn(b){navigator.clipboard.writeText(b.getAttribute("data-k")).then(function(){b.textContent="Copiada";setTimeout(function(){b.textContent="Copiar";},2000);});}',
+    'function maBtn(b){var id=b.getAttribute("data-id");var pid=b.getAttribute("data-pid");var i=b.getAttribute("data-i");var raw=localStorage.getItem("pe_"+pid);var d=raw?JSON.parse(raw):{};d[id]=true;localStorage.setItem("pe_"+pid,JSON.stringify(d));var e=document.getElementById("et"+i);if(e)e.innerHTML="Activa";b.remove();sy();}',
+    
+    'window.onload=function(){vU();sy();};'
+  ].join('\n');
+}
+
+function generarFilaClave(cl, i, packId){
+  var est = cl.activada ? "Activa" : "Pendiente";
+  var estClass = cl.activada ? "p-ok" : "p-pend";
+  var expStr = cl.exp ? new Date(cl.exp).toLocaleDateString("es-ES") : "Permanente";
+  var actBtn = cl.activada ? "" : " <button class=\"btn-act\" data-id=\""+cl.id+"\" data-pid=\""+packId+"\" data-i=\""+i+"\" onclick=\"marcarActivadaBtn(this)\">Activar</button>";
+  return "<tr><td style=\"text-align:center;color:#64748b\">"+(i+1)+"</td><td><span class=\"key\">"+cl.key+"</span></td><td>"+expStr+"</td><td id=\"est-"+i+"\"><span class=\"pill "+estClass+"\">"+est+"</span></td><td><button class=\"btn-copy\" data-key=\""+cl.key+"\" data-i=\""+i+"\" onclick=\"copiarClaveBtn(this)\">Copiar</button>"+actBtn+"</td></tr>";
+}
+
+function generarHTMLPortal(pack){
+  const scriptUrl = pack.scriptUrl||'';
+  const rows = pack.claves.map(function(cl,i){ return generarFilaClave(cl,i,pack.id); }).join('');
+  var packJson = '[]'
+  var packJson = '[]'
+  const nl = String.fromCharCode(10);
+  var js_portal = generarPortalJS(pack.id, escHtml(pack.empresa), scriptUrl);
+  var fila_rows = pack.claves.map(function(cl,i){return generarFilaClave(cl,i,pack.id);}).join('');
+  var html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Mis Licencias - '+escHtml(pack.empresa)+'</title>';
+  html += '<style>body{background:#0a0e1a;color:#f1f5f9;font-family:Segoe UI,Arial,sans-serif;padding:20px;min-height:100vh}';
+  html += '.hdr{background:linear-gradient(135deg,#0a1628,#1e3a5f);border-radius:16px;padding:28px;text-align:center;margin-bottom:20px}';
+  html += '.hdr h1{font-size:22px;font-weight:800}.card{background:#111827;border:1px solid #2a3a55;border-radius:14px;overflow:hidden;margin-bottom:16px}';
+  html += '.ch{padding:14px 18px;border-bottom:1px solid #2a3a55;font-size:14px;font-weight:700}';
+  html += 'table{width:100%;border-collapse:collapse}th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#64748b;background:#1a2235}';
+  html += 'td{padding:11px 14px;font-size:12px;border-bottom:1px solid #2a3a5530}';
+  html += '.key{font-family:monospace;font-size:13px;color:#06b6d4;font-weight:700;word-break:break-all}';
+  html += '.so{background:#10b98115;border:1px solid #10b981;border-radius:8px;padding:10px;font-size:12px;color:#10b981;margin-bottom:16px}';
+  html += '.se{background:#ef444415;border:1px solid #ef4444;border-radius:8px;padding:10px;font-size:12px;color:#ef4444;margin-bottom:16px}';
+  html += '.af{background:#7f1d1d;border:2px solid #ef4444;border-radius:10px;padding:20px;text-align:center;color:#fca5a5;margin-bottom:16px}';
+  html += '.timer{font-size:36px;font-weight:900;color:#ef4444}';
+  html += 'button{padding:6px 12px;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;margin-right:4px}';
+  html += '.bc{background:#1e3a5f;color:#93c5fd}.ba{background:#10b981;color:#fff}';
+  html += '</style></head><body>';
+  html += '<div class="hdr"><div style="font-size:32px;margin-bottom:8px">&#128230;</div>';
+  html += '<h1>Mis Licencias</h1><p>'+escHtml(pack.empresa)+' &middot; Pack de '+pack.numLicencias+' licencias ('+pack.tipo+')</p>';
+  html += '<p style="font-size:11px;color:#64748b">ID: '+pack.id+'</p></div>';
+  html += '<div class="af" id="af" style="display:none"><div style="font-size:28px">&#x1F6A8;</div>';
+  html += '<h2 style="margin:8px 0">INTENTO DE FRAUDE DETECTADO</h2>';
+  html += '<p>Se detect&oacute; un cambio en la URL de sincronizaci&oacute;n.<br>Tienes <span class="timer" id="ft">10:00</span> para restaurar o TODAS LAS CLAVES SERAN INVALIDADAS.</p>';
+  html += '<button onclick="rU()" style="background:#ef4444;color:#fff;padding:10px 20px;font-size:14px;font-weight:700;border:none;border-radius:8px;cursor:pointer;margin-top:10px">Restaurar URL</button></div>';
+  html += '<div class="so" id="sy">Comprobando sincronizacion...</div>';
+  html += '<div class="card"><div class="ch">&#128273; Mis claves ('+pack.numLicencias+')</div>';
+  html += '<table><thead><tr><th>#</th><th>Clave</th><th>Valida hasta</th><th>Estado</th><th>Accion</th></tr></thead>';
+  html += '<tbody>'+fila_rows+'</tbody></table></div>';
+  html += '<div class="card"><div class="ch">Como usar</div><div style="padding:16px;font-size:13px;color:#64748b;line-height:1.8">';
+  html += '<p>1. Instala Gestion Pro Total en el dispositivo.</p>';
+  html += '<p>2. Copia una clave y pegala en la pantalla de activacion.</p>';
+  html += '<p>3. Cada clave funciona en UN solo dispositivo.</p>';
+  html += '<p>Soporte: kairigarcia.gestionprototal@gmail.com</p></div></div>';
+  html += '<script>'+js_portal+'<'+'/script></body></html>';
+  return html;
+}
+
+
+function verPortalPack(packId){
+  const pack=packs.find(p=>p.id===packId); if(!pack)return;
+  const html=generarHTMLPortal(pack);
+  const w=window.open('','_blank');
+  if(w){ w.document.write(html); w.document.close(); }
+  else { descargarPortalPack(packId); }
+}
+
+function descargarPortalPack(packId){
+  const pack=packs.find(p=>p.id===packId); if(!pack)return;
+  const html=generarHTMLPortal(pack);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
+  a.download='Portal-Licencias-'+pack.empresa.replace(/\s+/g,'-')+'-'+pack.id+'.html';
+  a.click(); toast('Portal del cliente descargado');
+  auditLog('PACK_PORTAL_DESCARGADO',pack.empresa+' — '+packId,'INFO');
+}
+
+function enviarPortalPack(packId){
+  const pack=packs.find(p=>p.id===packId); if(!pack)return;
+  const sub=encodeURIComponent('Tus licencias de Gestión Pro Total — Pack '+pack.numLicencias);
+  const nl=String.fromCharCode(10);
+  const body=encodeURIComponent(
+    'Hola '+pack.empresa+','+nl+nl+
+    'Adjuntamos tu portal de licencias de Gestión Pro Total.'+nl+
+    'Pack de '+pack.numLicencias+' licencias tipo '+pack.tipo+'.'+nl+nl+
+    'Abre el fichero HTML adjunto para ver y gestionar tus licencias.'+nl+
+    'Cada licencia puede usarse en UN solo dispositivo.'+nl+nl+
+    'IMPORTANTE: No modifiques la configuración del portal o las claves serán invalidadas.'+nl+nl+
+    'Soporte: '+(programCfg.adminEmail||ADMIN_EMAIL)
+  );
+  window.open('https://mail.google.com/mail/?view=cm&fs=1&to='+pack.email+'&su='+sub+'&body='+body);
+  descargarPortalPack(packId); // Descarga el HTML para adjuntar
+  toast('Email preparado · Portal descargado para adjuntar');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SOLICITUDES — Gestión de solicitudes recibidas por email — Gestión de solicitudes recibidas por email
+// ══════════════════════════════════════════════════════════════════════════
+
+function renderSolicitudes(){
+  const area=$('sol-tabla'); if(!area)return;
+  if(!solicitudes.length){
+    area.innerHTML='<div style="padding:40px;text-align:center;color:var(--mt);font-size:13px">'+
+      '📬 Sin solicitudes registradas.<br><br>'+
+      'Cuando recibas un email de solicitud, pulsa "+ Registrar solicitud" para procesarla.</div>';
+    return;
+  }
+  const eb=e=>({verificado:'<span class="pill p-ac">✅ Verificado</span>',
+    pendiente:'<span class="pill p-tr">⏳ Pendiente</span>',
+    rechazado:'<span class="pill p-in">❌ Rechazado</span>'}[e]||e);
+  area.innerHTML='<table><thead><tr><th>Cliente</th><th>Plan</th><th>Pago</th><th>Device ID</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>'+
+    solicitudes.map(s=>`<tr>
+      <td><div style="font-weight:600">${escHtml(s.nombre||'—')}</div>
+          <div style="font-size:10px;color:var(--mt)">${escHtml(s.email||'—')}</div></td>
+      <td style="font-size:12px">${s.plan||'—'}</td>
+      <td style="font-size:12px">${s.metodo||'—'}</td>
+      <td style="font-size:10px;font-family:monospace;color:var(--mt)">${s.deviceId?s.deviceId.slice(0,14)+'...':'—'}</td>
+      <td>${eb(s.estado||'pendiente')}</td>
+      <td style="font-size:11px">${s.fecha?new Date(s.fecha).toLocaleDateString('es-ES'):'—'}</td>
+      <td><div style="display:flex;gap:5px;flex-wrap:wrap">
+        ${s.estado==='pendiente'?`<button class="btn btn-gr btn-sm" onclick="verificarSolicitud('${s.id}')">✅ Verificar y asignar clave</button>`:''}
+        ${s.estado==='verificado'?`<button class="btn btn-ac btn-sm" onclick="reenviarClave('${s.id}')">📧 Reenviar clave</button>`:''}
+        <button class="btn btn-rd btn-sm" onclick="borrarSolicitud('${s.id}')">✕</button>
+      </div></td>
+    </tr>`).join('')+'</tbody></table>';
+}
+
+function abrirRegistrarSolicitud(){
+  ['sol-nombre','sol-email','sol-empresa','sol-tel','sol-obs'].forEach(id=>{const el=$(id);if(el)el.value='';});
+  if($('sol-plan'))$('sol-plan').value='anual';
+  if($('sol-metodo'))$('sol-metodo').value='bizum';
+  if($('sol-estado'))$('sol-estado').value='pendiente';
+  $('modal-solicitud').style.display='flex';
+}
+
+function guardarSolicitud(){
+  const nombre=$('sol-nombre')?.value.trim();
+  const email =$('sol-email')?.value.trim();
+  if(!nombre||!email){toast('Nombre y email son obligatorios',true);return;}
+  const sol={
+    id:'SOL-'+Date.now().toString(36).toUpperCase(),
+    nombre,email,
+    empresa:$('sol-empresa')?.value.trim()||'',
+    telefono:$('sol-tel')?.value.trim()||'',
+    plan:$('sol-plan')?.value||'anual',
+    metodo:$('sol-metodo')?.value||'bizum',
+    estado:$('sol-estado')?.value||'pendiente',
+    obs:$('sol-obs')?.value.trim()||'',
+    fecha:new Date().toISOString(),
+    keyAsignada:null,
+  };
+  solicitudes.unshift(sol);
+  saveData(); renderSolicitudes(); renderStats();
+  $('modal-solicitud').style.display='none';
+  auditLog('SOL_NUEVA',nombre+' — '+sol.plan,'INFO');
+  toast('✅ Solicitud registrada');
+}
+
+async function verificarSolicitud(id){
+  const sol=solicitudes.find(s=>s.id===id); if(!sol)return;
+  sol.estado='verificado';
+  // Auto-generar clave
+  const licId='LIC-'+Date.now().toString(36).toUpperCase();
+  const key=await genKey(licId+sol.nombre, sol.plan);
+  const exp=calcExp(sol.plan,new Date());
+  const lic={id:licId,key,cliente:sol.nombre,email:sol.email,tipo:sol.plan,
+    precio:getPrecio(sol.plan),notas:'Generada desde solicitud '+sol.id,
+    estado:sol.plan==='demo'?'demo':'activa',
+    fechaPago:new Date().toISOString(),expira:exp,
+    creada:new Date().toISOString(),activaciones:[]};
+  licencias.unshift(lic);
+  upsertCliente(lic);
+  sol.keyAsignada=key;
+  saveData(); renderSolicitudes(); renderStats(); renderTable();
+  // Abrir email para enviar la clave
+  const tipos={demo:'Demo 7 días',mensual:'Mensual',anual:'Anual',permanente:'Permanente',escuela:'Estudiantes (1 año · matrícula)'};
+  const s=encodeURIComponent('Tu clave de licencia — Gestión Pro Total');
+  const nl=String.fromCharCode(10);
+  const emailBody=[
+    'Hola '+sol.nombre,nl,
+    'Tu pago ha sido verificado. Tu clave de licencia:',nl,
+    key,nl,
+    'Plan: '+(tipos[sol.plan]||sol.plan),
+    exp?('Valida hasta: '+new Date(exp).toLocaleDateString('es-ES')):'Sin caducidad',nl,
+    'Como activar:',
+    '1. Abre Gestion Pro Total',
+    '2. Introduce la clave en la pantalla de activacion',
+    '3. Pulsa Activar licencia',nl,
+    'Soporte: '+(programCfg.adminEmail||ADMIN_EMAIL)
+  ].join(nl);
+  const b=encodeURIComponent(emailBody);
+  window.open('https://mail.google.com/mail/?view=cm&fs=1&to='+sol.email+'&su='+s+'&body='+b);
+  // Sincronizar de vuelta al localStorage del programa (si mismo navegador)
+  try{
+    const sols=JSON.parse(localStorage.getItem('gpt_solicitudes_v1')||'[]');
+    const idx=sols.findIndex(s=>s.id===sol.id);
+    if(idx>-1){ sols[idx].estado='verificado'; sols[idx].keyAsignada=key; }
+    localStorage.setItem('gpt_solicitudes_v1',JSON.stringify(sols));
+  }catch(e){}
+  auditLog('SOL_VERIFICADA',sol.nombre+' — '+key,'INFO');
+  toast('✅ Pago verificado. Clave generada y email preparado.');
+}
+
+function reenviarClave(id){
+  const sol=solicitudes.find(s=>s.id===id); if(!sol||!sol.keyAsignada)return;
+  const s=encodeURIComponent('Tu clave de licencia — Gestión Pro Total');
+  const nl2=String.fromCharCode(10);
+  const b=encodeURIComponent(['Hola '+sol.nombre,nl2,'Tu clave: '+sol.keyAsignada,nl2,'Soporte: '+(programCfg.adminEmail||ADMIN_EMAIL)].join(nl2));  window.open('https://mail.google.com/mail/?view=cm&fs=1&to='+sol.email+'&su='+s+'&body='+b);
+  toast('Email preparado para reenvío');
+}
+
+function borrarSolicitud(id){
+  if(!confirm('¿Eliminar esta solicitud?'))return;
+  solicitudes=solicitudes.filter(s=>s.id!==id);
+  saveData(); renderSolicitudes(); renderStats();
+  toast('Solicitud eliminada');
+}
+
+function exportarSolicitudes(){
+  const nl3=String.fromCharCode(10);
+  const csv=['Nombre,Email,Empresa,Plan,Metodo,Estado,Fecha,Clave'].concat(
+    solicitudes.map(s=>'"'+s.nombre+'","'+s.email+'","'+(s.empresa||'')+'","'+s.plan+'","'+s.metodo+'","'+s.estado+'","'+(s.fecha||'')+'","'+(s.keyAsignada||'')+'"')
+  ).join(nl3);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='Solicitudes-GPT-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  toast('Solicitudes exportadas');
+}
+
+function clearSolicitudes(){
+  solicitudes=solicitudes.filter(s=>s.estado==='pendiente');
+  saveData(); renderSolicitudes(); renderStats();
+  toast('Solicitudes procesadas eliminadas');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ANTI-COMPARTICIÓN — Detectar claves usadas en múltiples dispositivos
+// ══════════════════════════════════════════════════════════════════════════
+
+function renderSharing(){
+  const area=$('sharing-tabla'); if(!area)return;
+  // Buscar licencias con múltiples activaciones
+  const compartidas=licencias.filter(l=>
+    l.activaciones&&l.activaciones.length>1&&
+    new Set(l.activaciones.map(a=>a.deviceId)).size>1
+  );
+  if(!compartidas.length){
+    area.innerHTML='<div style="padding:20px;color:var(--gr);font-size:13px;display:flex;align-items:center;gap:8px">'+
+      '<span style="font-size:20px">✅</span> Sin alertas de compartición. Todas las licencias se usan en un solo dispositivo.</div>';
+    return;
+  }
+  area.innerHTML='<table><thead><tr><th>Cliente</th><th>Clave</th><th>Dispositivos detectados</th><th>Última actividad</th><th>Acción</th></tr></thead><tbody>'+
+    compartidas.map(l=>{
+      const devs=new Set(l.activaciones.map(a=>a.deviceId));
+      const devList=l.activaciones.map(a=>
+        `<div style="font-size:10px;font-family:monospace;color:var(--mt)">${a.deviceId||'?'} · ${a.fecha?new Date(a.fecha).toLocaleDateString('es-ES'):'?'} · ${(a.ua||'').slice(0,40)}...</div>`
+      ).join('');
+      return `<tr style="background:#ef444408">
+        <td><div style="font-weight:600">${escHtml(l.cliente||'—')}</div>
+            <div style="font-size:10px;color:var(--mt)">${escHtml(l.email||'—')}</div></td>
+        <td><span style="font-family:monospace;font-size:11px;color:var(--rd)">${escHtml(l.key||'—')}</span></td>
+        <td>
+          <div style="margin-bottom:6px"><span class="pill p-in">⚠️ ${devs.size} dispositivos distintos</span></div>
+          ${devList}
+        </td>
+        <td style="font-size:11px">${l.ultimaActividad?new Date(l.ultimaActividad).toLocaleDateString('es-ES'):'—'}</td>
+        <td><div style="display:flex;flex-direction:column;gap:5px">
+          <button class="btn btn-rd btn-sm" onclick="revocarCompartida('${l.id}')">🚫 Revocar clave</button>
+          <button class="btn btn-am btn-sm" onclick="ignorarCompartida('${l.id}')">✓ Permitir</button>
+        </div></td>
+      </tr>`;
+    }).join('')+'</tbody></table>';
+}
+
+function revocarCompartida(id){
+  if(!confirm('Revocar esta licencia por uso compartido? El cliente no podra acceder al programa.'))return;
+  const l=licencias.find(x=>x.id===id); if(!l)return;
+  l.estado='inactiva';
+  try{cloudPost({accion:'revocar',key:l.key,pass:(programCfg.adminPass||ADMIN_PLAIN)});}catch(e){}
+  l.notas=(l.notas||'')+' [REVOCADA: uso compartido '+new Date().toLocaleDateString('es-ES')+']';
+  saveData(); renderSharing(); renderTable(); renderStats();
+  // Marcar también en el cliente
+  const cli=clientes.find(c=>c.email?.toLowerCase()===l.email?.toLowerCase());
+  if(cli){ cli.licencia_revocada_por_sharing=true; cli.fecha_revocacion=new Date().toISOString(); saveData(); }
+  auditLog('LICENCIA_REVOCADA_SHARING',l.cliente+' — '+l.key,'WARN');
+  toast('Licencia revocada por compartición');
+}
+
+function ignorarCompartida(id){
+  const l=licencias.find(x=>x.id===id); if(!l)return;
+  // Limpiar historial de activaciones para que no aparezca como compartida
+  if(l.activaciones&&l.activaciones.length>0){
+    l.activaciones=[l.activaciones[l.activaciones.length-1]]; // solo mantener la última
+  }
+  saveData(); renderSharing();
+  auditLog('SHARING_IGNORADO',l.cliente+' — '+l.key,'INFO');
+  toast('Compartición ignorada. Se mantiene solo el último dispositivo.');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CLIENTES — Lista de clientes con fichas y historial de licencias
+// ══════════════════════════════════════════════════════════════════════════
+
+let clienteSeleccionado = null;
+
+function renderClientes(){
+  const s = ($('cli-srch')?.value||'').toLowerCase();
+  const rows = clientes.filter(cli=>
+    !s||cli.nombre?.toLowerCase().includes(s)||
+       cli.email?.toLowerCase().includes(s)||
+       cli.empresa?.toLowerCase().includes(s)
+  );
+  const el=$('clientes-lista'); if(!el)return;
+  const cnt=$('cli-count'); if(cnt) cnt.textContent=rows.length+' clientes';
+
+  if(!rows.length){
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--mt)">'+
+      (clientes.length===0
+        ? '👥 Sin clientes todavía.<br><br>Al generar la primera licencia el cliente se añade automáticamente.'
+        : '🔍 Sin resultados para "'+s+'"')+'</div>';
+    return;
+  }
+  el.innerHTML='<table><thead><tr>'+
+    '<th>Cliente</th><th>Email</th><th>Licencias</th><th>Última clave</th><th>Acciones</th>'+
+    '</tr></thead><tbody>'+
+    rows.map(cli=>{
+      const licsCliente = licencias.filter(l=>l.email?.toLowerCase()===cli.email?.toLowerCase());
+      const activas     = licsCliente.filter(l=>l.estado==='activa'||l.estado==='demo').length;
+      const ultima      = licsCliente[0];
+      const intentos    = licsCliente.reduce((s,l)=>s+(l.intentos_comparticion||0),0);
+      const rowBg       = intentos>0 ? 'background:#7f1d1d08' : '';
+      return `<tr style="cursor:pointer;${rowBg}" onclick="seleccionarCliente('${cli.id}')">
+        <td>
+          <div style="font-weight:600">${escHtml(cli.nombre||'—')}${intentos>0?` <span style="background:#ef444422;color:#ef4444;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700">⚠️ ${intentos} intento${intentos>1?'s':''} compartición</span>`:''}</div>
+          ${cli.empresa?`<div style="font-size:10px;color:var(--mt)">${escHtml(cli.empresa)}</div>`:''}
+        </td>
+        <td style="font-size:12px">${escHtml(cli.email||'—')}</td>
+        <td style="text-align:center">
+          <span class="pill ${activas>0?'p-ac':'p-ex'}">${licsCliente.length} total · ${activas} activa${activas===1?'':'s'}</span>
+        </td>
+        <td>
+          ${ultima?`<span class="key-mono" onclick="event.stopPropagation();navigator.clipboard.writeText('${escHtml(ultima.key||'')}').then(()=>toast('Clave copiada'))">${escHtml(ultima.key||'')}</span>
+           <div style="font-size:10px;color:var(--mt)">${ultima.tipo||''}</div>`:'<span style="color:var(--mt)">—</span>'}
+        </td>
+        <td>
+          <div style="display:flex;gap:5px">
+            <button class="btn btn-ac btn-sm" onclick="event.stopPropagation();seleccionarCliente('${cli.id}')">Ver ficha</button>
+            <button class="btn btn-pu btn-sm" onclick="event.stopPropagation();asignarDesdeCliente('${cli.id}')">+ Clave</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('')+'</tbody></table>';
+}
+
+function seleccionarCliente(id){
+  const cli = clientes.find(c=>c.id===id);
+  if(!cli) return;
+  clienteSeleccionado = cli;
+  const licsCliente = licencias.filter(l=>l.email?.toLowerCase()===cli.email?.toLowerCase());
+  const intentos = licsCliente.reduce((s,l)=>s+(l.intentos_comparticion||0),0);
+  const el=$('ficha-cliente'); if(!el)return;
+
+  const estadoBadge=e=>({activa:'p-ac ✓',demo:'p-tr 🎁',pendiente:'p-pe ⏳',inactiva:'p-in ✗',expirada:'p-in ⏰'}[e]||'p-pe '+e);
+  const de=exp=>{if(!exp)return'<span style="color:var(--gr)">♾ Permanente</span>';const d=Math.ceil((new Date(exp)-Date.now())/86400000);if(d<0)return'<span style="color:var(--rd)">Expirada</span>';if(d<=7)return`<span style="color:var(--am)">⚠️ ${d}d</span>`;return new Date(exp).toLocaleDateString('es-ES');};
+
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div>
+        <div style="font-size:16px;font-weight:800">${escHtml(cli.nombre||'Sin nombre')}</div>
+        ${cli.empresa?`<div style="font-size:12px;color:var(--mt)">${escHtml(cli.empresa)}</div>`:''}
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="editarCliente('${cli.id}')">✏️ Editar</button>
+    </div>
+
+    <div style="font-size:12px;line-height:1.9;margin-bottom:12px">
+      <div>📧 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=${escHtml(cli.email)}" style="color:var(--ac2)">${escHtml(cli.email||'—')}</a></div>
+      ${cli.telefono?`<div>📱 ${escHtml(cli.telefono)}</div>`:''}
+      ${cli.notas?`<div style="color:var(--mt)">📝 ${escHtml(cli.notas)}</div>`:''}
+      <div style="color:var(--mt);font-size:10px">Alta: ${new Date(cli.creado).toLocaleDateString('es-ES')}</div>
+    </div>
+
+    <div style="border-top:1px solid var(--brd);padding-top:12px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
+        Licencias (${licsCliente.length})
+      </div>
+      ${licsCliente.length===0
+        ? '<div style="color:var(--mt);font-size:12px">Sin licencias asignadas</div>'
+        : licsCliente.map(l=>`
+        <div style="background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:10px;margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span class="pill ${estadoBadge(l.estado||'activa').split(' ')[0]}">${estadoBadge(l.estado||'activa').split(' ').slice(1).join(' ')||l.estado}</span>
+            <span style="font-size:11px;color:var(--mt)">${l.tipo||''}</span>
+          </div>
+          <div style="font-family:monospace;font-size:11px;color:var(--ac2);word-break:break-all;cursor:pointer"
+               onclick="navigator.clipboard.writeText('${escHtml(l.key||'')}').then(()=>toast('Clave copiada'))"
+               title="Clic para copiar">
+            ${escHtml(l.key||'—')}
+          </div>
+          <div style="font-size:10px;color:var(--mt);margin-top:3px;display:flex;justify-content:space-between">
+            <span>${l.precio>0?l.precio.toFixed(2)+' €':'GRATIS'}</span>
+            <span>${de(l.expira)}</span>
+          </div>
+          ${l.notas?`<div style="font-size:10px;color:var(--mt);margin-top:2px">${escHtml(l.notas)}</div>`:''}
+        </div>`).join('')}
+    </div>
+
+    ${intentos>0?`<div style="background:#7f1d1d33;border:1px solid #ef4444;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.7">
+      <div style="font-weight:700;color:#fca5a5;margin-bottom:4px">⚠️ ALERTA: ${intentos} intento${intentos>1?'s':''} de compartición de clave</div>
+      <div style="color:#94a3b8">Este cliente intentó usar su clave en múltiples dispositivos.</div>
+      ${intentos>=2?`<div style="color:#ef4444;font-weight:700;margin-top:4px">⛔ Si vuelve a intentarlo, la licencia será revocada automáticamente.</div>`:'<div style="color:#f59e0b;margin-top:4px">Primera vez detectada. Se le mostró un aviso.</div>'}
+    </div>`:''}
+    <button class="btn btn-pu" style="width:100%" onclick="asignarDesdeCliente('${cli.id}')">
+      ➕ Asignar nueva clave a este cliente
+    </button>
+  `;
+}
+
+function editarCliente(id){
+  const cli = clientes.find(c=>c.id===id); if(!cli)return;
+  const el=$('ficha-cliente'); if(!el)return;
+  el.innerHTML=`
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">✏️ Editar cliente</div>
+    <label>Nombre</label>
+    <input type="text" id="edit-nombre" value="${escHtml(cli.nombre||'')}" placeholder="Nombre">
+    <label>Email</label>
+    <input type="email" id="edit-email" value="${escHtml(cli.email||'')}" placeholder="email@dominio.com">
+    <label>Empresa</label>
+    <input type="text" id="edit-empresa" value="${escHtml(cli.empresa||'')}" placeholder="Empresa (opcional)">
+    <label>Teléfono</label>
+    <input type="tel" id="edit-tel" value="${escHtml(cli.telefono||'')}" placeholder="+34 6XX XXX XXX">
+    <label>Notas internas</label>
+    <textarea id="edit-notas" style="min-height:60px">${escHtml(cli.notas||'')}</textarea>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-ac" style="flex:1" onclick="guardarEdicionCliente('${cli.id}')">💾 Guardar</button>
+      <button class="btn btn-ghost" onclick="seleccionarCliente('${cli.id}')">Cancelar</button>
+    </div>
+  `;
+}
+
+function guardarEdicionCliente(id){
+  const cli = clientes.find(c=>c.id===id); if(!cli)return;
+  cli.nombre   = $('edit-nombre')?.value.trim()||cli.nombre;
+  cli.email    = $('edit-email')?.value.trim()||cli.email;
+  cli.empresa  = $('edit-empresa')?.value.trim()||'';
+  cli.telefono = $('edit-tel')?.value.trim()||'';
+  cli.notas    = $('edit-notas')?.value.trim()||'';
+  saveData(); renderClientes(); seleccionarCliente(id);
+  auditLog('CLIENTE_EDITADO',cli.nombre+' — '+cli.email,'INFO');
+  toast('✅ Cliente actualizado');
+}
+
+function abrirNuevoCliente(){
+  const el=$('ficha-cliente'); if(!el)return;
+  el.innerHTML=`
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">➕ Nuevo cliente</div>
+    <label>Nombre *</label>
+    <input type="text" id="new-nombre" placeholder="Nombre completo o empresa">
+    <label>Email *</label>
+    <input type="email" id="new-email" placeholder="cliente@email.com">
+    <label>Empresa</label>
+    <input type="text" id="new-empresa" placeholder="Empresa (opcional)">
+    <label>Teléfono</label>
+    <input type="tel" id="new-tel" placeholder="+34 6XX XXX XXX">
+    <label>Notas internas</label>
+    <textarea id="new-notas" style="min-height:60px" placeholder="Observaciones..."></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-ac" style="flex:1" onclick="crearClienteManual()">💾 Crear cliente</button>
+      <button class="btn btn-ghost" onclick="$('ficha-cliente').innerHTML='<div style=\'text-align:center;padding:30px 0;color:var(--mt);font-size:13px\'>Selecciona un cliente</div>'">Cancelar</button>
+    </div>
+  `;
+  $('new-nombre')?.focus();
+}
+
+function crearClienteManual(){
+  const nombre=$('new-nombre')?.value.trim();
+  const email =$('new-email')?.value.trim();
+  if(!nombre||!email){toast('Nombre y email son obligatorios',true);return;}
+  // Verificar que no existe
+  if(clientes.find(c=>c.email.toLowerCase()===email.toLowerCase())){
+    toast('Ya existe un cliente con ese email',true); return;
+  }
+  const cli={
+    id:'CLI-'+Date.now().toString(36).toUpperCase(),
+    nombre, email,
+    empresa:$('new-empresa')?.value.trim()||'',
+    telefono:$('new-tel')?.value.trim()||'',
+    notas:$('new-notas')?.value.trim()||'',
+    creado:new Date().toISOString(),
+    licencias:[],
+  };
+  clientes.unshift(cli); saveData(); renderClientes();
+  seleccionarCliente(cli.id);
+  auditLog('CLIENTE_NUEVO',cli.nombre+' — '+cli.email,'INFO');
+  toast('✅ Cliente creado: '+cli.nombre);
+}
+
+function asignarDesdeCliente(id){
+  const cli=clientes.find(c=>c.id===id); if(!cli)return;
+  // Ir a la pestaña de licencias y pre-rellenar el formulario rápido
+  const btn=document.querySelector('.ntab:not(.ia-tab):not(.cfg-tab)');
+  // Ir a tab "todas" y pre-rellenar formulario rápido
+  document.querySelectorAll('.ntab').forEach(t=>{
+    t.classList.remove('act');
+    if((t.getAttribute('onclick')||'').includes("'todas'")) t.classList.add('act');
+  });
+  setTab('todas', null);
+  // Pre-rellenar formulario rápido
+  setTimeout(()=>{
+    const n=$('q-nombre'); if(n){ n.value=cli.nombre||''; }
+    const e=$('q-email');  if(e){ e.value=cli.email||''; }
+    $('q-nombre')?.focus();
+    toast('Cliente pre-cargado en el formulario. Elige el tipo y genera la clave.');
+  },100);
+}
+
+// ── Inicializar formulario rápido al cargar
+function initFormRapido(){
+  const fq=$('q-fecha'); if(fq) fq.valueAsDate=new Date();
+}
+
+function syncSolicitudesFromPrograma(){
+  // El programa instalado guarda solicitudes en el mismo localStorage cuando el cliente las envía
+  // Si el panel se abre en el mismo navegador/PC, las veremos aquí automáticamente
+  try{
+    const sols=JSON.parse(localStorage.getItem('gpt_solicitudes_v1')||'[]');
+    // Merge sin duplicar
+    sols.forEach(s=>{
+      if(!solicitudes.find(x=>x.id===s.id)){
+        solicitudes.push(s);
+      }
+    });
+    localStorage.setItem(SOL_KEY, JSON.stringify(solicitudes));
+  }catch(e){}
+}
+
+function renderStats(){
+  const t=licencias.length, a=licencias.filter(l=>l.estado==='activa'||l.estado==='demo').length;
+  const p=licencias.filter(l=>l.estado==='pendiente').length, d=distribuidores.length;
+  const ing=licencias.filter(l=>l.estado==='activa').reduce((s,l)=>s+(parseFloat(l.precio)||0),0);
+  $('stats-grid').innerHTML=[
+    ['📬','Solicitudes',solicitudes.filter(s=>s.estado==='pendiente').length,'#f59e0b'],
+    ['👥','Clientes',clientes.length,'#7c3aed'],
+    ['📋','Licencias',t,'#3b82f6'],['✅','Activas',a,'#10b981'],
+    ['⏳','Pendientes',p,'#f59e0b'],['💶','Ingresos',ing.toFixed(2)+' €','#06b6d4'],
+    ['🏢','Distribuidores',d,'#8b5cf6']
+  ].map(([i,l,v,c])=>`<div class="stat"><div style="font-size:24px">${i}</div><div><div style="font-size:24px;font-weight:800;color:${c}">${v}</div><div style="font-size:11px;color:var(--mt)">${l}</div></div></div>`).join('');
+}
+
+// ── Tabla ─────────────────────────────────────────────────────────────────
+function renderTable(){
+  const s=($('srch')?.value||'').toLowerCase(), f=currentTab;
+  const rows=licencias.filter(l=>{
+    const est=(l.estado||'activa').toLowerCase();
+    return (f==='todas'||est===f)&&(!s||[l.cliente,l.email,l.key].some(v=>(v||'').toLowerCase().includes(s)));
+  });
+  const area=$('table-area'); if(!area)return;
+  if(!rows.length){area.innerHTML='<div style="padding:40px;text-align:center;color:var(--mt)">Sin licencias</div>';return;}
+  const eb=e=>({activa:'<span class="pill p-ac">✓ Activa</span>',demo:'<span class="pill p-tr">🎁 Demo</span>',pendiente:'<span class="pill p-pe">⏳ Pend.</span>',inactiva:'<span class="pill p-in">✗ Revocada</span>',expirada:'<span class="pill p-in">⏰ Exp.</span>'}[e]||`<span class="pill p-pe">${e}</span>`);
+  const de=exp=>{if(!exp)return'<span style="color:var(--gr)">♾</span>';const d=Math.ceil((new Date(exp)-Date.now())/86400000);if(d<0)return'<span style="color:var(--rd)">Exp.</span>';if(d<=7)return`<span style="color:var(--am)">⚠️${d}d</span>`;return new Date(exp).toLocaleDateString('es-ES');};
+  area.innerHTML=`<table><thead><tr><th>Cliente</th><th>Clave</th><th>Tipo</th><th>Estado</th><th>Precio</th><th>F.Pago</th><th>Expira</th><th>Acciones</th></tr></thead><tbody>${rows.map(l=>`<tr>
+    <td><div style="font-weight:600">${escHtml(l.cliente||'—')}</div><div style="font-size:10px;color:var(--mt)">${escHtml(l.email||'—')}</div></td>
+    <td><span class="key-mono" onclick="navigator.clipboard.writeText('${escHtml(l.key||'')}').then(()=>toast('Clave copiada'))">${escHtml(l.key||'—')}</span></td>
+    <td style="font-size:11px">${l.tipo||'—'}</td>
+    <td>${eb(l.estado||'activa')}</td>
+    <td>${parseFloat(l.precio||0)>0?parseFloat(l.precio).toFixed(2)+' €':'<span style="color:var(--mt)">GRATIS</span>'}</td>
+    <td style="font-size:11px">${l.fechaPago?new Date(l.fechaPago).toLocaleDateString('es-ES'):'—'}</td>
+    <td style="font-size:11px">${de(l.expira)}</td>
+    <td><div style="display:flex;gap:5px">
+      ${l.estado==='activa'||l.estado==='demo'
+        ?`<button class="btn btn-rd btn-sm" onclick="revocar('${l.id}')">Revocar</button>`
+        :`<button class="btn btn-gr btn-sm" onclick="reactivar('${l.id}')">Activar</button>`}
+      <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${escHtml(l.key||'')}').then(()=>toast('Copiada'))">📋</button>
+    </div></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+function revocar(id){ if(!confirm('¿Revocar licencia?'))return; const l=licencias.find(x=>x.id===id); if(!l)return; l.estado='inactiva'; try{cloudPost({accion:'revocar',key:l.key,pass:(programCfg.adminPass||ADMIN_PLAIN)});}catch(e){} saveData(); renderTable(); renderStats(); auditLog('LIC_REVOCADA','ID:'+id,'WARN'); toast('Licencia revocada'); }
+function reactivar(id){ const l=licencias.find(x=>x.id===id); if(!l)return; l.estado='activa'; saveData(); renderTable(); renderStats(); auditLog('LIC_REACTIVADA','ID:'+id,'INFO'); toast('Licencia reactivada'); }
+
+// ── Generar licencia ──────────────────────────────────────────────────────
+// ── Formulario rápido de asignación manual (sin IA) ─────────────────────
+function qResetPrecio(tipo){
+  const inp=$('q-precio'); if(!inp)return;
+  inp.value=getPrecio(tipo);
+  inp.style.background=''; inp.style.borderColor=''; inp.style.color='';
+  const mr=$('q-motivo-row');
+  if(mr&&parseFloat(inp.value)>0){ mr.style.display='none'; const m=$('q-motivo');if(m)m.value=''; }
+}
+
+function qAnularPrecio(){
+  const inp=$('q-precio'); if(!inp)return;
+  inp.value='0';
+  inp.style.background='#92400e22'; inp.style.borderColor='var(--am)'; inp.style.color='var(--am)';
+  const mr=$('q-motivo-row'); if(mr){ mr.style.display='block'; $('q-motivo')?.focus(); }
+}
+
+// ── Generar PACK de licencias ─────────────────────────────────────────────
+function isPack(tipo){ return ['pack10','pack25','pack50','pack100'].includes(tipo); }
+function cantidadPack(tipo){ return {pack10:10,pack25:25,pack50:50,pack100:100}[tipo]||1; }
+
+async function generarLicenciaRapida(){
+  const nombre=$('q-nombre')?.value.trim();
+  const email =$('q-email')?.value.trim();
+  if(!nombre||!email){ toast('Nombre y email son obligatorios',true); return; }
+
+  const tipo   =$('q-tipo')?.value||'anual';
+  const precio = parseFloat($('q-precio')?.value)||0;
+  const fecha  =$('q-fecha')?.value||'';
+  const motivo =$('q-motivo')?.value.trim()||'';
+  const notas  =$('q-notas')?.value.trim()||'';
+  const notaFinal=(notas+(motivo?'\nMotivo precio 0: '+motivo:'')).trim();
+
+  const btn=$('btn-quick-gen');
+  btn.disabled=true; btn.textContent='Generando...';
+
+  const id ='LIC-'+Date.now().toString(36).toUpperCase();
+  const key=await genKey(id+nombre, tipo);
+  const exp=calcExp(tipo, fecha?new Date(fecha):new Date());
+
+  const lic={
+    id,key,cliente:nombre,email,tipo,precio,
+    notas: notaFinal||'Asignación manual',
+    estado: tipo==='demo'?'demo':'pendiente',
+    fechaPago:fecha, expira:exp,
+    creada:new Date().toISOString(), activaciones:[]
+  };
+  licencias.unshift(lic);
+  upsertCliente(lic);
+  saveData(); renderStats(); renderTable();
+
+  // Mostrar resultado (clave partida en 4 líneas legibles, sin alterar la clave real)
+  $('q-key-val').textContent=fmtKeyLines(key);
+  $('q-key-exp').textContent=exp
+    ?'Expira: '+new Date(exp).toLocaleDateString('es-ES')
+    :'Permanente · sin caducidad';
+  $('q-resultado').style.display='block';
+
+  // Botones de acción
+  $('q-btn-copiar').onclick=()=>navigator.clipboard.writeText(key).then(()=>toast('Clave copiada'));
+  $('q-btn-email').onclick=()=>{
+    const s=encodeURIComponent('Tu clave de licencia — Gestión Pro Total');
+    const tipos={demo:'Demo 7 días',mensual:'Mensual',anual:'Anual',permanente:'Permanente',escuela:'Estudiantes (1 año · matrícula)'};
+    const b=encodeURIComponent(
+      'Hola '+nombre+',\n\nTu clave de licencia es:\n\n'+key+
+      '\n\nPlan: '+(tipos[tipo]||tipo)+
+      (exp?'\nVálida hasta: '+new Date(exp).toLocaleDateString('es-ES'):'\nSin caducidad')+
+      '\n\nCómo activar:\n1. Abre la app\n2. Introduce la clave\n3. Pulsa Activar'+
+      '\n\nSoporte: '+ADMIN_EMAIL
+    );
+    window.open('https://mail.google.com/mail/?view=cm&fs=1&to='+email+'&su='+s+'&body='+b);
+  };
+
+  auditLog('LIC_MANUAL_RAPIDA', nombre+' — '+tipo+(precio===0?' — GRATIS':'— '+precio+'€')+' — '+key, 'INFO');
+  toast('✅ Clave generada: '+key);
+
+  btn.disabled=false; btn.textContent='⚡ Generar clave';
+}
+
+// ── Generar Pack de claves + Portal del cliente ───────────────────────────
+async function generarPack(nombre, email, tipo, precio, fecha, notas){
+  const cantidad = cantidadPack(tipo);
+  const scriptUrl = programCfg.scriptUrl||localStorage.getItem('gpt_script_url')||'';
+  toast('Generando '+cantidad+' claves...','');
+  
+  const packId = 'PACK-'+Date.now().toString(36).toUpperCase();
+  const claves  = [];
+  const exp     = calcExp('anual', fecha?new Date(fecha):new Date());
+  
+  for(let i=0;i<cantidad;i++){
+    const id  = 'LIC-'+Date.now().toString(36).toUpperCase()+i;
+    const key = await genKey(id+nombre+i, 'anual');
+    const lic = {id,key,cliente:nombre,email,tipo:'anual',precio:precio/cantidad,
+      notas:'Pack '+cantidad+' · '+packId+(notas?' · '+notas:''),
+      estado:'pendiente',fechaPago:fecha,expira:exp,
+      creada:new Date().toISOString(),activaciones:[],packId,packIdx:i};
+    licencias.unshift(lic);
+    claves.push(key);
+  }
+  upsertCliente({id:packId,cliente:nombre,email,tipo,precio});
+  saveData(); renderStats(); renderTable();
+  auditLog('PACK_GENERADO',nombre+' — '+tipo+' — '+cantidad+' claves','INFO');
+
+  // Generar el portal del cliente
+  const portal = generarPortalHtml(nombre,email,claves,exp,scriptUrl,packId,tipo);
+  
+  // Mostrar resultado con botones para descargar e enviar el portal
+  const res=$('q-resultado'); res.style.display='block';
+  res.innerHTML=`
+    <div style="text-align:center;padding:10px 0">
+      <div style="font-size:28px;margin-bottom:6px">📦</div>
+      <div style="font-weight:800;font-size:15px;color:var(--ac)">Pack generado: ${cantidad} claves</div>
+      <div style="font-size:11px;color:var(--mt);margin-top:4px">${nombre} · ${email}</div>
+      <div style="font-size:11px;color:var(--gr);margin-top:2px">Todas las claves guardadas en Licencias</div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-gr btn-sm" onclick="descargarPortal('${packId}')">⬇️ Descargar portal del cliente</button>
+      <button class="btn btn-ac btn-sm" onclick="enviarPortalEmail('${packId}')">📧 Enviar por email</button>
+      <button class="btn btn-ghost btn-sm" onclick="resetFormRapido()">Nueva</button>
+    </div>`;
+  
+  // Guardar el HTML del portal para descarga posterior
+  try{ const portales=JSON.parse(localStorage.getItem('gpt_portales')||'{}'); portales[packId]=portal; localStorage.setItem('gpt_portales',JSON.stringify(portales)); }catch(e){}
+  toast('✅ Pack de '+cantidad+' claves generado');
+}
+
+function descargarPortal(packId){
+  const portales=JSON.parse(localStorage.getItem('gpt_portales')||'{}');
+  const html=portales[packId]; if(!html){toast('Portal no encontrado',true);return;}
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));
+  a.download='Portal-Licencias-GPT-'+packId+'.html'; a.click();
+  toast('Portal descargado');
+}
+
+function enviarPortalEmail(packId){
+  const pack=licencias.filter(l=>l.packId===packId); if(!pack.length)return;
+  const p=pack[0];
+  const nl=String.fromCharCode(10);
+  const sub=encodeURIComponent('Tu portal de licencias — Gestión Pro Total — Pack '+cantidadPack(p.tipo||'pack10')+' claves');
+  const body=encodeURIComponent(['Hola '+p.cliente,nl,
+    'Adjunto encontrarás tu portal de licencias con las '+pack.length+' claves de tu pack.',nl,
+    'Instrucciones:',
+    '1. Abre el fichero HTML adjunto en el navegador',
+    '2. Verás todas tus claves con su estado',
+    '3. Activa cada clave en el programa cuando la necesites',nl,
+    'Si tienes dudas: '+ADMIN_EMAIL].join(nl));
+  window.open('https://mail.google.com/mail/?view=cm&fs=1&to='+p.email+'&su='+sub+'&body='+body);
+  descargarPortal(packId);
+}
+
+function generarPortalHtml(nombre,email,claves,expira,scriptUrl,packId,tipo){
+  const expStr=expira?new Date(expira).toLocaleDateString('es-ES'):'Sin caducidad';
+  const escSU=(scriptUrl||'').replace(/"/g,'\\"');
+  const cl=JSON.stringify(claves);
+  const adm=ADMIN_EMAIL;
+  let h='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
+  h+='<title>Portal de Licencias - Gestion Pro Total</title><style>';
+  h+=':root{--bg:#0a0e1a;--p:#111827;--brd:#2a3a55;--ac:#3b82f6;--gr:#10b981;--rd:#ef4444;--am:#f59e0b;--tx:#f1f5f9;--mt:#64748b}';
+  h+='*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--tx);font-family:Segoe UI,Arial,sans-serif;min-height:100vh}';
+  h+='.hero{background:linear-gradient(135deg,#0a1628,#1e3a5f);padding:36px 20px;text-align:center}.hero h1{font-size:22px;font-weight:900;color:#fff}.hero p{color:#93c5fd;font-size:13px}';
+  h+='.cont{max-width:700px;margin:0 auto;padding:24px 20px}.card{background:var(--p);border:1px solid var(--brd);border-radius:16px;padding:24px;margin-bottom:16px}';
+  h+='.ci{background:var(--bg);border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}';
+  h+='.num{width:28px;height:28px;background:var(--ac);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}';
+  h+='.key{font-family:monospace;font-size:13px;font-weight:700;color:#06b6d4;flex:1;word-break:break-all}';
+  h+='.pill{display:inline-flex;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700}.p-pen{background:#f59e0b22;color:#f59e0b}.p-us{background:#64748b22;color:#64748b}';
+  h+='.btn{padding:6px 11px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:none}.btna{background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#fff}';
+  h+='.inp{width:100%;background:#0a0e1a;border:1px solid var(--brd);border-radius:10px;padding:11px 14px;color:var(--tx);font-size:14px;outline:none;margin-top:6px}';
+  h+='.big-btn{width:100%;padding:13px;background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px}';
+  h+='#overlay{display:flex;position:fixed;inset:0;background:#0a0e1a;z-index:100;align-items:center;justify-content:center;padding:20px}';
+  h+='#af{display:none;position:fixed;inset:0;background:#00000099;z-index:999;align-items:center;justify-content:center;padding:16px}';
+  h+='</style></head><body>';
+  // Overlay de login/contraseña (siempre visible hasta autenticar)
+  h+='<div id="overlay"><div style="background:#111827;border:1px solid #2a3a55;border-radius:20px;padding:40px;width:100%;max-width:420px;text-align:center">';
+  h+='<div style="font-size:42px;margin-bottom:12px">🔑</div>';
+  h+='<h2 style="font-size:18px;font-weight:800;color:#f1f5f9;margin-bottom:6px" id="ov-title">Portal de Licencias</h2>';
+  h+='<p style="font-size:13px;color:#64748b;margin-bottom:18px" id="ov-sub">'+nombre+' &middot; '+claves.length+' claves</p>';
+  // Campos
+  h+='<div id="ov-setup" style="display:none"><p style="font-size:12px;color:#f59e0b;background:#f59e0b15;border:1px solid #f59e0b33;border-radius:8px;padding:10px;margin-bottom:14px">Primera vez — crea tu contrasena de acceso al portal.<br>Eligela tu mismo: la necesitaras cada vez que abras este portal.</p>';
+  h+='<input class="inp" type="password" id="pw1" placeholder="Nueva contrasena (minimo 4 caracteres)">';
+  h+='<input class="inp" type="password" id="pw2" placeholder="Repite la contrasena" style="margin-top:8px">';
+  h+='<div id="ov-err" style="color:#ef4444;font-size:12px;margin-top:8px;display:none"></div>';
+  h+='<button class="big-btn" onclick="crearPwd()">Crear contrasena y abrir portal</button></div>';
+  // Login normal
+  h+='<div id="ov-login"><input class="inp" type="password" id="pw-login" placeholder="Introduce tu contrasena" onkeydown="if(event.key===\'Enter\')loginPwd()">';
+  h+='<div id="ov-err2" style="color:#ef4444;font-size:12px;margin-top:8px;display:none">Contrasena incorrecta</div>';
+  h+='<button class="big-btn" onclick="loginPwd()">Abrir portal</button></div>';
+  h+='<p style="font-size:11px;color:#374151;margin-top:16px">Este portal esta vinculado al sistema de licencias.<br>Soporte: '+adm+'</p>';
+  h+='</div></div>';
+  // App principal (oculta hasta login)
+  h+='<div id="app" style="display:none">';
+  h+='<div class="hero"><h1>Pack de Licencias</h1><p>Gestion Pro Total &middot; '+nombre+' &middot; '+email+'</p></div>';
+  h+='<div class="cont"><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h2 style="font-size:15px;font-weight:700">Tus '+claves.length+' licencias</h2><button class="btn" onclick="cerrarSesion()" style="background:var(--brd);color:var(--mt);font-size:11px">Cerrar sesion</button></div>';
+  h+='<p style="font-size:12px;color:var(--mt);margin-bottom:16px">Validas hasta: '+expStr+' &middot; Pulsa Copiar para usar cada clave en el programa.</p>';
+  h+='<div id="lc"></div></div>';
+  h+='<div class="card"><p style="font-size:12px;color:var(--mt)"><strong style="color:var(--tx)">Como activar una clave:</strong><br>1. Pulsa Copiar junto a la clave<br>2. Abre Gestion Pro Total<br>3. Pestana "Activar clave" &rarr; pega y activa</p></div>';
+  h+='<div style="text-align:center;padding:16px;color:var(--mt);font-size:11px">Soporte: '+adm+'<br>Pack ID: '+packId+'</div></div></div>';
+  // Aviso fraude
+  h+='<div id="af"><div style="background:#111827;border:2px solid #ef4444;border-radius:16px;padding:32px;max-width:440px;text-align:center">';
+  h+='<div style="font-size:42px;margin-bottom:10px">ALERTA</div><h2 style="color:#ef4444;font-size:17px;font-weight:800;margin-bottom:8px">Intento de fraude detectado</h2>';
+  h+='<p style="color:#94a3b8;font-size:13px;line-height:1.7;margin-bottom:12px">Modificacion detectada en la URL de sincronizacion del servidor.<br><br>Tienes <strong id="cnt" style="color:#ef4444;font-size:18px">10:00</strong> para restaurarla o <strong style="color:#fca5a5">TODAS LAS CLAVES DEL PACK QUEDARAN INVALIDADAS</strong> y deberas adquirir un nuevo pack.</p>';
+  h+='<div id="uo" style="background:#1e293b;border-radius:8px;padding:10px;font-size:11px;font-family:monospace;color:#64748b;word-break:break-all;margin-bottom:14px"></div>';
+  h+='<button onclick="rest()" style="background:linear-gradient(135deg,#3b82f6,#06b6d4);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px">Restaurar URL original</button>';
+  h+='<p style="font-size:11px;color:#64748b">Intento notificado al administrador.</p></div></div>';
+  // Script
+  h+='<script>';
+  h+='var CL='+cl+',PK="'+packId+'",SU="'+escSU+'";';
+  h+='var ST="gpt_p_"+PK,PH="gpt_ph_"+PK;';
+  h+='var est={};try{est=JSON.parse(localStorage.getItem(ST)||"{}");}catch{}';
+  // Hash SHA-256 nativo
+  h+='async function sha(s){var b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(function(x){return x.toString(16).padStart(2,"0");}).join("");}';
+  // Init: comprobar si hay contraseña guardada
+  h+='window.onload=function(){var ph=localStorage.getItem(PH);if(ph){document.getElementById("ov-setup").style.display="none";document.getElementById("ov-login").style.display="block";}else{document.getElementById("ov-setup").style.display="block";document.getElementById("ov-login").style.display="none";}};';
+  // Crear contraseña
+  h+='function crearPwd(){var p1=document.getElementById("pw1").value,p2=document.getElementById("pw2").value,er=document.getElementById("ov-err");if(p1.length<4){er.textContent="La contrasena debe tener al menos 4 caracteres";er.style.display="block";return;}if(p1!==p2){er.textContent="Las contrasenas no coinciden";er.style.display="block";return;}er.style.display="none";sha(p1+PK).then(function(h){localStorage.setItem(PH,h);abrirApp();});}';
+  // Login
+  h+='function loginPwd(){var p=document.getElementById("pw-login").value,er=document.getElementById("ov-err2");sha(p+PK).then(function(h){if(h===localStorage.getItem(PH)){er.style.display="none";abrirApp();}else{er.style.display="block";}});}';
+  h+='function abrirApp(){document.getElementById("overlay").style.display="none";document.getElementById("app").style.display="block";vUrl();rC();setInterval(vUrl,30000);}';
+  h+='function cerrarSesion(){document.getElementById("app").style.display="none";document.getElementById("overlay").style.display="flex";document.getElementById("pw-login").value="";}';
+  // Sync + fraude
+  h+='function sync(t,d){if(!SU)return;fetch(SU,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify({tipo:t,packId:PK,email:"'+email+'",...d})}).catch(function(){});}';
+  h+='var ft;';
+  h+='function vUrl(){var s=localStorage.getItem("gpt_su_"+PK);if(!s){localStorage.setItem("gpt_su_"+PK,SU);return;}if(s!==SU&&SU){mFraude();}}';
+  h+='function mFraude(){if(document.getElementById("af").style.display==="flex")return;var uo=document.getElementById("uo");if(uo)uo.textContent=SU;document.getElementById("af").style.display="flex";sync("ALERTA_FRAUDE_URL",{});var s=600;ft=setInterval(function(){s--;var m=("0"+Math.floor(s/60)).slice(-2),sc=("0"+(s%60)).slice(-2);var ca=document.getElementById("cnt");if(ca)ca.textContent=m+":"+sc;if(s<=0){clearInterval(ft);est.inv=true;localStorage.setItem(ST,JSON.stringify(est));sync("PACK_INVALIDADO",{});alert("Pack invalidado por intento de fraude. Contacta con soporte para adquirir un nuevo pack.");rC();}},1000);}';
+  h+='function rest(){localStorage.setItem("gpt_su_"+PK,SU);clearInterval(ft);document.getElementById("af").style.display="none";sync("URL_RESTAURADA",{});}';
+  // Renderizar claves
+  h+='function rC(){var l=document.getElementById("lc");if(!l)return;if(est.inv){l.innerHTML="<div style=\\"text-align:center;padding:30px;color:#ef4444;font-weight:700\\">Pack invalidado. Contacta con el administrador.</div>";return;}';
+  h+='l.innerHTML=CL.map(function(k,i){var a=est["a"+i];return "<div class=\\"ci\\"><div class=\\"num\\">"+(i+1)+"</div><div class=\\"key\\">"+k+"</div><span class=\\"pill "+(a?"p-us":"p-pen")+"\\">"+( a?"Usada":"Disponible")+"</span><button class=\\"btn "+(a?"":"btna")+"\\" onclick=\\"cp("+i+")\\" "+(a?"style=\\"background:var(--brd)\\"":"")+">Copiar</button></div>";}).join("");}';
+  h+='function cp(i){navigator.clipboard.writeText(CL[i]).then(function(){if(!est["a"+i]){est["a"+i]=new Date().toISOString();localStorage.setItem(ST,JSON.stringify(est));sync("CLAVE_COPIADA",{clave:CL[i],idx:i});rC();}});}';
+  h+='<\/script></body></html>';
+  return h;
+}
+
+function resetFormRapido(){
+  ['q-nombre','q-email','q-notas','q-motivo'].forEach(id=>{const el=$(id);if(el)el.value='';});
+  $('q-tipo').value='anual';
+  qResetPrecio('anual');
+  $('q-resultado').style.display='none';
+  $('q-fecha').valueAsDate=new Date();
+  $('q-nombre')?.focus();
+}
+
+function openModal(){ 
+  $('modal-nueva').classList.add('open'); 
+  $('key-res').classList.remove('show'); 
+  $('modal-btns').style.display='flex'; 
+  ['m-nombre','m-email','m-notas','m-motivo'].forEach(id=>{const el=$(id);if(el)el.value='';}); 
+  $('m-tipo').value='anual'; 
+  $('m-precio').value='79.99';
+  $('m-fecha').valueAsDate=new Date();
+  // Ocultar fila de motivo
+  const mr=$('m-motivo-row'); if(mr) mr.style.display='none';
+  currentLic=null; 
+}
+function cerrarModal(){ $('modal-nueva').classList.remove('open'); }
+
+// Crea o actualiza la ficha del cliente al asignar una licencia
+function upsertCliente(lic){
+  // Vincular a la nube: registra la clave (crea carpeta del cliente en tu Drive)
+  try{ cloudPost({accion:'registrar',key:lic.key,cliente:lic.cliente||'',email:lic.email||'',plan:lic.tipo||'',estado:lic.estado||'activa',emitida:lic.creada||new Date().toISOString(),expira:lic.expira||'',notas:lic.notas||''}); }catch(e){}
+  const email = (lic.email||'').toLowerCase().trim();
+  if(!email) return;
+  let cli = clientes.find(c=>c.email.toLowerCase()===email);
+  if(!cli){
+    cli = {
+      id:     'CLI-'+Date.now().toString(36).toUpperCase(),
+      nombre: lic.cliente||'',
+      email:  lic.email||'',
+      empresa:'',
+      telefono:'',
+      notas:  '',
+      creado: new Date().toISOString(),
+      licencias: [],
+    };
+    clientes.unshift(cli);
+  } else {
+    // Actualizar nombre si vino vacío
+    if(!cli.nombre && lic.cliente) cli.nombre = lic.cliente;
+  }
+  // Añadir referencia a la licencia si no está ya
+  if(!cli.licencias.includes(lic.id)){
+    cli.licencias.unshift(lic.id);
+  }
+  auditLog('CLIENTE_UPSERT', cli.nombre+' — '+cli.email, 'INFO');
+}
+
+function resetPrecio(tipo){
+  const inp=$('m-precio'); if(!inp)return;
+  inp.value=getPrecio(tipo);
+  // Restaurar estilos
+  inp.style.background=''; inp.style.borderColor=''; inp.style.color='';
+  // Ocultar fila de motivo si el precio vuelve a ser > 0
+  const mr=$('m-motivo-row');
+  if(mr&&parseFloat(inp.value)>0){ mr.style.display='none'; const m=$('m-motivo');if(m)m.value=''; }
+}
+
+function anularPrecio(){
+  // Poner precio a 0
+  const inp = $('m-precio');
+  if(inp) inp.value = '0';
+  // Mostrar fila de motivo
+  const mr = $('m-motivo-row');
+  if(mr){ mr.style.display='block'; $('m-motivo')?.focus(); }
+  // Cambiar el estado del campo para indicar que es gratuita
+  if(inp){
+    inp.style.background='#065f4622';
+    inp.style.borderColor='var(--am)';
+    inp.style.color='var(--am)';
+  }
+}
+async function generarLicencia(){
+  const nombre=$('m-nombre').value.trim(), email=$('m-email').value.trim();
+  if(!nombre||!email){toast('Nombre y email son obligatorios',true);return;}
+  const tipo=$('m-tipo').value, precio=parseFloat($('m-precio').value)||0;
+  const fecha=$('m-fecha').value;
+  const motivo=$('m-motivo')?.value.trim()||'';
+  const notas=($('m-notas').value.trim()+(motivo?'\nMotivo precio 0: '+motivo:'')).trim();
+  $('btn-gen').disabled=true; $('btn-gen').textContent='Generando...';
+  const id='LIC-'+Date.now().toString(36).toUpperCase();
+  const key=await genKey(id+nombre,tipo), exp=calcExp(tipo,fecha?new Date(fecha):new Date());
+  currentLic={id,key,cliente:nombre,email,tipo,precio,notas,estado:tipo==='demo'?'demo':'pendiente',fechaPago:fecha,expira:exp,creada:new Date().toISOString(),activaciones:[]};
+  licencias.unshift(currentLic); upsertCliente(currentLic); saveData(); renderStats(); renderTable();
+  $('btn-gen').disabled=false; $('btn-gen').textContent='⚡ Generar licencia';
+  $('modal-btns').style.display='none'; $('key-res').classList.add('show');
+  $('key-val').textContent=key; $('key-exp').textContent=exp?'Expira: '+new Date(exp).toLocaleDateString('es-ES'):'Permanente';
+  auditLog('LIC_NUEVA',nombre+' — '+tipo+' — '+key,'INFO'); toast('✅ Licencia generada');
+}
+function copiarClave(){ if(currentLic)navigator.clipboard.writeText(currentLic.key).then(()=>toast('¡Clave copiada!')); }
+function enviarEmailClave(){
+  if(!currentLic)return;
+  const {key,email,cliente,tipo,expira}=currentLic;
+  const tipos={demo:'Demo 7 días',mensual:'Mensual',anual:'Anual',permanente:'Permanente',escuela:'Estudiantes (1 año · matrícula)'};
+  const s=encodeURIComponent('Tu clave de licencia — Gestión Pro Total');
+  const b=encodeURIComponent(`Hola ${cliente},\n\nTu clave:\n\n${key}\n\nPlan: ${tipos[tipo]||tipo}\n${expira?'Válida hasta: '+new Date(expira).toLocaleDateString('es-ES'):'Sin caducidad'}\n\nSoporte: ${ADMIN_EMAIL}`);
+  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${s}&body=${b}`);
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+function setTab(tab, btn){
+  currentTab = tab;
+  document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('act'));
+  if(btn) btn.classList.add('act');
+  const paneles = ['panel-solicitudes','panel-clientes','panel-licencias','panel-backup','panel-distribuidor','panel-packs','panel-auditoria','panel-ia','panel-config'];
+  paneles.forEach(id=>{ const el=$(id); if(el) el.style.display='none'; });
+  const mapa = { solicitudes:'panel-solicitudes', clientes:'panel-clientes', backup:'panel-backup', distribuidor:'panel-distribuidor', packs:'panel-packs', auditoria:'panel-auditoria', ia:'panel-ia', config:'panel-config' };
+  const target = mapa[tab]||'panel-licencias';
+  const el=$(target); if(el) el.style.display='block';
+  $('tab-title').textContent = {todas:'📋 Todas las licencias',activa:'✅ Licencias activas',demo:'🎁 Licencias demo',pendiente:'⏳ Pendientes de verificación',inactiva:'🚫 Licencias revocadas'}[tab]||'';
+  if(tab==='solicitudes')        { renderSolicitudes(); renderSharing(); }
+  else if(tab==='clientes')     { renderClientes(); }
+  else if(tab==='packs')        { renderPacks(); loadPackScriptUrl(); }
+  else if(tab==='backup')       { loadBkCfg(); updateBkSummary(); }
+  else if(tab==='distribuidor') { renderDistList(); }
+  else if(tab==='auditoria')    { renderAudit(); }
+  else if(tab==='ia')           { renderIAPanel(); }
+  else if(tab==='config')       { renderConfig(); renderSysInfo(); }
+  else renderTable();
+}
+
+// ── Backup ────────────────────────────────────────────────────────────────
+function loadBkCfg(){
+  if($('bk-drive-url')) $('bk-drive-url').value=bkCfg.driveUrl||'';
+  if($('bk-srv-url'))   $('bk-srv-url').value=bkCfg.srvUrl||'';
+  if($('bk-srv-token')) $('bk-srv-token').value=bkCfg.srvToken||'';
+  if($('bk-email'))     $('bk-email').value=bkCfg.emailBk||ADMIN_EMAIL;
+  updateIdbInfo();
+}
+function toggleAutoLocal(){ autoLocal=!autoLocal; bkCfg.autoLocal=autoLocal; localStorage.setItem(BK_KEY,JSON.stringify(bkCfg)); $('btn-auto-local').textContent='⏱️ Auto: '+(autoLocal?'ON':'OFF'); toast('Auto-backup local '+(autoLocal?'activado':'desactivado')); }
+function backupLocal(){ exportData(); }
+async function backupDrive(isManual){
+  const url=$('bk-drive-url')?.value.trim()||bkCfg.driveUrl||'';
+  if(!url){toast('Configura la URL del Apps Script de Drive',true);return;}
+  try{ await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({manual:isManual,licencias,distribuidores,actualizado:new Date().toISOString()})}); bkCfg.driveLastTs=new Date().toISOString(); localStorage.setItem(BK_KEY,JSON.stringify(bkCfg)); if($('bk-drive-last')) $('bk-drive-last').textContent=(isManual?'Manual: ':'Diario: ')+new Date().toLocaleTimeString('es-ES'); auditLog('BACKUP_DRIVE',(isManual?'Manual':'Auto')+' enviado a Drive','INFO'); toast(isManual?'📸 Copia manual en Drive':'☁️ Backup en Drive'); updateBkSummary(); }catch(e){toast('Error Drive: '+e.message,true);}
+}
+async function backupServer(){ const url=$('bk-srv-url')?.value.trim()||bkCfg.srvUrl||'', token=$('bk-srv-token')?.value.trim()||bkCfg.srvToken||''; if(!url){toast('Configura la URL del servidor externo',true);return;} try{ const h={'Content-Type':'application/json'}; if(token)h['Authorization']=token; const r=await fetch(url,{method:'POST',headers:h,body:JSON.stringify({licencias,distribuidores,ts:new Date().toISOString()})}); bkCfg.srvLastTs=new Date().toISOString(); localStorage.setItem(BK_KEY,JSON.stringify(bkCfg)); if($('bk-srv-last')) $('bk-srv-last').textContent='HTTP '+r.status+' · '+new Date().toLocaleTimeString('es-ES'); auditLog('BACKUP_SERVER','HTTP '+r.status,'INFO'); toast('☁️ Backup en servidor: '+r.status); }catch(e){toast('Error servidor: '+e.message,true);} }
+async function testServer(){ const url=$('bk-srv-url')?.value.trim(); if(!url){toast('Introduce la URL primero',true);return;} try{await fetch(url,{method:'GET',mode:'no-cors'});toast('✅ Servidor accesible');}catch(e){toast('No conectó: '+e.message,true);} }
+function backupEmail(){ const email=$('bk-email')?.value||ADMIN_EMAIL; const s=encodeURIComponent('Backup Licencias GPT — '+new Date().toLocaleDateString('es-ES')); const b=encodeURIComponent(`Backup\nFecha: ${new Date().toLocaleString('es-ES')}\nLicencias: ${licencias.length}\n\n${JSON.stringify({licencias,distribuidores}).slice(0,4000)}`); window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${s}&body=${b}`); bkCfg.emailLastTs=new Date().toISOString(); localStorage.setItem(BK_KEY,JSON.stringify(bkCfg)); if($('bk-email-last')) $('bk-email-last').textContent='Enviado: '+new Date().toLocaleTimeString('es-ES'); auditLog('BACKUP_EMAIL','Email preparado','INFO'); toast('📧 Email de backup preparado'); }
+async function backupAll(){ toast('🚀 Backup en todos los destinos...'); exportData(); if(bkCfg.driveUrl)await backupDrive(false); if(bkCfg.srvUrl)await backupServer(); backupEmail(); bkCfg.allLastTs=new Date().toISOString(); localStorage.setItem(BK_KEY,JSON.stringify(bkCfg)); if($('bk-all-last')) $('bk-all-last').textContent='Último: '+new Date().toLocaleTimeString('es-ES'); updateBkSummary(); auditLog('BACKUP_ALL','Todos los destinos','INFO'); toast('✅ Backup completado'); }
+function autoBackupCheck(){ const last=bkCfg.allLastTs||bkCfg.driveLastTs; const h=parseInt(programCfg.bk_intervalo)||20; if(!last||(Date.now()-new Date(last).getTime())>h*3600000){if(programCfg.bk_drive&&bkCfg.driveUrl)backupDrive(false); if(programCfg.bk_servidor&&bkCfg.srvUrl)backupServer(); if(programCfg.bk_local)exportData();} }
+function updateBkSummary(){ const el=$('bk-summary'); if(!el)return; const rows=[['🖥️ Local','✅ Activo'],['💾 Disco/USB',autoLocal?'✅ Auto ON':'⏸️ Manual'],['🌐 Servidor',bkCfg.srvUrl?'✅ Configurado':'❌ Sin URL'],['📁 Drive',bkCfg.driveUrl?'✅ Configurado':'❌ Sin URL'],['📧 Email',bkCfg.emailLastTs?'✅ '+new Date(bkCfg.emailLastTs).toLocaleDateString('es-ES'):'⏸️ No enviado']]; el.innerHTML=rows.map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--brd)22"><span style="color:var(--mt)">${k}</span><span style="font-size:11px">${v}</span></div>`).join(''); const sp=$('sync-pill'),st=$('sync-txt'); if(sp&&bkCfg.driveUrl){sp.className='sync-pill sync-ok';st.textContent='Drive configurado';}else if(sp){sp.className='sync-pill sync-warn';st.textContent='Sin cloud';} }
+
+// ── Distribuidor ──────────────────────────────────────────────────────────
+function unlockDist(){ const pwd=$('dist-pwd').value; if(pwd===(programCfg.adminPass||ADMIN_PLAIN)){distUnlocked=true;$('dist-locked').style.display='none';$('dist-content').style.display='block';renderDistList();auditLog('DIST_UNLOCK','Módulo distribuidor desbloqueado','INFO');}else{$('dist-err').style.display='block';$('dist-pwd').value='';} }
+function lockDist(){ distUnlocked=false; $('dist-locked').style.display='block'; $('dist-content').style.display='none'; $('dist-pwd').value=''; }
+function resetDist(){ ['d-empresa','d-email','d-cif','d-contacto','d-precio','d-notas'].forEach(id=>{const el=$(id);if(el)el.value='';}); $('d-result').style.display='none'; }
+async function generarDistribuidor(){
+  const empresa=$('d-empresa')?.value.trim(), email=$('d-email')?.value.trim();
+  if(!empresa||!email){toast('Empresa y email son obligatorios',true);return;}
+  const id='DIST-'+Date.now().toString(36).toUpperCase();
+  const key=await genKey(id+empresa,'distribuidor');
+  const dist={id,key,empresa,email,cif:$('d-cif')?.value.trim()||'',contacto:$('d-contacto')?.value.trim()||'',tipo:$('d-tipo')?.value,maxlic:parseInt($('d-maxlic')?.value)||0,precio:parseFloat($('d-precio')?.value)||0,vigencia:$('d-vigencia')?.value||'1',notas:$('d-notas')?.value.trim()||'',estado:'activa',creada:new Date().toISOString(),sublicencias:[]};
+  distribuidores.unshift(dist); saveData(); renderDistList();
+  const el=$('d-result'); el.style.display='block';
+  el.innerHTML=`<div style="background:var(--bg);border:2px dashed var(--pu);border-radius:var(--r);padding:20px;text-align:center">
+    <div style="font-size:10px;color:var(--mt);margin-bottom:6px;text-transform:uppercase">Clave de distribuidor generada</div>
+    <div style="font-family:monospace;font-size:13px;line-height:1.7;font-weight:800;color:var(--pu);white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;background:#0b1220;border:1px solid var(--brd);border-radius:8px;padding:12px;text-align:left">${fmtKeyLines(key)}</div>
+    <div style="font-size:11px;color:var(--mt);margin-top:5px">${empresa} · ${dist.tipo} · ${dist.maxlic===0?'♾️ Sin límite':dist.maxlic+' sublicencias'} · ${dist.vigencia==='vitalicia'?'Vitalicia':dist.vigencia+' año(s)'}</div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-pu btn-sm" onclick="navigator.clipboard.writeText('${key}').then(()=>toast('Copiada'))">📋 Copiar</button>
+      <button class="btn btn-ac btn-sm" onclick="enviarEmailDist('${email}','${empresa}','${key}','${dist.tipo}','${dist.maxlic}')">📧 Email</button>
+      <button class="btn btn-gr btn-sm" onclick="generarReadmeDist('${id}')">📦 README</button>
+    </div>
+  </div>`;
+  auditLog('DIST_NUEVA',empresa+' — '+key,'INFO'); toast('✅ Distribuidor registrado');
+}
+function enviarEmailDist(email,empresa,key,tipo,maxlic){ const s=encodeURIComponent('Clave de distribución — Gestión Pro Total'); const b=encodeURIComponent(`Bienvenido como distribuidor de Gestión Pro Total.\n\nEmpresa: ${empresa}\nClave: ${key}\nTipo: ${tipo}\nSublicencias: ${maxlic==0?'Sin límite':maxlic}\n\nSoporte: ${ADMIN_EMAIL}`); window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${s}&body=${b}`); }
+function generarReadmeDist(id){ const d=distribuidores.find(x=>x.id===id); if(!d)return; const blob=new Blob([`GESTIÓN PRO TOTAL — Paquete Distribuidor\nEmpresa: ${d.empresa}\nClave: ${d.key}\nTipo: ${d.tipo}\nSublicencias: ${d.maxlic===0?'Sin límite':d.maxlic}\nVigencia: ${d.vigencia==='vitalicia'?'Vitalicia':d.vigencia+' año(s)'}\nSoporte: ${ADMIN_EMAIL}`],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='GPT-Distribuidor-'+d.empresa.replace(/\s+/g,'-')+'.txt'; a.click(); toast('📦 README descargado'); }
+function renderDistList(){ const el=$('dist-lista'); if(!el)return; if(!distribuidores.length){el.innerHTML='<div style="padding:30px;text-align:center;color:var(--mt)">Sin distribuidores registrados</div>';return;} el.innerHTML=`<table><thead><tr><th>Empresa</th><th>Clave</th><th>Tipo</th><th>Sublicencias</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${distribuidores.map(d=>`<tr><td><div style="font-weight:600">${escHtml(d.empresa)}</div><div style="font-size:10px;color:var(--mt)">${escHtml(d.email)}</div></td><td><span class="key-mono" onclick="navigator.clipboard.writeText('${escHtml(d.key)}').then(()=>toast('Copiada'))">${escHtml(d.key)}</span></td><td style="font-size:11px">${d.tipo}</td><td style="text-align:center">${(d.sublicencias?.length||0)} / ${d.maxlic===0?'♾️':d.maxlic}</td><td><span class="pill ${d.estado==='activa'?'p-ac':'p-in'}">${d.estado}</span></td><td><div style="display:flex;gap:5px"><button class="btn btn-ac btn-sm" onclick="enviarEmailDist('${d.email}','${escHtml(d.empresa)}','${d.key}','${d.tipo}','${d.maxlic}')">📧</button><button class="btn btn-gr btn-sm" onclick="generarReadmeDist('${d.id}')">📦</button></div></td></tr>`).join('')}</tbody></table>`; }
+
+// ── Auditoría ─────────────────────────────────────────────────────────────
+function renderAudit(){ const f=$('audit-filter')?.value||'', logs=getLogs().filter(l=>!f||l.ev.includes(f)), area=$('audit-area'); if(!area)return; if(!logs.length){area.innerHTML='<div style="padding:30px;text-align:center;color:var(--mt)">Sin registros</div>';return;} const sc=s=>({'ERROR':'var(--rd)','WARN':'var(--am)','INFO':'var(--ac2)'}[s]||'var(--mt)'); area.innerHTML='<table><thead><tr><th>Timestamp</th><th>Evento</th><th>Detalle</th><th>Sev.</th></tr></thead><tbody>'+logs.map(l=>`<tr><td style="font-family:monospace;font-size:10px;white-space:nowrap">${l.ts?.replace('T',' ').slice(0,19)}</td><td><span style="font-family:monospace;font-size:11px;font-weight:700">${escHtml(l.ev)}</span></td><td style="font-size:11px">${escHtml(l.det||'')}</td><td><span style="color:${sc(l.sev)};font-size:11px;font-weight:700">${l.sev}</span></td></tr>`).join('')+'</tbody></table>'; }
+function exportAudit(){ const csv='Timestamp,Evento,Detalle,Severidad\n'+getLogs().map(l=>`"${l.ts}","${l.ev}","${(l.det||'').replace(/"/g,'""')}","${l.sev}"`).join('\n'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='GPT-Auditoria-'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); toast('Log exportado'); }
+function clearAudit(){ if(!confirm('¿Eliminar todo el log?'))return; localStorage.removeItem(LOG_KEY); renderAudit(); toast('Log limpiado'); }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AGENTE IA — Multi-proveedor: Ollama / Groq / OpenRouter / LM Studio / Anthropic
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Configuración de proveedores ─────────────────────────────────────────
+const PROVEEDORES = {
+  ollama: {
+    nombre: 'Ollama (Local)',
+    url:    'http://localhost:11434',
+    modelo: 'llama3.2',
+    apiKey: false,
+    info:   '✅ <strong>100% gratuito y local.</strong> Instala Ollama en tu PC:<br>' +
+            '→ <a href="https://ollama.com/download" target="_blank" style="color:var(--ac2)">ollama.com/download</a><br>' +
+            'Luego ejecuta en terminal: <code style="background:#0a0e1a;padding:2px 6px;border-radius:4px">ollama pull llama3.2</code><br>' +
+            'Sin límites, sin cuenta, sin internet.',
+    links:  '<a href="https://ollama.com/download" target="_blank">⬇️ Descargar Ollama</a> · ' +
+            '<a href="https://ollama.com/library" target="_blank">📚 Modelos disponibles</a>',
+  },
+  groq: {
+    nombre: 'Groq (Gratis, muy rapido)',
+    url:    'https://api.groq.com',
+    modelo: 'llama-3.3-70b-versatile',
+    apiKey: true,
+    keyLabel: 'API Key de Groq (gratuita)',
+    keyPlaceholder: 'gsk_...',
+    info:   '<strong style="color:#10b981">✅ GRATUITO — Sin tarjeta — Muy rapido</strong><br><br>' +
+            '<strong>Pasos (3 minutos):</strong><br>' +
+            '1. Haz clic en el enlace → <strong>console.groq.com</strong><br>' +
+            '2. <strong>Sign Up</strong> → crea cuenta gratuita<br>' +
+            '3. <strong>API Keys</strong> → <strong>Create API Key</strong><br>' +
+            '4. Copia la clave que empieza por <strong>gsk_...</strong><br>' +
+            '5. Pegala abajo y pulsa <strong>Activar Agente IA</strong>',
+    links:  '<a href="https://console.groq.com/keys" target="_blank" style="background:#3b82f6;color:#fff;padding:6px 12px;border-radius:6px;text-decoration:none;font-weight:700">🔑 Ir a Groq.com → Crear clave gratis</a>',
+  },
+  openrouter: {
+    nombre: 'OpenRouter (Gratis)',
+    url:    'https://openrouter.ai',
+    modelo: 'meta-llama/llama-3.1-8b-instruct:free',
+    apiKey: true,
+    keyLabel: 'API Key de OpenRouter (gratuita)',
+    keyPlaceholder: 'sk-or-v1-...',
+    info:   '<strong style="color:#10b981">✅ GRATUITO — Sin tarjeta de credito — Sin instalacion</strong><br><br>' +
+            '<strong>Pasos (5 minutos):</strong><br>' +
+            '1. Haz clic en el enlace de abajo → <strong>openrouter.ai</strong><br>' +
+            '2. Pulsa <strong>Sign In</strong> → crea cuenta gratuita (con Google o email)<br>' +
+            '3. Ve a <strong>Keys</strong> en el menu → <strong>Create Key</strong><br>' +
+            '4. Copia la clave que empieza por <strong>sk-or-v1-...</strong><br>' +
+            '5. Pegala abajo y pulsa <strong>Activar Agente IA</strong>',
+    links:  '<a href="https://openrouter.ai/keys" target="_blank" style="background:#3b82f6;color:#fff;padding:6px 12px;border-radius:6px;text-decoration:none;font-weight:700">🔑 Ir a OpenRouter.ai → Crear clave gratis</a>',
+  },
+  lmstudio: {
+    nombre: 'LM Studio (Local)',
+    url:    'http://localhost:1234',
+    modelo: 'local-model',
+    apiKey: false,
+    info:   '✅ <strong>100% gratuito y local.</strong><br>' +
+            'Descarga LM Studio, descarga un modelo y activa el servidor local.<br>' +
+            '→ <a href="https://lmstudio.ai" target="_blank" style="color:var(--ac2)">lmstudio.ai</a>',
+    links:  '<a href="https://lmstudio.ai" target="_blank">⬇️ Descargar LM Studio</a>',
+  },
+  anthropic: {
+    nombre: 'Anthropic Claude (De pago)',
+    url:    'https://api.anthropic.com',
+    modelo: 'claude-sonnet-4-20250514',
+    apiKey: true,
+    keyLabel: 'API Key de Anthropic',
+    keyPlaceholder: 'sk-ant-api03-...',
+    info:   '⚠️ <strong>Requiere créditos de pago.</strong><br>' +
+            'Si te quedas sin créditos el agente deja de funcionar.<br>' +
+            'Considera usar Ollama o Groq (gratuitos).',
+    links:  '<a href="https://console.anthropic.com" target="_blank">🔑 Consola Anthropic</a> · ' +
+            '<a href="https://console.anthropic.com/settings/billing" target="_blank" style="color:var(--am)">💳 Billing</a>',
+  },
+};
+
+function cambiarProveedor(prov){
+  const cfg = PROVEEDORES[prov];
+  if(!cfg) return;
+  // Info
+  const info = document.getElementById('ia-proveedor-info');
+  if(info) info.innerHTML = cfg.info;
+  // Links
+  const links = document.getElementById('ia-links');
+  if(links) links.innerHTML = cfg.links||'';
+  // URL (solo locales)
+  const urlRow = document.getElementById('ia-url-row');
+  if(urlRow){
+    urlRow.style.display = (!cfg.apiKey || prov==='ollama'||prov==='lmstudio') ? 'block':'none';
+    const inp = document.getElementById('ia-url');
+    if(inp) inp.value = iaCfg.url||cfg.url;
+  }
+  // Modelo
+  const modRow = document.getElementById('ia-modelo-row');
+  if(modRow){
+    const inp = document.getElementById('ia-modelo');
+    if(inp) inp.placeholder = cfg.modelo;
+    if(inp && !iaCfg.modelo) inp.value = cfg.modelo;
+  }
+  // API Key
+  const keyRow = document.getElementById('ia-key-row');
+  if(keyRow) keyRow.style.display = cfg.apiKey ? 'block':'none';
+  const keyLbl = document.getElementById('ia-key-label');
+  if(keyLbl && cfg.keyLabel) keyLbl.textContent = cfg.keyLabel;
+  const keyInp = document.getElementById('ia-key');
+  if(keyInp && cfg.keyPlaceholder) keyInp.placeholder = cfg.keyPlaceholder;
+  saveIACfg();
+}
+
+// ── Llamada unificada a cualquier proveedor ───────────────────────────────
+async function llamarIA(msgs){
+  const prov   = iaCfg.proveedor || 'ollama';
+  const cfg    = PROVEEDORES[prov];
+  const url    = iaCfg.url || cfg.url;
+  const modelo = iaCfg.modelo || cfg.modelo;
+  const key    = iaCfg.apikey || '';
+
+  // Todos los proveedores menos Anthropic usan API compatible con OpenAI
+  if(prov !== 'anthropic'){
+    const endpoint = prov === 'ollama'   ? `${url}/v1/chat/completions` :
+                     prov === 'lmstudio' ? `${url}/v1/chat/completions` :
+                     prov === 'groq'     ? `https://api.groq.com/openai/v1/chat/completions` :
+                     prov === 'openrouter'? `https://openrouter.ai/api/v1/chat/completions` :
+                     `${url}/v1/chat/completions`;
+
+    const headers = { 'Content-Type': 'application/json' };
+    if(key) headers['Authorization'] = 'Bearer ' + key;
+    if(prov === 'openrouter'){
+      headers['HTTP-Referer'] = 'https://gestion-pro-total.app';
+      headers['X-Title'] = 'Gestión Pro Total';
+    }
+
+    const system = buildSystemPrompt();
+    const r = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: modelo,
+        messages: [ {role:'system', content: system}, ...msgs ],
+        max_tokens: 800,
+        temperature: 0.3,
+      })
+    });
+
+    if(!r.ok){
+      const err = await r.json().catch(()=>({error:{message:r.statusText}}));
+      const msg = err.error?.message || r.statusText;
+      if(r.status===401) throw new Error('CLAVE_INVALIDA: ' + msg);
+      if(r.status===402||msg.includes('credit')||msg.includes('balance')) throw new Error('SIN_CREDITOS');
+      if(r.status===404||msg.includes('model')) throw new Error('MODELO_NO_ENCONTRADO: ' + modelo + ' — ¿está instalado?');
+      if(r.status===0||msg.includes('Failed to fetch')) throw new Error('SIN_CONEXION');
+      throw new Error(msg);
+    }
+    const data = await r.json();
+    return data.choices?.[0]?.message?.content || 'Sin respuesta';
+
+  } else {
+    // Anthropic — API propia
+    if(!key) throw new Error('CLAVE_INVALIDA: Introduce tu API key de Anthropic');
+    const system = buildSystemPrompt();
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({ model: modelo, max_tokens: 800, system, messages: msgs })
+    });
+    if(!r.ok){
+      const data = await r.json().catch(()=>({}));
+      const msg  = data.error?.message || r.statusText;
+      if(r.status===401) throw new Error('CLAVE_INVALIDA');
+      if(r.status===402||msg.includes('credit')) throw new Error('SIN_CREDITOS');
+      throw new Error(msg);
+    }
+    const data = await r.json();
+    return data.content?.[0]?.text || 'Sin respuesta';
+  }
+}
+
+// Para compatibilidad con código que llama llamarClaude
+const llamarClaude = llamarIA;
+
+function buildSystemPrompt(){
+  return `Eres el Agente IA de Gestión Pro Total, software de gestión para empresas técnicas.
+Tu misión: gestionar solicitudes de licencias de forma rápida y precisa.
+Datos de pago: Bizum ${iaCfg.bizum||'[configurar]'}, IBAN ${iaCfg.iban||'[configurar]'}, Titular ${iaCfg.titular||'[configurar]'}.
+Licencias: Demo(gratis 7 días, al caducar elige plan), Mensual(19€/mes), Trimestral(49€/3meses), Semestral(89€/6meses), Anual(149€/año), Perpetuo(599€ sin caducidad), Estudiantes(GRATIS 1 año, requiere justificante de matrícula actual, renovable cada año), Empresa(packs a medida).
+Verificación pagos: 48h. Demo: inmediata. Estudiantes: comprobar matrícula antes de emitir. Anti-compartición: clave en 2 dispositivos → revocar ambas.
+Responde en español, conciso y profesional. Máximo 3-4 líneas por respuesta.`;
+}
+
+// ── Manejo de errores unificado ───────────────────────────────────────────
+function manejarErrorIA(e){
+  const msg = e.message || '';
+  const prov = iaCfg.proveedor||'ollama';
+  if(msg.includes('SIN_CREDITOS')){
+    if(prov==='anthropic') return 'Sin creditos en Anthropic. Recarga en console.anthropic.com/settings/billing o cambia a Ollama/Groq (gratuitos).';
+    return 'Sin creditos. Revisa el limite de tu plan gratuito.';
+  }
+  if(msg.includes('CLAVE_INVALIDA')) return 'API key invalida. Revisa la clave en la configuracion del Agente IA.';
+  if(msg.includes('MODELO_NO_ENCONTRADO')){
+    const m = msg.split(': ')[1]||'';
+    return 'Modelo no encontrado: ' + m + '. Para Ollama ejecuta: ollama pull llama3.2';
+  }
+  if(msg.includes('SIN_CONEXION')||msg.includes('Failed to fetch')){
+    if(prov==='ollama'||prov==='lmstudio') return 'Sin conexion al servidor local. Ejecuta: ollama serve';
+    return 'Sin conexion a internet.';
+  }
+  return 'Error: ' + msg;
+}
+
+// ── renderIAPanel ─────────────────────────────────────────────────────────
+function renderIAPanel(){
+  const prov = iaCfg.proveedor || 'openrouter';
+  const el   = document.getElementById('ia-proveedor');
+  if(el) el.value = prov;
+  if(document.getElementById('ia-url'))     document.getElementById('ia-url').value     = iaCfg.url    || PROVEEDORES[prov]?.url    || '';
+  if(document.getElementById('ia-modelo'))  document.getElementById('ia-modelo').value  = iaCfg.modelo || PROVEEDORES[prov]?.modelo || '';
+  if(document.getElementById('ia-key'))     document.getElementById('ia-key').value     = iaCfg.apikey || '';
+  if(document.getElementById('ia-bizum'))   document.getElementById('ia-bizum').value   = iaCfg.bizum  || '';
+  if(document.getElementById('ia-iban'))    document.getElementById('ia-iban').value    = iaCfg.iban   || '';
+  if(document.getElementById('ia-titular')) document.getElementById('ia-titular').value = iaCfg.titular|| '';
+  if(document.getElementById('ia-banco'))   document.getElementById('ia-banco').value   = iaCfg.banco  || '';
+  if(document.getElementById('ia-m-fecha')) document.getElementById('ia-m-fecha').valueAsDate = new Date();
+  cambiarProveedor(prov);
+  if(iaCfg.active){ iaActive=true; setIAStatus(true); const btn=document.getElementById('btn-ia-manual'); if(btn) btn.disabled=false; }
+}
+
+function saveIACfg(){
+  iaCfg = {
+    proveedor: document.getElementById('ia-proveedor')?.value  || iaCfg.proveedor || 'openrouter',
+    url:       document.getElementById('ia-url')?.value        || '',
+    modelo:    document.getElementById('ia-modelo')?.value     || '',
+    apikey:    document.getElementById('ia-key')?.value        || iaCfg.apikey || '',
+    bizum:     document.getElementById('ia-bizum')?.value      || '',
+    iban:      document.getElementById('ia-iban')?.value       || '',
+    titular:   document.getElementById('ia-titular')?.value    || '',
+    banco:     document.getElementById('ia-banco')?.value      || '',
+    active:    iaCfg.active || false,
+  };
+  localStorage.setItem(IA_KEY, JSON.stringify(iaCfg));
+}
+
+function toggleShowKey(){ const inp=document.getElementById('ia-key'); if(!inp)return; inp.type=inp.type==='password'?'text':'password'; document.getElementById('btn-show-key').textContent=inp.type==='password'?'👁':'🙈'; }
+
+function setIAStatus(active){
+  const pill=document.getElementById('ia-pill'),pulse=document.getElementById('ia-pulse'),txt=document.getElementById('ia-txt');
+  if(!pill)return;
+  const prov = iaCfg.proveedor||'ollama';
+  const nombre = PROVEEDORES[prov]?.nombre || prov;
+  if(active){ pill.className='sync-pill sync-ok'; pulse.className='pulse pg'; txt.textContent='IA activa · '+nombre; }
+  else { pill.className='sync-pill sync-warn'; pulse.className='pulse pa'; txt.textContent='Sin configurar'; }
+}
+
+// ── activarAgente ─────────────────────────────────────────────────────────
+async function activarAgente(){
+  saveIACfg();
+  const prov   = iaCfg.proveedor || 'ollama';
+  const cfg    = PROVEEDORES[prov];
+  const btn    = document.getElementById('btn-activar');
+  const status = document.getElementById('ia-key-status');
+  btn.disabled=true; btn.textContent='🔄 Verificando...';
+  if(status) status.textContent='Conectando con '+cfg.nombre+'...';
+
+  try{
+    // Test rápido de conexión
+    const respTest = await llamarIA([{role:'user',content:'responde solo: OK'}]);
+    iaCfg.active = true; saveIACfg();
+    iaActive = true; setIAStatus(true);
+    document.getElementById('btn-ia-manual').disabled=false;
+    btn.disabled=false; btn.textContent='✅ IA activa';
+    if(status) status.textContent='✅ Conectado con '+cfg.nombre;
+    // Chat bienvenida
+    const chat=document.getElementById('ia-chat'); if(chat) chat.innerHTML='';
+    addIAMsg('ai','Agente IA activo: '+cfg.nombre+'\n\n'+(prov==='ollama'||prov==='lmstudio'?'Local - sin limites, gratis.':prov==='groq'?'Groq - gratis, rapido.':prov==='openrouter'?'OpenRouter - modelos gratis.':'Anthropic Claude.')+'\n\nBizum: '+(iaCfg.bizum||'[sin configurar]')+'\nIBAN: '+(iaCfg.iban||'[sin configurar]')+'\n\nQue necesitas?');
+    auditLog('IA_ACTIVADA','Proveedor: '+prov,'INFO');
+    toast('✅ Agente IA activo · '+cfg.nombre);
+  }catch(e){
+    btn.disabled=false; btn.textContent='⚡ Activar Agente IA';
+    const htmlErr = manejarErrorIA(e);
+    if(status) status.textContent='Error: '+htmlErr;
+    toast(htmlErr, true);
+  }
+}
+
+// ── sendIA ────────────────────────────────────────────────────────────────
+async function sendIA(){
+  const inp=document.getElementById('ia-input'), txt=inp?.value.trim();
+  if(!txt)return;
+  if(!iaActive){toast('Activa primero el Agente IA en la configuración',true);return;}
+  inp.value=''; addIAMsg('user',txt);
+  iaHist.push({role:'user',content:txt}); iaLoading(true);
+  try{
+    const resp=await llamarIA(iaHist); iaLoading(false);
+    addIAMsg('ai',resp); iaHist.push({role:'assistant',content:resp});
+    if(iaHist.length>20) iaHist=iaHist.slice(-16);
+    auditLog('IA_CHAT',txt.slice(0,80),'INFO');
+  }catch(e){ iaLoading(false); addIAMsg('ai',manejarErrorIA(e)); }
+}
+
+// ── asignarManualIA ───────────────────────────────────────────────────────
+async function asignarManualIA(){
+  const nombre=document.getElementById('ia-m-nombre')?.value.trim();
+  const email =document.getElementById('ia-m-email')?.value.trim();
+  if(!nombre||!email){toast('Introduce nombre y email del cliente',true);return;}
+  const tipo  =document.getElementById('ia-m-tipo')?.value||'anual';
+  const fecha =document.getElementById('ia-m-fecha')?.value||'';
+
+  // Generar la clave localmente SIEMPRE (no depende de la IA)
+  const id='LIC-'+Date.now().toString(36).toUpperCase();
+  const key=await genKey(id+nombre,tipo);
+  const exp=calcExp(tipo,fecha?new Date(fecha):new Date());
+  const iaPrecio = document.getElementById('ia-m-precio')?.value;
+  const precioFinal = iaPrecio!==''&&iaPrecio!==null ? parseFloat(iaPrecio)||0 : getPrecio(tipo);
+  const iaNotas = document.getElementById('ia-m-notas')?.value.trim()||'';
+  const lic={id,key,cliente:nombre,email,tipo,precio:precioFinal,notas:'Asignado por Agente IA'+(iaNotas?' — '+iaNotas:''),estado:tipo==='demo'?'demo':'pendiente',fechaPago:fecha,expira:exp,creada:new Date().toISOString(),activaciones:[]};
+  licencias.unshift(lic); upsertCliente(lic); saveData(); renderStats();
+
+  // Mostrar clave inmediatamente
+  addIAMsg('user','Asignar licencia '+tipo+' a '+nombre+' ('+email+')');
+  addIAMsg('ai','Clave generada y guardada:\n\n'+key+'\n\n'+(exp?'Expira: '+new Date(exp).toLocaleDateString('es-ES'):'Permanente')+'\n\nCliente anadido al panel.');
+  const area=document.getElementById('ia-chat');
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;gap:8px;flex-wrap:wrap;padding:6px 0;align-self:flex-start';
+  div.innerHTML='<button class="btn btn-gr btn-sm" onclick="navigator.clipboard.writeText(\''+key+'\').then(()=>toast(\'Clave copiada\'))">Copiar</button>';
+  area?.appendChild(div); area.scrollTop=9999;
+  auditLog('LIC_MANUAL',nombre+' — '+tipo+' — '+key,'INFO');
+  toast('✅ Clave generada');
+
+  // Si IA activa, pedir análisis (no bloquea si falla)
+  if(iaActive){
+    iaLoading(true);
+    iaHist.push({role:'user',content:`Confirma la asignación: ${nombre}, ${email}, plan ${tipo}.`});
+    try{
+      const resp=await llamarIA(iaHist); iaLoading(false);
+      addIAMsg('ai',resp); iaHist.push({role:'assistant',content:resp});
+    }catch(e){ iaLoading(false); }
+  }
+}
+
+// ── Helpers chat ──────────────────────────────────────────────────────────
+function addIAMsg(tipo,txt){
+  const area=document.getElementById('ia-chat'); if(!area)return;
+  const div=document.createElement('div');
+  div.className=tipo==='ai'?'msg-ai':'msg-user';
+  const lbl=document.createElement('div'); lbl.className='msg-lbl';
+  const prov=iaCfg.proveedor||'ollama';
+  const icons={ollama:'🦙',groq:'⚡',openrouter:'🌐',lmstudio:'🖥️',anthropic:'🔵'};
+  lbl.textContent=tipo==='ai'?(icons[prov]||'🤖')+' Agente IA':'👤 Tú';
+  const body=document.createElement('div');
+  const nl = String.fromCharCode(10);
+  body.innerHTML=txt.split(nl).join('<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code style="background:#0a0e1a;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:12px">$1</code>');
+  div.appendChild(lbl); div.appendChild(body); area.appendChild(div); area.scrollTop=area.scrollHeight;
+}
+function iaLoading(show){ if(show){const d=document.createElement('div');d.id='ia-dots';d.className='dots';d.innerHTML='<div class="dot"></div><div class="dot"></div><div class="dot"></div>';document.getElementById('ia-chat')?.appendChild(d);}else{document.getElementById('ia-dots')?.remove();} document.getElementById('ia-chat').scrollTop=9999; }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN DEL PROGRAMA
+// ═══════════════════════════════════════════════════════════════════════════
+function renderConfig(){
+  if($('cfg-email'))     $('cfg-email').value=programCfg.adminEmail||ADMIN_EMAIL;
+  if($('cfg-app-name'))  $('cfg-app-name').value=programCfg.appName||'Gestión Pro Total';
+  if($('cfg-version'))   $('cfg-version').value=programCfg.version||'1.0';
+  if($('cfg-soporte'))   $('cfg-soporte').value=programCfg.soporte||ADMIN_EMAIL;
+  if($('cfg-whatsapp'))  $('cfg-whatsapp').value=programCfg.whatsapp||'+34612345678';
+  if($('cfg-base-url'))  $('cfg-base-url').value=programCfg.baseUrl||'';
+  if($('cfg-drive-id'))  $('cfg-drive-id').value=programCfg.driveId||'1jijk-S2WNJRn7Jvy3arSGDtW5eAbaC8L';
+  if($('cfg-script-url'))$('cfg-script-url').value=programCfg.scriptUrl||'';
+  if($('cfg-secret'))    $('cfg-secret').value=programCfg.secret||'';
+  try{ checkKeyMatch(); }catch(e){}
+  if($('cfg-p-mensual')) $('cfg-p-mensual').value=programCfg.precio_mensual||'9.99';
+  if($('cfg-p-anual'))    $('cfg-p-anual').value=programCfg.precio_anual||'79.99';
+  if($('cfg-pack10'))    $('cfg-pack10').value=programCfg.precio_pack10||'69.90';
+  if($('cfg-pack25'))    $('cfg-pack25').value=programCfg.precio_pack25||'149.75';
+  if($('cfg-pack50'))    $('cfg-pack50').value=programCfg.precio_pack50||'249.50';
+  if($('cfg-pack100'))   $('cfg-pack100').value=programCfg.precio_pack100||'399.00';
+  if($('cfg-p-permanente'))$('cfg-p-permanente').value=programCfg.precio_permanente||'199';
+  if($('cfg-p-demo-dias'))$('cfg-p-demo-dias').value=programCfg.precio_demo_dias||'7';
+  if($('cfg-p-escuela-anos'))$('cfg-p-escuela-anos').value=programCfg.precio_escuela_anos||'1';
+  if($('cfg-p-pack10'))   $('cfg-p-pack10').value  =programCfg.precio_pack10  ||'69.99';
+  if($('cfg-p-pack25'))   $('cfg-p-pack25').value  =programCfg.precio_pack25  ||'149.99';
+  if($('cfg-p-pack50'))   $('cfg-p-pack50').value  =programCfg.precio_pack50  ||'249.99';
+  if($('cfg-p-pack100'))  $('cfg-p-pack100').value =programCfg.precio_pack100 ||'399.99';
+  if($('cfg-p-extra'))    $('cfg-p-extra').value   =programCfg.precio_extra   ||'5.99';
+  if($('cfg-bk-hora'))   $('cfg-bk-hora').value=programCfg.bk_hora||'3';
+  if($('cfg-bk-intervalo'))$('cfg-bk-intervalo').value=programCfg.bk_intervalo||'20';
+  if($('cfg-bk-drive'))  $('cfg-bk-drive').checked=!!programCfg.bk_drive;
+  if($('cfg-bk-servidor'))$('cfg-bk-servidor').checked=!!programCfg.bk_servidor;
+  if($('cfg-bk-local'))  $('cfg-bk-local').checked=!!programCfg.bk_local;
+}
+function cambiarPassword(){
+  const actual=$('cfg-pwd-actual')?.value, nueva=$('cfg-pwd-nueva')?.value, conf=$('cfg-pwd-conf')?.value;
+  const current=programCfg.adminPass||ADMIN_PLAIN;
+  if(actual!==current){toast('La contraseña actual no es correcta',true);return;}
+  if(!nueva||nueva.length<6){toast('La nueva contraseña debe tener al menos 6 caracteres',true);return;}
+  if(nueva!==conf){toast('Las contraseñas no coinciden',true);return;}
+  programCfg.adminPass=nueva; localStorage.setItem(CFG_KEY,JSON.stringify(programCfg));
+  $('cfg-pwd-actual').value=''; $('cfg-pwd-nueva').value=''; $('cfg-pwd-conf').value='';
+  auditLog('PWD_CHANGED','Contraseña de administrador cambiada','WARN');
+  toast('✅ Contraseña cambiada. El módulo Distribuidor también usa la nueva contraseña.');
+}
+// rotarSecreto desactivado: cambiar el secreto invalida todas las claves activas
+function renderSysInfo(){
+  const el=$('cfg-sysinfo'); if(!el)return;
+  const ls=JSON.stringify(localStorage).length;
+  el.innerHTML=[
+    ['📋 Total licencias',licencias.length],
+    ['✅ Licencias activas',licencias.filter(l=>l.estado==='activa').length],
+    ['🏢 Distribuidores',distribuidores.length],
+    ['📊 Registros auditoría',getLogs().length],
+    ['💾 Uso localStorage',Math.round(ls/1024)+' KB / ~5 MB'],
+    ['🔑 Secreto activo',(programCfg.secret||'default').slice(0,12)+'...'],
+    ['⏰ Último backup',bkCfg.allLastTs?new Date(bkCfg.allLastTs).toLocaleString('es-ES'):'Nunca'],
+    ['🤖 Agente IA',iaCfg.active?'Activo':'Inactivo'],
+  ].map(([k,v])=>`<div style="background:var(--bg);border-radius:8px;padding:10px"><div style="font-size:10px;color:var(--mt)">${k}</div><div style="font-size:13px;font-weight:600;margin-top:3px">${v}</div></div>`).join('');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+$('pwd-input')?.focus();
+// Alias para compatibilidad con llamadas externas
+function restaurarUrl(){ if(typeof rU === 'function') rU(); }
+document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrarModal();});
+</script>
+</body>
+</html>

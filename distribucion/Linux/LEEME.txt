@@ -1,0 +1,15 @@
+GESTIÓN PRO TOTAL — LINUX (y contenedor Linux de Chromebook)
+============================================================
+
+RECOMENDADO (portable):
+  > "...-Linux.AppImage"
+    1) Clic derecho > Propiedades > Permisos > marcar "Permitir ejecutar".
+    2) Doble clic para abrir. No se instala nada.
+
+ALTERNATIVA (instalación):
+  > "...-Linux.deb"
+    Instalar:  sudo dpkg -i *.deb   (o doble clic con el Centro de Software)
+
+>> Coloca aquí el AppImage/.deb descargado de la Release antes de enviar. <<
+
+SOPORTE Y CONTACTO: kairigarcia.gestionprototal@gmail.com

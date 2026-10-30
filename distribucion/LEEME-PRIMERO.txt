@@ -1,0 +1,38 @@
+============================================================
+   GESTIÓN PRO TOTAL — PAQUETE DE ENTREGA COMPLETO
+============================================================
+
+Hola. Aquí tienes TODO listo para vender y entregar tu app.
+Lee este orden:
+
+📁 PARA-EL-CLIENTE/   → Lo que le das al cliente según su sistema.
+     En cada carpeta hay un MENÚ de instalación; el cliente solo abre:
+     Windows/   → INSTALAR-Gestion-Pro-Total.bat
+     Mac/       → INSTALAR-Gestion-Pro-Total.command
+     ChromeBook/→ INSTALAR-Gestion-Pro-Total.sh   (Linux/Chromebook)
+     Android/   → gestion-pro-total.apk
+     El menú ofrece: [1] instalar en el PC (app normal), [2] servidor local,
+     [3] nube / app web.
+   * NO incluyas otras carpetas al cliente.
+
+📁 GESTOR-LICENCIAS/  → Tus herramientas para vender licencias:
+     Software-Licencias-...html    = panel donde TÚ generas claves
+     Solicitud-Licencia-...html    = formulario que rellena el cliente
+     Panel-Cloud/                  = validación en servidor (opcional, fuerte)
+
+🔒 SOLO-PARA-MI/      → ¡PRIVADO! Tu clave secreta maestra.
+     NUNCA lo entregues ni lo subas a internet.
+
+📁 MANUALES/          → Guía rápida + manual usuario + manual admin.
+📁 LEGAL/             → EULA + política de privacidad (listos para usar).
+📁 COMERCIAL/         → Tarifas y argumentario de ventas.
+
+------------------------------------------------------------
+CÓMO EMPEZAR A VENDER (resumen):
+ 1. Cliente abre "Solicitud-Licencia" y te manda su ID de equipo.
+ 2. Tú abres "GESTOR-DE-LICENCIAS.html", pegas tu clave maestra y generas la clave.
+ 3. Le envías la clave + la carpeta PARA-EL-CLIENTE de su sistema.
+ 4. Cobra según COMERCIAL/Tarifas-y-Planes.md
+------------------------------------------------------------
+Soporte: kairigarcia.gestionprototal@gmail.com
+============================================================

@@ -1,0 +1,19 @@
+GESTIÓN PRO TOTAL — WINDOWS
+===========================
+
+RECOMENDADO (lo más fácil):
+  > "...-Windows-Portable.exe"
+    Doble clic y el programa arranca. No se instala nada.
+
+ALTERNATIVA (instalación normal):
+  > "...-Windows-Instalador.exe"
+    Doble clic > Siguiente > Instalar. Crea icono en el escritorio y
+    desinstalador en "Aplicaciones y características".
+
+NOTA: la primera vez Windows puede mostrar un aviso azul (SmartScreen,
+"editor desconocido"). Pulsa "Más información" > "Ejecutar de todas formas".
+(Esto desaparece cuando el .exe esté firmado con certificado.)
+
+>> Coloca aquí el/los .exe descargados de la Release antes de enviar. <<
+
+SOPORTE Y CONTACTO: kairigarcia.gestionprototal@gmail.com

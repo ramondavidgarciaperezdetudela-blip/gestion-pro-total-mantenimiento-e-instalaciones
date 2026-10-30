@@ -1,0 +1,171 @@
+name: Build Android APK
+
+# Genera el APK de la aplicación y lo publica como Release para descarga directa.
+# - Disparo manual sin "version": actualiza la release rodante "apk-fuera-latest".
+# - Disparo manual con "version" (ej: v1.0.0) o al empujar una etiqueta vX.Y.Z:
+#   publica una Release oficial con ese número (creando la etiqueta si no existe).
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Etiqueta de versión a publicar (ej: v1.0.0). Vacío = release rodante apk-fuera-latest."
+        required: false
+        default: ""
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+    # Compila el APK automáticamente en CADA cambio de código de la app.
+    # (ignora cambios que no afectan al APK para no gastar minutos de más)
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - 'vite.config.js'
+      - 'android-signing/**'
+      - '.github/workflows/build-apk.yml'
+
+# Si llegan varios cambios seguidos, cancela la compilación anterior y deja solo
+# la última (evita amontonar builds cuando se editan varias cosas seguidas).
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Java (JDK 21)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          # Sin esto, la acción intenta instalar el paquete «tools», que Google
+          # retiró del SDK: sdkmanager falla y la compilación se cae antes de
+          # empezar. Se piden solo los paquetes que hacen falta, que además ya
+          # vienen en la imagen del runner.
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        # Los valores de conexión a Base44 se leen de .env.production (incluido en
+        # el repositorio), por lo que no hace falta configurar secrets.
+        run: npm run build
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Quitar el service worker del APK
+        # Dentro del APK todos los ficheros ya están en el aparato, así que la
+        # caché del service worker no aporta nada y sí puede romper: si queda
+        # una de una versión anterior, sirve un index.html viejo que apunta a
+        # ficheros que la versión nueva ya no trae, y la aplicación no arranca
+        # («La página no se cargó correctamente»).
+        #
+        # Al no estar el fichero, el navegador que busque una actualización de
+        # /sw.js se encuentra un 404 y DA DE BAJA el registro él solo. Es la
+        # única forma de limpiar un aparato ya afectado sin que el usuario
+        # tenga que ir a borrar los datos de la aplicación a mano.
+        run: |
+          rm -f android/app/src/main/assets/public/sw.js
+          ls android/app/src/main/assets/public/sw.js 2>/dev/null \
+            && { echo "::error::el sw.js sigue dentro del APK"; exit 1; } \
+            || echo "sw.js fuera del APK, correcto"
+
+      - name: Meter el explorador de ficheros para guardar la copia
+        # cap add/sync regenera el proyecto de Android entero, asi que este
+        # trozo nativo hay que volver a ponerlo DESPUES, en cada compilacion.
+        run: python3 scripts/anadir-guardar-como.py android
+      - name: Permitir hablar con la IA gratuita del ordenador por el wifi
+        # Android bloquea por defecto las conexiones sin cifrar, y la IA
+        # gratuita del ordenador se atiende por http en la red local. Sin
+        # esto, en el movil no sale la peticion y no se ve ningun error.
+        # Va DESPUES de cap add/sync, que regeneran el proyecto entero.
+        run: python3 scripts/permitir-ia-en-red-local.py android
+
+      - name: Generate Android app icon (same icon as desktop installers)
+        run: npx @capacitor/assets generate --android
+
+      - name: Poner la versión real en el APK (para que Android la instale ENCIMA)
+        # cap add android regenera build.gradle con versionCode 1 / versionName
+        # "1.0" SIEMPRE. Con el mismo versionCode en todas las compilaciones,
+        # Android no reconoce la nueva APK como una actualización y obliga a
+        # desinstalar la anterior. Aquí se escribe la versión real:
+        # versionCode = mayor*10000 + menor*100 + parche (1.7.1 -> 10701),
+        # que crece con cada versión, y versionName con el número visible.
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          CODE=$(node -p "const [a,b,c]=require('./package.json').version.split('.').map(Number); a*10000+b*100+c")
+          sed -i "s/versionCode 1$/versionCode $CODE/; s/versionName \"1.0\"/versionName \"$VER\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
+          grep -q "versionCode $CODE" android/app/build.gradle
+
+      - name: Firma estable (clave fija → actualizar sin desinstalar)
+        # Copiar la clave a ~/.android/debug.keystore NO bastaba: se comprobó
+        # descargando el APK ya publicado y su firma era una clave inventada por
+        # Gradle en cada compilación (CN=Android Debug, con la fecha del día).
+        # Por eso cada APK obligaba a desinstalar el anterior. Ahora la firma se
+        # declara explícitamente en build.gradle.
+        run: |
+          mkdir -p ~/.android
+          cp android-signing/debug.keystore ~/.android/debug.keystore
+          cp android-signing/debug.keystore android/app/debug.keystore
+          python3 scripts/firmar-apk-con-clave-fija.py android/app/build.gradle
+          grep -A 8 'signingConfigs' android/app/build.gradle
+
+      - name: Build debug APK
+        run: cd android && chmod +x ./gradlew && ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk gestion-pro-total.apk
+
+      - name: Comprobar que el APK lleva la clave del repositorio
+        # Si la firma no es la esperada, ese APK obligaría a desinstalar la
+        # versión anterior y el usuario perdería los datos. Mejor que falle aquí
+        # y no se publique nada, a publicarlo y que lo descubra al instalarlo.
+        run: |
+          HUELLA=$(keytool -list -keystore android-signing/debug.keystore -storepass android 2>/dev/null | grep -oE '([0-9A-F]{2}:){31}[0-9A-F]{2}')
+          echo "Huella esperada: $HUELLA"
+          python3 scripts/verificar-firma-apk.py gestion-pro-total.apk "$HUELLA"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gestion-pro-total-debug-apk
+          path: gestion-pro-total.apk
+          if-no-files-found: error
+
+      - name: Publish APK to a Release (descarga directa)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'apk-fuera-latest') }}
+          name: ${{ (inputs.version != '' || startsWith(github.ref, 'refs/tags/')) && format('Gestión Pro Total {0}', inputs.version != '' && inputs.version || github.ref_name) || 'Gestión Pro Total — APK (última compilación)' }}
+          body: |
+            APK de Gestión Pro Total.
+            Descarga directa del archivo `gestion-pro-total.apk` más abajo.
+          files: gestion-pro-total.apk
+          make_latest: true

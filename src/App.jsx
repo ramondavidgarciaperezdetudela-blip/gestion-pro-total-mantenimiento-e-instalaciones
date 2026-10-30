@@ -1,0 +1,269 @@
+import { Toaster as SonnerToaster } from "@/components/ui/sonner"
+import { DURACION_POR_DEFECTO as DURACION_AVISO } from "@/components/ui/use-toast"
+import { Component, useState } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClientInstance } from '@/lib/query-client'
+import NavigationTracker from '@/lib/NavigationTracker'
+import { pagesConfig } from './pages.config'
+import { BrowserRouter, HashRouter, Route, Routes } from 'react-router-dom';
+
+// En la app de escritorio (Electron) la página se sirve con protocolo file://,
+// por lo que BrowserRouter interpretaría la ruta del fichero (…/dist/index.html)
+// como una ruta de la app y mostraría un 404. En ese caso usamos HashRouter,
+// que funciona perfectamente desde file://. En la web seguimos con
+// BrowserRouter para conservar las URLs limpias y los enlaces públicos.
+const isFileProtocol = typeof window !== 'undefined' && window.location.protocol === 'file:';
+const Router = isFileProtocol ? HashRouter : BrowserRouter;
+import { Suspense } from 'react';
+import { lazyWithRetry as lazy } from '@/lib/lazyWithRetry';
+import PageNotFound from './lib/PageNotFound';
+import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import PantallaNube from '@/nube/PantallaNube';
+import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import PantallaArranque, { PantallaErrorSesion } from '@/components/PantallaArranque';
+
+import UpdateChecker from '@/components/UpdateChecker';
+import AvisoServidor from './components/AvisoServidor'
+import StorageSetupNotice from '@/components/StorageSetupNotice';
+import AvisoDireccionPublica from '@/components/AvisoDireccionPublica';
+import RecordarTrabajo from '@/components/RecordarTrabajo';
+import AvisoRecuperado from '@/components/AvisoRecuperado';
+import VinculadorAutomatico from '@/components/VinculadorAutomatico';
+const PresupuestoPublico = lazy(() => import('./pages/PresupuestoPublico'));
+
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { hasError: false, detalle: '' }; }
+  static getDerivedStateFromError(error) {
+    const detalle = String((error && (error.message || error)) || 'error desconocido').slice(0, 300);
+    return { hasError: true, detalle };
+  }
+  componentDidCatch(error, info) {
+    // Se guarda el motivo real para poder verlo en pantalla y en Novedades/Actualizaciones.
+    try {
+      localStorage.setItem('gpt_ultimo_error', JSON.stringify({
+        cuando: new Date().toISOString(),
+        mensaje: String((error && error.message) || error).slice(0, 500),
+        pila: String((error && error.stack) || '').slice(0, 1500),
+        componentes: String((info && info.componentStack) || '').slice(0, 1200),
+        ruta: typeof window !== 'undefined' ? window.location.pathname + window.location.hash : '',
+      }));
+    } catch { /* sin almacenamiento */ }
+    console.error('ErrorBoundary:', error, info && info.componentStack);
+  }
+  // Reintenta SIN borrar datos ni documentos: solo vacía cachés de ficheros y
+  // bajas de service worker (lo que puede dejar ficheros viejos), nunca el
+  // almacenamiento de la aplicación.
+  async reintentar() {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      if (window.caches) {
+        const claves = await window.caches.keys();
+        await Promise.all(claves.map((k) => window.caches.delete(k)));
+      }
+    } catch { /* se recarga igualmente */ }
+    this.setState({ hasError: false, detalle: '' });
+    window.location.reload();
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-6 text-center">
+          <p className="text-gray-600 text-lg font-medium">La página no se cargó correctamente</p>
+          <p className="text-xs text-gray-500 max-w-md break-words" data-prueba="error-detalle">
+            Motivo: {this.state.detalle}
+          </p>
+          <p className="text-xs text-gray-500 max-w-md">Tus datos y documentos no se borran.</p>
+          <button
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+            onClick={() => this.reintentar()}
+          >Limpiar caché y recargar</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+const SATPublico = lazy(() => import('./pages/SATPublico'));
+const VerificarDocumento = lazy(() => import('./pages/VerificarDocumento'));
+const SupplierTariffs = lazy(() => import('./pages/SupplierTariffs'));
+const PurchaseSummary = lazy(() => import('./pages/PurchaseSummary'));
+const BackupCenter = lazy(() => import('./pages/BackupCenter'));
+const CapillaryCalc = lazy(() => import('./pages/CapillaryCalc'));
+const FilterCalc = lazy(() => import('./pages/FilterCalc'));
+const InformesTecnicos = lazy(() => import('./pages/InformesTecnicos'));
+const PlanoFrigorifico = lazy(() => import('./pages/PlanoFrigorifico'));
+import PlanoErrorBoundaryWrap from '@/components/plano_frigorifico/PlanoErrorBoundary';
+
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-32">
+    <div className="w-6 h-6 border-3 border-slate-200 border-t-slate-600 rounded-full animate-spin opacity-50"></div>
+  </div>
+);
+
+const { Pages, Layout, mainPage } = pagesConfig;
+const mainPageKey = mainPage ?? Object.keys(Pages)[0];
+const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
+
+const LayoutWrapper = ({ children, currentPageName }) => Layout ?
+  <Layout currentPageName={currentPageName}>{children}</Layout>
+  : <>{children}</>;
+
+function AnimatedRoutes({ children }) {
+  return <>{children}</>;
+}
+
+/*
+ * Las páginas que abre el CLIENTE, que no tiene cuenta en el programa.
+ *
+ * ─── EL FALLO QUE ARREGLA ESTO ──────────────────────────────────────────────
+ *
+ * El enlace que se le manda por WhatsApp o por correo para aceptar o rechazar
+ * un presupuesto —y el QR de verificación— los abre alguien que NO ha iniciado
+ * sesión, y que no tiene por qué tenerla.
+ *
+ * Pero la comprobación de sesión iba ANTES de mirar la ruta: al no haber
+ * sesión, mandaba al cliente a la pantalla de acceso y ahí se acababa todo. El
+ * documento no llegaba a verse nunca. Desde fuera parecía que «el enlace no
+ * abre».
+ *
+ * Estas rutas se atienden sin pasar por la sesión.
+ */
+const RUTAS_PUBLICAS = ['/presupuesto-publico', '/sat-publico', '/verificar-documento'];
+
+function esRutaPublica() {
+  try {
+    const h = String(window.location.hash || '');
+    const camino = h.startsWith('#') ? h.slice(1).split('?')[0] : window.location.pathname;
+    return RUTAS_PUBLICAS.some((r) => camino.toLowerCase().startsWith(r));
+  } catch {
+    return false;
+  }
+}
+
+const AuthenticatedApp = () => {
+  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const publica = esRutaPublica();
+  // Permite entrar aunque la sesión no se haya podido comprobar (sin cobertura,
+  // servidor caído). Sin esto, un fallo de red dejaba el programa encerrado en
+  // la pantalla de error, que es peor que el problema que venía a resolver.
+  const [entrarIgual, setEntrarIgual] = useState(false);
+
+  // Mientras se comprueba la sesión. Si el servidor no contesta esto no
+  // termina nunca, así que la pantalla avisa a los pocos segundos en vez de
+  // dejar la ruedecita girando sin decir nada (parecía que no abría).
+  if ((isLoadingPublicSettings || isLoadingAuth) && !publica) {
+    return <PantallaArranque />;
+  }
+
+  // Errores de sesión. En las páginas del cliente no se mira: él no tiene
+  // cuenta, y mandarlo al acceso es dejarle sin ver su documento.
+  if (authError && !publica) {
+    if (authError.type === 'user_not_registered') {
+      return <UserNotRegisteredError />;
+    } else if (authError.type === 'auth_required') {
+      // Al login directamente
+      navigateToLogin();
+      return null;
+    }
+    // Cualquier otro error (red, servidor caído, cuenta sin créditos): se
+    // explica lo que pasa, pero se deja entrar igualmente, que hay medio
+    // programa que funciona sin servidor.
+    if (!entrarIgual) {
+      return <PantallaErrorSesion error={authError} onContinuar={() => setEntrarIgual(true)} />;
+    }
+  }
+
+  // Render the main app
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <AnimatedRoutes>
+        <Routes>
+          <Route path="/" element={
+            <LayoutWrapper currentPageName={mainPageKey}>
+              <MainPage />
+            </LayoutWrapper>
+          } />
+          {Object.entries(Pages).map(([path, Page]) => (
+            <Route
+              key={path}
+              path={`/${path}`}
+              element={
+                <LayoutWrapper currentPageName={path}>
+                  <Page />
+                </LayoutWrapper>
+              }
+            />
+          ))}
+          <Route path="/presupuesto-publico" element={<PresupuestoPublico />} />
+          <Route path="/sat-publico" element={<SATPublico />} />
+          <Route path="/verificar-documento" element={<VerificarDocumento />} />
+          <Route path="/SupplierTariffs" element={<LayoutWrapper currentPageName="SupplierTariffs"><SupplierTariffs /></LayoutWrapper>} />
+          <Route path="/PurchaseSummary" element={<LayoutWrapper currentPageName="PurchaseSummary"><PurchaseSummary /></LayoutWrapper>} />
+          <Route path="/BackupCenter" element={<LayoutWrapper currentPageName="BackupCenter"><BackupCenter /></LayoutWrapper>} />
+          <Route path="/CapillaryCalc" element={<LayoutWrapper currentPageName="CapillaryCalc"><CapillaryCalc /></LayoutWrapper>} />
+          <Route path="/FilterCalc" element={<LayoutWrapper currentPageName="FilterCalc"><FilterCalc /></LayoutWrapper>} />
+          <Route path="/InformesTecnicos" element={<LayoutWrapper currentPageName="InformesTecnicos"><InformesTecnicos /></LayoutWrapper>} />
+          <Route path="/PlanoFrigorifico" element={<LayoutWrapper currentPageName="PlanoFrigorifico"><PlanoErrorBoundaryWrap><PlanoFrigorifico /></PlanoErrorBoundaryWrap></LayoutWrapper>} />
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+      </AnimatedRoutes>
+      {/* Si el servidor rechaza un guardado, que se vea. Va aquí y no dentro
+          del Layout para que cubra TAMBIÉN las páginas públicas donde firma el
+          cliente, que no llevan menú. */}
+      <AvisoServidor />
+      {/* Aviso automático de nueva versión (escritorio usa además electron-updater) */}
+      <UpdateChecker headless />
+      {/* Aviso de primera instalación: dónde se guardan fotos y documentos */}
+      {/* Los avisos internos NO se enseñan en las páginas del cliente: él
+          entra a firmar su presupuesto, no a configurar el programa. */}
+      {!publica && <StorageSetupNotice />}
+      {!publica && <AvisoDireccionPublica />}
+      {/* Si Android cerró la aplicación por su cuenta y se ha recuperado lo que
+          se estaba escribiendo, decirlo: si no, los campos aparecen rellenos sin
+          explicación y parece que te has equivocado de ficha. */}
+      <AvisoRecuperado />
+      <VinculadorAutomatico />
+    </Suspense>
+  );
+};
+
+
+function App() {
+
+  return (
+    <ErrorBoundary>
+      <PantallaNube>
+      <AuthProvider>
+        <QueryClientProvider client={queryClientInstance}>
+          <Router>
+            <NavigationTracker />
+            {/* Recuerda la pantalla y lo escrito por si Android cierra la
+                aplicación mientras se consulta otra cosa en el móvil. */}
+            <RecordarTrabajo />
+            <AuthenticatedApp />
+          </Router>
+          {/* UN SOLO sistema de avisos, el de sonner.
+              Antes había dos montados a la vez y el otro (el de shadcn) no
+              sabía cerrarse: el aviso "Documento actualizado" se quedaba
+              clavado arriba, a toda anchura y por delante de la cabecera,
+              tapando atrás / editar / inicio. Y su X no hacía nada.
+              Ahora todos los avisos del programa salen por aquí, duran dos
+              segundos y medio, y se pueden quitar con la X o deslizándolos. */}
+          <SonnerToaster
+            position="top-center"
+            richColors
+            closeButton
+            duration={DURACION_AVISO}
+            toastOptions={{ dismissible: true }}
+          />
+        </QueryClientProvider>
+      </AuthProvider>
+      </PantallaNube>
+    </ErrorBoundary>
+  )
+}
+
+export default App

@@ -1,0 +1,17 @@
+GESTION PRO TOTAL — Mac
+=======================
+
+LO MAS FACIL: doble clic en "INSTALAR-Gestion-Pro-Total.command".
+  Te ofrece un menu con 3 opciones. La primera vez, si macOS lo bloquea:
+  clic derecho > Abrir > Abrir.
+
+  [1] Instalar en el Mac (app normal)  <- RECOMENDADO
+      Descarga el instalador oficial .dmg y arrastras la app a Aplicaciones,
+      como cualquier programa. Tambien desde:
+      https://github.com/ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases/releases/latest
+  [2] Servidor local: usarlo desde varios equipos de tu red.
+  [3] Nube / app web: abrir en el navegador e instalar como app (PWA).
+
+Sin instalar nada (rapido): doble clic en "ABRIR-Gestion-Pro-Total.html".
+
+Soporte: kairigarcia.gestionprototal@gmail.com

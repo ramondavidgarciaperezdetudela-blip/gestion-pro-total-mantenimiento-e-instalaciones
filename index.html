@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Seguridad: endurecido sin romper APIs/mapas. (frame-ancestors va por cabecera del
+         servidor, no por meta, así que aquí solo object-src/base-uri, que sí aplican.) -->
+    <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1e3a5f" />
+    <meta name="description" content="Gestión SAT Profesional - Climatización, Electricidad, Refrigeración y Solar" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SAT Gestión" />
+    <meta name="application-name" content="SAT Gestión" />
+    <meta name="msapplication-TileColor" content="#1e3a5f" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <!-- Open Graph -->
+    <meta property="og:title" content="SAT Gestión Profesional" />
+    <meta property="og:description" content="Gestión SAT Profesional - Climatización, Electricidad, Refrigeración y Solar" />
+    <meta property="og:type" content="website" />
+    <link rel="manifest" href="/manifest.json" />
+    <!-- Preconnect para acelerar peticiones API -->
+    <link rel="preconnect" href="https://storage.googleapis.com" />
+    <link rel="dns-prefetch" href="https://storage.googleapis.com" />
+    <title>SAT Gestión Profesional</title>
+    <style>
+      /* Splash screen mientras carga */
+      #splash {
+        position: fixed; inset: 0;
+        background: #1e3a5f;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease;
+      }
+      #splash.hidden { opacity: 0; pointer-events: none; }
+      #splash-title {
+        color: white; font-family: Arial, sans-serif;
+        font-size: 24px; font-weight: 700; margin-top: 16px;
+      }
+      #splash-sub {
+        color: #93c5fd; font-family: Arial, sans-serif;
+        font-size: 13px; margin-top: 6px;
+      }
+      .splash-spinner {
+        width: 40px; height: 40px;
+        border: 4px solid rgba(255,255,255,0.2);
+        border-top-color: #0ea5e9;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-top: 24px;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div id="splash">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+        <rect width="64" height="64" rx="16" fill="#0ea5e9"/>
+        <path d="M32 14L46 22V42L32 50L18 42V22L32 14Z" stroke="white" stroke-width="3" fill="none"/>
+        <path d="M32 22L40 27V37L32 42L24 37V27L32 22Z" fill="white" opacity="0.3"/>
+        <circle cx="32" cy="32" r="5" fill="white"/>
+      </svg>
+      <div id="splash-title">SAT Gestión</div>
+      <div id="splash-sub">Cargando aplicación...</div>
+      <div class="splash-spinner"></div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // Ocultar splash cuando la app esté lista
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const splash = document.getElementById('splash');
+          if (splash) {
+            splash.classList.add('hidden');
+            setTimeout(() => splash.remove(), 500);
+          }
+        }, 300); // reducido de 800ms a 300ms
+      });
+
+      // Registrar Service Worker para PWA.
+      //
+      // La versión va en la URL a propósito: el service worker la usa para
+      // nombrar su caché, y así al actualizar se borra la de la versión
+      // anterior. Sin esto se mezclaban ficheros de dos versiones y el
+      // programa arrancaba en blanco. __VERSION_APP__ la pone el compilador.
+      //
+      // Y NO se registra dentro del APK ni del programa de escritorio.
+      // Ahí todos los ficheros ya están en el aparato, así que la caché no
+      // aporta nada y solo añade una forma de fallar: si sirve un index.html
+      // guardado de una versión anterior, apunta a ficheros que la versión
+      // nueva ya no trae y sale el "La página no se cargó correctamente".
+      // Además se quita el que hubiera de antes, para dejar limpios los
+      // móviles que ya lo tengan puesto.
+      // OJO CON EL MOMENTO EN QUE SE PREGUNTA ESTO.
+      //
+      // Capacitor pone window.Capacitor él mismo al cargar la página, y no
+      // siempre ha llegado cuando se ejecuta este script. Si se preguntaba
+      // aquí y todavía no estaba, el APK se daba por "navegador" y registraba
+      // el service worker igual: justo lo que dejaba la aplicación sin
+      // arrancar tras la siguiente actualización.
+      //
+      // Por eso se pregunta DENTRO del load, que es tarde de sobra.
+      //
+      // (No se mira el nombre del servidor: Capacitor sirve desde localhost,
+      // pero un navegador en localhost es una instalación de verdad y se
+      // quedaría sin caché sin motivo. El cierre definitivo es otro: el APK ya
+      // no lleva sw.js dentro, así que aunque se intentara registrar no habría
+      // nada que registrar, y cualquier registro viejo se da de baja solo al
+      // encontrarse el fichero ausente.)
+      // Ojo con window.Capacitor a secas: la librería de Capacitor lo define
+      // TAMBIÉN en el navegador, así que su mera existencia no significa nada.
+      // Lo que sirve es preguntarle isNativePlatform(), que contesta que no
+      // cuando se está en la web. Preguntando mal pasaban las dos cosas: la
+      // web se quedaba sin caché, y el APK —donde aún no había cargado la
+      // librería cuando se preguntaba— se daba por navegador y registraba el
+      // service worker que luego lo dejaba sin arrancar.
+      function esNativo() {
+        var cap = false;
+        try {
+          cap = !!(window.Capacitor
+            && typeof window.Capacitor.isNativePlatform === 'function'
+            && window.Capacitor.isNativePlatform());
+        } catch (e) { cap = false; }
+        return !!(cap || window.gptCopias || window.gptIA
+          || location.protocol === 'capacitor:' || location.protocol === 'file:');
+      }
+
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          if (esNativo()) {
+            // Dentro del APK o del programa de escritorio no hace falta caché:
+            // los ficheros ya están en el aparato. Y se quita la que hubiera.
+            navigator.serviceWorker.getRegistrations().then(function (rs) {
+              rs.forEach(function (r) { r.unregister(); });
+              if (window.caches && caches.keys) {
+                caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
+              }
+            }).catch(function () {});
+            return;
+          }
+          navigator.serviceWorker.register('/sw.js?v=__VERSION_APP__').catch(function () {});
+        });
+      }
+
+      // Cuando el service worker nuevo toma el mando, se recarga una vez.
+      //
+      // Hace falta: al actualizar, la página ya se ha empezado a cargar con
+      // los ficheros de la versión anterior, y mezclarlos con los nuevos es
+      // justo lo que dejaba la pantalla en blanco. Con la recarga, todo lo
+      // que se pide viene ya de la versión nueva y de su caché limpia.
+      //
+      // Solo si ANTES había un service worker mandando: la primera vez que se
+      // instala también salta este aviso y ahí no hay nada que recargar.
+      if ('serviceWorker' in navigator && !esNativo()) {
+        var habiaSW = !!navigator.serviceWorker.controller;
+        var recargando = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (!habiaSW || recargando) return;
+          recargando = true;
+          location.reload();
+        });
+      }
+
+      // ── Rescate para quien ya tenga la caché envenenada ──
+      //
+      // Los que actualizaron con el service worker viejo se quedan con la
+      // pantalla en blanco y reinstalar no les sirve, porque la caché mala
+      // sobrevive. Si a los 12 segundos no ha pintado nada, se tira todo y se
+      // recarga una vez. La marca en sessionStorage evita el bucle: si
+      // después de limpiar sigue sin arrancar, el fallo es otro y hay que
+      // verlo, no seguir recargando.
+      (function () {
+        var YA = 'gpt_rescate_cache_hecho';
+        setTimeout(function () {
+          var raiz = document.getElementById('root');
+          var pintado = raiz && raiz.children.length > 0;
+          if (pintado) return;
+          try { if (sessionStorage.getItem(YA)) return; sessionStorage.setItem(YA, '1'); } catch (e) { return; }
+          var limpiar = [];
+          if (window.caches && caches.keys) {
+            limpiar.push(caches.keys().then(function (ks) {
+              return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+            }));
+          }
+          if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+            limpiar.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+              return Promise.all(rs.map(function (r) { return r.unregister(); }));
+            }));
+          }
+          Promise.all(limpiar).catch(function () {}).then(function () { location.reload(); });
+        }, 12000);
+      })();
+
+      // Detectar si se puede instalar la PWA y mostrar banner
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // Crear banner de instalación
+        const banner = document.createElement('div');
+        banner.id = 'install-banner';
+        banner.style.cssText = `
+          position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+          background: #1e3a5f; color: white; border-radius: 12px;
+          padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 9000;
+          font-family: Arial, sans-serif; font-size: 13px; max-width: 340px;
+          animation: slideUp 0.3s ease;
+        `;
+        banner.innerHTML = `
+          <span>📲</span>
+          <span><strong>Instalar app</strong><br/>Accede más rápido desde tu escritorio o móvil</span>
+          <button id="install-btn" style="background:#0ea5e9;color:white;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-weight:600;white-space:nowrap">Instalar</button>
+          <button id="dismiss-btn" style="background:none;color:#93c5fd;border:none;cursor:pointer;font-size:18px;padding:0 4px">×</button>
+        `;
+        document.body.appendChild(banner);
+        document.getElementById('install-btn').addEventListener('click', () => {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(() => { banner.remove(); deferredPrompt = null; });
+        });
+        document.getElementById('dismiss-btn').addEventListener('click', () => banner.remove());
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,54 @@
+CONFIGURAR EL REPOSITORIO PÚBLICO DE RELEASES (descargas + auto-update)
+=======================================================================
+Objetivo: el CÓDIGO sigue privado, pero los INSTALADORES se publican en un
+repositorio PÚBLICO. Así los clientes:
+  - descargan con un enlace directo (sin login), y
+  - reciben actualizaciones automáticas (electron-updater).
+
+------------------------------------------------------------------
+PASO 1 — Crear el repositorio público (una vez)
+------------------------------------------------------------------
+1. Entra en https://github.com/new
+2. Repository name:  gestion-pro-total-releases
+3. Marca PUBLIC (público).
+4. Crea el repositorio (sin README hace falta, da igual).
+
+   (El nombre debe ser EXACTAMENTE "gestion-pro-total-releases", que es el que
+    ya está configurado en electron-builder.yml. Si usas otro, dímelo y lo cambio.)
+
+------------------------------------------------------------------
+PASO 2 — Crear un token de acceso (PAT) (una vez)
+------------------------------------------------------------------
+1. https://github.com/settings/tokens?type=beta  (Fine-grained token)
+2. Token name: releases-gpt   ·  Expiration: la que quieras (p.ej. 1 año)
+3. Repository access: "Only select repositories" -> elige gestion-pro-total-releases
+4. Permissions > Repository permissions > "Contents": Read and write
+5. Genera el token y COPIA el valor (empieza por github_pat_...).
+
+------------------------------------------------------------------
+PASO 3 — Guardar el token como secreto en el repo PRIVADO (este)
+------------------------------------------------------------------
+1. En este repo: Settings > Secrets and variables > Actions > New repository secret
+2. Name:   RELEASES_TOKEN
+3. Secret: pega el token del Paso 2.
+
+------------------------------------------------------------------
+PASO 4 — Publicar la release pública
+------------------------------------------------------------------
+1. Pestaña Actions > workflow "Publicar release pública (descargas + auto-update)"
+2. Pulsa "Run workflow".
+   - Compila Windows/macOS/Linux y los publica en gestion-pro-total-releases
+     con los metadatos de auto-update (latest.yml, etc.).
+   - Sube también el APK.
+
+------------------------------------------------------------------
+RESULTADO
+------------------------------------------------------------------
+- Enlace público de descargas para tus clientes:
+  https://github.com/ramondavidgarciaperezdetudela-blip/gestion-pro-total-releases/releases/latest
+- Auto-update: cuando publiques una versión nueva (sube la "version" en
+  package.json y vuelve a ejecutar el workflow), los programas instalados se
+  actualizarán solos al abrirse.
+
+NOTA: el repo público solo contiene los INSTALADORES (binarios). El código
+fuente permanece en el repositorio privado.

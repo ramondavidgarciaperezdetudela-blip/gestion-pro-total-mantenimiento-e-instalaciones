@@ -1,0 +1,14 @@
+SUBIR ESTE PROYECTO A TU REPOSITORIO NUEVO (privado)
+
+1. En github.com crea un repositorio VACÍO, privado, llamado:  gestion-pro-total-fuera-base44
+   (sin README, sin .gitignore, sin licencia).
+2. En esta carpeta, en una terminal:
+
+   git remote add origin https://github.com/ramondavidgarciaperezdetudela-blip/gestion-pro-total-fuera-base44.git
+   git push -u origin main
+
+3. En GitHub → Actions → «Build Android APK» y «Build Desktop Installers» → Run workflow:
+   generan el APK y el instalador de Windows de esta versión.
+
+Para probarlo ya sin instalar nada:   npm install  &&  npm run build  &&  npm run servidor
+y abre http://localhost:8787

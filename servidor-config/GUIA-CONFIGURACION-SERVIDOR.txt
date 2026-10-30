@@ -1,0 +1,555 @@
+================================================================
+ GESTION PRO TOTAL
+ GUIA COMPLETA DE CONFIGURACION DEL SERVIDOR PRINCIPAL
+ Acceso multiusuario LAN + Acceso remoto para tecnicos
+================================================================
+
+  CONTENIDO DE ESTA CARPETA (servidor-config/)
+  ─────────────────────────────────────────────
+  configurar-servidor-windows.bat   <- Instalacion automatica en Windows
+  configurar-servidor-linux.sh      <- Instalacion automatica en Linux/Ubuntu
+  GUIA-CONFIGURACION-SERVIDOR.txt   <- Este documento
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  CONCEPTO: COMO FUNCIONA EL SERVIDOR                         ║
+╚══════════════════════════════════════════════════════════════╝
+
+Un ordenador de la empresa actua como SERVIDOR CENTRAL.
+El resto de dispositivos acceden via navegador web.
+
+  ┌─────────────────────────────────────────────────────────┐
+  │                SERVIDOR PRINCIPAL                        │
+  │         (PC Windows o Linux de la empresa)               │
+  │                                                          │
+  │  ┌──────────┐  ┌──────────┐  ┌────────────────────────┐ │
+  │  │  Nginx   │  │ Node.js  │  │    Base44 Cloud Sync    │ │
+  │  │ (web srv)│  │ (build)  │  │  (datos en la nube)    │ │
+  │  └──────────┘  └──────────┘  └────────────────────────┘ │
+  └─────────────────────┬───────────────────────────────────┘
+                        │ Red local (LAN)
+          ┌─────────────┼──────────────────────┐
+          │             │                       │
+    [PC Oficina]  [Tablet Android]        [iPhone]
+    [PC Contable] [Portatil tecnico]   [iPad cliente]
+
+  Acceso REMOTO (fuera de la empresa):
+          │             │
+    [Tecnico en obra]  [Director en viaje]
+          ↓             ↓
+    VPN WireGuard o reenvio de puerto del router
+          ↓
+    SERVIDOR PRINCIPAL
+
+  Los DATOS se guardan en Base44 Cloud (nube externa).
+  El servidor local solo sirve la interfaz web.
+  Si el servidor local cae, se puede acceder directamente
+  a https://gestion-pro-total-...-6994f997.base44.app
+
+══════════════════════════════════════════════════════════════
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  OPCION A: INSTALACION AUTOMATICA (recomendada)              ║
+╚══════════════════════════════════════════════════════════════╝
+
+  ── En Windows ────────────────────────────────────────────────
+
+  1. Descomprime el ZIP en el servidor
+  2. Ve a la carpeta: servidor-config\
+  3. Clic derecho en configurar-servidor-windows.bat
+     -> Ejecutar como administrador
+  4. Sigue las preguntas en pantalla:
+     - Dominio publico (si tienes) o ENTER para omitir
+     - Puerto HTTP (80) y HTTPS (443)
+  5. Espera unos minutos, el script lo hace todo solo
+
+  ── En Linux / Ubuntu ─────────────────────────────────────────
+
+  1. Descomprime el ZIP en el servidor
+  2. Abre un terminal en la carpeta servidor-config/
+  3. Ejecuta:
+       sudo bash configurar-servidor-linux.sh
+  4. Sigue las preguntas en pantalla
+
+
+══════════════════════════════════════════════════════════════
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  OPCION B: CONFIGURACION MANUAL PASO A PASO                  ║
+╚══════════════════════════════════════════════════════════════╝
+
+━━━━ B1. WINDOWS - MODO GRAFICO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  REQUISITOS:
+  - Windows 10/11 o Windows Server 2019/2022
+  - Conexion a Internet durante la instalacion
+  - Cuenta de administrador
+
+  INSTALAR NODE.JS:
+  1. Ve a: https://nodejs.org/es/
+  2. Descarga "LTS" (version estable)
+  3. Ejecuta el instalador y acepta todo por defecto
+  4. Reinicia el PC
+
+  INSTALAR NGINX:
+  1. Ve a: https://nginx.org/en/download.html
+  2. Descarga "nginx/Windows" (zip)
+  3. Extrae el zip en C:\nginx\
+  4. Verifica que existe C:\nginx\nginx.exe
+
+  COMPILAR LA APLICACION:
+  1. Abre CMD o PowerShell como administrador
+  2. Navega a la carpeta del proyecto:
+       cd C:\ruta\a\codigo\
+  3. Ejecuta:
+       npm install
+       npm run build
+  4. Se crea la carpeta "dist\" con los ficheros compilados
+
+  DESPLEGAR EN NGINX:
+  1. Copia toda la carpeta dist\ a C:\nginx\html\gestion-pro-total\
+     En CMD:
+       xcopy /E /Y dist\* C:\nginx\html\gestion-pro-total\
+
+  CONFIGURAR NGINX (editar C:\nginx\conf\nginx.conf):
+  Sustituye todo el contenido por:
+
+  ┌──────────────────────────────────────────────────────────┐
+  │ worker_processes  1;                                     │
+  │ events { worker_connections 1024; }                      │
+  │ http {                                                   │
+  │   include mime.types;                                    │
+  │   default_type application/octet-stream;                 │
+  │   gzip on;                                               │
+  │   gzip_types text/plain text/css application/javascript; │
+  │   server {                                               │
+  │     listen 80;                                           │
+  │     server_name _;                                       │
+  │     root html/gestion-pro-total;                         │
+  │     index index.html;                                    │
+  │     location / {                                         │
+  │       try_files $uri $uri/ /index.html;                  │
+  │     }                                                    │
+  │     location /api/ {                                     │
+  │       proxy_pass https://gestion-pro-total-              │
+  │         mantenimiento-e-instalaciones-6994f997.base44.app│
+  │         /api/;                                           │
+  │       proxy_set_header Host gestion-pro-total-...        │
+  │         base44.app;                                      │
+  │       proxy_read_timeout 120s;                           │
+  │     }                                                    │
+  │     client_max_body_size 50M;                            │
+  │   }                                                      │
+  │ }                                                        │
+  └──────────────────────────────────────────────────────────┘
+
+  ARRANCAR NGINX:
+  1. Abre CMD como administrador
+  2. cd C:\nginx
+  3. nginx.exe
+  4. Verifica en el navegador: http://localhost
+
+  INICIO AUTOMATICO CON WINDOWS (PowerShell administrador):
+    schtasks /create /tn "GPT-Servidor" /tr "C:\nginx\nginx.exe"
+             /sc onstart /ru SYSTEM /f
+
+  ABRIR PUERTOS (PowerShell administrador):
+    netsh advfirewall firewall add rule name="GPT-HTTP"
+          protocol=TCP dir=in localport=80 action=allow
+    netsh advfirewall firewall add rule name="GPT-HTTPS"
+          protocol=TCP dir=in localport=443 action=allow
+
+
+━━━━ B2. WINDOWS - MODO CMD / POWERSHELL ━━━━━━━━━━━━━━━━━━━━━
+
+  # Abrir PowerShell como Administrador y ejecutar:
+
+  # 1. Instalar Node.js via winget
+  winget install OpenJS.NodeJS.LTS
+
+  # 2. Instalar Nginx
+  Invoke-WebRequest -Uri "https://nginx.org/download/nginx-1.26.2.zip" -OutFile "$env:TEMP\nginx.zip"
+  Expand-Archive "$env:TEMP\nginx.zip" -DestinationPath "C:\" -Force
+  Rename-Item "C:\nginx-1.26.2" "nginx"
+
+  # 3. Compilar la app (desde la carpeta del proyecto)
+  cd C:\ruta\a\codigo
+  npm install
+  npm run build
+  xcopy /E /Y dist\* C:\nginx\html\gestion-pro-total\
+
+  # 4. Iniciar Nginx
+  Start-Process -FilePath "C:\nginx\nginx.exe" -WindowStyle Hidden
+
+  # 5. Tarea programada inicio automatico
+  $action  = New-ScheduledTaskAction -Execute "C:\nginx\nginx.exe"
+  $trigger = New-ScheduledTaskTrigger -AtStartup
+  Register-ScheduledTask -TaskName "GPT-Servidor" `
+      -Action $action -Trigger $trigger -RunLevel Highest -Force
+
+  # 6. Firewall
+  New-NetFirewallRule -DisplayName "GPT-HTTP"  -Direction Inbound -Protocol TCP -LocalPort 80  -Action Allow
+  New-NetFirewallRule -DisplayName "GPT-HTTPS" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow
+
+  # 7. Ver IP del servidor
+  (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.IPAddress -notlike "127.*"}).IPAddress
+
+
+━━━━ B3. LINUX / UBUNTU - TERMINAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  # Como root o con sudo:
+
+  # 1. Instalar dependencias
+  sudo apt-get update
+  sudo apt-get install -y nginx curl openssl ufw certbot
+
+  # 2. Instalar Node.js 20
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+
+  # 3. Compilar la app
+  cd /ruta/a/codigo
+  npm install
+  npm run build
+
+  # 4. Desplegar
+  sudo mkdir -p /var/www/gestion-pro-total
+  sudo cp -r dist/. /var/www/gestion-pro-total/
+  sudo chown -R www-data:www-data /var/www/gestion-pro-total
+
+  # 5. Generar certificado SSL autofirmado
+  sudo mkdir -p /etc/nginx/ssl
+  sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+      -keyout /etc/nginx/ssl/gpt.key \
+      -out    /etc/nginx/ssl/gpt.crt \
+      -subj "/C=ES/ST=Espana/L=Local/O=Empresa/CN=$(hostname -I | awk '{print $1}')"
+
+  # 6. Configurar Nginx
+  sudo nano /etc/nginx/sites-available/gestion-pro-total
+  # (pega la configuracion del fichero nginx.conf de la carpeta servidor/)
+
+  sudo ln -sf /etc/nginx/sites-available/gestion-pro-total /etc/nginx/sites-enabled/
+  sudo nginx -t
+  sudo systemctl restart nginx
+  sudo systemctl enable nginx
+
+  # 7. Firewall
+  sudo ufw allow 80/tcp
+  sudo ufw allow 443/tcp
+  sudo ufw allow 22/tcp
+  sudo ufw enable
+
+  # 8. Ver IP
+  hostname -I
+
+
+══════════════════════════════════════════════════════════════
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  ACCESO REMOTO PARA TECNICOS (fuera de la empresa)           ║
+╚══════════════════════════════════════════════════════════════╝
+
+  Hay DOS metodos para que los tecnicos accedan desde fuera:
+
+  ── METODO 1: Reenvio de puerto en el router (mas sencillo) ──
+
+  1. Averigua la IP publica de tu empresa:
+     Ve a https://www.whatismyip.com/ desde el servidor
+     Anota la IP, por ejemplo: 85.12.34.56
+
+  2. Accede al router de la empresa (normalmente 192.168.1.1)
+     - Usuario y contrasena del router (suele estar en la etiqueta)
+
+  3. Busca "Port Forwarding" o "Reenvio de puertos" o "NAT"
+
+  4. Crea una regla:
+     Puerto externo : 443
+     Puerto interno : 443
+     IP destino     : IP del servidor (ej: 192.168.1.100)
+     Protocolo      : TCP
+
+  5. Guarda y aplica los cambios
+
+  6. Los tecnicos acceden desde fuera escribiendo en el navegador:
+     https://85.12.34.56
+     (sustituye por tu IP publica real)
+
+  7. Si tienes un dominio (recomendado):
+     - En tu panel DNS crea un registro A:
+       gestion.tuempresa.com -> 85.12.34.56
+     - Los tecnicos acceden a: https://gestion.tuempresa.com
+
+
+  ── METODO 2: VPN WireGuard (mas seguro, recomendado) ─────────
+
+  El script de Linux lo instala automaticamente.
+  En Windows, instalar manualmente:
+
+  INSTALAR WIREGUARD EN EL SERVIDOR (Windows):
+  1. Descarga WireGuard desde: https://www.wireguard.com/install/
+  2. Instala y abre WireGuard
+  3. Clic en "+" -> "Agregar tunel vacio"
+  4. Anota la clave publica generada
+
+  CONFIGURACION DEL SERVIDOR VPN (en WireGuard):
+  ┌──────────────────────────────────────────────┐
+  │ [Interface]                                  │
+  │ PrivateKey = <CLAVE_PRIVADA_GENERADA>        │
+  │ Address    = 10.8.0.1/24                    │
+  │ ListenPort = 51820                           │
+  │                                              │
+  │ [Peer]  # Por cada tecnico añadir uno        │
+  │ PublicKey  = <CLAVE_PUBLICA_DEL_TECNICO>    │
+  │ AllowedIPs = 10.8.0.2/32                    │
+  └──────────────────────────────────────────────┘
+
+  CONFIGURACION PARA CADA TECNICO (en su movil/PC):
+  ┌──────────────────────────────────────────────┐
+  │ [Interface]                                  │
+  │ PrivateKey = <CLAVE_PRIVADA_DEL_TECNICO>    │
+  │ Address    = 10.8.0.2/24                    │
+  │ DNS        = 8.8.8.8                        │
+  │                                              │
+  │ [Peer]                                       │
+  │ PublicKey  = <CLAVE_PUBLICA_DEL_SERVIDOR>   │
+  │ Endpoint   = TU_IP_PUBLICA:51820            │
+  │ AllowedIPs = 10.8.0.0/24                    │
+  │ PersistentKeepalive = 25                    │
+  └──────────────────────────────────────────────┘
+
+  INSTALAR WIREGUARD EN MOVIL/TABLET:
+  - Android: Play Store -> WireGuard
+  - iPhone: App Store -> WireGuard
+  - Importar el fichero .conf del tecnico o escanear QR
+
+  ABRIR PUERTO VPN EN EL ROUTER:
+  - Puerto externo: 51820 UDP -> IP servidor: 51820 UDP
+
+
+══════════════════════════════════════════════════════════════
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  ASIGNAR IP FIJA AL SERVIDOR (MUY RECOMENDADO)               ║
+╚══════════════════════════════════════════════════════════════╝
+
+  Sin IP fija, la IP del servidor puede cambiar y los demas
+  dispositivos no podran conectarse.
+
+  ── Windows (modo grafico) ────────────────────────────────────
+
+  1. Panel de control -> Centro de redes -> Conexiones de red
+  2. Clic derecho en tu adaptador de red -> Propiedades
+  3. Selecciona "Protocolo TCP/IPv4" -> Propiedades
+  4. Marca "Usar la siguiente direccion IP":
+       Direccion IP : 192.168.1.100  (elige una libre)
+       Mascara      : 255.255.255.0
+       Puerta enlace: 192.168.1.1    (IP de tu router)
+       DNS primario : 8.8.8.8
+       DNS secundario: 1.1.1.1
+  5. Aceptar y cerrar
+
+  ── Windows (PowerShell administrador) ────────────────────────
+
+  # Sustituye los valores por los de tu red
+  $adapter = Get-NetAdapter | Where-Object {$_.Status -eq "Up"} | Select-Object -First 1
+  New-NetIPAddress -InterfaceAlias $adapter.Name `
+      -IPAddress 192.168.1.100 -PrefixLength 24 `
+      -DefaultGateway 192.168.1.1
+  Set-DnsClientServerAddress -InterfaceAlias $adapter.Name `
+      -ServerAddresses 8.8.8.8, 1.1.1.1
+
+  ── Linux (Ubuntu 20.04+) ─────────────────────────────────────
+
+  sudo nano /etc/netplan/01-netcfg.yaml
+  # Contenido (ajusta la interfaz, normalmente eth0 o enp0s3):
+
+  network:
+    version: 2
+    ethernets:
+      eth0:
+        dhcp4: no
+        addresses: [192.168.1.100/24]
+        gateway4: 192.168.1.1
+        nameservers:
+          addresses: [8.8.8.8, 1.1.1.1]
+
+  sudo netplan apply
+
+  ── Via router (la mas facil) ─────────────────────────────────
+
+  En el panel del router busca "DHCP Reservation" o
+  "Asignacion IP estatica por MAC" y asigna siempre la
+  misma IP a la MAC del servidor.
+
+
+══════════════════════════════════════════════════════════════
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  CONECTAR LOS DISPOSITIVOS AL SERVIDOR                       ║
+╚══════════════════════════════════════════════════════════════╝
+
+  Una vez el servidor esta en marcha:
+
+  ── PC Windows / Mac de la oficina ────────────────────────────
+
+  1. Abre Chrome, Edge, Firefox o Safari
+  2. Escribe: http://192.168.1.100
+     (usa la IP real de tu servidor)
+  3. La aplicacion carga directamente
+  4. Para acceso rapido: guardar como favorito o crear acceso
+     directo en el escritorio:
+     Chrome/Edge -> Menu (...) -> Mas herramientas -> Crear acceso
+
+  ── Tablet Android y movil Android ───────────────────────────
+
+  1. Asegurate de estar conectado al WiFi de la empresa
+  2. Abre Chrome en Android
+  3. Escribe: http://192.168.1.100
+  4. Menu (3 puntos) -> "Anadir a pantalla de inicio"
+  5. Queda como icono de app en la pantalla principal
+
+  ── iPhone y iPad ─────────────────────────────────────────────
+
+  1. Asegurate de estar en el WiFi de la empresa
+  2. Abre Safari
+  3. Escribe: http://192.168.1.100
+  4. Icono de compartir (cuadro con flecha) -> "Anadir a pantalla inicio"
+  5. Queda como icono de app
+
+  ── Primera vez con HTTPS / certificado autofirmado ──────────
+
+  Si accedes por https:// con certificado autofirmado
+  (red local sin dominio real), el navegador avisa:
+
+  Chrome/Edge : "Avanzado" -> "Continuar a 192.168.1.100"
+  Firefox     : "Avanzado" -> "Aceptar el riesgo y continuar"
+  Safari      : "Visitar este sitio web"
+  Android     : "Continuar" o "Avanzado" -> "Proceder"
+
+  Solo hay que hacerlo UNA VEZ por dispositivo.
+
+
+══════════════════════════════════════════════════════════════
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  ACTUALIZACION DEL PROGRAMA                                  ║
+╚══════════════════════════════════════════════════════════════╝
+
+  Cuando haya una nueva version del programa:
+
+  Windows (CMD como administrador):
+    cd C:\ruta\a\codigo
+    npm install
+    npm run build
+    xcopy /E /Y dist\* C:\nginx\html\gestion-pro-total\
+
+  Windows (script automatico):
+    Ejecuta: servidor-config\actualizar-servidor.bat
+
+  Linux:
+    sudo gpt-actualizar
+
+  Los cambios se aplican inmediatamente. Los usuarios
+  que tengan la web abierta veran los cambios al recargar.
+
+
+══════════════════════════════════════════════════════════════
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  COMANDOS UTILES DE ADMINISTRACION                           ║
+╚══════════════════════════════════════════════════════════════╝
+
+  Windows (PowerShell / CMD administrador):
+  ─────────────────────────────────────────
+  # Ver estado de Nginx
+  tasklist /fi "imagename eq nginx.exe"
+
+  # Recargar configuracion Nginx sin cortar conexiones
+  cd C:\nginx && nginx -s reload
+
+  # Parar Nginx
+  cd C:\nginx && nginx -s stop
+
+  # Ver logs de acceso (ultimas 50 lineas)
+  Get-Content "C:\nginx\logs\gpt-access.log" -Tail 50
+
+  # Ver quien esta conectado (conexiones activas)
+  netstat -an | findstr :80
+
+  # IP del servidor
+  ipconfig | findstr "IPv4"
+
+  Linux (terminal root):
+  ──────────────────────
+  # Estado del servidor
+  sudo systemctl status nginx
+
+  # Recargar Nginx
+  sudo nginx -s reload
+
+  # Logs en tiempo real
+  sudo tail -f /var/log/nginx/gpt-access.log
+
+  # Conexiones activas
+  sudo netstat -tnlp | grep nginx
+
+  # IP del servidor
+  hostname -I
+
+  # Estado VPN WireGuard
+  sudo wg show
+
+
+══════════════════════════════════════════════════════════════
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  SOLUCION DE PROBLEMAS                                       ║
+╚══════════════════════════════════════════════════════════════╝
+
+  "No puedo acceder desde otro PC de la oficina"
+  ─────────────────────────────────────────────
+  1. Verifica que Nginx esta en marcha en el servidor
+  2. Prueba hacer ping al servidor: ping 192.168.1.100
+  3. Comprueba el firewall del servidor (abre puerto 80/443)
+  4. Verifica que ambos PCs estan en la misma red
+
+  "Los tecnicos no pueden acceder desde fuera"
+  ────────────────────────────────────────────
+  1. Comprueba la IP publica (puede haber cambiado)
+  2. Verifica el reenvio de puerto en el router
+  3. Asegurate de que el router no bloquea el puerto
+  4. Con VPN: verifica que WireGuard esta activo
+
+  "La pagina carga pero los datos no aparecen"
+  ────────────────────────────────────────────
+  Los datos vienen de Base44 Cloud. Verifica:
+  1. El servidor tiene conexion a Internet
+  2. El fichero .env.local tiene el APP_ID correcto
+  3. La cuenta de Base44 esta activa
+
+  "Nginx no arranca en Windows"
+  ─────────────────────────────
+  - Otro proceso usa el puerto 80 (Skype, IIS, etc.)
+  - Cambia el puerto en nginx.conf: listen 8080;
+  - O cierra el proceso que bloquea: netstat -ano | findstr :80
+
+  "El certificado SSL da error en todos los dispositivos"
+  ───────────────────────────────────────────────────────
+  Normal con certificados autofirmados.
+  Solucion A: acepta la excepcion en cada dispositivo
+  Solucion B: obtener certificado real con Let's Encrypt
+              (requiere dominio publico y puerto 80 abierto)
+              sudo certbot --nginx -d tudominio.com
+
+================================================================
+ FIN DE LA GUIA
+ Para soporte tecnico: https://app.base44.com/support
+================================================================

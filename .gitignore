@@ -1,0 +1,65 @@
+#env
+.env
+.env.*
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Capacitor native projects (generados; ver docs/BUILD-MULTIPLATAFORMA.md)
+/android
+/ios
+*.apk
+*.aab
+*.keystore
+
+# Electron / electron-builder (instaladores generados)
+/release
+*.AppImage
+*.dmg
+*.deb
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.env
+# Nunca subir secretos de licencias
+SOLO-PARA-MI/
+*CLAVE-SECRETA*
+secret.txt
+
+.env.local
+.env*.local
+
+dist-offline/
+
+# Excepción: clave de firma ESTABLE de la APK (debug keystore, pass "android").
+# Debe ir versionada para que cada APK se firme igual y se actualice sin desinstalar.
+!android-signing/debug.keystore
+base44/.app.jsonc
+
+# Python (scripts de datos)
+__pycache__/
+*.pyc
+
+# Datos del servidor propio
+datos-gpt/
+dist-offline/
