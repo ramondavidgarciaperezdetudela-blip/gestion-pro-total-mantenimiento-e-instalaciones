@@ -2,6 +2,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { base44 } from '@/api/base44Client';
 import { uploadFile } from '@/lib/uploadImage';
+import { ajustesIA } from '@/lib/proveedorIA';
 import { CAT_COLOR } from '@/lib/planoFrigorificoCatalogo';
 import PlanoSimbolo from '@/components/plano_frigorifico/PlanoSimbolo';
 
@@ -36,23 +37,93 @@ function mensajeFalloIA(e) {
   return t ? `La IA ha fallado: ${t}` : 'La IA no ha respondido.';
 }
 
-/**
- * Genera el icono IA de un equipo y devuelve su URL ('' si no se pudo).
- * Si la IA falla lanza un error con el motivo en español; quien llama puede
- * usar entonces `iconoPropio` para tener igualmente un icono.
- */
-export async function generarIconoPlano(nombre, catLabel) {
-  try {
-    const res = await conLimite(base44.integrations.Core.GenerateImage({ prompt: promptIconoPlano(nombre, catLabel) }), ESPERA_IA_MS);
-    const url = res?.url || res?.file_url || '';
-    if (!url) throw new Error('La IA no devolvió ninguna imagen.');
-    return url;
-  } catch (e) {
-    console.error('[iconoPlanoIA] Falló la generación con IA:', e);
-    const err = new Error(mensajeFalloIA(e));
-    err.causa = e;
+const MODELO_IMAGEN_OPENROUTER = 'google/gemini-2.5-flash-image';
+
+/** Imagen con la clave de OpenRouter del usuario (vale en cualquier aparato). */
+async function imagenOpenRouter(prompt, clave) {
+  const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${clave}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: MODELO_IMAGEN_OPENROUTER,
+      modalities: ['image', 'text'],
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  if (!r.ok) {
+    const err = new Error(`OpenRouter ${r.status}`);
+    err.status = r.status;
     throw err;
   }
+  const j = await r.json();
+  const url = j?.choices?.[0]?.message?.images?.[0]?.image_url?.url || '';
+  if (!url) throw new Error('OpenRouter no devolvió ninguna imagen.');
+  return url;
+}
+
+/** Deja pasar solo un SVG limpio (sin scripts ni enlaces externos). */
+export function svgLimpio(texto) {
+  const m = String(texto || '').match(/<svg[\s\S]*?<\/svg>/i);
+  if (!m) return '';
+  let svg = m[0];
+  if (/<script|on\w+\s*=|javascript:|<foreignObject|xlink:href\s*=\s*["']https?:/i.test(svg)) return '';
+  if (!/xmlns=/.test(svg)) svg = svg.replace(/<svg/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+  return svg.length > 60000 ? '' : svg;
+}
+
+/** Icono dibujado por la IA de texto (la misma de Configuración → IA), como SVG. */
+async function iconoSvgPorLLM(nombre, catLabel) {
+  const prompt = `Dibuja un icono técnico en vista superior (planta) de "${nombre}" (${catLabel}) para un plano de instalación frigorífica. `
+    + 'Devuelve SOLO el código SVG, sin explicaciones ni bloques de código: viewBox="0 0 200 200", fondo blanco, formas sencillas y nítidas, '
+    + 'colores diferenciados por piezas, sin texto ni letras, sin scripts ni imágenes externas.';
+  const res = await base44.integrations.Core.InvokeLLM({ prompt });
+  const texto = typeof res === 'string' ? res : (res?.svg || res?.text || res?.response || JSON.stringify(res || ''));
+  const svg = svgLimpio(texto.replace(/\\n/g, '\n').replace(/\\"/g, '"'));
+  if (!svg) throw new Error('La IA de texto no devolvió un dibujo válido.');
+  const archivo = new File([svg], `icono-ia-${Date.now()}.svg`, { type: 'image/svg+xml' });
+  try {
+    return await uploadFile(archivo);
+  } catch {
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  }
+}
+
+/**
+ * Genera el icono IA de un equipo y devuelve su URL.
+ *
+ * Prueba varias vías, de la más vistosa a la más segura, para que funcione en
+ * ordenador, móvil y tablet sin depender de un solo permiso:
+ *   1. El generador de imágenes del servicio (si está disponible).
+ *   2. Tu clave de OpenRouter (modelo de imagen) — vale en cualquier aparato.
+ *   3. La IA de texto configurada (Ollama / OpenRouter / servicio) dibujando un SVG.
+ * Si ninguna responde lanza un error en español; quien llama usa entonces
+ * `iconoPropio`, que no necesita IA ni permisos.
+ */
+export async function generarIconoPlano(nombre, catLabel) {
+  const prompt = promptIconoPlano(nombre, catLabel);
+  const fallos = [];
+  const url1 = async () => {
+    const res = await conLimite(base44.integrations.Core.GenerateImage({ prompt }), ESPERA_IA_MS);
+    return res?.url || res?.file_url || '';
+  };
+  const url2 = async () => {
+    const clave = ajustesIA().openrouter_clave;
+    if (!clave) throw new Error('Sin clave de OpenRouter.');
+    return conLimite(imagenOpenRouter(prompt, clave), ESPERA_IA_MS);
+  };
+  const url3 = () => conLimite(iconoSvgPorLLM(nombre, catLabel), ESPERA_IA_MS);
+  for (const via of [url1, url2, url3]) {
+    try {
+      const url = await via();
+      if (url) return url;
+    } catch (e) {
+      console.error('[iconoPlanoIA] Una vía de la IA ha fallado:', e);
+      fallos.push(e);
+    }
+  }
+  const err = new Error(mensajeFalloIA(fallos[0] || new Error('')));
+  err.causa = fallos[0];
+  throw err;
 }
 
 /**
