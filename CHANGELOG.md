@@ -6,6 +6,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.76.3] — 2026-10-30
+
+### Añadido
+- **Envío de correos directo** con el servidor propio: usa los datos de Configuración → Email (servidor SMTP, usuario y clave de aplicación; TLS en 465 o STARTTLS en 587). Ya no pide «backend activo». En el modo «solo este dispositivo» o con Supabase sigue disponible el correo del móvil (mailto:) y se explica el motivo.
+
 ## [1.76.2] — 2026-10-30
 
 ### Añadido

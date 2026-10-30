@@ -2,6 +2,7 @@
 import { leerConfig, leerSesion } from './config';
 import { peticion } from './almacenRemoto';
 import { leerError } from './errores';
+import { crearEntidad } from './entidad';
 import { ajustesIA, consultarIA } from '@/lib/proveedorIA';
 
 const aDataUrl = (archivo) => new Promise((res, rej) => {
@@ -29,11 +30,33 @@ async function subirArchivo({ file }) {
   return { file_url: `${c.url}/storage/v1/object/public/archivos/${encodeURIComponent(nombre)}` };
 }
 
-const sinCorreo = () => {
-  const e = new Error('Enviar correos desde el programa no está disponible en la versión sin Base44. Usa el botón de compartir o abre tu correo y adjunta el archivo.');
+const sinCorreo = (motivo) => {
+  const e = new Error(motivo || 'Enviar correos directamente necesita el servidor propio. Usa el botón de compartir o abre tu correo (mailto:).');
   e.status = 501;
   return e;
 };
+
+// El correo sale por el SMTP que se configura en Configuración → Email. Lo
+// envía el servidor propio (un navegador o un móvil no pueden hablar SMTP).
+async function enviarCorreo({ to, subject, body, html, from_name } = {}) {
+  const c = leerConfig();
+  if (!c || c.modo !== 'servidor') {
+    throw sinCorreo('Para enviar correos directamente hay que usar el servidor propio (se elige al instalar). En los otros modos, usa el botón de compartir o el correo del móvil (mailto:).');
+  }
+  const ajustes = (await crearEntidad('CompanySettings').list())?.[0]?.email_config || {};
+  if (!ajustes.smtp_host || !ajustes.smtp_user) {
+    throw sinCorreo('Faltan los datos del correo: rellénalos en Configuración → Email (servidor SMTP, usuario y clave de aplicación).');
+  }
+  const r = await peticion(`${c.url}/api/correo`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      to, subject, body, html,
+      smtp: { host: ajustes.smtp_host, port: ajustes.smtp_port, user: ajustes.smtp_user, pass: ajustes.smtp_pass, ssl: ajustes.use_ssl !== false, nombre: from_name || ajustes.from_name },
+    }),
+  });
+  return r.json();
+}
 
 async function invocarIA(args) {
   let cfg = ajustesIA();
@@ -68,7 +91,7 @@ export const integrations = {
     CreateFileSignedUrl: async ({ file_uri }) => ({ signed_url: file_uri }),
     InvokeLLM: invocarIA,
     GenerateImage: generarImagen,
-    SendEmail: async () => { throw sinCorreo(); },
+    SendEmail: enviarCorreo,
     ExtractDataFromUploadedFile: async () => {
       const e = new Error('Leer datos de Excel/PDF con IA no está disponible en la versión sin Base44. Importa el catálogo en CSV desde la pantalla de proveedores.');
       e.status = 501;

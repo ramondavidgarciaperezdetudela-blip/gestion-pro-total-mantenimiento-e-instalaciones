@@ -4,6 +4,7 @@
 //   PUERTO=9000 DATOS=/ruta node servidor-datos/servidor.mjs
 // Sirve además la aplicación (carpeta ../dist) para entrar desde el móvil o la
 // tablet escribiendo http://IP-DEL-ORDENADOR:8787 en el navegador.
+import { enviarCorreo } from './correo.mjs';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -159,6 +160,14 @@ const servidor = http.createServer(async (req, res) => {
       if (!yo) return fallo(res, 401, 'Sesión caducada: vuelve a entrar.');
 
       if (ruta === '/api/yo') return json(res, 200, publico(yo));
+      if (ruta === '/api/correo' && req.method === 'POST') {
+        const d = await cuerpoJson(req);
+        const c = d.smtp || {};
+        try {
+          await enviarCorreo({ host: c.host, port: c.port, user: c.user, pass: c.pass, ssl: c.ssl !== false, de: c.de, nombre: c.nombre, para: d.to, asunto: d.subject, texto: d.body, html: d.html });
+          return json(res, 200, { ok: true });
+        } catch (e) { return fallo(res, 502, e.message || 'No se pudo enviar el correo.'); }
+      }
       if (ruta === '/api/clave' && req.method === 'POST') {
         const d = await cuerpoJson(req);
         if (!comprobar(String(d.actual || ''), yo.clave)) return fallo(res, 403, 'La clave actual no es correcta.');

@@ -573,7 +573,7 @@ export default function CompanyConfig() {
 
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
                 <p className="font-medium">ℹ️ Nota</p>
-                <p>El envío directo de emails necesita backend activado. Mientras tanto, el botón de correo abrirá tu cliente de email habitual (mailto:) con los datos precargados.</p>
+                <p>El envío directo funciona con el servidor propio (se elige al instalar): el servidor envía el correo con estos datos. En el modo «solo este dispositivo» o con Supabase, el botón de correo abre tu correo habitual (mailto:) con los datos precargados.</p>
               </div>
 
               <Button onClick={handleSave} className={`w-full ${saved ? 'bg-green-600' : 'bg-blue-600'}`}>
