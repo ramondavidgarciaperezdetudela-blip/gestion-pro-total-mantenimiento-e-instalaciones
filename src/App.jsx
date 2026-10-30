@@ -53,6 +53,7 @@ const SupplierTariffs = lazy(() => import('./pages/SupplierTariffs'));
 const PurchaseSummary = lazy(() => import('./pages/PurchaseSummary'));
 const BackupCenter = lazy(() => import('./pages/BackupCenter'));
 const CapillaryCalc = lazy(() => import('./pages/CapillaryCalc'));
+const FilterCalc = lazy(() => import('./pages/FilterCalc'));
 const InformesTecnicos = lazy(() => import('./pages/InformesTecnicos'));
 const PlanoFrigorifico = lazy(() => import('./pages/PlanoFrigorifico'));
 import PlanoErrorBoundaryWrap from '@/components/plano_frigorifico/PlanoErrorBoundary';
@@ -164,6 +165,7 @@ const AuthenticatedApp = () => {
           <Route path="/PurchaseSummary" element={<LayoutWrapper currentPageName="PurchaseSummary"><PurchaseSummary /></LayoutWrapper>} />
           <Route path="/BackupCenter" element={<LayoutWrapper currentPageName="BackupCenter"><BackupCenter /></LayoutWrapper>} />
           <Route path="/CapillaryCalc" element={<LayoutWrapper currentPageName="CapillaryCalc"><CapillaryCalc /></LayoutWrapper>} />
+          <Route path="/FilterCalc" element={<LayoutWrapper currentPageName="FilterCalc"><FilterCalc /></LayoutWrapper>} />
           <Route path="/InformesTecnicos" element={<LayoutWrapper currentPageName="InformesTecnicos"><InformesTecnicos /></LayoutWrapper>} />
           <Route path="/PlanoFrigorifico" element={<LayoutWrapper currentPageName="PlanoFrigorifico"><PlanoErrorBoundaryWrap><PlanoFrigorifico /></PlanoErrorBoundaryWrap></LayoutWrapper>} />
           <Route path="*" element={<PageNotFound />} />

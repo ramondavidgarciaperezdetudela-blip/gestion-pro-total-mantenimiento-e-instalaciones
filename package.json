@@ -13,6 +13,7 @@
     "test:gases": "node scripts/test-saturacion.mjs",
     "test:equivalencias": "node scripts/test-equivalencias.mjs",
     "test:clima": "node scripts/test-clima.mjs",
+    "test:filtro": "node scripts/test-filtro.mjs",
     "preview": "vite preview",
     "cap:add:android": "cap add android",
     "cap:sync": "cap sync",

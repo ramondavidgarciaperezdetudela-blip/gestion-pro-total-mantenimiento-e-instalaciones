@@ -33,7 +33,7 @@ const COLOR_VALORACION = {
   imposible: '#b91c1c',
 };
 
-const CSS = `
+export const CSS = `
 @page { size: A4; margin: 0; }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: #fff; color: #0f172a; font-family: 'Segoe UI', Inter, Arial, Helvetica, sans-serif; font-size: 11.5px; line-height: 1.4; }
@@ -88,7 +88,7 @@ ul.sup li { margin: 2px 0; }
 `;
 
 /** Línea «etiqueta … valor». */
-const dato = (etiqueta, valor) => `<div class="dato"><span>${esc(etiqueta)}</span><b>${valor === undefined || valor === null || valor === '' ? '—' : valor}</b></div>`;
+export const dato = (etiqueta, valor) => `<div class="dato"><span>${esc(etiqueta)}</span><b>${valor === undefined || valor === null || valor === '' ? '—' : valor}</b></div>`;
 
 function cabecera(d, primera) {
   const e = d.empresa;

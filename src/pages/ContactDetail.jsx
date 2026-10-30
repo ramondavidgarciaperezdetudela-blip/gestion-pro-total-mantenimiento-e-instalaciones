@@ -916,6 +916,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
               <Link to={createPageUrl('BatteryCalc')}><Button size="sm" variant="outline">+ Baterías</Button></Link>
               <Link to={createPageUrl('ElectricalCalc')}><Button size="sm" variant="outline">+ Eléctrico</Button></Link>
               <Link to={createPageUrl(`CapillaryCalc?contact_id=${contactId}`)}><Button size="sm" variant="outline" className="bg-cyan-50 border-cyan-200 text-cyan-800">+ Capilar</Button></Link>
+              <Link to={createPageUrl(`FilterCalc?contact_id=${contactId}`)}><Button size="sm" variant="outline" className="bg-amber-50 border-amber-200 text-amber-800">+ Filtros</Button></Link>
             </div>
 
             {calculations.length > 0 && (

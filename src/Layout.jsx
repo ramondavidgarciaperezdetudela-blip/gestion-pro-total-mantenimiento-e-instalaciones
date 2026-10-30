@@ -8,7 +8,7 @@ import {
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette,
   CreditCard, Download, Bell, History, Search, FileBarChart, Droplets, AlertCircle,
-  MoreHorizontal, MessageSquare, ListChecks, AlertTriangle, CalendarCheck, Ruler, Sparkles } from
+  MoreHorizontal, Filter, MessageSquare, ListChecks, AlertTriangle, CalendarCheck, Ruler, Sparkles } from
 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 import ThemeToggle from './components/ThemeToggle';
@@ -170,6 +170,7 @@ const navItems = [
 { name: 'Calc. Multi-área', page: 'MultiAreaCalc', icon: Thermometer },
 { name: 'Equiv. Refrigerantes', page: 'RefrigerantEquiv', icon: Droplets },
 { name: 'Cáp. Tubo', page: 'CapillaryCalc', icon: Droplets },
+{ name: 'Filtros', page: 'FilterCalc', icon: Filter },
 { name: 'Herram. Danfoss', page: 'DanfossTools', icon: Wrench },
 { name: 'Prov. Gases', page: 'GasSuppliers', icon: Building2 },
 { name: 'Nuevo Contacto', page: 'ContactForm', icon: Users },
@@ -210,7 +211,7 @@ const PAGE_SECTION = {
   ElectricalCalc: 'Electricidad',
   ACPotenciaCalc: 'Clima', ACPlanAnalysis: 'Clima', ThermalCalc: 'Clima',
   MultiAreaCalc: 'Clima', PlanoIA: 'Clima', CodigosError: 'Clima',
-  ColdRoomCalc: 'Refrigeración', CapillaryCalc: 'Refrigeración',
+  ColdRoomCalc: 'Refrigeración', CapillaryCalc: 'Refrigeración', FilterCalc: 'Refrigeración',
   DiagnosticoCarga: 'Refrigeración', RefrigerantEquiv: 'Refrigeración',
   DanfossTools: 'Refrigeración', PresionesGas: 'Refrigeración', PlanoFrigorifico: 'Refrigeración',
   SolarCalc: 'Solar', SolarBatteryCalc: 'Solar', BatteryCalc: 'Solar',

@@ -18,7 +18,7 @@ import {
   Building2, FolderOpen, Zap, BarChart3, Clock, AlertCircle,
   StickyNote, Package, Palette, Bell, Download, Euro, CheckCircle, XCircle, AlertTriangle,
   ArrowRight, ChevronRight, ShoppingCart, Search, Navigation, ChevronDown, ChevronUp,
-  Snowflake, Ruler, Gauge, Droplets, Repeat, History, Briefcase, MessageSquare,
+  Snowflake, Ruler, Filter, Gauge, Droplets, Repeat, History, Briefcase, MessageSquare,
   Calculator, Layers, RefreshCw, ListChecks, Map, FileBarChart, Sparkles } from
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -70,6 +70,7 @@ const quickLinks = [
 { name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500' },
 { name: 'Cálculo Multizona', page: 'MultiAreaCalc', icon: Calculator, color: 'bg-red-400' },
 { name: 'Cálculo Capilar', page: 'CapillaryCalc', icon: Droplets, color: 'bg-cyan-700' },
+{ name: 'Filtro Deshidratador', page: 'FilterCalc', icon: Filter, color: 'bg-amber-600' },
 { name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Gauge, color: 'bg-rose-600' },
 { name: 'Tablas Gases', page: 'TablasRefrigerantes', icon: FileBarChart, color: 'bg-sky-700' },
 { name: 'Electricidad', page: 'ElectricalCalc', icon: Zap, color: 'bg-yellow-500' },
@@ -113,6 +114,7 @@ const quickLinks = [
 { name: 'Cálculo Solar', page: 'SolarCalc', icon: Sun, color: 'bg-amber-500' },
 { name: 'Solar + Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-orange-500' },
 { name: 'Tubo Capilar', page: 'CapillaryCalc', icon: Ruler, color: 'bg-cyan-700' },
+{ name: 'Filtro Deshidratador', page: 'FilterCalc', icon: Filter, color: 'bg-amber-600' },
 { name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Gauge, color: 'bg-rose-600' },
 { name: 'Tablas de Gases', page: 'TablasRefrigerantes', icon: Snowflake, color: 'bg-sky-700' },
 { name: 'Códigos de Error', page: 'CodigosError', icon: AlertTriangle, color: 'bg-red-600' },
@@ -128,7 +130,7 @@ const GRUPOS = [
   // herramientas seguidas no hay quien las lea.
   { titulo: 'Electricidad', color: '#eab308', pages: ['ElectricalCalc'] },
   { titulo: 'Clima', color: '#0ea5e9', pages: ['ACPotenciaCalc', 'ACPlanAnalysis', 'ThermalCalc', 'MultiAreaCalc', 'PlanoIA', 'CodigosError'] },
-  { titulo: 'Refrigeración', color: '#06b6d4', pages: ['ColdRoomCalc', 'CapillaryCalc', 'DiagnosticoCarga', 'RefrigerantEquiv', 'DanfossTools', 'PresionesGas', 'TablasRefrigerantes', 'PlanoFrigorifico'] },
+  { titulo: 'Refrigeración', color: '#06b6d4', pages: ['ColdRoomCalc', 'CapillaryCalc', 'FilterCalc', 'DiagnosticoCarga', 'RefrigerantEquiv', 'DanfossTools', 'PresionesGas', 'TablasRefrigerantes', 'PlanoFrigorifico'] },
   { titulo: 'Solar', color: '#f59e0b', pages: ['SolarCalc', 'SolarBatteryCalc', 'BatteryCalc'] },
   { titulo: 'Documentos', color: '#7C3AED', pages: ['Documents', 'Documents?type=factura', 'Documents?type=presupuesto', 'DocumentTemplates', 'LegalDocs'] },
   { titulo: 'SAT y Trabajo', color: '#F97316', pages: ['SAT', 'SATChat', 'TechnicianFieldWork', 'TecniciansRoutes', 'Maintenance', 'MaintenancePlanning', 'IncidentManagement', 'EquipmentFailureHistory', 'EquipmentDiaryPage'] },
