@@ -6,6 +6,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.77.2] — 2026-10-30
+
+### Añadido
+- **Eliminar tarifas antiguas**: dentro de cada proveedor, casillas y botones para eliminar las seleccionadas, las caducadas o toda su tarifa; con contador, aviso de las que fallan y Deshacer durante 15 segundos.
+
 ## [1.77.1] — 2026-10-30
 
 ### Añadido

@@ -1,7 +1,7 @@
 {
   "name": "gestion-pro-total-fuera-base44",
   "private": true,
-  "version": "1.77.1",
+  "version": "1.77.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,6 +15,7 @@
     "test:clima": "node scripts/test-clima.mjs",
     "test:carga": "node scripts/test-carga-frigorifica.mjs",
     "test:config": "node scripts/test-config-local.mjs",
+    "test:tarifas": "node scripts/test-borrar-tarifas.mjs",
     "test:huecos": "node scripts/test-huecos.mjs",
     "test:correo": "node scripts/test-correo.mjs",
     "test:iconoia": "node scripts/test-iconoia.mjs",

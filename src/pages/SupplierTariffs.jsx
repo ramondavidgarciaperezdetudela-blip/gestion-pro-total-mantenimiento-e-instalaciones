@@ -12,6 +12,7 @@ import {
   Upload, Trash2, Edit, Loader2, RefreshCw, Check, TrendingDown, AlertTriangle, WifiOff
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { tarifasCaducadas, borrarEnLotes, recrearLineas } from '@/lib/borrarTarifas';
 import SupplierCatalogImportWithSupplier from '../components/SupplierCatalogImportWithSupplier';
 import PriceComparator from '../components/PriceComparator';
 import ProductPriceHistoryChart from '../components/ProductPriceHistoryChart';
@@ -58,6 +59,8 @@ export default function SupplierTariffs() {
   const [autoFetchingImage, setAutoFetchingImage] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [activeTab, setActiveTab] = useState('tarifas');
+  const [seleccion, setSeleccion] = useState(() => new Set());
+  const [borrando, setBorrando] = useState(null); // { hechas, total }
   const imageFileRef = useRef(null);
   // Relleno de imágenes en segundo plano (por lotes, poco a poco)
   const [bulkImg, setBulkImg] = useState(null); // { done, total, ok } | null
@@ -288,11 +291,45 @@ export default function SupplierTariffs() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Seguro que quieres eliminar esta tarifa? Esta acción no se puede deshacer.')) return;
-    await base44.entities.SupplierPrice.delete(id);
-    setPrices(prev => prev.filter(p => p.id !== id));
-    toast.success('Tarifa eliminada');
+    if (!window.confirm('¿Seguro que quieres eliminar esta tarifa?')) return;
+    try {
+      await base44.entities.SupplierPrice.delete(id);
+      setPrices(prev => prev.filter(p => p.id !== id));
+      toast.success('Tarifa eliminada');
+    } catch (e) {
+      toast.error(`No se pudo eliminar: ${e?.response?.data?.message || e?.message || 'sin permiso'}. Si la tarifa la creó otra cuenta, entra con la cuenta administradora.`);
+    }
   };
+
+  // Borrado masivo: pide confirmación diciendo cuántas, borra por lotes, dice
+  // cuántas no se pudieron borrar y deja DESHACER unos segundos.
+  const borrarVarias = async (lista, descripcion) => {
+    if (!lista.length) { toast.info('No hay tarifas que eliminar con ese criterio'); return; }
+    if (!window.confirm(`¿Eliminar ${lista.length.toLocaleString('es-ES')} tarifas (${descripcion})?\n\nPodrás deshacerlo unos segundos después; pasado ese tiempo, solo con una copia de seguridad.`)) return;
+    setBorrando({ hechas: 0, total: lista.length });
+    const { borradas, fallidas } = await borrarEnLotes(base44.entities.SupplierPrice, lista, {
+      onProgreso: (hechas, total) => setBorrando({ hechas, total }),
+    });
+    setBorrando(null);
+    const ids = new Set(borradas.map(b => b.id));
+    setPrices(prev => prev.filter(p => !ids.has(p.id)));
+    setSeleccion(prev => new Set([...prev].filter(id => !ids.has(id))));
+    if (fallidas.length) {
+      toast.error(`${fallidas.length} no se pudieron eliminar: ${fallidas[0].error}. Si las creó otra cuenta, entra con la cuenta administradora.`);
+    }
+    if (borradas.length) {
+      toast.success(`${borradas.length.toLocaleString('es-ES')} tarifas eliminadas`, {
+        duration: 15000,
+        action: { label: 'Deshacer', onClick: async () => {
+          const n = await recrearLineas(base44.entities.SupplierPrice, borradas);
+          toast.success(`${n} tarifas recuperadas`);
+          loadData();
+        } },
+      });
+    }
+  };
+
+  const alternarSeleccion = (id) => setSeleccion(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const handleUploadImage = async (e) => {
     const file = e.target.files?.[0];
@@ -510,11 +547,31 @@ export default function SupplierTariffs() {
               {/* Tabla de productos */}
               {isOpen && (
                 <div className="border-t bg-gray-50">
+                  <div className="flex flex-wrap items-center gap-2 p-2 bg-white border-b text-xs" data-prueba="barra-borrar-tarifas">
+                    <span className="font-semibold text-gray-600">Eliminar:</span>
+                    <Button size="sm" variant="outline" className="h-7 gap-1 text-red-600" disabled={!!borrando || !items.some(i => seleccion.has(i.id))}
+                      onClick={() => borrarVarias(items.filter(i => seleccion.has(i.id)), 'seleccionadas')} data-prueba="tarifa-borrar-sel">
+                      <Trash2 className="w-3 h-3" />Seleccionadas ({items.filter(i => seleccion.has(i.id)).length})
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 gap-1 text-red-600" disabled={!!borrando}
+                      onClick={() => borrarVarias(tarifasCaducadas(items), 'con vigencia ya pasada')} data-prueba="tarifa-borrar-caducadas">
+                      <Trash2 className="w-3 h-3" />Caducadas
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 gap-1 text-red-600" disabled={!!borrando}
+                      onClick={() => borrarVarias(items, `toda la tarifa de ${supplier.name}`)} data-prueba="tarifa-borrar-todas">
+                      <Trash2 className="w-3 h-3" />Toda la tarifa de {supplier.name}
+                    </Button>
+                    {borrando && <span className="text-gray-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />{borrando.hechas}/{borrando.total}</span>}
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-gray-100 text-xs text-gray-500 uppercase">
-                          <th className="text-left p-3 w-12"></th>
+                          <th className="text-left p-3 w-12">
+                            <input type="checkbox" aria-label="Seleccionar todas" data-prueba="tarifa-sel-todas"
+                              checked={items.length > 0 && items.every(i => seleccion.has(i.id))}
+                              onChange={(e) => setSeleccion(prev => { const n = new Set(prev); items.forEach(i => e.target.checked ? n.add(i.id) : n.delete(i.id)); return n; })} />
+                          </th>
                           <th className="text-left p-3">Producto</th>
                           <th className="text-left p-3 hidden sm:table-cell">Ref.</th>
                           <th className="text-left p-3 hidden md:table-cell">Categoría</th>
@@ -528,6 +585,7 @@ export default function SupplierTariffs() {
                         {items.map(item => (
                           <tr key={item.id} className="bg-white hover:bg-blue-50 transition-colors">
                             <td className="p-2">
+                              <input type="checkbox" aria-label="Seleccionar" data-prueba="tarifa-sel" checked={seleccion.has(item.id)} onChange={() => alternarSeleccion(item.id)} />
                               <div className="w-10 h-10 rounded-lg border bg-gray-50 flex items-center justify-center overflow-hidden">
                                 {item.image_url ? (
                                   <img 
