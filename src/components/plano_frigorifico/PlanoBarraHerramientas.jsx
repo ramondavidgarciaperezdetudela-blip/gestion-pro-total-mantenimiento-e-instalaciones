@@ -2,8 +2,7 @@ import React from 'react';
 import {
   MousePointer2, Minus, Type, Ruler, Spline, Eraser, Square, Snowflake,
   Undo2, Redo2, Copy, Scissors, ClipboardPaste,
-  Link2, Wind, Zap, PenLine,
-} from 'lucide-react';
+  Link2, Wind, Zap, PenLine, Calculator } from 'lucide-react';
 
 /**
  * PlanoBarraHerramientas — barra de dibujo y edición al estilo Paint.
@@ -19,7 +18,7 @@ import {
  * en la página, que es quien tiene el historial y el portapapeles.
  */
 export default function PlanoBarraHerramientas({
-  mode, connectType, manual = false, onPick, onSala, onCamara,
+  mode, connectType, manual = false, onPick, onSala, onCamara, onCalculo,
   onUndo, onRedo, onCopy, onCut, onPaste,
   canUndo = true, canRedo = true, canCopy = false, canPaste = false,
 }) {
@@ -34,6 +33,9 @@ export default function PlanoBarraHerramientas({
       )}
       {onCamara && (
         <BotonHerr activo={false} onClick={onCamara} icon={Snowflake} label="Cámara" color="#3b82f6" />
+      )}
+      {onCalculo && (
+        <BotonHerr activo={false} onClick={onCalculo} icon={Calculator} label="Cálculo frío" color="#0891b2" dato="calculo-frio" />
       )}
       <BotonHerr activo={mode === 'text'} onClick={() => onPick({ mode: 'text' })} icon={Type} label="Texto" color="#64748b" />
       <BotonHerr activo={mode === 'cota'} onClick={() => onPick({ mode: 'cota' })} icon={Ruler} label="Cota" color="#64748b" />

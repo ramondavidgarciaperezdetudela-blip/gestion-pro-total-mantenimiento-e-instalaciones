@@ -196,6 +196,17 @@ export function presupuestoAproximado(plan, precioDe = () => null) {
   const cuenta = {};
   for (const el of elements) {
     const tipo = el.type || el.id;
+    // Máquina con precio de la tarifa de un proveedor: va en su propia línea,
+    // con la referencia, y no se mezcla con las de catálogo.
+    const pp = Number(el.datos?.precio_proveedor) || 0;
+    if (pp > 0) {
+      const d = elementoDe(tipo);
+      lineas.push({
+        concepto: `${d?.label || tipo} — ${el.datos.referencia || ''}${el.datos.proveedor ? ` (${el.datos.proveedor})` : ''}`,
+        unidades: 1, precioUnidad: pp, total: Math.round(pp * 100) / 100, categoria: d?.cat,
+      });
+      continue;
+    }
     cuenta[tipo] = (cuenta[tipo] || 0) + (parseInt(el.qty, 10) || 1);
   }
   for (const [tipo, unidades] of Object.entries(cuenta)) {

@@ -28,6 +28,7 @@ import ControlMoverFlotante from '@/components/plano_frigorifico/ControlMoverFlo
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
 import { CAT_COLOR, CATEGORIAS, CAPAS, elementoDe } from '@/lib/planoFrigorificoCatalogo';
 import { generarIconoPlano, guardarIconoPlano, iconoPropio } from '@/lib/iconoPlanoIA';
+import DialogoCalculoFrigorifico from '@/components/plano_frigorifico/DialogoCalculoFrigorifico';
 import { presupuestoAproximado } from '@/lib/instalacionCalculos';
 import { asArray } from '@/lib/asArray';
 import { generarVista3DPng } from '@/lib/planoVista3D';
@@ -106,6 +107,7 @@ export default function PlanoFrigorifico() {
   // (positiva/negativa), suelo sanitario y espesor del panel. La cámara se
   // dibuja distinta a una pared, como un recinto panelado de doble línea.
   const [dialogoCamara, setDialogoCamara] = useState(null);
+  const [dialogoCalculo, setDialogoCalculo] = useState(false);
 
   const cargarCatalogoExtra = useCallback(async () => {
     try {
@@ -421,6 +423,29 @@ export default function PlanoFrigorifico() {
     setSelectedId(nuevas[0].id);
     setDialogoCamara(null);
     toast.success(`Cámara ${ancho}×${largo} m, alto ${alto} m · ${tipo}`, { description: `${suelo ? 'Con suelo sanitario' : 'Sin suelo sanitario'} · ${espesor} mm` });
+  };
+
+  // Máquinas elegidas en el cálculo frigorífico: se colocan junto a la cámara
+  // llevando la referencia y el precio de la tarifa del proveedor.
+  const anadirMaquinasCalculadas = (camara, { evaporador, condensadora, kw }) => {
+    const ref = plan.walls.find((w) => w.room_id === camara.room_id && w.camara);
+    if (!ref) return;
+    const scale = plan.scale || 50;
+    const nuevos = [];
+    const poner = (tipo, m, x, y) => {
+      const def = elementoDe(tipo);
+      if (!def || !m) return;
+      nuevos.push({
+        id: crypto.randomUUID(), type: tipo, x, y, rot: 0, w_m: def.w_m, h_m: def.h_m,
+        datos: { referencia: m.nombre, codigo: m.codigo, proveedor: m.proveedor, precio_proveedor: m.precio, capacidad_kw: m.capacidad_kw, potencia_necesaria_kw: kw },
+      });
+    };
+    const cx = ref.room_x + (camara.ancho * scale) / 2, cy = ref.room_y + (camara.largo * scale) / 2;
+    poner('evaporador', evaporador, cx - 25, cy - 15);
+    poner('condensadora_aire', condensadora, ref.room_x + camara.ancho * scale + 40, ref.room_y + 10);
+    if (!nuevos.length) return;
+    handleChange({ elements: [...plan.elements, ...nuevos] });
+    toast.success('Máquinas añadidas con el precio de la tarifa', { description: nuevos.map((n) => `${n.datos.referencia} · ${n.datos.precio_proveedor} €`).join(' — ') });
   };
 
   const actualizarCamara = (roomId, datos) => {
@@ -1106,6 +1131,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               mode={mode} activeType={activeType} connectType={connectType} manual={polyline} onPick={onPick}
               onSala={() => setDialogoSala({ nuevo: true })}
               onCamara={() => setDialogoCamara({ nuevo: true })}
+              onCalculo={() => setDialogoCalculo(true)}
               onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
               canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
               saving={saving} onSave={guardar} onPDF={onExportarPDF}
@@ -1137,6 +1163,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               <PlanoPaleta mode={mode} activeType={activeType} connectType={connectType} manual={polyline} onPick={onPick}
                 onSala={() => setDialogoSala({ nuevo: true })}
                 onCamara={() => setDialogoCamara({ nuevo: true })}
+              onCalculo={() => setDialogoCalculo(true)}
                 onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
                 canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
                 extraElementos={extraItems} iaIcons={iaIcons} onCrearIconoIA={crearIconoIA}
@@ -1282,6 +1309,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       {/* Diálogo para dibujar o editar una cámara frigorífica. Pide medidas,
           tipo (positiva/negativa), suelo sanitario y espesor del panel, y la
           dibuja como un recinto panelado distinto a una pared. */}
+      <DialogoCalculoFrigorifico open={dialogoCalculo} walls={plan.walls} onClose={() => setDialogoCalculo(false)} onAnadir={anadirMaquinasCalculadas} />
       <DialogoCamara
         open={!!dialogoCamara}
         valorInicial={dialogoCamara && !dialogoCamara.nuevo
