@@ -6,6 +6,24 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.78.0] — 2026-10-31
+
+### Cambiado
+- **El plano se guarda e imprime POR APARTADOS**, no todo mezclado en una hoja. Cada apartado sale en su propia hoja, con marco, cajetín (cliente, empresa, apartado, escala y fecha) y número de hoja:
+  1. **Plano frigorífico** con su leyenda y los datos de cada elemento (marca, modelo, referencia, proveedor, precio…).
+  2. **Plano eléctrico** con su leyenda de líneas y elementos, y a continuación el esquema eléctrico.
+  3. **Cálculos y medidas**: resumen, cargas de cada cámara, metros de tubería por diámetro, instalación eléctrica y presupuesto aproximado.
+  4. **Vista 3D**, aparte.
+- **Eliges la posición de cada hoja**: vertical u horizontal por apartado, papel A3 o A4 y qué apartados incluir. Lo elegido se recuerda.
+- Un solo botón **«Guardar / imprimir…»** (también el PDF de la barra superior) para PDF, imprimir o CAD, en vez de botones sueltos.
+- **CAD (DXF) nuevo y válido**: las hojas van una al lado de otra, en milímetros de papel y a escala normalizada 1:N, con capas por apartado. Los textos salen sin acentos para que cualquier CAD los lea.
+- El envío por Gmail adjunta el mismo PDF por apartados.
+
+### Corregido
+- Algunos símbolos del esquema eléctrico (magnetotérmico, diferencial…) daban error al generar el PDF.
+
+---
+
 ## [1.77.2] — 2026-10-30
 
 ### Añadido

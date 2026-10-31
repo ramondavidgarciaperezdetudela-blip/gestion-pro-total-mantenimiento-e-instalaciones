@@ -39,7 +39,7 @@ function simboloMagnetotermico(doc, cx, cy, cw, ch) {
   doc.line(cx, cy + ch * 0.18, cx, cy + ch / 2);
   // Térmico (arco)
   doc.setLineWidth(0.35);
-  doc.lines([[-cw * 0.06, 0], [cw * 0.06, ch * 0.06]], cx - cw * 0.08, cy + ch * 0.18, [1, -1], false);
+  doc.lines([[-cw * 0.06, 0], [cw * 0.06, ch * 0.06]], cx - cw * 0.08, cy + ch * 0.18, [1, -1], "S", false);
   // Magnético (aspa X)
   doc.line(cx - cw * 0.12, cy + ch * 0.3, cx + cw * 0.12, cy + ch * 0.22);
   doc.line(cx - cw * 0.12, cy + ch * 0.22, cx + cw * 0.12, cy + ch * 0.3);
@@ -50,8 +50,8 @@ function simboloDiferencial(doc, cx, cy, cw, ch) {
   doc.rect(cx - cw / 2, cy - ch / 2, cw, ch, 'S');
   // Dos bobinas enfrentadas (transformador de suma)
   doc.setLineWidth(0.35);
-  doc.lines([[cw * 0.06, 0], [-cw * 0.06, ch * 0.06], [cw * 0.06, 0], [-cw * 0.06, ch * 0.06]], cx - cw * 0.28, cy - ch * 0.25, [1, 1], false);
-  doc.lines([[-cw * 0.06, 0], [cw * 0.06, ch * 0.06], [-cw * 0.06, 0], [cw * 0.06, ch * 0.06]], cx + cw * 0.28, cy - ch * 0.25, [1, 1], false);
+  doc.lines([[cw * 0.06, 0], [-cw * 0.06, ch * 0.06], [cw * 0.06, 0], [-cw * 0.06, ch * 0.06]], cx - cw * 0.28, cy - ch * 0.25, [1, 1], "S", false);
+  doc.lines([[-cw * 0.06, 0], [cw * 0.06, ch * 0.06], [-cw * 0.06, 0], [cw * 0.06, ch * 0.06]], cx + cw * 0.28, cy - ch * 0.25, [1, 1], "S", false);
   // Círculo de corriente de fuga
   doc.circle(cx, cy + ch * 0.1, ch * 0.14, 'S');
   // Flechita dentro
@@ -79,7 +79,7 @@ function simboloGuardamotor(doc, cx, cy, cw, ch) {
   doc.rect(cx - cw / 2, cy - ch / 2, cw, ch, 'S');
   // Bimetal (curva)
   doc.setLineWidth(0.4);
-  doc.lines([[cw * 0.1, -ch * 0.15], [cw * 0.1, ch * 0.05], [-cw * 0.2, ch * 0.1]], cx - cw * 0.22, cy + ch * 0.1, [1, 1], false);
+  doc.lines([[cw * 0.1, -ch * 0.15], [cw * 0.1, ch * 0.05], [-cw * 0.2, ch * 0.1]], cx - cw * 0.22, cy + ch * 0.1, [1, 1], "S", false);
   // Contacto de disparo
   doc.line(cx + cw * 0.02, cy - ch / 2, cx + cw * 0.02, cy - ch * 0.12);
   doc.line(cx + cw * 0.02, cy - ch * 0.12, cx + cw * 0.18, cy + ch * 0.02);
@@ -91,7 +91,7 @@ function simboloVariador(doc, cx, cy, cw, ch) {
   doc.rect(cx - cw / 2, cy - ch / 2, cw, ch, 'S');
   // Onda seno
   doc.setLineWidth(0.35);
-  doc.lines([[cw * 0.08, -ch * 0.12], [cw * 0.08, ch * 0.12], [cw * 0.08, -ch * 0.12]], cx - cw * 0.34, cy, [1, 1], false);
+  doc.lines([[cw * 0.08, -ch * 0.12], [cw * 0.08, ch * 0.12], [cw * 0.08, -ch * 0.12]], cx - cw * 0.34, cy, [1, 1], "S", false);
   // Flecha
   doc.line(cx + cw * 0.02, cy, cx + cw * 0.1, cy);
   // Onda cuadrada (aprox con segments)
@@ -216,8 +216,18 @@ function tamanoSimbolo(el) {
   }
 }
 
-export function construirEsquemaElectrico(plan, elements, connections, empresa = {}) {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+const PAPEL_MM = { a4: [210, 297], a3: [297, 420] };
+
+/**
+ * @param opciones { doc, orientacion:'horizontal'|'vertical', papel:'a4'|'a3' }
+ *   Con `doc` se añade como hoja nueva a un PDF que ya existe (el plano por apartados).
+ */
+export function construirEsquemaElectrico(plan, elements, connections, empresa = {}, opciones = {}) {
+  const vertical = opciones.orientacion === 'vertical';
+  const [corto, largo] = PAPEL_MM[opciones.papel] || PAPEL_MM.a4;
+  let doc = opciones.doc;
+  if (doc) doc.addPage([corto, largo], vertical ? 'portrait' : 'landscape');
+  else doc = new jsPDF({ orientation: vertical ? 'portrait' : 'landscape', unit: 'mm', format: [corto, largo] });
   const PW = doc.internal.pageSize.getWidth();
   const PH = doc.internal.pageSize.getHeight();
   const margin = 12;
@@ -239,7 +249,7 @@ export function construirEsquemaElectrico(plan, elements, connections, empresa =
   const nodos = elements.filter((e) => involved.has(e.id) || e.type === 'cuadro_electrico');
 
   const drawW = PW - margin * 2;
-  const drawH = PH - margin * 2 - 22;
+  const drawH = PH - margin * 2 - (PW < 260 ? 42 : 22);
   const ox = margin, oy = margin + 20;
 
   if (nodos.length === 0) {
@@ -323,16 +333,18 @@ export function construirEsquemaElectrico(plan, elements, connections, empresa =
   doc.text('Toma tierra', ox + 122, ly - 1, { align: 'center' });
 
   // Leyenda de líneas
-  const lx = ox + 160;
+  const estrecha = PW < 260;
+  const lx = estrecha ? ox : ox + 160;
+  const dyL = estrecha ? -20 : 0; // en hoja estrecha, bajo la de símbolos no cabe: va encima
   doc.setFontSize(7); doc.setFont(undefined, 'bold'); doc.setTextColor(20);
-  doc.text('Líneas:', lx, ly - 9);
+  doc.text('Líneas:', lx, ly - 9 + dyL);
   doc.setDrawColor(...hexToRgb(POTENCIA)); doc.setLineWidth(1.0);
-  doc.line(lx + 18, ly - 10, lx + 30, ly - 10);
+  doc.line(lx + 18, ly - 10 + dyL, lx + 30, ly - 10 + dyL);
   doc.setFont(undefined, 'normal'); doc.setTextColor(70); doc.setFontSize(6);
-  doc.text('Potencia', lx + 32, ly - 8);
+  doc.text('Potencia', lx + 32, ly - 8 + dyL);
   doc.setDrawColor(...hexToRgb(COMUNICA)); doc.setLineDash([3, 2]); doc.setLineWidth(0.6);
-  doc.line(lx + 56, ly - 10, lx + 68, ly - 10); doc.setLineDash([]);
-  doc.text('Comunicaciones', lx + 70, ly - 8);
+  doc.line(lx + 56, ly - 10 + dyL, lx + 68, ly - 10 + dyL); doc.setLineDash([]);
+  doc.text('Comunicaciones', lx + 70, ly - 8 + dyL);
 
   // Pie
   doc.setFontSize(6); doc.setTextColor(150);
