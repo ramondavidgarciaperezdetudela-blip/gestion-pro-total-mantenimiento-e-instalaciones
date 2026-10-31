@@ -46,7 +46,7 @@ const BarraVolver = ({ onVolver, textoVolver }) => {
     + "text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400";
   const dentro = (<><ArrowLeft className="h-4 w-4" />{textoVolver}</>);
   return (
-    <div className="sticky top-0 z-20 -mt-2 mb-1 flex items-center rounded-lg border border-slate-200 bg-white/95 px-1.5 py-1 shadow-sm backdrop-blur print:hidden">
+    <div className="sticky top-0 z-20 -mt-2 mb-1 flex items-center rounded-lg border border-border bg-card/95 px-1.5 py-1 shadow-sm backdrop-blur print:hidden">
       {onVolver
         ? <button type="button" onClick={onVolver} className={clases} data-prueba="volver" aria-label={textoVolver}>{dentro}</button>
         : <DialogPrimitive.Close className={clases} data-prueba="volver" aria-label={textoVolver}>{dentro}</DialogPrimitive.Close>}
@@ -78,7 +78,7 @@ const DialogHeader = ({
   ...props
 }) => (
   <div
-    className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)}
+    className={cn("flex flex-col space-y-1.5 border-b border-border pb-3 text-center sm:text-left", className)}
     {...props} />
 )
 DialogHeader.displayName = "DialogHeader"
@@ -96,7 +96,7 @@ DialogFooter.displayName = "DialogFooter"
 const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+    className={cn("text-base font-semibold leading-none tracking-tight", className)}
     {...props} />
 ))
 DialogTitle.displayName = DialogPrimitive.Title.displayName
