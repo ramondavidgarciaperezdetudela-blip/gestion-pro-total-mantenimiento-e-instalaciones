@@ -6,10 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, Wrench, Camera, BookOpen, ChevronDown, ChevronUp, Upload } from 'lucide-react';
+import { Plus, Edit, Trash2, Wrench, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { uploadImage } from '@/lib/uploadImage';
+import FormularioMaquina, { prepararMaquina } from '@/components/maquinas/FormularioMaquina';
+import { MAQUINA_VACIA } from '@/lib/maquinaFgas';
 
 const MACHINE_TYPES = [
   { value: 'aire_acondicionado', label: 'Aire Acondicionado' },
@@ -32,13 +34,8 @@ const STATUS_COLORS = {
   baja: 'bg-gray-100 text-gray-500',
 };
 
-const EMPTY_MACHINE = {
-  name: '', machine_type: 'otro', brand: '', model: '', serial_number: '',
-  installation_date: '', location: '', refrigerant_type: '', power_kw: '',
-  warranty_expiry: '', next_maintenance_date: '', maintenance_interval_months: 12,
-  status: 'operativo', notes: '', photo_url: '', maintenance_log: [],
-};
 
+const EMPTY_MACHINE = { ...MAQUINA_VACIA };
 const EMPTY_LOG = { date: format(new Date(), 'yyyy-MM-dd'), type: 'mantenimiento', technician: '', description: '', cost: '' };
 
 export default function ClientMachineTab({ contactId, contactName }) {
@@ -78,7 +75,7 @@ export default function ClientMachineTab({ contactId, contactName }) {
 
   const handleSave = async () => {
     if (!form.name) { toast.error('El nombre del equipo es obligatorio'); return; }
-    const data = { ...form, contact_id: contactId, contact_name: contactName, power_kw: parseFloat(form.power_kw) || undefined };
+    const data = { ...prepararMaquina(form), contact_id: contactId, contact_name: contactName };
     if (editing) {
       await base44.entities.ClientMachine.update(editing.id, data);
       toast.success('Equipo actualizado');
@@ -238,76 +235,14 @@ export default function ClientMachineTab({ contactId, contactName }) {
 
       {/* Dialog crear/editar equipo */}
       <Dialog open={dialogOpen} onOpenChange={o => { setDialogOpen(o); if (!o) setEditing(null); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()}>
+        <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>{editing ? 'Editar equipo' : 'Nuevo equipo'}</DialogTitle>
+            <DialogTitle>{editing ? 'Editar equipo' : 'Nuevo equipo'}{contactName ? ` — ${contactName}` : ''}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            {/* Foto */}
-            <div className="flex items-center gap-3">
-              <div className="w-16 h-16 rounded-lg bg-slate-100 border overflow-hidden flex items-center justify-center flex-shrink-0 cursor-pointer" onClick={() => document.getElementById('machine-photo').click()}>
-                {form.photo_url ? <img src={form.photo_url} alt="" className="w-full h-full object-cover" /> : <Camera className="w-6 h-6 text-slate-300" />}
-              </div>
-              <div>
-                <Button variant="outline" size="sm" onClick={() => document.getElementById('machine-photo').click()} disabled={uploading}>
-                  <Upload className="w-3 h-3 mr-1" />{uploading ? 'Subiendo...' : 'Foto del equipo'}
-                </Button>
-                <input id="machine-photo" type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-              </div>
-            </div>
-
-            <Input placeholder="Nombre / descripción del equipo *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-
-            <Select value={form.machine_type} onValueChange={v => setForm({...form, machine_type: v})}>
-              <SelectTrigger><SelectValue placeholder="Tipo de equipo" /></SelectTrigger>
-              <SelectContent>{MACHINE_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-            </Select>
-
-            <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="Marca" value={form.brand} onChange={e => setForm({...form, brand: e.target.value})} />
-              <Input placeholder="Modelo" value={form.model} onChange={e => setForm({...form, model: e.target.value})} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="Nº de serie" value={form.serial_number} onChange={e => setForm({...form, serial_number: e.target.value})} />
-              <Input placeholder="Ubicación" value={form.location} onChange={e => setForm({...form, location: e.target.value})} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="Gas refrigerante" value={form.refrigerant_type} onChange={e => setForm({...form, refrigerant_type: e.target.value})} />
-              <Input type="number" placeholder="Potencia (kW)" value={form.power_kw} onChange={e => setForm({...form, power_kw: e.target.value})} />
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-xs text-gray-500">Fecha instalación</label>
-                <Input type="date" value={form.installation_date} onChange={e => setForm({...form, installation_date: e.target.value})} />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500">Fin garantía</label>
-                <Input type="date" value={form.warranty_expiry} onChange={e => setForm({...form, warranty_expiry: e.target.value})} />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500">Próx. manten.</label>
-                <Input type="date" value={form.next_maintenance_date} onChange={e => setForm({...form, next_maintenance_date: e.target.value})} />
-              </div>
-            </div>
-
-            <Select value={form.status} onValueChange={v => setForm({...form, status: v})}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="operativo">✅ Operativo</SelectItem>
-                <SelectItem value="en_reparacion">🔧 En reparación</SelectItem>
-                <SelectItem value="fuera_servicio">❌ Fuera de servicio</SelectItem>
-                <SelectItem value="baja">🗑 Dado de baja</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Notas adicionales" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} />
-
-            <Button onClick={handleSave} className="w-full bg-teal-600 hover:bg-teal-700">
-              {editing ? 'Actualizar equipo' : 'Guardar equipo'}
-            </Button>
+          <FormularioMaquina form={form} setForm={setForm} onFoto={handlePhotoUpload} subiendo={uploading} />
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700">{editing ? 'Actualizar equipo' : 'Guardar equipo'}</Button>
           </div>
         </DialogContent>
       </Dialog>

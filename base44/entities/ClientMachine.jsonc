@@ -80,6 +80,69 @@
     "notes": {
       "type": "string"
     },
+    "refrigerant_charge_kg": {
+      "type": "number",
+      "description": "Carga de refrigerante (kg)"
+    },
+    "gwp": {
+      "type": "number",
+      "description": "PCA / GWP usado en el cálculo"
+    },
+    "last_leak_check": {
+      "type": "string",
+      "format": "date"
+    },
+    "hermetic": {
+      "type": "boolean"
+    },
+    "leak_detection": {
+      "type": "boolean",
+      "description": "Lleva sistema de detección de fugas"
+    },
+    "residential": {
+      "type": "boolean"
+    },
+    "oil_type": {
+      "type": "string"
+    },
+    "oil_charge_l": {
+      "type": "number"
+    },
+    "expansion_type": {
+      "type": "string"
+    },
+    "compressor_type": {
+      "type": "string"
+    },
+    "nominal_low_bar": {
+      "type": "number"
+    },
+    "nominal_high_bar": {
+      "type": "number"
+    },
+    "ps_bar": {
+      "type": "number",
+      "description": "Presión máxima admisible (PS) de placa"
+    },
+    "sensible_kw": {
+      "type": "number"
+    },
+    "heating_kw": {
+      "type": "number"
+    },
+    "setpoint_cold_c": {
+      "type": "number"
+    },
+    "setpoint_heat_c": {
+      "type": "number"
+    },
+    "humidity_pct": {
+      "type": "number"
+    },
+    "last_maintenance_date": {
+      "type": "string",
+      "format": "date"
+    },
     "maintenance_log": {
       "type": "array",
       "description": "Libro de mantenimiento del equipo",
