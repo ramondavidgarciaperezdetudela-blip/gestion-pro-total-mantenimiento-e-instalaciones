@@ -1,7 +1,7 @@
 {
   "name": "gestion-pro-total-fuera-base44",
   "private": true,
-  "version": "1.78.0",
+  "version": "1.79.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

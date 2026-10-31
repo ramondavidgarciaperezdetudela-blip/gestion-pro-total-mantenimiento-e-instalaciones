@@ -9,7 +9,7 @@
 // (planoPaquete.js) con un "documento" que, en vez de dibujar un PDF, escribe
 // entidades DXF (LINE, POLYLINE, CIRCLE, TEXT). Lo abren AutoCAD, LibreCAD,
 // FreeCAD, QCAD y prácticamente cualquier CAD del mercado.
-import { construirPaquetePDF, opcionesPorDefecto, nombreArchivo, SECCIONES } from '@/lib/planoPaquete';
+import { construirPaquetePDF, opcionesPorDefecto, nombreArchivo, SECCIONES, prismas3D } from '@/lib/planoPaquete';
 
 const SEPARACION_HOJAS = 40; // mm entre hojas
 
@@ -141,6 +141,31 @@ export function crearDocDXF({ format: [corto, largo], orientation }) {
       });
       return api;
     },
+    /**
+     * Modelo 3D REAL: cada prisma como 6 caras 3DFACE, en milímetros reales (1:1),
+     * a la derecha de las hojas. Y hacia arriba, como en el plano visto desde arriba.
+     */
+    modelo3D(cuerpos) {
+      if (!cuerpos.length) return 0;
+      const x0 = paginas.reduce((a, q) => a + q.w + SEPARACION_HOJAS, 0) + 2000;
+      const minX = Math.min(...cuerpos.flatMap((q) => q.base.map((b) => b[0])));
+      const P = (b, z) => [x0 + (b[0] - minX) * 1000, -b[1] * 1000, z * 1000];
+      const cara = (L, col, a, b, c, d) => {
+        let e = par(0, '3DFACE') + par(8, L) + par(62, col);
+        [a, b, c, d].forEach((p, i) => { e += par(10 + i, num(p[0])) + par(20 + i, num(p[1])) + par(30 + i, num(p[2])); });
+        modelo.push(e);
+      };
+      const modelo = api.modelo = api.modelo || [];
+      cuerpos.forEach((q) => {
+        const L = q.tipo === 'pared' ? 'VISTA3D_PAREDES' : 'VISTA3D_EQUIPOS';
+        if (!capas.has(L)) capas.set(L, 7);
+        const col = q.tipo === 'pared' ? (q.camara ? (q.negativa ? 1 : 5) : 8) : aci(q.rgb);
+        const A = q.base.map((b) => P(b, q.z0)), B = q.base.map((b) => P(b, q.z1));
+        cara(L, col, A[0], A[1], A[2], A[3]); cara(L, col, B[0], B[1], B[2], B[3]);
+        for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; cara(L, col, A[i], A[j], B[j], B[i]); }
+      });
+      return cuerpos.length;
+    },
     capas, paginas,
   };
   Object.defineProperty(api.internal, 'pageSize', { get: () => ({ width: actual.w, height: actual.h, getWidth: () => actual.w, getHeight: () => actual.h }) });
@@ -172,7 +197,7 @@ export function crearDocDXF({ format: [corto, largo], orientation }) {
       + par(9, '$EXTMIN') + par(10, 0) + par(20, 0) + par(30, 0)
       + par(9, '$EXTMAX') + par(10, num(x0)) + par(20, num(Math.max(...paginas.map((p) => p.h)))) + par(30, 0)
       + par(0, 'ENDSEC');
-    return cabecera + tablas + par(0, 'SECTION') + par(2, 'ENTITIES') + ents.join('') + par(0, 'ENDSEC') + par(0, 'EOF');
+    return cabecera + tablas + par(0, 'SECTION') + par(2, 'ENTITIES') + ents.join('') + (api.modelo || []).join('') + par(0, 'ENDSEC') + par(0, 'EOF');
   };
   return api;
 }
@@ -183,7 +208,9 @@ export function construirDXF(datos, opciones = opcionesPorDefecto()) {
   const cad = new Set(SECCIONES.filter((s) => s.cad).map((s) => s.id));
   const secciones = (opciones.secciones || []).filter((s) => cad.has(s.id));
   construirPaquetePDF(datos, { ...opciones, secciones, soloCad: true, fabrica: (o) => (doc = crearDocDXF(o)) });
-  return { texto: doc.salida(), hojas: doc.paginas.length, capas: [...doc.capas.keys()] };
+  // La vista 3D en CAD = hoja isométrica (ya añadida arriba) + modelo 3D real.
+  const cuerpos3d = secciones.some((s) => s.id === 'vista3d') ? doc.modelo3D(prismas3D({ ...datos, plan: datos.plan || {} })) : 0;
+  return { texto: doc.salida(), hojas: doc.paginas.length, capas: [...doc.capas.keys()], cuerpos3d };
 }
 
 function descargar(texto, nombre) {
