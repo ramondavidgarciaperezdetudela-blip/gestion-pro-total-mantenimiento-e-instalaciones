@@ -49,8 +49,8 @@ ok(/TOTAL: 1\.?350/.test(txt), 'presupuesto en cálculos');
 // ── CAD ──
 const cad = construirDXF(datos, opcionesPorDefecto());
 console.log('   hojas CAD:', cad.hojas, 'capas:', cad.capas.join(','));
-ok(cad.hojas === 3, 'CAD: frigorífico, eléctrico, cálculos (sin 3D ni esquema)', String(cad.hojas));
-ok(['FRIGORIFICO', 'ELECTRICO', 'CALCULOS'].every((c) => cad.capas.includes(c)), 'CAD: capas por apartado');
+ok(cad.hojas === 4, 'CAD: frigorífico, eléctrico, cálculos y hoja isométrica', String(cad.hojas));
+ok(['FRIGORIFICO', 'ELECTRICO', 'CALCULOS', 'VISTA3D_PAREDES', 'VISTA3D_EQUIPOS'].every((c) => cad.capas.includes(c)), 'CAD: capas por apartado');
 const pares = cad.texto.split('\n'); ok(pares.length % 2 === 1 || pares.length % 2 === 0, 'CAD: pares código/valor');
 ok(cad.texto.endsWith('0\nEOF\n') && cad.texto.includes('POLYLINE') && cad.texto.includes('SEQEND') && cad.texto.includes('AC1009'), 'CAD: DXF R12 con POLYLINE/SEQEND y EOF');
 ok(!/[^\x00-\x7f]/.test(cad.texto), 'CAD: solo ASCII (sin acentos)');

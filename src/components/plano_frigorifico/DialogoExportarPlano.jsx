@@ -112,7 +112,7 @@ export default function DialogoExportarPlano({ open, onClose, onConfirm }) {
               );
             })}
           </div>
-          {esCad && <p className="text-[11px] text-muted-foreground mt-1.5">El CAD guarda las hojas una al lado de otra, cada apartado en sus capas. La vista 3D es una imagen y solo va en PDF e impresión.</p>}
+          {esCad && <p className="text-[11px] text-muted-foreground mt-1.5">El CAD guarda las hojas una al lado de otra, cada apartado en sus capas. La vista 3D va como hoja isométrica en líneas y, además, como modelo 3D real (capas VISTA3D_*), que puedes girar en el CAD. El formato es DXF: AutoCAD lo abre y puedes «Guardar como» DWG.</p>}
         </div>
 
         <div className="flex justify-end gap-2 pt-1">

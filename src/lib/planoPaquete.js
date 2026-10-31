@@ -14,7 +14,7 @@ import { elementoDe } from './planoFrigorificoCatalogo.js';
 import { longitudConexion, resumenTuberias } from './planoCalculo.js';
 import { camarasDePlano, cargaFrigorifica } from './planoCargaFrigorifica.js';
 import { hexToRgb } from './planoDibujoPdf.js';
-import { generarVista3DDataUrl, VISTA3D_W, VISTA3D_H } from './planoVista3D.js';
+import { generarVista3DDataUrl, VISTA3D_W, VISTA3D_H, altoPared, altoEquipo, cotaEquipo } from './planoVista3D.js';
 import { construirEsquemaElectrico } from './planoEsquemaElectrico.js';
 
 export const PAPELES = { a4: [210, 297], a3: [297, 420] };
@@ -22,7 +22,7 @@ export const SECCIONES = [
   { id: 'frigorifico', titulo: 'Plano frigorífico', cad: true },
   { id: 'electrico', titulo: 'Plano eléctrico', cad: true },
   { id: 'calculos', titulo: 'Cálculos y medidas', cad: true },
-  { id: 'vista3d', titulo: 'Vista 3D', cad: false },
+  { id: 'vista3d', titulo: 'Vista 3D', cad: true }, // en PDF es una imagen; en CAD, hoja isométrica + modelo 3D real
 ];
 export const ESCALAS_NORMALIZADAS = [10, 20, 25, 50, 75, 100, 125, 150, 200, 250, 500, 1000];
 
@@ -413,6 +413,69 @@ function hojaVista3D(doc, ctx, primera) {
   doc.addImage(img, 'PNG', caja.x + (caja.w - iw) / 2, caja.y + (caja.h - ih) / 2, iw, ih);
 }
 
+
+/**
+ * Cuerpos 3D del plano (paredes y equipos) como prismas de base cuadrilátera,
+ * en METROS: base [[x,y]×4] (y hacia abajo, como el plano), z0 y z1.
+ * Los usan la hoja isométrica y el modelo 3D real del CAD.
+ */
+export function prismas3D({ walls = [], elements = [], plan = {} } = {}) {
+  const scale = plan.scale || 50;
+  const out = [];
+  walls.forEach((w) => {
+    const dx = (w.x2 - w.x1) / scale, dy = (w.y2 - w.y1) / scale, L = Math.hypot(dx, dy);
+    if (L < 0.01) return;
+    const t = Math.max(0.03, (w.espesor_mm || (w.camara ? 100 : 80)) / 1000) / 2;
+    const nx = (-dy / L) * t, ny = (dx / L) * t;
+    const a = [w.x1 / scale, w.y1 / scale], b = [w.x2 / scale, w.y2 / scale];
+    out.push({
+      tipo: 'pared', camara: !!w.camara, negativa: w.tipo === 'negativa',
+      base: [[a[0] + nx, a[1] + ny], [b[0] + nx, b[1] + ny], [b[0] - nx, b[1] - ny], [a[0] - nx, a[1] - ny]],
+      z0: 0, z1: altoPared(w),
+    });
+  });
+  elements.forEach((el) => {
+    const w = (el.w_m || 0.5), h = (el.h_m || 0.5), a = ((el.rot || 0) * Math.PI) / 180, c = Math.cos(a), sn = Math.sin(a);
+    const cx = el.x / scale, cy = el.y / scale;
+    const base = [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]].map(([u, v]) => [cx + u * c - v * sn, cy + u * sn + v * c]);
+    const z0 = cotaEquipo(el, walls, scale);
+    out.push({ tipo: 'equipo', rgb: hexToRgb(el.color || elementoDe(el.type || el.id)?.color), nombre: el.label || el.type || '', base, z0, z1: z0 + altoEquipo(el) });
+  });
+  return out;
+}
+
+/** Hoja con la vista ISOMÉTRICA en líneas (para CAD: un CAD no guarda imágenes). */
+function hojaIsometrica(doc, ctx, primera) {
+  const { plan, empresa } = ctx.datos;
+  const { w, h } = nuevaHoja(doc, ctx.papel, ctx.orientacion, primera);
+  ctx.titulo = 'Vista 3D (isometrica)'; ctx.escalaTexto = 'S/E';
+  const m = marco(doc, w, h, { plan, empresa, titulo: ctx.titulo, escala: 'S/E' });
+  ctx.hojas.push(doc.getNumberOfPages());
+  const cuerpos = prismas3D(ctx.datos);
+  const caja = { x: MARGEN + 6, y: MARGEN + 6, w: w - 2 * MARGEN - 12, h: m.yMax - MARGEN - 10 };
+  if (!cuerpos.length) { doc.setFontSize(10); doc.setTextColor(120); doc.text('No hay nada dibujado para mostrar en 3D.', caja.x, caja.y + 8); return; }
+  const C = Math.cos(Math.PI / 6), S = Math.sin(Math.PI / 6);
+  const P = (x, y, z) => [(x - y) * C, (x + y) * S - z];
+  const pts = cuerpos.flatMap((q) => q.base.flatMap(([x, y]) => [P(x, y, q.z0), P(x, y, q.z1)]));
+  const minX = Math.min(...pts.map((q) => q[0])), maxX = Math.max(...pts.map((q) => q[0]));
+  const minY = Math.min(...pts.map((q) => q[1])), maxY = Math.max(...pts.map((q) => q[1]));
+  const k = Math.min(caja.w / Math.max(0.01, maxX - minX), caja.h / Math.max(0.01, maxY - minY)); // mm de papel por m
+  const ox = caja.x + (caja.w - (maxX - minX) * k) / 2 - minX * k, oy = caja.y + (caja.h - (maxY - minY) * k) / 2 - minY * k;
+  const T = (x, y, z) => { const [a, b] = P(x, y, z); return [ox + a * k, oy + b * k]; };
+  // De atrás hacia delante, para que lo de delante quede encima al leer las líneas.
+  [...cuerpos].sort((a, b) => (a.base[0][0] + a.base[0][1]) - (b.base[0][0] + b.base[0][1])).forEach((q) => {
+    const rgb = q.tipo === 'pared' ? (q.camara ? (q.negativa ? [220, 38, 38] : [37, 99, 235]) : [90, 90, 90]) : q.rgb;
+    doc.setDrawColor(...rgb); doc.setLineWidth(q.tipo === 'pared' ? 0.35 : 0.25);
+    for (const z of [q.z0, q.z1]) for (let i = 0; i < 4; i++) {
+      const [x1, y1] = T(q.base[i][0], q.base[i][1], z), [x2, y2] = T(q.base[(i + 1) % 4][0], q.base[(i + 1) % 4][1], z);
+      doc.line(x1, y1, x2, y2);
+    }
+    q.base.forEach(([x, y]) => { const [x1, y1] = T(x, y, q.z0), [x2, y2] = T(x, y, q.z1); doc.line(x1, y1, x2, y2); });
+  });
+  doc.setFontSize(6.5); doc.setTextColor(90);
+  doc.text('Vista isometrica sin escala. El modelo 3D real, a escala 1:1 en milimetros, esta en las capas VISTA3D_* a la derecha de las hojas.', caja.x, m.yMax - 2);
+}
+
 /**
  * Construye el PDF por apartados.
  * @param opciones { papel:'a3'|'a4', secciones:[{id, incluir, orientacion}] , autoPrint }
@@ -442,7 +505,7 @@ export function construirPaquetePDF(datos, opciones = opcionesPorDefecto()) {
         hojas.push(doc.getNumberOfPages());
       }
     } else if (s.id === 'calculos') hojaCalculos(doc, ctx, esPrimera);
-    else if (s.id === 'vista3d') hojaVista3D(doc, ctx, esPrimera);
+    else if (s.id === 'vista3d') (opciones.soloCad ? hojaIsometrica : hojaVista3D)(doc, ctx, esPrimera);
     esPrimera = false;
   }
   // Numeración de hojas "n / total" en el cajetín.
