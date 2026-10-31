@@ -3,16 +3,15 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Plus, Save, Sparkles, FileDown, Printer, Link2, Trash2, Mail, Spline, FileBox, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Zap, Box, ZoomIn, Wand2, Move } from 'lucide-react';
+import { Plus, Save, Sparkles, FileDown, Link2, Trash2, Mail, Spline, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Box, ZoomIn, Wand2, Move } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { getNextAvailableNumber } from '@/components/autoNumber';
 import PlanoCanvas from '@/components/plano_frigorifico/PlanoCanvas';
 import PlanoPaleta from '@/components/plano_frigorifico/PlanoPaleta';
 import PlanoEquipoDetalles from '@/components/plano_frigorifico/PlanoEquipoDetalles';
-import { construirPDF, exportarPDF, imprimirPlano } from '@/components/plano_frigorifico/PlanoExporter';
-import { exportarDXF } from '@/lib/planoDxfExport';
-import { exportarEsquemaElectrico, imprimirEsquemaElectrico } from '@/lib/planoEsquemaElectrico';
+import { construirPDF, exportarPDF, imprimirPlano, exportarCAD } from '@/components/plano_frigorifico/PlanoExporter';
+import DialogoExportarPlano from '@/components/plano_frigorifico/DialogoExportarPlano';
 import InformeAseguradoraDialog from '@/components/plano_frigorifico/InformeAseguradoraDialog';
 import DialogoNuevaConexion from '@/components/plano_frigorifico/DialogoNuevaConexion';
 import DialogoSala from '@/components/plano_frigorifico/DialogoSala';
@@ -683,27 +682,21 @@ export default function PlanoFrigorifico() {
     toast.success(`${nuevas.length} conexiones añadidas`, { description: 'Revisa los diámetros y tipos en el panel de detalles.' });
   };
 
-  const onExportarPDF = () => {
-    try { exportarPDF(plan, plan.elements, plan.walls, plan.connections, presupuesto); toast.success('PDF generado'); }
-    catch (e) { console.error(e); toast.error('No se pudo generar el PDF', { description: String(e?.message || e) }); }
-  };
-  const onImprimir = () => {
-    try { imprimirPlano(plan, plan.elements, plan.walls, plan.connections, presupuesto); }
-    catch (e) { console.error(e); toast.error('No se pudo abrir la impresión', { description: String(e?.message || e) }); }
-  };
-
-  const onEsquemaElectrico = () => {
-    const hayElec = plan.connections.some((c) => c.type === 'electrica');
-    if (!hayElec && !plan.elements.some((e) => e.type === 'cuadro_electrico')) {
-      toast.error('No hay conexiones eléctricas', { description: 'Usa «Conectar» · «Eléctrica» entre los equipos para dibujar el esquema.' });
-      return;
-    }
-    try { exportarEsquemaElectrico(plan, plan.elements, plan.connections, empresa); toast.success('Esquema eléctrico generado'); }
-    catch (e) { console.error(e); toast.error('No se pudo generar el esquema', { description: String(e?.message || e) }); }
-  };
-  const onImprimirEsquema = () => {
-    try { imprimirEsquemaElectrico(plan, plan.elements, plan.connections, empresa); }
-    catch (e) { console.error(e); toast.error('No se pudo imprimir el esquema', { description: String(e?.message || e) }); }
+  const [exportarDialog, setExportarDialog] = useState(false);
+  // Guarda o imprime el plano POR APARTADOS (cada uno en su hoja, vertical u horizontal).
+  const onExportar = ({ formato, opciones }) => {
+    setExportarDialog(false);
+    try {
+      if (formato === 'cad') {
+        const r = exportarCAD(plan, plan.elements, plan.walls, plan.connections, presupuesto, empresa, opciones);
+        toast.success('CAD generado', { description: `${r.hojas} hoja${r.hojas === 1 ? '' : 's'}, una al lado de otra.` });
+      } else if (formato === 'imprimir') {
+        imprimirPlano(plan, plan.elements, plan.walls, plan.connections, presupuesto, empresa, opciones);
+      } else {
+        exportarPDF(plan, plan.elements, plan.walls, plan.connections, presupuesto, empresa, opciones);
+        toast.success('PDF generado');
+      }
+    } catch (e) { console.error(e); toast.error('No se pudo generar el plano', { description: String(e?.message || e) }); }
   };
 
   const limpiarPlano = () => {
@@ -719,7 +712,7 @@ export default function PlanoFrigorifico() {
     if (!gmailForm.to.trim()) { toast.error('Indica el correo del cliente'); return; }
     setEnviando(true);
     try {
-      const doc = construirPDF(plan, plan.elements, plan.walls, plan.connections);
+      const doc = construirPDF(plan, plan.elements, plan.walls, plan.connections, { presupuesto, empresa });
       const dataUri = doc.output('datauristring');
       const pdfBase64 = dataUri.split(',')[1];
       const filename = (plan.name || 'plano_frigorifico').replace(/[^\w\-]+/g, '_');
@@ -1044,23 +1037,14 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           {fullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           {fullscreen ? 'Salir pantalla' : 'Pantalla completa'}
         </button>
-        <button onClick={onExportarPDF} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-          <FileDown className="w-3.5 h-3.5" /> PDF
-        </button>
-        <button onClick={() => exportarDXF(plan, plan.elements, plan.walls, plan.connections)} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-          <FileBox className="w-3.5 h-3.5" /> CAD (DXF)
+        <button onClick={() => setExportarDialog(true)} data-prueba="boton-exportar" className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted"
+          title="Guardar o imprimir el plano por apartados: PDF, impresión o CAD">
+          <FileDown className="w-3.5 h-3.5" /> Guardar / imprimir…
         </button>
         <button onClick={() => setVer3D(true)}
           className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
           style={{ background: 'linear-gradient(135deg,#00D4FF,#7C3AED)' }}>
           <Box className="w-3.5 h-3.5" /> Visor 3D
-        </button>
-        <button onClick={onEsquemaElectrico} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted"
-          title="Esquema eléctrico de la instalación (para adjuntar al informe)">
-          <Zap className="w-3.5 h-3.5" /> Esquema eléctrico
-        </button>
-        <button onClick={onImprimir} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-          <Printer className="w-3.5 h-3.5" /> Imprimir
         </button>
         <button onClick={() => setInformeDialog(true)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
           style={{ background: '#2563eb' }}>
@@ -1134,7 +1118,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               onCalculo={() => setDialogoCalculo(true)}
               onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
               canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
-              saving={saving} onSave={guardar} onPDF={onExportarPDF}
+              saving={saving} onSave={guardar} onPDF={() => setExportarDialog(true)}
               on3D={() => setVer3D(true)} onExit={() => setFullscreen(false)}
               extraPorCat={extraPorCat} iaIcons={iaIcons} onAddElement={() => setDialogoCatalogo(true)}
               onEditarIconos={() => setIconosDialog(true)} />
@@ -1309,6 +1293,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       {/* Diálogo para dibujar o editar una cámara frigorífica. Pide medidas,
           tipo (positiva/negativa), suelo sanitario y espesor del panel, y la
           dibuja como un recinto panelado distinto a una pared. */}
+      <DialogoExportarPlano open={exportarDialog} onClose={() => setExportarDialog(false)} onConfirm={onExportar} />
       <DialogoCalculoFrigorifico open={dialogoCalculo} walls={plan.walls} onClose={() => setDialogoCalculo(false)} onAnadir={anadirMaquinasCalculadas} />
       <DialogoCamara
         open={!!dialogoCamara}
