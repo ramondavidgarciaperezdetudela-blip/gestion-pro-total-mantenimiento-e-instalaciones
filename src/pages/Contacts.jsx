@@ -11,6 +11,7 @@ import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import ZonaClimatica from '@/components/clientes/ZonaClimatica';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
    Plus, Search, Phone, Mail, Building2, User, Trash2, Edit,
@@ -416,6 +417,7 @@ export default function Contacts() {
                   onSelect={(r) => setForm(prev => ({ ...prev, postal_code: r.postal_code, city: r.city, province: r.province }))}
                 />
               </div>
+              <ZonaClimatica contacto={form} />
               <Textarea placeholder="Notas" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} />
               <div className="grid grid-cols-2 gap-2">
                 <div>
