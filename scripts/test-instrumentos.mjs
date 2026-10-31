@@ -1,0 +1,16 @@
+import { evaluar, peorEstado, zonasPresion, segmentos, porcentaje, golpeDeLiquido, ZONAS_RECALENTAMIENTO, ZONAS_SUBENFRIAMIENTO, ZONAS_FILTRO, aNumero } from '../src/lib/instrumentos.js';
+let f = 0; const ok = (c, t, d = '') => { if (!c) { f++; console.log('  ✗ ' + t + (d ? ' — ' + d : '')); } else console.log('  ✓ ' + t); };
+ok(evaluar(6, ZONAS_RECALENTAMIENTO) === 'ok', 'SH 6 K estable');
+ok(evaluar(3, ZONAS_RECALENTAMIENTO) === 'aviso' && evaluar(12, ZONAS_RECALENTAMIENTO) === 'aviso', 'SH 3 y 12 K en tolerancia');
+ok(evaluar(1, ZONAS_RECALENTAMIENTO) === 'critico' && evaluar(20, ZONAS_RECALENTAMIENTO) === 'critico', 'SH 1 y 20 K críticos');
+ok(evaluar('', ZONAS_RECALENTAMIENTO) === 'neutro' && evaluar(null, ZONAS_SUBENFRIAMIENTO) === 'neutro', 'sin lectura = neutro');
+ok(evaluar('7,5', ZONAS_SUBENFRIAMIENTO) === 'ok', 'acepta coma decimal');
+ok(evaluar(1.5, ZONAS_FILTRO) === 'ok' && evaluar(2.5, ZONAS_FILTRO) === 'aviso' && evaluar(4, ZONAS_FILTRO) === 'critico', 'filtro: sano / dudoso / obstruido');
+const z = zonasPresion(3, 5);
+ok(evaluar(4, z) === 'ok' && evaluar(5.2, z) === 'aviso' && evaluar(8, z) === 'critico' && evaluar(0.5, z) === 'critico', 'presión: rango y tolerancia');
+ok(peorEstado(['ok', 'aviso', 'neutro']) === 'aviso' && peorEstado(['ok', 'critico', 'aviso']) === 'critico' && peorEstado([]) === 'neutro', 'peor estado');
+ok(golpeDeLiquido(0.5) && !golpeDeLiquido(6) && !golpeDeLiquido(''), 'golpe de líquido solo con SH casi nulo');
+ok(porcentaje(12.5, [0, 25]) === 50 && porcentaje(99, [0, 25]) === 100 && porcentaje('', [0, 25]) === null, 'posición de la aguja');
+const s = segmentos(ZONAS_RECALENTAMIENTO); ok(Math.abs(s.at(-1).hasta - 100) < 0.01 && s.some((x) => x.estado === 'ok'), 'segmentos cubren toda la barra');
+ok(aNumero('x') === null, 'texto no numérico = null');
+console.log(f ? `\n${f} FALLOS` : '\nTODO OK'); process.exit(f ? 1 : 0);

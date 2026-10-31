@@ -34,6 +34,11 @@
     --chart-3: 142 70% 40%;
     --chart-4: 38 92% 50%;
     --chart-5: 340 75% 55%;
+    /* Colores termodinámicos semánticos (panel de control) */
+    --frio: 188 94% 43%;   /* #06b6d4 baja presión, evaporación, frío */
+    --calor: 0 84% 60%;    /* #ef4444 alta presión, descarga, calor */
+    --ok: 160 84% 39%;     /* #10b981 estable / óptimo */
+    --aviso: 38 92% 50%;   /* #f59e0b alerta de tolerancia */
     --radius: 0.5rem;
     --sidebar-background: 210 24% 97%;
     --sidebar-foreground: 222 47% 11%;
@@ -193,4 +198,21 @@
       linear-gradient(90deg, hsl(var(--border) / 0.5) 1px, transparent 1px);
     background-size: 22px 22px;
   }
+}
+
+
+/* ── Panel de control: lecturas numéricas como instrumentos ───────────────── */
+@layer base {
+  input[type="number"] {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+@keyframes pulso-critico {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--calor) / 0.0); }
+  50% { box-shadow: 0 0 0 3px hsl(var(--calor) / 0.28); }
+}
+.pulso-critico { animation: pulso-critico 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .pulso-critico { animation: none; }
 }

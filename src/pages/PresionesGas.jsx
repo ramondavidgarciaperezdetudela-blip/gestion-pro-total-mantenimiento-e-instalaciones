@@ -193,20 +193,20 @@ export default function PresionesGas() {
 
       {/* ── Las presiones que le tocan ── */}
       {trabajo && (
-        <Card className="border-sky-200" data-prueba="presiones">
-          <CardHeader className="pb-2 bg-sky-50">
+        <Card className="border-border" data-prueba="presiones">
+          <CardHeader className="pb-2 bg-muted/50">
             <CardTitle className="text-sm">
               2. Presiones que le tocan a un {trabajo.aplicacion.nombre.toLowerCase()} con {g.nombre} a {trabajo.ambiente} °C
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="border rounded-lg p-2.5 bg-white">
-                <p className="text-[11px] font-bold text-blue-700 mb-1">Aspiración (baja)</p>
+              <div className="border border-t-2 border-t-frio rounded-lg p-2.5 bg-card">
+                <p className="text-xs uppercase tracking-wider text-frio mb-1">Aspiración (baja)</p>
                 {aspiracion ? (
                   <>
-                    <p className="text-lg font-bold" data-prueba="aspiracion">{aspiracion.bar} bar</p>
-                    <p className="text-xs text-gray-600">{aspiracion.psi} psi{aspiracion.vacio ? ' (negativo = vacío)' : ''}</p>
+                    <p className="text-2xl font-semibold font-mono tabular-nums" data-prueba="aspiracion">{aspiracion.bar} <span className="text-xs font-normal text-muted-foreground/70">bar</span></p>
+                    <p className="text-xs font-mono tabular-nums text-muted-foreground">{aspiracion.psi} psi{aspiracion.vacio ? ' (negativo = vacío)' : ''}</p>
                   </>
                 ) : <FueraDeTabla gas={g} />}
                 <p className="text-[10px] text-gray-400 mt-1">
@@ -214,12 +214,12 @@ export default function PresionesGas() {
                   {g.zeotropo ? ' (rocío)' : ''}
                 </p>
               </div>
-              <div className="border rounded-lg p-2.5 bg-white">
-                <p className="text-[11px] font-bold text-red-700 mb-1">Alta (descarga)</p>
+              <div className="border border-t-2 border-t-calor rounded-lg p-2.5 bg-card">
+                <p className="text-xs uppercase tracking-wider text-calor mb-1">Alta (descarga)</p>
                 {alta ? (
                   <>
-                    <p className="text-lg font-bold" data-prueba="alta">{alta.bar} bar</p>
-                    <p className="text-xs text-gray-600">{alta.psi} psi</p>
+                    <p className="text-2xl font-semibold font-mono tabular-nums" data-prueba="alta">{alta.bar} <span className="text-xs font-normal text-muted-foreground/70">bar</span></p>
+                    <p className="text-xs font-mono tabular-nums text-muted-foreground">{alta.psi} psi</p>
                   </>
                 ) : <FueraDeTabla gas={g} />}
                 <p className="text-[10px] text-gray-400 mt-1">
@@ -227,12 +227,12 @@ export default function PresionesGas() {
                   {' · '}{trabajo.aplicacion.condensacion}
                 </p>
               </div>
-              <div className="border rounded-lg p-2.5 bg-white">
-                <p className="text-[11px] font-bold text-gray-700 mb-1">En reposo (parada)</p>
+              <div className="border border-t-2 border-t-ok rounded-lg p-2.5 bg-card">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">En reposo (parada)</p>
                 {reposo ? (
                   <>
-                    <p className="text-lg font-bold" data-prueba="reposo">{bar(reposo.relativa)} bar</p>
-                    <p className="text-xs text-gray-600">{entero(reposo.psi)} psi</p>
+                    <p className="text-2xl font-semibold font-mono tabular-nums" data-prueba="reposo">{bar(reposo.relativa)} <span className="text-xs font-normal text-muted-foreground/70">bar</span></p>
+                    <p className="text-xs font-mono tabular-nums text-muted-foreground">{entero(reposo.psi)} psi</p>
                   </>
                 ) : <FueraDeTabla gas={g} />}
                 <p className="text-[10px] text-gray-400 mt-1">Saturación a {trabajo.ambiente} °C{g.zeotropo ? ' (burbuja)' : ''}</p>
@@ -240,20 +240,20 @@ export default function PresionesGas() {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
-              <div className="border rounded p-2 bg-gray-50">
-                <p className="text-[10px] text-gray-500">Recalentamiento</p>
-                <p className="text-sm font-semibold">{trabajo.aplicacion.recalentamiento[0]} – {trabajo.aplicacion.recalentamiento[1]} K</p>
+              <div className="border rounded p-2 bg-muted/50">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Recalentamiento</p>
+                <p className="text-sm font-semibold font-mono tabular-nums">{trabajo.aplicacion.recalentamiento[0]} – {trabajo.aplicacion.recalentamiento[1]} K</p>
               </div>
-              <div className="border rounded p-2 bg-gray-50">
-                <p className="text-[10px] text-gray-500">Subenfriamiento</p>
-                <p className="text-sm font-semibold">{trabajo.aplicacion.subenfriamiento[0]} – {trabajo.aplicacion.subenfriamiento[1]} K</p>
+              <div className="border rounded p-2 bg-muted/50">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Subenfriamiento</p>
+                <p className="text-sm font-semibold font-mono tabular-nums">{trabajo.aplicacion.subenfriamiento[0]} – {trabajo.aplicacion.subenfriamiento[1]} K</p>
               </div>
-              <div className="border rounded p-2 bg-gray-50">
-                <p className="text-[10px] text-gray-500">Salto de aire</p>
+              <div className="border rounded p-2 bg-muted/50">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Salto de aire</p>
                 <p className="text-sm font-semibold">{trabajo.aplicacion.saltoAire}</p>
               </div>
-              <div className="border rounded p-2 bg-gray-50">
-                <p className="text-[10px] text-gray-500">{g.ebullicion === null ? 'Punto crítico' : 'Ebullición a 1 atm'}</p>
+              <div className="border rounded p-2 bg-muted/50">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{g.ebullicion === null ? 'Punto crítico' : 'Ebullición a 1 atm'}</p>
                 <p className="text-sm font-semibold">
                   {g.ebullicion === null ? `${num(g.tCritica, 0)} °C · ${num(g.pCritica, 1)} bar` : `${num(g.ebullicion, 1).replace('-', '−')} °C`}
                 </p>

@@ -44,6 +44,10 @@ module.exports = {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
+  			frio: 'hsl(var(--frio) / <alpha-value>)',
+  			calor: 'hsl(var(--calor) / <alpha-value>)',
+  			ok: 'hsl(var(--ok) / <alpha-value>)',
+  			aviso: 'hsl(var(--aviso) / <alpha-value>)',
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
