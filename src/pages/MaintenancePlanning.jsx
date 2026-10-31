@@ -11,6 +11,7 @@ import { Calendar, Wrench, AlertCircle, Plus, Edit2, Save, Loader2, CheckCircle2
 import { format, addDays, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
+import GeneradorOrdenes from '@/components/mantenimiento/GeneradorOrdenes';
 
 const MAINTENANCE_TYPES = [
   { value: 'mensual', label: '📅 Mensual', days: 30 },
@@ -277,6 +278,8 @@ export default function MaintenancePlanning() {
           </CardContent>
         </Card>
       </div>
+
+      <GeneradorOrdenes machines={machines} contacts={contacts} company={company} technicians={technicians} />
 
       {/* Filtros */}
       <Card className="bg-gray-50">

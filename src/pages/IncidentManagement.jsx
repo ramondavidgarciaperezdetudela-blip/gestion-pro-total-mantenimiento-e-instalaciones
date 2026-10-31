@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Wrench, Calendar, Save, Edit2, Check, X, Plus, Trash2, Download } from 'lucide-react';
+import { AlertCircle, Wrench, Save, Check, X, Plus, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
+import TarjetaAveria from '@/components/instrumentos/TarjetaAveria';
 
 const STATUS_CONFIG = {
   pendiente: { color: 'bg-amber-100 text-amber-800', label: '⏳ Pendiente', icon: AlertCircle },
@@ -490,51 +490,19 @@ export default function IncidentManagement() {
             </CardContent>
           </Card>
         ) : (
-          filteredIncidents.map(incident => {
-            const statusConfig = STATUS_CONFIG[incident.status] || {};
-            return (
-              <Card key={incident.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex flex-wrap justify-between items-start gap-3">
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-gray-900">{incident.contact_name}</h3>
-                        <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
-                        <span className="text-xs text-gray-500">{incident.equipment_brand} {incident.equipment_model}</span>
-                      </div>
-                      <p className="text-sm text-gray-700">{incident.description}</p>
-                      <div className="flex flex-wrap gap-4 text-xs text-gray-600">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" /> {format(new Date(incident.failure_date), 'dd/MM/yyyy', { locale: es })}
-                        </span>
-                        {incident.technician && (
-                          <span className="flex items-center gap-1">
-                            <Wrench className="w-3 h-3" /> {incident.technician}
-                          </span>
-                        )}
-                        {incident.repair_date && (
-                          <span className="text-green-700 font-semibold">
-                            Reparado: {format(new Date(incident.repair_date), 'dd/MM/yyyy', { locale: es })}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <Button size="sm" variant="outline" onClick={() => downloadIncidentReport(incident)}>
-                        <Download className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleEditIncident(incident)}>
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteIncident(incident.id)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
+          filteredIncidents.map(incident => (
+            <TarjetaAveria
+              key={incident.id}
+              averia={incident}
+              onEditar={handleEditIncident}
+              onEliminar={(i) => handleDeleteIncident(i.id)}
+              acciones={(
+                <button type="button" onClick={() => downloadIncidentReport(incident)} aria-label="Descargar informe" className="inline-flex items-center rounded border px-2 py-1 text-xs hover:bg-accent">
+                  <Download className="w-3 h-3" />
+                </button>
+              )}
+            />
+          ))
         )}
       </div>
     </div>
