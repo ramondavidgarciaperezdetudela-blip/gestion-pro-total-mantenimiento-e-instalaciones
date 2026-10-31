@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.79.0",
+  "version": "1.80.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,6 +16,7 @@
     "test:carga": "node scripts/test-carga-frigorifica.mjs",
     "test:config": "node scripts/test-config-local.mjs",
     "test:tarifas": "node scripts/test-borrar-tarifas.mjs",
+    "test:instrumentos": "node scripts/test-instrumentos.mjs",
     "test:paquete": "node --import ./scripts/alias-register.mjs scripts/test-paquete.mjs",
     "test:huecos": "node scripts/test-huecos.mjs",
     "test:iconoia": "node scripts/test-iconoia.mjs",
