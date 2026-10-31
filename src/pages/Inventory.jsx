@@ -1,6 +1,8 @@
+import { toast } from 'sonner';
+import FormularioMaquina, { prepararMaquina } from '@/components/maquinas/FormularioMaquina';
+import { MAQUINA_VACIA, calcularFgas } from '@/lib/maquinaFgas';
 import React, { useState, useEffect, useRef } from 'react';
 import { cargarTodo } from '@/lib/cargarTodo';
-import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +23,7 @@ const STOCK_CATEGORIES = ['tuberias_accesorios', 'cables_electricidad', 'refrige
 const STATUS_COLORS = { operativo: 'bg-green-100 text-green-700', en_revision: 'bg-yellow-100 text-yellow-700', averiado: 'bg-red-100 text-red-700', baja: 'bg-gray-100 text-gray-500' };
 const CM_TYPES = ['aire_acondicionado','bomba_calor','camara_frigorifica','ventilacion','caldera','aerotermia','solar_fotovoltaico','solar_termico','electrico_cuadro','grupo_frio','otro'];
 const CM_STATUSES = ['operativo','en_reparacion','fuera_servicio','baja'];
-const EMPTY_CM = { contact_id: '', contact_name: '', name: '', machine_type: 'otro', brand: '', model: '', serial_number: '', installation_date: '', location: '', refrigerant_type: '', power_kw: '', warranty_expiry: '', next_maintenance_date: '', maintenance_interval_months: 12, status: 'operativo', photo_url: '', notes: '' };
+const EMPTY_CM = { ...MAQUINA_VACIA };
 
 const EMPTY_EQ = { name: '', brand: '', model: '', serial_number: '', category: 'herramienta', status: 'operativo', purchase_date: '', purchase_price: '', next_revision_date: '', location: '', assigned_to: '', notes: '', photo_url: '' };
 const EMPTY_STOCK = { name: '', reference: '', barcode: '', category: 'otro', supplier_name: '', quantity: '', unit: 'uds', min_stock: '', unit_price: '', location: '', notes: '', photo_url: '' };
@@ -167,9 +169,10 @@ export default function Inventory() {
   };
 
   const handleSaveCm = async () => {
-    if (!cmForm.name) return;
-    if (editingCm) await base44.entities.ClientMachine.update(editingCm.id, cmForm);
-    else await base44.entities.ClientMachine.create(cmForm);
+    if (!cmForm.name || !cmForm.contact_id) { toast.error('Faltan datos', { description: 'El cliente y el nombre del equipo son obligatorios.' }); return; }
+    const datos = prepararMaquina(cmForm);
+    if (editingCm) await base44.entities.ClientMachine.update(editingCm.id, datos);
+    else await base44.entities.ClientMachine.create(datos);
     setCmDialog(false); setEditingCm(null); setCmForm(EMPTY_CM); loadAll();
   };
 
@@ -411,7 +414,9 @@ export default function Inventory() {
                 {viewCm.serial_number && <div className="col-span-2"><p className="text-xs text-gray-400">Nº de Serie</p><p className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{viewCm.serial_number}</p></div>}
                 {viewCm.installation_date && <div><p className="text-xs text-gray-400">Instalación</p><p>{viewCm.installation_date}</p></div>}
                 {viewCm.refrigerant_type && <div><p className="text-xs text-gray-400">Gas refrigerante</p><p>{viewCm.refrigerant_type}</p></div>}
+                {viewCm.refrigerant_charge_kg && <div><p className="text-xs text-gray-400">Carga</p><p>{viewCm.refrigerant_charge_kg} kg{calcularFgas(viewCm).tCO2 !== null ? ` · ${calcularFgas(viewCm).tCO2} t CO₂e` : ''}</p></div>}
                 {viewCm.power_kw && <div><p className="text-xs text-gray-400">Potencia</p><p>{viewCm.power_kw} kW</p></div>}
+                {calcularFgas(viewCm).control.estado === 'si' && <div className="col-span-2 bg-amber-50 p-2 rounded"><p className="text-xs text-amber-700">Control de fugas {calcularFgas(viewCm).control.texto}{viewCm.last_leak_check ? ` · último ${viewCm.last_leak_check}` : ''}</p></div>}
                 {viewCm.location && <div className="col-span-2"><p className="text-xs text-gray-400">Ubicación</p><p>{viewCm.location}</p></div>}
                 {viewCm.warranty_expiry && <div className="col-span-2 bg-blue-50 p-2 rounded"><p className="text-xs text-blue-600">🛡 Garantía hasta: {viewCm.warranty_expiry}</p></div>}
                 {viewCm.next_maintenance_date && <div className="col-span-2 bg-orange-50 p-2 rounded"><p className="text-xs text-orange-600">⚠ Próximo mantenimiento: {viewCm.next_maintenance_date}</p></div>}
@@ -427,57 +432,12 @@ export default function Inventory() {
 
       {/* ===== DIALOG EQUIPO CLIENTE ===== */}
       <Dialog open={cmDialog} onOpenChange={o => { setCmDialog(o); if (!o) { setEditingCm(null); setCmForm(EMPTY_CM); } }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editingCm ? 'Editar equipo del cliente' : 'Nuevo equipo del cliente'}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="flex gap-4 items-start">
-              <PhotoUploader photoUrl={cmForm.photo_url} onUpload={handleCmPhotoUpload} uploading={uploadingCm} inputRef={fileCmRef} label="Foto" />
-              <div className="flex-1 space-y-2">
-                <BuscadorCliente
-                contacts={contacts}
-                value={cmForm.contact_id}
-                onValueChange={v => {
-                  const c = contacts.find(x => x.id === v);
-                  setCmForm(f => ({ ...f, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}`.trim() : '' }));
-                }}
-                placeholder="Seleccionar cliente *"
-              />
-                <Input placeholder="Nombre del equipo *" value={cmForm.name} onChange={e => setCmForm({ ...cmForm, name: e.target.value })} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Select value={cmForm.machine_type} onValueChange={v => setCmForm({ ...cmForm, machine_type: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{CM_TYPES.map(t => <SelectItem key={t} value={t}>{t.replace(/_/g,' ')}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={cmForm.status} onValueChange={v => setCmForm({ ...cmForm, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{CM_STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace(/_/g,' ')}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="Marca" value={cmForm.brand} onChange={e => setCmForm({ ...cmForm, brand: e.target.value })} />
-              <Input placeholder="Modelo" value={cmForm.model} onChange={e => setCmForm({ ...cmForm, model: e.target.value })} />
-            </div>
-            <div className="flex items-center gap-2 bg-gray-50 border rounded-lg p-2">
-              <span className="text-xs text-gray-500 whitespace-nowrap">Nº Serie:</span>
-              <Input placeholder="Número de serie" value={cmForm.serial_number} onChange={e => setCmForm({ ...cmForm, serial_number: e.target.value })} className="font-mono text-sm border-0 bg-transparent focus-visible:ring-0 p-0 h-auto" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-xs text-gray-500">Fecha instalación</label><Input type="date" className="mt-1" value={cmForm.installation_date} onChange={e => setCmForm({ ...cmForm, installation_date: e.target.value })} /></div>
-              <div><label className="text-xs text-gray-500">Garantía hasta</label><Input type="date" className="mt-1" value={cmForm.warranty_expiry} onChange={e => setCmForm({ ...cmForm, warranty_expiry: e.target.value })} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="Gas refrigerante" value={cmForm.refrigerant_type} onChange={e => setCmForm({ ...cmForm, refrigerant_type: e.target.value })} />
-              <NumberField placeholder="Potencia (kW)" value={cmForm.power_kw} onChange={v => setCmForm({ ...cmForm, power_kw: v })} />
-            </div>
-            <Input placeholder="Ubicación (ej: planta 1, sala técnica)" value={cmForm.location} onChange={e => setCmForm({ ...cmForm, location: e.target.value })} />
-            <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-xs text-gray-500">Próximo mantenimiento</label><Input type="date" className="mt-1" value={cmForm.next_maintenance_date} onChange={e => setCmForm({ ...cmForm, next_maintenance_date: e.target.value })} /></div>
-              <div><label className="text-xs text-gray-500">Intervalo mant. (meses)</label><NumberField decimals={false} className="mt-1" value={cmForm.maintenance_interval_months} onChange={v => setCmForm({ ...cmForm, maintenance_interval_months: v })} /></div>
-            </div>
-            <Textarea placeholder="Notas / estado de conservación" value={cmForm.notes} onChange={e => setCmForm({ ...cmForm, notes: e.target.value })} rows={2} />
-            <Button onClick={handleSaveCm} className="w-full bg-teal-700">{editingCm ? 'Actualizar equipo' : 'Guardar equipo'}</Button>
+        <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editingCm ? 'Editar equipo del cliente' : 'Registro de maquinaria — nuevo equipo'}</DialogTitle></DialogHeader>
+          <FormularioMaquina form={cmForm} setForm={setCmForm} contacts={contacts} onFoto={handleCmPhotoUpload} subiendo={uploadingCm} />
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={() => setCmDialog(false)}>Cancelar</Button>
+            <Button onClick={handleSaveCm} className="bg-teal-700" data-prueba="maq-guardar">{editingCm ? 'Actualizar equipo' : 'Guardar equipo'}</Button>
           </div>
         </DialogContent>
       </Dialog>
