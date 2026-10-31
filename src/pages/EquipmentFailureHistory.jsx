@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Wrench, Plus, Edit, Trash2, AlertCircle, CheckCircle2, Clock, Gauge, List, LayoutGrid } from 'lucide-react';
+import { Wrench, Plus, Trash2, AlertCircle, CheckCircle2, Clock, Gauge, List, LayoutGrid } from 'lucide-react';
 import GaleriaAverias from '@/components/GaleriaAverias';
+import TarjetaAveria from '@/components/instrumentos/TarjetaAveria';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
@@ -268,85 +268,9 @@ export default function EquipmentFailureHistory() {
         ) : vista === 'galeria' ? (
           <GaleriaAverias averias={filteredFailures} onEditar={handleEdit} onEliminar={(f) => handleDelete(f.id)} />
         ) : (
-          filteredFailures.map(failure => {
-            const statusConfig = STATUS_CONFIG[failure.status];
-            const StatusIcon = statusConfig.icon;
-            
-            return (
-              <Card key={failure.id} className="border-l-4 border-l-orange-500 hover:shadow-lg transition-shadow">
-                <CardContent className="p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Información principal */}
-                    <div className="md:col-span-2">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="font-bold text-lg">{failure.equipment_brand} {failure.equipment_model}</p>
-                          <p className="text-sm text-gray-600">{failure.contact_name} • S/N: {failure.serial_number}</p>
-                        </div>
-                        <Badge className={statusConfig.color}>
-                          <StatusIcon className="w-3 h-3 mr-1" /> {statusConfig.label}
-                        </Badge>
-                      </div>
-
-                      <div className="space-y-2 text-sm">
-                        <p><span className="font-semibold">Avería ({failure.failure_type}):</span> {failure.description}</p>
-                        {failure.diagnosis && <p><span className="font-semibold">Diagnóstico:</span> {failure.diagnosis}</p>}
-                        {failure.solution && <p><span className="font-semibold">Solución:</span> {failure.solution}</p>}
-                        
-                        <div className="grid grid-cols-2 gap-2 text-xs mt-2 pt-2 border-t">
-                          <p><span className="font-semibold">Reportada:</span> {format(new Date(failure.failure_date), 'dd/MM/yyyy')}</p>
-                          {failure.repair_date && <p><span className="font-semibold">Reparada:</span> {format(new Date(failure.repair_date), 'dd/MM/yyyy')}</p>}
-                          {failure.technician && <p><span className="font-semibold">Técnico:</span> {failure.technician}</p>}
-                          {failure.repair_hours > 0 && <p><span className="font-semibold">Horas:</span> {failure.repair_hours}h</p>}
-                        </div>
-
-                        {failure.parts_used && failure.parts_used.length > 0 && (
-                          <div className="mt-2 p-2 bg-gray-50 rounded">
-                            <p className="font-semibold text-xs mb-1">Piezas:</p>
-                            {failure.parts_used.map((p, i) => (
-                              <p key={i} className="text-xs text-gray-700">{p.part_name} (x{p.quantity}) - {p.cost}€</p>
-                            ))}
-                          </div>
-                        )}
-
-                        {failure.notes && <p className="italic text-gray-600 text-xs mt-2">📝 {failure.notes}</p>}
-                      </div>
-                    </div>
-
-                    {/* Coste y acciones */}
-                    <div className="flex flex-col gap-2">
-                      {failure.total_cost > 0 && (
-                        <div className="bg-orange-50 p-3 rounded-lg text-center">
-                          <p className="text-2xl font-bold text-orange-600">{failure.total_cost}€</p>
-                          <p className="text-xs text-orange-700">Coste total</p>
-                        </div>
-                      )}
-
-                      {failure.photos && failure.photos.length > 0 && (
-                        <div className="bg-blue-50 p-2 rounded">
-                          <p className="text-xs font-semibold text-blue-700 mb-1">📷 {failure.photos.length} fotos</p>
-                          <div className="grid grid-cols-2 gap-1">
-                            {failure.photos.slice(0, 4).map((photo, i) => (
-                              <img key={i} src={photo} alt="Foto avería" className="w-full h-12 object-cover rounded" />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <Button onClick={() => handleEdit(failure)} size="sm" variant="outline" className="flex-1">
-                          <Edit className="w-3 h-3 mr-1" /> Editar
-                        </Button>
-                        <Button onClick={() => handleDelete(failure.id)} size="sm" variant="outline" className="flex-1 text-red-600 hover:text-red-700">
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
+          filteredFailures.map(failure => (
+            <TarjetaAveria key={failure.id} averia={failure} onEditar={handleEdit} onEliminar={(f) => handleDelete(f.id)} />
+          ))
         )}
       </div>
 

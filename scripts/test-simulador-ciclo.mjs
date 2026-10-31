@@ -1,0 +1,12 @@
+import { diagnosticoSimulado, estadosSimulados } from '../src/lib/simuladorCiclo.js';
+let f = 0; const ok = (c, t) => { if (!c) { f++; console.log('  ✗ ' + t); } else console.log('  ✓ ' + t); };
+const rec = { hay: true, bajaMin: 4, bajaMax: 5.5, altaMin: 17, altaMax: 22 };
+const has = (d, n) => d.some((x) => x.e === n);
+let d = diagnosticoSimulado({ pBaja: 4.8, pAlta: 19, recal: 7, subenf: 6, rec }); ok(has(d, 'PARÁMETROS EN RANGO') && d.length === 1, 'ciclo sano → en rango');
+d = diagnosticoSimulado({ pBaja: 2.5, pAlta: 14, recal: 18, subenf: 1, rec }); ok(has(d, 'FALTA DE REFRIGERANTE'), 'falta de gas');
+d = diagnosticoSimulado({ pBaja: 5, pAlta: 27, recal: 3, subenf: 15, rec }); ok(has(d, 'EXCESO DE CARGA') && has(d, 'CONDENSACIÓN ALTA'), 'sobrecarga + condensación alta');
+d = diagnosticoSimulado({ pBaja: 5, pAlta: 19, recal: 1, subenf: 6, rec }); ok(has(d, 'RIESGO DE GOLPE DE LÍQUIDO') && d.find((x) => x.e.startsWith('RIESGO')).estado === 'critico', 'golpe de líquido crítico');
+d = diagnosticoSimulado({ pBaja: 2.5, pAlta: 14, recal: 4, subenf: 6, rec }); ok(has(d, 'COMPRESOR CON POCA COMPRESIÓN'), 'compresor gastado');
+d = diagnosticoSimulado({ pBaja: 5, pAlta: 19, recal: 7, subenf: 6, rec: { hay: false } }); ok(has(d, 'PARÁMETROS EN RANGO'), 'sin referencia no inventa averías de presión');
+const e = estadosSimulados({ pBaja: 4.8, pAlta: 30, recal: 1, subenf: 6, rec }); ok(e.pBaja === 'ok' && e.pAlta !== 'ok' && e.recal === 'critico', 'estados por magnitud');
+console.log(f ? `\n${f} FALLOS` : '\nTODO OK'); process.exit(f ? 1 : 0);

@@ -7,6 +7,7 @@ import { base44 } from '@/api/base44Client';
 import { uploadFile } from '@/lib/uploadImage';
 import { Printer, FileDown, Gauge, Snowflake, ArrowRightLeft, Wrench, Loader2, Droplets, Zap, AlertTriangle, Save, CheckCircle2, BookOpen, ArrowLeft, User } from 'lucide-react';
 import PanelCiclo from '@/components/instrumentos/PanelCiclo';
+import SimuladorCiclo from '@/components/instrumentos/SimuladorCiclo';
 import { REFRIGERANT_DATABASE, estadoRefrigerante, getRefrigerantInfo } from '@/components/refrigerantData';
 import { format } from 'date-fns';
 import { createPageUrl } from '../utils';
@@ -1133,6 +1134,17 @@ export default function DiagnosticoCarga() {
 
               {/* Panel de instrumentos: presiones, SH, SC y tendencia */}
               <PanelCiclo pBaja={pBaja} pAlta={pAlta} recal={recal} subenf={subenf} dtFiltro={dtFiltro} rec={rec} />
+
+              {/* Simulador con mandos: mueve las presiones y ve el diagnóstico en vivo */}
+              <SimuladorCiclo
+                rec={rec}
+                inicial={{ pBaja: parseFloat(pBaja), pAlta: parseFloat(pAlta), recal: recal ?? undefined, subenf: subenf ?? undefined }}
+                onAplicar={(x) => {
+                  setPBaja(String(x.pBaja)); setPAlta(String(x.pAlta));
+                  if (tEvap !== '') setTAsp(String(+(parseFloat(tEvap) + x.recal).toFixed(1)));
+                  if (tCond !== '') setTLiq(String(+(parseFloat(tCond) - x.subenf).toFixed(1)));
+                }}
+              />
 
               {/* Diagrama de Mollier (p–h) con el ciclo dibujado según los datos */}
               <div className="mt-3 border-t pt-3">
