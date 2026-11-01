@@ -101,7 +101,7 @@ jobs:
           cd src-cadcraft/apps/cadcraft-web && trunk build --release
           cd ../../dist/web && zip -qr ../../../cadcraft-web.zip .
       - uses: actions/upload-artifact@v4
-        with: { name: web, path: src-cadcraft/cadcraft-web.zip }
+        with: { name: web, path: cadcraft-web.zip }
 
   publicar:
     needs: [preparar, nativo, web]
