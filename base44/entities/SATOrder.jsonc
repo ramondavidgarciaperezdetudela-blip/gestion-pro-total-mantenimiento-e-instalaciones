@@ -2,6 +2,22 @@
   "name": "SATOrder",
   "type": "object",
   "properties": {
+    "equipment_brand": {
+      "type": "string",
+      "description": "Marca del equipo"
+    },
+    "equipment_model": {
+      "type": "string",
+      "description": "Modelo del equipo"
+    },
+    "equipment_serial": {
+      "type": "string",
+      "description": "Nº de serie del equipo"
+    },
+    "equipment_location": {
+      "type": "string",
+      "description": "Ubicación del equipo en el edificio"
+    },
     "order_number": {
       "type": "string"
     },

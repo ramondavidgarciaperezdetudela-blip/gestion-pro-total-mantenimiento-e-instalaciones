@@ -1,0 +1,114 @@
+{
+  "name": "RefrigerantCylinder",
+  "type": "object",
+  "properties": {
+    "number": {
+      "type": "string",
+      "description": "Nº de botella"
+    },
+    "refrigerant": {
+      "type": "string",
+      "description": "Gas refrigerante"
+    },
+    "kind": {
+      "type": "string",
+      "description": "nuevo | regenerado | recuperado"
+    },
+    "capacity_kg": {
+      "type": "number"
+    },
+    "initial_kg": {
+      "type": "number",
+      "description": "Contenido inicial en kg"
+    },
+    "status": {
+      "type": "string",
+      "description": "llena | en_uso | vacia | devuelta"
+    },
+    "supplier": {
+      "type": "string"
+    },
+    "entry_date": {
+      "type": "string"
+    },
+    "return_date": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "number"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -206,6 +206,18 @@
       "type": "string",
       "description": "Notas del plano"
     },
+    "cad_file_url": {
+      "type": "string",
+      "description": "Archivo DXF de AutoCAD importado y vinculado al plano"
+    },
+    "cad_file_name": {
+      "type": "string",
+      "description": "Nombre del archivo CAD original"
+    },
+    "cad_units": {
+      "type": "string",
+      "description": "Unidades en las que se leyó el CAD (mm, cm, m)"
+    },
     "vista3d_url": {
       "type": "string",
       "description": "Archivo PNG de la vista 3D del plano, guardado junto a \u00e9l y regenerado cuando cambia el dibujo"

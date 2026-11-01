@@ -98,6 +98,7 @@ export default function ContactDetail() {
   const [appointments, setAppointments] = useState([]);
   const [calculations, setCalculations] = useState([]);
   const [insuranceReports, setInsuranceReports] = useState([]);
+  const [planos, setPlanos] = useState([]);
   const [noteDialog, setNoteDialog] = useState(false);
   const [noteForm, setNoteForm] = useState({ title: '', content: '' });
   const [editingContact, setEditingContact] = useState(false);
@@ -171,16 +172,18 @@ export default function ContactDetail() {
     }
 
     try {
-      const [docs, nts, apts, calcs, infReports] = await Promise.all([
+      const [docs, nts, apts, calcs, infReports, plns] = await Promise.all([
         base44.entities.ClientDocument.filter({ contact_id: contactId }),
         base44.entities.ClientNote.filter({ contact_id: contactId }),
         base44.entities.Appointment.filter({ contact_id: contactId }),
         base44.entities.ThermalCalculation.filter({ contact_id: contactId }),
         base44.entities.InsuranceReport.filter({ contact_id: contactId }),
+        base44.entities.RefrigerationPlan.filter({ contact_id: contactId }).catch(() => []),
       ]);
       setDocuments(docs);
       setEquipmentPhotos(docs.filter((d) => d.doc_type === 'foto_equipo'));
       setNotes(nts); setAppointments(apts); setCalculations(calcs);
+      setPlanos(Array.isArray(plns) ? plns : (plns?.items || []));
       setInsuranceReports(Array.isArray(infReports) ? infReports : (infReports?.items || []));
     } catch {
       setAvisoHistorial(true);
@@ -733,7 +736,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
         {/* DOCUMENTACIÓN: todo lo vinculado al cliente, en menús y submenús */}
         <TabsContent value="docs">
           <ArbolDocumentos
-            arbol={construirArbol({ invoices, satOrders, maintenance, documents, calculations, insuranceReports })}
+            arbol={construirArbol({ invoices, satOrders, maintenance, documents, calculations, insuranceReports, planos })}
             onAbrir={(a) => { if (a.url) window.open(a.url, '_blank', 'noopener'); else if (a.tab) setPestana(a.tab); }} />
         </TabsContent>
 
