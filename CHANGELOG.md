@@ -6,6 +6,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.98.0] — 2026-11-02
+
+### Corregido
+- **CADCraft ya no pide «Update and Restart»**: ese aviso era el actualizador propio de CADCraft y no podía sustituir la copia que viene con Gestión Pro Total, así que no hacía nada. Ahora lo gestiona Gestión Pro Total: **cada vez que abres CADCraft desde el programa se instala solo la última versión** (si la hay) y se conservan tus dibujos, ajustes y comandos propios.
+
 ## [1.97.0] — 2026-11-02
 
 ### Mejorado

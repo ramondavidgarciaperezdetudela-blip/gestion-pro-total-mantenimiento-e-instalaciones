@@ -38,9 +38,9 @@ impl CadApp {
 
 /// Help ▸ Check for Updates…: check now, and show the result when there is nothing newer.
 pub fn check_now(app: &mut CadApp) {
-    app.updates_rt.check_requested = true;
-    app.updates_rt.result_open = true;
-    app.updates_rt.result_echoed = false;
+    // Gestión Pro Total installs and updates CADCraft (page «CADCraft» of the program); updates
+    // keep the user's drawings, settings and routines.
+    app.session.echo("CADCraft se actualiza desde Gestión Pro Total: abre la página CADCraft del programa y pulsa Actualizar.".to_string());
 }
 
 /// Start the checks and collect the answers.
