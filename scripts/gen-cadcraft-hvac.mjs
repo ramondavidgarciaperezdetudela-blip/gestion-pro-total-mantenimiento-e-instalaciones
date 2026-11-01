@@ -12,15 +12,47 @@ const items = ELEMENTOS.filter((e) => ACI[e.cat] && e.w_m && e.h_m);
 
 let l = ';;; Generado por scripts/gen-cadcraft-hvac.mjs — no editar a mano.\n';
 l += ';;; Biblioteca de equipos de Gestión Pro Total para CADCraft (unidades: metros).\n\n';
-l += '(defun gpt-capa (nombre color)\n  (if (not (tblsearch "LAYER" nombre))\n    (entmake (list (cons 0 "LAYER") (cons 100 "AcDbSymbolTableRecord") (cons 100 "AcDbLayerTableRecord") (cons 2 nombre) (cons 70 0) (cons 62 color) (cons 6 "Continuous")))))\n\n';
-l += '(defun gpt-linea (a b / ) (entmake (list (cons 0 "LINE") (cons 8 "0") (cons 10 a) (cons 11 b))))\n\n';
-l += '(defun gpt-def-bloque (nombre w h glyph color / x y)\n  (if (not (tblsearch "BLOCK" nombre))\n    (progn\n      (setq x (/ w 2.0) y (/ h 2.0))\n      (entmake (list (cons 0 "BLOCK") (cons 2 nombre) (cons 70 0) (list 10 0.0 0.0 0.0)))\n      (gpt-linea (list (- x) (- y) 0.0) (list x (- y) 0.0))\n      (gpt-linea (list x (- y) 0.0) (list x y 0.0))\n      (gpt-linea (list x y 0.0) (list (- x) y 0.0))\n      (gpt-linea (list (- x) y 0.0) (list (- x) (- y) 0.0))\n      (gpt-linea (list (- x) (- y) 0.0) (list x y 0.0))\n      (gpt-linea (list (- x) y 0.0) (list x (- y) 0.0))\n      (entmake (list (cons 0 "TEXT") (cons 8 "0") (list 10 0.0 0.0 0.0) (list 11 0.0 0.0 0.0) (cons 40 (* 0.3 (min w h))) (cons 1 glyph) (cons 72 1) (cons 73 2)))\n      (entmake (list (cons 0 "ENDBLK"))))))\n\n';
-l += '(defun gpt-cargar-biblioteca ()\n';
+l += '(defun gpt-capa (nombre color) (gpt-nueva-capa nombre color))\n\n';
+l += `(defun gpt-def-bloque (nombre w h forzar / k)
+  ;; Símbolos pequeños (válvulas, instrumentos, mecanismos) se dibujan a 0,60 m como mínimo para que se vean en el plano.
+  (if (or forzar (not (tblsearch "BLOCK" nombre)))
+    (progn
+      (setq k (/ 0.6 (max w h)))
+      (if (< k 1.0) (setq k 1.0))
+      (entmake (list (cons 0 "BLOCK") (cons 2 nombre) (cons 70 0) (list 10 0.0 0.0 0.0)))
+      (gs-dibuja nombre (* w k) (* h k))
+      (entmake (list (cons 0 "ENDBLK"))))))
+
+`;
+l += '(setq *gpt-giro* 0.0)\n';
+l += '(setq *gpt-equipos* (list\n';
+for (const e of items) l += `  (list "${nombreLisp(e.id)}" ${num(e.w_m)} ${num(e.h_m)} "EQUIPO-${e.cat.toUpperCase()}")\n`;
+l += '))\n\n';
+l += `;; Planos que vienen de Gestión Pro Total traen los equipos como cajas: se cambian por los símbolos reales.
+(defun gpt-refrescar-bloques (/ d)
+  (foreach d *gpt-equipos*
+    (if (tblsearch "BLOCK" (car d)) (gpt-def-bloque (car d) (cadr d) (caddr d) T)))
+  (princ))
+
+`;
+l += '(defun gpt-capas ()\n';
 for (const c of cats) l += `  (gpt-capa "EQUIPO-${c.id.toUpperCase()}" ${ACI[c.id]})\n`;
-for (const e of items) l += `  (gpt-def-bloque "${nombreLisp(e.id)}" ${num(e.w_m)} ${num(e.h_m)} "${sin(e.glyph || e.label.slice(0, 3).toUpperCase())}" ${ACI[e.cat]})\n`;
 l += '  (princ))\n\n';
-l += '(defun gpt-colocar (id capa / ang p n)\n  (gpt-cargar-biblioteca)\n  (setq ang (getangle "\\nGiro en grados <0>: "))\n  (if (not ang) (setq ang 0.0))\n  (while (setq p (getpoint "\\nPunto de colocación (Intro para terminar): "))\n    (entmake (list (cons 0 "INSERT") (cons 8 capa) (cons 2 id) (list 10 (car p) (cadr p) 0.0) (cons 41 1.0) (cons 42 1.0) (cons 43 1.0) (cons 50 ang)))\n    (princ (strcat "\\nColocado: " id)))\n  (princ))\n\n';
-for (const e of items) l += `(defun c:${nombreLisp(e.id)} () (gpt-colocar "${nombreLisp(e.id)}" "EQUIPO-${e.cat.toUpperCase()}"))\n`;
+l += `(defun gpt-colocar (id / d p g)
+  (gpt-capas)
+  (setq d (assoc id *gpt-equipos*))
+  (gpt-def-bloque id (cadr d) (caddr d) nil)
+  (initget "Giro")
+  (while (setq p (getpoint (strcat "\\nPunto de colocación de " id " [Giro " (rtos (* *gpt-giro* (/ 180.0 3.14159265)) 2 0) "°] (Intro para terminar): ")))
+    (if (= p "Giro")
+      (progn (setq g (getangle "\\nGiro en grados: ")) (if g (setq *gpt-giro* g)))
+      (progn
+        (entmake (list (cons 0 "INSERT") (cons 8 (cadddr d)) (cons 2 id) (list 10 (car p) (cadr p) 0.0) (cons 41 1.0) (cons 42 1.0) (cons 43 1.0) (cons 50 *gpt-giro*)))
+        (princ "\\nColocado."))))
+  (princ))
+
+`;
+for (const e of items) l += `(defun c:${nombreLisp(e.id)} () (gpt-colocar "${nombreLisp(e.id)}"))\n`;
 fs.mkdirSync('cadcraft-hvac/support', { recursive: true });
 fs.writeFileSync('cadcraft-hvac/support/hvac-biblioteca.lsp', l);
 

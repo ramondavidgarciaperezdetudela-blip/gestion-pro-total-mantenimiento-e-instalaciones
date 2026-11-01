@@ -6,6 +6,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.95.0] — 2026-11-02
+
+### Mejorado
+- **Paredes en CADCraft rehechas**: se dibujan seguidas (una cadena de tramos con las esquinas bien unidas), con un solo aviso al empezar donde puedes cambiar material, grosor y alto; cada tramo muestra y rotula su medida; con la opción «Largo» escribes la longitud exacta en metros. Cada material tiene su color. «Editar pared» elige el tramo con un clic y cambia su largo (los tramos siguientes se desplazan con él), grosor, alto o material, y vuelve a rotular las medidas. Nuevo comando PAREDMEDIDAS.
+- **Símbolos de CADCraft más reales y claros**: los 74 equipos se dibujan como en un plano de verdad (ventiladores con palas, serpentines y aletas, cámara con puerta y evaporadores, cassette, split, válvulas, rejillas, difusores, símbolos eléctricos y de seguridad…). Los símbolos pequeños se dibujan a 0,60 m como mínimo para que se vean. Los equipos aparecen al instante y se colocan con un clic (con la opción de giro).
+- Los planos que se mandan desde Gestión Pro Total a CADCraft muestran también los símbolos nuevos.
+
 ## [1.94.0] — 2026-11-01
 
 ### Añadido
