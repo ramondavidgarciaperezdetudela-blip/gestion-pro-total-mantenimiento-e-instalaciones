@@ -5,6 +5,7 @@ import { RefreshCw, CheckCircle2, AlertCircle, Clock, ChevronDown, ChevronRight,
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import NavBar from '@/components/NavBar';
+import ActualizacionDirecta from '@/components/ActualizacionDirecta';
 import {
   CATEGORIES, updateCategoryData, loadSavedUpdates, getCustomSources, saveCustomSources,
   motivoDeLaConsulta, detalleTecnico,
@@ -125,6 +126,8 @@ export default function UpdateCenter() {
           </div>
           <UpdateChecker />
         </div>
+
+        <ActualizacionDirecta />
 
         {/* Encender o apagar la IA: es lo que decide si esta pantalla gasta
             créditos, así que va aquí mismo y no escondida en Configuración. */}

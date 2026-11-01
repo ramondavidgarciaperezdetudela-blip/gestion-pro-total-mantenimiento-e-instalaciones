@@ -8,7 +8,7 @@ import {
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette,
   CreditCard, Download, Bell, History, Search, FileBarChart, Droplets, AlertCircle,
-  MoreHorizontal, Filter, MessageSquare, ListChecks, AlertTriangle, CalendarCheck, Ruler, Sparkles, CalendarClock, Gauge, Cylinder } from
+  MoreHorizontal, Filter, MessageSquare, ListChecks, AlertTriangle, CalendarCheck, Ruler, Sparkles, CalendarClock, Gauge, Cylinder, Images } from
 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 import ThemeToggle from './components/ThemeToggle';
@@ -17,6 +17,7 @@ import GlobalSearch from './components/GlobalSearch';
 import AIChat from './components/AIChat';
 import QuickPriceDBAccess from './components/QuickPriceDBAccess';
 import BackupProgressIndicator from './components/BackupProgressIndicator';
+import DescargasGlobal from './components/DescargasGlobal';
 import BarraNavegacion from './components/BarraNavegacion';
 import AjusteRapidoLetra from './components/AjusteRapidoLetra';
 
@@ -176,6 +177,7 @@ const navItems = [
 { name: 'Herram. Danfoss', page: 'DanfossTools', icon: Wrench },
 { name: 'Prov. Gases', page: 'GasSuppliers', icon: Building2 },
 { name: 'Gases refrigerantes', page: 'GasesRefrigerantes', icon: Cylinder },
+{ name: 'Galería de imágenes', page: 'GaleriaImagenes', icon: Images },
 { name: 'Nuevo Contacto', page: 'ContactForm', icon: Users },
 { name: 'Actualizaciones', page: 'UpdateCenter', icon: Download },
 { name: 'Novedades', page: 'Novedades', icon: Sparkles },
@@ -219,7 +221,7 @@ const PAGE_SECTION = {
   DanfossTools: 'Refrigeración', PresionesGas: 'Refrigeración', PlanoFrigorifico: 'Refrigeración',
   SolarCalc: 'Solar', SolarBatteryCalc: 'Solar', BatteryCalc: 'Solar',
   TablasRefrigerantes: 'Refrigeración',
-  InformesTecnicos: 'Documentos',
+  InformesTecnicos: 'Documentos', GaleriaImagenes: 'Documentos',
   // Proveedores y stock
   Suppliers: 'Proveedores y stock', GasSuppliers: 'Proveedores y stock', GasesRefrigerantes: 'Proveedores y stock',
   SupplierTariffs: 'Proveedores y stock', Inventory: 'Proveedores y stock',
@@ -337,6 +339,7 @@ export default function Layout({ children, currentPageName }) {
       <AIChat />
       <QuickPriceDBAccess />
       <BackupProgressIndicator />
+      <DescargasGlobal />
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <style>{`
         body { background: hsl(var(--background)); color: hsl(var(--foreground)); }

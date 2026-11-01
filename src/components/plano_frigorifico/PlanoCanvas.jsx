@@ -106,6 +106,10 @@ export default function PlanoCanvas({
   // Mano alzada: puntos recogidos mientras se arrastra.
   const [trazoPts, setTrazoPts] = useState(null);
   const ultimoToque = useRef({});
+  // Dedos sobre la pantalla (móvil/tableta): con dos dedos se desplaza y se
+  // acerca/aleja el plano en cualquier herramienta, sin dibujar nada.
+  const dedos = useRef(new Map());
+  const gesto = useRef(null);
 
   const major = Math.max(8, gridMeters * scale);          // cuadrícula mayor (m)
   const minor = major / 5;                                  // subdivisión fina
@@ -200,6 +204,47 @@ export default function PlanoCanvas({
     // Avisa a la página de que se acaba de trazar una línea: así puede abrir
     // el diálogo que pide el diámetro (tubería) o el tipo de cable (eléctrica).
     if (onConexionCreada) onConexionCreada(nueva);
+  };
+
+  const puntoSvg = (cx, cy, v, z) => {
+    const svg = svgRef.current; const ctm = svg?.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    // convierte pantalla → lienzo con la vista y zoom del inicio del gesto
+    const r = svg.getBoundingClientRect();
+    const k = Math.min(r.width / (CANVAS_W / z), r.height / (CANVAS_H / z));
+    const offX = (r.width - (CANVAS_W / z) * k) / 2, offY = (r.height - (CANVAS_H / z) * k) / 2;
+    return { x: v.x + (cx - r.left - offX) / k, y: v.y + (cy - r.top - offY) / k, k };
+  };
+  const medidaDedos = () => { const [a, b] = [...dedos.current.values()]; return { cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) || 1 }; };
+  const toqueAbajoCaptura = (e) => {
+    if (e.pointerType !== 'touch') return;
+    dedos.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (dedos.current.size === 2) {
+      // Empieza el gesto de dos dedos: se anula lo que se estuviera haciendo con uno.
+      setDrag(null); setPanDrag(null); setTrazoPts(null);
+      const m = medidaDedos();
+      gesto.current = { ...m, v: vistaRef.current, z: zoomRef.current };
+      e.stopPropagation();
+    } else if (gesto.current) e.stopPropagation();
+  };
+  const toqueMovCaptura = (e) => {
+    if (e.pointerType !== 'touch' || !dedos.current.has(e.pointerId)) return;
+    dedos.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (!gesto.current || dedos.current.size < 2) return;
+    e.stopPropagation();
+    const g = gesto.current; const m = medidaDedos();
+    const z2 = Math.min(4, Math.max(0.5, g.z * (m.d / g.d)));
+    const antes = puntoSvg(g.cx, g.cy, g.v, g.z); // punto del lienzo bajo el centro inicial
+    const ahora = puntoSvg(m.cx, m.cy, { x: 0, y: 0 }, z2); // posición relativa del centro actual
+    zoomPrevio.current = z2;
+    setVista(limitarVista({ x: antes.x - ahora.x, y: antes.y - ahora.y }, z2));
+    if (onZoom) onZoom(Math.round(z2 * 100) / 100);
+  };
+  const toqueFinCaptura = (e) => {
+    if (e.pointerType !== 'touch') return;
+    const habia = dedos.current.size;
+    dedos.current.delete(e.pointerId);
+    if (gesto.current) { e.stopPropagation(); if (dedos.current.size < 2) { gesto.current = null; if (habia >= 2) { setDrag(null); setPanDrag(null); } } }
   };
 
   const handleDown = (e) => {
@@ -361,13 +406,13 @@ export default function PlanoCanvas({
 
   const handleMove = (e) => {
     if (panDrag) {
-      if (e.buttons === 0) { setPanDrag(null); return; }
+      if (e.buttons === 0 && e.pointerType !== 'touch') { setPanDrag(null); return; }
       const ctm = svgRef.current.getScreenCTM();
       const k = ctm ? ctm.a : 1;
       setVista(limitarVista({ x: panDrag.vx - (e.clientX - panDrag.sx) / k, y: panDrag.vy - (e.clientY - panDrag.sy) / k }));
       return;
     }
-    if (e.buttons === 0 && drag) { setDrag(null); }
+    if (e.buttons === 0 && e.pointerType !== 'touch' && drag) { setDrag(null); }
     const raw = toSvg(e);
     const p = { x: snap(raw.x), y: snap(raw.y) };
     setMouse(p);
@@ -538,9 +583,14 @@ export default function PlanoCanvas({
           touchAction: 'none',
           cursor: panDrag ? 'grabbing' : (espacio || mode === 'pan') ? 'grab' : (mode === 'wall' || mode === 'connect' || mode === 'cota' || mode === 'trazo') ? 'crosshair' : mode === 'eraser' ? 'cell' : mode === 'text' ? 'text' : mode === 'select' ? 'default' : 'copy',
         }}
+        onPointerDownCapture={toqueAbajoCaptura}
+        onPointerMoveCapture={toqueMovCaptura}
+        onPointerUpCapture={toqueFinCaptura}
+        onPointerCancelCapture={toqueFinCaptura}
         onPointerDown={handleDown}
         onPointerMove={handleMove}
         onPointerUp={handleUp}
+        onPointerCancel={handleUp}
       >
         <defs>
           <pattern id="pf-grid-min" width={minor} height={minor} patternUnits="userSpaceOnUse">
