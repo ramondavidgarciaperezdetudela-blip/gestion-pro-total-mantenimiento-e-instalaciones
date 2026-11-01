@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.88.0",
+  "version": "1.89.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -23,6 +23,8 @@
     "test:arbol": "node scripts/test-arbol-documentos.mjs",
     "test:taller": "node scripts/test-taller.mjs",
     "test:dxf": "node scripts/test-dxf-import.mjs",
+    "test:galeria": "node scripts/test-galeria.mjs",
+    "test:descargas": "node scripts/test-descargas.mjs",
     "test:dwg": "node scripts/test-dwg-import.mjs",
     "test:psicrometria": "node scripts/test-psicrometria.mjs",
     "test:zona": "node scripts/test-zona-climatica.mjs",

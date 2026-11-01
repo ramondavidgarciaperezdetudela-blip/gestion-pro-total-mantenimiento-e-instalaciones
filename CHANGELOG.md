@@ -6,6 +6,18 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.89.0] — 2026-11-01
+
+### Añadido
+- **Galería de imágenes por carpetas** (menú Documentos): las fotos de órdenes SAT, fichas de mantenimiento, informes de aseguradora, averías, notas y documentos de clientes se agrupan en una carpeta con el nombre del documento al que pertenecen, con buscador y visor a pantalla completa (flechas, teclado, ampliar, descargar).
+- **Ampliar las fotos desde el propio documento**: al tocar una miniatura en cualquier galería de fotos se abre el mismo visor grande.
+- **Descarga directa de internet sin IA** en el Centro de Actualizaciones: normativa del BOE (últimos 7 días, filtrada a frío, climatización e instalaciones), tarifas de proveedores que publican su lista (CSV o JSON) en el enlace de su ficha, e imágenes de artículos desde Wikimedia Commons. No gasta créditos.
+- **Barra de porcentaje en cualquier pantalla** mientras se baja algo de internet (precios, imágenes, tarifas, normativa, carga de la galería): se puede cancelar y desaparece sola al terminar.
+
+### Corregido
+- **Plano en el móvil**: ya no se queda clavado. Dos dedos mueven y amplían (pellizco) el plano en cualquier herramienta, un toque cancelado ya no deja el lienzo bloqueado, y en pantalla completa las herramientas van plegadas («Herramientas», «Mover plano», «Datos») para que el plano ocupe la pantalla.
+- Las descargas largas ceden el control a la pantalla entre elemento y elemento, así que el programa no se queda congelado.
+
 ## [1.88.0] — 2026-11-01
 
 ### Añadido

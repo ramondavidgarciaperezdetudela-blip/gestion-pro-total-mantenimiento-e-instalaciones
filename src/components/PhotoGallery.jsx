@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Camera, X, Plus, FolderOpen, Loader2, Pencil, Check, AlertCircle, RotateCw } from "lucide-react";
 import { uploadPhotosSequential } from '@/lib/uploadPhotosSequential';
 import { MAX_TOTAL_FALLBACK_PAYLOAD } from '@/lib/uploadImage';
+import VisorImagenes from '@/components/VisorImagenes';
 
 /**
  * PhotoGallery — galería con subida SECUENCIAL de fotos y edición de nombre.
@@ -41,6 +42,7 @@ export default function PhotoGallery({
     (t, u) => t + (typeof u === 'string' && u.startsWith('data:') ? u.length : 0), 0
   ) / MAX_TOTAL_FALLBACK_PAYLOAD;
   const [localNames, setLocalNames] = useState(photoNames);
+  const [visorIdx, setVisorIdx] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editingValue, setEditingValue] = useState('');
 
@@ -188,7 +190,7 @@ export default function PhotoGallery({
         {photos.map((url, i) => (
           <div key={i} className="flex flex-col items-center gap-1" style={{ width: 88 }}>
             <div className="relative w-20 h-20 rounded-lg overflow-hidden border bg-gray-100">
-              <img src={url} alt={names[i] || `Foto ${i + 1}`} className="w-full h-full object-cover" />
+              <img src={url} alt={names[i] || `Foto ${i + 1}`} className="w-full h-full object-cover cursor-zoom-in" onClick={() => setVisorIdx(i)} />
               <button
                 type="button"
                 onClick={() => handleRemove(i)}
@@ -253,6 +255,12 @@ export default function PhotoGallery({
       </div>
 
       <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleUpload} className="hidden" />
+      {visorIdx !== null && (
+        <VisorImagenes
+          fotos={photos.map((u, k) => ({ url: u, etiqueta: names[k] || `Foto ${k + 1}` }))}
+          inicio={visorIdx} titulo={label} onCerrar={() => setVisorIdx(null)}
+        />
+      )}
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleUpload} className="hidden" />
     </div>
   );

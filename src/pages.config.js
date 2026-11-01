@@ -104,6 +104,7 @@ const ContactForm = lazy(() => import('./pages/ContactForm'));
 const DanfossTools = lazy(() => import('./pages/DanfossTools'));
 const GasSuppliers = lazy(() => import('./pages/GasSuppliers'));
 const GasesRefrigerantes = lazy(() => import('./pages/GasesRefrigerantes'));
+const GaleriaImagenes = lazy(() => import('./pages/GaleriaImagenes'));
 const PlanGamas = lazy(() => import('./pages/PlanGamas'));
 const InstrumentosTaller = lazy(() => import('./pages/InstrumentosTaller'));
 const LicenseActivation = lazy(() => import('./pages/LicenseActivation'));
@@ -176,6 +177,7 @@ export const PAGES = {
     "DanfossTools": DanfossTools,
     "GasSuppliers": GasSuppliers,
     "GasesRefrigerantes": GasesRefrigerantes,
+    "GaleriaImagenes": GaleriaImagenes,
     "PlanGamas": PlanGamas,
     "InstrumentosTaller": InstrumentosTaller,
     "LicenseActivation": LicenseActivation,

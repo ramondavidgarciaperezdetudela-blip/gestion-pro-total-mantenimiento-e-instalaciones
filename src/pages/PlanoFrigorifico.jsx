@@ -70,6 +70,9 @@ export default function PlanoFrigorifico() {
   // El editor abre a pantalla completa por defecto: en una pestaña normal el
   // lienzo queda demasiado pequeño para dibujar cómodamente.
   const [fullscreen, setFullscreen] = useState(true);
+  // En el móvil las herramientas ocupaban toda la pantalla y el plano quedaba
+  // fuera de vista: ahora van plegadas y el lienzo ocupa la pantalla.
+  const [herramientasAbiertas, setHerramientasAbiertas] = useState(false);
   // Visor 3D de la instalación: se abre como un panel sobre el editor.
   const [ver3D, setVer3D] = useState(false);
   // El plano guarda también el archivo PNG de su vista 3D. Guardamos la
@@ -1123,11 +1126,29 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         </div>
       </div>
 
-      <PantallaCompleta open={fullscreen} onClose={() => setFullscreen(false)}>
+      <PantallaCompleta open={fullscreen} onClose={() => setFullscreen(false)}
+        cabecera={(
+          <>
+            <button type="button" data-prueba="plano-herramientas" onClick={() => setHerramientasAbiertas((v) => !v)}
+              className="lg:hidden flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs border border-border bg-card">
+              {herramientasAbiertas ? 'Ocultar herramientas' : 'Herramientas'}
+            </button>
+            <button type="button" data-prueba="plano-mover-cabecera" onClick={() => setMode(mode === 'pan' ? 'select' : 'pan')}
+              className="lg:hidden flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs border"
+              style={mode === 'pan' ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
+              <Move className="w-3.5 h-3.5" /> Mover plano
+            </button>
+            <button type="button" data-prueba="plano-datos" onClick={() => document.getElementById('plano-panel-datos')?.scrollIntoView({ behavior: 'smooth' })}
+              className="lg:hidden flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs border border-border bg-card">
+              Datos
+            </button>
+          </>
+        )}>
         {fullscreen ? (
           // ── Pantalla completa real: barra superior con menús y el lienzo a
           //    toda la superficie. Sin scroll para alcanzar las herramientas.
           <div className="flex flex-col gap-2 lg:min-h-0 lg:flex-1">
+            <div className={`${herramientasAbiertas ? 'max-h-[45vh] overflow-y-auto' : 'hidden'} lg:block lg:max-h-none lg:overflow-visible flex flex-col gap-2`}>
             <PlanoBarraSuperior
               mode={mode} activeType={activeType} connectType={connectType} manual={polyline} onPick={onPick}
               onSala={() => setDialogoSala({ nuevo: true })}
@@ -1141,19 +1162,20 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               onEditarIconos={() => setIconosDialog(true)} />
 
             {Controles}
+            </div>
             {/* En móvil/tablet el contenido fluye en su altura natural y el
               contenedor exterior hace scroll: así se ven los datos, el visor
               3D y el presupuesto que van debajo del lienzo. En escritorio el
               lienzo se reparte el espacio con el panel lateral sin scroll. */}
             <div className="flex flex-col lg:flex-row gap-3 lg:flex-1 lg:min-h-0">
-              <div className="h-[68vh] lg:h-auto lg:flex-1 lg:min-h-0">
+              <div className={`${herramientasAbiertas ? 'h-[45vh]' : 'h-[calc(100dvh-5.5rem)]'} lg:h-auto lg:flex-1 lg:min-h-0`}>
                 <PlanoCanvas
                   walls={plan.walls} elements={plan.elements} connections={plan.connections}
                   selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
                   polyline={polyline} orto={orto} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
                   capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen />
               </div>
-              <div className="lg:w-[300px] lg:flex-shrink-0 lg:max-h-none">
+              <div id="plano-panel-datos" className="lg:w-[300px] lg:flex-shrink-0 lg:max-h-none">
                 {PanelLateral}
               </div>
             </div>
@@ -1341,7 +1363,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
 // Pantalla completa del editor: cuando está activa, portaliza la paleta, los
 // controles y el lienzo sobre el body para que ocupen todo el dispositivo;
 // cuando no, los deja en su sitio sin tocar el layout.
-function PantallaCompleta({ open, onClose, children }) {
+function PantallaCompleta({ open, onClose, children, cabecera = null }) {
   if (!open) return <>{children}</>;
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex flex-col gap-2 overflow-hidden"
@@ -1352,7 +1374,8 @@ function PantallaCompleta({ open, onClose, children }) {
         paddingLeft: 'calc(env(safe-area-inset-left, 0px) + 8px)',
         paddingRight: 'calc(env(safe-area-inset-right, 0px) + 8px)',
       }}>
-      <div className="flex justify-end">
+      <div className="flex justify-end flex-wrap gap-2">
+        {cabecera}
         <button onClick={onClose}
           className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-white hover:opacity-90"
           style={{ background: '#0f172a' }}>
