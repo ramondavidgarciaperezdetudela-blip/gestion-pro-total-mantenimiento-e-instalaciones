@@ -845,7 +845,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
   // modo normal y en pantalla completa.
   const Controles = (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2">
-      <button type="button" onClick={() => setDialogoCAD(true)} data-testid="importar-cad" className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"><FileUp className="w-3.5 h-3.5" /> Importar AutoCAD (DXF)</button>
+      <button type="button" onClick={() => setDialogoCAD(true)} data-testid="importar-cad" className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"><FileUp className="w-3.5 h-3.5" /> Importar AutoCAD (DWG o DXF)</button>
       <div className="flex items-center gap-1.5 text-xs">
         <Grid3x3 className="w-3.5 h-3.5 text-muted-foreground" />
         <span className="text-muted-foreground">Cuadrícula</span>

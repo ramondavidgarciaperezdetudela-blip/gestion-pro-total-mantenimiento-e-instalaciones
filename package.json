@@ -1,7 +1,7 @@
 {
   "name": "gestion-pro-total-fuera-base44",
   "private": true,
-  "version": "1.87.0",
+  "version": "1.88.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -24,6 +24,7 @@
     "test:arbol": "node scripts/test-arbol-documentos.mjs",
     "test:taller": "node scripts/test-taller.mjs",
     "test:dxf": "node scripts/test-dxf-import.mjs",
+    "test:dwg": "node scripts/test-dwg-import.mjs",
     "test:zona": "node scripts/test-zona-climatica.mjs",
     "test:averias": "node scripts/test-averias-estado.mjs",
     "test:simulador": "node scripts/test-simulador-ciclo.mjs",
@@ -47,6 +48,7 @@
     "test:servidor": "node scripts/test-servidor.mjs"
   },
   "dependencies": {
+    "@mlightcad/libredwg-web": "^0.8.3",
     "@bcyesil/capacitor-plugin-printer": "^0.0.6",
     "@capacitor/android": "^8.4.0",
     "@capacitor/app": "^8.1.2",
