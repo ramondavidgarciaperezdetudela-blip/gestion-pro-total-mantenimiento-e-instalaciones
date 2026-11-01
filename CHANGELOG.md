@@ -6,6 +6,19 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.85.0] — 2026-11-01
+
+### Cambiado
+- **Panel de firma a pantalla completa** para el técnico y para el cliente, en móvil, tableta y portátil. Ocupa toda la pantalla, **no se mueve ni se desplaza la página mientras se firma** (se bloquea y se recupera su posición al cerrar) y se dibuja por encima de cualquier ventana, de modo que ya no se desplaza dentro de los diálogos. Se firma con dedo, lápiz o ratón.
+- La firma **se conserva al girar el dispositivo** o cambiar el tamaño de la ventana; en el móvil en vertical sugiere girarlo para tener más espacio. Los botones son grandes (Borrar, Confirmar firma, Cancelar) y no deja confirmar una firma vacía o un simple toque.
+- La imagen guardada se **recorta a la firma y se encaja siempre en el mismo formato**, así se ve igual de grande en el documento firmes grande o pequeño.
+- Aplicado en: firmas del SAT y de los informes (técnico y cliente), páginas públicas del cliente para aceptar o rechazar **órdenes SAT** y **presupuestos**, y **documentos legales**.
+
+### Notas
+- No hay campos nuevos en la base de datos.
+
+---
+
 ## [1.84.0] — 2026-11-01
 
 ### Añadido

@@ -1,0 +1,14 @@
+import { cajaDeTrazos, ajusteSalida, firmaValida, SALIDA } from '../src/lib/firmaTrazos.js';
+let f = 0; const ok = (c, t, d = '') => { if (!c) { f++; console.log('  ✗ ' + t + (d ? ' — ' + d : '')); } else console.log('  ✓ ' + t); };
+ok(cajaDeTrazos([]) === null && cajaDeTrazos([[]]) === null, 'sin trazos → null');
+const t = [[{ x: 10, y: 20 }, { x: 110, y: 70 }], [{ x: 60, y: 5 }, { x: 60, y: 90 }]];
+const c = cajaDeTrazos(t); ok(c.minX === 10 && c.maxX === 110 && c.minY === 5 && c.maxY === 90 && c.puntos === 4, 'caja de varios trazos');
+const a = ajusteSalida(c); const x0 = c.minX * a.escala + a.dx, x1 = c.maxX * a.escala + a.dx, y0 = c.minY * a.escala + a.dy, y1 = c.maxY * a.escala + a.dy;
+ok(x0 >= SALIDA.margen - 0.01 && x1 <= SALIDA.ancho - SALIDA.margen + 0.01 && y0 >= SALIDA.margen - 0.01 && y1 <= SALIDA.alto - SALIDA.margen + 0.01, 'cabe dentro de los márgenes');
+ok(Math.abs((x0 + x1) / 2 - SALIDA.ancho / 2) < 0.5 && Math.abs((y0 + y1) / 2 - SALIDA.alto / 2) < 0.5, 'queda centrada');
+const g = ajusteSalida(cajaDeTrazos([[{ x: 0, y: 0 }, { x: 1000, y: 10 }]])); ok(g.escala < 1, 'firma muy grande se reduce');
+const p = ajusteSalida(cajaDeTrazos([[{ x: 5, y: 5 }, { x: 6, y: 6 }]])); ok(p.escala === 3, 'firma diminuta no se amplía sin límite');
+ok(ajusteSalida(null) === null, 'sin caja → null');
+ok(!firmaValida([[{ x: 1, y: 1 }]]) && !firmaValida([[{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 3, y: 1 }, { x: 4, y: 1 }, { x: 5, y: 1 }, { x: 6, y: 1 }]]), 'un toque o una rayita mínima no vale');
+ok(firmaValida([Array.from({ length: 20 }, (_, i) => ({ x: i * 5, y: Math.sin(i) * 10 }))]), 'una firma real vale');
+console.log(f ? `\n${f} FALLOS` : '\nTODO OK'); process.exit(f ? 1 : 0);
