@@ -17,6 +17,11 @@ mod host;
 #[cfg(any(target_arch = "wasm32", test))]
 mod panel_layout;
 
+/// Gestión Pro Total: walls and equipment library (LISP routines compiled into the page; the web has no
+/// support folder to read them from).
+#[cfg(target_arch = "wasm32")]
+mod hvac_lisp;
+
 #[cfg(target_arch = "wasm32")]
 mod web {
     use cadcraft_engine::Session;
@@ -179,6 +184,9 @@ mod web {
                             // eframe's web runner has no stencil buffer: clipped layout
                             // viewports stay in the layout's display list.
                             app.set_wgpu(rs, None);
+                        }
+                        for (name, text) in crate::hvac_lisp::SOURCES {
+                            app.load_lisp(name, text);
                         }
                         if query().contains("sample") {
                             let _ = app.run("ui.sample", serde_json::json!({}));
