@@ -1,3 +1,4 @@
+import { puntosImantables, imanCercano, parsearMedida, extremoConLargo } from '@/lib/planoImanes';
 import { materialDe, espesorPared } from '@/lib/planoParedes';
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { crearConexion } from '@/lib/planoCalculo';
@@ -80,7 +81,7 @@ function capaConexion(c) {
 
 export default function PlanoCanvas({
   walls, elements, connections, selectedId, mode, activeElement, connectType, polyline, orto = true,
-  scale = 50, gridMeters = 1, snapMode = 'libre', capasVisibles = {}, onChange,
+  scale = 50, gridMeters = 1, snapMode = 'libre', iman = true, capasVisibles = {}, onChange,
   onConexionCreada, fullscreen = false, zoom = 1, onZoom, vistaKey = 0,
 }) {
   const svgRef = useRef(null);
@@ -107,6 +108,8 @@ export default function PlanoCanvas({
   // Mano alzada: puntos recogidos mientras se arrastra.
   const [trazoPts, setTrazoPts] = useState(null);
   const ultimoToque = useRef({});
+  // Medida escrita con el teclado mientras se dibuja una pared (como en CAD).
+  const [tecleado, setTecleado] = useState('');
   // Dedos sobre la pantalla (móvil/tableta): con dos dedos se desplaza y se
   // acerca/aleja el plano en cualquier herramienta, sin dibujar nada.
   const dedos = useRef(new Map());
@@ -114,7 +117,7 @@ export default function PlanoCanvas({
 
   const major = Math.max(8, gridMeters * scale);          // cuadrícula mayor (m)
   const minor = major / 5;                                  // subdivisión fina
-  const snapStep = snapMode === 'cuadricula' ? major : Math.max(2, 0.1 * scale); // libre = 0,1 m
+  const snapStep = snapMode === 'cuadricula' ? major : 0.001 * scale; // libre = 1 mm (sin límite de cuadrícula)
 
   // Un elemento y sus conexiones son visibles si su capa lo está. La
   // estructura siempre acompaña al frigorífico, así que no se oculta sola.
@@ -146,6 +149,16 @@ export default function PlanoCanvas({
     setPanDrag({ sx: e.clientX, sy: e.clientY, vx: vista.x, vy: vista.y });
   };
   const snap = (v) => Math.round(v / snapStep) * snapStep;
+  // Punto del ratón: rejilla (o 1 mm) y, al dibujar paredes o cotas, imán a
+  // extremos, centros, equipos y alineaciones, como el «punto cercano» de CAD.
+  const puntoFino = (raw) => {
+    if (iman && (mode === 'wall' || mode === 'cota')) {
+      const k = svgRef.current?.getScreenCTM()?.a || 1;
+      const hit = imanCercano(raw, puntosImantables(walls, elements), 12 / k);
+      if (hit) return { x: hit.x, y: hit.y, iman: hit.tipo };
+    }
+    return { x: snap(raw.x), y: snap(raw.y) };
+  };
 
   const hitElement = (p) => [...elements].reverse().find((el) => {
     if (!visible(el)) return false;
@@ -252,9 +265,10 @@ export default function PlanoCanvas({
     // Desplazar el plano: botón central o derecho, barra espaciadora o herramienta «Mover plano».
     if (e.button === 1 || e.button === 2 || espacio || mode === 'pan') { e.preventDefault(); iniciarPan(e); return; }
     const raw = toSvg(e);
-    const p = { x: snap(raw.x), y: snap(raw.y) };
+    const p = puntoFino(raw);
 
     if (mode === 'wall') {
+      setTecleado('');
       if (!wallStart) { setWallStart(p); }
       else {
         onChange({ walls: [...walls, { id: crypto.randomUUID(), x1: wallStart.x, y1: wallStart.y, x2: p.x, y2: p.y }] });
@@ -415,7 +429,7 @@ export default function PlanoCanvas({
     }
     if (e.buttons === 0 && e.pointerType !== 'touch' && drag) { setDrag(null); }
     const raw = toSvg(e);
-    const p = { x: snap(raw.x), y: snap(raw.y) };
+    const p = puntoFino(raw);
     setMouse(p);
     // Arrastre de una sala o cámara: se desplazan sus cuatro paredes a la vez,
     // tomando como referencia dónde estaba la sala al empezar a arrastrar.
@@ -483,7 +497,25 @@ export default function PlanoCanvas({
   };
 
   useEffect(() => {
-    const h = (e) => { if (e.key === 'Escape') { setWallStart(null); setConnFrom(null); setCotaStart(null); setTrazoPts(null); } };
+    if (mode !== 'wall' || !wallStart) { setTecleado(''); return undefined; }
+    const h = (e) => {
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
+      if (/^[0-9.,]$/.test(e.key)) { setTecleado((t) => (t + e.key).slice(0, 8)); e.preventDefault(); }
+      else if (e.key === 'Backspace') setTecleado((t) => t.slice(0, -1));
+      else if (e.key === 'Enter') {
+        const metros = parsearMedida(tecleado);
+        if (!metros || !mouse) return;
+        const fin = extremoConLargo(wallStart, mouse, metros * scale);
+        onChange({ walls: [...walls, { id: crypto.randomUUID(), x1: wallStart.x, y1: wallStart.y, x2: fin.x, y2: fin.y }] });
+        setWallStart(fin); setTecleado('');
+      }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  });
+
+  useEffect(() => {
+    const h = (e) => { if (e.key === 'Escape') { setTecleado(''); setWallStart(null); setConnFrom(null); setCotaStart(null); setTrazoPts(null); } };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, []);
@@ -796,14 +828,20 @@ export default function PlanoCanvas({
           <g data-prueba="pared-en-curso" style={{ pointerEvents: 'none' }}>
             <line x1={wallStart.x} y1={wallStart.y} x2={mouse.x} y2={mouse.y} stroke="#00D4FF" strokeWidth="3" strokeDasharray="6 6" opacity="0.7" />
             <circle cx={wallStart.x} cy={wallStart.y} r="5" fill="#00D4FF" />
+            {mouse.iman && (
+              <g data-prueba="marca-iman">
+                <rect x={mouse.x - 7} y={mouse.y - 7} width="14" height="14" fill="none" stroke="#f59e0b" strokeWidth="2.5" />
+                <text x={mouse.x + 11} y={mouse.y - 9} fontSize="12" fontWeight="700" fill="#b45309">{mouse.iman}</text>
+              </g>
+            )}
             {(() => {
               const largo = Math.hypot(mouse.x - wallStart.x, mouse.y - wallStart.y);
               if (largo < 2) return null;
               const mx = (wallStart.x + mouse.x) / 2, my = (wallStart.y + mouse.y) / 2;
-              const txt = `${m(largo).replace('.', ',')} m`;
+              const txt = tecleado ? `${tecleado} m ⏎` : `${(largo / scale).toFixed(3).replace('.', ',')} m`;
               return (
                 <g>
-                  <rect x={mx - 34} y={my - 30} width="68" height="22" rx="5" fill="hsl(var(--card))" stroke="#00D4FF" />
+                  <rect x={mx - 44} y={my - 30} width="88" height="22" rx="5" fill="hsl(var(--card))" stroke="#00D4FF" />
                   <text x={mx} y={my - 14} textAnchor="middle" fontSize="14" fontWeight="800" fill="#0891b2" data-prueba="pared-medida-viva">{txt}</text>
                 </g>
               );

@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { puntosImantables, imanCercano, parsearMedida, extremoConLargo } from '../src/lib/planoImanes.js';
+const pts = puntosImantables([{ x1: 0, y1: 0, x2: 100, y2: 0 }], [{ x: 50, y: 80 }]);
+assert.equal(pts.length, 4);
+assert.deepEqual(imanCercano({ x: 98, y: 3 }, pts, 10), { x: 100, y: 0, tipo: 'extremo' });
+assert.equal(imanCercano({ x: 300, y: 300 }, pts, 10), null);
+assert.deepEqual(imanCercano({ x: 52, y: 40 }, pts, 10), { x: 50, y: 40, tipo: 'alineado' });
+assert.equal(parsearMedida('2,35'), 2.35); assert.equal(parsearMedida('abc'), null); assert.equal(parsearMedida('0'), null);
+const e = extremoConLargo({ x: 0, y: 0 }, { x: 10, y: 0 }, 150); assert.deepEqual(e, { x: 150, y: 0 });
+console.log('imanes OK');
