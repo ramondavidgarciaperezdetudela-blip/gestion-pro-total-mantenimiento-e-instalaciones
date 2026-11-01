@@ -6,6 +6,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.94.0] — 2026-11-01
+
+### Añadido
+- **Pantalla de inicio completa**: faltaban accesos directos que sí estaban en el menú lateral. Ahora también salen CADCraft, Gases refrigerantes, Gamas y plan, Instrumentos, Informes Aseguradora, Galería de imágenes y Nuevo contacto, cada uno en su grupo.
+
 ## [1.93.0] — 2026-11-01
 
 ### Añadido
