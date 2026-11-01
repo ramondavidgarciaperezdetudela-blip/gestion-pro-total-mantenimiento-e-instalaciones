@@ -12,6 +12,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 - **Medida en vivo al dibujar paredes**: mientras se traza una pared aparece su longitud en metros junto al cursor (o el dedo), para saber hasta dónde llegar.
 - **Editar una pared ya dibujada**: al seleccionarla se cambia el largo (las paredes encadenadas siguen el extremo), el grosor, el alto y el tipo de pared (ladrillo, bloque de hormigón, hormigón, cemento, yeso, pladur, panel sándwich, madera, cristal u otro). El tipo se ve con su color y grosor en el plano y en la vista 3D.
 
+## [1.90.0] — 2026-11-01
+
+### Añadido
+- **Imán a puntos al dibujar paredes y cotas** (como el «punto cercano» de CAD): engancha al extremo y al centro de las paredes y al centro de los equipos, con una marca naranja que indica a qué se engancha, y a la alineación horizontal o vertical con ellos. Se activa o desactiva con «Imán a puntos».
+- **Escribir la medida exacta de la pared**: al dibujar, se teclea el largo en metros (por ejemplo 2,5) y con Intro se crea la pared en la dirección del ratón.
+
+### Cambiado
+- **Movimiento libre hasta el milímetro**: «Libre» ya no está limitado a pasos de 0,1 m; la medida en vivo de la pared muestra tres decimales. «A cuadrícula» sigue disponible.
+
 ## [1.89.0] — 2026-11-01
 
 ### Añadido

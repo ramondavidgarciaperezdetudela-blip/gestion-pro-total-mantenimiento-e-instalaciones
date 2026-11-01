@@ -25,6 +25,7 @@
     "test:dxf": "node scripts/test-dxf-import.mjs",
     "test:galeria": "node scripts/test-galeria.mjs",
     "test:paredes": "node scripts/test-paredes.mjs",
+    "test:imanes": "node scripts/test-imanes.mjs",
     "test:descargas": "node scripts/test-descargas.mjs",
     "test:dwg": "node scripts/test-dwg-import.mjs",
     "test:psicrometria": "node scripts/test-psicrometria.mjs",
