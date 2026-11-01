@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.92.0",
+  "version": "1.93.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -26,6 +26,7 @@
     "test:galeria": "node scripts/test-galeria.mjs",
     "test:paredes": "node scripts/test-paredes.mjs",
     "test:cadcraft": "node scripts/test-cadcraft-export.mjs",
+    "test:cadcraftact": "node scripts/test-cadcraft-actualizar.mjs",
     "test:copia": "node scripts/test-copia-formato.mjs",
     "test:imanes": "node scripts/test-imanes.mjs",
     "test:descargas": "node scripts/test-descargas.mjs",

@@ -68,6 +68,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Incluir CADCraft web (móvil y tableta)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p public/cadcraft
+          gh release download cadcraft-latest -R ${{ github.repository }} -p cadcraft-web.zip -O /tmp/cadcraft-web.zip
+          unzip -q -o /tmp/cadcraft-web.zip -d public/cadcraft
+          echo ok > public/cadcraft/listo.txt
+
       - name: Build web app
         # Los valores de conexión a Base44 se leen de .env.production (incluido en
         # el repositorio), por lo que no hace falta configurar secrets.

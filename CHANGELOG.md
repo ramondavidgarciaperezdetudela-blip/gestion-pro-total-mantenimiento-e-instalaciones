@@ -6,6 +6,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.93.0] — 2026-11-01
+
+### Añadido
+- **CADCraft se puede abrir solo**, sin plano frigorífico, para cualquier otro tipo de plano: nueva página «CADCraft (dibujo CAD)» en el menú.
+- **CADCraft se actualiza automáticamente**: cada semana se descarga su última versión oficial (storytold/cadcraft), se le aplican las mejoras de Gestión Pro Total y se publica. El programa de escritorio la baja con un botón y **conserva tus dibujos, ajustes y comandos propios**; si cambiaste una rutina nuestra, se respeta la tuya y la nueva se guarda al lado como «.nuevo».
+- **CADCraft en móvil y tableta (APK)**: se incluye la versión web de CADCraft dentro del APK.
+
 ## [1.92.0] — 2026-11-01
 
 ### Añadido
