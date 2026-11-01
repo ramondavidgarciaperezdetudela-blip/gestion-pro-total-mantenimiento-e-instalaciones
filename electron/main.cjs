@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 
 const isDev = !app.isPackaged;
+const cadcraft = require('./cadcraft.cjs');
 
 // Auto-actualización (opcional). Comprueba si hay una versión nueva publicada
 // en las Releases de GitHub y la descarga sola. El progreso y el botón
@@ -440,6 +441,9 @@ ipcMain.handle('gpt-imprimir', async (_evt, { html, impresora, silencioso, marge
     if (oculta) { try { oculta.destroy(); } catch { /* ya cerrada */ } }
   }
 });
+
+ipcMain.handle('gpt-cadcraft-disponible', async () => cadcraft.disponible());
+ipcMain.handle('gpt-cadcraft-abrir', async (_evt, datos) => cadcraft.abrir(datos || {}));
 
 ipcMain.handle('gpt-guardar-copia', async (_evt, { nombre, contenido, carpeta }) => {
   try {

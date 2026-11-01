@@ -83,7 +83,7 @@ export default function DialogoImportarCAD({ open, escala = 50, onImportar, onCl
                   <input value={alto} onChange={(e) => setAlto(e.target.value)} inputMode="decimal" className="mt-0.5 w-full rounded-md border bg-input px-2 py-1.5 text-xs" /></label>
               </div>
               <p className="text-[11px] text-muted-foreground" data-testid="cad-resumen">
-                {resultado.paredes.length} paredes · {resultado.ancho_m.toFixed(1)} × {resultado.alto_plano_m.toFixed(1)} m (leído en {resultado.unidad}).
+                {resultado.paredes.length} paredes{resultado.elementos?.length ? ` · ${resultado.elementos.length} equipos` : ''} · {resultado.ancho_m.toFixed(1)} × {resultado.alto_plano_m.toFixed(1)} m (leído en {resultado.unidad}).
                 {resultado.recortado && ' Se han limitado a las primeras 4.000 líneas.'}
                 {(parsed.resumen.bloques + parsed.resumen.textos + parsed.resumen.circulos + parsed.resumen.arcos) > 0 && ` No se convierten: ${parsed.resumen.bloques} bloques, ${parsed.resumen.textos} textos, ${parsed.resumen.circulos} círculos y ${parsed.resumen.arcos} arcos (el archivo original queda guardado).`}
               </p>

@@ -100,3 +100,11 @@ linux:
   category: Office
   maintainer: Ramón David García Pérez de Tudela
   artifactName: Gestion-Pro-Total-${version}-Linux.${ext}
+
+# CADCraft (editor CAD libre) y sus rutinas de paredes y equipos: el CI deja el
+# ejecutable y la carpeta support en cadcraft-bin/ antes de empaquetar.
+extraResources:
+  - from: cadcraft-bin
+    to: cadcraft
+    filter:
+      - '**/*'

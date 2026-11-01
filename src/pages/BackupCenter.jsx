@@ -28,6 +28,8 @@ import {
   abrirCopiaPorPartes,
 } from '@/lib/guardarCopia';
 
+import { normalizarCopia, limpiarTexto, motivoCopiaIlegible } from '@/lib/copiaFormato';
+
 const ALL_ENTITIES = [
   'Contact', 'Invoice', 'SATOrder', 'MaintenanceSheet', 'StockItem',
   'Supplier', 'SupplierPrice', 'Note', 'Appointment', 'Project',
@@ -38,6 +40,16 @@ const ALL_ENTITIES = [
   'ChangeOpinionRequest', 'ClientMachine', 'DocumentTemplate',
   'EquipmentFailure', 'InsuranceReport', 'SATWorkTemplate', 'SupplierCatalog', 'SystemSettings',
 ];
+
+// Secciones de una copia: las del programa y, además, cualquiera que traiga la
+// copia y que esta versión conozca (una copia de otra versión puede tener
+// secciones que aquí no existen, y esas se ignoran sin dar error).
+const seccionesDeCopia = (data) => {
+  if (!data) return [];
+  const conocidas = ALL_ENTITIES.filter((e) => data[e]?.length > 0);
+  const extra = Object.keys(data).filter((k) => !ALL_ENTITIES.includes(k) && Array.isArray(data[k]) && data[k].length > 0 && base44.entities?.[k]);
+  return [...conocidas, ...extra];
+};
 
 // Clave natural por sección para el UPSERT al restaurar (actualizar en vez de
 // duplicar). Devuelve una cadena estable o null (si null → se usa el cotejo por
@@ -445,15 +457,21 @@ export default function BackupCenter() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const parsed = JSON.parse(ev.target.result);
+        const texto = limpiarTexto(ev.target.result);
+        let crudo;
+        try { crudo = JSON.parse(texto); } catch (err) { throw new Error(motivoCopiaIlegible(texto, err)); }
+        // Vale la copia de cualquier versión: no se mira ni el número de versión ni el nombre de la app.
+        const norm = normalizarCopia(crudo, ALL_ENTITIES);
+        const parsed = { ...norm.cabecera, ...norm.datos };
         setRestoreData(parsed);
-        const available = ALL_ENTITIES.filter(e => parsed[e]?.length > 0);
+        const available = seccionesDeCopia(parsed);
+        if (!available.length) throw new Error('El archivo se lee bien pero no trae ninguna sección con datos que este programa conozca.');
         setRestoreSelectedEntities(new Set(available));
         const total = available.reduce((s, e) => s + (parsed[e]?.length || 0), 0);
         const nAjustes = Object.keys(parsed.config_local || {}).length;
         setRestoreStatus(`ok:Archivo válido · ${available.length} secciones · ${total.toLocaleString()} registros${nAjustes ? ` · ${nAjustes} ajustes del programa` : ''}`);
-      } catch {
-        setRestoreStatus('err:Archivo no válido. Asegúrate de que es un backup JSON generado por esta aplicación.');
+      } catch (err) {
+        setRestoreStatus(`err:${err?.message || 'Archivo no válido.'}`);
       }
     };
     reader.readAsText(file);
@@ -461,7 +479,7 @@ export default function BackupCenter() {
 
   const doRestore = async () => {
     if (!restoreData) return;
-    const entitiesToRestore = ALL_ENTITIES.filter(e => restoreSelectedEntities.has(e) && restoreData[e]?.length > 0);
+    const entitiesToRestore = seccionesDeCopia(restoreData).filter(e => restoreSelectedEntities.has(e));
     setRestoring(true);
     setRestorePct(0);
 
@@ -993,12 +1011,12 @@ export default function BackupCenter() {
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-gray-700">Selecciona qué secciones restaurar:</p>
                     <div className="flex gap-2">
-                      <button onClick={() => setRestoreSelectedEntities(new Set(ALL_ENTITIES.filter(e => restoreData[e]?.length > 0)))} className="text-xs text-blue-600 underline">Todas</button>
+                      <button onClick={() => setRestoreSelectedEntities(new Set(seccionesDeCopia(restoreData)))} className="text-xs text-blue-600 underline">Todas</button>
                       <button onClick={() => setRestoreSelectedEntities(new Set())} className="text-xs text-gray-400 underline">Ninguna</button>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                    {ALL_ENTITIES.filter(e => restoreData[e]?.length > 0).map(ent => {
+                    {seccionesDeCopia(restoreData).map(ent => {
                       const checked = restoreSelectedEntities.has(ent);
                       return (
                         <label key={ent} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${checked ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200'}`}>
