@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Plus, Save, Sparkles, FileDown, Link2, Trash2, Mail, Spline, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Box, ZoomIn, Wand2, Move } from 'lucide-react';
+import { Plus, Save, Sparkles, FileDown, Link2, Trash2, Mail, Spline, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Box, ZoomIn, Wand2, Move, FileUp } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { getNextAvailableNumber } from '@/components/autoNumber';
@@ -14,7 +14,9 @@ import { construirPDF, exportarPDF, imprimirPlano, exportarCAD } from '@/compone
 import DialogoExportarPlano from '@/components/plano_frigorifico/DialogoExportarPlano';
 import InformeAseguradoraDialog from '@/components/plano_frigorifico/InformeAseguradoraDialog';
 import DialogoNuevaConexion from '@/components/plano_frigorifico/DialogoNuevaConexion';
+import { uploadFile } from '@/lib/uploadImage';
 import DialogoSala from '@/components/plano_frigorifico/DialogoSala';
+import DialogoImportarCAD from '@/components/plano_frigorifico/DialogoImportarCAD';
 import DialogoCamara from '@/components/plano_frigorifico/DialogoCamara';
 import GestorCatalogoPlano from '@/components/plano_frigorifico/GestorCatalogoPlano';
 import GestorIconosPlano from '@/components/plano_frigorifico/GestorIconosPlano';
@@ -102,6 +104,7 @@ export default function PlanoFrigorifico() {
   // pide ancho y largo en metros y dibuja las cuatro paredes. Al variar las
   // medidas, el rectángulo se redibuja solo.
   const [dialogoSala, setDialogoSala] = useState(null);
+  const [dialogoCAD, setDialogoCAD] = useState(false);
   // Diálogo para dibujar o editar una cámara frigorífica: pide medidas, tipo
   // (positiva/negativa), suelo sanitario y espesor del panel. La cámara se
   // dibuja distinta a una pared, como un recinto panelado de doble línea.
@@ -623,6 +626,7 @@ export default function PlanoFrigorifico() {
         description: plan.description, scale: plan.scale, walls: plan.walls,
         elements: plan.elements, connections: plan.connections, observations: plan.observations, status: plan.status,
         vista3d_url,
+        ...(plan.cad_file_url ? { cad_file_url: plan.cad_file_url, cad_file_name: plan.cad_file_name, cad_units: plan.cad_units } : {}),
       };
       if (plan.id) {
         await base44.entities.RefrigerationPlan.update(plan.id, payload);
@@ -697,6 +701,18 @@ export default function PlanoFrigorifico() {
         toast.success('PDF generado');
       }
     } catch (e) { console.error(e); toast.error('No se pudo generar el plano', { description: String(e?.message || e) }); }
+  };
+
+  // ── Importar un plano de AutoCAD (DXF): paredes + archivo original vinculado ──
+  const importarCAD = async ({ paredes, archivo, unidad }) => {
+    setDialogoCAD(false);
+    setPlan((p) => ({ ...p, walls: [...p.walls, ...paredes] }));
+    toast.success(`Plano importado: ${paredes.length} paredes`, { description: 'Mira la vista 3D y pulsa Guardar para vincularlo al plano y al cliente.' });
+    try {
+      const url = await uploadFile(archivo);
+      setPlan((p) => ({ ...p, cad_file_url: url, cad_file_name: archivo.name, cad_units: unidad }));
+    } catch { toast.warning('No se pudo guardar el archivo original; las paredes sí se han importado.'); }
+    setVer3D(true);
   };
 
   const limpiarPlano = () => {
@@ -829,6 +845,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
   // modo normal y en pantalla completa.
   const Controles = (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2">
+      <button type="button" onClick={() => setDialogoCAD(true)} data-testid="importar-cad" className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"><FileUp className="w-3.5 h-3.5" /> Importar AutoCAD (DXF)</button>
       <div className="flex items-center gap-1.5 text-xs">
         <Grid3x3 className="w-3.5 h-3.5 text-muted-foreground" />
         <span className="text-muted-foreground">Cuadrícula</span>
@@ -1119,7 +1136,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               onUndo={undo} onRedo={redo} onCopy={copiar} onCut={cortar} onPaste={pegar}
               canUndo={canUndo} canRedo={canRedo} canCopy={canCopy} canPaste={canPaste}
               saving={saving} onSave={guardar} onPDF={() => setExportarDialog(true)}
-              on3D={() => setVer3D(true)} onExit={() => setFullscreen(false)}
+              on3D={() => setVer3D(true)} onCAD={() => setDialogoCAD(true)} onExit={() => setFullscreen(false)}
               extraPorCat={extraPorCat} iaIcons={iaIcons} onAddElement={() => setDialogoCatalogo(true)}
               onEditarIconos={() => setIconosDialog(true)} />
 
@@ -1284,6 +1301,8 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       {/* Diálogo para dibujar o editar una sala (habitáculo cuadrado o
           rectangular). Pide ancho y largo en metros; al confirmar dibuja las
           cuatro paredes, y al editar, las redibuja con las medidas nuevas. */}
+      <DialogoImportarCAD open={dialogoCAD} escala={plan.scale || 50} onImportar={importarCAD} onClose={() => setDialogoCAD(false)} />
+
       <DialogoSala
         open={!!dialogoSala}
         valorInicial={dialogoSala && !dialogoSala.nuevo ? { ancho: dialogoSala.ancho, largo: dialogoSala.largo, alto: dialogoSala.alto } : null}

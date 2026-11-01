@@ -8,7 +8,7 @@ import {
   Menu, X, Building2, FolderOpen,
   Zap, BarChart3, LogOut, StickyNote, Package, Palette,
   CreditCard, Download, Bell, History, Search, FileBarChart, Droplets, AlertCircle,
-  MoreHorizontal, Filter, MessageSquare, ListChecks, AlertTriangle, CalendarCheck, Ruler, Sparkles } from
+  MoreHorizontal, Filter, MessageSquare, ListChecks, AlertTriangle, CalendarCheck, Ruler, Sparkles, CalendarClock, Gauge, Cylinder } from
 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
 import ThemeToggle from './components/ThemeToggle';
@@ -142,6 +142,8 @@ const navItems = [
 { name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList },
 { name: 'Manuales', page: 'Manuals', icon: BookOpen },
 { name: 'Plan Mantenim.', page: 'MaintenancePlanning', icon: ListChecks },
+{ name: 'Gamas y plan', page: 'PlanGamas', icon: CalendarClock },
+{ name: 'Instrumentos', page: 'InstrumentosTaller', icon: Gauge },
 { name: 'Normativas', page: 'Regulations', icon: Shield },
 { name: 'Notas', page: 'Notes', icon: StickyNote },
 { name: 'Plan. IA', page: 'AIPlanning', icon: ClipboardList },
@@ -173,6 +175,7 @@ const navItems = [
 { name: 'Filtros', page: 'FilterCalc', icon: Filter },
 { name: 'Herram. Danfoss', page: 'DanfossTools', icon: Wrench },
 { name: 'Prov. Gases', page: 'GasSuppliers', icon: Building2 },
+{ name: 'Gases refrigerantes', page: 'GasesRefrigerantes', icon: Cylinder },
 { name: 'Nuevo Contacto', page: 'ContactForm', icon: Users },
 { name: 'Actualizaciones', page: 'UpdateCenter', icon: Download },
 { name: 'Novedades', page: 'Novedades', icon: Sparkles },
@@ -194,7 +197,7 @@ const PAGE_SECTION = {
   // Operaciones (SAT y trabajo de campo)
   SAT: 'Operaciones', SATChat: 'Operaciones', SATCalendar: 'Operaciones',
   TechnicianFieldWork: 'Operaciones', TechnicianDay: 'Operaciones', TecniciansRoutes: 'Operaciones',
-  Maintenance: 'Operaciones', MaintenancePlanning: 'Operaciones', IncidentManagement: 'Operaciones',
+  Maintenance: 'Operaciones', MaintenancePlanning: 'Operaciones', PlanGamas: 'Operaciones', InstrumentosTaller: 'Operaciones', IncidentManagement: 'Operaciones',
   EquipmentDiaryPage: 'Operaciones', EquipmentFailureHistory: 'Operaciones', Agenda: 'Operaciones',
   Availability: 'Operaciones',
   // Clientes y proyectos
@@ -218,7 +221,7 @@ const PAGE_SECTION = {
   TablasRefrigerantes: 'Refrigeración',
   InformesTecnicos: 'Documentos',
   // Proveedores y stock
-  Suppliers: 'Proveedores y stock', GasSuppliers: 'Proveedores y stock',
+  Suppliers: 'Proveedores y stock', GasSuppliers: 'Proveedores y stock', GasesRefrigerantes: 'Proveedores y stock',
   SupplierTariffs: 'Proveedores y stock', Inventory: 'Proveedores y stock',
   SparePartsManager: 'Proveedores y stock', PurchaseSummary: 'Proveedores y stock',
   // IA y asistencia

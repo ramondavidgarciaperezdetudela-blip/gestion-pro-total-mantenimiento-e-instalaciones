@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Building2, Phone, MapPin, Wallet, FileSignature, StickyNote, Camera, Download, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Building2, Phone, MapPin, Wallet, FileSignature, StickyNote, Download, User } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,7 +7,7 @@ import { NumberField } from '@/components/ui/number-field';
 import PostalCodeSearch from '@/components/PostalCodeSearch';
 import CompletarDatosEmpresa from '@/components/CompletarDatosEmpresa';
 import { fetchCompanyLogo } from '@/components/LogoFetcher';
-import { uploadImage } from '@/lib/uploadImage';
+import FotoFicha from '@/components/FotoFicha';
 import ZonaClimatica from '@/components/clientes/ZonaClimatica';
 import {
   TIPOS_CLIENTE, RELACIONES, CATEGORIAS, FORMAS_PAGO, PERIODOS_CONTRATO, tipoDeCliente, ibanValido, formatearIban,
@@ -47,18 +47,9 @@ export default function FormularioCliente({ value, onChange }) {
   const v = value || {};
   const tipo = tipoDeCliente(v);
   const set = (k) => (e) => onChange({ [k]: e?.target ? e.target.value : e });
-  const fotoRef = useRef(null); const camaraRef = useRef(null);
-  const [subiendo, setSubiendo] = useState(false);
   const [buscandoLogo, setBuscandoLogo] = useState(false);
   const ibanMal = !ibanValido(v.iban);
 
-  const subirFoto = async (e) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    setSubiendo(true);
-    try { onChange({ photo_url: await uploadImage(file) }); }
-    catch { alert('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.'); }
-    finally { setSubiendo(false); e.target.value = ''; }
-  };
   const buscarLogo = async () => {
     setBuscandoLogo(true);
     const url = await fetchCompanyLogo(v.website || null, v.company_name);
@@ -73,17 +64,7 @@ export default function FormularioCliente({ value, onChange }) {
       {/* Columna izquierda */}
       <div className="space-y-3">
         <Tarjeta icono={Building2} titulo="Datos generales" data-testid="tarjeta-datos">
-          <div className="flex items-center gap-3">
-            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-dashed bg-muted">
-              {v.photo_url ? <img src={v.photo_url} alt="" className="h-full w-full object-cover" /> : <User className="h-6 w-6 text-muted-foreground" />}
-            </div>
-            <div className="flex flex-wrap gap-1">
-              <button type="button" onClick={() => fotoRef.current?.click()} disabled={subiendo} className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent"><Camera className="h-3 w-3" />{subiendo ? 'Subiendo…' : 'Foto'}</button>
-              <button type="button" onClick={() => camaraRef.current?.click()} disabled={subiendo} className="inline-flex items-center gap-1 rounded border px-2 py-1 text-xs hover:bg-accent"><Camera className="h-3 w-3" />Cámara</button>
-              <input ref={fotoRef} type="file" accept="image/*" className="hidden" onChange={subirFoto} />
-              <input ref={camaraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={subirFoto} />
-            </div>
-          </div>
+          <FotoFicha value={v.photo_url} onChange={(url) => onChange({ photo_url: url })} etiqueta="Foto o logotipo del cliente" icono={User} />
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_9rem]">
             {tipo === 'empresa' ? (

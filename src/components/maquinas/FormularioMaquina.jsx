@@ -1,3 +1,4 @@
+import FotoFicha from '@/components/FotoFicha';
 import React, { useMemo } from 'react';
 import { ClipboardList, Leaf, Cpu, SlidersHorizontal, Wrench, Camera, StickyNote } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -82,7 +83,7 @@ function Medida({ etiqueta, valor, unidad, estado, nota, ...rest }) {
  * @param contacts    clientes para el buscador; si no se pasa, el cliente ya viene fijado y no se muestra
  * @param onFoto      (evento de input file) => void
  */
-export default function FormularioMaquina({ form, setForm, contacts, onFoto, subiendo }) {
+export default function FormularioMaquina({ form, setForm, contacts }) {
   const set = (campo) => (v) => setForm((f) => ({ ...f, [campo]: v }));
   const setE = (campo) => (e) => set(campo)(e.target.value);
   const fg = useMemo(() => calcularFgas(form), [form]);
@@ -100,6 +101,7 @@ export default function FormularioMaquina({ form, setForm, contacts, onFoto, sub
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-4">
           <Seccion icono={ClipboardList} titulo="Identificación">
+            <FotoFicha value={form.photo_url} onChange={(url) => setForm((f) => ({ ...f, photo_url: url }))} etiqueta="Foto del equipo" icono={Camera} className="mb-3" tamano="h-24 w-32" />
             <div className="grid grid-cols-6 gap-3">
               {contacts && (
                 <Campo etiqueta="Cliente" requerido ancho="col-span-6">
@@ -209,12 +211,8 @@ export default function FormularioMaquina({ form, setForm, contacts, onFoto, sub
             </div>
           </Seccion>
 
-          <Seccion icono={Camera} titulo="Foto y notas">
+          <Seccion icono={StickyNote} titulo="Observaciones">
             <div className="flex items-start gap-3">
-              <label className="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:bg-muted">
-                {form.photo_url ? <img src={form.photo_url} alt="" className="h-full w-full object-cover" /> : (subiendo ? 'Subiendo…' : <span className="flex flex-col items-center gap-1"><Camera className="h-5 w-5" />Foto</span>)}
-                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onFoto} />
-              </label>
               <label className="block flex-1">
                 <span className="mb-1 flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground"><StickyNote className="h-3 w-3" />Notas / estado de conservación</span>
                 <textarea rows={4} value={form.notes} onChange={setE('notes')} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />

@@ -103,6 +103,9 @@ const ACPotenciaCalc = lazy(() => import('./pages/ACPotenciaCalc'));
 const ContactForm = lazy(() => import('./pages/ContactForm'));
 const DanfossTools = lazy(() => import('./pages/DanfossTools'));
 const GasSuppliers = lazy(() => import('./pages/GasSuppliers'));
+const GasesRefrigerantes = lazy(() => import('./pages/GasesRefrigerantes'));
+const PlanGamas = lazy(() => import('./pages/PlanGamas'));
+const InstrumentosTaller = lazy(() => import('./pages/InstrumentosTaller'));
 const LicenseActivation = lazy(() => import('./pages/LicenseActivation'));
 const LicenseRenewal = lazy(() => import('./pages/LicenseRenewal'));
 const MultiAreaCalc = lazy(() => import('./pages/MultiAreaCalc'));
@@ -172,6 +175,9 @@ export const PAGES = {
     "ContactForm": ContactForm,
     "DanfossTools": DanfossTools,
     "GasSuppliers": GasSuppliers,
+    "GasesRefrigerantes": GasesRefrigerantes,
+    "PlanGamas": PlanGamas,
+    "InstrumentosTaller": InstrumentosTaller,
     "LicenseActivation": LicenseActivation,
     "LicenseRenewal": LicenseRenewal,
     "MultiAreaCalc": MultiAreaCalc,

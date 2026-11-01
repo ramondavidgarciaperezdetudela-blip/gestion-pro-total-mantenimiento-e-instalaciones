@@ -1,3 +1,6 @@
+import FormularioTecnico, { TECNICO_VACIO } from '@/components/taller/FormularioTecnico';
+import { toast } from 'sonner';
+import { caducidadesTecnico } from '@/lib/taller';
 import React, { useState, useEffect, useRef } from 'react';
 import InterruptorIA from '@/components/InterruptorIA';
 import ElegirTema from '@/components/ElegirTema';
@@ -123,80 +126,64 @@ function LicenseSection() {
 }
 
 function TechnicianManager({ technicians, onChange }) {
-  const [newTech, setNewTech] = useState({ name: '', fgas_carnet: '', rite_certificate: '' });
-  const [editing, setEditing] = useState(null);
+  const [borrador, setBorrador] = useState(null);
 
-  const addTechnician = () => {
-    if (!newTech.name.trim()) return;
-    const tech = {
-      id: Date.now().toString(),
-      name: newTech.name.trim(),
-      fgas_carnet: newTech.fgas_carnet || '',
-      rite_certificate: newTech.rite_certificate || ''
-    };
-    onChange([...technicians, tech]);
-    setNewTech({ name: '', fgas_carnet: '', rite_certificate: '' });
+  const guardarBorrador = () => {
+    if (!borrador.name.trim()) { toast.error('Indica el nombre del técnico.'); return; }
+    const t = { ...borrador, name: borrador.name.trim() };
+    if (t.id) onChange(technicians.map((x) => (x.id === t.id ? t : x)));
+    else onChange([...technicians, { ...t, id: Date.now().toString() }]);
+    setBorrador(null);
   };
-
-  const updateTechnician = (id, updated) => {
-    onChange(technicians.map(t => t.id === id ? updated : t));
-  };
-
   const removeTechnician = (id) => {
     onChange(technicians.filter(t => t.id !== id));
   };
+
+  if (borrador) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold">{borrador.id ? 'Editar técnico' : 'Nuevo técnico'}</h3>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBorrador(null)}>Cancelar</Button>
+            <Button onClick={guardarBorrador} data-testid="guardar-tecnico">{borrador.id ? 'Guardar cambios' : 'Añadir técnico'}</Button>
+          </div>
+        </div>
+        <FormularioTecnico value={borrador} onChange={setBorrador} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
         <p className="font-medium mb-1">👷 Técnicos con credenciales</p>
-        <p>Añade técnicos con su carnet F-Gas (gases fluorados) y certificado RITE (climatización). Se rellenarán automáticamente en los documentos de legalización.</p>
+        <p>Cada técnico lleva su carnet F-Gas, su carné RITE y las fechas de caducidad; el programa avisa de las que vencen. Se rellenan automáticamente en los documentos de legalización.</p>
       </div>
-
-      <div className="border rounded-lg p-4 space-y-3 bg-gray-50">
-        <p className="text-sm font-medium">Nuevo técnico</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <Input placeholder="Nombre completo" value={newTech.name} onChange={e => setNewTech({...newTech, name: e.target.value})} />
-          <Input placeholder="Nº carnet F-Gas (gases fluorados)" value={newTech.fgas_carnet} onChange={e => setNewTech({...newTech, fgas_carnet: e.target.value})} />
-          <Input placeholder="Nº certificado RITE (climatización)" value={newTech.rite_certificate} onChange={e => setNewTech({...newTech, rite_certificate: e.target.value})} />
-        </div>
-        <Button onClick={addTechnician} className="w-full gap-2">
-          <Plus className="w-4 h-4" /> Añadir técnico
-        </Button>
-      </div>
+      <Button onClick={() => setBorrador({ ...TECNICO_VACIO })} className="gap-2" data-testid="nuevo-tecnico">
+        <Plus className="w-4 h-4" /> Añadir técnico
+      </Button>
 
       {technicians.length === 0 && <p className="text-sm text-gray-400 text-center py-4">No hay técnicos. Añade el primero.</p>}
       
       <div className="space-y-2">
         {technicians.map((tech) => (
           <div key={tech.id} className="bg-white rounded-lg border p-3">
-            {editing === tech.id ? (
-              <div className="space-y-2">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  <Input value={tech.name} onChange={e => updateTechnician(tech.id, {...tech, name: e.target.value})} />
-                  <Input placeholder="Nº carnet F-Gas" value={tech.fgas_carnet || ''} onChange={e => updateTechnician(tech.id, {...tech, fgas_carnet: e.target.value})} />
-                  <Input placeholder="Nº certificado RITE" value={tech.rite_certificate || ''} onChange={e => updateTechnician(tech.id, {...tech, rite_certificate: e.target.value})} />
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => setEditing(null)} className="flex-1">Guardar</Button>
-                  <Button size="sm" variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
-                </div>
-              </div>
-            ) : (
               <div className="flex items-start justify-between">
+                {tech.photo_url && <img src={tech.photo_url} alt={tech.name} className="mr-3 h-12 w-12 flex-shrink-0 rounded-full object-cover" />}
                 <div className="text-sm flex-1">
                   <p className="font-medium">{tech.name}</p>
                   {tech.fgas_carnet && <p className="text-xs text-gray-600">🧊 F-Gas: {tech.fgas_carnet}</p>}
                   {tech.rite_certificate && <p className="text-xs text-gray-600">❄️ RITE: {tech.rite_certificate}</p>}
+                  {caducidadesTecnico(tech).map((c) => <p key={c.campo} className={`text-xs ${c.estado === 'vencida' ? 'text-red-600' : 'text-amber-600'}`}>⚠️ {c.etiqueta}: {c.estado === 'vencida' ? 'caducado' : 'caduca'} el {c.fecha.split('-').reverse().join('/')}</p>)}
                 </div>
                 <div className="flex gap-1 flex-shrink-0">
-                  <button onClick={() => setEditing(tech.id)} className="p-1 text-blue-600 hover:bg-blue-50 rounded">✏️</button>
+                  <button onClick={() => setBorrador({ ...TECNICO_VACIO, ...tech })} className="p-1 text-blue-600 hover:bg-blue-50 rounded">✏️</button>
                   <button onClick={() => removeTechnician(tech.id)} className="p-1 text-red-400 hover:text-red-600">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-            )}
           </div>
         ))}
       </div>
