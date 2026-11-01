@@ -22,6 +22,7 @@ import { esHueco, estaEnPared, huecosDePared, anchoHueco, altoHueco, antepechoHu
 
 export const ALTURA_SUELO = 2.6;
 export const ALTURA_CAMARA = 2.5;
+import { materialDe, espesorPared } from './planoParedes.js';
 const ESPESOR_PARED = 0.1;
 
 const num = (v) => {
@@ -665,10 +666,10 @@ export function dibujarVista3D(ctx, W, H, {
     const largo = Math.hypot(x2 - x1, y2 - y1);
     if (largo < 0.01) return;
     const alto = altoPared(w, alturaSuelo);
-    const esp = w.camara ? Math.max(0.06, (num(w.espesor_mm) || 100) / 1000) : ESPESOR_PARED;
+    const esp = w.camara ? Math.max(0.06, (num(w.espesor_mm) || 100) / 1000) : (w.material || w.espesor_mm ? espesorPared(w) : ESPESOR_PARED);
     const ux = (x2 - x1) / largo, uy = (y2 - y1) / largo;
     const tipoCol = w.tipo === 'negativa' ? '#6366f1' : '#3b82f6';
-    const color = w.camara ? '#f1f5f9' : '#d6d3d1';
+    const color = w.camara ? '#f1f5f9' : (materialDe(w)?.color || '#d6d3d1');
     const opcionesMuro = {
       alfa: w.camara ? 0.78 : 0.6,
       borde: w.camara ? tono(tipoCol, 0.9, 0.7) : 'rgba(87,83,78,0.55)',

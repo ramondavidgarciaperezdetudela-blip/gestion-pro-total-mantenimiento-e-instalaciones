@@ -6,6 +6,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.90.0] — 2026-11-01
+
+### Añadido
+- **Medida en vivo al dibujar paredes**: mientras se traza una pared aparece su longitud en metros junto al cursor (o el dedo), para saber hasta dónde llegar.
+- **Editar una pared ya dibujada**: al seleccionarla se cambia el largo (las paredes encadenadas siguen el extremo), el grosor, el alto y el tipo de pared (ladrillo, bloque de hormigón, hormigón, cemento, yeso, pladur, panel sándwich, madera, cristal u otro). El tipo se ve con su color y grosor en el plano y en la vista 3D.
+
 ## [1.89.0] — 2026-11-01
 
 ### Añadido
