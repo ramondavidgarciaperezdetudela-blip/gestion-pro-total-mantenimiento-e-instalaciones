@@ -58,6 +58,9 @@ contextBridge.exposeInMainWorld('gptImpresion', {
 contextBridge.exposeInMainWorld('gptCadcraft', {
   disponible: () => ipcRenderer.invoke('gpt-cadcraft-disponible'),
   abrir: (datos) => ipcRenderer.invoke('gpt-cadcraft-abrir', datos),
+  abrirLibre: (datos) => ipcRenderer.invoke('gpt-cadcraft-abrir-libre', datos),
+  comprobar: () => ipcRenderer.invoke('gpt-cadcraft-comprobar'),
+  actualizar: () => ipcRenderer.invoke('gpt-cadcraft-actualizar'),
 });
 
 contextBridge.exposeInMainWorld('gptUpdater', {

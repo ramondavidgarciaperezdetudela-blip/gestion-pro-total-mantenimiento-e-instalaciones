@@ -1,0 +1,118 @@
+name: Sincronizar CADCraft
+
+# Descarga la última versión de CADCraft (https://github.com/storytold/cadcraft), le aplica
+# las mejoras de Gestión Pro Total (cadcraft-hvac/hvac.patch), la compila para Windows, Linux
+# y web (móvil/tableta) y la publica en la release «cadcraft-latest».
+# Los dibujos, ajustes y comandos propios del usuario NO se tocan: viven en su carpeta de datos.
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  preparar:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.up.outputs.sha }}
+      cambiado: ${{ steps.up.outputs.cambiado }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: up
+        run: |
+          SHA=$(git ls-remote https://github.com/storytold/cadcraft HEAD | cut -f1)
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          ACT=$(gh release download cadcraft-latest -p version.json -O - 2>/dev/null | python3 -c "import sys,json;print(json.load(sys.stdin).get('upstream',''))" 2>/dev/null || true)
+          if [ "$ACT" = "$SHA" ] && [ "${{ github.event_name }}" = "schedule" ]; then echo "cambiado=no" >> $GITHUB_OUTPUT; else echo "cambiado=si" >> $GITHUB_OUTPUT; fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  fuente:
+    needs: preparar
+    if: needs.preparar.outputs.cambiado == 'si'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descargar CADCraft y aplicar nuestras mejoras
+        run: |
+          git clone https://github.com/storytold/cadcraft src-cadcraft
+          cd src-cadcraft && git checkout ${{ needs.preparar.outputs.sha }}
+          if ! git apply --3way ../cadcraft-hvac/hvac.patch; then
+            echo "::error::Las mejoras de Gestión Pro Total no encajan con la última versión de CADCraft. Se conserva la versión anterior."; exit 1
+          fi
+          mkdir -p ../out && cd .. && tar --exclude=.git -czf out/fuente.tgz src-cadcraft
+      - uses: actions/upload-artifact@v4
+        with: { name: fuente, path: out/fuente.tgz }
+
+  nativo:
+    needs: fuente
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: fuente }
+      - run: tar -xzf fuente.tgz
+        shell: bash
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: src-cadcraft }
+      - name: Dependencias (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libgtk-3-dev libxkbcommon-dev libwayland-dev libxcb1-dev libasound2-dev
+      - name: Compilar
+        shell: bash
+        run: cd src-cadcraft && cargo build --release -p cadcraft
+      - name: Empaquetar
+        shell: bash
+        run: |
+          mkdir -p paq/support && cp -r cadcraft-hvac/support/. paq/support/
+          cp src-cadcraft/LICENSE-MIT src-cadcraft/LICENSE-APACHE src-cadcraft/NOTICE paq/
+          if [ "$RUNNER_OS" = "Windows" ]; then cp src-cadcraft/target/release/cadcraft.exe paq/; (cd paq && 7z a -tzip ../cadcraft-windows.zip . >/dev/null);
+          else cp src-cadcraft/target/release/cadcraft paq/; tar -czf cadcraft-linux.tar.gz -C paq .; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nativo-${{ runner.os }}
+          path: |
+            cadcraft-windows.zip
+            cadcraft-linux.tar.gz
+          if-no-files-found: ignore
+
+  web:
+    needs: fuente
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: fuente }
+      - run: tar -xzf fuente.tgz
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: src-cadcraft }
+      - uses: taiki-e/install-action@v2
+        with: { tool: trunk }
+      - name: Compilar la versión web (móvil y tableta)
+        run: |
+          cd src-cadcraft/apps/cadcraft-web && trunk build --release
+          cd ../../dist/web && zip -qr ../../../cadcraft-web.zip .
+      - uses: actions/upload-artifact@v4
+        with: { name: web, path: src-cadcraft/cadcraft-web.zip }
+
+  publicar:
+    needs: [preparar, nativo, web]
+    if: always() && needs.nativo.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: arte, merge-multiple: true }
+      - name: Publicar release cadcraft-latest
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          echo "{\"upstream\":\"${{ needs.preparar.outputs.sha }}\",\"fecha\":\"$(date -u +%FT%TZ)\",\"web\":$([ -f arte/cadcraft-web.zip ] && echo true || echo false)}" > version.json
+          gh release view cadcraft-latest -R ${{ github.repository }} >/dev/null 2>&1 || gh release create cadcraft-latest -R ${{ github.repository }} -t "CADCraft (última versión)" -n "CADCraft actualizado automáticamente desde storytold/cadcraft con las mejoras de Gestión Pro Total."
+          gh release upload cadcraft-latest -R ${{ github.repository }} --clobber version.json arte/cadcraft-windows.zip arte/cadcraft-linux.tar.gz $( [ -f arte/cadcraft-web.zip ] && echo arte/cadcraft-web.zip )

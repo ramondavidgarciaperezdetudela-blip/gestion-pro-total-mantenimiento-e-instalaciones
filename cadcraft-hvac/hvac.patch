@@ -1,0 +1,250 @@
+diff --git a/apps/cadcraft/src/workspace.rs b/apps/cadcraft/src/workspace.rs
+index b75c9bc..c4e232a 100644
+--- a/apps/cadcraft/src/workspace.rs
++++ b/apps/cadcraft/src/workspace.rs
+@@ -25,8 +25,8 @@ pub struct Workspace {
+ 
+ fn snapshot(ui: &UiState) -> Result<Value, String> {
+     cadcraft_ui_egui::docking::validate(&ui.docking)?;
+-    if !matches!(ui.toolset_tab.as_str(), "Drafting" | "Modeling") {
+-        return Err("toolsetTab must be Drafting or Modeling".into());
++    if !matches!(ui.toolset_tab.as_str(), "Drafting" | "Modeling" | "HVAC") {
++        return Err("toolsetTab must be Drafting, Modeling or HVAC".into());
+     }
+     if ui.collapsed_groups.len() > 64 || ui.collapsed_groups.iter().any(|name| name.len() > 256) {
+         return Err("collapsedGroups exceeds the workspace size limit".into());
+diff --git a/crates/ui-egui/src/hvac.rs b/crates/ui-egui/src/hvac.rs
+new file mode 100644
+index 0000000..78eb53a
+--- /dev/null
++++ b/crates/ui-egui/src/hvac.rs
+@@ -0,0 +1,73 @@
++//! HVAC tab of the Tool Sets: walls and the library of refrigeration, air-conditioning,
++//! ventilation and electrical equipment of Gestión Pro Total. Every button types a command
++//! (a LISP routine from the support folder) on the command line.
++
++use egui::{Sense, vec2};
++
++use crate::theme::Tokens;
++
++/// `category \t command \t name \t width \t height`, generated from the Gestión Pro Total catalog.
++const EQUIPOS: &str = include_str!("hvac/equipos.tsv");
++
++/// Wall tools: (command, label, tip).
++const PAREDES: &[(&str, &str, &str)] = &[
++    ("PARED", "Dibujar pared", "Pide material, grosor y alto, y muestra la medida de cada tramo"),
++    ("PAREDEDIT", "Editar pared", "Cambia largo, grosor, alto y material de una pared"),
++];
++
++fn header(ui: &mut egui::Ui, title: &str, collapsed: bool) -> egui::Response {
++    let t = Tokens::get();
++    let (hr, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 24.0), Sense::click());
++    let arrow = if collapsed { "▸" } else { "▾" };
++    ui.painter().text(
++        egui::pos2(hr.left() + 8.0, hr.center().y),
++        egui::Align2::LEFT_CENTER,
++        format!("{arrow} {title}"),
++        egui::FontId::proportional(13.0),
++        t.text,
++    );
++    resp
++}
++
++/// Draws the HVAC tab. Returns the command line text to run when a button was pressed, and the
++/// group whose header was clicked.
++pub fn panel(ui: &mut egui::Ui, collapsed_groups: &[String]) -> (Option<String>, Option<String>) {
++    let mut run: Option<String> = None;
++    let mut toggled: Option<String> = None;
++    let is_collapsed = |g: &str| collapsed_groups.iter().any(|x| x == g);
++
++    ui.add_space(4.0);
++    if header(ui, "Paredes", is_collapsed("Paredes")).clicked() {
++        toggled = Some("Paredes".into());
++    }
++    if !is_collapsed("Paredes") {
++        for (cmd, label, tip) in PAREDES {
++            if ui.add_sized([ui.available_width() - 12.0, 24.0], egui::Button::new(*label)).on_hover_text(*tip).clicked() {
++                run = Some((*cmd).to_string());
++            }
++        }
++    }
++
++    let mut grupo = "";
++    let mut abierto = true;
++    for linea in EQUIPOS.lines() {
++        let mut c = linea.split('\t');
++        let (Some(cat), Some(cmd), Some(nombre)) = (c.next(), c.next(), c.next()) else { continue };
++        let medidas = match (c.next(), c.next()) {
++            (Some(w), Some(h)) => format!("{w} × {h} m"),
++            _ => String::new(),
++        };
++        if cat != grupo {
++            grupo = cat;
++            abierto = !is_collapsed(cat);
++            ui.add_space(4.0);
++            if header(ui, cat, !abierto).clicked() {
++                toggled = Some(cat.to_string());
++            }
++        }
++        if abierto && ui.add_sized([ui.available_width() - 12.0, 22.0], egui::Button::new(nombre)).on_hover_text(medidas).clicked() {
++            run = Some(cmd.to_string());
++        }
++    }
++    (run, toggled)
++}
+diff --git a/crates/ui-egui/src/hvac/equipos.tsv b/crates/ui-egui/src/hvac/equipos.tsv
+new file mode 100644
+index 0000000..0c3fa9a
+--- /dev/null
++++ b/crates/ui-egui/src/hvac/equipos.tsv
+@@ -0,0 +1,74 @@
++Refrigeración	EQ-COMPRESOR	Compresor	1	0.8
++Refrigeración	EQ-CONDENSADOR	Condensador (genérico)	1.2	0.8
++Refrigeración	EQ-CONDENSADORA_AIRE	Condensadora aire (axial)	1.4	0.9
++Refrigeración	EQ-CONDENSADORA_CENTRIFUGO	Condensadora aire (centrífugo)	1.4	0.9
++Refrigeración	EQ-CONDENSADORA_AGUA	Condensadora por agua	1	0.7
++Refrigeración	EQ-CONDENSADORA_EVAPORATIVA	Condensadora evaporativa	1.6	1.4
++Refrigeración	EQ-CONDENSADORA_SECA	Condensadora seca (dry-cooler)	1.6	0.9
++Refrigeración	EQ-EVAPORADOR	Evaporador	1	0.6
++Refrigeración	EQ-GRUPO_FRIO	Grupo de frío	1.8	1.2
++Refrigeración	EQ-CENTRAL_FRIGORIFICA	Central frigorífica	3	1.5
++Refrigeración	EQ-CAMARA_FRIGORIFICA	Cámara frigorífica	3	3
++Refrigeración	EQ-VENTILADOR	Ventilador	0.6	0.6
++Refrigeración	EQ-VALVULA_EXPANSION	Válvula expansión	0.3	0.3
++Refrigeración	EQ-TUBERIA_REFRIGERANTE	Tubería refrigerante	0.2	0.2
++Refrigeración	EQ-DESHUMIDIFICADOR	Deshumidificador	0.5	0.4
++Refrigeración	EQ-VITRINA	Vitrina / expositor	2.5	1
++Refrigeración	EQ-MURAL	Mural refrigerado	3.75	0.9
++Refrigeración	EQ-ARCON	Arcón congelador	1.5	0.7
++Refrigeración	EQ-ABATIDOR	Abatidor de temperatura	0.8	0.8
++Refrigeración	EQ-BOTELLERO	Botellero / bajo mostrador	1.5	0.6
++Refrigeración	EQ-RECIBIDOR	Recibidor de líquido	0.5	0.5
++Refrigeración	EQ-SEPARADOR_ACEITE	Separador de aceite	0.4	0.4
++Refrigeración	EQ-FILTRO_DESHIDRATADOR	Filtro deshidratador	0.2	0.2
++Refrigeración	EQ-VISOR_LIQUIDO	Visor de líquido	0.15	0.15
++Refrigeración	EQ-VALVULA_SOLENOIDE	Válvula solenoide	0.2	0.2
++Refrigeración	EQ-PRESOSTATO	Presostato	0.2	0.2
++Refrigeración	EQ-CONTROL_TEMPERATURA	Control / termostato	0.2	0.2
++Climatización	EQ-EXTERIOR_CLIMA	Unidad exterior	1	0.4
++Climatización	EQ-CASSETTE	Cassette	0.9	0.9
++Climatización	EQ-CONDUCTOS	Unidad de conductos	1.2	0.6
++Climatización	EQ-CONSOLA_SUELO	Consola suelo-techo	1	0.25
++Climatización	EQ-SPLIT_PARED	Split de pared	0.9	0.2
++Climatización	EQ-FANCOIL	Fancoil	0.8	0.3
++Climatización	EQ-RECUPERADOR	Recuperador de calor	1.2	0.8
++Ventilación / Conductos	EQ-REJILLA_IMPULSION	Rejilla impulsión	0.4	0.4
++Ventilación / Conductos	EQ-REJILLA_RETORNO	Rejilla retorno	0.4	0.4
++Ventilación / Conductos	EQ-REJILLA_EXTRACCION	Rejilla extracción	0.4	0.4
++Ventilación / Conductos	EQ-DIFUSOR_CIRCULAR	Difusor circular	0.5	0.5
++Ventilación / Conductos	EQ-DIFUSOR_LINEAL	Difusor lineal	1.2	0.2
++Ventilación / Conductos	EQ-BOCA_IMPULSION	Boca de impulsión	0.3	0.3
++Ventilación / Conductos	EQ-BOCA_RETORNO	Boca de retorno	0.3	0.3
++Ventilación / Conductos	EQ-VENTILADOR_EXTRACCION	Ventilador extracción	0.6	0.6
++Ventilación / Conductos	EQ-VENTILADOR_IMPULSION	Ventilador impulsión	0.6	0.6
++Ventilación / Conductos	EQ-UVT	UVT (unid. trat. aire)	1.6	0.9
++Ventilación / Conductos	EQ-COMPUERTA_CORTAFUEGO	Compuerta cortafuegos	0.5	0.5
++Ventilación / Conductos	EQ-SILENCIADOR	Silenciador	0.8	0.4
++Ventilación / Conductos	EQ-CAJA_TOMA	Caja / plenum	0.6	0.6
++Ventilación / Conductos	EQ-EXTRACTOR_EOLICO	Extractor eólico	0.5	0.5
++Electricidad / Aparamenta	EQ-CUADRO_ELECTRICO	Cuadro eléctrico	0.8	0.3
++Electricidad / Aparamenta	EQ-MAGNETOTERMICO	Magnetotérmico	0.3	0.2
++Electricidad / Aparamenta	EQ-DIFERENCIAL	Diferencial	0.3	0.2
++Electricidad / Aparamenta	EQ-CONTACTOR	Contactor	0.25	0.2
++Electricidad / Aparamenta	EQ-GUARDAMOTOR	Guardamotor	0.25	0.2
++Electricidad / Aparamenta	EQ-VARIADOR	Variador de frecuencia	0.4	0.3
++Electricidad / Aparamenta	EQ-AUTOMATA	Autómata / PLC	0.4	0.3
++Electricidad / Aparamenta	EQ-CABLEADO	Cableado	0.1	0.1
++Electricidad / Aparamenta	EQ-TOMA_CORRIENTE	Toma de corriente	0.2	0.2
++Electricidad / Aparamenta	EQ-INTERRUPTOR	Interruptor	0.2	0.2
++Electricidad / Aparamenta	EQ-LUMINARIA	Luminaria	1.2	0.2
++Electricidad / Aparamenta	EQ-PUESTA_TIERRA	Puesta a tierra	0.4	0.4
++Seguridad	EQ-VALVULA_SEGURIDAD	Válvula de seguridad	0.2	0.2
++Seguridad	EQ-DETECTOR_FUGAS	Detector de fugas	0.2	0.2
++Seguridad	EQ-ALARMA_CAMARA	Alarma persona encerrada	0.2	0.2
++Seguridad	EQ-PULSADOR_EMERGENCIA	Pulsador emergencia	0.2	0.2
++Seguridad	EQ-PARO_EMERGENCIA	Paro de emergencia	0.2	0.2
++Seguridad	EQ-EXTRACCION_EMERGENCIA	Ventilación de emergencia	0.6	0.6
++Seguridad	EQ-EXTINTOR	Extintor	0.3	0.3
++Seguridad	EQ-DETECTOR_HUMO	Detector de humo	0.2	0.2
++Seguridad	EQ-LUZ_EMERGENCIA	Luz de emergencia	0.3	0.15
++Seguridad	EQ-SENALIZACION	Señalización	0.2	0.2
++Estructura	EQ-PILAR	Pilar	0.4	0.4
++Estructura	EQ-PUERTA	Puerta	1	0.15
++Estructura	EQ-VENTANA	Ventana	1.2	0.15
++Estructura	EQ-DESAGUE	Desagüe	0.2	0.2
+diff --git a/crates/ui-egui/src/lib.rs b/crates/ui-egui/src/lib.rs
+index 97ab2fa..8db7846 100644
+--- a/crates/ui-egui/src/lib.rs
++++ b/crates/ui-egui/src/lib.rs
+@@ -21,6 +21,7 @@ pub mod aliasdlg;
+ pub mod animation;
+ pub mod autosave;
+ pub mod bedit;
++mod hvac;
+ pub mod canvas;
+ pub mod capture;
+ pub mod chrome;
+@@ -192,7 +193,7 @@ impl Default for UiState {
+             show_ucs_icon: true,
+             show_layer_list: false,
+             system_cursor: false,
+-            toolset_tab: "Drafting".into(),
++            toolset_tab: "HVAC".into(),
+             collapsed_groups: Vec::new(),
+             hidden_tools: Vec::new(),
+             properties_all: true,
+diff --git a/crates/ui-egui/src/palettes.rs b/crates/ui-egui/src/palettes.rs
+index 7e01a15..1da55b4 100644
+--- a/crates/ui-egui/src/palettes.rs
++++ b/crates/ui-egui/src/palettes.rs
+@@ -148,8 +148,8 @@ pub fn toolsets(app: &mut CadApp, ui: &mut egui::Ui) {
+         // Tabs.
+         let tab_h = 28.0;
+         let mut x = r.left();
+-        for name in ["Drafting", "Modeling"] {
+-            let w = 92.0;
++        for name in ["Drafting", "Modeling", "HVAC"] {
++            let w = 72.0;
+             let tr = Rect::from_min_size(pos2(x, r.top()), vec2(w, tab_h));
+             let active = app.ui.toolset_tab == name;
+             let resp = ui.interact(tr, ui.scope_id().with(("ts", name)), Sense::click());
+@@ -177,13 +177,27 @@ pub fn toolsets(app: &mut CadApp, ui: &mut egui::Ui) {
+         }
+         let body = Rect::from_min_max(pos2(r.left(), r.top() + tab_h), r.max);
+         let mut clicked: Option<&'static str> = None;
++        let mut hvac_cmd: Option<String> = None;
+         let mut toggle_group = None;
+         let mut tool_visible: Option<(String, bool)> = None;
+         let mut restore: Vec<String> = Vec::new();
+         ui.scope_builder(egui::UiBuilder::new().max_rect(body), |ui| {
+             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+                 ui.spacing_mut().item_spacing = vec2(0.0, 0.0);
+-                let groups: &[(&str, &[Tool], &[Tool])] = if app.ui.toolset_tab == "Drafting" { DRAFTING } else { MODELING };
++                if app.ui.toolset_tab == "HVAC" {
++                    let (run, toggled) = crate::hvac::panel(ui, &app.ui.collapsed_groups);
++                    if let Some(g) = toggled {
++                        toggle_group = Some(g);
++                    }
++                    if let Some(c) = run {
++                        hvac_cmd = Some(c);
++                    }
++                }
++                let groups: &[(&str, &[Tool], &[Tool])] = match app.ui.toolset_tab.as_str() {
++                    "Drafting" => DRAFTING,
++                    "Modeling" => MODELING,
++                    _ => &[],
++                };
+                 for (name, large, small) in groups {
+                     let collapsed = app.ui.collapsed_groups.iter().any(|g| g == name);
+                     // Header.
+@@ -287,6 +301,10 @@ pub fn toolsets(app: &mut CadApp, ui: &mut egui::Ui) {
+             app.cmd.buffer.clear();
+             app.start(c);
+         }
++        if let Some(c) = hvac_cmd {
++            app.cmd.buffer.clear();
++            app.cmdline(&c);
++        }
+     });
+ }
+ 

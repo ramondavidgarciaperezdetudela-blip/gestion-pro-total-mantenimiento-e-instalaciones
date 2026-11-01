@@ -443,6 +443,9 @@ ipcMain.handle('gpt-imprimir', async (_evt, { html, impresora, silencioso, marge
 });
 
 ipcMain.handle('gpt-cadcraft-disponible', async () => cadcraft.disponible());
+ipcMain.handle('gpt-cadcraft-abrir-libre', async (_e, d) => cadcraft.abrirLibre(d || {}));
+ipcMain.handle('gpt-cadcraft-comprobar', async () => cadcraft.comprobarActualizacion());
+ipcMain.handle('gpt-cadcraft-actualizar', async () => cadcraft.actualizar());
 ipcMain.handle('gpt-cadcraft-abrir', async (_evt, datos) => cadcraft.abrir(datos || {}));
 
 ipcMain.handle('gpt-guardar-copia', async (_evt, { nombre, contenido, carpeta }) => {
