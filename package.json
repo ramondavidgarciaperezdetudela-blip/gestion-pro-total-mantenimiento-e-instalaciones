@@ -1,7 +1,7 @@
 {
   "name": "gestion-pro-total-fuera-base44",
   "private": true,
-  "version": "1.84.0",
+  "version": "1.86.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,6 +19,9 @@
     "test:maquina": "node scripts/test-maquina-fgas.mjs",
     "test:instrumentos": "node scripts/test-instrumentos.mjs",
     "test:psicrometria": "node scripts/test-psicrometria.mjs",
+    "test:firma": "node scripts/test-firma-trazos.mjs",
+    "test:cliente": "node scripts/test-cliente.mjs",
+    "test:arbol": "node scripts/test-arbol-documentos.mjs",
     "test:zona": "node scripts/test-zona-climatica.mjs",
     "test:averias": "node scripts/test-averias-estado.mjs",
     "test:simulador": "node scripts/test-simulador-ciclo.mjs",

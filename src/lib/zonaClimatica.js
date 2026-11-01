@@ -95,3 +95,63 @@ export function zonaClimaticaDe(contacto = {}) {
 
 /** Color por severidad de invierno (frío → cian/azul, cálido → ámbar/rojo). */
 export const COLOR_LETRA = { E: '#2563eb', D: '#06b6d4', C: '#10b981', B: '#f59e0b', A: '#ef4444', 'α': '#be123c' };
+
+// ───────────────────────── Comunidades autónomas y zona manual ─────────────────────────
+
+/** Comunidades autónomas y ciudades autónomas con las claves de sus provincias (las de CAPITALES). */
+export const COMUNIDADES = [
+  { nombre: 'Andalucía', provincias: ['almería', 'cádiz', 'córdoba', 'granada', 'huelva', 'jaén', 'málaga', 'sevilla'] },
+  { nombre: 'Aragón', provincias: ['huesca', 'teruel', 'zaragoza'] },
+  { nombre: 'Asturias (Principado de)', provincias: ['asturias'] },
+  { nombre: 'Illes Balears', provincias: ['baleares'] },
+  { nombre: 'Canarias', provincias: ['las palmas', 'santa cruz de tenerife'] },
+  { nombre: 'Cantabria', provincias: ['cantabria'] },
+  { nombre: 'Castilla y León', provincias: ['ávila', 'burgos', 'león', 'palencia', 'salamanca', 'segovia', 'soria', 'valladolid', 'zamora'] },
+  { nombre: 'Castilla-La Mancha', provincias: ['albacete', 'ciudad real', 'cuenca', 'guadalajara', 'toledo'] },
+  { nombre: 'Cataluña', provincias: ['barcelona', 'girona', 'lleida', 'tarragona'] },
+  { nombre: 'Comunitat Valenciana', provincias: ['alicante', 'castellón', 'valencia'] },
+  { nombre: 'Extremadura', provincias: ['badajoz', 'cáceres'] },
+  { nombre: 'Galicia', provincias: ['a coruña', 'lugo', 'ourense', 'pontevedra'] },
+  { nombre: 'Madrid (Comunidad de)', provincias: ['madrid'] },
+  { nombre: 'Murcia (Región de)', provincias: ['murcia'] },
+  { nombre: 'Navarra (Comunidad Foral de)', provincias: ['navarra'] },
+  { nombre: 'País Vasco', provincias: ['álava', 'gipuzkoa', 'bizkaia'] },
+  { nombre: 'La Rioja', provincias: ['la rioja'] },
+  { nombre: 'Ceuta', provincias: ['ceuta'] },
+  { nombre: 'Melilla', provincias: ['melilla'] },
+];
+
+const NOMBRE_PROVINCIA = { alicante: 'Alicante', baleares: 'Illes Balears', castellón: 'Castellón', valencia: 'Valencia', 'a coruña': 'A Coruña', álava: 'Álava', gipuzkoa: 'Gipuzkoa', bizkaia: 'Bizkaia', 'la rioja': 'La Rioja', 'las palmas': 'Las Palmas', 'santa cruz de tenerife': 'Santa Cruz de Tenerife', asturias: 'Asturias', navarra: 'Navarra', cantabria: 'Cantabria', ceuta: 'Ceuta', melilla: 'Melilla' };
+/** Nombre para mostrar de una provincia a partir de su clave. */
+export const nombreProvincia = (clave) => NOMBRE_PROVINCIA[clave] || String(clave || '').replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+
+export const comunidadDe = (clave) => COMUNIDADES.find((c) => c.provincias.includes(clave)) || null;
+export const zonaDeProvincia = (clave) => CAPITALES.find((c) => c.provincia === clave)?.zona || null;
+
+/** Texto de comunidad o de provincia escrito a mano → comunidad (o null). */
+export function buscarComunidad(texto) {
+  const n = normalizar(texto); if (!n) return null;
+  return COMUNIDADES.find((c) => normalizar(c.nombre).includes(n) || n.includes(normalizar(c.nombre).split(' (')[0])) || null;
+}
+
+/** Zonas del CTE para la rejilla de selección: letra de invierno (filas) × número de verano (columnas). */
+export const FILAS_ZONA = [
+  { letra: 'E', numeros: [1] }, { letra: 'D', numeros: [1, 2, 3] }, { letra: 'C', numeros: [1, 2, 3, 4] },
+  { letra: 'B', numeros: [1, 2, 3, 4] }, { letra: 'A', numeros: [1, 2, 3, 4] }, { letra: 'α', numeros: [1, 2, 3, 4] },
+];
+export const zonaValida = (z) => /^(α|[A-E])[1-4]$/.test(String(z ?? '').trim()) && FILAS_ZONA.some((f) => f.letra === String(z).trim()[0] && f.numeros.includes(Number(String(z).trim()[1])));
+
+/**
+ * Zona del cliente: la fijada a mano (`climate_zone`) manda; si no, la de la capital
+ * de su provincia (por código postal, provincia, población o coordenadas).
+ * @returns {{zona:string, letra:string, numero:number, invierno:string, verano:string, origen:'manual'|'automatica', capital:string|null, clave:string|null}|null}
+ */
+export function zonaDelCliente(contacto = {}) {
+  const auto = zonaClimaticaDe(contacto);
+  const manual = zonaValida(contacto.climate_zone) ? String(contacto.climate_zone).trim() : null;
+  if (!manual && !auto) return null;
+  const zona = manual || auto.zona;
+  const letra = zona[0], numero = Number(zona.slice(1));
+  const cap = capitalDe(contacto);
+  return { zona, letra, numero, invierno: INVIERNO[letra], verano: VERANO[numero], origen: manual ? 'manual' : 'automatica', capital: auto?.capital ?? null, clave: cap?.provincia ?? null };
+}

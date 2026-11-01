@@ -7,21 +7,15 @@ import { createPageUrl } from '../utils';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { NumberField } from "@/components/ui/number-field";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import ZonaClimatica from '@/components/clientes/ZonaClimatica';
+import FormularioCliente from '@/components/clientes/FormularioCliente';
+import { CLIENTE_VACIO, clienteAFormulario, prepararCliente } from '@/lib/cliente';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
-   Plus, Search, Phone, Mail, Building2, User, Trash2, Edit,
-   Camera, Users, AlertTriangle, LayoutGrid, List, MapPin, Download, WifiOff, RefreshCw
+   Plus, Search, Phone, Mail, Building2, Trash2, Edit, Users, AlertTriangle, LayoutGrid, List, MapPin, WifiOff, RefreshCw
  } from 'lucide-react';
 import { saveToCache, loadFromCache, formatCacheDate } from '@/lib/offlineCache';
-import { fetchCompanyLogo } from '../components/LogoFetcher';
-import { uploadImage } from '@/lib/uploadImage';
-import PostalCodeSearch from '../components/PostalCodeSearch';
-import CompletarDatosEmpresa from '../components/CompletarDatosEmpresa';
 
 const PAYMENT_PROFILES = {
   buen_pagador: { label: 'Buen pagador', color: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
@@ -32,7 +26,6 @@ const PAYMENT_PROFILES = {
 };
 
 const TYPES = ['cliente', 'proveedor', 'colaborador', 'otro'];
-const CATEGORIES = ['residencial', 'comercial', 'industrial', 'administracion_publica', 'comunidad_propietarios', 'otro'];
 const CATEGORY_COLORS = {
   residencial: 'bg-blue-50 text-blue-700',
   comercial: 'bg-purple-50 text-purple-700',
@@ -42,12 +35,6 @@ const CATEGORY_COLORS = {
   otro: 'bg-gray-50 text-gray-600',
 };
 
-const EMPTY_FORM = {
-  type: 'cliente', category: 'residencial', name: '', surname: '', company_name: '',
-  nif: '', email: '', phone: '', phone2: '', address: '', city: '', province: '',
-  postal_code: '', country: 'España', notes: '', payment_profile: 'pagador_normal',
-  pending_amount: null, internal_observations: '', photo_url: ''
-};
 
 function ContactCard({ contact, onEdit, onDelete }) {
   const pp = PAYMENT_PROFILES[contact.payment_profile] || PAYMENT_PROFILES.pagador_normal;
@@ -168,13 +155,10 @@ export default function Contacts() {
   const [view, setView] = useState('cards'); // cards | list
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [photoUploading, setPhotoUploading] = useState(false);
-  const [fetchingLogo, setFetchingLogo] = useState(false);
+  const [form, setForm] = useState(CLIENTE_VACIO);
+  const [errores, setErrores] = useState([]);
   const [isOffline, setIsOffline] = useState(false);
   const [cacheDate, setCacheDate] = useState('');
-  const photoInputRef = React.useRef(null);
-  const cameraInputRef = React.useRef(null);
 
   useEffect(() => {
     // Cargar caché inmediatamente mientras se espera la red
@@ -212,59 +196,21 @@ export default function Contacts() {
   }, []);
 
   const handleSave = async () => {
-    // Si no hay nombre, usar empresa como nombre para que no falle la entidad
-    const dataToSave = { ...form };
-    if (!dataToSave.name?.trim() && dataToSave.company_name?.trim()) {
-      dataToSave.name = dataToSave.company_name;
-    }
-    if (!dataToSave.name?.trim()) {
-      alert('Introduce al menos el nombre o la empresa');
-      return;
-    }
-    if (editing) await base44.entities.Contact.update(editing.id, dataToSave);
-    else await base44.entities.Contact.create(dataToSave);
+    const r = prepararCliente(form);
+    setErrores(r.errores);
+    if (!r.ok) return;
+    if (editing) await base44.entities.Contact.update(editing.id, r.datos);
+    else await base44.entities.Contact.create(r.datos);
     setDialogOpen(false);
     setEditing(null);
-    setForm(EMPTY_FORM);
+    setForm(CLIENTE_VACIO);
     loadContacts();
-  };
-
-  const handlePhotoUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setPhotoUploading(true);
-    try {
-      const file_url = await uploadImage(file);
-      setForm(prev => ({ ...prev, photo_url: file_url }));
-    } catch (err) {
-      alert('Error al subir la foto. Comprueba tu conexión e inténtalo de nuevo.');
-    } finally {
-      setPhotoUploading(false);
-      e.target.value = '';
-    }
-  };
-
-  const handleAutoFetchLogo = async () => {
-    setFetchingLogo(true);
-    const logoUrl = form.website
-      ? await fetchCompanyLogo(form.website, form.company_name)
-      : await fetchCompanyLogo(null, form.company_name);
-    if (logoUrl) {
-      // Guardar como logo Y como foto principal si no hay foto, para que se vea en la ficha.
-      setForm(prev => ({ ...prev, company_logo_url: logoUrl, photo_url: prev.photo_url || logoUrl }));
-      if (editing) {
-        await base44.entities.Contact.update(editing.id, { ...form, company_logo_url: logoUrl, photo_url: form.photo_url || logoUrl });
-        loadContacts();
-      }
-    } else {
-      alert('No se encontró logo/imagen para esta empresa. Prueba a añadir la web de la empresa o sube la imagen manualmente.');
-    }
-    setFetchingLogo(false);
   };
 
   const handleEdit = (c) => {
     setEditing(c);
-    setForm({ ...EMPTY_FORM, ...c });
+    setErrores([]);
+    setForm(clienteAFormulario(c));
     setDialogOpen(true);
   };
 
@@ -312,128 +258,24 @@ export default function Contacts() {
         </h1>
         <Dialog open={dialogOpen} onOpenChange={() => {}}>
           <DialogTrigger asChild>
-            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => { setEditing(null); setForm(EMPTY_FORM); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => { setEditing(null); setForm(CLIENTE_VACIO); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => { setDialogOpen(false); setEditing(null); setForm(EMPTY_FORM); }} textoVolver="Volver sin guardar" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+          <DialogContent className="max-w-6xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => { setDialogOpen(false); setEditing(null); setForm(CLIENTE_VACIO); }} textoVolver="Volver sin guardar" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
             <DialogHeader>
               <div className="flex items-center justify-between">
-                <DialogTitle>{editing ? 'Editar contacto' : 'Nuevo contacto'}</DialogTitle>
-                <Button size="sm" variant="ghost" onClick={() => { setDialogOpen(false); setEditing(null); setForm(EMPTY_FORM); }} className="text-gray-400">✕</Button>
+                <DialogTitle>{editing ? 'Editar cliente' : 'Nuevo cliente'}</DialogTitle>
+                <Button size="sm" variant="ghost" onClick={() => { setDialogOpen(false); setEditing(null); setForm(CLIENTE_VACIO); }} className="text-gray-400">✕</Button>
               </div>
             </DialogHeader>
-            <div className="space-y-3">
-              {/* Foto */}
-              <div className="flex items-center gap-3">
-                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300 flex-shrink-0">
-                  {form.photo_url ? <img src={form.photo_url} alt="" className="w-full h-full object-cover" /> : <User className="w-7 h-7 text-gray-400" />}
-                </div>
-                <div className="flex flex-col gap-1">
-                  <button type="button" onClick={() => photoInputRef.current?.click()} className="flex items-center gap-1 text-xs text-blue-600 border border-blue-300 rounded px-2 py-1 hover:bg-blue-50" disabled={photoUploading}>
-                    <Camera className="w-3 h-3" />{photoUploading ? 'Subiendo...' : 'Desde archivo'}
-                  </button>
-                  <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex items-center gap-1 text-xs text-green-600 border border-green-300 rounded px-2 py-1 hover:bg-green-50" disabled={photoUploading}>
-                    <Camera className="w-3 h-3" />Usar cámara
-                  </button>
-                  <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-                  <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Select value={form.type} onValueChange={v => setForm({...form, type: v})}>
-                  <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
-                  <SelectContent>{TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
-                  <SelectTrigger><SelectValue placeholder="Categoría" /></SelectTrigger>
-                  <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <Input placeholder="NIF / CIF empresa" value={form.nif} onChange={e => setForm({...form, nif: e.target.value})} />
-              <Input placeholder="Empresa / Razón social" value={form.company_name} onChange={e => setForm({...form, company_name: e.target.value})} />
-              {/* Un solo buscador, el mismo que en los datos de la empresa:
-                  comprueba el NIF, saca la provincia de él y lo demás lo busca
-                  fuera, pero sin pisar nada sin permiso. Antes había un botón
-                  que machacaba los campos directamente y sin avisar. */}
-              <CompletarDatosEmpresa
-                actuales={form}
-                onAplicar={(nuevos) => setForm(prev => ({ ...prev, ...nuevos }))}
-                campos={['company_name', 'nif', 'address', 'postal_code', 'city', 'province', 'phone', 'email', 'website']}
-              />
-              <div className="flex gap-2">
-                <Input placeholder="Website de empresa" value={form.website || ''} onChange={e => setForm({...form, website: e.target.value})} className="flex-1" />
-                <Button onClick={handleAutoFetchLogo} variant="outline" size="sm" disabled={fetchingLogo || (!form.company_name && !form.website)} className="whitespace-nowrap gap-1 text-xs">
-                  <Download className="w-3 h-3" />
-                  {fetchingLogo ? 'Buscando...' : 'Logo'}
-                </Button>
-              </div>
-              {form.company_logo_url && (
-                <div className="flex items-center gap-2 bg-gray-50 p-2 rounded border">
-                  <img src={form.company_logo_url} alt="Logo" className="h-10 w-auto max-w-24 object-contain" onError={e => e.target.style.display='none'} />
-                  <button onClick={() => setForm(f => ({...f, company_logo_url: ''}))} className="text-xs text-red-500 hover:text-red-700 ml-auto">✕ Quitar</button>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-2">
-                <Input placeholder="Nombre *" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-                <Input placeholder="Apellidos" value={form.surname} onChange={e => setForm({...form, surname: e.target.value})} />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Input placeholder="Teléfono" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
-                <Input placeholder="Teléfono 2" value={form.phone2} onChange={e => setForm({...form, phone2: e.target.value})} />
-              </div>
-              <Input placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
-              <Input placeholder="Dirección" value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
-              {/* Los tres campos buscan y se rellenan entre ellos: da igual por
-                  cuál empieces —la población, la provincia o el código postal—,
-                  eliges de la lista y se ponen los otros dos. Antes solo se
-                  podía buscar por código postal, y si no te lo sabías tenías
-                  que escribirlo todo a mano. */}
-              <p className="text-xs text-blue-700 font-medium flex items-center gap-1">
-                📍 Escribe la población, la provincia o el código postal y elige de la lista: se rellenan los tres
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <PostalCodeSearch
-                  type="city"
-                  data-prueba="cliente-ciudad"
-                  placeholder="Población / Municipio"
-                  value={form.city || ''}
-                  onChange={(v) => setForm(prev => ({ ...prev, city: v }))}
-                  onSelect={(r) => setForm(prev => ({ ...prev, postal_code: r.postal_code, city: r.city, province: r.province }))}
-                />
-                <PostalCodeSearch
-                  type="province"
-                  data-prueba="cliente-provincia"
-                  placeholder="Provincia"
-                  value={form.province || ''}
-                  onChange={(v) => setForm(prev => ({ ...prev, province: v }))}
-                  onSelect={(r) => setForm(prev => ({ ...prev, postal_code: r.postal_code, city: r.city, province: r.province }))}
-                />
-                <PostalCodeSearch
-                  type="postal_code"
-                  data-prueba="cliente-cp"
-                  placeholder="Código postal"
-                  value={form.postal_code || ''}
-                  onChange={(v) => setForm(prev => ({ ...prev, postal_code: v }))}
-                  onSelect={(r) => setForm(prev => ({ ...prev, postal_code: r.postal_code, city: r.city, province: r.province }))}
-                />
-              </div>
-              <ZonaClimatica contacto={form} />
-              <Textarea placeholder="Notas" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} />
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs text-gray-500">Perfil de pago</label>
-                  <Select value={form.payment_profile} onValueChange={v => setForm({...form, payment_profile: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(PAYMENT_PROFILES).map(([k,v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500">Importe pendiente (€)</label>
-                  <NumberField value={form.pending_amount} onChange={v => setForm({...form, pending_amount: v})} />
-                </div>
-              </div>
-              <Textarea placeholder="Observaciones internas (no aparece en documentos)" value={form.internal_observations} onChange={e => setForm({...form, internal_observations: e.target.value})} rows={2} />
-              <Button onClick={handleSave} className="w-full bg-emerald-600 hover:bg-emerald-700">{editing ? 'Actualizar' : 'Guardar'}</Button>
+            <FormularioCliente value={form} onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))} />
+            {errores.length > 0 && (
+              <ul className="mt-2 rounded border border-destructive/40 bg-destructive/5 p-2 text-sm text-destructive" role="alert" data-testid="errores-cliente">
+                {errores.map((e) => <li key={e}>{e}</li>)}
+              </ul>
+            )}
+            <div className="mt-3 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => { setDialogOpen(false); setEditing(null); setForm(CLIENTE_VACIO); setErrores([]); }}>Cancelar</Button>
+              <Button onClick={handleSave} data-testid="guardar-cliente" className="bg-emerald-600 hover:bg-emerald-700">{editing ? 'Guardar cambios' : 'Añadir cliente'}</Button>
             </div>
           </DialogContent>
         </Dialog>

@@ -1,4 +1,4 @@
-import { zonaClimaticaDe, capitalDe, CAPITALES, normalizar } from '../src/lib/zonaClimatica.js';
+import { zonaClimaticaDe, capitalDe, CAPITALES, normalizar, COMUNIDADES, comunidadDe, zonaDeProvincia, buscarComunidad, zonaValida, zonaDelCliente, nombreProvincia, FILAS_ZONA } from '../src/lib/zonaClimatica.js';
 let f = 0; const ok = (c, t, d = '') => { if (!c) { f++; console.log('  ✗ ' + t + (d ? ' — ' + d : '')); } else console.log('  ✓ ' + t); };
 ok(CAPITALES.length === 52, '52 capitales (50 provincias + Ceuta y Melilla)', String(CAPITALES.length));
 ok(new Set(CAPITALES.map((c) => c.provincia)).size === 52, 'sin provincias repetidas');
@@ -16,4 +16,18 @@ ok(zonaClimaticaDe({}) === null && zonaClimaticaDe({ postal_code: '9999' }) === 
 z = zonaClimaticaDe({ postal_code: '09001' }); ok(z.letra === 'E' && /muy frío/.test(z.invierno), 'Burgos E1: invierno muy frío');
 ok(normalizar('  Ávila ') === 'avila', 'normalizar');
 z = zonaClimaticaDe({ postal_code: '99999', province: 'Sevilla' }); ok(z.capital === 'Sevilla', 'CP inválido cae a provincia');
+// ── comunidades y zona manual
+ok(COMUNIDADES.flatMap((c) => c.provincias).length === 52 && new Set(COMUNIDADES.flatMap((c) => c.provincias)).size === 52, 'las comunidades reparten las 52 provincias sin repetir');
+ok(COMUNIDADES.flatMap((c) => c.provincias).every((p) => CAPITALES.some((x) => x.provincia === p)), 'todas las provincias de las comunidades existen');
+ok(comunidadDe('tarragona').nombre === 'Cataluña' && comunidadDe('málaga').nombre === 'Andalucía', 'comunidad de una provincia');
+ok(zonaDeProvincia('tarragona') === 'B3' && zonaDeProvincia('nada') === null, 'zona de provincia');
+ok(buscarComunidad('catalu')?.nombre === 'Cataluña' && buscarComunidad('PAIS vasco')?.nombre === 'País Vasco' && buscarComunidad('xx') === null, 'buscar comunidad (parcial, sin tildes)');
+ok(zonaValida('B3') && zonaValida('α3') && zonaValida('E1') && !zonaValida('E3') && !zonaValida('F1') && !zonaValida('') && !zonaValida(null), 'zonas válidas (E solo E1)');
+ok(FILAS_ZONA.reduce((a, f) => a + f.numeros.length, 0) === 1 + 3 + 4 + 4 + 4 + 4, 'rejilla: 20 zonas');
+let z2 = zonaDelCliente({ province: 'Tarragona' }); ok(z2.zona === 'B3' && z2.origen === 'automatica' && z2.clave === 'tarragona', 'automática por provincia');
+z2 = zonaDelCliente({ province: 'Tarragona', climate_zone: 'D2' }); ok(z2.zona === 'D2' && z2.origen === 'manual' && z2.invierno === 'invierno frío', 'la manual manda');
+z2 = zonaDelCliente({ province: 'Tarragona', climate_zone: 'ZZ' }); ok(z2.zona === 'B3' && z2.origen === 'automatica', 'una manual inválida se ignora');
+z2 = zonaDelCliente({ climate_zone: 'C2' }); ok(z2.zona === 'C2' && z2.capital === null, 'manual sin provincia');
+ok(zonaDelCliente({}) === null, 'sin datos → null');
+ok(nombreProvincia('alicante') === 'Alicante' && nombreProvincia('ciudad real') === 'Ciudad Real' && nombreProvincia('baleares') === 'Illes Balears', 'nombre de provincia');
 console.log(f ? `\n${f} FALLOS` : '\nTODO OK'); process.exit(f ? 1 : 0);
