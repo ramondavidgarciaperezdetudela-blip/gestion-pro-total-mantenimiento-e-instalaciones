@@ -28,4 +28,17 @@ const sinU = dxf(linea('X', 0, 0, 12000, 0)); ok(dxfAParedes(parsearDXF(sinU), {
 ok(dxfAParedes(parsearDXF(sinU), { unidad: 'cm' }).unidad === 'cm', 'unidad manual manda');
 // inválidos
 ok(!parsearDXF('hola').valido, 'texto cualquiera no vale'); ok(esDWG('plano.DWG') && esDWG('x', 'AC1032'), 'detecta DWG');
+
+
+// ── Planos hechos con CADCraft: paredes con material/grosor/alto y equipos EQ-… ──
+{
+  const dxfC = ['0','SECTION','2','ENTITIES',
+    '0','LWPOLYLINE','8','PARED-PLADUR','90','2','70','0','43','0.078','39','2.5','10','0','20','0','10','4','20','0',
+    '0','INSERT','8','EQUIPO-REFRIGERACION','2','EQ-COMPRESOR','10','2','20','1','50','90',
+    '0','ENDSEC','0','EOF',''].join('\n');
+  const p = parsearDXF(dxfC);
+  const r = dxfAParedes(p, { capas: ['PARED-PLADUR'], unidad: 'm', escala: 50 });
+  ok(r.paredes.length === 1 && r.paredes[0].material === 'pladur' && r.paredes[0].espesor_mm === 78 && r.paredes[0].alto_m === 2.5, 'pared de CADCraft con material, grosor y alto');
+  ok(r.elementos.length === 1 && r.elementos[0].type === 'compresor' && r.elementos[0].rot === 270, 'equipo EQ-COMPRESOR de CADCraft vuelve como elemento');
+}
 console.log(f ? `\n${f} FALLOS` : '\nTODO OK'); process.exit(f ? 1 : 0);

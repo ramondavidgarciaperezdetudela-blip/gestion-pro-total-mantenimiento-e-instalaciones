@@ -9,6 +9,8 @@
  * en AutoCAD o similar hay que «Guardar como» → DXF.
  */
 
+import { ELEMENTOS, CAT_COLOR } from './planoFrigorificoCatalogo.js';
+
 const UNIDADES = { 1: ['in', 0.0254], 2: ['ft', 0.3048], 4: ['mm', 0.001], 5: ['cm', 0.01], 6: ['m', 1], 10: ['yd', 0.9144] };
 export const UNIDADES_MANUALES = [['auto', 'Detectar'], ['mm', 'Milímetros'], ['cm', 'Centímetros'], ['m', 'Metros']];
 const A_METROS = { mm: 0.001, cm: 0.01, m: 1, in: 0.0254, ft: 0.3048, yd: 0.9144 };
@@ -50,12 +52,12 @@ export function parsearDXF(texto) {
   const ents = []; let cur = null;
   for (let i = ini; i < fin; i++) { const [c, v] = p[i]; if (c === 0) { cur = { tipo: v, g: [] }; ents.push(cur); } else if (cur) cur.g.push([c, v]); }
 
-  const segmentos = []; const capas = {}; const resumen = { ...vacio };
+  const segmentos = []; const equipos = []; const capas = {}; const resumen = { ...vacio };
   const capa = (e) => (e.g.find((x) => x[0] === 8)?.[1]) || '0';
   const marca = (c, clave) => { (capas[c] ||= { lineas: 0, otros: 0 })[clave]++; };
-  const seg = (c, x1, y1, x2, y2) => { if ([x1, y1, x2, y2].every(Number.isFinite) && (x1 !== x2 || y1 !== y2)) { segmentos.push({ capa: c, x1, y1, x2, y2 }); marca(c, 'lineas'); } };
+  const seg = (c, x1, y1, x2, y2, extra) => { if ([x1, y1, x2, y2].every(Number.isFinite) && (x1 !== x2 || y1 !== y2)) { segmentos.push({ capa: c, x1, y1, x2, y2, ...(extra || {}) }); marca(c, 'lineas'); } };
   const num = (e, code, n = 0) => { const a = e.g.filter((x) => x[0] === code); return a[n] ? parseFloat(a[n][1]) : NaN; };
-  const cadena = (c, pts, cerrada) => { for (let i = 0; i + 1 < pts.length; i++) seg(c, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]); if (cerrada && pts.length > 2) seg(c, pts[pts.length - 1][0], pts[pts.length - 1][1], pts[0][0], pts[0][1]); };
+  const cadena = (c, pts, cerrada, extra) => { for (let i = 0; i + 1 < pts.length; i++) seg(c, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], extra); if (cerrada && pts.length > 2) seg(c, pts[pts.length - 1][0], pts[pts.length - 1][1], pts[0][0], pts[0][1], extra); };
 
   for (let i = 0; i < ents.length; i++) {
     const e = ents[i]; const c = capa(e);
@@ -63,7 +65,8 @@ export function parsearDXF(texto) {
     else if (e.tipo === 'LWPOLYLINE') {
       const pts = []; let x = null;
       e.g.forEach(([cod, v]) => { if (cod === 10) x = parseFloat(v); else if (cod === 20 && x !== null) { pts.push([x, parseFloat(v)]); x = null; } });
-      cadena(c, pts, (parseInt(e.g.find((q) => q[0] === 70)?.[1] ?? '0', 10) & 1) === 1);
+      const ancho = num(e, 43); const alto = num(e, 39);
+      cadena(c, pts, (parseInt(e.g.find((q) => q[0] === 70)?.[1] ?? '0', 10) & 1) === 1, { ...(ancho > 0 ? { ancho } : {}), ...(alto > 0 ? { alto } : {}) });
     } else if (e.tipo === 'POLYLINE') {
       const cerrada = (parseInt(e.g.find((q) => q[0] === 70)?.[1] ?? '0', 10) & 1) === 1; const pts = [];
       while (ents[i + 1] && ents[i + 1].tipo === 'VERTEX') { i++; const x = num(ents[i], 10), y = num(ents[i], 20); if (Number.isFinite(x) && Number.isFinite(y)) pts.push([x, y]); }
@@ -71,10 +74,14 @@ export function parsearDXF(texto) {
     } else if (e.tipo === 'CIRCLE') { resumen.circulos++; marca(c, 'otros'); }
     else if (e.tipo === 'ARC') { resumen.arcos++; marca(c, 'otros'); }
     else if (e.tipo === 'TEXT' || e.tipo === 'MTEXT') { resumen.textos++; marca(c, 'otros'); }
-    else if (e.tipo === 'INSERT') { resumen.bloques++; marca(c, 'otros'); }
+    else if (e.tipo === 'INSERT') {
+      resumen.bloques++; marca(c, 'otros');
+      const nombre = e.g.find((x) => x[0] === 2)?.[1] || '';
+      if (/^EQ-/i.test(nombre)) equipos.push({ nombre: nombre.toUpperCase(), x: num(e, 10), y: num(e, 20), giro: num(e, 50) || 0 });
+    }
     else if (!['VERTEX', 'SEQEND'].includes(e.tipo)) { resumen.otros++; }
   }
-  return { valido: true, unidadDxf, capas, segmentos, resumen };
+  return { valido: true, unidadDxf, capas, segmentos, equipos, resumen };
 }
 
 /** Capas que parecen muros; si ninguna lo parece, todas las que tienen líneas salvo las de cotas/textos. */
@@ -104,19 +111,78 @@ export function factorMetros(segmentos, unidadDxf, manual = 'auto') {
  * Se pasa a metros, se gira el eje Y (el DXF crece hacia arriba) y se coloca
  * cerca de la esquina superior izquierda del lienzo.
  */
-export function dxfAParedes(parsed, { capas, unidad = 'auto', escala = 50, alto_m = 2.6, minimo_m = 0.05, margen = 40, uid = () => `cad-${Math.random().toString(36).slice(2, 10)}` } = {}) {
+export function dxfAParedes(parsed, { capas, unidad = 'auto', escala = 50, alto_m = 2.6, minimo_m = 0.05, margen = 40, tal_cual = false, uid = () => `cad-${Math.random().toString(36).slice(2, 10)}` } = {}) {
   const elegidas = new Set(capas || Object.keys(parsed.capas));
   const base = parsed.segmentos.filter((s) => elegidas.has(s.capa));
   const { unidad: u, factor } = factorMetros(parsed.segmentos, parsed.unidadDxf, unidad);
-  const m = base.map((s) => ({ x1: s.x1 * factor, y1: s.y1 * factor, x2: s.x2 * factor, y2: s.y2 * factor })).filter((s) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1) >= minimo_m);
+  const m = base.map((s) => ({ x1: s.x1 * factor, y1: s.y1 * factor, x2: s.x2 * factor, y2: s.y2 * factor, capa: s.capa, ancho_m: s.ancho ? s.ancho * factor : 0, alto_m: s.alto ? s.alto * factor : 0 })).filter((s) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1) >= minimo_m);
   const vistos = new Set(); const unicos = [];
   m.forEach((s) => { const k = [s.x1, s.y1, s.x2, s.y2].map((n) => n.toFixed(3)).join('|'); const k2 = [s.x2, s.y2, s.x1, s.y1].map((n) => n.toFixed(3)).join('|'); if (!vistos.has(k) && !vistos.has(k2)) { vistos.add(k); unicos.push(s); } });
   const recortado = unicos.length > MAX_PAREDES;
   const usados = unicos.slice(0, MAX_PAREDES);
-  if (!usados.length) return { paredes: [], unidad: u, ancho_m: 0, alto_plano_m: 0, recortado: false, descartadas: m.length - unicos.length };
+  if (!usados.length) return { paredes: [], elementos: [], unidad: u, ancho_m: 0, alto_plano_m: 0, recortado: false, descartadas: m.length - unicos.length };
   const minX = Math.min(...usados.flatMap((s) => [s.x1, s.x2])); const maxX = Math.max(...usados.flatMap((s) => [s.x1, s.x2]));
   const minY = Math.min(...usados.flatMap((s) => [s.y1, s.y2])); const maxY = Math.max(...usados.flatMap((s) => [s.y1, s.y2]));
-  const px = (x) => Math.round((x - minX) * escala + margen); const py = (y) => Math.round((maxY - y) * escala + margen);
-  const paredes = usados.map((s) => ({ id: uid(), x1: px(s.x1), y1: py(s.y1), x2: px(s.x2), y2: py(s.y2), alto_m, origen: 'cad' }));
-  return { paredes, unidad: u, ancho_m: maxX - minX, alto_plano_m: maxY - minY, recortado, descartadas: m.length - unicos.length };
+  // tal_cual: el DXF viene de este mismo programa (vuelta de CADCraft): se respeta el origen para poder reconocer los equipos.
+  const px = tal_cual ? (x) => Math.round(x * escala * 1000) / 1000 : (x) => Math.round((x - minX) * escala + margen);
+  const py = tal_cual ? (y) => Math.round(-y * escala * 1000) / 1000 : (y) => Math.round((maxY - y) * escala + margen);
+  const paredes = usados.map((s) => {
+    const mat = materialDeCapa(s.capa);
+    return {
+      id: uid(), x1: px(s.x1), y1: py(s.y1), x2: px(s.x2), y2: py(s.y2),
+      alto_m: s.alto_m > 0 ? Math.round(s.alto_m * 1000) / 1000 : alto_m, origen: 'cad',
+      ...(mat ? { material: mat } : {}),
+      ...(s.ancho_m > 0 ? { espesor_mm: Math.round(s.ancho_m * 1000) } : {}),
+    };
+  });
+  // Equipos colocados en CADCraft (bloques EQ-…): vuelven como elementos del plano.
+  const elementos = (parsed.equipos || []).map((q) => elementoDeBloque(q, factor, px, py, uid)).filter(Boolean);
+  return { paredes, elementos, unidad: u, ancho_m: maxX - minX, alto_plano_m: maxY - minY, recortado, descartadas: m.length - unicos.length };
+}
+
+const MATERIAL_POR_CAPA = { LADRILLO: 'ladrillo', BLOQUE: 'bloque_hormigon', HORMIGON: 'hormigon', CEMENTO: 'cemento', YESO: 'yeso', PLADUR: 'pladur', PANEL: 'panel_sandwich', MADERA: 'madera', CRISTAL: 'cristal', OTRO: 'otro' };
+
+/** Material de una pared a partir de su capa (PARED-LADRILLO…), o null. */
+export function materialDeCapa(capa = '') {
+  const m = /^PARED-(.+)$/i.exec(capa);
+  return m ? (MATERIAL_POR_CAPA[m[1].toUpperCase()] || null) : null;
+}
+
+/** Elemento del plano a partir de un bloque EQ-<id> de CADCraft; null si no está en el catálogo. */
+export function elementoDeBloque(q, factor, px, py, uid) {
+  const id = String(q.nombre || '').replace(/^EQ-/i, '').toLowerCase();
+  const def = ELEMENTOS.find((e) => e.id === id);
+  if (!def || !Number.isFinite(q.x) || !Number.isFinite(q.y)) return null;
+  return {
+    id: uid(), type: def.id, cat: def.cat, label: def.label, glyph: def.glyph, color: CAT_COLOR[def.cat] || '#888',
+    datos: {}, x: px(q.x * factor), y: py(q.y * factor), w_m: def.w_m, h_m: def.h_m,
+    rot: ((Math.round(-q.giro || 0) % 360) + 360) % 360, brand: '', model: '', notes: '', qty: 1, origen: 'cad',
+  };
+}
+
+/**
+ * Vuelta de CADCraft: sustituye las paredes y reconoce los equipos ya existentes (mismo tipo y
+ * el más cercano, a menos de `maxM` metros) para conservar sus datos y sus conexiones.
+ */
+export function fusionarDesdeCadcraft(plan, resultado, { escala = 50, maxM = 1.5 } = {}) {
+  const viejos = (plan.elements || []).filter((e) => ELEMENTOS.some((d) => d.id === e.type));
+  const otros = (plan.elements || []).filter((e) => !viejos.includes(e));
+  const libres = new Set(viejos.map((e) => e.id));
+  const elementos = [];
+  let nuevos = 0;
+  for (const n of resultado.elementos || []) {
+    let mejor = null; let dmin = maxM * escala;
+    for (const v of viejos) {
+      if (!libres.has(v.id) || v.type !== n.type) continue;
+      const d = Math.hypot(v.x - n.x, v.y - n.y);
+      if (d <= dmin) { dmin = d; mejor = v; }
+    }
+    if (mejor) { libres.delete(mejor.id); elementos.push({ ...mejor, x: n.x, y: n.y, rot: n.rot }); }
+    else { elementos.push(n); nuevos++; }
+  }
+  const quitados = libres.size;
+  const todos = [...otros, ...elementos];
+  const ids = new Set(todos.map((e) => e.id));
+  const conexiones = (plan.connections || []).filter((c) => ids.has(c.from_id) && ids.has(c.to_id));
+  return { walls: resultado.paredes, elements: todos, connections: conexiones, nuevos, quitados, conexionesPerdidas: (plan.connections || []).length - conexiones.length };
 }

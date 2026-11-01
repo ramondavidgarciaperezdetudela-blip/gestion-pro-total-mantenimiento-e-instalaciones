@@ -6,6 +6,17 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.92.0] — 2026-11-01
+
+### Añadido
+- **CADCraft incluido con el programa** (versión de escritorio): CADCraft, el CAD libre y gratuito, se instala junto con Gestión Pro Total. Trae una pestaña **HVAC** con paredes (`PARED`, `PAREDEDIT`) con largo, grosor, alto y material (ladrillo, bloque, hormigón, cemento, yeso, pladur, panel, madera, cristal), medida en vivo mientras se dibuja, precisión libre hasta el milímetro, snaps a objetos y una biblioteca de 74 equipos de frío y electricidad.
+- Botón **«Abrir en CADCraft»** en el plano: envía el plano a CADCraft y, al guardar, vuelve a Gestión Pro Total con paredes, materiales, medidas y equipos (la vista 3D se ve en Gestión Pro Total).
+
+### Corregido
+- **Copias de seguridad compatibles con cualquier versión**: al restaurar se aceptan copias hechas por versiones anteriores o posteriores, con distintos envoltorios, mayúsculas, BOM o campos nuevos, sin el error «no es una copia del programa». Se muestran mensajes concretos si el archivo está dañado.
+
+---
+
 ## [1.91.0] — 2026-11-01
 
 ### Añadido

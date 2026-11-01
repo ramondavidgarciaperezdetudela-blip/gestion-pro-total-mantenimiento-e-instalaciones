@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.91.0",
+  "version": "1.92.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -25,6 +25,8 @@
     "test:dxf": "node scripts/test-dxf-import.mjs",
     "test:galeria": "node scripts/test-galeria.mjs",
     "test:paredes": "node scripts/test-paredes.mjs",
+    "test:cadcraft": "node scripts/test-cadcraft-export.mjs",
+    "test:copia": "node scripts/test-copia-formato.mjs",
     "test:imanes": "node scripts/test-imanes.mjs",
     "test:descargas": "node scripts/test-descargas.mjs",
     "test:dwg": "node scripts/test-dwg-import.mjs",

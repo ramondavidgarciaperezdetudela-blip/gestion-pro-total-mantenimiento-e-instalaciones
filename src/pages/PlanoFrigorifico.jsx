@@ -25,6 +25,8 @@ import LeyendaPlano from '@/components/plano_frigorifico/LeyendaPlano';
 import PlanoBarraSuperior from '@/components/plano_frigorifico/PlanoBarraSuperior';
 // El visor 3D se carga de forma perezosa y envuelta en su propio ErrorBoundary
 // (Vista3DSegura): si falla, el editor de planos sigue funcionando.
+import { construirDXFCadcraft } from '@/lib/planoCadcraftExport';
+import { parsearDXF, capasSugeridas, dxfAParedes, fusionarDesdeCadcraft } from '@/lib/planoDxfImport';
 import PlanoPanelCatalogo from '@/components/plano_frigorifico/PlanoPanelCatalogo';
 import Vista3DPlanoFrigorifico from '@/components/plano_frigorifico/Vista3DSegura';
 import ControlMoverFlotante from '@/components/plano_frigorifico/ControlMoverFlotante';
@@ -65,6 +67,10 @@ export default function PlanoFrigorifico() {
   const [snapMode, setSnapMode] = useState('libre');
   const [iman, setIman] = useState(true);
   const [vistaPlano, setVistaPlano] = useState('2d');
+  // CADCraft viene instalado con la versión de escritorio.
+  const [cadcraftOk, setCadcraftOk] = useState(false);
+  const [cadcraftAbierto, setCadcraftAbierto] = useState(false);
+  useEffect(() => { window.gptCadcraft?.disponible?.().then(setCadcraftOk).catch(() => {}); }, []);
   const [cursorM, setCursorM] = useState(null);
   const [capasVisibles, setCapasVisibles] = useState(() => Object.fromEntries(CAPAS.map((c) => [c.id, true])));
   const [gmailDialog, setGmailDialog] = useState(false);
@@ -719,15 +725,40 @@ export default function PlanoFrigorifico() {
   };
 
   // ── Importar un plano de AutoCAD (DXF): paredes + archivo original vinculado ──
-  const importarCAD = async ({ paredes, archivo, unidad }) => {
+  const importarCAD = async ({ paredes, elementos = [], archivo, unidad }) => {
     setDialogoCAD(false);
-    setPlan((p) => ({ ...p, walls: [...p.walls, ...paredes] }));
-    toast.success(`Plano importado: ${paredes.length} paredes`, { description: 'Mira la vista 3D y pulsa Guardar para vincularlo al plano y al cliente.' });
+    setPlan((p) => ({ ...p, walls: [...p.walls, ...paredes], elements: [...p.elements, ...elementos] }));
+    toast.success(`Plano importado: ${paredes.length} paredes${elementos.length ? ` y ${elementos.length} equipos` : ''}`, { description: 'Mira la vista 3D y pulsa Guardar para vincularlo al plano y al cliente.' });
     try {
       const url = await uploadFile(archivo);
       setPlan((p) => ({ ...p, cad_file_url: url, cad_file_name: archivo.name, cad_units: unidad }));
     } catch { toast.warning('No se pudo guardar el archivo original; las paredes sí se han importado.'); }
     setVer3D(true);
+  };
+
+  // Abre el plano en CADCraft; al cerrarlo, si se ha guardado, se traen las paredes y los equipos.
+  const abrirEnCadcraft = async () => {
+    if (!window.gptCadcraft || cadcraftAbierto) return;
+    setCadcraftAbierto(true);
+    toast.info('CADCraft abierto', { description: 'Dibuja, pulsa Ctrl+S para guardar y cierra CADCraft: los cambios vuelven aquí.' });
+    try {
+      const exp = construirDXFCadcraft({ walls: plan.walls, elements: plan.elements, scale: plan.scale || 50 });
+      const r = await window.gptCadcraft.abrir({ nombre: plan.name || 'plano', dxf: exp.texto });
+      if (!r?.ok) { toast.error(r?.error || 'No se pudo abrir CADCraft'); return; }
+      if (!r.cambiado) { toast.message('CADCraft cerrado sin guardar: el plano no ha cambiado.'); return; }
+      const parsed = parsearDXF(r.dxf);
+      if (!parsed.valido) { toast.error('No se pudo leer el plano guardado por CADCraft', { description: parsed.error }); return; }
+      const capas = capasSugeridas(parsed.capas).filter((c) => /^PARED-/i.test(c));
+      const res = dxfAParedes(parsed, { capas: capas.length ? capas : capasSugeridas(parsed.capas), unidad: 'm', escala: plan.scale || 50, tal_cual: true });
+      const f = fusionarDesdeCadcraft(plan, res, { escala: plan.scale || 50 });
+      const aviso = `CADCraft ha guardado cambios: ${f.walls.length} paredes y ${f.elements.length} elementos.`
+        + `${f.nuevos ? ` ${f.nuevos} equipos nuevos.` : ''}${f.quitados ? ` ${f.quitados} equipos quitados.` : ''}`
+        + `${f.conexionesPerdidas ? ` Se perderán ${f.conexionesPerdidas} conexiones de equipos quitados.` : ''}\n\n¿Sustituir las paredes y equipos del plano por estos?`;
+      if (!window.confirm(aviso)) return;
+      setPlan((p) => ({ ...p, walls: f.walls, elements: f.elements, connections: f.connections }));
+      toast.success('Plano actualizado desde CADCraft', { description: 'Mira la vista 3D y pulsa Guardar.' });
+    } catch (e) { toast.error('Fallo al abrir CADCraft', { description: String(e?.message || e) }); }
+    finally { setCadcraftAbierto(false); }
   };
 
   const limpiarPlano = () => {
@@ -860,6 +891,11 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
   // modo normal y en pantalla completa.
   const Controles = (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2">
+      {cadcraftOk && (
+        <button type="button" onClick={abrirEnCadcraft} disabled={cadcraftAbierto} data-testid="abrir-cadcraft" className="flex items-center gap-1.5 rounded-md border border-primary px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50">
+          <Ruler className="w-3.5 h-3.5" /> {cadcraftAbierto ? 'CADCraft abierto…' : 'Abrir en CADCraft'}
+        </button>
+      )}
       <button type="button" onClick={() => setDialogoCAD(true)} data-testid="importar-cad" className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"><FileUp className="w-3.5 h-3.5" /> Importar AutoCAD (DWG o DXF)</button>
       <div className="flex items-center gap-1.5 text-xs">
         <Grid3x3 className="w-3.5 h-3.5 text-muted-foreground" />
