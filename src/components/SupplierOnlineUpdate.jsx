@@ -12,6 +12,7 @@ import {
   Settings, Plus, Trash2, ArrowRight, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { iniciarTarea, cederHilo } from '@/lib/descargas';
 
 // ── Reglas de búsqueda de imágenes (localStorage) ────────────────────────────
 const RULES_KEY = 'supplier_image_search_rules';
@@ -262,10 +263,12 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated, onFixed, bgState,
     let totalUpdated = 0;
     const allResults = [];
     const PARALLEL_BATCHES = 2; // 2 lotes en paralelo
+    const tareaGlobal = iniciarTarea(`Precios · ${supplier.name}`, { total: prices.length });
 
     for (let bi = 0; bi < totalBatches; bi += PARALLEL_BATCHES) {
       if (stopRef.current) break;
-      
+      if (tareaGlobal.cancelada) { stopRef.current = true; break; }
+
       // Procesar PARALLEL_BATCHES lotes en paralelo
       const parallelBatches = [];
       for (let pbi = 0; pbi < PARALLEL_BATCHES && bi + pbi < totalBatches; pbi++) {
@@ -305,8 +308,11 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated, onFixed, bgState,
         pricesProgress: { processed, updated: totalUpdated, total: prices.length },
         pricesResults: [...allResults],
       }));
+      tareaGlobal.progreso(processed, prices.length, `${totalUpdated} actualizados`);
+      await cederHilo();
     }
 
+    if (stopRef.current) tareaGlobal.fallar('Detenido'); else tareaGlobal.terminar(`${totalUpdated} actualizados`);
     setBgState(s => ({ ...s, pricesRunning: false }));
     onUpdated && onUpdated();
     toast.success(`✅ Precios actualizados: ${totalUpdated} de ${prices.length} productos`, { duration: 5000 });
@@ -687,9 +693,11 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
 
     let foundCount = 0;
     const PARALLEL = 3;
+    const tareaGlobal = iniciarTarea(`Imágenes · ${supplier?.name || ''}`, { total: withoutImage.length });
 
     for (let i = 0; i < withoutImage.length; i += PARALLEL) {
       if (stopRef.current) break;
+      if (tareaGlobal.cancelada) { stopRef.current = true; break; }
       const batch = withoutImage.slice(i, Math.min(i + PARALLEL, withoutImage.length));
 
       const batchResults = await Promise.allSettled(
@@ -734,8 +742,11 @@ function BulkImagePanel({ supplier, prices, onUpdated, onFixed, bgState, setBgSt
           return { item: updatedItem, image_url: result?.image_url || null, ok: !!result?.image_url, pending: false, found_by_ref: result?.found_by_ref || false };
         }),
       }));
+      tareaGlobal.progreso(Math.min(i + PARALLEL, withoutImage.length), withoutImage.length, `${foundCount} encontradas`);
+      await cederHilo();
     }
 
+    if (stopRef.current) tareaGlobal.fallar('Detenido'); else tareaGlobal.terminar(`${foundCount} imágenes`);
     setBgState(s => ({ ...s, imagesRunning: false }));
     onUpdated && onUpdated();
     toast.success(`✅ Imágenes actualizadas: ${foundCount} de ${withoutImage.length} productos`, { duration: 5000 });
