@@ -38,6 +38,20 @@ index a25782d..9763569 100644
                          if query().contains("sample") {
                              let _ = app.run("ui.sample", serde_json::json!({}));
                          }
+diff --git a/apps/cadcraft/src/main.rs b/apps/cadcraft/src/main.rs
+index c591c10..3e2b5fb 100644
+--- a/apps/cadcraft/src/main.rs
++++ b/apps/cadcraft/src/main.rs
+@@ -338,7 +338,8 @@ fn main() -> eframe::Result {
+             // Autosave files (SAVEFILEPATH) default to `<settings dir>/autosave`.
+             if let Some(dir) = &vars.config_dir {
+                 app.enable_autosave(&dir.join("autosave"));
+-                app.enable_update_check();
++                // Gestión Pro Total keeps CADCraft up to date itself (it keeps the user's files); the
++                // upstream prompt cannot replace the bundled copy, so it is not shown at startup.
+                 // Startup LISP (acad.lsp, acaddoc.lsp) is read from `<settings>/support`; the
+                 // folder is made so it is there to put them in.
+                 let support = dir.join("support");
 diff --git a/apps/cadcraft/src/workspace.rs b/apps/cadcraft/src/workspace.rs
 index b75c9bc..c4e232a 100644
 --- a/apps/cadcraft/src/workspace.rs
@@ -499,3 +513,20 @@ index 7e01a15..1da55b4 100644
      });
  }
  
+diff --git a/crates/ui-egui/src/updates_ui.rs b/crates/ui-egui/src/updates_ui.rs
+index ce8f53a..1427c91 100644
+--- a/crates/ui-egui/src/updates_ui.rs
++++ b/crates/ui-egui/src/updates_ui.rs
+@@ -38,9 +38,9 @@ impl CadApp {
+ 
+ /// Help ▸ Check for Updates…: check now, and show the result when there is nothing newer.
+ pub fn check_now(app: &mut CadApp) {
+-    app.updates_rt.check_requested = true;
+-    app.updates_rt.result_open = true;
+-    app.updates_rt.result_echoed = false;
++    // Gestión Pro Total installs and updates CADCraft (page «CADCraft» of the program); updates
++    // keep the user's drawings, settings and routines.
++    app.session.echo("CADCraft se actualiza desde Gestión Pro Total: abre la página CADCraft del programa y pulsa Actualizar.".to_string());
+ }
+ 
+ /// Start the checks and collect the answers.

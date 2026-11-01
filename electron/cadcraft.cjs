@@ -62,8 +62,9 @@ function instalarSoporte(configDir) {
 }
 
 /** Abre CADCraft solo (para cualquier otro tipo de plano), sin ligarlo al plano frigorífico. */
-function abrirLibre({ fichero } = {}) {
+async function abrirLibre({ fichero } = {}) {
   try {
+    const act = await actualizarSiHaceFalta();
     const exe = ejecutable();
     if (!exe) return { ok: false, error: 'CADCraft no está instalado con esta versión del programa.' };
     const configDir = datosCadcraft();
@@ -72,7 +73,7 @@ function abrirLibre({ fichero } = {}) {
     const hijo = spawn(exe, args, { env: { ...process.env, CADCRAFT_CONFIG_DIR: configDir }, stdio: 'ignore', detached: true });
     hijo.on('error', () => {});
     hijo.unref();
-    return { ok: true };
+    return { ok: true, actualizado: !!act.actualizado };
   } catch (e) { return { ok: false, error: e.message }; }
 }
 
@@ -129,7 +130,8 @@ async function actualizar() {
 /**
  * @returns {Promise<{ok:boolean, error?:string, cambiado?:boolean, dxf?:string}>}
  */
-function abrir({ nombre, dxf }) {
+async function abrir({ nombre, dxf }) {
+  await actualizarSiHaceFalta();
   return new Promise((resolve) => {
     try {
       const exe = ejecutable();
@@ -151,6 +153,18 @@ function abrir({ nombre, dxf }) {
       });
     } catch (e) { resolve({ ok: false, error: e.message }); }
   });
+}
+
+/**
+ * Antes de abrir CADCraft se mira si hay una versión nueva y, si la hay, se instala sin preguntar
+ * (con un máximo de espera para no dejar al usuario esperando si no hay conexión).
+ */
+async function actualizarSiHaceFalta() {
+  try {
+    const limite = new Promise((res) => setTimeout(() => res({ ok: false, error: 'tiempo agotado' }), 45000));
+    const r = await Promise.race([actualizar(), limite]);
+    return r && r.ok ? r : { ok: false };
+  } catch (_) { return { ok: false }; }
 }
 
 module.exports = { disponible, abrir, abrirLibre, comprobarActualizacion, actualizar };
