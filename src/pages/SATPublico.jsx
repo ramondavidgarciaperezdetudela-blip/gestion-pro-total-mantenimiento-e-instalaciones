@@ -1,8 +1,9 @@
 import BotonImprimirCliente from '@/components/BotonImprimirCliente';
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import FirmaClienteBoton from '@/components/FirmaClienteBoton';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Check, X, PenLine, RotateCcw, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { Check, X, PenLine, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { parametrosDeUrl } from '@/lib/parametrosUrl';
 
 const DocumentSkeleton = () => (
@@ -26,117 +27,6 @@ const DocumentSkeleton = () => (
   </div>
 );
 
-function SignaturePad({ onSave }) {
-  const canvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [hasDrawn, setHasDrawn] = useState(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#1e3a5f';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-  }, []);
-
-  const getPos = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const src = e.touches ? e.touches[0] : e;
-    return {
-      x: (src.clientX - rect.left) * scaleX,
-      y: (src.clientY - rect.top) * scaleY,
-    };
-  }, []);
-
-  const startDraw = useCallback((e) => {
-    e.preventDefault();
-    const pos = getPos(e);
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    ctx.beginPath();
-    ctx.moveTo(pos.x, pos.y);
-    setIsDrawing(true);
-    setHasDrawn(true);
-  }, [getPos]);
-
-  const draw = useCallback((e) => {
-    e.preventDefault();
-    if (!isDrawing) return;
-    const pos = getPos(e);
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
-  }, [isDrawing, getPos]);
-
-  const stopDraw = useCallback((e) => {
-    if (e) e.preventDefault();
-    setIsDrawing(false);
-  }, []);
-
-  const clear = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    setHasDrawn(false);
-  };
-
-  const save = () => {
-    const canvas = canvasRef.current;
-    const temp = document.createElement('canvas');
-    temp.width = 400;
-    temp.height = 130;
-    const ctx = temp.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 400, 130);
-    ctx.drawImage(canvas, 0, 0, 400, 130);
-    onSave(temp.toDataURL('image/jpeg', 0.7));
-  };
-
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-gray-500 text-center">Firme aquí con su dedo o ratón:</p>
-      <div className="border-2 border-dashed border-blue-300 rounded-xl overflow-hidden bg-white shadow-inner relative">
-        <canvas
-          ref={canvasRef}
-          width={900}
-          height={280}
-          className="w-full cursor-crosshair block"
-          style={{ touchAction: 'none', minHeight: '140px' }}
-          onMouseDown={startDraw}
-          onMouseMove={draw}
-          onMouseUp={stopDraw}
-          onMouseLeave={stopDraw}
-          onTouchStart={startDraw}
-          onTouchMove={draw}
-          onTouchEnd={stopDraw}
-        />
-        {!hasDrawn && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-gray-200 text-sm select-none">← Firme aquí →</span>
-          </div>
-        )}
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={clear} className="flex-1">
-          <RotateCcw className="w-3.5 h-3.5 mr-1" /> Borrar
-        </Button>
-        <Button size="sm" onClick={save} disabled={!hasDrawn} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
-          <Check className="w-3.5 h-3.5 mr-1" /> Confirmar firma
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 function SATPublico() {
   const params = parametrosDeUrl();
@@ -492,7 +382,7 @@ function SATPublico() {
                   <span className="text-gray-500 font-medium">Guardando su firma...</span>
                 </div>
               ) : (
-                <SignaturePad onSave={handleSign} abrirAlEntrar />
+                <FirmaClienteBoton onSave={handleSign} abrirAlEntrar />
               )}
               <Button variant="ghost" size="sm" className="w-full text-gray-400" onClick={() => setStep('decision')}>
                 Cancelar
@@ -514,7 +404,7 @@ function SATPublico() {
                   <span className="text-gray-500 font-medium">Registrando su respuesta...</span>
                 </div>
               ) : (
-                <SignaturePad onSave={handleRejectWithSign} abrirAlEntrar />
+                <FirmaClienteBoton onSave={handleRejectWithSign} abrirAlEntrar />
               )}
               <Button variant="ghost" size="sm" className="w-full text-gray-400" onClick={() => setStep('decision')}>
                 Cancelar
