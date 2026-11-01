@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,9 +49,23 @@ export default function Agenda() {
     setAppointments(data);
   };
 
-  const filteredContacts = contacts.filter(c =>
-    `${c.name} ${c.surname || ''} ${c.company_name || ''}`.toLowerCase().includes(contactSearch.toLowerCase())
-  );
+  const filteredContacts = useMemo(() => {
+    const searchLower = contactSearch.toLowerCase();
+    return contacts.filter(c =>
+      `${c.name} ${c.surname || ''} ${c.company_name || ''}`.toLowerCase().includes(searchLower)
+    );
+  }, [contacts, contactSearch]);
+
+  // Group appointments by date for O(1) lookup in calendar views
+  const appointmentsByDate = useMemo(() => {
+    return appointments.reduce((acc, appt) => {
+      if (appt.date) {
+        if (!acc[appt.date]) acc[appt.date] = [];
+        acc[appt.date].push(appt);
+      }
+      return acc;
+    }, {});
+  }, [appointments]);
 
   const handleSave = async () => {
     // Check for conflicts
@@ -290,7 +304,8 @@ export default function Agenda() {
       {/* Calendar */}
       {viewMode === 'week' && <div ref={printRef} className="grid grid-cols-1 md:grid-cols-7 gap-2">
         {days.map(day => {
-          const dayAppts = appointments.filter(a => a.date && isSameDay(new Date(a.date), day));
+          const dateStr = format(day, 'yyyy-MM-dd');
+          const dayAppts = appointmentsByDate[dateStr] || [];
           const isToday = isSameDay(day, new Date());
           return (
             <Card key={day.toISOString()} className={`${isToday ? 'ring-2 ring-blue-400' : ''}`}>
@@ -359,7 +374,8 @@ export default function Agenda() {
             <div className="grid grid-cols-7">
               {cells.map((day, i) => {
                 if (!day) return <div key={i} className="min-h-[80px] border-r border-b bg-gray-50" />;
-                const dayAppts = appointments.filter(a => a.date && isSameDay(new Date(a.date + 'T00:00:00'), day));
+                const dateStr = format(day, 'yyyy-MM-dd');
+                const dayAppts = appointmentsByDate[dateStr] || [];
                 const isToday = isSameDay(day, new Date());
                 return (
                   <div key={i} className={`min-h-[80px] border-r border-b p-1 ${isToday ? 'bg-blue-50' : ''}`}>
