@@ -24,6 +24,7 @@
     "test:arbol": "node scripts/test-arbol-documentos.mjs",
     "test:taller": "node scripts/test-taller.mjs",
     "test:dxf": "node scripts/test-dxf-import.mjs",
+    "test:imanes": "node scripts/test-imanes.mjs",
     "test:galeria": "node scripts/test-galeria.mjs",
     "test:paredes": "node scripts/test-paredes.mjs",
     "test:descargas": "node scripts/test-descargas.mjs",

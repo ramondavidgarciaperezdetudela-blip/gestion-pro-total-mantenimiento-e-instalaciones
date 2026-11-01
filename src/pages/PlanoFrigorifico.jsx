@@ -62,6 +62,7 @@ export default function PlanoFrigorifico() {
   const [zoom, setZoom] = useState(1);
   const [vistaKey, setVistaKey] = useState(0);
   const [snapMode, setSnapMode] = useState('libre');
+  const [iman, setIman] = useState(true);
   const [capasVisibles, setCapasVisibles] = useState(() => Object.fromEntries(CAPAS.map((c) => [c.id, true])));
   const [gmailDialog, setGmailDialog] = useState(false);
   const [gmailForm, setGmailForm] = useState({ to: '', subject: '', body: '' });
@@ -874,12 +875,17 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         <button onClick={() => setSnapMode('libre')}
           className="rounded-md border px-2 py-1 text-xs transition-all"
           style={snapMode === 'libre' ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
-          Libre (0,1 m)
+          Libre (1 mm)
         </button>
         <button onClick={() => setSnapMode('cuadricula')}
           className="rounded-md border px-2 py-1 text-xs transition-all"
           style={snapMode === 'cuadricula' ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
           A cuadrícula
+        </button>
+        <button onClick={() => setIman((v) => !v)} data-prueba="plano-iman" title="Engancha al extremo o al centro de las paredes y a los equipos al dibujar; escribe la medida y pulsa Intro."
+          className="rounded-md border px-2 py-1 text-xs transition-all"
+          style={iman ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary)/0.15)', color: 'hsl(var(--primary))', fontWeight: 600 } : { borderColor: 'hsl(var(--border))' }}>
+          Imán a puntos
         </button>
       </div>
       <div className="w-px h-6 bg-border" />
@@ -1180,7 +1186,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                 <PlanoCanvas
                   walls={plan.walls} elements={plan.elements} connections={plan.connections}
                   selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-                  polyline={polyline} orto={orto} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
+                  polyline={polyline} orto={orto} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} iman={iman} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
                   capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen />
               </div>
               <div id="plano-panel-datos" className="lg:w-[300px] lg:flex-shrink-0 lg:max-h-none">
@@ -1206,7 +1212,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               <PlanoCanvas
                 walls={plan.walls} elements={plan.elements} connections={plan.connections}
                 selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-                polyline={polyline} orto={orto} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
+                polyline={polyline} orto={orto} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} iman={iman} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
                 capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen={false} />
               {PanelLateral}
             </div>
