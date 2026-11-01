@@ -1,3 +1,4 @@
+import { cambiarLargoPared } from '@/lib/planoParedes';
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -490,6 +491,13 @@ export default function PlanoFrigorifico() {
     handleChange({ walls: plan.walls.map((w) => (w.id === wallId ? { ...w, alto_m: alto > 0 ? alto : undefined } : w)) });
   };
 
+  const cambiarPared = (wallId, cambios) => {
+    handleChange({ walls: plan.walls.map((w) => (w.id === wallId ? { ...w, ...cambios } : w)) });
+  };
+  const cambiarLargo = (wallId, largoM) => {
+    handleChange({ walls: cambiarLargoPared(plan.walls, wallId, largoM, plan.scale || 50) });
+  };
+
   const onPick = ({ mode: m, element, connectType: ct, manual }) => {
     setMode(m);
     if (m === 'place' && element) {
@@ -920,7 +928,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       <PlanoEquipoDetalles
         element={selectedElement} connection={selectedConnection} wall={selectedWall}
         elements={plan.elements} walls={plan.walls} scale={plan.scale}
-        onAltoRecinto={cambiarAltoRecinto} onAltoPared={cambiarAltoPared}
+        onAltoRecinto={cambiarAltoRecinto} onAltoPared={cambiarAltoPared} onCambiarPared={cambiarPared} onLargoPared={cambiarLargo}
         onUpdate={selectedConnection ? actualizarConexion : actualizarElemento}
         onDelete={borrarSeleccion}
         onEditarSala={(roomId) => {
