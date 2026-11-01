@@ -338,7 +338,8 @@ fn main() -> eframe::Result {
             // Autosave files (SAVEFILEPATH) default to `<settings dir>/autosave`.
             if let Some(dir) = &vars.config_dir {
                 app.enable_autosave(&dir.join("autosave"));
-                app.enable_update_check();
+                // Gestión Pro Total keeps CADCraft up to date itself (it keeps the user's files); the
+                // upstream prompt cannot replace the bundled copy, so it is not shown at startup.
                 // Startup LISP (acad.lsp, acaddoc.lsp) is read from `<settings>/support`; the
                 // folder is made so it is there to put them in.
                 let support = dir.join("support");

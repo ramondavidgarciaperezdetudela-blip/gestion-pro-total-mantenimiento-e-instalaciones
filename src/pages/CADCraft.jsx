@@ -25,6 +25,7 @@ export default function CADCraft() {
   const abrir = async () => {
     const r = await puente.abrirLibre({});
     if (!r?.ok) toast.error(r?.error || 'No se pudo abrir CADCraft');
+    else if (r.actualizado) toast.success('CADCraft se ha actualizado solo', { description: 'Tus dibujos, ajustes y comandos propios se han conservado.' });
   };
   const actualizar = async () => {
     setTrabajando(true);
@@ -61,6 +62,7 @@ export default function CADCraft() {
           <div className="rounded-xl border bg-white p-4 space-y-3">
             <h2 className="font-semibold">En este ordenador</h2>
             <Button onClick={abrir} className="w-full"><PenTool className="w-4 h-4 mr-2" />Abrir CADCraft</Button>
+            <p className="text-xs text-slate-500">Cada vez que lo abres desde aquí se instala solo la última versión, si hay una nueva.</p>
             <div className="text-xs text-slate-500">
               {estado?.sinPublicar ? 'Aún no hay actualizaciones publicadas.' : estado?.ok ? (estado.hayNueva ? 'Hay una versión nueva de CADCraft.' : 'CADCraft está al día.') : (estado?.error || 'Comprobando…')}
             </div>
