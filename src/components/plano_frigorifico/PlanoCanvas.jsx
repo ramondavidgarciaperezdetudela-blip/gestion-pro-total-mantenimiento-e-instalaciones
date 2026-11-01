@@ -1,3 +1,4 @@
+import { materialDe, espesorPared } from '@/lib/planoParedes';
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { crearConexion } from '@/lib/planoCalculo';
 import { CAT_CAPA, CAT_COLOR } from '@/lib/planoFrigorificoCatalogo';
@@ -642,8 +643,9 @@ export default function PlanoCanvas({
           const mx = (w.x1 + w.x2) / 2, my = (w.y1 + w.y2) / 2;
           return (
             <g key={w.id} style={{ cursor: mode === 'select' ? 'move' : 'default' }}>
-              <line x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2} stroke={sel ? '#00D4FF' : '#cbd5e1'} strokeWidth={sel ? 7 : 5} strokeLinecap="round" />
-              <text x={mx} y={my - 8} textAnchor="middle" fontSize="15" fontWeight="700" fill={sel ? '#00A0E9' : 'hsl(var(--foreground))'} style={{ pointerEvents: 'none' }}>{m(len)} m</text>
+              <line x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2} stroke={sel ? '#00D4FF' : (materialDe(w)?.color || '#cbd5e1')}
+                strokeWidth={Math.max(sel ? 7 : 5, (w.material || w.espesor_mm) ? Math.min(24, espesorPared(w) * scale) : 0)} strokeLinecap="butt" />
+              <text x={mx} y={my - 8} textAnchor="middle" fontSize="15" fontWeight="700" fill={sel ? '#00A0E9' : 'hsl(var(--foreground))'} style={{ pointerEvents: 'none' }}>{m(len)} m{materialDe(w) ? ` · ${materialDe(w).etiqueta}` : ''}</text>
             </g>
           );
         })}
@@ -791,7 +793,22 @@ export default function PlanoCanvas({
 
         {/* Vista previa de pared en curso */}
         {mode === 'wall' && wallStart && mouse && (
-          <line x1={wallStart.x} y1={wallStart.y} x2={mouse.x} y2={mouse.y} stroke="#00D4FF" strokeWidth="3" strokeDasharray="6 6" opacity="0.7" />
+          <g data-prueba="pared-en-curso" style={{ pointerEvents: 'none' }}>
+            <line x1={wallStart.x} y1={wallStart.y} x2={mouse.x} y2={mouse.y} stroke="#00D4FF" strokeWidth="3" strokeDasharray="6 6" opacity="0.7" />
+            <circle cx={wallStart.x} cy={wallStart.y} r="5" fill="#00D4FF" />
+            {(() => {
+              const largo = Math.hypot(mouse.x - wallStart.x, mouse.y - wallStart.y);
+              if (largo < 2) return null;
+              const mx = (wallStart.x + mouse.x) / 2, my = (wallStart.y + mouse.y) / 2;
+              const txt = `${m(largo).replace('.', ',')} m`;
+              return (
+                <g>
+                  <rect x={mx - 34} y={my - 30} width="68" height="22" rx="5" fill="hsl(var(--card))" stroke="#00D4FF" />
+                  <text x={mx} y={my - 14} textAnchor="middle" fontSize="14" fontWeight="800" fill="#0891b2" data-prueba="pared-medida-viva">{txt}</text>
+                </g>
+              );
+            })()}
+          </g>
         )}
 
         {/* Vista previa de conexión en curso */}

@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect } from 'react';
 import { RotateCcw, RotateCw, FlipHorizontal, FlipVertical, Trash2, AlertTriangle, Ruler, Move, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import SelectorColor from './SelectorColor';
+import { MATERIALES_PARED, espesorPared } from '@/lib/planoParedes';
 import { NumberField } from '@/components/ui/number-field';
 import { ALTURA_SUELO, ALTURA_CAMARA, altoEquipo, altoPared, cotaEquipo, techoEn, tieneCotaPropia } from '@/lib/planoVista3D';
 import {
@@ -36,7 +37,7 @@ const TENSIONES = ['230 V monofásica', '400 V trifásica', '24 V', '12 V'];
 
 export default function PlanoEquipoDetalles({
   element, wall, connection, elements, walls = [], scale, onUpdate, onDelete,
-  onEditarSala, onBorrarSala, onEditarCamara, onBorrarCamara, onAltoRecinto, onAltoPared,
+  onEditarSala, onBorrarSala, onEditarCamara, onBorrarCamara, onAltoRecinto, onAltoPared, onCambiarPared, onLargoPared,
 }) {
   if (connection) {
     return (
@@ -85,7 +86,24 @@ export default function PlanoEquipoDetalles({
     return (
       <div className="flex flex-col gap-2" data-prueba="detalle-pared">
         <div className="tech-label">Pared seleccionada</div>
-        <div className="text-sm">Longitud: <span className="font-mono font-bold">{(len / scale).toFixed(2)} m</span></div>
+        <Campo label="Largo de la pared (m)">
+          <NumberField key={`largo-${wall.id}-${wall.x2}-${wall.y2}`} value={Number((len / scale).toFixed(2))} data-prueba="largo-pared"
+            onChange={(v) => v > 0 && onLargoPared && onLargoPared(wall.id, v)}
+            className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+        </Campo>
+        <Campo label="Tipo de pared">
+          <select data-prueba="material-pared" value={wall.material || ''}
+            onChange={(e) => onCambiarPared && onCambiarPared(wall.id, { material: e.target.value || undefined, espesor_mm: undefined })}
+            className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs">
+            <option value="">Sin indicar</option>
+            {MATERIALES_PARED.map((x) => <option key={x.id} value={x.id}>{x.etiqueta}</option>)}
+          </select>
+        </Campo>
+        <Campo label="Ancho / grosor (mm)">
+          <NumberField key={`esp-${wall.id}-${wall.material || ''}`} value={Math.round(espesorPared(wall) * 1000)} data-prueba="grosor-pared"
+            onChange={(v) => v > 0 && onCambiarPared && onCambiarPared(wall.id, { espesor_mm: v })}
+            className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+        </Campo>
         <Campo label="Alto de la pared (m)">
           <NumberField value={wall.alto_m ?? ''} data-prueba="alto-pared"
             placeholder={String(ALTURA_SUELO).replace('.', ',')}
