@@ -1,3 +1,43 @@
+diff --git a/apps/cadcraft-web/src/hvac_lisp.rs b/apps/cadcraft-web/src/hvac_lisp.rs
+new file mode 100644
+index 0000000..06c7e32
+--- /dev/null
++++ b/apps/cadcraft-web/src/hvac_lisp.rs
+@@ -0,0 +1,8 @@
++//! LISP routines of Gestión Pro Total (walls, symbols, equipment library), embedded in the page.
++//! The files in `hvac_lsp/` are copied from `cadcraft-hvac/support` when the page is built.
++
++pub const SOURCES: &[(&str, &str)] = &[
++    ("hvac-paredes.lsp", include_str!("hvac_lsp/hvac-paredes.lsp")),
++    ("hvac-simbolos.lsp", include_str!("hvac_lsp/hvac-simbolos.lsp")),
++    ("hvac-biblioteca.lsp", include_str!("hvac_lsp/hvac-biblioteca.lsp")),
++];
+diff --git a/apps/cadcraft-web/src/main.rs b/apps/cadcraft-web/src/main.rs
+index a25782d..9763569 100644
+--- a/apps/cadcraft-web/src/main.rs
++++ b/apps/cadcraft-web/src/main.rs
+@@ -17,6 +17,11 @@ mod host;
+ #[cfg(any(target_arch = "wasm32", test))]
+ mod panel_layout;
+ 
++/// Gestión Pro Total: walls and equipment library (LISP routines compiled into the page; the web has no
++/// support folder to read them from).
++#[cfg(target_arch = "wasm32")]
++mod hvac_lisp;
++
+ #[cfg(target_arch = "wasm32")]
+ mod web {
+     use cadcraft_engine::Session;
+@@ -180,6 +185,9 @@ mod web {
+                             // viewports stay in the layout's display list.
+                             app.set_wgpu(rs, None);
+                         }
++                        for (name, text) in crate::hvac_lisp::SOURCES {
++                            app.load_lisp(name, text);
++                        }
+                         if query().contains("sample") {
+                             let _ = app.run("ui.sample", serde_json::json!({}));
+                         }
 diff --git a/apps/cadcraft/src/workspace.rs b/apps/cadcraft/src/workspace.rs
 index b75c9bc..c4e232a 100644
 --- a/apps/cadcraft/src/workspace.rs
@@ -173,7 +213,7 @@ index 0000000..0c3fa9a
 +Estructura	EQ-VENTANA	Ventana	1.2	0.15
 +Estructura	EQ-DESAGUE	Desagüe	0.2	0.2
 diff --git a/crates/ui-egui/src/lib.rs b/crates/ui-egui/src/lib.rs
-index 97ab2fa..8db7846 100644
+index 97ab2fa..62c9edf 100644
 --- a/crates/ui-egui/src/lib.rs
 +++ b/crates/ui-egui/src/lib.rs
 @@ -21,6 +21,7 @@ pub mod aliasdlg;
@@ -193,6 +233,15 @@ index 97ab2fa..8db7846 100644
              collapsed_groups: Vec::new(),
              hidden_tools: Vec::new(),
              properties_all: true,
+@@ -568,7 +569,7 @@ impl CadApp {
+ 
+     /// Load a LISP file: its routine runs and may wait for the user (APPLOAD typed or from the
+     /// menu runs this way too).
+-    fn load_lisp(&mut self, name: &str, text: &str) {
++    pub fn load_lisp(&mut self, name: &str, text: &str) {
+         if let Err(e) = self.session.lisp_load(name, text, false) {
+             self.session.echo(e.to_string());
+         }
 diff --git a/crates/ui-egui/src/palettes.rs b/crates/ui-egui/src/palettes.rs
 index 7e01a15..1da55b4 100644
 --- a/crates/ui-egui/src/palettes.rs
