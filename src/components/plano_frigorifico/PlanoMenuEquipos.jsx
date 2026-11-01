@@ -71,7 +71,7 @@ export default function PlanoMenuEquipos({ cat, activeType, onPick, extraPorCat,
 // Opción de equipo dentro del menú desplegable. Si el equipo tiene icono IA,
 // al pulsarlo aparece el menú para elegir la versión (estándar/IA); si no,
 // se coloca el símbolo estándar directamente.
-function OpcionEquipo({ el, cat, activo, onPick }) {
+export function OpcionEquipo({ el, cat, activo, onPick }) {
   const [menu, setMenu] = useState(false);
   const pulsar = () => {
     if (el.image_url) setMenu((v) => !v);
@@ -82,7 +82,7 @@ function OpcionEquipo({ el, cat, activo, onPick }) {
       <button
         onClick={pulsar}
         title={el.label}
-        className="relative flex flex-col items-center gap-0.5 rounded-md border px-1 py-1 w-[96px] transition-all hover:scale-[1.03]"
+        className="relative flex flex-col items-center gap-0.5 rounded-md border px-1 py-1 w-full max-w-[96px] transition-all hover:scale-[1.03]"
         style={{
           borderColor: activo ? cat.color : 'hsl(var(--border))',
           background: activo ? cat.color + '22' : 'transparent',
