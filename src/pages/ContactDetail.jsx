@@ -6,13 +6,12 @@ import { createPageUrl } from '../utils';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { NumberField } from "@/components/ui/number-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Phone, Mail, Navigation, Plus, FileText, Calculator, CheckCircle, Clock, XCircle, Upload, Trash2, Edit, Eye, Send, Bot, ArrowLeft, Printer, MessageCircle, Camera, History, AlertTriangle } from 'lucide-react';
+import { Phone, Plus, FileText, Calculator, CheckCircle, Clock, XCircle, Upload, Trash2, Edit, Eye, Send, Bot, ArrowLeft, Printer, MessageCircle, Camera, History, AlertTriangle } from 'lucide-react';
 import ClientMachineTab from '../components/ClientMachineTab';
 import EquipmentDiaryTab from '../components/EquipmentDiaryTab';
 import ClientRepairGallery from '../components/ClientRepairGallery';
@@ -30,6 +29,12 @@ import InstallationHistoryTab from '../components/InstallationHistoryTab';
 import InterventionHistoryTab from '../components/InterventionHistoryTab';
 import ClientPlanosTab from '../components/ClientPlanosTab';
 import { useParametrosUrl } from '@/lib/parametrosUrl';
+import FormularioCliente from '@/components/clientes/FormularioCliente';
+import FichaClienteResumen from '@/components/clientes/FichaClienteResumen';
+import NavegacionFicha from '@/components/clientes/NavegacionFicha';
+import ArbolDocumentos from '@/components/clientes/ArbolDocumentos';
+import { construirArbol } from '@/lib/arbolDocumentos';
+import { clienteAFormulario, prepararCliente, nombreDeCliente } from '@/lib/cliente';
 
 function ChangeHistoryTab({ contactId }) {
   const [logs, setLogs] = React.useState([]);
@@ -97,6 +102,8 @@ export default function ContactDetail() {
   const [noteForm, setNoteForm] = useState({ title: '', content: '' });
   const [editingContact, setEditingContact] = useState(false);
   const [contactForm, setContactForm] = useState({});
+  const [erroresCliente, setErroresCliente] = useState([]);
+  const [pestana, setPestana] = useState('docs');
   const [uploadDialog, setUploadDialog] = useState(false);
   const [uploadDocType, setUploadDocType] = useState('otro');
   const [uploadTitle, setUploadTitle] = useState('');
@@ -142,7 +149,7 @@ export default function ContactDetail() {
       const contacts = await base44.entities.Contact.filter({ id: contactId });
       const c = contacts[0] || null;
       setContact(c);
-      setContactForm(c || {});
+      setContactForm(clienteAFormulario(c || {}));
       if (!c) setErrorCarga('no-esta');
     } catch (err) {
       setErrorCarga(err?.message || 'No se ha podido cargar el cliente.');
@@ -217,9 +224,14 @@ export default function ContactDetail() {
   };
 
   const saveContact = async () => {
-    await base44.entities.Contact.update(contactId, contactForm);
-    logChange({ entityType: 'Contact', entityId: contactId, entityLabel: `${contact.name} ${contact.surname || ''}`.trim(), action: 'editar', contactId, contactName: contact.name, changesSummary: 'Datos del contacto actualizados' });
-    setContact({ ...contact, ...contactForm });
+    const r = prepararCliente(contactForm);
+    setErroresCliente(r.errores);
+    if (!r.ok) return;
+    const { id: _id, created_date: _c, updated_date: _u, created_by: _b, created_by_id: _bi, ...datos } = r.datos;
+    await base44.entities.Contact.update(contactId, datos);
+    logChange({ entityType: 'Contact', entityId: contactId, entityLabel: nombreDeCliente(r.datos), action: 'editar', contactId, contactName: contact.name, changesSummary: 'Datos del contacto actualizados' });
+    setContact({ ...contact, ...datos });
+    setContactForm(clienteAFormulario({ ...contact, ...datos }));
     setEditingContact(false);
   };
 
@@ -561,42 +573,21 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           </div>
 
           {editingContact ?
-          <div className="space-y-2 border-t pt-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs text-gray-500">Perfil de pago</label>
-                  <Select value={contactForm.payment_profile || 'pagador_normal'} onValueChange={(v) => setContactForm({ ...contactForm, payment_profile: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(PAYMENT_PROFILES).map(([k, v]) => <SelectItem key={k} value={k}>{v.icon} {v.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500">Importe pendiente (€)</label>
-                  <NumberField value={contactForm.pending_amount} onChange={(v) => setContactForm({ ...contactForm, pending_amount: v })} />
-                </div>
+          <div className="space-y-3 border-t pt-3">
+              <FormularioCliente value={contactForm} onChange={(patch) => setContactForm((prev) => ({ ...prev, ...patch }))} />
+              {erroresCliente.length > 0 &&
+            <ul className="rounded border border-destructive/40 bg-destructive/5 p-2 text-sm text-destructive" role="alert" data-testid="errores-cliente">
+                  {erroresCliente.map((e) => <li key={e}>{e}</li>)}
+                </ul>
+            }
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => { setEditingContact(false); setErroresCliente([]); setContactForm(clienteAFormulario(contact)); }}>Cancelar</Button>
+                <Button onClick={saveContact} data-testid="guardar-cambios-cliente" className="bg-blue-600">Guardar cambios</Button>
               </div>
-              <div>
-                <label className="text-xs text-gray-500">Observaciones internas (no aparece en documentos)</label>
-                <Textarea rows={3} value={contactForm.internal_observations || ''} onChange={(e) => setContactForm({ ...contactForm, internal_observations: e.target.value })} />
-              </div>
-              <Button onClick={saveContact} className="bg-blue-600 w-full">Guardar cambios</Button>
             </div> :
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              {contact.nif && <div><span className="text-gray-500">NIF:</span> {contact.nif}</div>}
-              {contact.phone && <a href={`tel:${contact.phone}`} className="flex items-center gap-2 text-blue-600"><Phone className="w-4 h-4" />{contact.phone}</a>}
-              {contact.email && <a href={`mailto:${contact.email}`} className="flex items-center gap-2 text-blue-600"><Mail className="w-4 h-4" />{contact.email}</a>}
-              {contact.address &&
-            <button onClick={openGPS} className="flex items-center gap-2 text-orange-600 text-left">
-                  <Navigation className="w-4 h-4 flex-shrink-0" />
-                  {contact.address}, {contact.city} {contact.postal_code} {contact.province}
-                </button>
-            }
-              {contact.internal_observations &&
-            <div className="md:col-span-2 bg-amber-50 border border-amber-200 rounded p-2 text-xs">
-                  <strong>Obs. internas:</strong> {contact.internal_observations}
-                </div>
-            }
+          <div className="border-t pt-3">
+              <FichaClienteResumen contacto={contact} onGPS={openGPS} />
             </div>
           }
         </CardContent>
@@ -731,29 +722,20 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
         </DialogContent>
       </Dialog>
 
-      <Tabs defaultValue="facturas">
-        <TabsList className="w-full flex flex-wrap h-auto gap-1">
-          <TabsTrigger value="facturas" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Facturas ({docsByType.factura.length})</TabsTrigger>
-          <TabsTrigger value="presupuestos" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Presupuestos ({docsByType.presupuesto.length})</TabsTrigger>
-          <TabsTrigger value="recibos" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Recibos ({docsByType.recibo.length})</TabsTrigger>
-          <TabsTrigger value="sat" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">SAT ({satOrders.length})</TabsTrigger>
-          <TabsTrigger value="maint" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Manten. ({maintenance.length})</TabsTrigger>
-          <TabsTrigger value="calcs" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Cálculos ({calculations.length})</TabsTrigger>
-          <TabsTrigger value="files" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Archivos ({documents.filter((d) => d.doc_type !== 'manual').length}) {documents.filter((d) => d.doc_type === 'manual').length > 0 && `| 📘${documents.filter((d) => d.doc_type === 'manual').length}`}</TabsTrigger>
-          <TabsTrigger value="citas" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Citas ({appointments.length})</TabsTrigger>
-          <TabsTrigger value="notes" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Notas ({notes.length})</TabsTrigger>
-          <TabsTrigger value="aibudget" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Presup. IA</TabsTrigger>
-          <TabsTrigger value="legalizacion" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Legaliz.</TabsTrigger>
-          <TabsTrigger value="maquinaria" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Maquinaria</TabsTrigger>
-          <TabsTrigger value="historial" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">Historial</TabsTrigger>
-          <TabsTrigger value="fotos_equipo" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">📸 Equipo ({equipmentPhotos.length})</TabsTrigger>
-          <TabsTrigger value="galeria_fotos" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🖼️ Galería</TabsTrigger>
-          <TabsTrigger value="diario" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🔧 Diario</TabsTrigger>
-          <TabsTrigger value="instalaciones" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🏭 Instalaciones</TabsTrigger>
-          <TabsTrigger value="intervenciones" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">📋 Intervenciones ({satOrders.length + invoices.length + maintenance.length})</TabsTrigger>
-          <TabsTrigger value="informes_aseg" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">🛡️ Informes Aseg. ({insuranceReports.length})</TabsTrigger>
-          <TabsTrigger value="planos" className="px-3 py-1 text-sm font-black rounded-md inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow flex-1 min-w-[80px]">📐 Planos</TabsTrigger>
-          </TabsList>
+      <Tabs value={pestana} onValueChange={setPestana}>
+        <NavegacionFicha pestana={pestana} onCambiar={setPestana} contadores={{
+          facturas: docsByType.factura.length, presupuestos: docsByType.presupuesto.length, recibos: docsByType.recibo.length,
+          sat: satOrders.length, maint: maintenance.length, intervenciones: satOrders.length + invoices.length + maintenance.length,
+          informes_aseg: insuranceReports.length, citas: appointments.length, calcs: calculations.length,
+          files: documents.filter((d) => d.doc_type !== 'manual').length, notes: notes.length, fotos_equipo: equipmentPhotos.length
+        }} />
+
+        {/* DOCUMENTACIÓN: todo lo vinculado al cliente, en menús y submenús */}
+        <TabsContent value="docs">
+          <ArbolDocumentos
+            arbol={construirArbol({ invoices, satOrders, maintenance, documents, calculations, insuranceReports })}
+            onAbrir={(a) => { if (a.url) window.open(a.url, '_blank', 'noopener'); else if (a.tab) setPestana(a.tab); }} />
+        </TabsContent>
 
         {/* FACTURAS */}
         <TabsContent value="facturas">
