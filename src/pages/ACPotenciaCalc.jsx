@@ -10,6 +10,7 @@ import { base44 } from '@/api/base44Client';
 import NavBar from '@/components/NavBar';
 import ACSystemDiagram from '@/components/ACSystemDiagram';
 import MollierDiagram from '@/components/MollierDiagram';
+import CargaLatente from '@/components/instrumentos/CargaLatente';
 import EsquemaInteractivoAC from '@/components/EsquemaInteractivoAC';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 
@@ -1396,6 +1397,9 @@ EXCLUYE SIEMPRE: baños, aseos, garajes, jardines, terrazas.`;
           )}
         </div>
       )}
+
+
+      <CargaLatente />
 
     </div>
   );
