@@ -19,7 +19,8 @@ import {
   StickyNote, Package, Palette, Bell, Download, Euro, CheckCircle, XCircle, AlertTriangle,
   ArrowRight, ChevronRight, ShoppingCart, Search, Navigation, ChevronDown, ChevronUp,
   Snowflake, Ruler, Filter, Gauge, Droplets, Repeat, History, Briefcase, MessageSquare,
-  Calculator, Layers, RefreshCw, ListChecks, Map, FileBarChart, Sparkles } from
+  Calculator, Layers, RefreshCw, ListChecks, Map, FileBarChart, Sparkles,
+  Images, CalendarClock, Cylinder, ShieldCheck, PenTool, UserPlus } from
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
@@ -118,7 +119,15 @@ const quickLinks = [
 { name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Gauge, color: 'bg-rose-600' },
 { name: 'Tablas de Gases', page: 'TablasRefrigerantes', icon: Snowflake, color: 'bg-sky-700' },
 { name: 'Códigos de Error', page: 'CodigosError', icon: AlertTriangle, color: 'bg-red-600' },
-{ name: 'Presiones y Carga', page: 'PresionesGas', icon: Gauge, color: 'bg-blue-700' }];
+{ name: 'Presiones y Carga', page: 'PresionesGas', icon: Gauge, color: 'bg-blue-700' },
+// Accesos que faltaban en el inicio (estaban en el menú lateral pero no aquí):
+{ name: 'Gases refrigerantes', page: 'GasesRefrigerantes', icon: Cylinder, color: 'bg-sky-600' },
+{ name: 'CADCraft (dibujo CAD)', page: 'CADCraft', icon: PenTool, color: 'bg-cyan-700' },
+{ name: 'Gamas y plan', page: 'PlanGamas', icon: CalendarClock, color: 'bg-cyan-600' },
+{ name: 'Instrumentos', page: 'InstrumentosTaller', icon: Gauge, color: 'bg-orange-600' },
+{ name: 'Informes Aseguradora', page: 'InformesTecnicos', icon: ShieldCheck, color: 'bg-indigo-600' },
+{ name: 'Galería de imágenes', page: 'GaleriaImagenes', icon: Images, color: 'bg-pink-600' },
+{ name: 'Nuevo Contacto', page: 'ContactForm', icon: UserPlus, color: 'bg-emerald-600' }];
 
 // Índice rápido página -> objeto de enlace (para armar los grupos reutilizando icono/color/nombre)
 const _linkByPage = Object.fromEntries(quickLinks.map(l => [l.page, l]));
@@ -130,11 +139,11 @@ const GRUPOS = [
   // herramientas seguidas no hay quien las lea.
   { titulo: 'Electricidad', color: '#eab308', pages: ['ElectricalCalc'] },
   { titulo: 'Clima', color: '#0ea5e9', pages: ['ACPotenciaCalc', 'ACPlanAnalysis', 'ThermalCalc', 'MultiAreaCalc', 'PlanoIA', 'CodigosError'] },
-  { titulo: 'Refrigeración', color: '#06b6d4', pages: ['ColdRoomCalc', 'CapillaryCalc', 'FilterCalc', 'DiagnosticoCarga', 'RefrigerantEquiv', 'DanfossTools', 'PresionesGas', 'TablasRefrigerantes', 'PlanoFrigorifico'] },
+  { titulo: 'Refrigeración', color: '#06b6d4', pages: ['ColdRoomCalc', 'CapillaryCalc', 'FilterCalc', 'DiagnosticoCarga', 'RefrigerantEquiv', 'DanfossTools', 'PresionesGas', 'TablasRefrigerantes', 'GasesRefrigerantes', 'PlanoFrigorifico', 'CADCraft'] },
   { titulo: 'Solar', color: '#f59e0b', pages: ['SolarCalc', 'SolarBatteryCalc', 'BatteryCalc'] },
-  { titulo: 'Documentos', color: '#7C3AED', pages: ['Documents', 'Documents?type=factura', 'Documents?type=presupuesto', 'DocumentTemplates', 'LegalDocs'] },
-  { titulo: 'SAT y Trabajo', color: '#F97316', pages: ['SAT', 'SATChat', 'TechnicianFieldWork', 'TecniciansRoutes', 'Maintenance', 'MaintenancePlanning', 'IncidentManagement', 'EquipmentFailureHistory', 'EquipmentDiaryPage'] },
-  { titulo: 'Clientes y Agenda', color: '#10B981', pages: ['Contacts', 'ClientPortal', 'Projects', 'ProjectTimeline', 'Agenda', 'Availability', 'SATCalendar', 'TechnicianDay'] },
+  { titulo: 'Documentos', color: '#7C3AED', pages: ['Documents', 'Documents?type=factura', 'Documents?type=presupuesto', 'DocumentTemplates', 'LegalDocs', 'InformesTecnicos', 'GaleriaImagenes'] },
+  { titulo: 'SAT y Trabajo', color: '#F97316', pages: ['SAT', 'SATChat', 'TechnicianFieldWork', 'TecniciansRoutes', 'Maintenance', 'MaintenancePlanning', 'IncidentManagement', 'EquipmentFailureHistory', 'EquipmentDiaryPage', 'PlanGamas', 'InstrumentosTaller'] },
+  { titulo: 'Clientes y Agenda', color: '#10B981', pages: ['Contacts', 'ContactForm', 'ClientPortal', 'Projects', 'ProjectTimeline', 'Agenda', 'Availability', 'SATCalendar', 'TechnicianDay'] },
   { titulo: 'IA y Asistencia', color: '#3B82F6', pages: ['AIAssistant', 'AISearch', 'AIBudget', 'AIReports', 'AIPlanning', 'AISupport'] },
   { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'Regulations', 'GasSuppliers'] },
   { titulo: 'Informes y Sistema', color: '#64748b', pages: ['Reports', 'Automations', 'SmartReminders', 'Notes', 'AuditLog', 'BusinessCards', 'ExportData', 'BackupCenter', 'UpdateCenter', 'Novedades', 'CompanyConfig'] },
