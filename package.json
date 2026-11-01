@@ -1,7 +1,7 @@
 {
   "name": "gestion-pro-total-fuera-base44",
   "private": true,
-  "version": "1.91.0",
+  "version": "1.92.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -29,6 +29,8 @@
     "test:paredes": "node scripts/test-paredes.mjs",
     "test:descargas": "node scripts/test-descargas.mjs",
     "test:dwg": "node scripts/test-dwg-import.mjs",
+    "test:cadcraft": "node scripts/test-cadcraft-export.mjs",
+    "test:copia": "node scripts/test-copia-formato.mjs",
     "test:zona": "node scripts/test-zona-climatica.mjs",
     "test:averias": "node scripts/test-averias-estado.mjs",
     "test:simulador": "node scripts/test-simulador-ciclo.mjs",

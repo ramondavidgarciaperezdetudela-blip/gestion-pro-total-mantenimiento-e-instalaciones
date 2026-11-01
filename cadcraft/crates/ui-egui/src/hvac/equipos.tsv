@@ -1,0 +1,74 @@
+Refrigeración	EQ-COMPRESOR	Compresor	1	0.8
+Refrigeración	EQ-CONDENSADOR	Condensador (genérico)	1.2	0.8
+Refrigeración	EQ-CONDENSADORA_AIRE	Condensadora aire (axial)	1.4	0.9
+Refrigeración	EQ-CONDENSADORA_CENTRIFUGO	Condensadora aire (centrífugo)	1.4	0.9
+Refrigeración	EQ-CONDENSADORA_AGUA	Condensadora por agua	1	0.7
+Refrigeración	EQ-CONDENSADORA_EVAPORATIVA	Condensadora evaporativa	1.6	1.4
+Refrigeración	EQ-CONDENSADORA_SECA	Condensadora seca (dry-cooler)	1.6	0.9
+Refrigeración	EQ-EVAPORADOR	Evaporador	1	0.6
+Refrigeración	EQ-GRUPO_FRIO	Grupo de frío	1.8	1.2
+Refrigeración	EQ-CENTRAL_FRIGORIFICA	Central frigorífica	3	1.5
+Refrigeración	EQ-CAMARA_FRIGORIFICA	Cámara frigorífica	3	3
+Refrigeración	EQ-VENTILADOR	Ventilador	0.6	0.6
+Refrigeración	EQ-VALVULA_EXPANSION	Válvula expansión	0.3	0.3
+Refrigeración	EQ-TUBERIA_REFRIGERANTE	Tubería refrigerante	0.2	0.2
+Refrigeración	EQ-DESHUMIDIFICADOR	Deshumidificador	0.5	0.4
+Refrigeración	EQ-VITRINA	Vitrina / expositor	2.5	1
+Refrigeración	EQ-MURAL	Mural refrigerado	3.75	0.9
+Refrigeración	EQ-ARCON	Arcón congelador	1.5	0.7
+Refrigeración	EQ-ABATIDOR	Abatidor de temperatura	0.8	0.8
+Refrigeración	EQ-BOTELLERO	Botellero / bajo mostrador	1.5	0.6
+Refrigeración	EQ-RECIBIDOR	Recibidor de líquido	0.5	0.5
+Refrigeración	EQ-SEPARADOR_ACEITE	Separador de aceite	0.4	0.4
+Refrigeración	EQ-FILTRO_DESHIDRATADOR	Filtro deshidratador	0.2	0.2
+Refrigeración	EQ-VISOR_LIQUIDO	Visor de líquido	0.15	0.15
+Refrigeración	EQ-VALVULA_SOLENOIDE	Válvula solenoide	0.2	0.2
+Refrigeración	EQ-PRESOSTATO	Presostato	0.2	0.2
+Refrigeración	EQ-CONTROL_TEMPERATURA	Control / termostato	0.2	0.2
+Climatización	EQ-EXTERIOR_CLIMA	Unidad exterior	1	0.4
+Climatización	EQ-CASSETTE	Cassette	0.9	0.9
+Climatización	EQ-CONDUCTOS	Unidad de conductos	1.2	0.6
+Climatización	EQ-CONSOLA_SUELO	Consola suelo-techo	1	0.25
+Climatización	EQ-SPLIT_PARED	Split de pared	0.9	0.2
+Climatización	EQ-FANCOIL	Fancoil	0.8	0.3
+Climatización	EQ-RECUPERADOR	Recuperador de calor	1.2	0.8
+Ventilación / Conductos	EQ-REJILLA_IMPULSION	Rejilla impulsión	0.4	0.4
+Ventilación / Conductos	EQ-REJILLA_RETORNO	Rejilla retorno	0.4	0.4
+Ventilación / Conductos	EQ-REJILLA_EXTRACCION	Rejilla extracción	0.4	0.4
+Ventilación / Conductos	EQ-DIFUSOR_CIRCULAR	Difusor circular	0.5	0.5
+Ventilación / Conductos	EQ-DIFUSOR_LINEAL	Difusor lineal	1.2	0.2
+Ventilación / Conductos	EQ-BOCA_IMPULSION	Boca de impulsión	0.3	0.3
+Ventilación / Conductos	EQ-BOCA_RETORNO	Boca de retorno	0.3	0.3
+Ventilación / Conductos	EQ-VENTILADOR_EXTRACCION	Ventilador extracción	0.6	0.6
+Ventilación / Conductos	EQ-VENTILADOR_IMPULSION	Ventilador impulsión	0.6	0.6
+Ventilación / Conductos	EQ-UVT	UVT (unid. trat. aire)	1.6	0.9
+Ventilación / Conductos	EQ-COMPUERTA_CORTAFUEGO	Compuerta cortafuegos	0.5	0.5
+Ventilación / Conductos	EQ-SILENCIADOR	Silenciador	0.8	0.4
+Ventilación / Conductos	EQ-CAJA_TOMA	Caja / plenum	0.6	0.6
+Ventilación / Conductos	EQ-EXTRACTOR_EOLICO	Extractor eólico	0.5	0.5
+Electricidad / Aparamenta	EQ-CUADRO_ELECTRICO	Cuadro eléctrico	0.8	0.3
+Electricidad / Aparamenta	EQ-MAGNETOTERMICO	Magnetotérmico	0.3	0.2
+Electricidad / Aparamenta	EQ-DIFERENCIAL	Diferencial	0.3	0.2
+Electricidad / Aparamenta	EQ-CONTACTOR	Contactor	0.25	0.2
+Electricidad / Aparamenta	EQ-GUARDAMOTOR	Guardamotor	0.25	0.2
+Electricidad / Aparamenta	EQ-VARIADOR	Variador de frecuencia	0.4	0.3
+Electricidad / Aparamenta	EQ-AUTOMATA	Autómata / PLC	0.4	0.3
+Electricidad / Aparamenta	EQ-CABLEADO	Cableado	0.1	0.1
+Electricidad / Aparamenta	EQ-TOMA_CORRIENTE	Toma de corriente	0.2	0.2
+Electricidad / Aparamenta	EQ-INTERRUPTOR	Interruptor	0.2	0.2
+Electricidad / Aparamenta	EQ-LUMINARIA	Luminaria	1.2	0.2
+Electricidad / Aparamenta	EQ-PUESTA_TIERRA	Puesta a tierra	0.4	0.4
+Seguridad	EQ-VALVULA_SEGURIDAD	Válvula de seguridad	0.2	0.2
+Seguridad	EQ-DETECTOR_FUGAS	Detector de fugas	0.2	0.2
+Seguridad	EQ-ALARMA_CAMARA	Alarma persona encerrada	0.2	0.2
+Seguridad	EQ-PULSADOR_EMERGENCIA	Pulsador emergencia	0.2	0.2
+Seguridad	EQ-PARO_EMERGENCIA	Paro de emergencia	0.2	0.2
+Seguridad	EQ-EXTRACCION_EMERGENCIA	Ventilación de emergencia	0.6	0.6
+Seguridad	EQ-EXTINTOR	Extintor	0.3	0.3
+Seguridad	EQ-DETECTOR_HUMO	Detector de humo	0.2	0.2
+Seguridad	EQ-LUZ_EMERGENCIA	Luz de emergencia	0.3	0.15
+Seguridad	EQ-SENALIZACION	Señalización	0.2	0.2
+Estructura	EQ-PILAR	Pilar	0.4	0.4
+Estructura	EQ-PUERTA	Puerta	1	0.15
+Estructura	EQ-VENTANA	Ventana	1.2	0.15
+Estructura	EQ-DESAGUE	Desagüe	0.2	0.2
