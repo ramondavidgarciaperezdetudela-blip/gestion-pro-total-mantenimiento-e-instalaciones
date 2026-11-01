@@ -42,6 +42,9 @@ jobs:
           if ! git apply --3way ../cadcraft-hvac/hvac.patch; then
             echo "::error::Las mejoras de Gestión Pro Total no encajan con la última versión de CADCraft. Se conserva la versión anterior."; exit 1
           fi
+          # Las rutinas de paredes y equipos se compilan dentro de la versión web (móvil y tableta)
+          mkdir -p apps/cadcraft-web/src/hvac_lsp
+          cp ../cadcraft-hvac/support/hvac-paredes.lsp ../cadcraft-hvac/support/hvac-simbolos.lsp ../cadcraft-hvac/support/hvac-biblioteca.lsp apps/cadcraft-web/src/hvac_lsp/
           mkdir -p ../out && cd .. && tar --exclude=.git -czf out/fuente.tgz src-cadcraft
       - uses: actions/upload-artifact@v4
         with: { name: fuente, path: out/fuente.tgz }

@@ -6,6 +6,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.96.0] — 2026-11-02
+
+### Mejorado
+- **CADCraft en móvil y tableta (APK)** ahora incluye dentro las paredes y la biblioteca de equipos con los símbolos nuevos: la pestaña HVAC funciona también en la versión web.
+
 ## [1.95.0] — 2026-11-02
 
 ### Mejorado
