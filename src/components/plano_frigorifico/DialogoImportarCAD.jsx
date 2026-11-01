@@ -1,7 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FileUp, Upload, AlertTriangle, Box } from 'lucide-react';
-import { parsearDXF, capasSugeridas, dxfAParedes, esDWG, UNIDADES_MANUALES } from '@/lib/planoDxfImport';
+import { parsearDXF, capasSugeridas, dxfAParedes, UNIDADES_MANUALES } from '@/lib/planoDxfImport';
+import { parsearDWG, esCabeceraDWG } from '@/lib/planoDwgImport';
 
 /**
  * DialogoImportarCAD — importa un plano de AutoCAD (DXF) al editor: elige el
@@ -16,14 +17,23 @@ export default function DialogoImportarCAD({ open, escala = 50, onImportar, onCl
   const [capas, setCapas] = useState([]);
   const [unidad, setUnidad] = useState('auto');
   const [alto, setAlto] = useState('2.6');
+  const [leyendo, setLeyendo] = useState(false);
 
   const reiniciar = () => { setArchivo(null); setParsed(null); setError(''); setCapas([]); setUnidad('auto'); };
   const elegir = async (file) => {
     if (!file) return;
     reiniciar();
-    const texto = await file.text().catch(() => '');
-    if (esDWG(file.name, texto.slice(0, 6))) { setError('Los archivos .dwg son un formato cerrado de AutoCAD y no se pueden leer aquí. En AutoCAD (o similar) usa «Guardar como» → DXF y súbelo de nuevo.'); return; }
-    const p = parsearDXF(texto);
+    const buffer = await file.arrayBuffer().catch(() => null);
+    if (!buffer) { setError('No se pudo leer el archivo.'); return; }
+    let p;
+    if (/\.dwg$/i.test(file.name) || esCabeceraDWG(new Uint8Array(buffer, 0, Math.min(6, buffer.byteLength)))) {
+      setLeyendo(true);
+      try { p = await parsearDWG(buffer); }
+      catch (e) { setLeyendo(false); setError(`No se pudo leer el DWG (${String(e?.message || e)}). Prueba a guardarlo desde AutoCAD en una versión anterior (2013 o 2018) o como DXF.`); return; }
+      setLeyendo(false);
+    } else {
+      p = parsearDXF(new TextDecoder().decode(buffer));
+    }
     if (!p.valido) { setError(p.error); return; }
     if (!p.segmentos.length) { setError('El DXF no tiene líneas ni polilíneas que convertir en paredes.'); return; }
     setArchivo(file); setParsed(p); setCapas(capasSugeridas(p.capas));
@@ -47,13 +57,13 @@ export default function DialogoImportarCAD({ open, escala = 50, onImportar, onCl
           <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: '#0ea5e915' }}><FileUp className="h-4 w-4" style={{ color: '#0ea5e9' }} /></div>
           <div>
             <h3 className="text-sm font-bold">Importar plano de AutoCAD</h3>
-            <p className="text-[11px] text-muted-foreground">Si tienes el plano en AutoCAD o similar, súbelo en DXF: se reconocen sus muros, se crea la vista 3D y queda vinculado a la ficha y al cliente.</p>
+            <p className="text-[11px] text-muted-foreground">Si tienes el plano en AutoCAD o similar, súbelo (DWG o DXF): se reconocen sus muros, se crea la vista 3D y queda vinculado a la ficha y al cliente.</p>
           </div>
         </div>
 
-        <input ref={inputRef} type="file" accept=".dxf,.dwg" className="hidden" data-testid="cad-archivo" onChange={(e) => { elegir(e.target.files?.[0]); e.target.value = ''; }} />
+        <input ref={inputRef} type="file" accept=".dwg,.dxf" className="hidden" data-testid="cad-archivo" onChange={(e) => { elegir(e.target.files?.[0]); e.target.value = ''; }} />
         <button type="button" onClick={() => inputRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-4 text-sm hover:bg-muted">
-          <Upload className="h-4 w-4" />{archivo ? archivo.name : 'Elegir archivo DXF'}
+          <Upload className="h-4 w-4" />{leyendo ? 'Leyendo el DWG…' : archivo ? archivo.name : 'Elegir archivo DWG o DXF'}
         </button>
         {error && <p className="mt-2 flex items-start gap-1.5 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive" role="alert"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{error}</p>}
 

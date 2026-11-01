@@ -6,6 +6,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.88.0] — 2026-11-01
+
+### Añadido
+- **Lectura directa de archivos .dwg de AutoCAD** en el importador de planos (además del DXF): se leen líneas, polilíneas y el contenido de los bloques con su posición, giro y escala; se eligen las capas de muros y las unidades, se ve la vista previa y se crea la vista 3D vinculada al plano y al cliente. La lectura se hace en el propio equipo (WebAssembly), sin enviar el plano a ningún servidor.
+- No se convierten círculos, arcos, textos ni bloques con elementos especiales (se avisa de cuántos hay); si un DWG no se puede leer, se sugiere guardarlo desde AutoCAD en una versión anterior o como DXF.
+
 ## [1.87.0] — 2026-11-01
 
 ### Añadido
