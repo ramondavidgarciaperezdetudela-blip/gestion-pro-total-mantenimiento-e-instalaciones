@@ -25,6 +25,7 @@ import LeyendaPlano from '@/components/plano_frigorifico/LeyendaPlano';
 import PlanoBarraSuperior from '@/components/plano_frigorifico/PlanoBarraSuperior';
 // El visor 3D se carga de forma perezosa y envuelta en su propio ErrorBoundary
 // (Vista3DSegura): si falla, el editor de planos sigue funcionando.
+import PlanoPanelCatalogo from '@/components/plano_frigorifico/PlanoPanelCatalogo';
 import Vista3DPlanoFrigorifico from '@/components/plano_frigorifico/Vista3DSegura';
 import ControlMoverFlotante from '@/components/plano_frigorifico/ControlMoverFlotante';
 import { autoConectar, resumenTuberias } from '@/lib/planoCalculo';
@@ -63,6 +64,8 @@ export default function PlanoFrigorifico() {
   const [vistaKey, setVistaKey] = useState(0);
   const [snapMode, setSnapMode] = useState('libre');
   const [iman, setIman] = useState(true);
+  const [vistaPlano, setVistaPlano] = useState('2d');
+  const [cursorM, setCursorM] = useState(null);
   const [capasVisibles, setCapasVisibles] = useState(() => Object.fromEntries(CAPAS.map((c) => [c.id, true])));
   const [gmailDialog, setGmailDialog] = useState(false);
   const [gmailForm, setGmailForm] = useState({ to: '', subject: '', body: '' });
@@ -1182,12 +1185,37 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               3D y el presupuesto que van debajo del lienzo. En escritorio el
               lienzo se reparte el espacio con el panel lateral sin scroll. */}
             <div className="flex flex-col lg:flex-row gap-3 lg:flex-1 lg:min-h-0">
-              <div className={`${herramientasAbiertas ? 'h-[45vh]' : 'h-[calc(100dvh-5.5rem)]'} lg:h-auto lg:flex-1 lg:min-h-0`}>
-                <PlanoCanvas
-                  walls={plan.walls} elements={plan.elements} connections={plan.connections}
-                  selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
-                  polyline={polyline} orto={orto} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} iman={iman} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
-                  capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen />
+              <div className="hidden lg:block lg:w-[230px] lg:flex-shrink-0 lg:min-h-0">
+                <PlanoPanelCatalogo activeType={activeType} onPick={onPick} extraPorCat={extraPorCat} iaIcons={iaIcons} />
+              </div>
+              <div className="flex flex-col gap-1 lg:flex-1 lg:min-h-0">
+                <div className="flex items-center gap-1 text-xs" role="tablist">
+                  {[['2d', 'Plano 2D'], ['3d', 'Vista 3D']].map(([id, et]) => (
+                    <button key={id} role="tab" aria-selected={vistaPlano === id} data-prueba={`pestana-${id}`} onClick={() => setVistaPlano(id)}
+                      className="rounded-t-md border border-b-0 px-3 py-1.5 font-semibold"
+                      style={vistaPlano === id ? { background: 'hsl(var(--card))', borderColor: 'hsl(var(--primary))', color: 'hsl(var(--primary))' } : { borderColor: 'hsl(var(--border))' }}>
+                      {et}
+                    </button>
+                  ))}
+                </div>
+                <div className={`${herramientasAbiertas ? 'h-[45vh]' : 'h-[calc(100dvh-8rem)]'} lg:h-auto lg:flex-1 lg:min-h-0 ${vistaPlano === '2d' ? '' : 'hidden'}`}>
+                  <PlanoCanvas
+                    walls={plan.walls} elements={plan.elements} connections={plan.connections}
+                    selectedId={selectedId} mode={mode} activeElement={activeElement} connectType={connectType}
+                    polyline={polyline} orto={orto} scale={plan.scale} gridMeters={gridMeters} snapMode={snapMode} iman={iman} onCursor={setCursorM} zoom={zoom} onZoom={setZoom} vistaKey={vistaKey}
+                    capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen />
+                </div>
+                {vistaPlano === '3d' && (
+                  <div className="overflow-y-auto rounded-lg border border-border bg-card p-2 lg:flex-1 lg:min-h-0" data-testid="vista-3d-integrada">
+                    <Vista3DPlanoFrigorifico walls={plan.walls} elements={plan.elements} connections={plan.connections} scale={plan.scale} />
+                  </div>
+                )}
+                <div className="hidden lg:flex items-center gap-3 rounded-md border border-border bg-card px-3 py-1 text-[11px] text-muted-foreground" data-testid="barra-estado">
+                  <span className="tabular-nums w-40">{cursorM ? `X ${cursorM.x.toFixed(3)}  Y ${cursorM.y.toFixed(3)} m` : 'X —  Y —'}</span>
+                  <button onClick={() => setIman((v) => !v)} className={iman ? 'font-bold text-primary' : ''}>IMÁN {iman ? 'ON' : 'OFF'}</button>
+                  <button onClick={() => setSnapMode(snapMode === 'libre' ? 'cuadricula' : 'libre')}>{snapMode === 'libre' ? 'LIBRE 1 mm' : `CUADRÍCULA ${gridMeters} m`}</button>
+                  <span className="ml-auto">Zoom {Math.round(zoom * 100)}%</span>
+                </div>
               </div>
               <div id="plano-panel-datos" className="lg:w-[300px] lg:flex-shrink-0 lg:max-h-none">
                 {PanelLateral}

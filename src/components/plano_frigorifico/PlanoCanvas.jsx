@@ -81,7 +81,7 @@ function capaConexion(c) {
 
 export default function PlanoCanvas({
   walls, elements, connections, selectedId, mode, activeElement, connectType, polyline, orto = true,
-  scale = 50, gridMeters = 1, snapMode = 'libre', iman = true, capasVisibles = {}, onChange,
+  scale = 50, gridMeters = 1, snapMode = 'libre', iman = true, onCursor, capasVisibles = {}, onChange,
   onConexionCreada, fullscreen = false, zoom = 1, onZoom, vistaKey = 0,
 }) {
   const svgRef = useRef(null);
@@ -431,6 +431,7 @@ export default function PlanoCanvas({
     const raw = toSvg(e);
     const p = puntoFino(raw);
     setMouse(p);
+    onCursor?.({ x: p.x / scale, y: p.y / scale });
     // Arrastre de una sala o cámara: se desplazan sus cuatro paredes a la vez,
     // tomando como referencia dónde estaba la sala al empezar a arrastrar.
     if (drag?.tipo === 'punto') {

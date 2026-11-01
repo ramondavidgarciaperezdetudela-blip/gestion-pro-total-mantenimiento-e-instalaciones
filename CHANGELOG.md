@@ -6,6 +6,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.91.0] — 2026-11-01
+
+### Añadido
+- **Editor de planos con estilo CAD** en pantalla completa (ordenador): panel fijo a la izquierda con todas las máquinas y elementos por categorías plegables y buscador (un clic y se coloca), pestañas **Plano 2D / Vista 3D** para ver la instalación en 3D dentro del propio editor, y barra de estado inferior con las coordenadas del cursor en metros, imán, modo de movimiento y zoom.
+
 ## [1.90.0] — 2026-11-01
 
 ### Añadido
