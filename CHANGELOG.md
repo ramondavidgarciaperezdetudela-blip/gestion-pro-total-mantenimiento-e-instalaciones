@@ -6,6 +6,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.86.0] — 2026-11-01
+
+### Añadido
+- **Nuevo formulario de cliente en tarjetas** (Datos generales, Contacto, Dirección, Zona climática, Facturación, Contrato de mantenimiento y Notas), igual para crear y para editar. Valida razón social/nombre, correo, código postal e IBAN.
+- **Zona climática CTE DB-HE** dentro del cliente: se busca **por comunidad autónoma → provincia**, o pulsando la provincia en el mapa; muestra la zona (por ejemplo B3), la leyenda y la rejilla, y se puede quitar o fijar a mano. La altitud se guarda pero no corrige la zona automáticamente.
+- **Ficha del cliente con menús y submenús**: todos los apartados donde se vinculan documentos (facturas, presupuestos, recibos, órdenes SAT, fichas de mantenimiento, informes de aseguradora, legalización, cálculos, manuales, fotos y archivos) con sus ficheros, en una pantalla «Documentación» y navegación de dos niveles.
+
+### Cambiado
+- **Los clientes que ya existen se muestran automáticamente con el nuevo formato**, incluida su zona climática calculada desde su provincia, sin tocar sus datos.
+
 ## [1.85.0] — 2026-11-01
 
 ### Cambiado
