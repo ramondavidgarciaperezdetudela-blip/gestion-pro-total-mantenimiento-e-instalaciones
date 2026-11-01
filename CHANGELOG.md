@@ -6,6 +6,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.97.0] — 2026-11-02
+
+### Mejorado
+- **Menú HVAC de CADCraft con imágenes**: cada máquina y elemento muestra una miniatura de su símbolo real de plano (compresor, condensadoras con ventiladores, cámara, válvulas, rejillas, símbolos eléctricos…) junto a su nombre, y el mismo dibujo es el que se coloca en el plano.
+
 ## [1.96.0] — 2026-11-02
 
 ### Mejorado
