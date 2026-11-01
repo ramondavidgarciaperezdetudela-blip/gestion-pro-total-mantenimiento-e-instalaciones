@@ -1,0 +1,110 @@
+{
+  "name": "GasMovement",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string"
+    },
+    "operation": {
+      "type": "string",
+      "description": "carga_equipo | recuperacion_equipo | devolucion_proveedor | ajuste"
+    },
+    "machine_id": {
+      "type": "string"
+    },
+    "machine_name": {
+      "type": "string"
+    },
+    "cylinder_id": {
+      "type": "string"
+    },
+    "cylinder_number": {
+      "type": "string"
+    },
+    "refrigerant": {
+      "type": "string"
+    },
+    "kg": {
+      "type": "number"
+    },
+    "technician": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "cylinder_id"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    }
+  }
+}

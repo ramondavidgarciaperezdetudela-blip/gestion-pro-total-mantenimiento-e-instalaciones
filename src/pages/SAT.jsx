@@ -55,8 +55,26 @@ const EMPTY_FORM = {
   scheduled_date: '', scheduled_time: '', priority: 'normal',
   type: 'reparacion', equipment_type: 'otro', description: '', diagnosis: '', solution: '',
   status: 'pendiente', photos_before: [], photos_after: [],
-  materials_used: [], labor_hours: 0, labor_rate: 35, total: 0, technician: '', notes: ''
+  materials_used: [], labor_hours: 0, labor_rate: 35, total: 0, technician: '', notes: '',
+  equipment_brand: '', equipment_model: '', equipment_serial: '', equipment_location: ''
 };
+
+function TarjetaSAT({ icono: Icono, titulo, children }) {
+  return (
+    <section className="rounded-lg border bg-card">
+      <header className="flex items-center gap-2 border-b px-3 py-2"><Icono className="h-4 w-4 text-muted-foreground" /><h3 className="text-sm font-semibold">{titulo}</h3></header>
+      <div className="space-y-3 p-3">{children}</div>
+    </section>
+  );
+}
+function CampoSAT({ etiqueta, obligatorio, children }) {
+  return (
+    <label className="block">
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{etiqueta}{obligatorio && <span className="ml-0.5 text-destructive">*</span>}</span>
+      <div className="mt-0.5">{children}</div>
+    </label>
+  );
+}
 
 export default function SAT() {
   const urlParams = useParametrosUrl();
@@ -662,67 +680,80 @@ export default function SAT() {
             </div>
           </DialogHeader>
           <div className="space-y-3">
-            {/* Datos básicos */}
-            <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="Nº orden" value={form.order_number} onChange={e => setForm({ ...form, order_number: e.target.value })} />
-              <Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-            </div>
-
-            <BuscadorCliente
-                contacts={contacts}
-                value={form.contact_id || ''}
-                onValueChange={v => {
-              const c = contacts.find(co => co.id === v);
-              setForm({ ...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}`.trim() : '' });
-            }}
-                placeholder="Seleccionar cliente *"
-              />
-
-            <div className="grid grid-cols-4 gap-2">
-              <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={form.equipment_type} onValueChange={v => setForm({ ...form, equipment_type: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{EQUIPMENT.map(e => <SelectItem key={e} value={e}>{e.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={form.priority || 'normal'} onValueChange={v => setForm({ ...form, priority: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-
-            {/* Planificación */}
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-              <label className="text-xs font-medium text-purple-700 flex items-center gap-1 mb-2">
-                <Calendar className="w-3.5 h-3.5" /> Planificación de la orden
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs text-gray-500">Fecha programada</label>
-                  <Input type="date" className="mt-1" value={form.scheduled_date || ''} onChange={e => setForm({ ...form, scheduled_date: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500">Hora programada</label>
-                  <Input type="time" className="mt-1" value={form.scheduled_time || ''} onChange={e => setForm({ ...form, scheduled_time: e.target.value })} />
-                </div>
+            {/* Datos de la orden */}
+            <TarjetaSAT icono={ClipboardList} titulo="Datos de la orden">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <CampoSAT etiqueta="Nº de orden"><Input value={form.order_number} onChange={e => setForm({ ...form, order_number: e.target.value })} /></CampoSAT>
+                <CampoSAT etiqueta="Fecha"><Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></CampoSAT>
+                <CampoSAT etiqueta="Estado">
+                  <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{STATUSES.map(st => <SelectItem key={st} value={st}>{st.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
+                  </Select>
+                </CampoSAT>
+                <CampoSAT etiqueta="Prioridad">
+                  <Select value={form.priority || 'normal'} onValueChange={v => setForm({ ...form, priority: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{PRIORITIES.map(pr => <SelectItem key={pr} value={pr}>{pr}</SelectItem>)}</SelectContent>
+                  </Select>
+                </CampoSAT>
               </div>
-            </div>
+              <CampoSAT etiqueta="Cliente" obligatorio>
+                <BuscadorCliente
+                  contacts={contacts}
+                  value={form.contact_id || ''}
+                  onValueChange={v => {
+                    const c = contacts.find(co => co.id === v);
+                    setForm({ ...form, contact_id: v, contact_name: c ? `${c.name} ${c.surname || ''}`.trim() : '' });
+                  }}
+                  placeholder="Seleccionar cliente *"
+                />
+              </CampoSAT>
+            </TarjetaSAT>
 
-            {/* Técnico */}
-            <TechnicianSelect
-              value={form.technician}
-              onChange={v => setForm({ ...form, technician: v })}
-              placeholder="Seleccionar técnico"
-            />
+            {/* Equipo */}
+            <TarjetaSAT icono={Wrench} titulo="Equipo y tipo de intervención">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <CampoSAT etiqueta="Tipo de intervención">
+                  <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  </Select>
+                </CampoSAT>
+                <CampoSAT etiqueta="Tipo de equipo">
+                  <Select value={form.equipment_type} onValueChange={v => setForm({ ...form, equipment_type: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{EQUIPMENT.map(e => <SelectItem key={e} value={e}>{e.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
+                  </Select>
+                </CampoSAT>
+              </div>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <CampoSAT etiqueta="Marca"><Input value={form.equipment_brand || ''} onChange={e => setForm({ ...form, equipment_brand: e.target.value })} /></CampoSAT>
+                <CampoSAT etiqueta="Modelo"><Input value={form.equipment_model || ''} onChange={e => setForm({ ...form, equipment_model: e.target.value })} /></CampoSAT>
+                <CampoSAT etiqueta="Nº de serie"><Input value={form.equipment_serial || ''} onChange={e => setForm({ ...form, equipment_serial: e.target.value })} /></CampoSAT>
+                <CampoSAT etiqueta="Ubicación en el edificio"><Input value={form.equipment_location || ''} onChange={e => setForm({ ...form, equipment_location: e.target.value })} /></CampoSAT>
+              </div>
+            </TarjetaSAT>
 
+            {/* Planificación y técnico */}
+            <TarjetaSAT icono={Calendar} titulo="Planificación y técnico">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <CampoSAT etiqueta="Fecha programada"><Input type="date" value={form.scheduled_date || ''} onChange={e => setForm({ ...form, scheduled_date: e.target.value })} /></CampoSAT>
+                <CampoSAT etiqueta="Hora programada"><Input type="time" value={form.scheduled_time || ''} onChange={e => setForm({ ...form, scheduled_time: e.target.value })} /></CampoSAT>
+                <CampoSAT etiqueta="Técnico">
+                  <TechnicianSelect
+                    value={form.technician}
+                    onChange={v => setForm({ ...form, technician: v })}
+                    placeholder="Seleccionar técnico"
+                  />
+                </CampoSAT>
+              </div>
+            </TarjetaSAT>
+
+            {/* Trabajo */}
+            <TarjetaSAT icono={FileText} titulo="Descripción del trabajo">
             {/* Plantillas de trabajo */}
-            <div className="flex items-center gap-2 py-1 border-t border-b border-dashed border-blue-200">
+            <div className="flex items-center gap-2 py-1 ">
               <span className="text-xs text-gray-500">Rellenar desde plantilla:</span>
               <SATTemplateSelector onApply={(tpl) => {
                 setForm(prev => ({
@@ -742,10 +773,12 @@ export default function SAT() {
               }} />
             </div>
 
-            <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Descripción del problema *" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} />
-            <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Diagnóstico" value={form.diagnosis} onChange={e => setForm({ ...form, diagnosis: e.target.value })} rows={2} />
-            <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Solución aplicada" value={form.solution} onChange={e => setForm({ ...form, solution: e.target.value })} rows={2} />
+              <CampoSAT etiqueta="Descripción del problema" obligatorio><textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} /></CampoSAT>
+              <CampoSAT etiqueta="Diagnóstico"><textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" value={form.diagnosis} onChange={e => setForm({ ...form, diagnosis: e.target.value })} rows={2} /></CampoSAT>
+              <CampoSAT etiqueta="Solución aplicada"><textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" value={form.solution} onChange={e => setForm({ ...form, solution: e.target.value })} rows={2} /></CampoSAT>
+            </TarjetaSAT>
 
+            <TarjetaSAT icono={Snowflake} titulo="Materiales">
             {/* Materiales */}
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -779,22 +812,32 @@ export default function SAT() {
               ))}
             </div>
 
+            </TarjetaSAT>
+
+            <TarjetaSAT icono={Clock} titulo="Mano de obra y total">
             {/* Horas */}
             <div className="grid grid-cols-2 gap-2">
-              <input inputMode="decimal" className="h-9 text-sm border border-input rounded-md px-3 focus:outline-none focus:ring-1 focus:ring-ring w-full" placeholder="Horas trabajo"
+              <input inputMode="decimal" className="h-9 text-sm border border-input rounded-md px-3 focus:outline-none focus:ring-1 focus:ring-ring w-full" aria-label="Horas de trabajo"
                 value={getLaborDisplay('labor_hours')}
                 onChange={e => onLaborLocalChange('labor_hours', e.target.value)}
                 onBlur={() => onLaborBlur('labor_hours')} />
-              <input inputMode="decimal" className="h-9 text-sm border border-input rounded-md px-3 focus:outline-none focus:ring-1 focus:ring-ring w-full" placeholder="€/hora"
+              <input inputMode="decimal" className="h-9 text-sm border border-input rounded-md px-3 focus:outline-none focus:ring-1 focus:ring-ring w-full" aria-label="Precio por hora"
                 value={getLaborDisplay('labor_rate')}
                 onChange={e => onLaborLocalChange('labor_rate', e.target.value)}
                 onBlur={() => onLaborBlur('labor_rate')} />
             </div>
             <p className="text-xs text-right text-gray-500">Total estimado: <strong className="text-orange-700">{calcTotal(form).toFixed(2)} €</strong></p>
 
-            <PhotoGallery photos={form.photos_before} onChange={p => setForm({ ...form, photos_before: p })} label="Fotos antes de reparación" maxPhotos={200} />
-            <PhotoGallery photos={form.photos_after} onChange={p => setForm({ ...form, photos_after: p })} label="Fotos después de reparación" maxPhotos={200} />
-            <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Notas internas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
+            </TarjetaSAT>
+
+            <TarjetaSAT icono={Eye} titulo="Fotos del trabajo">
+              <PhotoGallery photos={form.photos_before} onChange={p => setForm({ ...form, photos_before: p })} label="Fotos antes de reparación" maxPhotos={200} />
+              <PhotoGallery photos={form.photos_after} onChange={p => setForm({ ...form, photos_after: p })} label="Fotos después de reparación" maxPhotos={200} />
+            </TarjetaSAT>
+
+            <TarjetaSAT icono={ClipboardList} titulo="Notas internas">
+              <textarea className="w-full border border-input rounded-md px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring" aria-label="Notas internas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
+            </TarjetaSAT>
 
             {/* Auto-generar factura */}
             {form.contact_id && (
@@ -855,6 +898,7 @@ export default function SAT() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div><p className="text-gray-500 text-xs font-medium">CLIENTE</p><p className="font-semibold">{previewOrder.contact_name}</p></div>
                   <div><p className="text-gray-500 text-xs font-medium">TIPO / EQUIPO</p><p className="capitalize">{previewOrder.type?.replace(/_/g,' ')} / {previewOrder.equipment_type?.replace(/_/g, ' ')}</p></div>
+                  {[['MARCA', previewOrder.equipment_brand], ['MODELO', previewOrder.equipment_model], ['Nº DE SERIE', previewOrder.equipment_serial], ['UBICACIÓN', previewOrder.equipment_location]].filter(([, v]) => v).map(([t, v]) => <div key={t}><p className="text-gray-500 text-xs font-medium">{t}</p><p>{v}</p></div>)}
                   {previewOrder.technician && <div><p className="text-gray-500 text-xs font-medium">TÉCNICO</p><p>{previewOrder.technician}</p></div>}
                   {previewOrder.scheduled_date && <div><p className="text-gray-500 text-xs font-medium">FECHA PROGRAMADA</p><p>{previewOrder.scheduled_date} {previewOrder.scheduled_time}</p></div>}
                 </div>

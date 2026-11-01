@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Plus, Ruler, Edit, Trash2, Zap, FileDown, Eye } from 'lucide-react';
+import { Plus, Ruler, Edit, Trash2, Zap, FileDown, Eye, FileUp } from 'lucide-react';
 import { exportarEsquemaElectrico } from '@/lib/planoEsquemaElectrico';
 
 // Pestaña de planos frigoríficos vinculados a un cliente.
@@ -86,6 +86,7 @@ export default function ClientPlanosTab({ contactId, contactName }) {
               title="Esquema eléctrico normalizado (IEC)">
               <Zap className="w-3 h-3" /> Esquema eléctrico
             </button>
+            {p.cad_file_url && <a href={p.cad_file_url} target="_blank" rel="noreferrer" download={p.cad_file_name} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-sky-50 text-sky-700 hover:bg-sky-100"><FileUp className="w-3 h-3" /> CAD original</a>}
             <button onClick={() => borrar(p.id)} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-red-50 text-red-700 hover:bg-red-100 ml-auto">
               <Trash2 className="w-3 h-3" /> Borrar
             </button>

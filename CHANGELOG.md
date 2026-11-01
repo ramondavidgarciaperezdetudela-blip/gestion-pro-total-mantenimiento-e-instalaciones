@@ -6,6 +6,21 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.87.0] — 2026-11-01
+
+### Añadido
+- **Foto en todas las fichas**, con «Hacer foto» (cámara del móvil, tableta u ordenador) o «Subir imagen», y «Quitar»: clientes, equipos/maquinaria (ahora dentro de *Identificación*), proveedores, técnicos e instrumentos.
+- **Ficha de maquinaria y equipos** con la foto del equipo en el bloque de identificación y un bloque de *Observaciones*.
+- **Importar planos de AutoCAD (DXF)** en el editor de planos frigoríficos y eléctricos: se reconocen los muros por capas y unidades, se muestra una vista previa, se crea la vista 3D y el archivo original queda guardado y vinculado al plano, a la ficha y al cliente (aparece en su menú *Equipos > Planos y archivos CAD*). Los .dwg se piden en DXF («Guardar como»).
+- **Gases refrigerantes**: botellas (con saldo en kg), registro de cargas y recuperaciones (no deja sacar más de lo que hay ni superar la capacidad) y resumen anual de manipulación con existencias.
+- **Gamas de mantenimiento y plan preventivo**: gamas con tareas, asignación a equipos, tarjetas de vencidas/próximas y generación de órdenes SAT preventivas sin duplicar las ya abiertas.
+- **Instrumentos** con calibración (próxima fecha, vencida/próxima) y foto.
+- **Ficha de técnico** en tarjetas (datos personales, habilitaciones y caducidades F-Gas, RITE, PRL y reconocimiento médico) con aviso de caducados.
+- Nuevas entidades: `RefrigerantCylinder`, `GasMovement`, `MaintenanceGama`, `GamaAssignment`, `Instrument`.
+
+### Cambiado
+- **Órdenes SAT en un formato profesional** por tarjetas (datos de la orden, equipo, planificación y técnico, trabajo, materiales, mano de obra, fotos, notas), manteniendo todos los apartados anteriores y añadiendo marca, modelo, nº de serie y ubicación del equipo, que también salen en la vista previa.
+
 ## [1.86.0] — 2026-11-01
 
 ### Añadido

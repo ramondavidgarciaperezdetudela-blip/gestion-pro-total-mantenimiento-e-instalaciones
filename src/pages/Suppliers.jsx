@@ -1,3 +1,4 @@
+import FotoFicha from '@/components/FotoFicha';
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Users, MessageCircle, Download, Bell, Clock, Upload, Loader2, Search } from 'lucide-react';
+import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Users, MessageCircle, Download, Bell, Clock, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
 import { fetchSupplierDataFromAPI, mapCategoryFromSector } from '../components/SupplierDataFetcher';
@@ -356,39 +357,12 @@ export default function Suppliers() {
               </TabsContent>
 
               <TabsContent value="datos" className="space-y-3 pt-2">
-                  <div className="text-center">
-                    <p className="text-xs font-medium text-gray-600 mb-3">Foto de proveedor (clic para cambiar)</p>
-                    <div className="relative w-24 h-24 mx-auto rounded-lg bg-white border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group cursor-pointer" onClick={() => document.getElementById('logo-input-main').click()}>
-                      {form.logo_url ?
-                    <img src={form.logo_url} alt="Logo" className="w-full h-full object-cover" /> :
-
-                    <Building2 className="w-8 h-8 text-slate-300" />
-                    }
-                      <div className="absolute inset-0 rounded-lg bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Upload className="w-5 h-5 text-white" />
-                      </div>
-                      <input
-                      id="logo-input-main"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => e.target.files?.[0] && handleUploadLogo(e.target.files[0])} />
-                    
-                    </div>
-                    <div className="flex gap-2 mt-2 justify-center flex-wrap">
-                      <Button onClick={() => document.getElementById('logo-input-main').click()} variant="outline" className="text-xs h-8">
-                        <Upload className="w-3 h-3 mr-1" />Subir imagen
-                      </Button>
-                      <Button onClick={handleAutoFetchLogo} variant="outline" className="text-xs h-8" disabled={fetchingLogo || !form.name && !form.website}>
-                        {fetchingLogo ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Download className="w-3 h-3 mr-1" />}
-                        {fetchingLogo ? 'Descargando...' : 'Descargar auto'}
-                      </Button>
-                      {form.logo_url &&
-                    <Button onClick={() => setForm((prev) => ({ ...prev, logo_url: '' }))} variant="outline" className="text-xs h-8 text-red-500 hover:text-red-600">
-                          <Trash2 className="w-3 h-3 mr-1" />Quitar
-                        </Button>
-                    }
-                    </div>
+                  <div className="space-y-2">
+                    <FotoFicha value={form.logo_url} onChange={(url) => setForm((prev) => ({ ...prev, logo_url: url }))} etiqueta="Foto o logotipo del proveedor" icono={Building2} />
+                    <Button onClick={handleAutoFetchLogo} variant="outline" className="text-xs h-8" disabled={fetchingLogo || !form.name && !form.website}>
+                      {fetchingLogo ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Download className="w-3 h-3 mr-1" />}
+                      {fetchingLogo ? 'Descargando...' : 'Buscar logotipo en internet'}
+                    </Button>
                   </div>
 
                   {!editing &&

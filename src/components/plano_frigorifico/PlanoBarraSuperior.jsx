@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Save, FileDown, Box, Minimize2, Search, Plus, Wand2,
+  Save, FileDown, FileUp, Box, Minimize2, Search, Plus, Wand2,
 } from 'lucide-react';
 import { CATEGORIAS, ELEMENTOS } from '@/lib/planoFrigorificoCatalogo';
 import PlanoMenuEquipos from './PlanoMenuEquipos';
@@ -17,7 +17,7 @@ import PlanoBarraHerramientas from './PlanoBarraHerramientas';
 export default function PlanoBarraSuperior({
   mode, activeType, connectType, manual, onPick, onSala, onCamara, onCalculo,
   onUndo, onRedo, onCopy, onCut, onPaste, canUndo, canRedo, canCopy, canPaste,
-  saving, onSave, onPDF, on3D, onExit,
+  saving, onSave, onPDF, on3D, onCAD, onExit,
   extraPorCat, onAddElement, onEditarIconos, iaIcons = {},
 }) {
   const [q, setQ] = useState('');
@@ -55,6 +55,7 @@ export default function PlanoBarraSuperior({
           className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted">
           <FileDown className="w-3.5 h-3.5" /> PDF
         </button>
+        {onCAD && <button onClick={onCAD} data-testid="importar-cad" className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"><FileUp className="w-3.5 h-3.5" /> Importar CAD</button>}
         <button onClick={on3D}
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-white hover:opacity-90"
           style={{ background: 'linear-gradient(135deg,#00D4FF,#7C3AED)' }}>

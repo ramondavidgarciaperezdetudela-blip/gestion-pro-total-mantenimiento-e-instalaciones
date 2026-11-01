@@ -1,0 +1,113 @@
+{
+  "name": "GamaAssignment",
+  "type": "object",
+  "properties": {
+    "gama_id": {
+      "type": "string"
+    },
+    "gama_name": {
+      "type": "string"
+    },
+    "machine_id": {
+      "type": "string"
+    },
+    "machine_name": {
+      "type": "string"
+    },
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "technician": {
+      "type": "string"
+    },
+    "last_done": {
+      "type": "string"
+    },
+    "next_date": {
+      "type": "string"
+    },
+    "open_order_id": {
+      "type": "string",
+      "description": "Orden SAT abierta generada desde el plan"
+    },
+    "open_order_number": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "gama_id"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    }
+  }
+}

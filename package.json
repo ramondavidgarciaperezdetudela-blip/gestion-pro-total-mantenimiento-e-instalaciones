@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.86.0",
+  "version": "1.87.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -21,6 +21,8 @@
     "test:firma": "node scripts/test-firma-trazos.mjs",
     "test:cliente": "node scripts/test-cliente.mjs",
     "test:arbol": "node scripts/test-arbol-documentos.mjs",
+    "test:taller": "node scripts/test-taller.mjs",
+    "test:dxf": "node scripts/test-dxf-import.mjs",
     "test:psicrometria": "node scripts/test-psicrometria.mjs",
     "test:zona": "node scripts/test-zona-climatica.mjs",
     "test:averias": "node scripts/test-averias-estado.mjs",

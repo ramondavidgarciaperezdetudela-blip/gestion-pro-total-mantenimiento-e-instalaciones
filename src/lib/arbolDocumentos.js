@@ -17,10 +17,10 @@ const TIPOS_DOC_PROPIOS = new Set(['factura', 'presupuesto', 'recibo', 'orden_sa
 export const MENUS_DOCUMENTALES = ['administracion', 'servicio', 'legalizacion', 'calculos', 'equipos', 'otros'];
 
 /**
- * @param {{invoices?:object[], satOrders?:object[], maintenance?:object[], documents?:object[], calculations?:object[], insuranceReports?:object[]}} d
+ * @param {{invoices?:object[], satOrders?:object[], maintenance?:object[], documents?:object[], calculations?:object[], insuranceReports?:object[], planos?:object[]}} d
  * @returns {{id:string, titulo:string, total:number, hijos:{id:string, titulo:string, tab:string, archivos:object[]}[]}[]}
  */
-export function construirArbol({ invoices = [], satOrders = [], maintenance = [], documents = [], calculations = [], insuranceReports = [] } = {}) {
+export function construirArbol({ invoices = [], satOrders = [], maintenance = [], documents = [], calculations = [], insuranceReports = [], planos = [] } = {}) {
   const docs = documents.filter((d) => !esLegal(d));
   const porTipo = (t) => docs.filter((d) => d.doc_type === t);
   const idsPropios = (lista) => new Set(lista.map((x) => String(x.id)));
@@ -61,13 +61,17 @@ export function construirArbol({ invoices = [], satOrders = [], maintenance = []
   const fotos = porTipo('foto_equipo').map((d) => docComoArchivo(d, 'fotos_equipo'));
   const otros = docs.filter((d) => !TIPOS_DOC_PROPIOS.has(d.doc_type)).map((d) => docComoArchivo(d, 'files'));
 
+  const archivosPlanos = planos.flatMap((pl) => [
+    { id: `plano-${pl.id}`, titulo: `Plano ${num(pl.name, 'sin nombre')}`, fecha: fechaDe(pl), detalle: [`${(pl.walls || []).length} paredes`, `${(pl.elements || []).length} equipos`, pl.status].filter(Boolean).join(' · '), url: '', tab: 'planos' },
+    ...(pl.cad_file_url ? [{ id: `cad-${pl.id}`, titulo: `CAD original: ${num(pl.cad_file_name, 'plano.dxf')}`, fecha: fechaDe(pl), detalle: 'Archivo de AutoCAD vinculado al plano', url: pl.cad_file_url, tab: 'planos' }] : []),
+  ]);
   const menu = (id, titulo, hijos) => ({ id, titulo, hijos: hijos.map(([hid, htitulo, tab, archivos]) => ({ id: hid, titulo: htitulo, tab, archivos: ordenar(archivos) })), total: hijos.reduce((a, h) => a + h[3].length, 0) });
   return [
     menu('administracion', 'Facturación y presupuestos', [['facturas', 'Facturas', 'facturas', factura('factura')], ['presupuestos', 'Presupuestos', 'presupuestos', factura('presupuesto')], ['recibos', 'Recibos', 'recibos', factura('recibo')]]),
     menu('servicio', 'Servicio técnico', [['sat', 'Órdenes SAT', 'sat', sat], ['mantenimiento', 'Fichas de mantenimiento', 'maint', mant], ['aseguradora', 'Informes para aseguradora', 'informes_aseg', aseguradora], ['diagnosticos', 'Diagnósticos frigoríficos', 'files', diagnosticos], ['informes', 'Otros informes', 'files', informes]]),
     menu('legalizacion', 'Legalización', [['legales', 'Certificados, memorias y boletines', 'legalizacion', legales]]),
     menu('calculos', 'Cálculos', [['termicos', 'Cálculos térmicos y de climatización', 'calcs', termicos], ['solares', 'Cálculos solares', 'calcs', solares]]),
-    menu('equipos', 'Equipos y manuales', [['manuales', 'Manuales', 'files', manuales], ['fotos', 'Fotos de equipos', 'fotos_equipo', fotos]]),
+    menu('equipos', 'Equipos y manuales', [['manuales', 'Manuales', 'files', manuales], ['planos', 'Planos y archivos CAD', 'planos', archivosPlanos], ['fotos', 'Fotos de equipos', 'fotos_equipo', fotos]]),
     menu('otros', 'Otros archivos', [['varios', 'Archivos varios', 'files', otros]]),
   ];
 }
