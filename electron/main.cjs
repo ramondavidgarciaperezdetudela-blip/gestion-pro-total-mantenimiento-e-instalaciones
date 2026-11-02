@@ -442,6 +442,33 @@ ipcMain.handle('gpt-imprimir', async (_evt, { html, impresora, silencioso, marge
   }
 });
 
+/**
+ * Guarda un HTML como PDF (A4): se pinta en una ventana oculta, se pregunta dónde guardarlo y se escribe el archivo.
+ */
+ipcMain.handle('gpt-guardar-pdf', async (_evt, { html, nombre, horizontal }) => {
+  let oculta = null;
+  try {
+    oculta = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, nodeIntegration: false, javascript: false } });
+    await oculta.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(String(html || '')));
+    await new Promise((r) => setTimeout(r, 500));
+    const datos = await oculta.webContents.printToPDF({ printBackground: true, pageSize: 'A4', landscape: !!horizontal, margins: { marginType: 'default' } });
+    const limpio = String(nombre || 'documento').replace(/[\\/:*?"<>|]+/g, '_').replace(/\.pdf$/i, '');
+    const ventana = mainWindow || BrowserWindow.getAllWindows()[0];
+    const elegido = await dialog.showSaveDialog(ventana, {
+      title: 'Guardar PDF',
+      defaultPath: path.join(app.getPath('documents'), `${limpio}.pdf`),
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    });
+    if (elegido.canceled || !elegido.filePath) return { ok: false, cancelado: true };
+    require('fs').writeFileSync(elegido.filePath, datos);
+    return { ok: true, ruta: elegido.filePath };
+  } catch (err) {
+    return { ok: false, error: String(err && err.message ? err.message : err) };
+  } finally {
+    if (oculta) { try { oculta.destroy(); } catch { /* ya cerrada */ } }
+  }
+});
+
 ipcMain.handle('gpt-cadcraft-disponible', async () => cadcraft.disponible());
 ipcMain.handle('gpt-cadcraft-abrir-libre', async (_e, d) => cadcraft.abrirLibre(d || {}));
 ipcMain.handle('gpt-cadcraft-comprobar', async () => cadcraft.comprobarActualizacion());

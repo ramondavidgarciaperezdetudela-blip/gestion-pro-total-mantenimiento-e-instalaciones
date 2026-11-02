@@ -289,10 +289,35 @@ export function htmlDeLaPantalla(nodo, { titulo = 'Gestión Pro Total', corte = 
 </head><body>${copia.outerHTML}</body></html>`;
 }
 
+/**
+ * Guarda como PDF.
+ *  · Programa de escritorio: guarda el archivo PDF directamente, preguntando dónde.
+ *  · Android y navegador: sale el menú de impresión del sistema, que trae «Guardar como PDF».
+ * @returns {Promise<{ok:boolean, ruta?:string, cancelado?:boolean, error?:string}>}
+ */
+export async function exportarPdf(htmlOriginal, nombre = 'documento') {
+  const html = conColores(htmlOriginal);
+  try {
+    if (hayPuenteImpresion() && window.gptImpresion?.guardarPdf) {
+      return await window.gptImpresion.guardarPdf({ html, nombre });
+    }
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
+  const ok = await printDocument(htmlOriginal, nombre);
+  return { ok, viaImpresion: true };
+}
+
 /** Atajo: coge un trozo de pantalla y lo manda a imprimir tal cual se ve. */
 export function imprimirPantalla(nodo, opciones = {}) {
   if (!nodo) return Promise.resolve(false);
   return printDocument(htmlDeLaPantalla(nodo, opciones), opciones.titulo || 'Gestión Pro Total');
+}
+
+/** Atajo: el trozo de pantalla, guardado como PDF. */
+export function pantallaAPdf(nodo, opciones = {}) {
+  if (!nodo) return Promise.resolve({ ok: false });
+  return exportarPdf(htmlDeLaPantalla(nodo, opciones), opciones.titulo || 'documento');
 }
 
 /** Muestra un aviso al usuario. Antes los fallos solo iban a la consola. */
