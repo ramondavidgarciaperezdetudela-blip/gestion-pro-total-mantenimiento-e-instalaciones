@@ -177,6 +177,19 @@ mod web {
                         {
                             log::warn!("panel layout was not restored: {error}");
                         }
+                        // Móvil y tableta: la interfaz se reduce según el ancho de la pantalla (o con `?zoom=0.7`)
+                        // y, en pantallas estrechas y la primera vez, se cierran las paletas para dejar sitio al dibujo.
+                        if let Some(ancho) = web_sys::window().and_then(|w| w.inner_width().ok()).and_then(|v| v.as_f64()) {
+                            let forzado = query_param("zoom").and_then(|z| z.parse::<f32>().ok());
+                            if forzado.is_some() || ancho < 1100.0 {
+                                app.options.interface_scale = forzado.unwrap_or(((ancho / 1100.0) as f32).clamp(0.45, 1.0));
+                            }
+                            if ancho < 800.0 && cc.storage.and_then(|s| s.get_string(crate::panel_layout::KEY)).is_none() {
+                                for panel in ["toolSets", "properties", "layers"] {
+                                    let _ = app.run("ui.dock", serde_json::json!({"operation": "close", "panel": panel}));
+                                }
+                            }
+                        }
                         // `?cpu`: no render state for the app, so the canvas draws with egui shapes.
                         if !crate::wants_cpu(&query())
                             && let Some(rs) = &cc.wgpu_render_state
