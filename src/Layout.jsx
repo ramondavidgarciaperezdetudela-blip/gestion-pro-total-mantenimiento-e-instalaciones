@@ -20,6 +20,7 @@ import BackupProgressIndicator from './components/BackupProgressIndicator';
 import DescargasGlobal from './components/DescargasGlobal';
 import BarraNavegacion from './components/BarraNavegacion';
 import AjusteRapidoLetra from './components/AjusteRapidoLetra';
+import BotonesImprimirPantalla from './components/BotonesImprimirPantalla';
 
 // ─── Mobile Bottom Bar ────────────────────────────────────────────────────────
 const MAIN_TABS = [
@@ -288,6 +289,7 @@ function SidebarNav({ currentPageName, onNavigate, activeStyle, idleColor }) {
 
 
 export default function Layout({ children, currentPageName }) {
+  const contenidoRef = React.useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [company, setCompany] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -483,7 +485,12 @@ export default function Layout({ children, currentPageName }) {
         </header>
         <main className="p-3 md:p-5 max-w-7xl mx-auto relative z-10 pb-28 lg:pb-6 overflow-x-hidden min-w-0 w-full" style={{ contain: 'layout style' }}>
           <BarraNavegacion enInicio={currentPageName === 'Home'} />
-          {children}
+          <div ref={contenidoRef} className="min-w-0 w-full">{children}</div>
+          <BotonesImprimirPantalla
+            nodoRef={contenidoRef}
+            pagina={currentPageName}
+            titulo={navItems.find((n) => n.page === currentPageName)?.name || currentPageName}
+          />
         </main>
 
         {/* Pie de página global con el correo de soporte y enlaces legales */}

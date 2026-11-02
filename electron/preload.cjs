@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld('gptImpresion', {
   disponible: true,
   listar: () => ipcRenderer.invoke('gpt-impresoras'),
   imprimir: (opciones) => ipcRenderer.invoke('gpt-imprimir', opciones),
+  guardarPdf: (opciones) => ipcRenderer.invoke('gpt-guardar-pdf', opciones),
 });
 
 // CADCraft: editor CAD libre que se instala junto con el programa.

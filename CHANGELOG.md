@@ -6,6 +6,17 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.99.0] — 2026-11-02
+
+### Añadido
+- **Todos los documentos y pantallas se pueden guardar en PDF y imprimir.** En cada pantalla (salvo Inicio) aparecen abajo a la derecha los botones **PDF** e **Imprimir**. Cogen lo que ves, sin menús ni botones, en A4 y con colores.
+  - En el programa de Windows/Linux, **PDF** guarda el archivo directamente y te pregunta dónde.
+  - En el móvil o la tablet (APK) y en el navegador sale el menú de impresión del sistema, que incluye «Guardar como PDF».
+  - **Ctrl+P** hace lo mismo que el botón Imprimir.
+- Prueba automática nueva: `npm run test:pdf`.
+
+---
+
 ## [1.98.0] — 2026-11-02
 
 ### Corregido
