@@ -6,6 +6,19 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.100.0] — 2026-11-02
+
+### Añadido
+- **CADCraft funciona también en móvil y tableta (APK) para hacer planos.**
+  - **Tamaño de pantalla**: la interfaz se reduce sola según el ancho (en el móvil además empieza con las paletas cerradas para dejar sitio al dibujo; se abren desde el menú Ventana). Antes salía enorme y cortada.
+  - **Guardar de verdad**: al guardar un plano (Archivo › Guardar / Guardar como / exportar) se guarda en **Documentos/CADCraft** del dispositivo, con botón para **compartirlo** (WhatsApp, correo, Drive…). Antes la descarga no funcionaba dentro de la app de Android.
+  - **Mis planos**: lista de los planos guardados para reabrirlos con un toque, compartirlos o borrarlos, y botón «Abrir un plano del dispositivo» (DXF/DWG).
+  - **Táctil**: un dedo dibuja o selecciona; dos dedos acercan y mueven el plano; ya no se mueve la página al tocar.
+  - Aviso si intentas cerrar con cambios sin guardar.
+- Prueba automática nueva: `npm run test:planos`.
+
+---
+
 ## [1.99.0] — 2026-11-02
 
 ### Añadido
