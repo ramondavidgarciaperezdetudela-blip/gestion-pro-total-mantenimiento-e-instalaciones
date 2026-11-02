@@ -1,3 +1,22 @@
+diff --git a/apps/cadcraft-web/index.html b/apps/cadcraft-web/index.html
+index 6cd4ab9..4778ed3 100644
+--- a/apps/cadcraft-web/index.html
++++ b/apps/cadcraft-web/index.html
+@@ -2,12 +2,12 @@
+ <html lang="en">
+ <head>
+   <meta charset="utf-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+   <title>CADCraft</title>
+   <link data-trunk rel="rust" data-bin="cadcraft-web" data-wasm-opt="z" data-weak-refs />
+   <style>
+     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #22282f; }
+-    #cadcraft_canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
++    #cadcraft_canvas { touch-action: none; -webkit-user-select: none; user-select: none; position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+     #cadcraft_loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+       color: #b8b8b8; font: 14px system-ui, sans-serif; pointer-events: none; }
+   </style>
 diff --git a/apps/cadcraft-web/src/hvac_lisp.rs b/apps/cadcraft-web/src/hvac_lisp.rs
 new file mode 100644
 index 0000000..06c7e32
@@ -13,7 +32,7 @@ index 0000000..06c7e32
 +    ("hvac-biblioteca.lsp", include_str!("hvac_lsp/hvac-biblioteca.lsp")),
 +];
 diff --git a/apps/cadcraft-web/src/main.rs b/apps/cadcraft-web/src/main.rs
-index a25782d..9763569 100644
+index a25782d..27ec546 100644
 --- a/apps/cadcraft-web/src/main.rs
 +++ b/apps/cadcraft-web/src/main.rs
 @@ -17,6 +17,11 @@ mod host;
@@ -28,7 +47,27 @@ index a25782d..9763569 100644
  #[cfg(target_arch = "wasm32")]
  mod web {
      use cadcraft_engine::Session;
-@@ -180,6 +185,9 @@ mod web {
+@@ -172,6 +177,19 @@ mod web {
+                         {
+                             log::warn!("panel layout was not restored: {error}");
+                         }
++                        // Móvil y tableta: la interfaz se reduce según el ancho de la pantalla (o con `?zoom=0.7`)
++                        // y, en pantallas estrechas y la primera vez, se cierran las paletas para dejar sitio al dibujo.
++                        if let Some(ancho) = web_sys::window().and_then(|w| w.inner_width().ok()).and_then(|v| v.as_f64()) {
++                            let forzado = query_param("zoom").and_then(|z| z.parse::<f32>().ok());
++                            if forzado.is_some() || ancho < 1100.0 {
++                                app.options.interface_scale = forzado.unwrap_or(((ancho / 1100.0) as f32).clamp(0.45, 1.0));
++                            }
++                            if ancho < 800.0 && cc.storage.and_then(|s| s.get_string(crate::panel_layout::KEY)).is_none() {
++                                for panel in ["toolSets", "properties", "layers"] {
++                                    let _ = app.run("ui.dock", serde_json::json!({"operation": "close", "panel": panel}));
++                                }
++                            }
++                        }
+                         // `?cpu`: no render state for the app, so the canvas draws with egui shapes.
+                         if !crate::wants_cpu(&query())
+                             && let Some(rs) = &cc.wgpu_render_state
+@@ -180,6 +198,9 @@ mod web {
                              // viewports stay in the layout's display list.
                              app.set_wgpu(rs, None);
                          }

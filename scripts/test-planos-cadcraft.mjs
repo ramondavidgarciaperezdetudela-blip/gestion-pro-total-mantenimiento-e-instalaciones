@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+let f = 0; const ok = (c, m) => { if (!c) { f++; console.error('FALLA:', m); } else console.log('ok:', m); };
+const lib = fs.readFileSync('src/lib/planosCadcraft.js', 'utf8');
+const pag = fs.readFileSync('src/pages/CADCraft.jsx', 'utf8');
+const { nombreSeguro } = await import('../src/lib/planosCadcraft.js');
+ok(nombreSeguro('a/b:c?.dxf') === 'a_b_c_.dxf', 'nombre de archivo seguro');
+ok(nombreSeguro('') === 'Plano.dxf', 'nombre por defecto');
+ok(/cadcraft:save/.test(pag) && /host=parent/.test(pag) && /cadcraft:open/.test(pag), 'la página habla con CADCraft web');
+ok(/Directory\.Documents/.test(lib), 'Android guarda en Documentos/CADCraft');
+const patch = fs.readFileSync('cadcraft-hvac/hvac.patch', 'utf8');
+ok(/interface_scale = forzado/.test(patch), 'la interfaz web se ajusta a la pantalla');
+process.exit(f ? 1 : 0);
