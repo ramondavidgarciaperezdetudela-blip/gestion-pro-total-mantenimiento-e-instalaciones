@@ -1,7 +1,7 @@
 {
   "name": "gestion-pro-total-fuera-base44",
   "private": true,
-  "version": "1.100.0",
+  "version": "1.101.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -37,6 +37,7 @@
     "test:simulador": "node scripts/test-simulador-ciclo.mjs",
     "test:preventivo": "node scripts/test-orden-preventivo.mjs && node scripts/test-orden-pdf.mjs",
     "test:paquete": "node --import ./scripts/alias-register.mjs scripts/test-paquete.mjs",
+    "test:importar": "node scripts/test-importar-presupuesto.mjs",
     "test:planos": "node scripts/test-planos-cadcraft.mjs",
     "test:pdf": "node scripts/test-pdf-imprimir.mjs",
     "test:huecos": "node scripts/test-huecos.mjs",
@@ -57,7 +58,6 @@
     "test:servidor": "node scripts/test-servidor.mjs"
   },
   "dependencies": {
-    "@mlightcad/libredwg-web": "^0.8.3",
     "@bcyesil/capacitor-plugin-printer": "^0.0.6",
     "@capacitor/android": "^8.4.0",
     "@capacitor/app": "^8.1.2",
@@ -66,6 +66,7 @@
     "@capacitor/share": "^8.0.1",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^4.1.2",
+    "@mlightcad/libredwg-web": "^0.8.3",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
     "@radix-ui/react-aspect-ratio": "^1.1.2",
@@ -111,6 +112,7 @@
     "lucide-react": "^0.475.0",
     "moment": "^2.30.1",
     "next-themes": "^0.4.4",
+    "pdfjs-dist": "^4.10.38",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-day-picker": "^8.10.1",

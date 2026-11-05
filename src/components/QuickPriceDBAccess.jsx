@@ -9,6 +9,7 @@ import {
   Loader2, Image as ImageIcon
 } from 'lucide-react';
 import SupplierCatalogImport from './SupplierCatalogImport';
+import { cargarPropios, listaDeApartados, guardarApartadoExtra } from '@/lib/miBaseDatos';
 import { toast } from 'sonner';
 
 const CATEGORIES = {
@@ -18,13 +19,14 @@ const CATEGORIES = {
   otro: { label: 'Otro', color: 'bg-gray-100 text-gray-600' },
 };
 const UNITS = ['ud', 'h', 'm', 'm2', 'm3', 'kg', 'l', 'ml', 'par', 'jgo'];
-const EMPTY_FORM = { description: '', unit_price: '', unit: 'ud', category: 'mano_obra', notes: '', image_url: '', brand: '', supplier_name: '' };
+const EMPTY_FORM = { description: '', unit_price: '', unit: 'ud', category: 'mano_obra', notes: '', image_url: '', brand: '', supplier_name: '', reference: '', section: '', delivery_days: '' };
 
 export default function QuickPriceDBAccess() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('all');
+  const [filterSec, setFilterSec] = useState('all');
   const [loading, setLoading] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -35,8 +37,7 @@ export default function QuickPriceDBAccess() {
 
   const load = async () => {
     setLoading(true);
-    const data = await base44.entities.PriceItem.list('description', 300);
-    setItems(data.filter(i => i.is_active !== false));
+    setItems(await cargarPropios());
     setLoading(false);
   };
 
@@ -53,9 +54,11 @@ export default function QuickPriceDBAccess() {
 
   const filtered = items.filter(i => {
     const q = search.toLowerCase();
-    const matchSearch = !q || i.description?.toLowerCase().includes(q) || i.notes?.toLowerCase().includes(q) || i.brand?.toLowerCase().includes(q);
+    const matchSearch = !q || i.description?.toLowerCase().includes(q) || i.notes?.toLowerCase().includes(q) || i.brand?.toLowerCase().includes(q)
+      || i.reference?.toLowerCase().includes(q) || i.supplier_ref?.toLowerCase().includes(q) || i.supplier_name?.toLowerCase().includes(q);
     const matchCat = filterCat === 'all' || i.category === filterCat;
-    return matchSearch && matchCat;
+    const matchSec = filterSec === 'all' || (i.section || 'Sin apartado') === filterSec;
+    return matchSearch && matchCat && matchSec;
   });
 
   const handleSaveNew = async () => {
@@ -64,8 +67,11 @@ export default function QuickPriceDBAccess() {
     await base44.entities.PriceItem.create({
       ...newForm,
       unit_price: parseFloat(String(newForm.unit_price).replace(',', '.')) || 0,
+      delivery_days: newForm.delivery_days === '' ? null : Number(newForm.delivery_days),
+      supplier_ref: newForm.reference || newForm.supplier_ref || '',
       is_active: true,
     });
+    guardarApartadoExtra(newForm.section);
     setNewForm(EMPTY_FORM);
     setAddingNew(false);
     setSavingNew(false);
@@ -78,7 +84,9 @@ export default function QuickPriceDBAccess() {
     await base44.entities.PriceItem.update(editingItem.id, {
       ...editForm,
       unit_price: parseFloat(String(editForm.unit_price).replace(',', '.')) || 0,
+      delivery_days: editForm.delivery_days === '' || editForm.delivery_days == null ? null : Number(editForm.delivery_days),
     });
+    guardarApartadoExtra(editForm.section);
     setEditingItem(null);
     toast.success('Concepto actualizado');
     load();
@@ -116,6 +124,7 @@ export default function QuickPriceDBAccess() {
         <BookOpen className="w-6 h-6" />
       </button>
 
+      <datalist id="apartados-base">{listaDeApartados(items).map(a => <option key={a} value={a} />)}</datalist>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl w-[95vw] max-h-[92vh] overflow-y-auto">
           <DialogHeader>
@@ -156,6 +165,15 @@ export default function QuickPriceDBAccess() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="flex gap-2 items-center">
+              <span className="text-xs text-gray-500 flex-shrink-0">Apartado</span>
+              <select value={filterSec} onChange={e => setFilterSec(e.target.value)} className="h-9 flex-1 border border-input rounded-md px-2 text-sm">
+                <option value="all">Todos los apartados</option>
+                {listaDeApartados(items).map(a => <option key={a} value={a}>{a} ({items.filter(i => (i.section || '') === a).length})</option>)}
+                {items.some(i => !i.section) && <option value="Sin apartado">Sin apartado ({items.filter(i => !i.section).length})</option>}
+              </select>
             </div>
 
             {/* Stats rápidas */}
@@ -205,6 +223,11 @@ export default function QuickPriceDBAccess() {
                         <Input value={editForm.brand || ''} onChange={e => setEditForm(f => ({ ...f, brand: e.target.value }))} placeholder="Marca" />
                         <Input value={editForm.supplier_name || ''} onChange={e => setEditForm(f => ({ ...f, supplier_name: e.target.value }))} placeholder="Proveedor" />
                       </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Input value={editForm.reference || ''} onChange={e => setEditForm(x => ({ ...x, reference: e.target.value }))} placeholder="Referencia" />
+                        <Input list="apartados-base" value={editForm.section || ''} onChange={e => setEditForm(x => ({ ...x, section: e.target.value }))} placeholder="Apartado" />
+                        <Input value={editForm.delivery_days ?? ''} onChange={e => setEditForm(x => ({ ...x, delivery_days: e.target.value }))} placeholder="Plazo (días)" inputMode="numeric" />
+                      </div>
                       <Input value={editForm.notes || ''} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notas (opcional)" />
                       <div className="flex items-center gap-2">
                         <div className="w-10 h-10 rounded-lg border bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -235,7 +258,10 @@ export default function QuickPriceDBAccess() {
                             {CATEGORIES[item.category]?.label || item.category}
                           </span>
                           {item.brand && <span className="text-[10px] text-gray-400">{item.brand}</span>}
+                          {item.section && <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 font-medium">{item.section}</span>}
+                          {item.reference && <span className="text-[10px] text-gray-500">Ref. {item.reference}</span>}
                           {item.supplier_name && <span className="text-[10px] text-gray-400 truncate">· {item.supplier_name}</span>}
+                          {item.delivery_days != null && <span className="text-[10px] text-gray-400">· {item.delivery_days} d</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
@@ -279,6 +305,11 @@ export default function QuickPriceDBAccess() {
                 <div className="flex gap-2">
                   <Input value={newForm.brand} onChange={e => setNewForm(f => ({ ...f, brand: e.target.value }))} placeholder="Marca (opcional)" />
                   <Input value={newForm.supplier_name} onChange={e => setNewForm(f => ({ ...f, supplier_name: e.target.value }))} placeholder="Proveedor (opcional)" />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Input value={newForm.reference || ''} onChange={e => setNewForm(x => ({ ...x, reference: e.target.value }))} placeholder="Referencia" />
+                  <Input list="apartados-base" value={newForm.section || ''} onChange={e => setNewForm(x => ({ ...x, section: e.target.value }))} placeholder="Apartado" />
+                  <Input value={newForm.delivery_days ?? ''} onChange={e => setNewForm(x => ({ ...x, delivery_days: e.target.value }))} placeholder="Plazo (días)" inputMode="numeric" />
                 </div>
                 <Input value={newForm.notes} onChange={e => setNewForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notas (opcional)" />
                 <div className="flex items-center gap-2">
