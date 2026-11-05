@@ -245,7 +245,15 @@ function PresupuestoPublico() {
             <tbody>
               {(doc.items || []).map((item, i) => (
                 <tr key={i} className="border-b border-slate-50">
-                  <td className="py-2 text-sm text-gray-700">{item.description}</td>
+                  <td className="py-2 text-sm text-gray-700">
+                    {item.description}
+                    {(item.reference || item.delivery_days != null || item.delivery_text) && (
+                      <span className="block text-[11px] text-gray-400">
+                        {item.reference ? `Ref. ${item.reference}` : ''}{item.reference && (item.delivery_days != null || item.delivery_text) ? ' · ' : ''}
+                        {item.delivery_days === 0 ? 'Entrega inmediata' : item.delivery_days != null ? `Plazo de entrega: ${item.delivery_days} día${item.delivery_days === 1 ? '' : 's'}` : (item.delivery_text ? `Plazo de entrega: ${item.delivery_text}` : '')}
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2 text-center text-sm text-gray-500">{item.quantity}</td>
                   <td className="py-2 text-right text-sm font-medium">{(item.total || 0).toFixed(2)} €</td>
                 </tr>

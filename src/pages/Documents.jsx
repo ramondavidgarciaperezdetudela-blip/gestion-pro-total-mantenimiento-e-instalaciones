@@ -12,12 +12,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Plus, Search, FileText, Trash2, Edit, ShoppingCart, Copy,
-  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers, Loader2, ShieldCheck, Snowflake } from
+  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers, Loader2, ShieldCheck, Snowflake, FileUp } from
 'lucide-react';
 import QRCodeLib from 'qrcode';
 import CargaDeGas from '@/components/CargaDeGas';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
+import ImportarPresupuestoDialog from '../components/ImportarPresupuestoDialog';
+import ArticuloNuevoDialog from '../components/ArticuloNuevoDialog';
+import { cargarPropios } from '../lib/miBaseDatos';
+import { parecido } from '../lib/importarPresupuesto';
 import AdvancedPriceSearch from '../components/AdvancedPriceSearch';
 import MaterialAutocomplete from '../components/MaterialAutocomplete';
 import MaterialsExportButton from '../components/MaterialsExportButton';
@@ -252,39 +256,77 @@ export default function Documents() {
   const [refBusca, setRefBusca] = useState('');
   const [refBuscando, setRefBuscando] = useState(false);
   const [refMsg, setRefMsg] = useState('');
+  const [refOpciones, setRefOpciones] = useState([]);
+  const [refNoEncontrada, setRefNoEncontrada] = useState('');
+
+  const ponerLineaDeReferencia = useCallback((o) => {
+    setForm((prev) => {
+      const precio = Number(o.precio) || 0;
+      const newItems = [...prev.items, { _id: ++_itemId, description: o.descripcion, reference: o.ref || '', supplier_name: o.proveedor || '', delivery_days: o.plazo ?? null, quantity: 1, unit_price: precio, discount: 0, total: precio }];
+      return { ...prev, ...recalculate(newItems, prev.iva_rate) };
+    });
+    setRefBusca(''); setRefOpciones([]); setRefNoEncontrada('');
+    setRefMsg('✅ Añadido: ' + o.descripcion);
+  }, []);
+
+  // Busca la referencia en Mi base de datos y en TODAS las tarifas de proveedores.
+  // Si hay varias, pregunta de qué proveedor quieres el precio; si no hay ninguna, ofrece guardarla.
   const addLineaPorReferencia = useCallback(async () => {
     const ref = refBusca.trim();
     if (!ref) return;
-    setRefBuscando(true); setRefMsg('');
+    setRefBuscando(true); setRefMsg(''); setRefOpciones([]); setRefNoEncontrada('');
     try {
-      let found = null;
-      // 1) Tarifas de proveedor por código exacto
-      const m = await base44.entities.SupplierPrice.filter({ product_code: ref }).catch(() => []);
-      if (m && m.length) found = { description: m[0].product_name, unit_price: m[0].sale_price || m[0].cost_price || 0 };
-      // 2) Artículos de precio por referencia de proveedor
-      if (!found) {
-        const p = await base44.entities.PriceItem.filter({ supplier_ref: ref }).catch(() => []);
-        if (p && p.length) found = { description: p[0].description, unit_price: p[0].unit_price || 0 };
-      }
-      if (found) {
-        setForm((prev) => {
-          const newItems = [...prev.items, { _id: ++_itemId, description: found.description, quantity: 1, unit_price: found.unit_price, discount: 0, total: found.unit_price }];
-          return { ...prev, ...recalculate(newItems, prev.iva_rate) };
-        });
-        setRefBusca('');
-        setRefMsg('✅ Añadido: ' + found.description);
-      } else {
-        setRefMsg('⚠ No se encontró ninguna referencia "' + ref + '"');
-      }
+      const opciones = [];
+      const sp = await base44.entities.SupplierPrice.filter({ product_code: ref }).catch(() => []);
+      (sp || []).forEach((m) => opciones.push({ proveedor: m.supplier_name || '', ref: m.product_code, descripcion: m.product_name, precio: m.sale_price || m.cost_price || 0, origen: 'Tarifa de proveedor' }));
+      const [p1, p2] = await Promise.all([
+        base44.entities.PriceItem.filter({ supplier_ref: ref }).catch(() => []),
+        base44.entities.PriceItem.filter({ reference: ref }).catch(() => []),
+      ]);
+      const vistos = new Set();
+      [...(p1 || []), ...(p2 || [])].filter((p) => p.is_active !== false && !vistos.has(p.id) && vistos.add(p.id))
+        .forEach((p) => opciones.push({ proveedor: p.supplier_name || '', ref: p.reference || p.supplier_ref, descripcion: p.description, precio: p.unit_price || 0, plazo: p.delivery_days, origen: 'Mi base de datos' }));
+      if (opciones.length === 1) ponerLineaDeReferencia(opciones[0]);
+      else if (opciones.length > 1) { setRefOpciones(opciones); setRefMsg('Esta referencia está en varios sitios. ¿De cuál quieres el precio?'); }
+      else { setRefNoEncontrada(ref); setRefMsg('⚠ La referencia "' + ref + '" no está en ninguna base de datos'); }
     } catch {
       setRefMsg('⚠ Error al buscar la referencia');
     }
     setRefBuscando(false);
-  }, [refBusca]);
+  }, [refBusca, ponerLineaDeReferencia]);
 
   const addItem = useCallback(() => {
     setForm((prev) => ({ ...prev, items: [...prev.items, newItem()] }));
   }, []);
+
+  // ── Importar de fichero y comprobar artículos en la base de datos ─────────
+  const [importarAbierto, setImportarAbierto] = useState(false);
+  const [articuloNuevo, setArticuloNuevo] = useState(null); // { indice, inicial }
+  const [propiosCache, setPropiosCache] = useState(null);
+  const [avisosLinea, setAvisosLinea] = useState({}); // _id → { tipo, ... }
+
+  const asegurarPropios = useCallback(async () => {
+    if (propiosCache) return propiosCache;
+    const lista = await cargarPropios().catch(() => []);
+    setPropiosCache(lista);
+    return lista;
+  }, [propiosCache]);
+
+  const alImportar = useCallback((lineas) => {
+    setForm((prev) => {
+      const nuevas = lineas.map((l) => ({ _id: ++_itemId, ...l }));
+      return { ...prev, ...recalculate([...prev.items, ...nuevas], prev.iva_rate) };
+    });
+  }, []);
+
+  // Al salir de la descripción de una línea escrita a mano: ¿existe ya en Mi base de datos?
+  const comprobarLinea = useCallback(async (item) => {
+    const desc = String(item.description || '').trim();
+    if (desc.length < 4 || avisosLinea[item._id]?.descartado) return;
+    const lista = await asegurarPropios();
+    const mejor = lista.map((p) => ({ p, sim: parecido(desc, p.description) })).filter((x) => x.sim >= 0.8).sort((a, b) => b.sim - a.sim)[0];
+    setAvisosLinea((prev) => ({ ...prev, [item._id]: mejor ? { tipo: 'existe', articulo: mejor.p } : { tipo: 'nuevo' } }));
+  }, [asegurarPropios, avisosLinea]);
 
   const removeItem = useCallback((i) => {
     setForm((prev) => {
@@ -342,6 +384,10 @@ export default function Documents() {
       unit_price: toNum(it.unit_price),
       discount: toNum(it.discount),
       total: toNum(it.total),
+      ...(it.reference ? { reference: String(it.reference) } : {}),
+      ...(it.delivery_days != null && it.delivery_days !== '' ? { delivery_days: toNum(it.delivery_days) } : {}),
+      ...(it.delivery_text ? { delivery_text: String(it.delivery_text) } : {}),
+      ...(it.supplier_name ? { supplier_name: String(it.supplier_name) } : {}),
     }));
     return { ...rest, items };
   };
@@ -658,12 +704,17 @@ export default function Documents() {
         </div>
       </div>` : '';
     const hasDiscount = doc.items?.some(i => i.discount > 0);
+    const hasRef = doc.items?.some(i => i.reference);
+    const hasPlazo = doc.items?.some(i => i.delivery_days != null || i.delivery_text);
+    const plazoTxt = (i) => (i.delivery_days === 0 ? 'Inmediata' : i.delivery_days != null ? (i.delivery_days >= 30 && i.delivery_days % 30 === 0 ? `${i.delivery_days / 30} mes${i.delivery_days / 30 === 1 ? '' : 'es'}` : `${i.delivery_days} día${i.delivery_days === 1 ? '' : 's'}`) : (i.delivery_text || ''));
     const itemsHtml = (doc.items || []).map((item, i) => `
       <tr style="background:${i % 2 === 0 ? '#f9fafb' : '#fff'}">
+        ${hasRef ? `<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;color:#555">${item.reference || ''}</td>` : ''}
         <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${item.description || ''}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center">${item.quantity}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right">${(item.unit_price||0).toFixed(2)} €</td>
         ${hasDiscount ? `<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;color:#d97706">${item.discount > 0 ? item.discount + '%' : '-'}</td>` : ''}
+        ${hasPlazo ? `<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;color:#555">${plazoTxt(item)}</td>` : ''}
         <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600">${(item.total||0).toFixed(2)} €</td>
       </tr>`).join('');
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${doc.doc_type?.toUpperCase()} ${doc.doc_number||''}</title>
@@ -692,7 +743,7 @@ export default function Documents() {
       ${doc.contact_nif?`<div style="font-size:9px;color:#555">NIF: ${doc.contact_nif}</div>`:''}
       ${doc.contact_address?`<div style="font-size:9px;color:#555">${doc.contact_address}</div>`:''}
     </div>
-    <table><thead><tr><th>Descripción</th><th class="center">Cant.</th><th class="right">P.Unit.</th>${hasDiscount?'<th class="right">Dto%</th>':''}<th class="right">Total</th></tr></thead>
+    <table><thead><tr>${hasRef?'<th>Ref.</th>':''}<th>Descripción</th><th class="center">Cant.</th><th class="right">P.Unit.</th>${hasDiscount?'<th class="right">Dto%</th>':''}${hasPlazo?'<th class="center">Plazo</th>':''}<th class="right">Total</th></tr></thead>
     <tbody>${itemsHtml}</tbody></table>
     <div class="totals">
       <div style="display:flex;justify-content:flex-end;gap:20px;font-size:9px;color:#555"><span>Subtotal:</span><span><strong>${(doc.subtotal||0).toFixed(2)} €</strong></span></div>
@@ -1046,6 +1097,21 @@ export default function Documents() {
                 </Button>
               </div>
               {refMsg && <p className="text-xs px-1 text-gray-600">{refMsg}</p>}
+              {refOpciones.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  {refOpciones.map((o, k) => (
+                    <button key={k} type="button" onClick={() => ponerLineaDeReferencia(o)} className="text-left text-xs border rounded-md px-2 py-1 hover:bg-blue-50 flex justify-between gap-2">
+                      <span className="truncate">{o.descripcion} <span className="text-gray-400">· {o.proveedor || o.origen}</span></span>
+                      <b className="text-green-700 flex-shrink-0">{Number(o.precio).toFixed(2)} €</b>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {refNoEncontrada && (
+                <Button size="sm" variant="outline" className="text-xs border-amber-300 text-amber-800" onClick={() => setArticuloNuevo({ indice: -1, inicial: { reference: refNoEncontrada } })}>
+                  Guardar «{refNoEncontrada}» en una tarifa o en Mi base de datos
+                </Button>
+              )}
               <div className="hidden md:grid grid-cols-12 gap-1 text-[10px] text-gray-400 px-1">
                 <span className="col-span-5">Descripción</span>
                 <span className="col-span-2">Cant.</span>
@@ -1056,7 +1122,7 @@ export default function Documents() {
               </div>
               {form.items.map((item, i) =>
               <div key={item._id ?? i} className="grid grid-cols-12 gap-1 items-center">
-                   <div className="col-span-5">
+                   <div className="col-span-5" onBlur={() => setTimeout(() => comprobarLinea(item), 250)}>
                     <MaterialAutocomplete
                       value={item.description}
                       onChange={(v) => handleItemChange(i, 'description', v)}
@@ -1091,10 +1157,38 @@ export default function Documents() {
                   onBlur={() => handleItemBlur(i, 'discount')} />
                    <span className="col-span-1 text-xs text-right font-medium text-green-700">{item.total?.toFixed(2)}</span>
                    <button className="col-span-1 text-red-400 hover:text-red-600 text-lg leading-none text-center" onClick={() => removeItem(i)}>×</button>
+                   <input className="col-span-5 text-[11px] h-7 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Referencia del artículo"
+                     value={item.reference || ''} onChange={(e) => handleItemChange(i, 'reference', e.target.value)} />
+                   <input className="col-span-2 text-[11px] h-7 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Plazo (días)" inputMode="numeric"
+                     value={item.delivery_days ?? ''} onChange={(e) => handleItemChange(i, 'delivery_days', e.target.value === '' ? null : e.target.value)} />
+                   <span className="col-span-5 text-[10px] text-gray-400 truncate">{item.supplier_name ? `Precio de ${item.supplier_name}` : ''}</span>
+                   {avisosLinea[item._id]?.tipo === 'nuevo' && !avisosLinea[item._id]?.descartado && String(item.description || '').trim().length >= 4 && (
+                     <div className="col-span-12 flex flex-wrap items-center gap-2 text-[11px] bg-amber-50 border border-amber-200 rounded-md px-2 py-1">
+                       <span className="text-amber-800">Este artículo no está en Mi base de datos.</span>
+                       <button type="button" className="text-blue-700 underline" onClick={() => setArticuloNuevo({ indice: i, inicial: { description: item.description, reference: item.reference, unit_price: item.unit_price, delivery_days: item.delivery_days } })}>Guardarlo…</button>
+                       <button type="button" className="text-gray-400 underline" onClick={() => setAvisosLinea((p) => ({ ...p, [item._id]: { descartado: true } }))}>No</button>
+                     </div>
+                   )}
+                   {avisosLinea[item._id]?.tipo === 'existe' && (
+                     <div className="col-span-12 flex flex-wrap items-center gap-2 text-[11px] bg-green-50 border border-green-200 rounded-md px-2 py-1">
+                       <span className="text-green-800">En tu base de datos: «{avisosLinea[item._id].articulo.description}» — {Number(avisosLinea[item._id].articulo.unit_price).toFixed(2)} €{avisosLinea[item._id].articulo.supplier_name ? ` (${avisosLinea[item._id].articulo.supplier_name})` : ''}</span>
+                       <button type="button" className="text-blue-700 underline" onClick={() => {
+                         const a = avisosLinea[item._id].articulo;
+                         setForm((prev) => {
+                           const newItems = prev.items.map((it, idx) => idx === i ? { ...it, unit_price: a.unit_price, reference: it.reference || a.reference || a.supplier_ref || '', delivery_days: it.delivery_days ?? a.delivery_days ?? null, supplier_name: a.supplier_name || '' } : it);
+                           return { ...prev, ...recalculate(newItems, prev.iva_rate) };
+                         });
+                         setAvisosLinea((p) => ({ ...p, [item._id]: { descartado: true } }));
+                       }}>Usar su precio</button>
+                       <button type="button" className="text-gray-400 underline" onClick={() => setAvisosLinea((p) => ({ ...p, [item._id]: { descartado: true } }))}>No</button>
+                     </div>
+                   )}
                  </div>
               )}
               <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Línea</Button>
+                <Button size="sm" variant="outline" onClick={() => setImportarAbierto(true)} data-prueba="importar-fichero"
+                  className="border-blue-300 text-blue-700 gap-1"><FileUp className="w-3 h-3" />Importar de fichero</Button>
                 {/* Carga de gas: el gas, los kilos, el precio y el impuesto,
                     con la normativa en observaciones. */}
                 <Button size="sm" variant="outline" onClick={() => setCargaGasAbierta(true)}
@@ -1223,6 +1317,13 @@ export default function Documents() {
         </DialogContent>
       </Dialog>
 
+      <ImportarPresupuestoDialog open={importarAbierto} onClose={() => setImportarAbierto(false)} onAdd={alImportar} />
+      <ArticuloNuevoDialog
+        open={!!articuloNuevo}
+        inicial={articuloNuevo?.inicial}
+        onClose={() => setArticuloNuevo(null)}
+        onSaved={(it) => { if (articuloNuevo?.indice === -1) ponerLineaDeReferencia({ proveedor: it.supplier_name, ref: it.reference, descripcion: it.description, precio: it.unit_price, plazo: it.delivery_days }); setPropiosCache((c) => (c ? [...c, it] : c)); setAvisosLinea((p) => { const n = { ...p }; const linea = form.items[articuloNuevo?.indice]; if (linea) n[linea._id] = { descartado: true }; return n; }); }}
+      />
       <SupplierProductSearch open={supplierSearchOpen} onClose={() => setSupplierSearchOpen(false)} onAddItem={addItemFromSupplier} />
 
       {/* La carga de gas añade sus líneas y deja la normativa en observaciones:

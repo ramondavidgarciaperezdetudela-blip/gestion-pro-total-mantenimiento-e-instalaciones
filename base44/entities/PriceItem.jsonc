@@ -38,6 +38,18 @@
       "type": "string",
       "description": "Referencia del proveedor"
     },
+    "reference": {
+      "type": "string",
+      "description": "Referencia / c\u00f3digo del art\u00edculo"
+    },
+    "section": {
+      "type": "string",
+      "description": "Apartado de Mi base de datos (C\u00e1maras frigor\u00edficas KIDE, TAVER, Equipos frigor\u00edficos\u2026)"
+    },
+    "delivery_days": {
+      "type": "number",
+      "description": "Plazo de entrega en d\u00edas"
+    },
     "brand": {
       "type": "string",
       "description": "Marca del producto"
