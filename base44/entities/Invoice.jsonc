@@ -77,6 +77,22 @@
           },
           "total": {
             "type": "number"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Referencia del art\u00edculo"
+          },
+          "delivery_days": {
+            "type": "number",
+            "description": "Plazo de entrega en d\u00edas"
+          },
+          "delivery_text": {
+            "type": "string",
+            "description": "Plazo de entrega tal como venga escrito"
+          },
+          "supplier_name": {
+            "type": "string",
+            "description": "Proveedor del precio"
           }
         }
       }

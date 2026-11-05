@@ -6,6 +6,23 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.101.0] — 2026-11-05
+
+### Añadido
+- **Importar un presupuesto o tarifa desde un fichero** (botón «Importar de fichero» en las líneas del presupuesto). Admite **Excel, CSV, Word (.docx) y PDF con texto**, sin IA y sin conexión. Detecta solo las columnas: referencia / artículo, descripción, cantidad, precio unitario o PVP, descuento %, importe o precio total y **plazo de entrega** (días, semanas o meses; «stock» = inmediata). Calcula lo que falte (el precio a partir del importe, el importe a partir de cantidad × precio − descuento), avisa si el importe del fichero no cuadra y descarta las filas de subtotal, IVA y total.
+- **Comprobación contra las bases de datos**: cada artículo se busca por referencia (aunque cambie la forma de escribirla) y por descripción parecida en **Mi base de datos** y en las **tarifas de los proveedores**.
+  - Si ya existe, eliges **de qué proveedor quieres el precio** (el del fichero, el de Mi base de datos o el de cada proveedor).
+  - Si no existe, te pregunta si quieres guardarlo y **dónde**: en **Mi base de datos** (con su **apartado** y el **proveedor** del precio) o en la **tarifa de cualquier proveedor** (KIDE, TAVER, los que tengas dados de alta; si el proveedor no existe se crea), o en ambos a la vez. También puedes poner un margen % sobre los precios del fichero.
+- **Mi base de datos por apartados**: Cámaras frigoríficas KIDE, Cámaras frigoríficas TAVER, Equipos frigoríficos, Evaporadores y condensadores, Compresores y unidades condensadoras, Climatización, Ventilación, Eléctrico, Solar, Fontanería, Tubería, Material de instalación, Mano de obra y Otros (puedes crear los tuyos). En «Base de precios» hay filtro por apartado, referencia y plazo de entrega, y ya no se corta a 300 artículos.
+- **Al añadir líneas a mano** se comprueba si el artículo existe en Mi base de datos: si existe ofrece usar su precio, y si no existe ofrece guardarlo. La búsqueda por referencia ahora enseña todas las coincidencias (proveedores y Mi base de datos) para elegir, y si no hay ninguna ofrece añadirla.
+- Las líneas del presupuesto llevan **referencia y plazo de entrega**; salen en el PDF impreso y en la página que ve el cliente.
+- Prueba automática nueva: `npm run test:importar`.
+
+### Para Base44
+- La entidad `PriceItem` gana los campos `reference`, `section` y `delivery_days`, y `Invoice.items` gana `reference`, `delivery_days`, `delivery_text` y `supplier_name`: hay que sincronizar main en Base44.
+
+---
+
 ## [1.100.0] — 2026-11-02
 
 ### Añadido
