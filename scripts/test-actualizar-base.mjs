@@ -1,0 +1,18 @@
+import { diferenciasConBase } from '../src/lib/actualizarBase.js';
+let ok = 0, mal = 0;
+const t = (n, c) => { if (c) ok++; else { mal++; console.log('FALLA', n); } };
+const base = [{ id: 'a', reference: 'KD-100', description: 'Cámara KIDE 100', unit_price: 1000, unit: 'ud', delivery_days: 10 }];
+let d = diferenciasConBase([{ reference: 'kd 100', description: 'Cámara KIDE 100', unit_price: 1000, unit: 'ud' }], base);
+t('sin cambios', d.length === 0);
+d = diferenciasConBase([{ reference: 'kd-100', description: 'Cámara KIDE 100 reforzada', unit_price: 1100 }], base);
+t('detecta descripción y precio', d.length === 1 && d[0].cambios.length === 2);
+t('valor nuevo', d[0].cambios.find((c) => c.campo === 'unit_price').ahora === 1100);
+d = diferenciasConBase([{ reference: 'KD-100', description: '.', unit_price: '', delivery_days: 15 }], base);
+t('punto y vacío ignorados, plazo cambia', d.length === 1 && d[0].cambios.length === 1 && d[0].cambios[0].campo === 'delivery_days');
+d = diferenciasConBase([{ reference: 'OTRA', description: 'x', unit_price: 5 }], base);
+t('referencia desconocida', d.length === 0);
+d = diferenciasConBase([{ description: 'sin ref', unit_price: 5 }], base);
+t('sin referencia', d.length === 0);
+d = diferenciasConBase([{ reference: 'KD-100', unit_price: 1200 }, { reference: 'KD100', unit_price: 1300 }], base);
+t('no repite artículo', d.length === 1);
+console.log(`${ok} ok, ${mal} mal`); process.exit(mal ? 1 : 0);

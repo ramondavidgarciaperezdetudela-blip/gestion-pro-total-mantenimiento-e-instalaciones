@@ -20,7 +20,9 @@ import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
 import ImportarPresupuestoDialog from '../components/ImportarPresupuestoDialog';
 import ArticuloNuevoDialog from '../components/ArticuloNuevoDialog';
-import { cargarPropios } from '../lib/miBaseDatos';
+import { cargarPropios, diferenciasConBase } from '../lib/miBaseDatos';
+import ActualizarBaseDialog from '../components/ActualizarBaseDialog';
+import { diasPlazo, guardarDiasPlazo, debeVencer, conAvisoVencido, diasDeRetraso, cambiosAlVencer, cambiosAlRecuperar, cambiosAlAmpliar } from '../lib/vencimientos';
 import { parecido } from '../lib/importarPresupuesto';
 import AdvancedPriceSearch from '../components/AdvancedPriceSearch';
 import MaterialAutocomplete from '../components/MaterialAutocomplete';
@@ -303,6 +305,7 @@ export default function Documents() {
   const [importarAbierto, setImportarAbierto] = useState(false);
   const [articuloNuevo, setArticuloNuevo] = useState(null); // { indice, inicial }
   const [propiosCache, setPropiosCache] = useState(null);
+  const [difBase, setDifBase] = useState(null); // artículos de Mi base de datos modificados en el documento
   const [avisosLinea, setAvisosLinea] = useState({}); // _id → { tipo, ... }
 
   const asegurarPropios = useCallback(async () => {
@@ -412,6 +415,8 @@ export default function Documents() {
     setSaving(true);
     setSaveError('');
     const payload = sanitizeForm(form);
+    // Si se saca un documento de «vencido» al editarlo, se cierra el aviso (y se renueva el plazo si hace falta)
+    if (editing?.status === 'vencido' && form.status !== 'vencido') Object.assign(payload, cambiosAlRecuperar({ ...editing, ...form }, form.status, { dias: diasPlazo() }));
     const docLabel = form.doc_type === 'factura' ? 'Factura' : form.doc_type === 'presupuesto' ? 'Presupuesto' : 'Recibo';
     let savedDoc = null;
     const wasEditing = !!editing;
@@ -465,6 +470,11 @@ export default function Documents() {
     setEditing(null);
     setSaving(false);
     toast({ title: wasEditing ? 'Documento actualizado' : 'Documento guardado', description: `${docLabel} ${form.doc_number || ''}`, duration: 2500 });
+    // Si se ha tocado un artículo cuya referencia ya está en Mi base de datos, se ofrece actualizarlo allí
+    cargarPropios().then((lista) => {
+      const dif = diferenciasConBase(form.items, lista);
+      if (dif.length) setDifBase(dif);
+    }).catch(() => {});
 
     // ── 3) Recarga de la lista + apertura de la vista previa (en segundo plano)
     // Si la red va lenta o salta el limitador, lo que ya está guardado no se
@@ -515,9 +525,44 @@ export default function Documents() {
   };
 
   const handleStatusChange = async (doc, newStatus) => {
-    await base44.entities.Invoice.update(doc.id, { status: newStatus });
-    setDocs(docs.map((d) => d.id === doc.id ? { ...d, status: newStatus } : d));
+    let cambios = { status: newStatus };
+    if (doc.status === 'vencido' && newStatus !== 'vencido') cambios = cambiosAlRecuperar(doc, newStatus, { dias: diasPlazo() });
+    else if (newStatus === 'vencido') cambios = cambiosAlVencer();
+    await base44.entities.Invoice.update(doc.id, cambios);
+    setDocs(docs.map((d) => d.id === doc.id ? { ...d, ...cambios } : d));
   };
+
+  // ── Documentos sin respuesta: vencen solos al pasar el plazo ──────────────
+  const [plazoRespuesta, setPlazoRespuesta] = useState(() => diasPlazo());
+  const vencidosProcesados = useRef(new Set());
+
+  const resolverVencido = async (doc, cambios, mensaje) => {
+    try {
+      await base44.entities.Invoice.update(doc.id, cambios);
+      setDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, ...cambios } : d));
+      toast({ title: mensaje, description: `${doc.doc_type} ${doc.doc_number}`, duration: 3500 });
+    } catch (e) {
+      toast({ title: 'No se pudo actualizar el documento', description: String(e?.message || e), variant: 'destructive' });
+    }
+  };
+
+  useEffect(() => {
+    if (!docs.length) return;
+    const nuevos = docs.filter((d) => !vencidosProcesados.current.has(d.id) && debeVencer(d, new Date(), plazoRespuesta));
+    if (!nuevos.length) return;
+    nuevos.forEach((d) => vencidosProcesados.current.add(d.id));
+    (async () => {
+      const hechos = [];
+      for (const d of nuevos) {
+        try { const c = cambiosAlVencer(); await base44.entities.Invoice.update(d.id, c); hechos.push([d.id, c]); } catch { /* se reintenta al volver a abrir */ vencidosProcesados.current.delete(d.id); }
+      }
+      if (hechos.length) {
+        const mapa = new Map(hechos);
+        setDocs((prev) => prev.map((d) => mapa.has(d.id) ? { ...d, ...mapa.get(d.id) } : d));
+        toast({ title: `${hechos.length} documento${hechos.length > 1 ? 's' : ''} sin respuesta ha${hechos.length > 1 ? 'n' : ''} vencido`, description: 'Mira el aviso de arriba para recuperarlos o descartarlos.', duration: 7000 });
+      }
+    })();
+  }, [docs, plazoRespuesta]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /*
    * El enlace que se le manda al cliente para aceptar o rechazar.
@@ -883,6 +928,56 @@ export default function Documents() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Aviso de documentos vencidos (sin respuesta al pasar el plazo) */}
+      {conAvisoVencido(docs).length > 0 && (
+        <div className="border border-red-300 rounded-xl bg-red-50 overflow-hidden" data-prueba="aviso-vencidos">
+          <div className="flex items-center justify-between gap-2 flex-wrap px-4 py-2.5 bg-red-100">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600" />
+              <span className="font-semibold text-red-800 text-sm">
+                {conAvisoVencido(docs).length} documento{conAvisoVencido(docs).length > 1 ? 's' : ''} vencido{conAvisoVencido(docs).length > 1 ? 's' : ''} sin respuesta
+              </span>
+            </div>
+            <label className="text-xs text-red-800 flex items-center gap-1.5">Plazo para responder
+              <input type="number" min="1" max="365" defaultValue={plazoRespuesta} key={plazoRespuesta} className="w-14 h-7 border border-red-200 rounded px-1 text-center bg-white"
+                onBlur={(e) => { const v = guardarDiasPlazo(e.target.value); if (v !== plazoRespuesta) setPlazoRespuesta(v); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} /> días
+            </label>
+          </div>
+          <div className="divide-y divide-red-100">
+            {conAvisoVencido(docs).map((doc) => (
+              <div key={doc.id} className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap bg-white/70">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-slate-800 truncate capitalize">
+                    {doc.doc_type} Nº{doc.doc_number} — {doc.contact_name}{doc.doc_reference ? ` · Ref.: ${doc.doc_reference}` : ''}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Fecha: {doc.date} · Total: <strong>{doc.total?.toFixed(2)} €</strong>
+                    <span className="ml-2 text-red-600 font-semibold">⏱ {diasDeRetraso(doc, new Date(), plazoRespuesta)} días de retraso</span>
+                  </p>
+                </div>
+                <div className="flex gap-1.5 flex-wrap items-center">
+                  <Button size="sm" variant="outline" className="h-7 text-xs px-2 border-blue-200 text-blue-700"
+                    onClick={() => resolverVencido(doc, cambiosAlAmpliar(doc, plazoRespuesta), `Plazo ampliado ${plazoRespuesta} días`)}>Ampliar plazo</Button>
+                  <select className="h-7 text-xs border border-input rounded-md px-1 bg-white" value="" aria-label="Pasar a otro estado"
+                    onChange={(e) => e.target.value && resolverVencido(doc, cambiosAlRecuperar(doc, e.target.value, { dias: plazoRespuesta }), `Pasado a ${e.target.value}`)}>
+                    <option value="">Pasar a…</option>
+                    {STATUSES.filter((st) => st !== 'vencido').map((st) => <option key={st} value={st}>{st}</option>)}
+                  </select>
+                  {doc.doc_type === 'presupuesto' && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs px-2 border-green-200 text-green-700" onClick={() => sendReminderWhatsApp(doc)}>
+                      <Phone className="w-3 h-3 mr-1" />Recordar
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" className="h-7 text-xs px-2 text-gray-500"
+                    onClick={() => resolverVencido(doc, { vencido_aviso_cerrado: true }, 'Aviso descartado')}>Descartar aviso</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Panel presupuestos pendientes >7 días */}
       {presupuestosPendientes.length > 0 && (
@@ -1321,6 +1416,7 @@ export default function Documents() {
         </DialogContent>
       </Dialog>
 
+      <ActualizarBaseDialog diferencias={difBase} onClose={() => setDifBase(null)} onDone={() => setPropiosCache(null)} />
       <ImportarPresupuestoDialog open={importarAbierto} onClose={() => setImportarAbierto(false)} onAdd={alImportar} />
       <ArticuloNuevoDialog
         open={!!articuloNuevo}

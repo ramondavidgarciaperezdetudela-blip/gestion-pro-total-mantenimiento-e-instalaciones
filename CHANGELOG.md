@@ -6,6 +6,29 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.103.0] — 2026-11-06
+
+### Añadido
+- **Mi base de datos se actualiza con lo que modifiques.** Al guardar un documento, si una línea tiene una referencia que ya está en Mi base de datos y has cambiado su descripción, precio, unidad o plazo, se abre un aviso con «antes → ahora» de cada dato; marcas lo que quieres y se actualiza el artículo (nada cambia sin tu confirmación). Se ignoran los campos vacíos y la descripción «.».
+- Prueba automática nueva: `npm run test:actualizarbase`.
+
+---
+
+## [1.102.0] — 2026-11-06
+
+### Añadido
+- **Documentos vencidos por falta de respuesta.** Al cumplirse el plazo, los documentos sin respuesta pasan solos a **«vencido»** y aparece un aviso rojo arriba en Documentos con el número, cliente, referencia, importe y los días de retraso.
+  - **Plazo**: la fecha de vencimiento del propio documento si la tiene; si no, la fecha de emisión + **30 días** (cambiable en el propio aviso, «Plazo para responder»).
+  - **Qué vence**: presupuestos en borrador o enviados y facturas enviadas, mientras el cliente no haya firmado (aceptado o rechazado). Los pagados, cancelados y recibos no se tocan.
+  - **Recuperarlos**: «Ampliar plazo» (vuelve a enviado con nueva fecha límite), «Pasar a…» (borrador, enviado, pagado o cancelado), «Recordar» por WhatsApp (presupuestos) o «Descartar aviso».
+  - **El aviso se borra solo** al hacer cualquiera de esas gestiones, o al cambiar el estado desde la lista o al editar el documento. Si el plazo ya había pasado, se renueva para que no vuelva a vencer al instante.
+- Prueba automática nueva: `npm run test:vencimientos`.
+
+### Para Base44
+- `Invoice` gana los campos `vencido_el` y `vencido_aviso_cerrado`: sincronizar main en Base44.
+
+---
+
 ## [1.84.0] — 2026-11-01
 
 ### Añadido

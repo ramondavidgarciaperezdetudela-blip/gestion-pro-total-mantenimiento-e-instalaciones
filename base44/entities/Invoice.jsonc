@@ -1,0 +1,290 @@
+{
+  "name": "Invoice",
+  "type": "object",
+  "properties": {
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "factura",
+        "presupuesto",
+        "recibo"
+      ],
+      "default": "factura"
+    },
+    "doc_number": {
+      "type": "string"
+    },
+    "doc_reference": {
+      "type": "string",
+      "description": "Referencia del documento (para distinguir varios presupuestos del mismo cliente)"
+    },
+    "vencido_el": {
+      "type": "string",
+      "description": "Fecha en que el documento pas\u00f3 a vencido por no tener respuesta"
+    },
+    "vencido_aviso_cerrado": {
+      "type": "boolean",
+      "description": "El aviso de documento vencido ya se ha gestionado o descartado"
+    },
+    "contact_id": {
+      "type": "string",
+      "description": "ID del contacto/cliente"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_nif": {
+      "type": "string"
+    },
+    "contact_address": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "borrador",
+        "enviado",
+        "pagado",
+        "vencido",
+        "cancelado"
+      ],
+      "default": "borrador"
+    },
+    "work_type": {
+      "type": "string",
+      "enum": [
+        "electrico",
+        "clima",
+        "refrigeracion_industrial",
+        "solar",
+        "otro"
+      ],
+      "default": "otro"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "discount": {
+            "type": "number",
+            "default": 0
+          },
+          "total": {
+            "type": "number"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Referencia del art\u00edculo"
+          },
+          "delivery_days": {
+            "type": "number",
+            "description": "Plazo de entrega en d\u00edas"
+          },
+          "delivery_text": {
+            "type": "string",
+            "description": "Plazo de entrega tal como venga escrito"
+          },
+          "supplier_name": {
+            "type": "string",
+            "description": "Proveedor del precio"
+          }
+        }
+      }
+    },
+    "subtotal": {
+      "type": "number"
+    },
+    "iva_rate": {
+      "type": "number",
+      "default": 21
+    },
+    "iva_amount": {
+      "type": "number"
+    },
+    "total": {
+      "type": "number"
+    },
+    "observations": {
+      "type": "string"
+    },
+    "payment_terms": {
+      "type": "string"
+    },
+    "materials_section": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "material": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "supplier": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "normative_references": {
+      "type": "string"
+    },
+    "signature_client": {
+      "type": "string",
+      "description": "Firma digital del cliente (base64 PNG)"
+    },
+    "sign_datetime": {
+      "type": "string",
+      "description": "Fecha y hora exacta de la firma del cliente (DD/MM/YYYY HH:MM:SS)"
+    },
+    "signature_method": {
+      "type": "string",
+      "enum": [
+        "web",
+        "email",
+        "whatsapp"
+      ],
+      "default": "web",
+      "description": "M\u00e9todo por el cual se recibi\u00f3 la firma"
+    },
+    "signature_history": {
+      "type": "array",
+      "description": "Historial de decisiones (aceptar/rechazar) con firmas y fechas",
+      "items": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "aceptar",
+              "rechazar"
+            ],
+            "description": "Tipo de decisi\u00f3n"
+          },
+          "signature_url": {
+            "type": "string",
+            "description": "URL de la firma digital"
+          },
+          "datetime": {
+            "type": "string",
+            "description": "Fecha y hora (DD/MM/YYYY HH:MM:SS)"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "web",
+              "email",
+              "whatsapp"
+            ],
+            "description": "M\u00e9todo de firma"
+          }
+        }
+      }
+    },
+    "verify_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Si el QR de verificaci\u00f3n de este documento est\u00e1 activo"
+    },
+    "verify_expires": {
+      "type": "string",
+      "description": "Hasta cu\u00e1ndo es verificable (vac\u00edo = sin caducidad)"
+    }
+  },
+  "required": [
+    "doc_type",
+    "contact_name"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    }
+  }
+}
