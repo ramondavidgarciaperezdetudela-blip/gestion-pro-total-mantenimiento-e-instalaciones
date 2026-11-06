@@ -3,6 +3,7 @@
 import { base44 } from '@/api/base44Client';
 import { cargarTodo } from '@/lib/cargarTodo';
 import { claveRef } from '@/lib/importarPresupuesto';
+export { diferenciasConBase } from '@/lib/actualizarBase';
 
 /** Apartados de fábrica. Se pueden añadir más; se guardan en cada artículo. */
 export const APARTADOS_BASE = [
@@ -145,6 +146,18 @@ export async function guardarArticulo({ destino, tambienMia, ...datos }) {
   if (!destino || destino === DESTINO_MIO || tambienMia) {
     await guardarEnMiBase({ ...datos, proveedor: datos.proveedor || (destino && destino !== DESTINO_MIO ? destino : '') });
     hechos.push('Mi base de datos');
+  }
+  return hechos;
+}
+
+/** Aplica a Mi base de datos los cambios elegidos: [{ articulo, cambios }]. Devuelve los artículos actualizados. */
+export async function actualizarArticulos(elegidos) {
+  const hechos = [];
+  for (const e of elegidos) {
+    const datos = Object.fromEntries(e.cambios.map((c) => [c.campo, c.ahora]));
+    if (!Object.keys(datos).length) continue;
+    await base44.entities.PriceItem.update(e.articulo.id, datos);
+    hechos.push({ ...e.articulo, ...datos });
   }
   return hechos;
 }
