@@ -6,6 +6,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.103.1] — 2026-11-06
+
+### Corregido
+- **Documentos en el móvil: ya se ven el número y el cliente.** En pantallas pequeñas la tarjeta de cada presupuesto, factura o recibo solo mostraba el importe; ahora va en dos filas: arriba el tipo, número, referencia y cliente, y abajo el importe, el estado y los botones.
+- **Abrir documentos en el móvil es más fácil.** Toda la zona de datos de la tarjeta abre el documento, y hay un botón azul **«Ver»** en cada tarjeta. La vista previa aprovecha mejor la pantalla y la tabla de líneas se desplaza en horizontal en lugar de apretarse.
+- Los botones Editar, Duplicar y Borrar quedan siempre visibles en el móvil (antes solo aparecían al pasar el ratón).
+
+---
+
 ## [1.103.0] — 2026-11-06
 
 ### Añadido

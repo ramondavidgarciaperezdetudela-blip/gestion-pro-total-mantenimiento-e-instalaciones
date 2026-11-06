@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Plus, Search, FileText, Trash2, Edit, ShoppingCart, Copy,
-  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers, Loader2, ShieldCheck, Snowflake, FileUp } from
+  ChevronDown, ChevronUp, Save, Phone, Mail, AlertCircle, CheckCircle, Clock, Printer, FileDown, Bell, X, Link, Send, MessageCircle, XCircle, Layers, Loader2, ShieldCheck, Snowflake, FileUp, Eye } from
 'lucide-react';
 import QRCodeLib from 'qrcode';
 import CargaDeGas from '@/components/CargaDeGas';
@@ -1445,7 +1445,7 @@ export default function Documents() {
 
       {/* ===== PREVIEW ===== */}
       <Dialog open={!!previewDoc} onOpenChange={() => {}}>
-        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto" onVolver={() => setPreviewDoc(null)} textoVolver="Volver a documentos" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+        <DialogContent className="max-w-5xl w-[98vw] max-h-[98vh] overflow-y-auto p-3 sm:p-6" onVolver={() => setPreviewDoc(null)} textoVolver="Volver a documentos" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="capitalize">{previewDoc?.doc_type} {previewDoc?.doc_number}</DialogTitle>
@@ -1473,6 +1473,7 @@ export default function Documents() {
                     {previewDoc.contact_nif && <p className="text-gray-500">NIF: {previewDoc.contact_nif}</p>}
                     {previewDoc.contact_address && <p className="text-gray-500">{previewDoc.contact_address}</p>}
                   </div>
+                  <div className="overflow-x-auto -mx-1">
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr className="bg-gray-800 text-white">
@@ -1495,6 +1496,7 @@ export default function Documents() {
                     )}
                     </tbody>
                   </table>
+                  </div>
                   <div className="text-right space-y-1 text-sm border-t pt-3">
                     <p className="text-gray-600">Subtotal: <strong>{previewDoc.subtotal?.toFixed(2)} €</strong></p>
                     <p className="text-gray-600">IVA ({previewDoc.iva_rate}%): <strong>{previewDoc.iva_amount?.toFixed(2)} €</strong></p>
@@ -1736,8 +1738,12 @@ export default function Documents() {
           const isRechazado = isPresupuesto && doc.status === 'cancelado' && doc.signature_client;
           return (
             <Card key={doc.id} className={`hover:shadow-md transition-shadow cursor-pointer group ${isAceptado ? 'border-green-300 bg-green-50/30' : isRechazado ? 'border-red-300 bg-red-50/30' : ''}`} onClick={() => setPreviewDoc(doc)}>
-              <CardContent className="p-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+              {/* En móvil la tarjeta va en dos filas (datos arriba, importe y
+                  acciones abajo). En una sola fila, el bloque de botones no
+                  encoge y aplastaba el número y el cliente hasta dejar solo
+                  el precio a la vista. */}
+              <CardContent className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center gap-3 w-full sm:w-auto sm:flex-1 min-w-0" data-prueba="datos-documento-lista">
                   <div className={`p-2 rounded-lg flex-shrink-0 ${isAceptado ? 'bg-green-100' : isRechazado ? 'bg-red-100' : doc.doc_type === 'factura' ? 'bg-violet-100' : doc.doc_type === 'presupuesto' ? 'bg-blue-100' : 'bg-green-100'}`}>
                     <FileText className={`w-4 h-4 ${isAceptado ? 'text-green-600' : isRechazado ? 'text-red-500' : doc.doc_type === 'factura' ? 'text-violet-600' : doc.doc_type === 'presupuesto' ? 'text-blue-600' : 'text-green-600'}`} />
                   </div>
@@ -1748,7 +1754,7 @@ export default function Documents() {
                       {isAceptado && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200 flex-shrink-0">✅ ACEPTADO</span>}
                       {isRechazado && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200 flex-shrink-0">❌ RECHAZADO</span>}
                     </div>
-                    <p className="text-gray-500 text-sm truncate">{doc.contact_name || 'Sin cliente'} · {doc.date} {doc.work_type && doc.work_type !== 'otro' ? `· ${doc.work_type}` : ''}</p>
+                    <p className="text-gray-700 sm:text-gray-500 text-sm font-medium sm:font-normal break-words sm:truncate" data-prueba="cliente-en-lista">{doc.contact_name || 'Sin cliente'} · {doc.date} {doc.work_type && doc.work_type !== 'otro' ? `· ${doc.work_type}` : ''}</p>
                     {/* La decisión del cliente, con su fecha y su hora, en la
                         propia lista: para verlo de un vistazo sin abrir nada
                         ni tener que buscarlo en el correo. */}
@@ -1766,8 +1772,10 @@ export default function Documents() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <span className="text-base font-extrabold">{doc.total?.toFixed(2)} €</span>
+                <div className="flex items-center flex-wrap gap-2 w-full sm:w-auto sm:flex-shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0" onClick={(e) => e.stopPropagation()}>
+                  <span className="text-base font-extrabold mr-auto sm:mr-0">{doc.total?.toFixed(2)} €</span>
+                  {/* Botón grande para abrir el documento en el móvil */}
+                  <button onClick={(e) => { e.stopPropagation(); setPreviewDoc(doc); }} className="sm:hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-semibold" data-prueba="ver-documento-movil" title="Ver documento"><Eye className="w-4 h-4" /> Ver</button>
                   <Select value={doc.status} onValueChange={(v) => handleStatusChange(doc, v)}>
                     <SelectTrigger className="bg-blue-100 text-blue-700 px-3 py-2 text-base rounded-md flex items-center justify-between whitespace-nowrap border-input shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 h-6 w-24 border-0">
                       <SelectValue />
@@ -1784,9 +1792,9 @@ export default function Documents() {
                   {isPresupuesto && (
                     <button onClick={(e) => { e.stopPropagation(); sendSignLink(doc, 'whatsapp'); }} className="text-emerald-500 hover:text-emerald-700 p-1" title="Enviar enlace de firma (aceptar/rechazar)"><Send className="w-4 h-4" /></button>
                   )}
-                  <button onClick={(e) => { e.stopPropagation(); handleEdit(doc); }} className="text-gray-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => handleDuplicate(doc)} className="text-gray-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Duplicar"><Copy className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => handleDelete(doc.id)} className="text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); handleEdit(doc); }} className="text-gray-400 hover:text-blue-600 p-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => handleDuplicate(doc)} className="text-gray-400 hover:text-blue-600 p-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" title="Duplicar"><Copy className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => handleDelete(doc.id)} className="text-red-300 hover:text-red-500 p-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </CardContent>
             </Card>);
