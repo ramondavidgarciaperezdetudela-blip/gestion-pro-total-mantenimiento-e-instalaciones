@@ -205,7 +205,7 @@ export function dibujarPlanta(doc, { modo, plan, elements, walls, connections, b
   cons.forEach((c) => {
     const a = elements.find((e) => e.id === c.from_id), b = elements.find((e) => e.id === c.to_id);
     if (!a || !b) return;
-    const rgb = c.type === 'refrigerante' ? [0, 150, 220] : c.type === 'conducto' ? [34, 160, 90]
+    const rgb = c.type === 'refrigerante' ? [0, 150, 220] : c.type === 'conducto' ? [34, 160, 90] : c.type === 'desague' ? [13, 148, 136]
       : c.conn_kind === 'comunicacion' ? [139, 92, 246] : [235, 130, 30];
     doc.setDrawColor(...rgb); doc.setLineWidth(c.type === 'refrigerante' ? 0.55 : 0.4);
     doc.setLineDash(c.type === 'refrigerante' ? [2.5, 1.2] : c.conn_kind === 'comunicacion' ? [1.5, 1] : []);

@@ -15,6 +15,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.108.0] — 2026-11-07
+
+### Añadido
+- **Tubería de desagüe** en el plano: botones «Desagüe» y «Desagüe a mano» para dibujar la línea por donde se necesite, con diámetro del tubo, pendiente y si sale por gravedad o con bomba. Sale en la leyenda, en el PDF y en la hoja de materiales.
+- **Bomba de condensados** en Climatización y en Refrigeración, para impulsar el agua de condensación de la máquina.
+- **Atajos de teclado en el plano:** Ctrl+C copiar, Ctrl+X cortar, Ctrl+V pegar, Ctrl+Z deshacer, Ctrl+Y rehacer. Pegar varias veces va desplazando cada copia.
+
+### Corregido
+- **Esc** cierra el cuadro de la tubería/cable recién dibujado, y al pulsarlo otra vez suelta la herramienta y quita la selección.
+
 ## [1.107.0] — 2026-11-07
 
 ### Añadido
