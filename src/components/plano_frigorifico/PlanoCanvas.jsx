@@ -177,6 +177,11 @@ export default function PlanoCanvas({
     }
     let w = (el.w_m || 0.5) * scale, h = (el.h_m || 0.5) * scale;
     if ((Math.round((Number(el.rot) || 0) / 90) % 2 + 2) % 2 === 1) [w, h] = [h, w];
+    // Zona de pulsación mínima (en pantalla): una puerta es fina y pegada a la pared de la cámara,
+    // y sin esto se acababa seleccionando la cámara en vez de la puerta.
+    const k = svgRef.current?.getScreenCTM()?.a || 1;
+    const minimo = 18 / k;
+    w = Math.max(w, minimo); h = Math.max(h, minimo);
     const x0 = el.x - w / 2, y0 = el.y - h / 2;
     return p.x >= x0 && p.x <= x0 + w && p.y >= y0 && p.y <= y0 + h;
   });

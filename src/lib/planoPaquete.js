@@ -16,12 +16,14 @@ import { camarasDePlano, cargaFrigorifica } from './planoCargaFrigorifica.js';
 import { hexToRgb } from './planoDibujoPdf.js';
 import { generarVista3DDataUrl, VISTA3D_W, VISTA3D_H, altoPared, altoEquipo, cotaEquipo } from './planoVista3D.js';
 import { construirEsquemaElectrico } from './planoEsquemaElectrico.js';
+import { hojaMateriales as seccionesDeMateriales, MERMA } from './planoLista.js';
 
 export const PAPELES = { a4: [210, 297], a3: [297, 420] };
 export const SECCIONES = [
   { id: 'frigorifico', titulo: 'Plano frigorífico', cad: true },
   { id: 'electrico', titulo: 'Plano eléctrico', cad: true },
   { id: 'calculos', titulo: 'Cálculos y medidas', cad: true },
+  { id: 'materiales', titulo: 'Materiales y pedido', cad: false },
   { id: 'vista3d', titulo: 'Vista 3D', cad: true }, // en PDF es una imagen; en CAD, hoja isométrica + modelo 3D real
 ];
 export const ESCALAS_NORMALIZADAS = [10, 20, 25, 50, 75, 100, 125, 150, 200, 250, 500, 1000];
@@ -29,7 +31,7 @@ export const ESCALAS_NORMALIZADAS = [10, 20, 25, 50, 75, 100, 125, 150, 200, 250
 export function opcionesPorDefecto() {
   return {
     papel: 'a3',
-    secciones: SECCIONES.map((s) => ({ id: s.id, incluir: true, orientacion: s.id === 'calculos' ? 'vertical' : 'horizontal' })),
+    secciones: SECCIONES.map((s) => ({ id: s.id, incluir: true, orientacion: s.id === 'calculos' || s.id === 'materiales' ? 'vertical' : 'horizontal' })),
   };
 }
 
@@ -395,6 +397,42 @@ function hojaCalculos(doc, ctx, primera) {
   });
 }
 
+/** Hoja de materiales para el pedido: tuberías por diámetro, cableado, paneles, paredes y equipos con sus medidas. */
+function hojaMateriales(doc, ctx, primera) {
+  const { plan, empresa } = ctx.datos;
+  const { w, h } = nuevaHoja(doc, ctx.papel, ctx.orientacion, primera);
+  ctx.titulo = 'Materiales y pedido'; ctx.escalaTexto = '—';
+  const m = marco(doc, w, h, { plan, empresa, titulo: ctx.titulo, escala: '—' });
+  ctx.hojas.push(doc.getNumberOfPages());
+  const cur = crearCursor(doc, ctx, { x: MARGEN + 4, y: MARGEN + 6, w: w - 2 * MARGEN - 8, yMax: m.yMax });
+  cur.doc = doc;
+  const secciones = seccionesDeMateriales({ walls: ctx.datos.walls, elements: ctx.datos.elements, connections: ctx.datos.connections, scale: plan.scale || 50 });
+  cur.esc(`Escala del dibujo: ${plan.scale || 50} px por metro. Las medidas salen del plano y se actualizan solas si lo cambias.`, { size: 7.5, color: 90 });
+  if (!secciones.length) cur.esc('El plano está vacío: dibuja cámaras, equipos o tuberías para ver los materiales.', { size: 9 });
+  secciones.forEach((sec) => {
+    cur.titulo(sec.titulo);
+    const n = sec.columnas.length;
+    const primeraAncho = n > 2 ? 0.30 : 0.5;
+    const anchos = sec.columnas.map((_, i) => (i === 0 ? primeraAncho : (1 - primeraAncho) / (n - 1)) * cur.w);
+    const fila = (celdas, negrita) => {
+      cur.sitio(5);
+      doc.setFontSize(7.5); doc.setFont(undefined, negrita ? 'bold' : 'normal'); doc.setTextColor(negrita ? 20 : 45);
+      let x = cur.x;
+      celdas.forEach((c, i) => {
+        const txt = doc.splitTextToSize(String(c ?? ''), anchos[i] - 2)[0] || '';
+        doc.text(txt, x + 1, cur.y + 3.4);
+        x += anchos[i];
+      });
+      doc.setDrawColor(220); doc.setLineWidth(0.1); doc.line(cur.x, cur.y + 4.5, cur.x + cur.w, cur.y + 4.5);
+      cur.y += 4.8;
+    };
+    fila(sec.columnas, true);
+    sec.filas.forEach((f) => fila(f, false));
+    if (sec.nota) cur.esc(sec.nota, { size: 6.5, color: 110 });
+  });
+  cur.esc(`Valores orientativos tomados del dibujo (merma del ${Math.round(MERMA * 100)} % en el pedido). Comprueba medidas en obra antes de pedir.`, { size: 6.5, color: 110 });
+}
+
 function hojaVista3D(doc, ctx, primera) {
   const { plan, elements, walls, connections, empresa } = ctx.datos;
   const { w, h } = nuevaHoja(doc, ctx.papel, ctx.orientacion, primera);
@@ -505,6 +543,7 @@ export function construirPaquetePDF(datos, opciones = opcionesPorDefecto()) {
         hojas.push(doc.getNumberOfPages());
       }
     } else if (s.id === 'calculos') hojaCalculos(doc, ctx, esPrimera);
+    else if (s.id === 'materiales') hojaMateriales(doc, ctx, esPrimera);
     else if (s.id === 'vista3d') (opciones.soloCad ? hojaIsometrica : hojaVista3D)(doc, ctx, esPrimera);
     esPrimera = false;
   }
