@@ -89,6 +89,12 @@ const csv = materialesCSV(hoja, 'Plano de prueba');
 ok(csv.startsWith('﻿') && csv.includes('Tubería frigorífica (cobre)') && /;/.test(csv), 'CSV con separador «;» y BOM');
 ok(csv.includes('Líquido;3/8"'.replace('"', '""')) || csv.includes('"3/8"""'), 'comillas de pulgadas escapadas');
 
+console.log('6. Desagüe de condensados');
+const els6 = [{ id: 'a', type: 'split_pared', x: 0, y: 0 }, { id: 'b', type: 'bomba_condensados', x: 100, y: 0 }];
+const h6 = hojaMateriales({ walls: [], elements: els6, scale: 50, connections: [{ id: 'd1', type: 'desague', from_id: 'a', to_id: 'b', path: [], drain_diameter: '16' }] });
+const s6 = h6.find((x) => x.id === 'desague');
+ok(s6 && s6.filas[0][0] === 'Tubo Ø16 mm' && cerca(s6.filas[0][2], 2), 'el desagüe sale en la hoja de materiales con sus metros', JSON.stringify(s6));
+
 function redondea1(n) { return Math.round(n * 100) / 100; }
 console.log(`${total - fallos}/${total} correctas`);
 process.exit(fallos ? 1 : 0);

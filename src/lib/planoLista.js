@@ -189,6 +189,23 @@ export function hojaMateriales({ walls = [], elements = [], connections = [], sc
     });
   }
 
+  // Desagües de condensados
+  const des = connections.filter((c) => c.type === 'desague');
+  if (des.length) {
+    const por = new Map();
+    des.forEach((c) => {
+      const k = c.drain_diameter ? `Tubo Ø${c.drain_diameter} mm` : 'Tubo (diámetro sin asignar)';
+      const o = por.get(k) || { tramos: 0, m: 0 };
+      o.tramos += 1; o.m += L(c); por.set(k, o);
+    });
+    secciones.push({
+      id: 'desague', titulo: 'Desagües de condensados',
+      columnas: ['Tubo', 'Tramos', 'Metros', `Pedido (+${Math.round(MERMA * 100)} %)`],
+      filas: [...por.entries()].map(([k, o]) => [k, o.tramos, redondea(o.m), pedido(o.m)]),
+      nota: 'Pendiente mínima recomendada 1 %. Añade codos, sifón y abrazaderas.',
+    });
+  }
+
   // 3. Conductos
   const cond = connections.filter((c) => c.type === 'conducto');
   if (cond.length) {

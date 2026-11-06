@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Link2, Wind, Zap, AlertTriangle } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link2, Wind, Zap, Droplets, AlertTriangle } from 'lucide-react';
 import { longitudConexion } from '@/lib/planoCalculo';
 import {
   sugerirDiametros, sugerirSeccion, DIAMETROS, SECCIONES, BUSES_COMUNICACION,
@@ -31,7 +31,8 @@ const TENSIONES = ['230 V monofásica', '400 V trifásica', '24 V', '12 V'];
 export default function DialogoNuevaConexion({ connection, elements, scale, onSave, onClose }) {
   const esRef = connection.type === 'refrigerante';
   const esConducto = connection.type === 'conducto';
-  const esElec = !esRef && !esConducto;
+  const esDesague = connection.type === 'desague';
+  const esElec = !esRef && !esConducto && !esDesague;
 
   // La potencia sale del equipo al que está enganchada la línea.
   const a = elements.find((e) => e.id === connection.from_id);
@@ -65,17 +66,26 @@ export default function DialogoNuevaConexion({ connection, elements, scale, onSa
     duct_shape: connection.duct_shape || 'Rectangular',
     duct_section: connection.duct_section || '',
     duct_caudal_m3h: connection.duct_caudal_m3h ?? conDato?.datos?.caudal_m3h ?? '',
+    drain_diameter: connection.drain_diameter || '16',
+    drain_slope_pct: connection.drain_slope_pct ?? '1',
+    drain_impulsion: connection.drain_impulsion || (a?.type?.startsWith('bomba_condensados') || b?.type?.startsWith('bomba_condensados') ? 'Con bomba' : 'Por gravedad'),
   }));
   const poner = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    const h = (e) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [onClose]);
 
   const aceptar = () => {
     onSave(form);
     onClose();
   };
 
-  const titulo = esRef ? 'Tubería refrigerante' : esConducto ? 'Conducto de ventilación' : 'Línea eléctrica';
-  const Icono = esRef ? Link2 : esConducto ? Wind : Zap;
-  const color = esRef ? '#00A0E9' : esConducto ? '#10b981' : '#F5821F';
+  const titulo = esDesague ? 'Tubería de desagüe' : esRef ? 'Tubería refrigerante' : esConducto ? 'Conducto de ventilación' : 'Línea eléctrica';
+  const Icono = esDesague ? Droplets : esRef ? Link2 : esConducto ? Wind : Zap;
+  const color = esDesague ? '#0d9488' : esRef ? '#00A0E9' : esConducto ? '#10b981' : '#F5821F';
 
   return (
     <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
@@ -185,6 +195,25 @@ export default function DialogoNuevaConexion({ connection, elements, scale, onSa
                 Para dárselo al electricista o al técnico que monte la instalación: el bus de datos va aparte de la fuerza.
               </p>
             </div>
+          </div>
+        )}
+
+        {esDesague && (
+          <div className="flex flex-col gap-2" data-prueba="dlg-desague">
+            <Campo label="Diámetro exterior del tubo (mm)">
+              <select value={form.drain_diameter} onChange={(e) => poner('drain_diameter', e.target.value)} className="w-full rounded-md border border-border bg-input px-2 py-1.5 text-xs">
+                {['10', '12', '16', '20', '25', '32', '40', '50', '63', '75', '90', '110'].map((d) => <option key={d} value={d}>{d} mm</option>)}
+              </select>
+            </Campo>
+            <Campo label="Pendiente (%)">
+              <input inputMode="decimal" value={form.drain_slope_pct} onChange={(e) => poner('drain_slope_pct', e.target.value)} className="w-full rounded-md border border-border bg-input px-2 py-1.5 text-xs" />
+            </Campo>
+            <Campo label="Cómo sale el agua">
+              <select value={form.drain_impulsion} onChange={(e) => poner('drain_impulsion', e.target.value)} className="w-full rounded-md border border-border bg-input px-2 py-1.5 text-xs">
+                <option>Por gravedad</option><option>Con bomba</option>
+              </select>
+            </Campo>
+            <p className="text-[10px] leading-snug text-muted-foreground">Pendiente habitual 1 % (mínimo recomendado) en tramos por gravedad. Con bomba, el tubo de impulsión puede ser más fino (6-10 mm de interior) y subir.</p>
           </div>
         )}
 

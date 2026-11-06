@@ -136,7 +136,8 @@ function DetalleConexion({ connection, elements, scale, onUpdate, onDelete }) {
   const L = longitudConexion(connection, elements, scale);
   const esRef = connection.type === 'refrigerante';
   const esConducto = connection.type === 'conducto';
-  const color = esRef ? '#00A0E9' : esConducto ? '#10b981' : '#F5821F';
+  const esDesague = connection.type === 'desague';
+  const color = esDesague ? '#0d9488' : esRef ? '#00A0E9' : esConducto ? '#10b981' : '#F5821F';
 
   // La potencia sale del equipo al que está enganchada. Puede estar pegada a
   // dos (el grupo y el evaporador): se coge el que la tenga puesta, porque es
@@ -159,9 +160,9 @@ function DetalleConexion({ connection, elements, scale, onUpdate, onDelete }) {
   const esComunicacion = connection.conn_kind === 'comunicacion';
 
   return (
-    <div className="flex flex-col gap-2" data-prueba={esRef ? 'detalle-tuberia' : esConducto ? 'detalle-conducto' : 'detalle-electrica'}>
+    <div className="flex flex-col gap-2" data-prueba={esDesague ? 'detalle-desague' : esRef ? 'detalle-tuberia' : esConducto ? 'detalle-conducto' : 'detalle-electrica'}>
       <div className="flex items-center justify-between">
-        <div className="tech-label" style={{ color }}>{esRef ? 'Tubería refrigerante' : esConducto ? 'Conducto / ventilación' : 'Conexión eléctrica'}</div>
+        <div className="tech-label" style={{ color }}>{esDesague ? 'Tubería de desagüe' : esRef ? 'Tubería refrigerante' : esConducto ? 'Conducto / ventilación' : 'Conexión eléctrica'}</div>
         <button onClick={onDelete} className="p-1 rounded text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></button>
       </div>
       <div className="text-xs text-muted-foreground">{(a?.label) || '?'} → {(b?.label) || '?'}</div>
@@ -214,6 +215,25 @@ function DetalleConexion({ connection, elements, scale, onUpdate, onDelete }) {
           <p className="text-[10px] leading-snug text-muted-foreground">
             Diámetros orientativos: el bueno es el de la ficha técnica del equipo.
           </p>
+        </>
+      ) : esDesague ? (
+        <>
+          <Campo label="Diámetro exterior del tubo (mm)">
+            <input inputMode="decimal" value={connection.drain_diameter || ''} data-prueba="diametro-desague"
+              onChange={(e) => onUpdate({ drain_diameter: e.target.value })} placeholder="16"
+              className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+          </Campo>
+          <Campo label="Pendiente (%)">
+            <input inputMode="decimal" value={connection.drain_slope_pct ?? ''} data-prueba="pendiente-desague"
+              onChange={(e) => onUpdate({ drain_slope_pct: e.target.value })} placeholder="1"
+              className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+          </Campo>
+          <Campo label="Cómo sale el agua">
+            <select value={connection.drain_impulsion || 'Por gravedad'} onChange={(e) => onUpdate({ drain_impulsion: e.target.value })}
+              className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs">
+              <option>Por gravedad</option><option>Con bomba</option>
+            </select>
+          </Campo>
         </>
       ) : esConducto ? (
         <>
