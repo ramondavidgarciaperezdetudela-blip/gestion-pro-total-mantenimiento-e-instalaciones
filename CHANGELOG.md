@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.109.0] — 2026-11-07
+
+### Añadido
+- **Vista 3D sin nombres:** ya no salen los nombres de los equipos ni de las cámaras, para enseñárselo bien al cliente; con la casilla «Mostrar nombres» los vuelves a ver. El PDF del plano también sale sin nombres.
+- **Color de paredes y suelo** al dibujar una cámara frigorífica (si lo sabes), y editable después en cámaras, salas y paredes sueltas. La vista 3D usa esos colores.
+- **Posición exacta de cualquier equipo** (X / Y en metros), además de la altura sobre el suelo, el alto, el giro y las medidas que ya se podían cambiar.
+
 ## [1.108.0] — 2026-11-07
 
 ### Añadido

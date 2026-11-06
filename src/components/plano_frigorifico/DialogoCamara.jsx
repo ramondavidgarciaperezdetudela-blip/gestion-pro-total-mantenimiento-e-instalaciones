@@ -27,6 +27,8 @@ export default function DialogoCamara({ open, valorInicial, onConfirm, onClose }
   const [tipo, setTipo] = useState('positiva');
   const [suelo, setSuelo] = useState(true);
   const [espesor, setEspesor] = useState('100');
+  const [colorPared, setColorPared] = useState('');
+  const [colorSuelo, setColorSuelo] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -37,6 +39,8 @@ export default function DialogoCamara({ open, valorInicial, onConfirm, onClose }
     setTipo(valorInicial?.tipo || 'positiva');
     setSuelo(valorInicial?.suelo !== false);
     setEspesor(valorInicial?.espesor != null ? String(valorInicial.espesor) : '100');
+    setColorPared(valorInicial?.colorPared || '');
+    setColorSuelo(valorInicial?.colorSuelo || '');
     setError('');
   }, [open, valorInicial]);
 
@@ -47,7 +51,7 @@ export default function DialogoCamara({ open, valorInicial, onConfirm, onClose }
     const l = aNum(largo);
     const h = aNum(alto);
     if (!(a > 0) || !(l > 0) || !(h > 0)) { setError('El ancho, el largo y el alto deben ser mayores que 0.'); return; }
-    onConfirm({ ancho: a, largo: l, alto: h, tipo, suelo: !!suelo, espesor: parseInt(espesor, 10) || 100 });
+    onConfirm({ ancho: a, largo: l, alto: h, tipo, suelo: !!suelo, espesor: parseInt(espesor, 10) || 100, colorPared: colorPared || undefined, colorSuelo: colorSuelo || undefined });
   };
 
   const colorTipo = tipo === 'positiva' ? '#3b82f6' : '#ef4444';
@@ -143,6 +147,19 @@ export default function DialogoCamara({ open, valorInicial, onConfirm, onClose }
             ))}
           </div>
         </label>
+
+        <div className="mt-2 grid grid-cols-2 gap-2" data-prueba="camara-colores">
+          {[['Color de las paredes', colorPared, setColorPared, '#f1f5f9', 'camara-color-pared'], ['Color del suelo', colorSuelo, setColorSuelo, '#cbd5e1', 'camara-color-suelo']].map(([t, v, set, def, d]) => (
+            <div key={d} className="flex flex-col gap-1">
+              <span className="text-[10px] text-muted-foreground">{t} (si lo sabes)</span>
+              <div className="flex items-center gap-1.5">
+                <input type="color" value={v || def} onChange={(e) => set(e.target.value)} data-prueba={d} className="h-8 w-10 rounded border border-border bg-input p-0.5" />
+                <span className="text-[10px] text-muted-foreground">{v ? v : 'sin elegir'}</span>
+                {v && <button type="button" onClick={() => set('')} className="text-[10px] underline text-muted-foreground">quitar</button>}
+              </div>
+            </div>
+          ))}
+        </div>
 
         {/* Vista previa de la proporción */}
         <div className="mt-3 flex items-end justify-center rounded-md border border-border bg-muted/30 py-3" style={{ height: 90 }}>
