@@ -15,6 +15,19 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.104.0] — 2026-11-06
+
+### Añadido
+- **Tubería automática al añadir equipos frigoríficos o de clima** (splits, cassettes, multisplits, unidades condensadoras, evaporadores, cámaras… ZANOTTI, INTARCON, DANFOSS, KIDE, TAVER, etc.). Unos segundos después de añadir un equipo a un documento aparece un aviso azul que:
+  - **averigua las conexiones** (líquido y aspiración): primero las que hayas guardado para esa referencia, luego las que vengan escritas en la descripción (`1/4" - 3/8"`, `líquido 3/8 aspiración 5/8`, `Ø 6,35/12,7 mm`…) y, si no hay, unas orientativas según la potencia (BTU, kW, frigorías o CV). Te dice de dónde ha salido cada dato y siempre puedes cambiar los diámetros;
+  - **propone el material**: tubo de cobre de líquido y de aspiración, aislamiento, codos 90º, uniones/manguitos y, opcionales, soldadura de plata y cinta/abrazaderas; con tu distancia, número de codos y de uniones, que puedes cambiar;
+  - **pone el precio** de Mi base de datos si ya tienes ese tubo, codo, etc. (por diámetro); si no, lo dejas tú;
+  - se añade al presupuesto solo lo que marques, y puede **recordar las conexiones** de esa referencia para la próxima vez (en este dispositivo).
+- Avisos propios: multisplit (una línea por unidad interior) y baja temperatura (la aspiración suele subir una medida).
+- Prueba automática nueva: `npm run test:tuberias`.
+
+---
+
 ## [1.103.0] — 2026-11-06
 
 ### Añadido

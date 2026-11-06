@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
@@ -22,6 +22,8 @@ import ImportarPresupuestoDialog from '../components/ImportarPresupuestoDialog';
 import ArticuloNuevoDialog from '../components/ArticuloNuevoDialog';
 import { cargarPropios, diferenciasConBase } from '../lib/miBaseDatos';
 import ActualizarBaseDialog from '../components/ActualizarBaseDialog';
+import TuberiasEquiposPanel from '../components/TuberiasEquiposPanel';
+import { analizarEquipo } from '../lib/tuberiaEquipos';
 import { diasPlazo, guardarDiasPlazo, debeVencer, conAvisoVencido, diasDeRetraso, cambiosAlVencer, cambiosAlRecuperar, cambiosAlAmpliar } from '../lib/vencimientos';
 import { parecido } from '../lib/importarPresupuesto';
 import AdvancedPriceSearch from '../components/AdvancedPriceSearch';
@@ -321,6 +323,30 @@ export default function Documents() {
       return { ...prev, ...recalculate([...prev.items, ...nuevas], prev.iva_rate) };
     });
   }, []);
+
+  // ── Tubería de los equipos frigoríficos / de clima que se van añadiendo ───
+  const [tuberiaResueltas, setTuberiaResueltas] = useState(() => new Set());
+  const itemsIniciales = useRef(new Set()); // líneas que ya estaban al abrir el documento: no se preguntan
+  const [itemsEstables, setItemsEstables] = useState([]);
+  useEffect(() => {
+    if (!dialogOpen) return;
+    itemsIniciales.current = new Set(form.items.map((it) => `${it._id}|${it.description}`));
+    setTuberiaResueltas(new Set());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogOpen]);
+  useEffect(() => {
+    const t = setTimeout(() => setItemsEstables(form.items), 2500); // espera a que termines de escribir
+    return () => clearTimeout(t);
+  }, [form.items]);
+  const equiposTuberia = useMemo(() => {
+    if (!dialogOpen) return [];
+    return itemsEstables
+      .filter((it) => String(it.description || '').trim().length >= 4 && !itemsIniciales.current.has(`${it._id}|${it.description}`) && !tuberiaResueltas.has(it._id))
+      .map((it) => ({ key: it._id, item: it, analisis: analizarEquipo(it) }))
+      .filter((e) => e.analisis);
+  }, [itemsEstables, tuberiaResueltas, dialogOpen]);
+  useEffect(() => { if (equiposTuberia.length) asegurarPropios(); }, [equiposTuberia.length, asegurarPropios]);
+  const resolverTuberia = useCallback((key) => setTuberiaResueltas((p) => new Set(p).add(key)), []);
 
   // Al salir de la descripción de una línea escrita a mano: ¿existe ya en Mi base de datos?
   const comprobarLinea = useCallback(async (item) => {
@@ -1371,6 +1397,9 @@ export default function Documents() {
                 </Button>
               </div>
             </div>
+
+            <TuberiasEquiposPanel equipos={equiposTuberia} propios={propiosCache || []}
+              onAnadir={(lineas, _item, key) => { alImportar(lineas); resolverTuberia(key); }} onDescartar={resolverTuberia} />
 
             <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg space-y-1 text-sm">
               <div className="flex justify-between text-gray-600"><span>Subtotal:</span><span>{form.subtotal?.toFixed(2)} €</span></div>
