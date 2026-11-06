@@ -1,5 +1,6 @@
 // Detección de equipos frigoríficos / de clima en una línea de presupuesto y cálculo de la tubería que necesitan.
 // Sin dependencias de la app para poder probarse con node.
+import { buscarFicha, identificarMaquina } from './fichasMaquinas.js';
 
 export const DIAMETROS = [
   { pulg: '1/4"', mm: 6.35 }, { pulg: '3/8"', mm: 9.52 }, { pulg: '1/2"', mm: 12.7 }, { pulg: '5/8"', mm: 15.88 },
@@ -126,20 +127,23 @@ function conexionesRecordadas(referencia) {
 
 /**
  * Analiza una línea: { tipo, potencia, conexiones, origen, aviso }.
- * origen: 'recordada' (la que guardaste para esa referencia) | 'descripcion' (escrita en el texto) | 'potencia' (orientativa) | null.
+ * origen: 'ficha' (Fichas técnicas guardadas) | 'recordada' (la que guardaste para esa referencia) | 'descripcion' (escrita en el texto) | 'potencia' (orientativa) | null.
  */
-export function analizarEquipo(item) {
+export function analizarEquipo(item, fichas = []) {
   const texto = `${item?.description || ''} ${item?.notes || ''}`;
   const tipo = tipoDeEquipo(item?.description);
   if (!tipo) return null;
   const potencia = potenciaDe(texto);
-  let conexiones = conexionesRecordadas(item?.reference), origen = conexiones ? 'recordada' : null;
+  const ficha = buscarFicha(fichas, item);
+  const lf = diametroDePulgadas(ficha?.liquid_pipe), af = diametroDePulgadas(ficha?.suction_pipe);
+  let conexiones = lf && af ? { liquido: lf, aspiracion: af } : null, origen = conexiones ? 'ficha' : null;
+  if (!conexiones) { conexiones = conexionesRecordadas(item?.reference); if (conexiones) origen = 'recordada'; }
   if (!conexiones) { conexiones = conexionesDeTexto(texto); if (conexiones) origen = 'descripcion'; }
   if (!conexiones) { conexiones = conexionesPorPotencia(tipo, potencia); if (conexiones) origen = 'potencia'; }
   const avisos = [];
   if (/multi\s?split/.test(sinTildes(texto))) avisos.push('Multisplit: hace falta una línea de tubería por cada unidad interior.');
   if (tipo === 'industrial' && /(congel|baja temp|\blt\b|-\s?\d{2}\s?°?c)/.test(sinTildes(texto))) avisos.push('Baja temperatura: la aspiración suele subir una medida.');
-  return { tipo, potencia, conexiones, origen, avisos };
+  return { tipo, potencia, conexiones, origen, avisos, ficha, maquina: identificarMaquina(item) };
 }
 
 // ── Material ───────────────────────────────────────────────────────────────

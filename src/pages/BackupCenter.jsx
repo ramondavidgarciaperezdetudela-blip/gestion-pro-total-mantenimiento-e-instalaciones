@@ -38,7 +38,7 @@ const ALL_ENTITIES = [
   'AIConsultation', 'SATChatMessage', 'EquipmentDiary',
   // Añadidas para cubrir TODOS los apartados del programa:
   'ChangeOpinionRequest', 'ClientMachine', 'DocumentTemplate',
-  'EquipmentFailure', 'InsuranceReport', 'SATWorkTemplate', 'SupplierCatalog', 'SystemSettings',
+  'EquipmentFailure', 'InsuranceReport', 'SATWorkTemplate', 'SupplierCatalog', 'FichaTecnicaMaquina', 'SystemSettings',
 ];
 
 // Secciones de una copia: las del programa y, además, cualquiera que traiga la

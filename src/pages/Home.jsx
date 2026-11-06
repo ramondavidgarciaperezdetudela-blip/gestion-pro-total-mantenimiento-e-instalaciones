@@ -87,6 +87,7 @@ const quickLinks = [
 { name: 'Modelos y legalización', page: 'LegalDocs', icon: FileText, color: 'bg-indigo-600' },
 { name: 'Normativas', page: 'Regulations', icon: Shield, color: 'bg-indigo-500' },
 { name: 'Manuales', page: 'Manuals', icon: BookOpen, color: 'bg-teal-600' },
+{ name: 'Fichas técnicas máquinas', page: 'FichasMaquinas', icon: FileText, color: 'bg-teal-600' },
 { name: 'Catálogos', page: 'Catalogs', icon: BookOpen, color: 'bg-teal-500' },
 { name: 'Inventario', page: 'Inventory', icon: Package, color: 'bg-teal-500' },
 { name: 'Repuestos', page: 'SparePartsManager', icon: Package, color: 'bg-teal-700' },
@@ -145,7 +146,7 @@ const GRUPOS = [
   { titulo: 'SAT y Trabajo', color: '#F97316', pages: ['SAT', 'SATChat', 'TechnicianFieldWork', 'TecniciansRoutes', 'Maintenance', 'MaintenancePlanning', 'IncidentManagement', 'EquipmentFailureHistory', 'EquipmentDiaryPage', 'PlanGamas', 'InstrumentosTaller'] },
   { titulo: 'Clientes y Agenda', color: '#10B981', pages: ['Contacts', 'ContactForm', 'ClientPortal', 'Projects', 'ProjectTimeline', 'Agenda', 'Availability', 'SATCalendar', 'TechnicianDay'] },
   { titulo: 'IA y Asistencia', color: '#3B82F6', pages: ['AIAssistant', 'AISearch', 'AIBudget', 'AIReports', 'AIPlanning', 'AISupport'] },
-  { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'Regulations', 'GasSuppliers'] },
+  { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'FichasMaquinas', 'Regulations', 'GasSuppliers'] },
   { titulo: 'Informes y Sistema', color: '#64748b', pages: ['Reports', 'Automations', 'SmartReminders', 'Notes', 'AuditLog', 'BusinessCards', 'ExportData', 'BackupCenter', 'UpdateCenter', 'Novedades', 'CompanyConfig'] },
 ].map(g => ({ ...g, links: g.pages.map(p => _linkByPage[p]).filter(Boolean) }));
 
