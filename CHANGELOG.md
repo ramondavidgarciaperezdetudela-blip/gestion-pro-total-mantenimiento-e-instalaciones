@@ -15,6 +15,21 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.105.0] — 2026-11-07
+
+### Añadido
+- **Fichas técnicas de máquinas** (nuevo apartado en el menú y en Inicio → Herramientas y Manuales). Cada ficha guarda fabricante, modelo, referencia, enlace a la ficha del fabricante, copia en PDF (si la subes o se puede descargar), las conexiones de tubería (líquido y aspiración) y notas. Se puede buscar, editar y borrar, y entra en las copias de seguridad.
+- **Al añadir una máquina a un presupuesto**, el aviso de tubería reconoce **fabricante y modelo** a partir de la descripción o la referencia y:
+  - si la máquina **ya está en Fichas técnicas**, saca a un lado «✔ Guardada» con el botón **Abrir la ficha** (la copia guardada si la hay, si no el enlace) y usa sus conexiones de tubería: ya no hace falta ir a internet;
+  - si **no está**, ofrece **Buscar la ficha con IA** (solo si la ayuda con IA está encendida; usa búsqueda en internet y lo que devuelve es una sugerencia que hay que revisar), enlaces de **búsqueda en Google** con fabricante y modelo, y la página de descargas del fabricante cuando se conoce; puedes **pegar el enlace** o **subir el PDF** y pulsar **Guardar en Fichas técnicas**, que guarda también las conexiones elegidas;
+  - con el programa del ordenador o la app del móvil puede además **guardar una copia del PDF** del enlace (el navegador no deja).
+- Prueba automática nueva: `npm run test:fichasmaquinas`.
+
+### Para Base44
+- Entidad nueva `FichaTecnicaMaquina`: sincronizar main en Base44 y publicar.
+
+---
+
 ## [1.104.0] — 2026-11-06
 
 ### Añadido
