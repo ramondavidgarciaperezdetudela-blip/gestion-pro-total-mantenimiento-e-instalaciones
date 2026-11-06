@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Plus, Save, Sparkles, FileDown, Link2, Trash2, Mail, Spline, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Box, ZoomIn, Wand2, Move, FileUp } from 'lucide-react';
+import { Plus, Save, Sparkles, FileDown, Link2, Trash2, Mail, Spline, AlertTriangle, Grid3x3, Ruler, Eye, EyeOff, ShieldCheck, Maximize2, Minimize2, Eraser, Table2, Box, ZoomIn, Wand2, Move, FileUp } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { getNextAvailableNumber } from '@/components/autoNumber';
@@ -13,6 +13,9 @@ import PlanoPaleta from '@/components/plano_frigorifico/PlanoPaleta';
 import PlanoEquipoDetalles from '@/components/plano_frigorifico/PlanoEquipoDetalles';
 import { construirPDF, exportarPDF, imprimirPlano, exportarCAD } from '@/components/plano_frigorifico/PlanoExporter';
 import DialogoExportarPlano from '@/components/plano_frigorifico/DialogoExportarPlano';
+import PlanoListaElementos from '@/components/plano_frigorifico/PlanoListaElementos';
+import DialogoMaterialesPlano from '@/components/plano_frigorifico/DialogoMaterialesPlano';
+import { reescalarPlano, textoEscala } from '@/lib/planoLista';
 import InformeAseguradoraDialog from '@/components/plano_frigorifico/InformeAseguradoraDialog';
 import DialogoNuevaConexion from '@/components/plano_frigorifico/DialogoNuevaConexion';
 import { uploadFile } from '@/lib/uploadImage';
@@ -708,7 +711,20 @@ export default function PlanoFrigorifico() {
   };
 
   const [exportarDialog, setExportarDialog] = useState(false);
+  const [materialesDialog, setMaterialesDialog] = useState(false);
   // Guarda o imprime el plano POR APARTADOS (cada uno en su hoja, vertical u horizontal).
+  // Cambiar la escala (px por metro) NO cambia lo que mide el dibujo: las coordenadas se reescalan para que
+  // una pared de 4 m siga midiendo 4 m, y la vista se recentra para que quepa.
+  const cambiarEscala = (nueva) => {
+    if (!(nueva > 0) || nueva === plan.scale) return;
+    historial.current.push({ walls: plan.walls, elements: plan.elements, connections: plan.connections });
+    futuro.current = []; setHistTick((t) => t + 1);
+    const r = reescalarPlano({ walls: plan.walls, elements: plan.elements, connections: plan.connections }, plan.scale || 50, nueva);
+    setPlan((p) => ({ ...p, scale: nueva, ...r }));
+    setZoom(1); setVistaKey((k) => k + 1);
+    toast.success(`Escala ${nueva} px/m`, { description: 'El dibujo se ha ajustado: las medidas reales no han cambiado.' });
+  };
+
   const onExportar = ({ formato, opciones }) => {
     setExportarDialog(false);
     try {
@@ -887,6 +903,17 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
     } finally { setGenerating(false); }
   };
 
+
+  // Escala del plano, siempre visible bajo el dibujo.
+  const escalaInfo = useMemo(() => textoEscala({ walls: plan.walls, elements: plan.elements, connections: plan.connections, scale: plan.scale || 50, zoom, gridMeters }), [plan.walls, plan.elements, plan.connections, plan.scale, zoom, gridMeters]);
+  const FranjaEscala = (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 rounded-md border border-border bg-card px-3 py-1 text-[11px] text-muted-foreground" data-prueba="escala-plano">
+      <span className="font-semibold text-foreground">Escala</span>
+      <span>{escalaInfo.dibujo}</span>
+      <span>{escalaInfo.papel}</span>
+    </div>
+  );
+
   // Controles de cuadrícula, movimiento y capas: se reutilizan tal cual en
   // modo normal y en pantalla completa.
   const Controles = (
@@ -896,6 +923,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
           <Ruler className="w-3.5 h-3.5" /> {cadcraftAbierto ? 'CADCraft abierto…' : 'Abrir en CADCraft'}
         </button>
       )}
+      <button type="button" onClick={() => setMaterialesDialog(true)} data-prueba="abrir-materiales" className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"><Table2 className="w-3.5 h-3.5" /> Hoja de materiales</button>
       <button type="button" onClick={() => setDialogoCAD(true)} data-testid="importar-cad" className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-muted"><FileUp className="w-3.5 h-3.5" /> Importar AutoCAD (DWG o DXF)</button>
       <div className="flex items-center gap-1.5 text-xs">
         <Grid3x3 className="w-3.5 h-3.5 text-muted-foreground" />
@@ -970,6 +998,8 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
   // Panel lateral: detalles del elemento, descripción, presupuesto y leyenda.
   const PanelLateral = (
     <div className="rounded-lg border border-border bg-card p-3 overflow-y-auto min-h-0 lg:h-full">
+      <PlanoListaElementos walls={plan.walls} elements={plan.elements} connections={plan.connections} scale={plan.scale || 50}
+        selectedId={selectedId} onSelect={(id) => { setMode('select'); setSelectedId(id); }} />
       <PlanoEquipoDetalles
         element={selectedElement} connection={selectedConnection} wall={selectedWall}
         elements={plan.elements} walls={plan.walls} scale={plan.scale}
@@ -1166,12 +1196,12 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
             placeholder="Vincula un cliente…" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] text-muted-foreground">Nombre del plano · escala (px/m)</label>
+          <label className="text-[10px] text-muted-foreground">Nombre del plano · escala del dibujo (px por metro)</label>
           <div className="flex gap-1.5">
             <input value={plan.name} onChange={(e) => setPlan((p) => ({ ...p, name: e.target.value }))}
               placeholder="Ej. Cámara frigorífica nave 3"
               className="flex-1 rounded-lg border border-border bg-input px-2 py-2 text-xs" />
-            <select value={plan.scale} onChange={(e) => setPlan((p) => ({ ...p, scale: parseInt(e.target.value) }))}
+            <select value={plan.scale} onChange={(e) => cambiarEscala(parseInt(e.target.value))}
               className="rounded-lg border border-border bg-input px-2 py-2 text-xs">
               {[30, 50, 80, 100].map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -1246,6 +1276,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                     <Vista3DPlanoFrigorifico walls={plan.walls} elements={plan.elements} connections={plan.connections} scale={plan.scale} />
                   </div>
                 )}
+                {FranjaEscala}
                 <div className="hidden lg:flex items-center gap-3 rounded-md border border-border bg-card px-3 py-1 text-[11px] text-muted-foreground" data-testid="barra-estado">
                   <span className="tabular-nums w-40">{cursorM ? `X ${cursorM.x.toFixed(3)}  Y ${cursorM.y.toFixed(3)} m` : 'X —  Y —'}</span>
                   <button onClick={() => setIman((v) => !v)} className={iman ? 'font-bold text-primary' : ''}>IMÁN {iman ? 'ON' : 'OFF'}</button>
@@ -1280,6 +1311,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                 capasVisibles={capasVisibles} onChange={handleChange} onConexionCreada={onConexionCreada} fullscreen={false} />
               {PanelLateral}
             </div>
+            {FranjaEscala}
           </div>
         )}
       </PantallaCompleta>
@@ -1412,6 +1444,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       {/* Diálogo para dibujar o editar una cámara frigorífica. Pide medidas,
           tipo (positiva/negativa), suelo sanitario y espesor del panel, y la
           dibuja como un recinto panelado distinto a una pared. */}
+      <DialogoMaterialesPlano open={materialesDialog} onClose={() => setMaterialesDialog(false)} plan={plan} empresa={empresa} />
       <DialogoExportarPlano open={exportarDialog} onClose={() => setExportarDialog(false)} onConfirm={onExportar} />
       <DialogoCalculoFrigorifico open={dialogoCalculo} walls={plan.walls} onClose={() => setDialogoCalculo(false)} onAnadir={anadirMaquinasCalculadas} />
       <DialogoCamara
