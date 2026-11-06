@@ -20,7 +20,8 @@ import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
 import ImportarPresupuestoDialog from '../components/ImportarPresupuestoDialog';
 import ArticuloNuevoDialog from '../components/ArticuloNuevoDialog';
-import { cargarPropios } from '../lib/miBaseDatos';
+import { cargarPropios, diferenciasConBase } from '../lib/miBaseDatos';
+import ActualizarBaseDialog from '../components/ActualizarBaseDialog';
 import { diasPlazo, guardarDiasPlazo, debeVencer, conAvisoVencido, diasDeRetraso, cambiosAlVencer, cambiosAlRecuperar, cambiosAlAmpliar } from '../lib/vencimientos';
 import { parecido } from '../lib/importarPresupuesto';
 import AdvancedPriceSearch from '../components/AdvancedPriceSearch';
@@ -304,6 +305,7 @@ export default function Documents() {
   const [importarAbierto, setImportarAbierto] = useState(false);
   const [articuloNuevo, setArticuloNuevo] = useState(null); // { indice, inicial }
   const [propiosCache, setPropiosCache] = useState(null);
+  const [difBase, setDifBase] = useState(null); // artículos de Mi base de datos modificados en el documento
   const [avisosLinea, setAvisosLinea] = useState({}); // _id → { tipo, ... }
 
   const asegurarPropios = useCallback(async () => {
@@ -468,6 +470,11 @@ export default function Documents() {
     setEditing(null);
     setSaving(false);
     toast({ title: wasEditing ? 'Documento actualizado' : 'Documento guardado', description: `${docLabel} ${form.doc_number || ''}`, duration: 2500 });
+    // Si se ha tocado un artículo cuya referencia ya está en Mi base de datos, se ofrece actualizarlo allí
+    cargarPropios().then((lista) => {
+      const dif = diferenciasConBase(form.items, lista);
+      if (dif.length) setDifBase(dif);
+    }).catch(() => {});
 
     // ── 3) Recarga de la lista + apertura de la vista previa (en segundo plano)
     // Si la red va lenta o salta el limitador, lo que ya está guardado no se
@@ -1409,6 +1416,7 @@ export default function Documents() {
         </DialogContent>
       </Dialog>
 
+      <ActualizarBaseDialog diferencias={difBase} onClose={() => setDifBase(null)} onDone={() => setPropiosCache(null)} />
       <ImportarPresupuestoDialog open={importarAbierto} onClose={() => setImportarAbierto(false)} onAdd={alImportar} />
       <ArticuloNuevoDialog
         open={!!articuloNuevo}

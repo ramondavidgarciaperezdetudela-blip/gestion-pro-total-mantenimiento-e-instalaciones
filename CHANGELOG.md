@@ -6,6 +6,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.103.0] — 2026-11-06
+
+### Añadido
+- **Mi base de datos se actualiza con lo que modifiques.** Al guardar un documento, si una línea tiene una referencia que ya está en Mi base de datos y has cambiado su descripción, precio, unidad o plazo, se abre un aviso con «antes → ahora» de cada dato; marcas lo que quieres y se actualiza el artículo (nada cambia sin tu confirmación). Se ignoran los campos vacíos y la descripción «.».
+- Prueba automática nueva: `npm run test:actualizarbase`.
+
+---
+
 ## [1.102.0] — 2026-11-06
 
 ### Añadido
