@@ -143,6 +143,7 @@ const navItems = [
 { name: 'Inventario', page: 'Inventory', icon: Package },
 { name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList },
 { name: 'Manuales', page: 'Manuals', icon: BookOpen },
+{ name: 'Fichas técnicas máquinas', page: 'FichasMaquinas', icon: FileText },
 { name: 'Plan Mantenim.', page: 'MaintenancePlanning', icon: ListChecks },
 { name: 'Gamas y plan', page: 'PlanGamas', icon: CalendarClock },
 { name: 'Instrumentos', page: 'InstrumentosTaller', icon: Gauge },
@@ -236,7 +237,7 @@ const PAGE_SECTION = {
   Reports: 'Informes y datos', AuditLog: 'Informes y datos', ExportData: 'Informes y datos',
   BackupCenter: 'Informes y datos', Automations: 'Informes y datos', Notes: 'Informes y datos',
   // Sistema
-  Home: 'Sistema', CompanyConfig: 'Sistema', Manuals: 'Sistema', Regulations: 'Sistema',
+  Home: 'Sistema', CompanyConfig: 'Sistema', Manuals: 'Sistema', FichasMaquinas: 'Sistema', Regulations: 'Sistema',
   UpdateCenter: 'Sistema', Novedades: 'Sistema', LicenseActivation: 'Sistema', LicenseRenewal: 'Sistema',
 };
 const SECTION_ORDER = [

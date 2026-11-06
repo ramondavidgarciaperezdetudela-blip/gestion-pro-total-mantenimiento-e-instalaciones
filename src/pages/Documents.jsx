@@ -24,6 +24,7 @@ import { cargarPropios, diferenciasConBase } from '../lib/miBaseDatos';
 import ActualizarBaseDialog from '../components/ActualizarBaseDialog';
 import TuberiasEquiposPanel from '../components/TuberiasEquiposPanel';
 import { analizarEquipo } from '../lib/tuberiaEquipos';
+import { cargarFichas } from '../lib/fichasMaquinasDB';
 import { diasPlazo, guardarDiasPlazo, debeVencer, conAvisoVencido, diasDeRetraso, cambiosAlVencer, cambiosAlRecuperar, cambiosAlAmpliar } from '../lib/vencimientos';
 import { parecido } from '../lib/importarPresupuesto';
 import AdvancedPriceSearch from '../components/AdvancedPriceSearch';
@@ -328,6 +329,7 @@ export default function Documents() {
   const [tuberiaResueltas, setTuberiaResueltas] = useState(() => new Set());
   const itemsIniciales = useRef(new Set()); // líneas que ya estaban al abrir el documento: no se preguntan
   const [itemsEstables, setItemsEstables] = useState([]);
+  const [fichasMaq, setFichasMaq] = useState(null); // Fichas técnicas de máquinas guardadas
   useEffect(() => {
     if (!dialogOpen) return;
     itemsIniciales.current = new Set(form.items.map((it) => `${it._id}|${it.description}`));
@@ -339,13 +341,15 @@ export default function Documents() {
     return () => clearTimeout(t);
   }, [form.items]);
   const equiposTuberia = useMemo(() => {
-    if (!dialogOpen) return [];
+    if (!dialogOpen || fichasMaq === null) return []; // se espera a saber qué fichas hay guardadas
     return itemsEstables
       .filter((it) => String(it.description || '').trim().length >= 4 && !itemsIniciales.current.has(`${it._id}|${it.description}`) && !tuberiaResueltas.has(it._id))
-      .map((it) => ({ key: it._id, item: it, analisis: analizarEquipo(it) }))
+      .map((it) => ({ key: it._id, item: it, analisis: analizarEquipo(it, fichasMaq || []) }))
       .filter((e) => e.analisis);
-  }, [itemsEstables, tuberiaResueltas, dialogOpen]);
+  }, [itemsEstables, tuberiaResueltas, dialogOpen, fichasMaq]);
   useEffect(() => { if (equiposTuberia.length) asegurarPropios(); }, [equiposTuberia.length, asegurarPropios]);
+  const hayEquipos = useMemo(() => dialogOpen && itemsEstables.some((it) => analizarEquipo(it)), [itemsEstables, dialogOpen]);
+  useEffect(() => { if (hayEquipos && fichasMaq === null) cargarFichas().then(setFichasMaq); }, [hayEquipos, fichasMaq]);
   const resolverTuberia = useCallback((key) => setTuberiaResueltas((p) => new Set(p).add(key)), []);
 
   // Al salir de la descripción de una línea escrita a mano: ¿existe ya en Mi base de datos?
@@ -1399,7 +1403,8 @@ export default function Documents() {
             </div>
 
             <TuberiasEquiposPanel equipos={equiposTuberia} propios={propiosCache || []}
-              onAnadir={(lineas, _item, key) => { alImportar(lineas); resolverTuberia(key); }} onDescartar={resolverTuberia} />
+              onAnadir={(lineas, _item, key) => { alImportar(lineas); resolverTuberia(key); }} onDescartar={resolverTuberia}
+              onFichaGuardada={(f) => setFichasMaq((p) => [...(p || []).filter((x) => x.id !== f.id), f])} />
 
             <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg space-y-1 text-sm">
               <div className="flex justify-between text-gray-600"><span>Subtotal:</span><span>{form.subtotal?.toFixed(2)} €</span></div>

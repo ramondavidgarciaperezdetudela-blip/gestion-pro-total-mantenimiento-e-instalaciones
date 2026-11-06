@@ -1,0 +1,20 @@
+{
+  "name": "FichaTecnicaMaquina",
+  "type": "object",
+  "properties": {
+    "manufacturer": { "type": "string", "description": "Fabricante (Zanotti, Intarcon, Danfoss, Daikin…)" },
+    "model": { "type": "string", "description": "Modelo de la máquina" },
+    "reference": { "type": "string", "description": "Referencia o código del artículo" },
+    "description": { "type": "string", "description": "Descripción del equipo" },
+    "equipment_type": { "type": "string", "enum": ["clima", "industrial"], "description": "Clima o refrigeración industrial" },
+    "key": { "type": "string", "description": "Clave de búsqueda (fabricante + modelo normalizados)" },
+    "url": { "type": "string", "description": "Enlace a la ficha técnica en internet" },
+    "file_url": { "type": "string", "description": "Copia guardada de la ficha (PDF)" },
+    "file_name": { "type": "string", "description": "Nombre del fichero guardado" },
+    "liquid_pipe": { "type": "string", "description": "Conexión de líquido, en pulgadas (3/8\")" },
+    "suction_pipe": { "type": "string", "description": "Conexión de aspiración / gas, en pulgadas (5/8\")" },
+    "source": { "type": "string", "enum": ["manual", "ia", "presupuesto"], "description": "De dónde salió la ficha" },
+    "notes": { "type": "string", "description": "Notas" }
+  },
+  "required": ["model"]
+}

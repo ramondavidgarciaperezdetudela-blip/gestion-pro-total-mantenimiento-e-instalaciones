@@ -79,6 +79,7 @@ const LegalDocs = lazy(() => import('./pages/LegalDocs'));
 const Maintenance = lazy(() => import('./pages/Maintenance'));
 const MaintenancePlanning = lazy(() => import('./pages/MaintenancePlanning'));
 const Manuals = lazy(() => import('./pages/Manuals'));
+const FichasMaquinas = lazy(() => import('./pages/FichasMaquinas'));
 const Notes = lazy(() => import('./pages/Notes'));
 const ProjectTimeline = lazy(() => import('./pages/ProjectTimeline'));
 const Projects = lazy(() => import('./pages/Projects'));
@@ -153,6 +154,7 @@ export const PAGES = {
     "Maintenance": Maintenance,
     "MaintenancePlanning": MaintenancePlanning,
     "Manuals": Manuals,
+    "FichasMaquinas": FichasMaquinas,
     "Notes": Notes,
     "ProjectTimeline": ProjectTimeline,
     "Projects": Projects,
