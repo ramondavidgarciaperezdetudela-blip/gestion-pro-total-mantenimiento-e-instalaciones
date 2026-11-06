@@ -1,4 +1,4 @@
-import { puntosImantables, imanCercano, parsearMedida, extremoConLargo } from '@/lib/planoImanes';
+import { puntosImantables, imanCercano, parsearMedida, extremoConLargo, distanciasAParedes, ladoMasCercano, colocarADistancia, LADOS, NOMBRE_LADO, textoMetros } from '@/lib/planoImanes';
 import { materialDe, espesorPared } from '@/lib/planoParedes';
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { crearConexion } from '@/lib/planoCalculo';
@@ -110,14 +110,20 @@ export default function PlanoCanvas({
   const ultimoToque = useRef({});
   // Medida escrita con el teclado mientras se dibuja una pared (como en CAD).
   const [tecleado, setTecleado] = useState('');
+  const [tecleadoDist, setTecleadoDist] = useState(''); // distancia escrita para colocar un equipo
+  const [ladoRef, setLadoRef] = useState(null);       // pared de referencia elegida con Tab (null = la más cercana)
   // Dedos sobre la pantalla (móvil/tableta): con dos dedos se desplaza y se
   // acerca/aleja el plano en cualquier herramienta, sin dibujar nada.
   const dedos = useRef(new Map());
   const gesto = useRef(null);
 
-  const major = Math.max(8, gridMeters * scale);          // cuadrícula mayor (m)
+  // Cuadrícula de CUALQUIER medida (1 mm, 2,5 cm, 0,5 m, 1 m…): el ajuste a cuadrícula usa la medida exacta; si las
+  // celdas quedan demasiado juntas para verse, solo se DIBUJAN cada varias (el ajuste sigue siendo el exacto).
+  const celda = Math.max(0.0005, gridMeters) * scale;
+  const salto = Math.max(1, Math.ceil(8 / celda));
+  const major = celda * salto;                              // cuadrícula mayor dibujada
   const minor = major / 5;                                  // subdivisión fina
-  const snapStep = snapMode === 'cuadricula' ? major : 0.001 * scale; // libre = 1 mm (sin límite de cuadrícula)
+  const snapStep = snapMode === 'cuadricula' ? celda : 0.001 * scale; // libre = 1 mm (sin límite de cuadrícula)
 
   // Un elemento y sus conexiones son visibles si su capa lo está. La
   // estructura siempre acompaña al frigorífico, así que no se oculta sola.
@@ -403,6 +409,12 @@ export default function PlanoCanvas({
     // colocación de elemento
     const def = activeElement;
     if (!def) return;
+    const el = nuevoElemento(def, p);
+    onChange({ elements: [...elements, el], selectedId: el.id });
+  };
+
+  // Equipo nuevo en el punto p (los huecos se pegan a la pared más cercana).
+  const nuevoElemento = (def, p) => {
     const el = {
       id: crypto.randomUUID(), type: def.id, cat: def.cat, label: def.label,
       glyph: def.glyph, color: CAT_COLOR[def.cat] || def.color || '#888',
@@ -421,7 +433,7 @@ export default function PlanoCanvas({
       el.datos = { ...el.datos, ancho_cm: Math.round(ancho * 100) };
       Object.assign(el, encajarEnPared(el, walls, scale, { orientar: true, maxPx: 44 }) || {});
     }
-    onChange({ elements: [...elements, el], selectedId: el.id });
+    return el;
   };
 
   const handleMove = (e) => {
@@ -501,6 +513,52 @@ export default function PlanoCanvas({
     }
     setTrazoPts(null);
   };
+
+  // Equipo al que se le miden las distancias a las paredes: el que se está colocando, el que se arrastra o el seleccionado.
+  const elGuia = useMemo(() => {
+    const sinGuia = (t) => !t || esHueco({ type: t }) || t === 'cota' || t === 'trazo' || t === 'texto';
+    if (mode === 'place' && activeElement && mouse && !drag) {
+      const t = activeElement.id || activeElement.type;
+      return sinGuia(t) ? null : { x: mouse.x, y: mouse.y, w_m: activeElement.w_m, h_m: activeElement.h_m, rot: 0, _nuevo: true };
+    }
+    if (mode !== 'select') return null;
+    const e = elements.find((q) => q.id === (drag?.id || selectedId));
+    return e && !sinGuia(e.type) ? e : null;
+  }, [mode, activeElement, mouse, drag, elements, selectedId]);
+  const distGuia = useMemo(() => (elGuia ? distanciasAParedes(elGuia, walls, scale) : null), [elGuia, walls, scale]);
+  const ladoActivo = distGuia ? (ladoRef && distGuia[ladoRef] ? ladoRef : ladoMasCercano(distGuia)) : null;
+
+  // Escribir la distancia a la pared de referencia (con milímetros: 0,375) y pulsar Intro coloca el equipo ahí.
+  useEffect(() => {
+    if (!elGuia) { if (tecleadoDist) setTecleadoDist(''); return undefined; }
+    const h = (e) => {
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '') || e.target?.isContentEditable || e.ctrlKey || e.metaKey) return;
+      if (/^[0-9.,]$/.test(e.key)) { setTecleadoDist((t) => (t + e.key).slice(0, 8)); e.preventDefault(); }
+      else if (e.key === 'Backspace' && tecleadoDist) { setTecleadoDist((t) => t.slice(0, -1)); e.preventDefault(); }
+      else if (e.key === 'Escape') { setTecleadoDist(''); setLadoRef(null); }
+      else if (e.key === 'Tab' && distGuia) {
+        const hay = LADOS.filter((l) => distGuia[l]);
+        if (!hay.length) return;
+        e.preventDefault();
+        setLadoRef(hay[(Math.max(0, hay.indexOf(ladoActivo)) + 1) % hay.length]);
+      } else if (e.key === 'Enter' && tecleadoDist) {
+        const metros = Number(tecleadoDist.replace(',', '.'));
+        if (!Number.isFinite(metros) || metros < 0 || !ladoActivo) return;
+        const pos = colocarADistancia(elGuia, walls, scale, ladoActivo, metros);
+        if (!pos) return;
+        e.preventDefault();
+        if (elGuia._nuevo) {
+          const nuevo = nuevoElemento(activeElement, pos);
+          onChange({ elements: [...elements, nuevo], selectedId: nuevo.id });
+        } else {
+          onChange({ elements: elements.map((q) => (q.id === elGuia.id ? { ...q, x: pos.x, y: pos.y } : q)) });
+        }
+        setTecleadoDist('');
+      }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  });
 
   useEffect(() => {
     if (mode !== 'wall' || !wallStart) { setTecleado(''); return undefined; }
@@ -644,7 +702,7 @@ export default function PlanoCanvas({
 
         {/* Etiquetas de metro en la cuadrícula mayor */}
         {capasVisibles.estructura !== false && [...Array(Math.floor(CANVAS_W / major) + 1)].map((_, i) => (
-          i % 1 === 0 && i > 0 ? <text key={'gx' + i} x={i * major + 2} y={14} fontSize="13" fontWeight="600" fill="hsl(var(--muted-foreground))" opacity="0.75">{i * gridMeters}m</text> : null
+          i % 1 === 0 && i > 0 ? <text key={'gx' + i} x={i * major + 2} y={14} fontSize="13" fontWeight="600" fill="hsl(var(--muted-foreground))" opacity="0.75">{+(i * gridMeters * salto).toFixed(3)}m</text> : null
         ))}
 
         {/* Cámaras frigoríficas: recinto panelado de doble línea, coloreado
@@ -898,6 +956,27 @@ export default function PlanoCanvas({
           </g>
         )}
 
+        {/* Distancias del equipo a las paredes: punto de referencia en la pared y medida en mm. */}
+        {distGuia && LADOS.map((l) => {
+          const g = distGuia[l];
+          if (!g) return null;
+          const activo = l === ladoActivo;
+          const fs = 13 / Math.max(zoom, 0.3);
+          const txt = textoMetros(g.m);
+          const mx = (g.desde.x + g.hasta.x) / 2, my = (g.desde.y + g.hasta.y) / 2;
+          const horiz = l === 'izq' || l === 'der';
+          const color = activo ? '#ea580c' : '#64748b';
+          const anchoTxt = txt.length * fs * 0.58 + 8;
+          return (
+            <g key={'guia' + l} data-prueba={`guia-${l}`} style={{ pointerEvents: 'none' }}>
+              <line x1={g.desde.x} y1={g.desde.y} x2={g.hasta.x} y2={g.hasta.y} stroke={color} strokeWidth={activo ? 1.8 : 1.1} strokeDasharray={activo ? '' : '5 3'} vectorEffect="non-scaling-stroke" />
+              <rect x={g.hasta.x - fs * 0.45} y={g.hasta.y - fs * 0.45} width={fs * 0.9} height={fs * 0.9} fill="none" stroke={color} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+              <rect x={mx - anchoTxt / 2} y={my - fs * 0.75 - (horiz ? fs * 0.9 : 0)} width={anchoTxt} height={fs * 1.5} rx="3" fill="hsl(var(--card))" stroke={color} strokeWidth="0.8" vectorEffect="non-scaling-stroke" opacity="0.95" />
+              <text x={mx} y={my + fs * 0.35 - (horiz ? fs * 0.9 : 0)} textAnchor="middle" fontSize={fs} fontWeight={activo ? 700 : 500} fill={color}>{txt}</text>
+            </g>
+          );
+        })}
+
         {/* Vista previa de la cota en curso */}
         {mode === 'cota' && cotaStart && mouse && (
           <g>
@@ -911,6 +990,15 @@ export default function PlanoCanvas({
         {/* Vista previa del trazo a mano alzada */}
         {mode === 'trazo' && trazoPts && trazoPts.length > 1 && (
           <polyline points={trazoPts.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+        )}
+
+        {/* Ayuda de la distancia a la pared de referencia */}
+        {distGuia && ladoActivo && (
+          <text x={12} y={CANVAS_H - 36} fontSize={14 / Math.max(zoom, 0.3)} fontWeight="700" fill="#ea580c" style={{ pointerEvents: 'none' }} data-prueba="ayuda-distancia">
+            {tecleadoDist
+              ? `Distancia a la ${NOMBRE_LADO[ladoActivo]}: ${tecleadoDist} m  ⏎ Intro para colocar`
+              : `Referencia: ${NOMBRE_LADO[ladoActivo]} a ${textoMetros(distGuia[ladoActivo].m)} · escribe la distancia (ej. 0,375) y pulsa Intro · Tab cambia de pared`}
+          </text>
         )}
 
         {/* Cursor de coordenadas */}
