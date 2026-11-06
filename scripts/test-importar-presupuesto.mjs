@@ -118,5 +118,34 @@ const c4 = candidatosDeLinea({ reference: '', description: 'Camara frigorifica m
 ok(c4.length === 1 && !c4[0].exacto, 'encuentra por descripción parecida');
 ok(parecido('tubo cobre 1/4', 'válvula solenoide') === 0, 'descripciones distintas no se parecen');
 
+console.log('10. Artículo sin codificar: «.» y la descripción debajo');
+const rp2 = lineasDeFilas([
+  ['Ref.', 'Descripción', 'Cant.', 'Precio', 'Dto %', 'Importe'],
+  ['KDE-1', 'Evaporador 300 W', 1, 100, 0, 100],
+  ['', '.', 2, 50, 10, 90],
+  ['', 'Válvula solenoide 1/4 con bobina', null, null, null, null],
+  ['', ' 24 V CA', null, null, null, null],
+  ['TUB-9', 'Tubo cobre', 1, 20, 0, 20],
+  ['', '·', 1, 15, 0, 15],
+  ['', 'Presostato mixto', null, null, null, null],
+]);
+ok(rp2.lineas.length === 4, 'cuatro líneas (las de debajo no son líneas aparte)', rp2.lineas.length);
+ok(rp2.lineas[1].description === 'Válvula solenoide 1/4 con bobina 24 V CA', 'toma las dos líneas de debajo', rp2.lineas[1].description);
+ok(rp2.lineas[1].quantity === 2 && rp2.lineas[1].discount === 10 && rp2.lineas[1].total === 90, 'conserva cantidad, descuento e importe de la línea del punto');
+ok(rp2.lineas[3].description === 'Presostato mixto', 'también con otro signo y al final del fichero');
+ok(rp2.lineas[2].description === 'Tubo cobre', 'no toca las líneas normales');
+ok(rp2.avisos.some((a) => a.startsWith('2 líneas')), 'avisa de cuántas ha recuperado', JSON.stringify(rp2.avisos));
+const rp3 = lineasDeFilas([['Ref.', 'Descripción', 'Cant.', 'Precio'], ['', '.', 1, 10], ['X-2', 'Codo', 1, 5]]);
+ok(rp3.lineas[0].description === '.' && rp3.lineas[1].description === 'Codo', 'si debajo hay otra línea con datos, no se la come');
+
+console.log('11. Referencia del presupuesto en pantalla, lista, búsqueda e impresión');
+import fs from 'node:fs';
+const docs = fs.readFileSync('src/pages/Documents.jsx', 'utf8');
+ok(/doc_reference: ''/.test(docs), 'campo en el formulario nuevo');
+ok(/referencia-en-lista/.test(docs), 'sale en la lista');
+ok(/\$\{d\.doc_reference \|\| ''\}/.test(docs), 'se puede buscar por ella');
+ok(/Ref\.: <strong>\$\{doc\.doc_reference\}/.test(docs), 'sale en el PDF impreso');
+ok(/doc_reference/.test(fs.readFileSync('src/pages/PresupuestoPublico.jsx', 'utf8')), 'sale en la página del cliente');
+
 console.log(`\n${total - fallos}/${total} comprobaciones correctas`);
 process.exit(fallos ? 1 : 0);

@@ -220,6 +220,7 @@ function PresupuestoPublico() {
             <div>
               <span className="text-xs uppercase font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{doc.doc_type}</span>
               <h2 className="text-xl font-bold mt-1">Nº {doc.doc_number || '-'}</h2>
+              {doc.doc_reference && <p className="text-sm font-semibold text-slate-700">Ref.: {doc.doc_reference}</p>}
               <p className="text-sm text-gray-500">Fecha: {doc.date}</p>
             </div>
             <div className="text-right">

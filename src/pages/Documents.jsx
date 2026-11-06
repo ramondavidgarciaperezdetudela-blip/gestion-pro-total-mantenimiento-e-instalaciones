@@ -69,7 +69,7 @@ let _itemId = 0;
 const newItem = () => ({ _id: ++_itemId, description: '', quantity: 1, unit_price: 0, discount: 0, total: 0 });
 
 const EMPTY_FORM = {
-  doc_type: 'presupuesto', doc_number: '', contact_id: '', contact_name: '', contact_nif: '', contact_address: '',
+  doc_type: 'presupuesto', doc_number: '', doc_reference: '', contact_id: '', contact_name: '', contact_nif: '', contact_address: '',
   date: format(new Date(), 'yyyy-MM-dd'), due_date: '', status: 'borrador', work_type: 'otro',
   items: [],  // Sin línea inicial — el usuario las añade manualmente o desde plantilla
   subtotal: 0, iva_rate: 21, iva_amount: 0, total: 0, observations: '', payment_terms: PAYMENT_TERMS, normative_references: ''
@@ -559,7 +559,7 @@ export default function Documents() {
     const enlace = getSignLink(doc, 'whatsapp');
     if (!enlace) { toast({ title: 'Falta la dirección pública', description: AVISO_SIN_DIRECCION, variant: 'destructive', duration: 8000 }); return; }
     const msg = encodeURIComponent(
-      `*${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}*\n`
+      `*${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}*${doc.doc_reference ? ' (' + doc.doc_reference + ')' : ''}\n`
       + `Cliente: ${doc.contact_name}\n`
       + `Fecha: ${doc.date}\n`
       + `Total: ${doc.total?.toFixed(2)} €\n\n`
@@ -571,7 +571,7 @@ export default function Documents() {
   const sendEmail = (doc) => {
     const c = contacts.find((x) => x.id === doc.contact_id);
     const email = c?.email || '';
-    const subject = encodeURIComponent(`${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}`);
+    const subject = encodeURIComponent(`${doc.doc_type?.toUpperCase()} Nº${doc.doc_number}${doc.doc_reference ? ' - ' + doc.doc_reference : ''}`);
     const body = encodeURIComponent(`Estimado/a ${doc.contact_name},\n\nAdjunto ${doc.doc_type} Nº${doc.doc_number} de fecha ${doc.date}.\nTotal: ${doc.total?.toFixed(2)} €\n\nQuedamos a su disposición.`);
     abrirEnlaceAvisando(`mailto:${email}?subject=${subject}&body=${body}`, (m) => toast({ title: 'No se ha podido abrir', description: m, variant: 'destructive', duration: 12000 }));
   };
@@ -735,6 +735,7 @@ export default function Documents() {
         <div style="font-size:9px;color:#555;line-height:1.6">${cs.nif?`NIF: ${cs.nif}<br/>`:''}${cs.address?`${cs.address}${cs.city?', '+cs.city:''}${cs.postal_code?' '+cs.postal_code:''}<br/>`:''}${cs.phone?`Tel: ${cs.phone}`:''} ${cs.email?'· '+cs.email:''}</div></div>
       <div style="text-align:right"><div class="doc-title">${doc.doc_type?.toUpperCase()||''}</div>
         <div style="font-size:9px;color:#666">Nº: <strong>${doc.doc_number||'-'}</strong></div>
+        ${doc.doc_reference?`<div style="font-size:9px;color:#666">Ref.: <strong>${doc.doc_reference}</strong></div>`:''}
         <div style="font-size:9px;color:#666">Fecha: <strong>${doc.date||'-'}</strong></div>
         ${doc.due_date?`<div style="font-size:9px;color:#666">Vencimiento: ${doc.due_date}</div>`:''}
       </div>
@@ -768,7 +769,7 @@ export default function Documents() {
     return {
       html,
       nombreFichero: `${doc.doc_type || 'documento'}-${doc.doc_number || ''}.html`,
-      titulo: `${doc.doc_type === 'factura' ? 'Factura' : doc.doc_type === 'recibo' ? 'Recibo' : 'Presupuesto'} ${doc.doc_number || ''} — ${doc.contact_name || ''}`,
+      titulo: `${doc.doc_type === 'factura' ? 'Factura' : doc.doc_type === 'recibo' ? 'Recibo' : 'Presupuesto'} ${doc.doc_number || ''}${doc.doc_reference ? ' (' + doc.doc_reference + ')' : ''} — ${doc.contact_name || ''}`,
       cs,
     };
   };
@@ -807,7 +808,7 @@ export default function Documents() {
 
   // Filtrado
   let filtered = docs.filter((d) => {
-    const matchSearch = `${d.doc_number} ${d.contact_name} ${d.work_type}`.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = `${d.doc_number} ${d.doc_reference || ''} ${d.contact_name} ${d.work_type}`.toLowerCase().includes(search.toLowerCase());
     const matchType = filterType === 'all' || d.doc_type === filterType;
     const matchStatus = filterStatus === 'all' || d.status === filterStatus;
     const matchWork = filterWorkType === 'all' || d.work_type === filterWorkType;
@@ -907,7 +908,7 @@ export default function Documents() {
                   <div key={doc.id} className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap bg-white/60">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-slate-800 truncate">
-                        Presupuesto Nº{doc.doc_number} — {doc.contact_name}
+                        Presupuesto Nº{doc.doc_number} — {doc.contact_name}{doc.doc_reference ? ` · Ref.: ${doc.doc_reference}` : ''}
                       </p>
                       <p className="text-xs text-gray-500">
                         Fecha: {doc.date} · Total: <strong>{doc.total?.toFixed(2)} €</strong>
@@ -1026,6 +1027,9 @@ export default function Documents() {
                 <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <Input placeholder="Referencia del presupuesto (ej.: Reforma cocina, Cámara nave 2, Obra Calle Sol…)" value={form.doc_reference || ''}
+              data-prueba="referencia-documento" maxLength={80}
+              onChange={(e) => {const v = e.target.value;setForm((p) => ({ ...p, doc_reference: v }));}} />
 
             <BuscadorCliente
                 contacts={contacts}
@@ -1361,6 +1365,7 @@ export default function Documents() {
                     <div>
                       <h2 className="text-xl font-bold uppercase tracking-wide">{previewDoc.doc_type}</h2>
                       <p className="text-sm text-gray-500">Nº: {previewDoc.doc_number}</p>
+                      {previewDoc.doc_reference && <p className="text-sm text-gray-500">Ref.: <strong>{previewDoc.doc_reference}</strong></p>}
                     </div>
                     <div className="text-right text-sm text-gray-600">
                       <p>Fecha: <strong>{previewDoc.date}</strong></p>
@@ -1643,6 +1648,7 @@ export default function Documents() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-lg font-extrabold capitalize truncate">{doc.doc_type} {doc.doc_number}</p>
+                      {doc.doc_reference && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200 max-w-[60%] truncate" data-prueba="referencia-en-lista" title={doc.doc_reference}>Ref.: {doc.doc_reference}</span>}
                       {isAceptado && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200 flex-shrink-0">✅ ACEPTADO</span>}
                       {isRechazado && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200 flex-shrink-0">❌ RECHAZADO</span>}
                     </div>
