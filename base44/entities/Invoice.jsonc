@@ -18,6 +18,14 @@
       "type": "string",
       "description": "Referencia del documento (para distinguir varios presupuestos del mismo cliente)"
     },
+    "vencido_el": {
+      "type": "string",
+      "description": "Fecha en que el documento pas\u00f3 a vencido por no tener respuesta"
+    },
+    "vencido_aviso_cerrado": {
+      "type": "boolean",
+      "description": "El aviso de documento vencido ya se ha gestionado o descartado"
+    },
     "contact_id": {
       "type": "string",
       "description": "ID del contacto/cliente"
