@@ -83,6 +83,12 @@ export function plazo(valor) {
 
 const FILA_TOTALES = /^(total|subtotal|base imponible|iva|i v a|suma|importe total|total presupuesto|total general|descuento general|transporte|portes)\b/;
 
+/** Descripción que no es una descripción: solo un punto (o signos) porque el artículo no está codificado. */
+export function esDescripcionVacia(texto) {
+  const t = String(texto ?? '').trim();
+  return t !== '' && /^[.·•,;:\-–—_*\s]+$/.test(t);
+}
+
 function filaVacia(f) { return !f || f.every((c) => c == null || String(c).trim() === ''); }
 
 /** Busca la fila de cabeceras (en las primeras 40 filas) y asigna columnas a campos. */
@@ -140,11 +146,35 @@ export function lineasDeFilas(filas) {
   const { mapa } = det;
   const celda = (f, campo) => (mapa[campo] === undefined ? null : f[mapa[campo]]);
   const lineas = [];
+  let recuperadas = 0;
   for (let r = det.fila + 1; r < filas.length; r++) {
     const f = filas[r];
     if (filaVacia(f)) continue;
     const ref = String(celda(f, 'ref') ?? '').trim();
-    const descripcion = String(celda(f, 'description') ?? '').trim();
+    let descripcion = String(celda(f, 'description') ?? '').trim();
+    // Artículo sin codificar: el programa del proveedor pone «.» y la descripción verdadera en la(s) línea(s) de debajo
+    let saltar = 0;
+    if (esDescripcionVacia(descripcion)) {
+      const textos = [];
+      let k = r + 1;
+      if (k < filas.length && filaVacia(filas[k])) k++;
+      for (; k < filas.length && textos.length < 6; k++) {
+        const g = filas[k];
+        if (filaVacia(g)) break;
+        const tieneNumeros = ['qty', 'unit_price', 'total', 'discount'].some((c) => mapa[c] !== undefined && numero(g[mapa[c]]) !== null);
+        const tieneRef = mapa.ref !== undefined && String(g[mapa.ref] ?? '').trim() !== '';
+        if (tieneNumeros || tieneRef) break;
+        const texto = String(g[mapa.description] ?? '').trim()
+          || g.map((x) => String(x ?? '').trim()).filter((x) => x && numero(x) === null).join(' ');
+        if (!texto || esDescripcionVacia(texto)) break;
+        textos.push(texto);
+      }
+      if (textos.length) {
+        descripcion = textos.join(' ');
+        saltar = k - (r + 1);
+        recuperadas++;
+      }
+    }
     const cabeceraRepetida = f.some((c) => typeof c === 'string' && campoDeCabecera(c) && normalizar(c) === normalizar(f[mapa.description] ?? ''));
     if (cabeceraRepetida && Object.values(mapa).filter((c) => campoDeCabecera(f[c])).length >= 2) continue;
     const t = normalizar(descripcion || ref);
@@ -171,8 +201,11 @@ export function lineasDeFilas(filas) {
       reference: ref, description: descripcion || ref, quantity: cantidad, unit_price: precio, discount: descuento,
       total: calculado, total_fichero: total, delivery_days: pz.dias, delivery_text: pz.texto, unit: unidad, avisos: aviso,
       origen_fila: r + 1,
+      ...(saltar ? { descripcion_de_debajo: true } : {}),
     });
+    r += saltar;
   }
+  if (recuperadas) avisos.push(`${recuperadas} línea${recuperadas === 1 ? '' : 's'} venía${recuperadas === 1 ? '' : 'n'} con un punto en la descripción (artículo sin codificar): he cogido la descripción de la línea de debajo.`);
   if (!lineas.length) avisos.push('Hay cabeceras, pero no encuentro líneas con precio debajo.');
   return { lineas, columnas: mapa, avisos };
 }

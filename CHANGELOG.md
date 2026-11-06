@@ -6,6 +6,19 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.101.1] — 2026-11-06
+
+### Añadido
+- **Referencia del presupuesto**: un campo «Referencia» (ej.: «Reforma cocina», «Cámara nave 2») para distinguir de un vistazo varios presupuestos del mismo cliente sin abrirlos. Sale junto al número en la lista de documentos y en la de pendientes, se puede **buscar** por ella, y aparece en la vista previa, en el PDF impreso, en la página que ve el cliente y en los asuntos de los mensajes.
+
+### Corregido
+- **Importar de fichero — artículos sin codificar**: cuando el programa del proveedor pone solo un punto («.») en la descripción y la descripción real en la línea de debajo, se coge la descripción de debajo (una o varias líneas) y se conservan la cantidad, el precio y el descuento de la línea del punto. Avisa de cuántas líneas ha recuperado.
+
+### Para Base44
+- `Invoice` gana el campo `doc_reference`: sincronizar main en Base44.
+
+---
+
 ## [1.101.0] — 2026-11-05
 
 ### Añadido
