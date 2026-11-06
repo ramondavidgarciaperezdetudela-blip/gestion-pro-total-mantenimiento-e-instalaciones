@@ -15,6 +15,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.107.0] — 2026-11-07
+
+### Añadido
+- **Plano: distancia a la pared al colocar equipos.** Al colocar, arrastrar o seleccionar un equipo salen en el plano las distancias a las paredes de los cuatro lados, con milímetros (por ejemplo 0,375 m) y un punto de referencia marcado en la pared. Escribe la distancia que quieras, sin límite de 1 m o 0,5 m, y pulsa Intro: el equipo se coloca exactamente ahí. Con Tab cambias de pared de referencia.
+- **Panel de distancias del equipo seleccionado**, con las cuatro medidas editables desde 1 mm.
+- **Cuadrícula con cualquier medida** (de 1 mm a 50 m), además de 1 m y 0,5 m.
+
+### Cambiado
+- El imán de puntos cercanos ahora se ajusta solo a las paredes, no a otros equipos, que van a distancias distintas.
+
 ## [1.106.0] — 2026-11-07
 
 ### Añadido

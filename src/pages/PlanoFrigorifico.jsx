@@ -13,6 +13,7 @@ import PlanoPaleta from '@/components/plano_frigorifico/PlanoPaleta';
 import PlanoEquipoDetalles from '@/components/plano_frigorifico/PlanoEquipoDetalles';
 import { construirPDF, exportarPDF, imprimirPlano, exportarCAD } from '@/components/plano_frigorifico/PlanoExporter';
 import DialogoExportarPlano from '@/components/plano_frigorifico/DialogoExportarPlano';
+import DistanciasEquipo from '@/components/plano_frigorifico/DistanciasEquipo';
 import PlanoListaElementos from '@/components/plano_frigorifico/PlanoListaElementos';
 import DialogoMaterialesPlano from '@/components/plano_frigorifico/DialogoMaterialesPlano';
 import { reescalarPlano, textoEscala } from '@/lib/planoLista';
@@ -935,6 +936,11 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
             {g} m
           </button>
         ))}
+        <input type="text" inputMode="decimal" data-prueba="cuadricula-libre" title="Cualquier medida en metros (0,001 = 1 mm)"
+          placeholder="otra (m)" className="w-20 rounded-md border border-border bg-background px-1.5 py-1 text-xs"
+          defaultValue={[1, 0.5].includes(gridMeters) ? '' : String(gridMeters).replace('.', ',')} key={[1, 0.5].includes(gridMeters) ? 'p' : gridMeters}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+          onBlur={(e) => { const v = Number(String(e.target.value).replace(',', '.')); if (Number.isFinite(v) && v >= 0.001 && v <= 50) setGridMeters(v); }} />
       </div>
       <div className="flex items-center gap-1.5 text-xs">
         <Ruler className="w-3.5 h-3.5 text-muted-foreground" />
@@ -1000,6 +1006,10 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
     <div className="rounded-lg border border-border bg-card p-3 overflow-y-auto min-h-0 lg:h-full">
       <PlanoListaElementos walls={plan.walls} elements={plan.elements} connections={plan.connections} scale={plan.scale || 50}
         selectedId={selectedId} onSelect={(id) => { setMode('select'); setSelectedId(id); }} />
+      {selectedElement && !['cota', 'trazo', 'texto'].includes(selectedElement.type) && (
+        <div className="mb-2"><DistanciasEquipo elemento={selectedElement} walls={plan.walls} scale={plan.scale || 50}
+          onMover={(id, pos) => setPlan((p) => ({ ...p, elements: p.elements.map((e) => (e.id === id ? { ...e, x: pos.x, y: pos.y } : e)) }))} /></div>
+      )}
       <PlanoEquipoDetalles
         element={selectedElement} connection={selectedConnection} wall={selectedWall}
         elements={plan.elements} walls={plan.walls} scale={plan.scale}
@@ -1280,7 +1290,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
                 <div className="hidden lg:flex items-center gap-3 rounded-md border border-border bg-card px-3 py-1 text-[11px] text-muted-foreground" data-testid="barra-estado">
                   <span className="tabular-nums w-40">{cursorM ? `X ${cursorM.x.toFixed(3)}  Y ${cursorM.y.toFixed(3)} m` : 'X —  Y —'}</span>
                   <button onClick={() => setIman((v) => !v)} className={iman ? 'font-bold text-primary' : ''}>IMÁN {iman ? 'ON' : 'OFF'}</button>
-                  <button onClick={() => setSnapMode(snapMode === 'libre' ? 'cuadricula' : 'libre')}>{snapMode === 'libre' ? 'LIBRE 1 mm' : `CUADRÍCULA ${gridMeters} m`}</button>
+                  <button onClick={() => setSnapMode(snapMode === 'libre' ? 'cuadricula' : 'libre')}>{snapMode === 'libre' ? 'LIBRE 1 mm' : `CUADRÍCULA ${String(gridMeters).replace('.', ',')} m`}</button>
                   <span className="ml-auto">Zoom {Math.round(zoom * 100)}%</span>
                 </div>
               </div>
