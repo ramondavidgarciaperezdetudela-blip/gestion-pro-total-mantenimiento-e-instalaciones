@@ -28,6 +28,7 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], con
   const [zoom, setZoom] = useState(18);
   const [zoomTocado, setZoomTocado] = useState(false);
   const [desp, setDesp] = useState({ x: 0, y: 0 });
+  const [conNombres, setConNombres] = useState(false); // los nombres de los equipos estorban al enseñárselo al cliente
   const arrastre = useRef(null);
   // Tamaño real del lienzo: se mide del contenedor para que en móvil y tablet
   // el render ocupe todo el ancho disponible y el zoom se calcule con él.
@@ -53,8 +54,8 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], con
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     canvas.width = dims.w; canvas.height = dims.h;
-    dibujarVista3D(ctx, dims.w, dims.h, { walls, elements, connections, scale, alturaSuelo, giro, zoom, desp });
-  }, [walls, elements, connections, scale, alturaSuelo, giro, zoom, dims, desp]);
+    dibujarVista3D(ctx, dims.w, dims.h, { walls, elements, connections, scale, alturaSuelo, giro, zoom, desp, conNombres });
+  }, [walls, elements, connections, scale, alturaSuelo, giro, zoom, dims, desp, conNombres]);
 
   // Auto-ajustar el zoom a lo dibujado mientras el usuario no lo toque.
   // Se calcula con el tamaño REAL del canvas (dims) para que el render
@@ -100,6 +101,9 @@ export default function Vista3DPlanoFrigorifico({ walls = [], elements = [], con
           <Move3d className="w-3.5 h-3.5" /> Arrastra para girar · Mayús + arrastrar (o botón derecho) para desplazar · rueda para acercar
         </p>
         <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
+            <input type="checkbox" checked={conNombres} onChange={(e) => setConNombres(e.target.checked)} data-prueba="3d-nombres" /> Mostrar nombres
+          </label>
           <button onClick={() => { setZoomTocado(true); setZoom((z) => Math.max(6, z - 3)); }}
             className="px-2 py-1 text-xs border rounded hover:bg-slate-50">−</button>
           <button onClick={() => { setZoomTocado(true); setZoom((z) => Math.min(48, z + 3)); }}

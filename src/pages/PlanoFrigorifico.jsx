@@ -454,11 +454,11 @@ export default function PlanoFrigorifico() {
     ];
   };
 
-  const crearCamara = ({ ancho, largo, alto, tipo, suelo, espesor }) => {
+  const crearCamara = ({ ancho, largo, alto, tipo, suelo, espesor, colorPared, colorSuelo }) => {
     const xs = plan.walls.map((w) => Math.max(w.x1, w.x2)).concat(plan.walls.map((w) => Math.min(w.x1, w.x2)));
     const baseX = xs.length ? Math.max(...xs) + 80 : 80;
     const roomId = crypto.randomUUID();
-    const nuevas = paredesDeCamara(baseX, 80, ancho, largo, plan.scale || 50, roomId, { tipo, suelo, espesor_mm: espesor, alto_m: alto });
+    const nuevas = paredesDeCamara(baseX, 80, ancho, largo, plan.scale || 50, roomId, { tipo, suelo, espesor_mm: espesor, alto_m: alto, color_pared: colorPared, color_suelo: colorSuelo });
     handleChange({ walls: [...plan.walls, ...nuevas] });
     setSelectedId(nuevas[0].id);
     setDialogoCamara(null);
@@ -492,7 +492,7 @@ export default function PlanoFrigorifico() {
     const ref = plan.walls.find((w) => w.room_id === roomId && w.camara);
     if (!ref) { setDialogoCamara(null); return; }
     const x = ref.room_x, y = ref.room_y, scale = plan.scale || 50;
-    const { ancho, largo, alto, tipo, suelo, espesor } = datos;
+    const { ancho, largo, alto, tipo, suelo, espesor, colorPared, colorSuelo } = datos;
     const w = ancho * scale, h = largo * scale;
     const coords = [
       [x, y, x + w, y],
@@ -505,7 +505,7 @@ export default function PlanoFrigorifico() {
       if (pared.room_id !== roomId) return pared;
       const [x1, y1, x2, y2] = coords[i] || coords[0];
       i += 1;
-      return { ...pared, x1, y1, x2, y2, room_w_m: ancho, room_h_m: largo, alto_m: alto, tipo, suelo, espesor_mm: espesor };
+      return { ...pared, x1, y1, x2, y2, room_w_m: ancho, room_h_m: largo, alto_m: alto, tipo, suelo, espesor_mm: espesor, color_pared: colorPared, color_suelo: colorSuelo };
     });
     handleChange({ walls: nuevas });
     setDialogoCamara(null);
@@ -518,6 +518,9 @@ export default function PlanoFrigorifico() {
   };
 
   // Alto de las paredes de una sala o cámara (las cuatro a la vez) y de una pared suelta.
+  const cambiarColorRecinto = (roomId, patch) => {
+    handleChange({ walls: plan.walls.map((w) => (w.room_id === roomId ? { ...w, ...patch } : w)) });
+  };
   const cambiarAltoRecinto = (roomId, alto) => {
     handleChange({ walls: plan.walls.map((w) => (w.room_id === roomId ? { ...w, alto_m: alto > 0 ? alto : undefined } : w)) });
   };
@@ -1033,7 +1036,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       <PlanoEquipoDetalles
         element={selectedElement} connection={selectedConnection} wall={selectedWall}
         elements={plan.elements} walls={plan.walls} scale={plan.scale}
-        onAltoRecinto={cambiarAltoRecinto} onAltoPared={cambiarAltoPared} onCambiarPared={cambiarPared} onLargoPared={cambiarLargo}
+        onColorRecinto={cambiarColorRecinto} onAltoRecinto={cambiarAltoRecinto} onAltoPared={cambiarAltoPared} onCambiarPared={cambiarPared} onLargoPared={cambiarLargo}
         onUpdate={selectedConnection ? actualizarConexion : actualizarElemento}
         onDelete={borrarSeleccion}
         onEditarSala={(roomId) => {
@@ -1043,7 +1046,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         onBorrarSala={borrarSala}
         onEditarCamara={(roomId) => {
           const ref = plan.walls.find((w) => w.room_id === roomId && w.camara);
-          if (ref) setDialogoCamara({ roomId, ancho: ref.room_w_m, largo: ref.room_h_m, alto: ref.alto_m, tipo: ref.tipo, suelo: ref.suelo, espesor: ref.espesor_mm });
+          if (ref) setDialogoCamara({ roomId, ancho: ref.room_w_m, largo: ref.room_h_m, alto: ref.alto_m, tipo: ref.tipo, suelo: ref.suelo, espesor: ref.espesor_mm, colorPared: ref.color_pared, colorSuelo: ref.color_suelo });
         }}
         onBorrarCamara={borrarCamara} />
       <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
@@ -1480,7 +1483,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
       <DialogoCamara
         open={!!dialogoCamara}
         valorInicial={dialogoCamara && !dialogoCamara.nuevo
-          ? { ancho: dialogoCamara.ancho, largo: dialogoCamara.largo, alto: dialogoCamara.alto, tipo: dialogoCamara.tipo, suelo: dialogoCamara.suelo, espesor: dialogoCamara.espesor }
+          ? { ancho: dialogoCamara.ancho, largo: dialogoCamara.largo, alto: dialogoCamara.alto, tipo: dialogoCamara.tipo, suelo: dialogoCamara.suelo, espesor: dialogoCamara.espesor, colorPared: dialogoCamara.colorPared, colorSuelo: dialogoCamara.colorSuelo }
           : null}
         onConfirm={(datos) => dialogoCamara?.nuevo ? crearCamara(datos) : actualizarCamara(dialogoCamara.roomId, datos)}
         onClose={() => setDialogoCamara(null)} />

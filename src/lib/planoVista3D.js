@@ -99,6 +99,7 @@ export function recintosDe(walls = [], alturaSuelo = ALTURA_SUELO) {
       id: w.room_id, x: w.room_x, y: w.room_y, ancho: w.room_w_m, largo: w.room_h_m,
       alto: altoPared(w, alturaSuelo), camara: !!w.camara, tipo: w.tipo, suelo: w.suelo !== false,
       espesor: (num(w.espesor_mm) || 100) / 1000,
+      colorPared: w.color_pared || null, colorSuelo: w.color_suelo || null,
     });
   });
   return [...mapa.values()];
@@ -602,7 +603,7 @@ function dibujarEquipo(M, b) {
 /** Dibuja la vista 3D completa sobre el contexto de un canvas W×H. */
 export function dibujarVista3D(ctx, W, H, {
   walls = [], elements = [], connections = [], scale = 50, alturaSuelo = ALTURA_SUELO,
-  giro = Math.PI / 5, zoom = 18, desp = { x: 0, y: 0 },
+  giro = Math.PI / 5, zoom = 18, desp = { x: 0, y: 0 }, conNombres = false,
 } = {}) {
   const m = (px) => px / scale;
   const cx = W / 2 + (desp?.x || 0), cy = H * 0.62 + (desp?.y || 0);
@@ -639,7 +640,7 @@ export function dibujarVista3D(ctx, W, H, {
   const recintos = recintosDe(walls, alturaSuelo);
   recintos.forEach((r) => {
     const x0 = m(r.x), y0 = m(r.y), x1 = x0 + r.ancho, y1 = y0 + r.largo;
-    const color = r.camara ? (r.tipo === 'negativa' ? '#e0e7ff' : '#e0f2fe') : '#e7e5e4';
+    const color = r.colorSuelo || (r.camara ? (r.tipo === 'negativa' ? '#e0e7ff' : '#e0f2fe') : '#e7e5e4');
     prisma(M, [[x0, y0], [x1, y0], [x1, y1], [x0, y1]], -0.07, 0, color, { borde: 'rgba(100,116,139,0.5)', brilloTapa: 1.0 });
     // Baldosas (sala) o juntas de panel (cámara).
     const paso = r.camara ? 1 : 0.6;
@@ -669,7 +670,7 @@ export function dibujarVista3D(ctx, W, H, {
     const esp = w.camara ? Math.max(0.06, (num(w.espesor_mm) || 100) / 1000) : (w.material || w.espesor_mm ? espesorPared(w) : ESPESOR_PARED);
     const ux = (x2 - x1) / largo, uy = (y2 - y1) / largo;
     const tipoCol = w.tipo === 'negativa' ? '#6366f1' : '#3b82f6';
-    const color = w.camara ? '#f1f5f9' : (materialDe(w)?.color || '#d6d3d1');
+    const color = w.color_pared || (w.camara ? '#f1f5f9' : (materialDe(w)?.color || '#d6d3d1'));
     const opcionesMuro = {
       alfa: w.camara ? 0.78 : 0.6,
       borde: w.camara ? tono(tipoCol, 0.9, 0.7) : 'rgba(87,83,78,0.55)',
@@ -842,8 +843,8 @@ export function dibujarVista3D(ctx, W, H, {
     });
   });
 
-  // Rótulos de salas y cámaras, sobre el suelo.
-  recintos.forEach((r) => {
+  // Rótulos de salas y cámaras, sobre el suelo (solo si se piden: para enseñárselo al cliente van ocultos).
+  if (conNombres) recintos.forEach((r) => {
     const x0 = m(r.x), y0 = m(r.y);
     const nombre = r.camara ? (r.tipo === 'negativa' ? 'Cámara negativa' : 'Cámara positiva') : 'Sala';
     etiquetas.push({
@@ -856,6 +857,7 @@ export function dibujarVista3D(ctx, W, H, {
   ctx.font = 'bold 10px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  if (!conNombres) etiquetas.length = 0;
   etiquetas.forEach((e) => {
     const p = P(e.x, e.y, e.z);
     const tw = ctx.measureText(e.texto).width + 10;
