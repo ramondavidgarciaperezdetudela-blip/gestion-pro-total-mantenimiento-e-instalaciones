@@ -38,6 +38,7 @@
     "test:preventivo": "node scripts/test-orden-preventivo.mjs && node scripts/test-orden-pdf.mjs",
     "test:paquete": "node --import ./scripts/alias-register.mjs scripts/test-paquete.mjs",
     "test:actualizarbase": "node scripts/test-actualizar-base.mjs",
+    "test:tuberias": "node scripts/test-tuberias.mjs",
     "test:vencimientos": "node scripts/test-vencimientos.mjs",
     "test:importar": "node scripts/test-importar-presupuesto.mjs",
     "test:planos": "node scripts/test-planos-cadcraft.mjs",
