@@ -2,7 +2,7 @@ import React from 'react';
 import { CAT_COLOR } from '@/lib/planoFrigorificoCatalogo';
 
 // Colores de las conexiones, igual que en el lienzo (PlanoCanvas).
-const CONN_COLORS = { refrigerante: '#00A0E9', electrica: '#F5821F', conducto: '#10b981' };
+const CONN_COLORS = { refrigerante: '#00A0E9', electrica: '#F5821F', conducto: '#10b981', desague: '#0d9488' };
 
 // Leyenda compacta del plano: colores de cada familia de equipos y tipos de
 // conexión. Va en el panel lateral del editor a pantalla completa para que
@@ -20,6 +20,7 @@ export default function LeyendaPlano() {
     { id: 'refrigerante', label: 'Tubería refrigerante', estilo: '8 5' },
     { id: 'electrica', label: 'Eléctrica', estilo: '2 4' },
     { id: 'conducto', label: 'Conducto', estilo: 'sólido' },
+    { id: 'desague', label: 'Desagüe', estilo: '12 4 2 4' },
   ];
   return (
     <div className="rounded-lg border border-border p-2">

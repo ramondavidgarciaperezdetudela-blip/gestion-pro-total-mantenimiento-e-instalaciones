@@ -18,6 +18,7 @@ export function hexToRgb(hex) {
 export function colorConexion(type) {
   if (type === 'refrigerante') return [0, 160, 233];
   if (type === 'conducto') return [34, 197, 94];
+  if (type === 'desague') return [13, 148, 136];
   return [245, 130, 35]; // eléctrica
 }
 

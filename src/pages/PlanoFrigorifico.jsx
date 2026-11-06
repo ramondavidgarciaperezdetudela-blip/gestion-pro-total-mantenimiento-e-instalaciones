@@ -335,6 +335,7 @@ export default function PlanoFrigorifico() {
       const copia = { ...portapapeles.data, id: crypto.randomUUID(), x: portapapeles.data.x + 50, y: portapapeles.data.y + 50, label: `${portapapeles.data.label || 'Elemento'} (copia)` };
       setPlan((p) => ({ ...p, elements: [...p.elements, copia] }));
       setSelectedId(copia.id);
+      setPortapapeles((c) => ({ ...c, data: { ...copia, label: portapapeles.data.label } })); // la siguiente copia se desplaza otra vez
     } else if (portapapeles.tipo === 'pared') {
       const copia = { ...portapapeles.data, id: crypto.randomUUID(), x1: portapapeles.data.x1 + 50, y1: portapapeles.data.y1 + 50, x2: portapapeles.data.x2 + 50, y2: portapapeles.data.y2 + 50 };
       setPlan((p) => ({ ...p, walls: [...p.walls, copia] }));
@@ -345,6 +346,25 @@ export default function PlanoFrigorifico() {
       setSelectedId(copia.id);
     }
   };
+
+  // Atajos de teclado del plano: Ctrl+C copiar, Ctrl+X cortar, Ctrl+V pegar, Ctrl+Z deshacer, Ctrl+Y rehacer.
+  // No actúan si se está escribiendo en un campo o hay un cuadro de diálogo abierto.
+  useEffect(() => {
+    const h = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const t = e.target;
+      if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+      if (dialogoSala || dialogoCamara || ver3D || informeDialog || gmailDialog || conexionDialogo || iconosDialog || dialogoCatalogo) return;
+      const k = e.key.toLowerCase();
+      if (k === 'c' && selectedId) { e.preventDefault(); copiar(); }
+      else if (k === 'x' && selectedId) { e.preventDefault(); cortar(); }
+      else if (k === 'v' && portapapeles) { e.preventDefault(); pegar(); }
+      else if (k === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
+      else if (k === 'y') { e.preventDefault(); redo(); }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  });
 
   // Actualiza una conexión por id (no por selección): lo usa el diálogo que
   // pide el diámetro/cable al trazar una línea.

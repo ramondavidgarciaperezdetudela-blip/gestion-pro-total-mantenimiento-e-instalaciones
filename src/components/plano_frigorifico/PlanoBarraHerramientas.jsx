@@ -2,7 +2,7 @@ import React from 'react';
 import {
   MousePointer2, Minus, Type, Ruler, Spline, Eraser, Square, Snowflake,
   Undo2, Redo2, Copy, Scissors, ClipboardPaste,
-  Link2, Wind, Zap, PenLine, Calculator } from 'lucide-react';
+  Link2, Wind, Zap, PenLine, Calculator, Droplets } from 'lucide-react';
 
 /**
  * PlanoBarraHerramientas — barra de dibujo y edición al estilo Paint.
@@ -64,6 +64,10 @@ export default function PlanoBarraHerramientas({
         onClick={() => onPick({ mode: 'connect', connectType: 'conducto', manual: false })} icon={Wind} label="Conducto" color="#10b981" />
       <BotonHerr activo={mode === 'connect' && connectType === 'conducto' && manual} dato="conducto-mano"
         onClick={() => onPick({ mode: 'connect', connectType: 'conducto', manual: true })} icon={PenLine} label="Conducto a mano" color="#10b981" />
+      <BotonHerr activo={mode === 'connect' && connectType === 'desague' && !manual} dato="desague"
+        onClick={() => onPick({ mode: 'connect', connectType: 'desague', manual: false })} icon={Droplets} label="Desagüe" color="#0d9488" />
+      <BotonHerr activo={mode === 'connect' && connectType === 'desague' && manual} dato="desague-mano"
+        onClick={() => onPick({ mode: 'connect', connectType: 'desague', manual: true })} icon={PenLine} label="Desagüe a mano" color="#0d9488" />
       <BotonHerr activo={mode === 'connect' && connectType === 'electrica' && !manual}
         onClick={() => onPick({ mode: 'connect', connectType: 'electrica', manual: false })} icon={Zap} label="Eléctrica" color="#F5821F" />
       <BotonHerr activo={mode === 'connect' && connectType === 'electrica' && manual} dato="cable-mano"

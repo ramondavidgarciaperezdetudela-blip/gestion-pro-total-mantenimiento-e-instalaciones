@@ -43,7 +43,7 @@ function distSeg(px, py, x1, y1, x2, y2) {
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
 
-const CONN_COLOR = { refrigerante: '#00A0E9', electrica: '#F5821F', conducto: '#10b981' };
+const CONN_COLOR = { refrigerante: '#00A0E9', electrica: '#F5821F', conducto: '#10b981', desague: '#0d9488' };
 
 // Convierte una secuencia de puntos en una polilínea ortogonal con codos a 90°.
 function ortogonalizar(pts) {
@@ -756,6 +756,7 @@ export default function PlanoCanvas({
           const color = esDatos ? '#8b5cf6' : (CONN_COLOR[c.type] || '#888');
           const esRef = c.type === 'refrigerante';
           const esConducto = c.type === 'conducto';
+          const esDesague = c.type === 'desague';
           // La tubería lleva dos circuitos: gas (rojo) y líquido (azul). Van
           // dibujados como dos líneas paralelas para que se vean los dos a la
           // vez, igual que en la realidad.
@@ -764,7 +765,9 @@ export default function PlanoCanvas({
           const pts = [{ x: a.x, y: a.y }, ...(c.path || []), { x: b.x, y: b.y }];
           const mid = pts[Math.floor(pts.length / 2)] || { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
           let tag;
-          if (esConducto) {
+          if (esDesague) {
+            tag = `Desagüe${c.drain_diameter ? ` Ø${c.drain_diameter}` : ''}${c.drain_slope_pct ? ` · ${c.drain_slope_pct} %` : ''}`;
+          } else if (esConducto) {
             tag = c.duct_section ? `${c.duct_section} mm${c.duct_shape && c.duct_shape !== 'Rectangular' ? ' ' + c.duct_shape : ''}` : 'Conducto';
           } else if (esRef) {
             tag = (c.gas_diameter || c.liquid_diameter ? `G ${c.gas_diameter || '—'} · L ${c.liquid_diameter || '—'}` : 'Tubería');
@@ -786,6 +789,11 @@ export default function PlanoCanvas({
                   <polyline points={offsetPts(pts, 4).map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={colorGas} strokeWidth={sel ? 3 : 2.2} strokeLinejoin="round" strokeLinecap="round" />
                   <polyline points={offsetPts(pts, -4).map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={colorLiq} strokeWidth={sel ? 3 : 2.2} strokeLinejoin="round" strokeLinecap="round" />
                 </g>
+              ) : esDesague ? (
+                <polyline points={pts.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color}
+                  strokeWidth={sel ? 4 : 3}
+                  strokeDasharray="12 4 2 4"
+                  strokeLinejoin="round" strokeLinecap="round" />
               ) : (
                 <polyline points={pts.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color}
                   strokeWidth={sel ? 4 : 2.5}
@@ -1007,7 +1015,7 @@ export default function PlanoCanvas({
             {mode === 'connect' && connFrom
               ? (polyline
                   ? `Trazado a mano: clic para marcar cada punto del recorrido (${connPath.length} marcados) · clic en el equipo destino para terminar · Retroceso borra el último punto · Esc cancela`
-                  : `Conectando: clic en el equipo destino · ${connectType === 'refrigerante' ? 'tubería' : connectType === 'conducto' ? 'conducto' : 'eléctrica'}`)
+                  : `Conectando: clic en el equipo destino · ${connectType === 'refrigerante' ? 'tubería' : connectType === 'conducto' ? 'conducto' : connectType === 'desague' ? 'desagüe' : 'eléctrica'}`)
               : mode === 'cota' && cotaStart
                 ? `Cota: clic en el segundo punto (Esc cancela) · ${m(mouse.x)} × ${m(mouse.y)} m`
                 : mode === 'trazo'
