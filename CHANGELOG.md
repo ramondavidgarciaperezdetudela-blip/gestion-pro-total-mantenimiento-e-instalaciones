@@ -15,6 +15,18 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.106.0] — 2026-11-07
+
+### Añadido
+- **Lista de elementos del plano en el lateral derecho.** Todo lo dibujado (cámaras y salas, puertas y ventanas, equipos, conexiones, paredes y cotas) aparece en una lista agrupada, con buscador. Pulsando un elemento en la lista se selecciona en el plano —y al revés: lo que seleccionas en el dibujo se marca en la lista—. Así se llega a las puertas sin que se coja la cámara por error.
+- **Puertas y elementos finos más fáciles de pulsar en el dibujo**: tienen una zona mínima de pulsación (18 px en pantalla), aunque estén pegados a la pared de la cámara.
+- **Cambiar la escala del dibujo ya no deforma el plano.** Antes, al pasar de 50 a 80 px por metro las paredes y equipos cambiaban de medida real. Ahora se reescalan todas las coordenadas (paredes, cámaras, equipos, tuberías, cotas) y el dibujo mantiene sus medidas en metros; se puede deshacer.
+- **Escala siempre visible bajo el plano**: px por metro, cuadrícula, zoom y la escala normalizada a la que saldría impreso en A3 y en A4 (1:50, 1:100…).
+- **Hoja de materiales para el pedido** (botón «Hoja de materiales» y apartado «Materiales y pedido» al exportar el plano en PDF/imprimir, en su propia hoja): tubería frigorífica por diámetro (metros, codos y pedido con +10 %), distancia de cada tramo, cableado por sección, conductos, paneles de cámara (m² de paredes, techo y suelo y medida de cada pared), paredes y tabiques, y equipos/puertas con sus medidas. Se puede guardar en PDF, imprimir o bajar a Excel (CSV). Las medidas salen del dibujo y se actualizan solas.
+- Prueba automática nueva: `npm run test:planolista`.
+
+---
+
 ## [1.105.0] — 2026-11-07
 
 ### Añadido
