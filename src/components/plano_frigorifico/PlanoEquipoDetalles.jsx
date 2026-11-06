@@ -37,7 +37,7 @@ const TENSIONES = ['230 V monofásica', '400 V trifásica', '24 V', '12 V'];
 
 export default function PlanoEquipoDetalles({
   element, wall, connection, elements, walls = [], scale, onUpdate, onDelete,
-  onEditarSala, onBorrarSala, onEditarCamara, onBorrarCamara, onAltoRecinto, onAltoPared, onCambiarPared, onLargoPared,
+  onEditarSala, onBorrarSala, onEditarCamara, onBorrarCamara, onAltoRecinto, onAltoPared, onCambiarPared, onLargoPared, onColorRecinto,
 }) {
   if (connection) {
     return (
@@ -71,6 +71,17 @@ export default function PlanoEquipoDetalles({
               onChange={(v) => onAltoRecinto && onAltoRecinto(wall.room_id, v)}
               className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
           </Campo>
+          <div className="grid grid-cols-2 gap-2" data-prueba="colores-recinto">
+            {[['Color paredes', 'color_pared', '#f1f5f9'], ['Color suelo', 'color_suelo', '#cbd5e1']].map(([t, k, def]) => (
+              <Campo key={k} label={t}>
+                <div className="flex items-center gap-1">
+                  <input type="color" value={wall[k] || def} data-prueba={`recinto-${k}`} onChange={(e) => onColorRecinto && onColorRecinto(wall.room_id, { [k]: e.target.value })}
+                    className="h-7 w-9 rounded border border-border bg-input p-0.5" />
+                  {wall[k] && <button type="button" onClick={() => onColorRecinto && onColorRecinto(wall.room_id, { [k]: undefined })} className="text-[10px] underline text-muted-foreground">quitar</button>}
+                </div>
+              </Campo>
+            ))}
+          </div>
           <button onClick={() => (camara ? onEditarCamara : onEditarSala) && (camara ? onEditarCamara : onEditarSala)(wall.room_id)}
             className="flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-white hover:opacity-90"
             style={{ background: color }}>
@@ -109,6 +120,13 @@ export default function PlanoEquipoDetalles({
             placeholder={String(ALTURA_SUELO).replace('.', ',')}
             onChange={(v) => onAltoPared && onAltoPared(wall.id, v)}
             className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+        </Campo>
+        <Campo label="Color de la pared (vista 3D)">
+          <div className="flex items-center gap-1">
+            <input type="color" value={wall.color_pared || '#d6d3d1'} data-prueba="color-pared" onChange={(e) => onCambiarPared && onCambiarPared(wall.id, { color_pared: e.target.value })}
+              className="h-7 w-9 rounded border border-border bg-input p-0.5" />
+            {wall.color_pared && <button type="button" onClick={() => onCambiarPared && onCambiarPared(wall.id, { color_pared: undefined })} className="text-[10px] underline text-muted-foreground">quitar</button>}
+          </div>
         </Campo>
         <button onClick={onDelete} className="flex items-center justify-center gap-1.5 rounded-md border border-destructive/40 px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10">
           <Trash2 className="w-3.5 h-3.5" /> Borrar pared
@@ -579,6 +597,18 @@ function DetalleEquipo({ element, walls = [], onUpdate, onDelete, scale }) {
           )}
         </span>
       </div>
+
+      {/* Posición exacta en el plano, en metros desde la esquina superior izquierda. */}
+      <Campo label="Posición X / Y (m)">
+        <div className="flex gap-1">
+          <NumberField value={Number(((element.x || 0) / (scale || 50)).toFixed(3))} data-prueba="posicion-x"
+            onChange={(v) => onUpdate({ x: v * (scale || 50) })}
+            className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+          <NumberField value={Number(((element.y || 0) / (scale || 50)).toFixed(3))} data-prueba="posicion-y"
+            onChange={(v) => onUpdate({ y: v * (scale || 50) })}
+            className="w-full rounded-md border border-border bg-input px-2 py-1 text-xs" />
+        </div>
+      </Campo>
 
       {/* Mover el equipo con flechas (paso de 0,1 m): útil en móvil donde
           arrastrar con el dedo es difícil de afinar. */}
