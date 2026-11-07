@@ -15,6 +15,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.0] — 2026-11-07
+
+### Añadido
+- **Elegir dónde se guardan los datos en la propia aplicación con Base44** (APK, instalador de Windows, versión portable y web): cuenta de Base44 (como siempre), solo en el dispositivo, tu proyecto de Supabase o **un servidor propio en casa**. La primera vez que se abre la app instalada pregunta; después se cambia en *Configuración de empresa → Dónde se guardan los datos*. Quien no cambie nada sigue exactamente igual que antes.
+- Con datos propios la aplicación no contacta con Base44 y la IA de Base44 pasa a Ollama.
+- El servidor propio (`servidor-datos/`) se incluye también en esta versión, con la guía paso a paso `GUIA-SERVIDOR-PROPIO.md`.
+
+---
+
 ## [1.114.0] — 2026-11-07
 
 ### Corregido

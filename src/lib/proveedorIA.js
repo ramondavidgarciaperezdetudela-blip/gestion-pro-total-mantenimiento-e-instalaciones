@@ -21,6 +21,8 @@
  * una línea de ellas.
  */
 
+import { usaAlmacenPropio } from '@/nube/config';
+
 const CLAVE = 'gpt_proveedor_ia';
 
 export const PROVEEDORES = [
@@ -83,7 +85,10 @@ const oyentes = new Set();
 export function ajustesIA() {
   try {
     const guardado = JSON.parse(localStorage.getItem(CLAVE) || '{}');
-    return { ...POR_DEFECTO, ...guardado };
+    const r = { ...POR_DEFECTO, ...guardado };
+    // Con datos propios (sin Base44) no existe la IA de Base44: pasa a Ollama.
+    if (r.proveedor === 'base44' && usaAlmacenPropio()) r.proveedor = POR_DEFECTO.proveedor;
+    return r;
   } catch {
     return { ...POR_DEFECTO };
   }
