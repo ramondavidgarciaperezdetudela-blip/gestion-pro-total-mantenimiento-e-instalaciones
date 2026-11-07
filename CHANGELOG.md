@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.6] — 2026-11-08
+
+### Corregido
+- **Vista previa de presupuestos, facturas y recibos:** el precio, la cantidad y el total salían partidos en varias líneas (la mitad arriba y el resto debajo) porque la columna de la descripción se comía el ancho. Ahora cantidad, precio unitario, descuento y total salen en una sola línea, como al imprimir. Aplicado a la vista de Documentos, la ventana de factura, el presupuesto IA y la página pública del presupuesto.
+
+---
+
 ## [1.115.5] — 2026-11-07
 
 ### Añadido
