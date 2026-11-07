@@ -1,6 +1,7 @@
+/* global __APP_VERSION__ */
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { HardDrive, Cloud, Server, ArrowLeft, Loader2, ShieldCheck, Database } from 'lucide-react';
-import { leerConfig, guardarConfig, borrarConfig, escucharConfig, leerSesion } from './config';
+import { MODOS, leerConfig, guardarConfig, borrarConfig, escucharConfig, leerSesion } from './config';
 import { iniciarSesion, registrarse, hayQueEntrar } from './autenticacion';
 import { vaciarCache } from './entidad';
 
@@ -13,7 +14,37 @@ export function cambiarAlmacen() {
   try { localStorage.setItem(FLAG, '1'); } catch { /* sin almacenamiento */ }
   window.location.reload();
 }
-const terminar = () => { try { localStorage.removeItem(FLAG); } catch { /* nada */ } window.location.reload(); };
+const terminar = () => { marcarVisto(); try { localStorage.removeItem(FLAG); } catch { /* nada */ } window.location.reload(); };
+
+// Tras actualizar la app se pregunta una vez si se mantienen los ajustes de guardado.
+const VK = 'gpt_ajustes_version';
+const NK = 'gpt_no_preguntar_ajustes';
+const VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '';
+const hayAviso = () => { try { return !!VERSION && !!leerConfig() && localStorage.getItem(VK) !== VERSION && localStorage.getItem(NK) !== '1'; } catch { return false; } };
+const marcarVisto = () => { try { if (VERSION) localStorage.setItem(VK, VERSION); } catch { /* nada */ } };
+
+function Aviso({ onListo, onCambiar }) {
+  const [no, setNo] = useState(false);
+  const c = leerConfig();
+  const donde = `${MODOS[c.modo] || c.modo}${c.url ? ` — ${c.url}` : ''}`;
+  const mantener = () => { try { if (no) localStorage.setItem(NK, '1'); } catch { /* nada */ } marcarVisto(); onListo(); };
+  return (
+    <Caja titulo={`Se ha actualizado a la versión ${VERSION}`} sub="Antes de seguir: ¿quieres mantener dónde se guardan tus datos?">
+      <div className="rounded-xl border bg-muted/40 p-4 text-sm">
+        <p className="text-muted-foreground">Ahora se guardan en:</p>
+        <p className="mt-1 font-semibold break-all" data-prueba="aviso-donde">{donde}</p>
+      </div>
+      <div className="mt-5 space-y-3">
+        <button onClick={mantener} data-prueba="aviso-mantener" className="w-full rounded-md bg-primary px-4 py-2.5 font-medium text-primary-foreground">Mantener estos ajustes</button>
+        <button onClick={() => { marcarVisto(); onCambiar(); }} data-prueba="aviso-cambiar" className="w-full rounded-md border px-4 py-2.5 font-medium hover:bg-accent">Cambiar (nube, Supabase, servidor propio o solo este dispositivo)</button>
+      </div>
+      <label className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+        <input type="checkbox" checked={no} onChange={(e) => setNo(e.target.checked)} data-prueba="aviso-no-preguntar" /> No volver a preguntar al actualizar
+      </label>
+      <p className="mt-3 text-xs text-muted-foreground">Podrás cambiarlo cuando quieras en Configuración de empresa → Dónde se guardan los datos. Al cambiar, tus datos no se mueven solos: usa antes «Copia de seguridad».</p>
+    </Caja>
+  );
+}
 
 const estado = () => JSON.stringify([leerConfig(), !!leerSesion()?.token]);
 const useEstado = () => useSyncExternalStore((f) => {
@@ -83,6 +114,7 @@ function Elegir() {
     ];
     return (
       <Caja titulo="Gestión Pro Total" sub="¿Dónde quieres guardar los datos? Podrás cambiarlo después en Configuración y pasar tus datos con la copia de seguridad.">
+        {leerConfig() && <button onClick={terminar} data-prueba="elegir-cancelar" className="mb-3 text-sm text-primary hover:underline">← Mantener como está</button>}
         <div className="space-y-3">
           {op.map(([id, Icono, t, d]) => (
             <button key={id} onClick={() => setModo(id)} data-prueba={`modo-${id}`} className="flex w-full items-start gap-3 rounded-xl border p-4 text-left transition hover:border-primary hover:bg-accent">
@@ -145,7 +177,7 @@ function Entrar() {
       </form>
       <div className="mt-4 flex justify-between text-sm">
         <button onClick={() => setNuevo(!nuevo)} className="text-primary hover:underline">{nuevo ? 'Ya tengo cuenta' : 'Crear una cuenta'}</button>
-        <button onClick={() => { borrarConfig(); cambiarAlmacen(); }} className="text-muted-foreground hover:underline">Cambiar dónde se guardan los datos</button>
+        <button onClick={cambiarAlmacen} className="text-muted-foreground hover:underline">Cambiar dónde se guardan los datos</button>
       </div>
     </Caja>
   );
@@ -159,6 +191,7 @@ export default function PantallaNube({ children }) {
   // Primera vez en la app instalada, o cuando se pide cambiar: se pregunta.
   // En la web de Base44 sin elegir nada, todo sigue como siempre.
   if (pedirElegir() || (!leerConfig() && esNativa())) return <Elegir />;
+  if (hayAviso()) return <Aviso onListo={() => forzar((n) => n + 1)} onCambiar={cambiarAlmacen} />;
   if (hayQueEntrar()) return <Entrar />;
   return children;
 }
