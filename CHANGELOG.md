@@ -15,6 +15,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.1] — 2026-11-07
+
+### Corregido
+- **Los planos frigoríficos ya salen en la ficha del cliente.** La pestaña «Planos» del cliente leía mal la lista y salía siempre vacía, aunque el plano estuviera bien vinculado (por eso solo se veían desde el apartado general de planos). Ahora los muestra.
+- Si tras restaurar una copia hay planos con el nombre del cliente pero sin vínculo válido, la pestaña los avisa y los vincula con un clic.
+- Al recuperar una copia, el vínculo por nombre también reconoce el nombre completo o el de empresa del cliente.
+
+---
+
 ## [1.115.0] — 2026-11-07
 
 ### Añadido
