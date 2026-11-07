@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.6] — 2026-11-08
+
+### Corregido
+- Vista previa de presupuestos, facturas y recibos: cantidad, precio y total salen en una sola línea (antes se partían en dos).
+
+---
+
 ## [1.115.5] — 2026-11-07
 
 ### Añadido

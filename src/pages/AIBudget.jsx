@@ -693,10 +693,10 @@ Devuelve materiales/partidas para presupuesto profesional con descripción, cant
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-gray-800 text-white">
-                  <th className="text-left p-2">Descripción</th>
-                  <th className="text-center p-2 w-14">Cant.</th>
-                  <th className="text-right p-2 w-20">P.Unit.</th>
-                  <th className="text-right p-2 w-20">Total</th>
+                  <th className="text-left p-2 w-full">Descripción</th>
+                  <th className="text-center p-2 w-14 whitespace-nowrap">Cant.</th>
+                  <th className="text-right p-2 w-20 whitespace-nowrap">P.Unit.</th>
+                  <th className="text-right p-2 w-20 whitespace-nowrap">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -705,9 +705,9 @@ Devuelve materiales/partidas para presupuesto profesional con descripción, cant
                   return (
                     <tr key={i} className={i % 2 === 0 ? 'bg-gray-50' : ''}>
                       <td className="p-2">{item.description}{item.supplier && <span className="text-xs text-gray-400 ml-1">({item.supplier})</span>}</td>
-                      <td className="p-2 text-center">{item.quantity}</td>
-                      <td className="p-2 text-right">{(item.unit_price || 0).toFixed(2)} €</td>
-                      <td className="p-2 text-right font-medium">{lt.toFixed(2)} €</td>
+                      <td className="p-2 text-center whitespace-nowrap">{item.quantity}</td>
+                      <td className="p-2 text-right whitespace-nowrap">{(item.unit_price || 0).toFixed(2)} €</td>
+                      <td className="p-2 text-right whitespace-nowrap font-medium">{lt.toFixed(2)} €</td>
                     </tr>
                   );
                 })}
