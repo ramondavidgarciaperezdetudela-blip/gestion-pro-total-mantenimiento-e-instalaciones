@@ -1,4 +1,6 @@
 import { createClient } from '@base44/sdk';
+import { crearNube } from '@/nube/cliente';
+import { usaAlmacenPropio } from '@/nube/config';
 import { appParams } from '@/lib/app-params';
 import {
   METODOS_QUE_GUARDAN, INTEGRACIONES_VIGILADAS, avisarDeFallo, sePuedeReintentarSolo,
@@ -25,7 +27,7 @@ const { appId, token, functionsVersion, appBaseUrl } = appParams;
 // petición al backend falla — se ve como "sin conexión" pese a haber
 // internet real. Usar siempre la URL absoluta del backend lo arregla en
 // todas las plataformas sin cambiar nada en la web servida por Base44.
-const cliente = createClient({
+const cliente = usaAlmacenPropio() ? crearNube() : createClient({
   appId,
   token,
   functionsVersion,

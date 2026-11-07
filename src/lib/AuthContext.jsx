@@ -1,3 +1,4 @@
+import { usaAlmacenPropio } from '@/nube/config';
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
@@ -18,6 +19,14 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const checkAppState = async () => {
+    // Con datos propios (local, Supabase o servidor de casa) no se contacta con
+    // Base44 para nada: la entrada la gestiona la pantalla de la nube propia.
+    if (usaAlmacenPropio()) {
+      setIsLoadingAuth(false);
+      setIsLoadingPublicSettings(false);
+      setIsAuthenticated(true);
+      return;
+    }
     // Si el servidor no responde, la ruedecita de arranque giraba para siempre.
     // Con este tope, a los 15 s se considera fallo de red y se muestra la
     // pantalla con "Entrar de todas formas" en vez de quedar colgado.

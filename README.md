@@ -33,6 +33,8 @@ Ve a la **[última versión (Releases)](../../releases/latest)** y descarga:
 | 🐧 **Linux** | `Gestion-Pro-Total-<versión>-Linux.deb` (o `...-Linux.AppImage`) |
 | 💻 **Chromebook** | `Gestion-Pro-Total-<versión>-Linux.deb` — ver [guía de instalación](docs/INSTALACION-DESINSTALACION.md#-chromebook-chromeos) |
 
+> **Datos en tu propio servidor:** la app puede guardar los datos en un ordenador de tu casa en vez de en Base44. Ver [GUIA-SERVIDOR-PROPIO.md](GUIA-SERVIDOR-PROPIO.md).
+
 ## 🚀 Funcionalidades
 
 - **Gestión:** contactos (clientes/proveedores), agenda, proyectos y cronograma.

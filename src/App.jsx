@@ -1,3 +1,4 @@
+import PantallaNube from '@/nube/PantallaNube';
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
 import { DURACION_POR_DEFECTO as DURACION_AVISO } from "@/components/ui/use-toast"
 import { Component, useState } from 'react';
@@ -237,6 +238,7 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <QueryClientProvider client={queryClientInstance}>
+          <PantallaNube>
           <Router>
             <NavigationTracker />
             <AccesosDirectos />
@@ -259,6 +261,7 @@ function App() {
             duration={DURACION_AVISO}
             toastOptions={{ dismissible: true }}
           />
+          </PantallaNube>
         </QueryClientProvider>
       </AuthProvider>
     </ErrorBoundary>
