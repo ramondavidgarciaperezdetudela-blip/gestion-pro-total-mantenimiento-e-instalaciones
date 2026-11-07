@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { iaActivada } from '@/lib/modoSinIA';
+import { leerTarifaPdf } from '@/lib/tarifaPdf';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -39,10 +41,20 @@ export default function SupplierCatalogImport({ onImported }) {
     if (!file) return;
     setError(null);
     try {
-      // 1. Subir fichero
-      setStep('uploading');
-      setProgress('Subiendo archivo...');
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      // Un PDF con texto se lee aquí mismo (sin subirlo a ningún sitio ni usar IA).
+      let local = [];
+      if (/\.pdf$/i.test(file.name || '')) {
+        setStep('extracting');
+        setProgress('Leyendo el PDF...');
+        try { local = (await leerTarifaPdf(file)).items; } catch { local = []; }
+      }
+      // 1. Subir fichero (solo si hace falta la IA)
+      let file_url = null;
+      if (!local.length) {
+        setStep('uploading');
+        setProgress('Subiendo archivo...');
+        ({ file_url } = await base44.integrations.Core.UploadFile({ file }));
+      }
 
       // 2. Extraer datos con IA
       setStep('extracting');
@@ -114,6 +126,12 @@ export default function SupplierCatalogImport({ onImported }) {
           extracted = fallback?.items || [];
         }
       } else {
+        // PDF con texto: se lee aquí mismo, sin IA. Si no hay tabla legible, se usa la IA (si está activada).
+        if (local.length) {
+          extracted = local.map((i) => ({ description: i.product_name, supplier_ref: i.product_code, unit_price: i.cost_price, unit: i.unit, brand: '', category: 'material', notes: '' }));
+        } else if (!iaActivada()) {
+          throw new Error('No he podido leer una tabla de precios en este PDF (puede ser una foto escaneada). Pide el Excel al proveedor o activa la IA en Ajustes.');
+        } else {
         // PDF: usar InvokeLLM con file_urls
         setProgress('Analizando PDF con IA...');
         const result = await base44.integrations.Core.InvokeLLM({
@@ -142,6 +160,7 @@ export default function SupplierCatalogImport({ onImported }) {
           }
         });
         extracted = result?.items || [];
+        }
       }
 
       // Filtrar filas vacías o sin descripción
@@ -162,7 +181,7 @@ export default function SupplierCatalogImport({ onImported }) {
       setStep('preview');
       setProgress('');
     } catch (err) {
-      setError('Error al procesar el archivo. Comprueba que el formato es correcto e inténtalo de nuevo.');
+      setError(String(err?.message || '').startsWith('No he podido') ? err.message : 'Error al procesar el archivo. Comprueba que el formato es correcto e inténtalo de nuevo.');
       setStep('idle');
     }
   };
