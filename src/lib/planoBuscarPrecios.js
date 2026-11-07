@@ -22,9 +22,18 @@ export function capacidadDeTexto(texto) {
   return null;
 }
 
-/** 'evaporador' | 'condensadora' | null */
+/** Tensión de alimentación que dice el texto: '230' (monofásica), '400' (trifásica) o null. */
+export function tensionDeTexto(texto) {
+  const t = norm(texto);
+  if (/400\s*v|\biii\b|trif|3\s*[~n]|3ph|\b3f\b/.test(t)) return '400';
+  if (/230\s*v|220\s*v|monof|1\s*~|\b1f\b|1ph/.test(t)) return '230';
+  return null;
+}
+
+/** 'monobloc' | 'evaporador' | 'condensadora' | null */
 export function tipoDeMaquina(texto) {
   const t = norm(texto);
+  if (/monobloc|equipo compacto|plug.?in|autonom/.test(t)) return 'monobloc';
   if (/evaporador|aerorefrigerador|difusor/.test(t)) return 'evaporador';
   if (/condensador|grupo|unidad exterior|unidad cond/.test(t)) return 'condensadora';
   return null;
@@ -43,7 +52,7 @@ const precioDe = (p) => {
  * @param camaraTipo 'positiva' | 'negativa' (para dar preferencia)
  * @returns hasta `max` candidatas, la más ajustada por encima primero
  */
-export function buscarMaquinas(precios = [], { tipo, kw, camaraTipo = 'positiva', max = 5 } = {}) {
+export function buscarMaquinas(precios = [], { tipo, kw, camaraTipo = 'positiva', max = 5, tension = '' } = {}) {
   const necesario = Number(kw) || 0;
   const lista = [];
   for (const p of precios) {
@@ -53,6 +62,9 @@ export function buscarMaquinas(precios = [], { tipo, kw, camaraTipo = 'positiva'
     if (!cap) continue;
     const { precio, venta, coste } = precioDe(p);
     if (!(precio > 0)) continue;
+    const tens = tensionDeTexto(texto);
+    // Si se pide una alimentación, se descartan las que dicen la contraria; las que no la dicen se dejan avisando.
+    if (tension && tens && tens !== tension) continue;
     const t = norm(texto);
     const esNeg = /congel|negativ|\bbt\b|-\s?2\d|-\s?3\d/.test(t);
     const esPos = /conserv|positiv|\bmt\b|refriger/.test(t);
@@ -60,7 +72,7 @@ export function buscarMaquinas(precios = [], { tipo, kw, camaraTipo = 'positiva'
     lista.push({
       id: p.id, nombre: p.product_name || p.product_code, codigo: p.product_code || '', marca: p.brand || '',
       capacidad_kw: r2(cap), precio, venta, coste, proveedor: p.supplier_name || '',
-      cubre: cap >= necesario * 0.97, coincide,
+      cubre: cap >= necesario * 0.97, coincide, tension: tens,
     });
   }
   const buenas = lista.filter((x) => x.cubre);
