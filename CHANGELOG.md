@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.0] — 2026-11-07
+
+### Añadido
+- Guía paso a paso para montar el servidor propio en casa (`GUIA-SERVIDOR-PROPIO.md`). Esta versión (sin Base44) ya permitía elegir local, Supabase o servidor propio.
+
+---
+
 ## [1.114.0] — 2026-11-07
 
 ### Corregido
