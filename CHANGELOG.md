@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.2] — 2026-11-07
+
+### Corregido
+- Proveedores de gases: webs y contactos actualizados (Carburos con acceso de clientes de Air Products y web `carburos.com`, Gases GRIT con su catálogo y contacto, y el resto con sus direcciones vigentes). Se quitan teléfonos no verificados.
+
+---
+
 ## [1.115.1] — 2026-11-07
 
 ### Corregido
