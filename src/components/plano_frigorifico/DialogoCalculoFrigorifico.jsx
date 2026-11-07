@@ -24,6 +24,7 @@ export default function DialogoCalculoFrigorifico({ open, walls, onClose, onAnad
   const [precios, setPrecios] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [elegidas, setElegidas] = useState({}); // { evaporador: id, condensadora: id }
+  const [tension, setTension] = useState(''); // alimentación: '' (cualquiera), '230' o '400'
 
   const camara = camaras[Math.min(sel, camaras.length - 1)];
   const def = useMemo(() => (camara ? ajustesPorDefecto(camara) : {}), [camara]);
@@ -53,8 +54,9 @@ export default function DialogoCalculoFrigorifico({ open, walls, onClose, onAnad
 
   useEffect(() => { setAjustes({}); setElegidas({}); }, [sel, open]);
 
-  const evap = useMemo(() => (res ? buscarMaquinas(precios, { tipo: 'evaporador', kw: res.kw_equipo, camaraTipo: camara.tipo }) : []), [precios, res, camara]);
-  const cond = useMemo(() => (res ? buscarMaquinas(precios, { tipo: 'condensadora', kw: res.kw_equipo, camaraTipo: camara.tipo }) : []), [precios, res, camara]);
+  const evap = useMemo(() => (res ? buscarMaquinas(precios, { tipo: 'evaporador', kw: res.kw_equipo, camaraTipo: camara.tipo, tension }) : []), [precios, res, camara, tension]);
+  const cond = useMemo(() => (res ? buscarMaquinas(precios, { tipo: 'condensadora', kw: res.kw_equipo, camaraTipo: camara.tipo, tension }) : []), [precios, res, camara, tension]);
+  const mono = useMemo(() => (res ? buscarMaquinas(precios, { tipo: 'monobloc', kw: res.kw_equipo, camaraTipo: camara.tipo, tension }) : []), [precios, res, camara, tension]);
 
   if (!open) return null;
   const nombreProv = proveedores.find((p) => String(p.id) === String(proveedor))?.name || '';
@@ -78,7 +80,7 @@ export default function DialogoCalculoFrigorifico({ open, walls, onClose, onAnad
         className={`w-full text-left rounded-md border px-2 py-1.5 text-xs ${marcada ? 'border-cyan-500 bg-cyan-500/10' : 'border-border hover:bg-muted'} ${m.insuficiente ? 'opacity-70' : ''}`}
         data-prueba={`maquina-${tipo}`}>
         <span className="font-medium">{m.nombre}</span>
-        <span className="ml-2 text-muted-foreground">{m.capacidad_kw} kW{m.marca ? ` · ${m.marca}` : ''}</span>
+        <span className="ml-2 text-muted-foreground">{m.capacidad_kw} kW{m.marca ? ` · ${m.marca}` : ''}{m.tension ? ` · ${m.tension === '400' ? '400 V trifásica' : '230 V monofásica'}` : ''}</span>
         <span className="float-right font-semibold">{eur(m.precio)}</span>
         {m.insuficiente && <span className="block text-[10px] text-amber-600">No llega a la potencia necesaria: es la mayor de la tarifa.</span>}
       </button>
@@ -140,6 +142,15 @@ export default function DialogoCalculoFrigorifico({ open, walls, onClose, onAnad
               {res.avisos.map((a) => <p key={a} className="text-[11px] text-amber-600 mt-1">⚠️ {a}</p>)}
             </div>
 
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <label className="text-xs font-semibold" htmlFor="tension-calc">Alimentación:</label>
+              <select id="tension-calc" className="rounded border border-border bg-background px-2 py-1 text-sm" value={tension} onChange={(e) => setTension(e.target.value)} data-prueba="tension-calculo">
+                <option value="">Cualquiera</option>
+                <option value="230">230 V monofásica</option>
+                <option value="400">400 V trifásica</option>
+              </select>
+              <span className="text-[11px] text-muted-foreground">Volumen {res.volumen} m³ · se descartan las máquinas que dicen la otra tensión.</span>
+            </div>
             <div className="flex items-center gap-2 mb-2">
               <PackageSearch className="w-4 h-4 text-cyan-600" />
               <label className="text-xs font-semibold" htmlFor="prov-calc">Precios del proveedor:</label>
@@ -152,12 +163,12 @@ export default function DialogoCalculoFrigorifico({ open, walls, onClose, onAnad
             {!proveedor && <p className="text-xs text-muted-foreground">Elige el proveedor con el que trabajas y se buscarán en su tarifa los evaporadores y condensadoras que cubren {res.kw_equipo} kW.</p>}
             {proveedor && cargando && <p className="text-xs text-muted-foreground">Leyendo la tarifa…</p>}
             {proveedor && !cargando && (
-              <div className="grid sm:grid-cols-2 gap-3">
-                {[['evaporador', 'Evaporador', evap], ['condensadora', 'Unidad condensadora', cond]].map(([tipo, titulo, items]) => (
+              <div className="grid sm:grid-cols-3 gap-3">
+                {[['evaporador', 'Evaporador', evap], ['condensadora', 'Unidad condensadora', cond], ['monobloc', 'Equipo monobloc', mono]].map(([tipo, titulo, items]) => (
                   <div key={tipo}>
                     <p className="text-xs font-semibold mb-1">{titulo}</p>
                     {items.length ? <div className="space-y-1">{items.map((m) => fila(tipo, m))}</div>
-                      : <p className="text-[11px] text-muted-foreground">No hay líneas en la tarifa de {nombreProv} con ese tipo y su potencia escrita (kW, W o kcal/h). Revisa la tarifa o pon el equipo a mano.</p>}
+                      : <p className="text-[11px] text-muted-foreground">No hay líneas en la tarifa de {nombreProv} con ese tipo y su potencia escrita (kW, W o kcal/h). Sube la tarifa en PDF o Excel desde Proveedores («Subir tarifa» en su ficha), o pon el equipo a mano.</p>}
                   </div>
                 ))}
               </div>

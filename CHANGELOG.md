@@ -20,6 +20,17 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 ### Añadido
 - **Subir la tarifa de un proveedor en PDF sin IA.** Al elegir el proveedor y subir su PDF, el programa lee la tabla de precios (referencia, descripción, unidad y precio) en el momento, sin internet ni IA y de cualquier tamaño, y la deja en la tarifa de ese proveedor tras revisarla. Solo si el PDF es una foto escaneada, sin texto, hace falta la IA o pedir el Excel al proveedor.
 
+## [1.111.0] — 2026-11-07
+
+### Añadido
+- **Subir la tarifa de un proveedor desde su ficha:** botón «Subir tarifa (PDF / Excel)» en cada proveedor, con el proveedor ya elegido.
+- **Cálculo de cámaras: alimentación y monobloc.** Se elige 230 V monofásica o 400 V trifásica y se descartan las máquinas de la tarifa que dicen la otra tensión; además de evaporador y condensadora, propone equipos monobloc, y enseña la tensión de cada máquina y el volumen de la cámara.
+
+## [1.110.0] — 2026-11-07
+
+### Añadido
+- **Subir la tarifa de un proveedor en PDF sin IA.** Al elegir el proveedor y subir su PDF, el programa lee la tabla de precios (referencia, descripción, unidad y precio) en el momento, sin internet ni IA y de cualquier tamaño, y la deja en la tarifa de ese proveedor tras revisarla. Solo si el PDF es una foto escaneada, sin texto, hace falta la IA o pedir el Excel al proveedor.
+
 ## [1.109.0] — 2026-11-07
 
 ### Añadido

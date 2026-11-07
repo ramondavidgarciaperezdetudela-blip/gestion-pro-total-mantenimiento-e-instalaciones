@@ -289,8 +289,11 @@ function useTimer(running, estimatedTotalSecs = 0) {
 }
 
 // ── Componente ────────────────────────────────────────────────────────────────
-export default function SupplierCatalogImportWithSupplier({ suppliers = [], onImported }) {
-  const [open, setOpen]               = useState(false);
+export default function SupplierCatalogImportWithSupplier({ suppliers = [], onImported, supplierIdInicial = '', abierto, onAbiertoChange, sinBoton = false }) {
+  const [openInterno, setOpenInterno] = useState(false);
+  const controlado = abierto !== undefined;
+  const open = controlado ? abierto : openInterno;
+  const setOpen = (v) => { if (!controlado) setOpenInterno(v); if (onAbiertoChange) onAbiertoChange(v); };
   const [file, setFile]               = useState(null);
   const [supplierId, setSupplierId]   = useState('');
   const [step, setStep]               = useState('idle'); // idle | extracting | preview | saving | done
@@ -312,11 +315,13 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   // Datos completos viven en ref — no en estado — para no congelar el navegador con 64K ítems
   const parsedRef  = useRef([]);
 
+  useEffect(() => { if (open && supplierIdInicial) setSupplierId(supplierIdInicial); }, [open, supplierIdInicial]);
+
   const reset = () => {
     abortRef.current = true;
     parsedRef.current = [];
     setFile(null); setStep('idle'); setParsedCount(0);
-    setError(null); setProgress(''); setSupplierId(''); setImportSummary(null); setProgressPct(0); setFastMode(true); setEstimatedSecs(0); setFailedToRetry([]);
+    setError(null); setProgress(''); setSupplierId(supplierIdInicial || ''); setImportSummary(null); setProgressPct(0); setFastMode(true); setEstimatedSecs(0); setFailedToRetry([]);
     setTimeout(() => { abortRef.current = false; }, 200);
   };
 
@@ -772,10 +777,12 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
 
   return (
     <>
-      <Button onClick={() => { reset(); setOpen(true); }} className="gap-2 bg-purple-700 hover:bg-purple-800 text-white">
-        <FileSpreadsheet className="w-4 h-4" />
-        Importar tarifa de proveedor
-      </Button>
+      {!sinBoton && (
+        <Button onClick={() => { reset(); setOpen(true); }} className="gap-2 bg-purple-700 hover:bg-purple-800 text-white">
+          <FileSpreadsheet className="w-4 h-4" />
+          Importar tarifa de proveedor
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={o => { if (!isLoadingStep) { setOpen(o); if (!o) reset(); } }}>
         <DialogContent className="max-w-2xl w-[95vw] max-h-[92vh] overflow-y-auto">
