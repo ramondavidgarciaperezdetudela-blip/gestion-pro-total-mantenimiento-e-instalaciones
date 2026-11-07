@@ -39,6 +39,10 @@ import { CAT_COLOR, CATEGORIAS, CAPAS, elementoDe } from '@/lib/planoFrigorifico
 import { generarIconoPlano, guardarIconoPlano, iconoPropio } from '@/lib/iconoPlanoIA';
 import DialogoCalculoFrigorifico from '@/components/plano_frigorifico/DialogoCalculoFrigorifico';
 import { presupuestoAproximado } from '@/lib/instalacionCalculos';
+import { totalesDocumento, MODOS_IVA } from '@/lib/ivaLineas';
+
+const CLAVE_IVA_MO = 'gpt_plano_iva_mano_obra';
+const esManoDeObra = (txt) => /mano de obra|instalaci[oó]n|montaje|puesta en marcha/i.test(String(txt || ''));
 import { asArray } from '@/lib/asArray';
 import { generarVista3DPng } from '@/lib/planoVista3D';
 
@@ -50,6 +54,9 @@ const PLANO_VACIO = {
 export default function PlanoFrigorifico() {
   const navigate = useNavigate();
   const [planos, setPlanos] = useState([]);
+  // IVA de la mano de obra: aparte (se suma), incluido en el precio o exenta. Se recuerda la última elección.
+  const [ivaMO, setIvaMO] = useState(() => { try { const v = localStorage.getItem(CLAVE_IVA_MO); return MODOS_IVA[v] ? v : 'aparte'; } catch { return 'aparte'; } });
+  const elegirIvaMO = (v) => { setIvaMO(v); try { localStorage.setItem(CLAVE_IVA_MO, v); } catch { /* sin almacenamiento */ } };
   const [contacts, setContacts] = useState([]);
   const [plan, setPlan] = useState({ ...PLANO_VACIO });
   const [mode, setMode] = useState('select');
@@ -873,7 +880,7 @@ Metros lineales de pared/obra: ${metrosPared.toFixed(1)} m${tubStr}
 Tubería frigorífica dibujada: ${presupuesto.metrosTuberia} m · línea eléctrica: ${presupuesto.metrosCable} m
 Cálculo aproximado del programa (material + 35 % de mano de obra): ${presupuesto.materiales} € + ${presupuesto.manoObra} € = ${presupuesto.total} €
 
-Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano de obra, materiales, aparamenta eléctrica y de seguridad necesaria, desplazamiento y puesta en marcha. Precios en euros SIN IVA (21% aparte), realistas para España. Devuelve un JSON con "items" (cada uno con description, quantity y unit_price) y "observations" (resumen técnico breve de 1-3 líneas).`;
+Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano de obra, materiales, aparamenta eléctrica y de seguridad necesaria, desplazamiento y puesta en marcha. Precios en euros SIN IVA (21% aparte), realistas para España. La mano de obra se trata aparte: ${ivaMO === 'incluido' ? 'su precio llevará el IVA incluido' : ivaMO === 'exento' ? 'va exenta de IVA' : 'también sin IVA'}. Devuelve un JSON con "items" (cada uno con description, quantity y unit_price) y "observations" (resumen técnico breve de 1-3 líneas).`;
 
       const res = await base44.integrations.Core.InvokeLLM({
         prompt,
@@ -902,11 +909,10 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
         description: it.description, quantity: Number(it.quantity) || 1,
         unit_price: Number(it.unit_price) || 0, discount: 0,
         total: (Number(it.quantity) || 1) * (Number(it.unit_price) || 0),
+        ...(esManoDeObra(it.description) && ivaMO !== 'aparte' ? { iva_modo: ivaMO } : {}),
       }));
-      const subtotal = items.reduce((s, it) => s + it.total, 0);
       const iva_rate = 21;
-      const iva_amount = Math.round(subtotal * iva_rate) / 100;
-      const total = subtotal + iva_amount;
+      const { subtotal, iva_amount, total } = totalesDocumento(items, iva_rate);
 
       const existentes = await base44.entities.Invoice.filter({ doc_type: 'presupuesto' }, { limit: 1000 }).catch(() => ({ items: [] }));
       const doc_number = getNextAvailableNumber((existentes?.items || []).map((d) => d.doc_number || ''));
@@ -1080,6 +1086,11 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
               <div className="mt-1.5 flex flex-col gap-0.5 border-t border-border pt-1.5 text-[10px]">
                 <div className="flex justify-between"><span className="text-muted-foreground">Material</span><span className="font-mono">{presupuesto.materiales.toFixed(2)} €</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Mano de obra (35 %)</span><span className="font-mono">{presupuesto.manoObra.toFixed(2)} €</span></div>
+                <label className="flex items-center justify-between gap-1 text-[10px] text-muted-foreground">IVA de la mano de obra
+                  <select value={ivaMO} onChange={(e) => elegirIvaMO(e.target.value)} data-prueba="iva-mano-obra" className="h-6 max-w-[140px] rounded border border-input bg-background px-1 text-[10px]">
+                    {Object.entries(MODOS_IVA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                </label>
                 <div className="flex justify-between text-xs font-bold"><span>Total</span><span className="font-mono">{presupuesto.total.toFixed(2)} €</span></div>
               </div>
               <p className="mt-1.5 flex gap-1 text-[9px] leading-snug text-amber-600">

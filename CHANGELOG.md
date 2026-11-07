@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.116.0] — 2026-11-08
+
+### Añadido
+- IVA a elegir en cada línea de presupuestos, facturas y recibos (IVA aparte, IVA incluido o exenta) y selector de IVA de la mano de obra en el presupuesto del plano frigorífico. Los documentos antiguos no cambian.
+
+---
+
 ## [1.115.6] — 2026-11-08
 
 ### Corregido

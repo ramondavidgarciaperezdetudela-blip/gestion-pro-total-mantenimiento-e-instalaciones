@@ -33,6 +33,14 @@
     "contact_name": {
       "type": "string"
     },
+    "plan_id": {
+      "type": "string",
+      "description": "ID del plano frigorífico del que sale el presupuesto"
+    },
+    "plan_name": {
+      "type": "string",
+      "description": "Nombre del plano frigorífico vinculado"
+    },
     "contact_nif": {
       "type": "string"
     },
@@ -105,6 +113,11 @@
           "supplier_name": {
             "type": "string",
             "description": "Proveedor del precio"
+          },
+          "iva_modo": {
+            "type": "string",
+            "enum": ["aparte", "incluido", "exento"],
+            "description": "IVA de la l\u00ednea: aparte (se suma), incluido en el precio o exenta"
           }
         }
       }
