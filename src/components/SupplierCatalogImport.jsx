@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Image } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import PasosProgreso, { porcentajePaso } from '@/components/PasosProgreso';
+import { toast } from 'sonner';
+import { iniciarImportacion, avanzarImportacion, terminarImportacion, avisoFinal } from '@/lib/importacionFondo';
 
 /**
  * SupplierCatalogImport
@@ -206,7 +208,20 @@ export default function SupplierCatalogImport({ onImported }) {
     await Promise.all(runners);
   };
 
+  // Guardar: sigue en segundo plano aunque se cierre la ventana (avance abajo a la derecha y aviso al terminar).
   const handleSave = async () => {
+    const idFondo = iniciarImportacion('Importando artículos a tu base de datos');
+    try {
+      await guardarArticulos(idFondo);
+    } catch (e) {
+      toast.error('La importación se ha interrumpido', { description: String(e?.message || e), duration: Infinity });
+      setStep('idle');
+    } finally {
+      terminarImportacion(idFondo);
+    }
+  };
+
+  const guardarArticulos = async (idFondo) => {
     setStep('saving');
     setProgress('Cargando productos existentes...');
     const toSave = items.filter((_, i) => selectedItems.has(i));
@@ -229,6 +244,7 @@ export default function SupplierCatalogImport({ onImported }) {
     } catch (_) { existingByKey = {}; }
 
     let saved = 0, updated = 0, done = 0;
+    const fallidos = [];
     const total = toSave.length;
     ponGuardado('existentes', { fase: 'hecho', hechos: Object.keys(existingByKey).length, total: Object.keys(existingByKey).length });
     ponGuardado('guardar', { fase: 'activo', hechos: 0, total });
@@ -256,15 +272,19 @@ export default function SupplierCatalogImport({ onImported }) {
           await base44.entities.PriceItem.create(payload);
           saved++;
         }
-      } catch (_) { /* se cuenta como no guardado; continúa */ }
+      } catch (e) { fallidos.push({ product_name: item.description, reason: e?.message || 'Error' }); }
       done++;
-      if (done % 10 === 0 || done === total) { setProgress(`Procesando ${done}/${total}...`); ponGuardado('guardar', { hechos: done }); }
+      if (done % 10 === 0 || done === total) { setProgress(`Procesando ${done}/${total}...`); ponGuardado('guardar', { hechos: done }); avanzarImportacion(idFondo, { pct: (done / Math.max(1, total)) * 100, detalle: `Procesando ${done}/${total}` }); }
     });
 
     ponGuardado('guardar', { fase: 'hecho', hechos: total });
     setStep('done');
     setProgress(`✅ ${saved} nuevos · ${updated} actualizados (de ${total})`);
     onImported && onImported(saved + updated);
+    const aviso = avisoFinal({ guardados: saved, actualizados: updated, fallidos, total });
+    if (aviso.tipo === 'ok') toast.success(aviso.titulo, { description: aviso.detalle, duration: 10000 });
+    else if (aviso.tipo === 'aviso') toast.warning(aviso.titulo, { description: aviso.detalle, duration: Infinity });
+    else toast.error(aviso.titulo, { description: aviso.detalle, duration: Infinity });
   };
 
   const toggleItem = (i) => {
@@ -289,7 +309,10 @@ export default function SupplierCatalogImport({ onImported }) {
         Importar catálogo proveedor
       </Button>
 
-      <Dialog open={open} onOpenChange={o => { if (!isProcessing) { setOpen(o); if (!o) reset(); } }}>
+      <Dialog open={open} onOpenChange={o => {
+        if (step === 'saving') { setOpen(o); return; } // sigue en segundo plano
+        if (!isProcessing) { setOpen(o); if (!o) reset(); }
+      }}>
         <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -336,6 +359,7 @@ export default function SupplierCatalogImport({ onImported }) {
                       <div className="flex justify-between text-xs text-purple-700 font-medium"><span>Progreso</span><span>{pct}%</span></div>
                       <div className="w-full bg-purple-200 rounded-full h-2.5 overflow-hidden"><div className="h-2.5 bg-purple-600 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} /></div>
                       <PasosProgreso pasos={pasos} />
+                      <button type="button" onClick={() => setOpen(false)} data-prueba="seguir-en-segundo-plano" className="w-full rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50">Seguir trabajando · la importación continúa en segundo plano</button>
                     </>
                   );
                 })()}

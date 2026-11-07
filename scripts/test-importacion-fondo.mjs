@@ -1,0 +1,17 @@
+import { iniciarImportacion, avanzarImportacion, terminarImportacion, leerImportacion, segundosRestantes, textoTiempo, avisoFinal, suscribirImportacion } from '../src/lib/importacionFondo.js';
+let fallos = 0; const ok = (c, t, d = '') => { if (!c) { fallos++; console.log('  ✗ ' + t + ' ' + d); } else console.log('  ✓ ' + t); };
+let llamadas = 0; const off = suscribirImportacion(() => llamadas++);
+const id = iniciarImportacion('Tarifa X', 1000);
+ok(leerImportacion().activa && leerImportacion().pct === 0, 'arranca activa al 0 %');
+avanzarImportacion('otro', { pct: 50 }); ok(leerImportacion().pct === 0, 'ignora avances de otra importación');
+avanzarImportacion(id, { pct: 40.4, detalle: 'Guardando' }); ok(leerImportacion().pct === 40 && leerImportacion().detalle === 'Guardando', 'avanza y redondea');
+avanzarImportacion(id, { pct: 400 }); ok(leerImportacion().pct === 100, 'tope 100');
+ok(segundosRestantes(25, 0, 30000) === 90, 'ETA: 30 s al 25 % → 90 s', String(segundosRestantes(25, 0, 30000)));
+ok(segundosRestantes(1, 0, 5000) === null, 'sin ETA al principio');
+ok(textoTiempo(75) === '1 min 15 s' && textoTiempo(9) === '9 s', 'formato de tiempo');
+terminarImportacion(id); ok(!leerImportacion().activa, 'termina'); off(); ok(llamadas >= 4, 'avisa a los oyentes');
+ok(avisoFinal({ guardados: 5, actualizados: 2 }).tipo === 'ok', 'aviso ok');
+const a = avisoFinal({ proveedor: 'Escoda', guardados: 5, total: 7, fallidos: [{ product_name: 'A', reason: 'x' }, { product_name: 'B', reason: 'y' }] });
+ok(a.tipo === 'aviso' && a.detalle.includes('Escoda') && a.detalle.includes('A: x'), 'aviso con errores parciales', a.detalle);
+ok(avisoFinal({ guardados: 0, total: 3, fallidos: [{}, {}, {}] }).tipo === 'error', 'todo falla = error');
+console.log(fallos ? 'FALLOS' : 'TODO OK'); process.exit(fallos ? 1 : 0);
