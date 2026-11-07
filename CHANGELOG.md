@@ -15,11 +15,6 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
-## [1.110.0] — 2026-11-07
-
-### Añadido
-- **Subir la tarifa de un proveedor en PDF sin IA.** Al elegir el proveedor y subir su PDF, el programa lee la tabla de precios (referencia, descripción, unidad y precio) en el momento, sin internet ni IA y de cualquier tamaño, y la deja en la tarifa de ese proveedor tras revisarla. Solo si el PDF es una foto escaneada, sin texto, hace falta la IA o pedir el Excel al proveedor.
-
 ## [1.111.0] — 2026-11-07
 
 ### Añadido
