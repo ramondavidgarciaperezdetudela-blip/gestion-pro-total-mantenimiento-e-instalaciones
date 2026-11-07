@@ -1,3 +1,4 @@
+import ImportacionEnSegundoPlano from '@/components/ImportacionEnSegundoPlano';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from './utils';
@@ -487,6 +488,7 @@ export default function Layout({ children, currentPageName }) {
         <main className="p-3 md:p-5 max-w-7xl mx-auto relative z-10 pb-28 lg:pb-6 overflow-x-hidden min-w-0 w-full" style={{ contain: 'layout style' }}>
           <BarraNavegacion enInicio={currentPageName === 'Home'} />
           <div ref={contenidoRef} className="min-w-0 w-full">{children}</div>
+          <ImportacionEnSegundoPlano />
           <BotonesImprimirPantalla
             nodoRef={contenidoRef}
             pagina={currentPageName}

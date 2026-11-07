@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NumberField } from '@/components/ui/number-field';
 import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import PasosProgreso from '@/components/PasosProgreso';
+import { toast } from 'sonner';
+import { iniciarImportacion, avanzarImportacion, terminarImportacion, avisoFinal } from '@/lib/importacionFondo';
 import DownloadExcelTemplate from '@/components/DownloadExcelTemplate';
 import { iaActivada } from '@/lib/modoSinIA';
 import { leerTarifaPdf } from '@/lib/tarifaPdf';
@@ -527,7 +529,21 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     }
   };
 
+  // Guardar la tarifa: sigue trabajando en segundo plano aunque se cierre la ventana, con su avance
+  // abajo a la derecha y un aviso al terminar (éxito, o los errores para revisarlos).
   const handleSave = async () => {
+    const idFondo = iniciarImportacion(`Importando tarifa${selectedSupplier?.name ? ` · ${selectedSupplier.name}` : ''}`);
+    try {
+      await guardarTarifa(idFondo);
+    } catch (e) {
+      toast.error('La importación se ha interrumpido', { description: String(e?.message || e), duration: Infinity });
+      setError(String(e?.message || e)); setStep('idle');
+    } finally {
+      terminarImportacion(idFondo);
+    }
+  };
+
+  const guardarTarifa = async (idFondo) => {
     setStep('saving');
     setProgressPct(0);
     setGuardado({ existentes: { fase: 'activo' }, nuevos: { fase: 'espera' }, actualizados: { fase: 'espera' } });
@@ -624,6 +640,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       }
       const done = saved + updated;
       setProgressPct(Math.round(done / toSave.length * 100));
+      avanzarImportacion(idFondo, { pct: done / toSave.length * 100, detalle: `Guardando nuevos ${saved.toLocaleString()}/${toCreate.length.toLocaleString()}` });
       setProgress(`Guardando nuevos: ${saved.toLocaleString()} / ${toCreate.length.toLocaleString()}...`);
       ponGuardado('nuevos', { hechos: saved + failedItems.length, fase: 'activo' });
       onImported && onImported(saved + updated, true);
@@ -650,6 +667,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       });
       const done = saved + updated;
       setProgressPct(Math.round(done / toSave.length * 100));
+      avanzarImportacion(idFondo, { pct: done / toSave.length * 100, detalle: `Actualizando precios ${updated.toLocaleString()}/${toUpdate.length.toLocaleString()}` });
       setProgress(`Actualizando precios: ${updated.toLocaleString()} / ${toUpdate.length.toLocaleString()}...`);
       ponGuardado('actualizados', { hechos: Math.min(toUpdate.length, i + batch.length) });
       onImported && onImported(saved + updated, true);
@@ -660,6 +678,10 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     setFailedToRetry(failedItems); // Guardar para reintento
     setStep('done');
     onImported && onImported(saved + updated, false);
+    const aviso = avisoFinal({ proveedor: selectedSupplier?.name || '', guardados: saved, actualizados: updated, fallidos: failedItems, total: toSave.length });
+    if (aviso.tipo === 'ok') toast.success(aviso.titulo, { description: aviso.detalle, duration: 10000 });
+    else if (aviso.tipo === 'aviso') toast.warning(aviso.titulo, { description: aviso.detalle, duration: Infinity });
+    else toast.error(aviso.titulo, { description: aviso.detalle, duration: Infinity });
   };
 
   const handleRetryFailed = async () => {
@@ -797,7 +819,11 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
         </Button>
       )}
 
-      <Dialog open={open} onOpenChange={o => { if (!isLoadingStep) { setOpen(o); if (!o) reset(); } }}>
+      <Dialog open={open} onOpenChange={o => {
+        // Mientras se guarda, cerrar la ventana NO para la importación: sigue en segundo plano.
+        if (step === 'saving') { setOpen(o); return; }
+        if (!isLoadingStep) { setOpen(o); if (!o) reset(); }
+      }}>
         <DialogContent className="max-w-2xl w-[95vw] max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -965,6 +991,12 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                       />
                     </div>
                   </div>
+                )}
+                {step === 'saving' && (
+                  <button type="button" onClick={() => setOpen(false)} data-prueba="seguir-en-segundo-plano"
+                    className="w-full rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50">
+                    Seguir trabajando · la importación continúa en segundo plano
+                  </button>
                 )}
                 <PasosProgreso pasos={step === 'saving' ? [
                   { id: 'existentes', label: 'Leer la tarifa actual', ...guardado.existentes },

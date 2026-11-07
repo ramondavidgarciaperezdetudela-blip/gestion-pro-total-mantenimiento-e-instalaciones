@@ -15,6 +15,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.113.0] — 2026-11-07
+
+### Añadido
+- **Importar tarifas en segundo plano.** Mientras se guarda una tarifa puedes cerrar la ventana («Seguir trabajando») y seguir usando el programa: abajo a la derecha sale un panel con la barra, el porcentaje, el tiempo transcurrido y el que queda. Al terminar avisa con «Importación realizada con éxito»; si hay errores o avisos, la notificación se queda en pantalla con el detalle para revisarlo. Vale para la tarifa de proveedor y para Mi base de datos.
+
 ## [1.112.0] — 2026-11-07
 
 ### Añadido
