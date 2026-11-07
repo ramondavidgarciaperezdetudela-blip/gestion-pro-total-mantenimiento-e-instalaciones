@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, ShoppingCart, UserPlus, Phone, Globe, Package } from 'lucide-react';
+import { ExternalLink, UserPlus, Phone, Globe, Package } from 'lucide-react';
 import NavBar from '@/components/NavBar';
 
 const PROVEEDORES = [
@@ -9,17 +9,17 @@ const PROVEEDORES = [
     pais: '🇪🇸 España',
     logo: '🔵',
     descripcion: 'Filial de Air Products en España. Distribuidor oficial de gases refrigerantes industriales y técnicos para profesionales del frío.',
-    url_registro: 'https://www.carburos.com/es-es/industrial/registro-cliente.html',
-    url_tienda: 'https://www.carburos.com/tienda',
-    url_web: 'https://www.carburos.com',
-    telefono: '900 810 142',
+    url_registro: 'https://account.airproducts.com/login',
+    url_tienda: 'https://carburos.com',
+    url_web: 'https://carburos.com',
+    telefono: '',
     gases: ['R-32','R-410A','R-404A','R-448A','R-449A','R-134a','R-513A','R-744 CO2','R-290','Nitrógeno'],
     tipo: 'Distribuidor industrial nacional',
     nota: 'Requiere certificado F-Gas para comprar gases HFC/HFO',
     color: 'from-blue-600 to-blue-800',
     acciones: [
-      { label: 'Registrarse como cliente', icon: UserPlus, url: 'https://www.carburos.com/es-es/industrial/registro-cliente.html', primary: true },
-      { label: 'Tienda online', icon: ShoppingCart, url: 'https://www.carburos.com/tienda', primary: false },
+      { label: 'Acceso de clientes (Air Products)', icon: UserPlus, url: 'https://account.airproducts.com/login', primary: true },
+      { label: 'Web de Carburos', icon: Globe, url: 'https://carburos.com', primary: false },
     ]
   },
   {
@@ -28,17 +28,17 @@ const PROVEEDORES = [
     pais: '🇪🇸 España',
     logo: '🟢',
     descripcion: 'Proveedor especializado en gases refrigerantes para instaladores y empresas de climatización y refrigeración. Distribución directa a profesionales.',
-    url_registro: 'https://www.gasesgrit.com/registro',
-    url_tienda: 'https://www.gasesgrit.com',
-    url_web: 'https://www.gasesgrit.com',
-    telefono: '',
+    url_registro: 'https://gasesgrit.com/contacto/',
+    url_tienda: 'https://gasesgrit.com/gases-refrigerantes/',
+    url_web: 'https://gasesgrit.com/gases-refrigerantes/',
+    telefono: '932 721 400',
     gases: ['R-32','R-410A','R-404A','R-448A','R-449A','R-134a','R-290','R-600a','Mezclas HFO'],
     tipo: 'Distribuidor especializado profesionales',
     nota: 'Especializado en gases para instaladores de climatización y refrigeración',
     color: 'from-green-600 to-green-800',
     acciones: [
-      { label: 'Registrarse para comprar', icon: UserPlus, url: 'https://www.gasesgrit.com/registro', primary: true },
-      { label: 'Ver catálogo', icon: Package, url: 'https://www.gasesgrit.com', primary: false },
+      { label: 'Contactar para comprar', icon: UserPlus, url: 'https://gasesgrit.com/contacto/', primary: true },
+      { label: 'Ver catálogo de refrigerantes', icon: Package, url: 'https://gasesgrit.com/gases-refrigerantes/', primary: false },
     ]
   },
   {
@@ -47,16 +47,16 @@ const PROVEEDORES = [
     pais: '🌍 Internacional',
     logo: '🔴',
     descripcion: 'Multinacional líder en gases industriales. Gama completa de gases refrigerantes, criogénicos e industriales para instaladores profesionales.',
-    url_registro: 'https://www.linde-gas.es/es/forms/contact_us/index.html',
-    url_tienda: 'https://www.linde-gas.es',
+    url_registro: 'https://www.linde-gas.es/shop/es/es-ig/faq-contact',
+    url_tienda: 'https://www.linde-gas.es/shop/es/es-ig',
     url_web: 'https://www.linde-gas.es',
-    telefono: '900 627 624',
+    telefono: '',
     gases: ['R-32','R-410A','R-404A','R-448A','R-449A','R-134a','R-744 CO2','R-290','Nitrógeno','Hidrógeno'],
     tipo: 'Distribuidor industrial multinacional',
     nota: 'Envío a domicilio o recogida en punto de distribución local',
     color: 'from-red-600 to-red-800',
     acciones: [
-      { label: 'Contactar comercial', icon: UserPlus, url: 'https://www.linde-gas.es/es/forms/contact_us/index.html', primary: true },
+      { label: 'Contactar comercial', icon: UserPlus, url: 'https://www.linde-gas.es/shop/es/es-ig/faq-contact', primary: true },
       { label: 'Web principal', icon: Globe, url: 'https://www.linde-gas.es', primary: false },
     ]
   },
@@ -66,17 +66,17 @@ const PROVEEDORES = [
     pais: '🇪🇸 España',
     logo: '🟠',
     descripcion: 'Antes SOL España y posteriormente Nippon Gases. Distribuidor de gases industriales, refrigerantes y especiales. Amplia red de distribución en España.',
-    url_registro: 'https://www.nippontgs.com/es-es/contacto',
-    url_tienda: 'https://www.nippontgs.com/es-es',
-    url_web: 'https://www.nippontgs.com/es-es',
-    telefono: '900 500 556',
+    url_registro: 'https://www.nippongases.com/es-es/contact-us',
+    url_tienda: 'https://www.nippongases.com/es-es',
+    url_web: 'https://www.nippongases.com/es-es',
+    telefono: '',
     gases: ['R-32','R-410A','R-404A','R-448A','R-449A','R-134a','R-744 CO2','R-290','R-600a','Nitrógeno','Argón'],
     tipo: 'Distribuidor industrial nacional',
     nota: 'Red de distribución en toda España',
     color: 'from-orange-500 to-orange-700',
     acciones: [
-      { label: 'Contactar delegación', icon: UserPlus, url: 'https://www.nippontgs.com/es-es/contacto', primary: true },
-      { label: 'Web principal', icon: Globe, url: 'https://www.nippontgs.com/es-es', primary: false },
+      { label: 'Contactar delegación', icon: UserPlus, url: 'https://www.nippongases.com/es-es/contact-us', primary: true },
+      { label: 'Web principal', icon: Globe, url: 'https://www.nippongases.com/es-es', primary: false },
     ]
   },
   {
@@ -85,17 +85,17 @@ const PROVEEDORES = [
     pais: '🌍 Internacional',
     logo: '🩵',
     descripcion: 'Grupo multinacional francés líder mundial en gases para industria, salud y medio ambiente. Amplia gama de refrigerantes y gases técnicos.',
-    url_registro: 'https://www.airliquide.com/spain/contactanos',
-    url_tienda: 'https://www.airliquide.com/spain',
-    url_web: 'https://www.airliquide.com/spain',
-    telefono: '900 101 090',
+    url_registro: 'https://www.airliquide.com/contact',
+    url_tienda: 'https://es.airliquide.com',
+    url_web: 'https://es.airliquide.com',
+    telefono: '915 02 93 00',
     gases: ['R-32','R-410A','R-404A','R-448A','R-449A','R-134a','R-744 CO2','R-290','Nitrógeno','Helio'],
     tipo: 'Multinacional líder mundial',
     nota: 'Requiere cuenta de empresa para tarifas profesionales',
     color: 'from-sky-500 to-sky-700',
     acciones: [
-      { label: 'Contactar comercial', icon: UserPlus, url: 'https://www.airliquide.com/spain/contactanos', primary: true },
-      { label: 'Web España', icon: Globe, url: 'https://www.airliquide.com/spain', primary: false },
+      { label: 'Contactar comercial', icon: UserPlus, url: 'https://www.airliquide.com/contact', primary: true },
+      { label: 'Web España', icon: Globe, url: 'https://es.airliquide.com', primary: false },
     ]
   },
   {
@@ -104,16 +104,16 @@ const PROVEEDORES = [
     pais: '🌍 Internacional',
     logo: '🔷',
     descripcion: 'División de gases refrigerantes de Linde. Especializada en gases bajos en GWP para el calendario de reducción del Reglamento (UE) 2024/573 (2024-2030).',
-    url_registro: 'https://www.linde-gas.es/es/forms/contact_us/index.html',
-    url_web: 'https://www.linde-gas.es/es/products_and_supply/refrigerants/index.html',
-    telefono: '900 627 624',
+    url_registro: 'https://www.linde-gas.es/shop/es/es-ig/faq-contact',
+    url_web: 'https://www.linde-gas.es/shop/es/es-ig',
+    telefono: '',
     gases: ['R-32','R-448A','R-449A','R-452A','R-513A','R-1234yf','R-1234ze','R-744 CO2','R-290','R-600a'],
     tipo: 'División industrial multinacional',
     nota: 'Especializado en gases alternativos bajos en GWP para cumplir nueva normativa F-Gas',
     color: 'from-indigo-500 to-indigo-700',
     acciones: [
-      { label: 'Ver catálogo refrigerantes', icon: Package, url: 'https://www.linde-gas.es/es/products_and_supply/refrigerants/index.html', primary: true },
-      { label: 'Contactar comercial', icon: UserPlus, url: 'https://www.linde-gas.es/es/forms/contact_us/index.html', primary: false },
+      { label: 'Ver catálogo refrigerantes', icon: Package, url: 'https://www.linde-gas.es/shop/es/es-ig', primary: true },
+      { label: 'Contactar comercial', icon: UserPlus, url: 'https://www.linde-gas.es/shop/es/es-ig/faq-contact', primary: false },
     ]
   },
   {
@@ -122,16 +122,16 @@ const PROVEEDORES = [
     pais: '🌍 Internacional',
     logo: '🟣',
     descripcion: 'Grupo Dehon, especialista europeo en gases fluorados y lubricantes para refrigeración. Distribuidor oficial de gases HFO y mezclas.',
-    url_registro: 'https://www.climalife.dehon.com/es/contacte-con-nosotros',
-    url_web: 'https://www.climalife.dehon.com/es',
+    url_registro: 'https://climalife.com/es/',
+    url_web: 'https://climalife.com/es/',
     telefono: '',
     gases: ['R-32','R-410A','R-448A','R-449A','R-452A','R-513A','R-1234yf','R-744 CO2','Aceites PAO','Aceites POE'],
     tipo: 'Especialista gases fluorados y lubricantes',
     nota: 'También distribuye aceites lubricantes para compresor: POE, PAO, PAG',
     color: 'from-purple-600 to-purple-800',
     acciones: [
-      { label: 'Ver gases y lubricantes', icon: Package, url: 'https://www.climalife.dehon.com/es', primary: true },
-      { label: 'Contactar', icon: UserPlus, url: 'https://www.climalife.dehon.com/es/contacte-con-nosotros', primary: false },
+      { label: 'Ver gases y lubricantes', icon: Package, url: 'https://climalife.com/es/', primary: true },
+      { label: 'Contactar', icon: UserPlus, url: 'https://climalife.com/es/', primary: false },
     ]
   },
   {
@@ -140,16 +140,16 @@ const PROVEEDORES = [
     pais: '🇪🇸 España',
     logo: '🟡',
     descripcion: 'Filial de Messer Group en España. Distribuidor de gases industriales y refrigerantes con presencia en toda la península ibérica.',
-    url_registro: 'https://www.messer.es/es/contacto',
+    url_registro: 'https://www.messer.es/contacto',
     url_tienda: 'https://www.messer.es',
     url_web: 'https://www.messer.es',
-    telefono: '93 490 21 00',
+    telefono: '',
     gases: ['R-32','R-410A','R-404A','R-134a','R-744 CO2','R-290','Nitrógeno','Argón'],
     tipo: 'Distribuidor industrial nacional',
     nota: 'Especialmente presente en Cataluña y zona mediterránea',
     color: 'from-yellow-500 to-yellow-700',
     acciones: [
-      { label: 'Solicitar información', icon: UserPlus, url: 'https://www.messer.es/es/contacto', primary: true },
+      { label: 'Solicitar información', icon: UserPlus, url: 'https://www.messer.es/contacto', primary: true },
       { label: 'Web principal', icon: Globe, url: 'https://www.messer.es', primary: false },
     ]
   },

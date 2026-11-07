@@ -14,15 +14,15 @@ const GAS_SUPPLIERS = [
     id: 'carburos',
     name: 'Carburos Metálicos',
     logo: '⚗️',
-    portal_url: 'https://www.carburos.com/es-ES/customer-portal',
+    portal_url: 'https://account.airproducts.com/login',
     username_label: 'Email / Nº cliente',
-    notes: 'Gases fluorados, refrigerantes y gases industriales. Grupo Air Products.'
+    notes: 'Gases fluorados, refrigerantes y gases industriales. Grupo Air Products. Acceso con tu cuenta MyAirProducts.'
   },
   {
     id: 'airliquide',
     name: 'Air Liquide',
     logo: '🔵',
-    portal_url: 'https://www.es.airliquide.com/soluciones/myairliquide',
+    portal_url: 'https://es.airliquide.com',
     username_label: 'Email / Nº cliente',
     notes: 'Gases industriales, medicinales y especiales. Portal myAirLiquide.'
   },
@@ -30,7 +30,7 @@ const GAS_SUPPLIERS = [
     id: 'linde',
     name: 'Linde Gas',
     logo: '🔴',
-    portal_url: 'https://www.lindegas.es/es/customer_services/myaccount',
+    portal_url: 'https://www.linde-gas.es/shop/es/es-ig',
     username_label: 'Email / Nº cuenta',
     notes: 'Gases industriales y refrigerantes. Portal myAccount Linde.'
   },
@@ -38,7 +38,7 @@ const GAS_SUPPLIERS = [
     id: 'nippon',
     name: 'Nippon Gases',
     logo: '🟠',
-    portal_url: 'https://www.nippon-gases.com/es/es/customer-portal',
+    portal_url: 'https://www.nippongases.com/es-es/customer-area',
     username_label: 'Email / Nº cliente',
     notes: 'Gases industriales, medicinales y especiales. Presencia fuerte en España y Europa.'
   },
@@ -46,15 +46,23 @@ const GAS_SUPPLIERS = [
     id: 'messer',
     name: 'Messer Ibérica',
     logo: '🟢',
-    portal_url: 'https://www.messer.es/servicios/portal-clientes',
+    portal_url: 'https://www.messer.es',
     username_label: 'Usuario / Email',
     notes: 'Gases industriales y medicinales. Pedidos online y seguimiento de botellas.'
+  },
+  {
+    id: 'grit',
+    name: 'Gases GRIT',
+    logo: '🟢',
+    portal_url: 'https://gasesgrit.com/gases-refrigerantes/',
+    username_label: 'Email / Nº cliente',
+    notes: 'Gases refrigerantes para instaladores. Sin portal de clientes: catálogo y formulario de contacto en su web.'
   },
   {
     id: 'praxair',
     name: 'Praxair (Linde)',
     logo: '🔷',
-    portal_url: 'https://www.praxair.es',
+    portal_url: 'https://www.linde-gas.es/shop/es/es-ig',
     username_label: 'Email / Nº cliente',
     notes: 'Integrado en Linde. Gases industriales y medicinales.'
   },
