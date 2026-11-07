@@ -33,6 +33,14 @@
     "contact_name": {
       "type": "string"
     },
+    "plan_id": {
+      "type": "string",
+      "description": "ID del plano frigorífico del que sale el presupuesto"
+    },
+    "plan_name": {
+      "type": "string",
+      "description": "Nombre del plano frigorífico vinculado"
+    },
     "contact_nif": {
       "type": "string"
     },

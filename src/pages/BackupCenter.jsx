@@ -39,6 +39,8 @@ const ALL_ENTITIES = [
   // Añadidas para cubrir TODOS los apartados del programa:
   'ChangeOpinionRequest', 'ClientMachine', 'DocumentTemplate',
   'EquipmentFailure', 'InsuranceReport', 'SATWorkTemplate', 'SupplierCatalog', 'FichaTecnicaMaquina', 'SystemSettings',
+  // Planos frigoríficos (con su vista 3D y el cliente al que pertenecen) y el catálogo propio de elementos del plano:
+  'RefrigerationPlan', 'PlanoCatalogItem',
 ];
 
 // Secciones de una copia: las del programa y, además, cualquiera que traiga la
@@ -80,6 +82,9 @@ const KEYERS = {
   SupplierCatalog:    (r) => (_s(r.supplier_id) && `${_s(r.supplier_id)}|${_s(r.name)}`) || _s(r.name) || null,
   SystemSettings:     (r) => _s(r.key) || null,
   InsuranceReport:    (r) => _s(r.report_number) || null,
+  RefrigerationPlan:  (r) => (_s(r.name) && `${_s(r.contact_id)}|${_s(r.name)}`) || null,
+  PlanoCatalogItem:   (r) => _s(r.name) || _s(r.label) || null,
+  FichaTecnicaMaquina: (r) => _s(r.key) || (_s(r.manufacturer) && `${_s(r.manufacturer)}|${_s(r.model)}`) || null,
   // ChangeLog, AIConsultation, SATChatMessage, EquipmentDiary, ChangeOpinionRequest,
   // EquipmentFailure → histórico: sin clave (solo añadir lo que falte)
 };
@@ -115,6 +120,9 @@ const ENTITY_LABELS = {
   SupplierCatalog: 'Catálogos de Proveedor',
   SystemSettings: 'Ajustes del Sistema',
   InsuranceReport: 'Informes Aseguradora',
+  RefrigerationPlan: 'Planos Frigoríficos (con vista 3D)',
+  PlanoCatalogItem: 'Catálogo de elementos del plano',
+  FichaTecnicaMaquina: 'Fichas técnicas de máquinas',
 };
 
 const STORAGE_KEY = 'backupConfig';
