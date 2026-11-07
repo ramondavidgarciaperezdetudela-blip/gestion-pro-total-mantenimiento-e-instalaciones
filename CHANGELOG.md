@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.4] — 2026-11-07
+
+### Corregido
+- Nippon Gases: el botón de contacto tenía una dirección con doble barra; ahora abre la web oficial `eu.nipponsanso.com/es/`.
+
+---
+
 ## [1.115.3] — 2026-11-07
 
 ### Corregido
