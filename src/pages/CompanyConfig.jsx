@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import InterruptorIA from '@/components/InterruptorIA';
 import ElegirTema from '@/components/ElegirTema';
 import VerificacionDocumentos from '@/components/VerificacionDocumentos';
+import AlmacenDatosPanel from '@/components/AlmacenDatosPanel';
 import ElegirImpresora from '@/components/ElegirImpresora';
 import { umbralesRite, guardarUmbralesRite, sonLosDePartida } from '@/lib/umbralesRite';
 import { base44 } from '@/api/base44Client';
@@ -321,6 +322,8 @@ export default function CompanyConfig() {
           </Button>
         </div>
       </div>
+
+      <AlmacenDatosPanel />
 
       <Tabs defaultValue="empresa">
         <TabsList className="w-full flex-wrap h-auto gap-1">

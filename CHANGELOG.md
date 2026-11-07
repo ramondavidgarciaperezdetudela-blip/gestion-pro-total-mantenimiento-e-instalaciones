@@ -15,6 +15,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.5] — 2026-11-07
+
+### Añadido
+- Tras actualizar, la app pregunta si mantienes dónde se guardan los datos o los cambias (con «No volver a preguntar»), y en Configuración de empresa → «Dónde se guardan los datos» se puede cambiar cuando quieras.
+- Guía ilustrada en PDF para configurar Supabase y el servidor propio (`docs/`).
+
+---
+
 ## [1.115.4] — 2026-11-07
 
 ### Corregido

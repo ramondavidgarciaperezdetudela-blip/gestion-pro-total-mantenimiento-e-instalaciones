@@ -1,8 +1,39 @@
+/* global __APP_VERSION__ */
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { HardDrive, Cloud, Server, ArrowLeft, Loader2, ShieldCheck } from 'lucide-react';
-import { leerConfig, guardarConfig, borrarConfig, escucharConfig, leerSesion } from './config';
+import { MODOS, leerConfig, guardarConfig, borrarConfig, escucharConfig, leerSesion } from './config';
 import { iniciarSesion, registrarse, hayQueEntrar } from './autenticacion';
 import { vaciarCache } from './entidad';
+
+// Tras actualizar la app se pregunta una vez si se mantienen los ajustes de guardado.
+const VK = 'gpt_ajustes_version';
+const NK = 'gpt_no_preguntar_ajustes';
+const VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '';
+const hayAviso = () => { try { return !!VERSION && !!leerConfig() && localStorage.getItem(VK) !== VERSION && localStorage.getItem(NK) !== '1'; } catch { return false; } };
+const marcarVisto = () => { try { if (VERSION) localStorage.setItem(VK, VERSION); } catch { /* nada */ } };
+
+function Aviso({ onListo, onCambiar }) {
+  const [no, setNo] = useState(false);
+  const c = leerConfig();
+  const donde = `${MODOS[c.modo] || c.modo}${c.url ? ` — ${c.url}` : ''}`;
+  const mantener = () => { try { if (no) localStorage.setItem(NK, '1'); } catch { /* nada */ } marcarVisto(); onListo(); };
+  return (
+    <Caja titulo={`Se ha actualizado a la versión ${VERSION}`} sub="Antes de seguir: ¿quieres mantener dónde se guardan tus datos?">
+      <div className="rounded-xl border bg-muted/40 p-4 text-sm">
+        <p className="text-muted-foreground">Ahora se guardan en:</p>
+        <p className="mt-1 font-semibold break-all" data-prueba="aviso-donde">{donde}</p>
+      </div>
+      <div className="mt-5 space-y-3">
+        <button onClick={mantener} data-prueba="aviso-mantener" className="w-full rounded-md bg-primary px-4 py-2.5 font-medium text-primary-foreground">Mantener estos ajustes</button>
+        <button onClick={() => { marcarVisto(); onCambiar(); }} data-prueba="aviso-cambiar" className="w-full rounded-md border px-4 py-2.5 font-medium hover:bg-accent">Cambiar (nube, Supabase, servidor propio o solo este dispositivo)</button>
+      </div>
+      <label className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+        <input type="checkbox" checked={no} onChange={(e) => setNo(e.target.checked)} data-prueba="aviso-no-preguntar" /> No volver a preguntar al actualizar
+      </label>
+      <p className="mt-3 text-xs text-muted-foreground">Podrás cambiarlo cuando quieras en Configuración de empresa → Dónde se guardan los datos. Al cambiar, tus datos no se mueven solos: usa antes «Copia de seguridad».</p>
+    </Caja>
+  );
+}
 
 const estado = () => JSON.stringify([leerConfig(), !!leerSesion()?.token]);
 const useEstado = () => useSyncExternalStore((f) => {
@@ -53,11 +84,11 @@ function Elegir() {
 
   const seguir = async () => {
     setError('');
-    if (modo === 'local') { guardarConfig({ modo }); vaciarCache(); return; }
+    if (modo === 'local') { marcarVisto(); guardarConfig({ modo }); vaciarCache(); return; }
     setCargando(true);
     try {
       await probar(modo, url.trim().replace(/\/+$/, ''), clave.trim());
-      guardarConfig({ modo, url, clave });
+      marcarVisto(); guardarConfig({ modo, url, clave });
       vaciarCache();
     } catch (e) { setError(e.message); } finally { setCargando(false); }
   };
@@ -137,12 +168,15 @@ function Entrar() {
   );
 }
 
+export function cambiarAlmacen() { borrarConfig(); window.location.reload(); }
+
 /** Rodea a la app: pide elegir almacén la primera vez y entrar si hace falta. */
 export default function PantallaNube({ children }) {
   useEstado();
   const [, forzar] = useState(0);
   useEffect(() => escucharConfig(() => forzar((n) => n + 1)), []);
   if (!leerConfig()) return <Elegir />;
+  if (hayAviso()) return <Aviso onListo={() => forzar((n) => n + 1)} onCambiar={() => { borrarConfig(); window.location.reload(); }} />;
   if (hayQueEntrar()) return <Entrar />;
   return children;
 }
