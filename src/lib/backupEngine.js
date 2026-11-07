@@ -289,7 +289,8 @@ export async function runRestoreJob(
   // facturas/órdenes/fichas y al final el resto. Tras cada tanda se averigua el
   // identificador nuevo de cada registro y se cambia en las tandas siguientes,
   // así cada ficha sigue unida a su cliente.
-  const TANDAS = [['Contact', 'Supplier'], ['Invoice', 'SATOrder', 'MaintenanceSheet', 'Project']];
+  // Los planos van antes que los presupuestos para que cada presupuesto recupere el plano al que está unido (plan_id).
+  const TANDAS = [['Contact', 'Supplier'], ['RefrigerationPlan', 'SATOrder', 'MaintenanceSheet', 'Project'], ['Invoice']];
   const enTandas = [];
   const usadas = new Set();
   TANDAS.forEach((t) => {
