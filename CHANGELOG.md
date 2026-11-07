@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.3] — 2026-11-07
+
+### Corregido
+- Proveedores de gases: teléfonos verificados — Carburos 935 661 480 (consultas gases), Nippon Gases 914 533 000 (web oficial `eu.nipponsanso.com/es`) y Messer 977 309 500. Linde sigue sin teléfono hasta confirmarlo.
+
+---
+
 ## [1.115.2] — 2026-11-07
 
 ### Corregido
