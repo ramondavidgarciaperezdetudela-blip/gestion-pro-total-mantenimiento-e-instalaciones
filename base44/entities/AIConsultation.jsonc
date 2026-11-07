@@ -46,6 +46,10 @@
           },
           "supplier": {
             "type": "string"
+          },
+          "iva_modo": {
+            "type": "string",
+            "enum": ["aparte", "incluido", "exento"]
           }
         }
       }

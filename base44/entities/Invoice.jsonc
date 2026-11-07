@@ -113,6 +113,11 @@
           "supplier_name": {
             "type": "string",
             "description": "Proveedor del precio"
+          },
+          "iva_modo": {
+            "type": "string",
+            "enum": ["aparte", "incluido", "exento"],
+            "description": "IVA de la l\u00ednea: aparte (se suma), incluido en el precio o exenta"
           }
         }
       }

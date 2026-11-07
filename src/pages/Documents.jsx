@@ -1,3 +1,4 @@
+import { totalesDocumento, MODOS_IVA, modoDeLinea, etiquetaIva } from '@/lib/ivaLineas';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { cargarTodo } from '@/lib/cargarTodo';
 import BuscadorCliente from '@/components/BuscadorCliente';
@@ -85,9 +86,7 @@ function recalculate(items, iva_rate) {
     ...item,
     total: (item.quantity || 0) * (item.unit_price || 0) * (1 - (item.discount || 0) / 100)
   }));
-  const subtotal = updatedItems.reduce((sum, i) => sum + i.total, 0);
-  const iva_amount = subtotal * (iva_rate / 100);
-  return { items: updatedItems, subtotal, iva_amount, total: subtotal + iva_amount };
+  return { items: updatedItems, ...totalesDocumento(updatedItems, iva_rate) };
 }
 
 export default function Documents() {
@@ -785,7 +784,7 @@ export default function Documents() {
     const itemsHtml = (doc.items || []).map((item, i) => `
       <tr style="background:${i % 2 === 0 ? '#f9fafb' : '#fff'}">
         ${hasRef ? `<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;color:#555">${item.reference || ''}</td>` : ''}
-        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${item.description || ''}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${item.description || ''}${etiquetaIva(item) ? ` <span style="font-size:8px;background:#fef3c7;color:#92400e;border-radius:3px;padding:1px 4px;white-space:nowrap">${etiquetaIva(item)}</span>` : ''}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center">${item.quantity}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right">${(item.unit_price||0).toFixed(2)} €</td>
         ${hasDiscount ? `<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;color:#d97706">${item.discount > 0 ? item.discount + '%' : '-'}</td>` : ''}
@@ -822,7 +821,7 @@ export default function Documents() {
     <table><thead><tr>${hasRef?'<th>Ref.</th>':''}<th>Descripción</th><th class="center">Cant.</th><th class="right">P.Unit.</th>${hasDiscount?'<th class="right">Dto%</th>':''}${hasPlazo?'<th class="center">Plazo</th>':''}<th class="right">Total</th></tr></thead>
     <tbody>${itemsHtml}</tbody></table>
     <div class="totals">
-      <div style="display:flex;justify-content:flex-end;gap:20px;font-size:9px;color:#555"><span>Subtotal:</span><span><strong>${(doc.subtotal||0).toFixed(2)} €</strong></span></div>
+      <div style="display:flex;justify-content:flex-end;gap:20px;font-size:9px;color:#555"><span>${(doc.items||[]).some(i => modoDeLinea(i) !== 'aparte') ? 'Base imponible:' : 'Subtotal:'}</span><span><strong>${(doc.subtotal||0).toFixed(2)} €</strong></span></div>
       <div style="display:flex;justify-content:flex-end;gap:20px;font-size:9px;color:#555"><span>IVA (${doc.iva_rate||21}%):</span><span><strong>${(doc.iva_amount||0).toFixed(2)} €</strong></span></div>
       <div style="display:flex;justify-content:flex-end;gap:20px;font-size:14px;font-weight:800;color:#1e3a5f"><span>TOTAL:</span><span>${(doc.total||0).toFixed(2)} €</span></div>
     </div>
@@ -1290,7 +1289,11 @@ export default function Documents() {
                      value={item.reference || ''} onChange={(e) => handleItemChange(i, 'reference', e.target.value)} />
                    <input className="col-span-2 text-[11px] h-7 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring" placeholder="Plazo (días)" inputMode="numeric"
                      value={item.delivery_days ?? ''} onChange={(e) => handleItemChange(i, 'delivery_days', e.target.value === '' ? null : e.target.value)} />
-                   <span className="col-span-5 text-[10px] text-gray-400 truncate">{item.supplier_name ? `Precio de ${item.supplier_name}` : ''}</span>
+                   <select className="col-span-3 text-[11px] h-7 border border-input rounded-md px-1 bg-white focus:outline-none focus:ring-1 focus:ring-ring" title="IVA de esta línea" data-prueba="iva-linea"
+                     value={modoDeLinea(item)} onChange={(e) => handleItemChange(i, 'iva_modo', e.target.value)}>
+                     {Object.entries(MODOS_IVA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                   </select>
+                   <span className="col-span-2 text-[10px] text-gray-400 truncate">{item.supplier_name ? `Precio de ${item.supplier_name}` : ''}</span>
                    {avisosLinea[item._id]?.tipo === 'nuevo' && !avisosLinea[item._id]?.descartado && String(item.description || '').trim().length >= 4 && (
                      <div className="col-span-12 flex flex-wrap items-center gap-2 text-[11px] bg-amber-50 border border-amber-200 rounded-md px-2 py-1">
                        <span className="text-amber-800">Este artículo no está en Mi base de datos.</span>
@@ -1407,7 +1410,7 @@ export default function Documents() {
               onFichaGuardada={(f) => setFichasMaq((p) => [...(p || []).filter((x) => x.id !== f.id), f])} />
 
             <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg space-y-1 text-sm">
-              <div className="flex justify-between text-gray-600"><span>Subtotal:</span><span>{form.subtotal?.toFixed(2)} €</span></div>
+              <div className="flex justify-between text-gray-600"><span>{form.items?.some((i) => modoDeLinea(i) !== 'aparte') ? 'Base imponible:' : 'Subtotal:'}</span><span>{form.subtotal?.toFixed(2)} €</span></div>
               <div className="flex justify-between text-gray-600"><span>IVA ({form.iva_rate}%):</span><span>{form.iva_amount?.toFixed(2)} €</span></div>
               <div className="flex justify-between font-bold text-lg text-blue-800"><span>TOTAL:</span><span>{form.total?.toFixed(2)} €</span></div>
             </div>
@@ -1521,7 +1524,7 @@ export default function Documents() {
                     <tbody>
                       {previewDoc.items?.map((item, i) =>
                     <tr key={i} className={`border-b ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
-                          <td className="p-2">{item.description}</td>
+                          <td className="p-2">{item.description}{etiquetaIva(item) && <span className="ml-1.5 text-[10px] rounded bg-amber-100 text-amber-800 px-1 py-0.5 whitespace-nowrap">{etiquetaIva(item)}</span>}</td>
                           <td className="p-2 text-center whitespace-nowrap">{item.quantity}</td>
                           <td className="p-2 text-right whitespace-nowrap">{item.unit_price?.toFixed(2)} €</td>
                           {previewDoc.items?.some((i) => i.discount > 0) && <td className="p-2 text-right whitespace-nowrap text-orange-600">{item.discount > 0 ? `${item.discount}%` : '-'}</td>}
@@ -1532,7 +1535,7 @@ export default function Documents() {
                   </table>
                   </div>
                   <div className="text-right space-y-1 text-sm border-t pt-3">
-                    <p className="text-gray-600">Subtotal: <strong>{previewDoc.subtotal?.toFixed(2)} €</strong></p>
+                    <p className="text-gray-600">{previewDoc.items?.some((i) => modoDeLinea(i) !== 'aparte') ? 'Base imponible' : 'Subtotal'}: <strong>{previewDoc.subtotal?.toFixed(2)} €</strong></p>
                     <p className="text-gray-600">IVA ({previewDoc.iva_rate}%): <strong>{previewDoc.iva_amount?.toFixed(2)} €</strong></p>
                     <p className="font-bold text-xl text-gray-900">TOTAL: {previewDoc.total?.toFixed(2)} €</p>
                   </div>
