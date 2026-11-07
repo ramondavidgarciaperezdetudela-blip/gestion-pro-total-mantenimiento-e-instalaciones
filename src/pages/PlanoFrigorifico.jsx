@@ -913,6 +913,7 @@ Parte de ese cálculo y corrígelo donde haga falta. Incluye conceptos de mano d
 
       await base44.entities.Invoice.create({
         doc_type: 'presupuesto', doc_number, contact_id: plan.contact_id, contact_name: plan.contact_name,
+        plan_id: plan.id || '', plan_name: plan.name || '',
         date: format(new Date(), 'yyyy-MM-dd'), status: 'borrador', work_type: 'refrigeracion_industrial',
         items, subtotal, iva_rate, iva_amount, total,
         observations: (res.observations || '') + `\nGenerado automáticamente desde el plano «${plan.name}». Revista precios antes de enviar.`,

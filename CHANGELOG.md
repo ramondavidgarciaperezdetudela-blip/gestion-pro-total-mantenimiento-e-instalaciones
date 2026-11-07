@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.114.0] — 2026-11-07
+
+### Corregido
+- **La copia de seguridad ahora incluye los planos frigoríficos.** Antes no se copiaban. Ahora entran en la copia (con su vista 3D, su cliente y todo el dibujo), junto con el catálogo propio de elementos del plano y las fichas técnicas de máquinas, y se pueden elegir al restaurar, también en el móvil y la tablet.
+- **Cada plano vuelve unido a su cliente** al restaurar (por identificador y, si no, por nombre), y se ve en la ficha del cliente.
+- **Los presupuestos generados desde un plano guardan el plano al que pertenecen** y, al restaurar, lo recuperan.
+
 ## [1.113.0] — 2026-11-07
 
 ### Añadido

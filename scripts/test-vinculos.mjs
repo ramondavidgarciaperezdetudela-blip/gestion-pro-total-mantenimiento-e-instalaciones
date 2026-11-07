@@ -23,5 +23,11 @@ ok(r.porId === 1 && r.porNombre === 1 && r.sinVincular === 1, 'contadores correc
 import { cambiosDeVinculo } from '../src/lib/vincularAuto.js';
 const cb = cambiosDeVinculo([{ id: 'd1', contact_id: 'roto', contact_name: 'Bar Sol' }, { id: 'd2', contact_id: 'n1', contact_name: 'Ana López' }, { id: 'd3', contact_name: 'Nadie' }], actuales);
 ok(cb.length === 1 && cb[0].id === 'd1' && cb[0].contact_id === 'n2', 'vínculo automático: solo cambia la ficha suelta');
+// Planos frigoríficos: cada plano recupera su cliente y cada presupuesto recupera su plano.
+const idMapPlano = new Map([['c-viejo', 'n1'], ['p-viejo', 'p-nuevo']]);
+const planos = reenlazarFilas([{ id: 'p-viejo', name: 'Cámara bar', contact_id: 'c-viejo', contact_name: 'Ana López' }], idMapPlano, actuales);
+ok(planos.filas[0].contact_id === 'n1', 'el plano se vincula a su cliente');
+const presus = reenlazarFilas([{ id: 'q1', contact_id: 'c-viejo', plan_id: 'p-viejo', plan_name: 'Cámara bar' }], idMapPlano, actuales);
+ok(presus.filas[0].plan_id === 'p-nuevo' && presus.filas[0].contact_id === 'n1', 'el presupuesto recupera su plano y su cliente');
 console.log(fallos ? `\n${fallos} FALLOS` : '\nTODO OK');
 process.exit(fallos ? 1 : 0);
