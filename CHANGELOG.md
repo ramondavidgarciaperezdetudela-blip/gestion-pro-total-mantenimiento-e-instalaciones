@@ -15,6 +15,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.2] — 2026-11-07
+
+### Corregido
+- **Proveedores de gases: webs y contactos actualizados.** Carburos Metálicos usa el acceso de clientes de Air Products (`account.airproducts.com/login`) y, en vez de «Tienda online», enlaza con `carburos.com`. Gases GRIT apunta al catálogo `gasesgrit.com/gases-refrigerantes/`, con su formulario de contacto y teléfono (se añade también al portal de proveedores). Nippon Gases, Linde, Air Liquide, Messer y Climalife usan ya sus direcciones vigentes.
+- Se quitan los teléfonos que no se han podido verificar (Carburos, Linde, Nippon, Messer) para no dar números erróneos; se mantienen los verificados de Gases GRIT y Air Liquide.
+
+---
+
 ## [1.115.1] — 2026-11-07
 
 ### Corregido
