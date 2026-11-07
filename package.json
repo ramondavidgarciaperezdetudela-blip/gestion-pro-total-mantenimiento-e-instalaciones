@@ -1,7 +1,7 @@
 {
   "name": "gestion-pro-total-fuera-base44",
   "private": true,
-  "version": "1.116.0",
+  "version": "1.116.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -49,6 +49,7 @@
     "test:huecos": "node scripts/test-huecos.mjs",
     "test:correo": "node scripts/test-correo.mjs",
     "test:iconoia": "node scripts/test-iconoia.mjs",
+    "test:buscar": "node scripts/test-buscar-articulos.mjs",
     "test:iva": "node scripts/test-iva-lineas.mjs",
     "test:vinculos": "node scripts/test-vinculos.mjs",
     "test:filtro": "node scripts/test-filtro.mjs",

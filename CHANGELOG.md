@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.116.1] — 2026-11-08
+
+### Añadido
+- Buscar artículos por nombre o por un trozo de la descripción (no solo por referencia) en presupuestos, facturas y recibos.
+
+---
+
 ## [1.116.0] — 2026-11-08
 
 ### Añadido
