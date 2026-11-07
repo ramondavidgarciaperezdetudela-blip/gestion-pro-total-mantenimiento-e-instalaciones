@@ -15,6 +15,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.112.0] — 2026-11-07
+
+### Añadido
+- **Importar una tarifa enseña el progreso de cada apartado**, como la copia de seguridad: barra con porcentaje y contador para «Leer la tarifa actual», «Guardar productos nuevos» y «Actualizar precios» (tarifa de proveedor), y para «Leer tu base de datos» y «Guardar y actualizar artículos» (Mi base de datos).
+
 ## [1.111.0] — 2026-11-07
 
 ### Añadido

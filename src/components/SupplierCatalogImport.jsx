@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Image } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import PasosProgreso, { porcentajePaso } from '@/components/PasosProgreso';
 
 /**
  * SupplierCatalogImport
@@ -20,6 +21,8 @@ export default function SupplierCatalogImport({ onImported }) {
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState('');
+  const [guardado, setGuardado] = useState({ existentes: { fase: 'espera' }, guardar: { fase: 'espera' } });
+  const ponGuardado = (k, patch) => setGuardado((g) => ({ ...g, [k]: { ...g[k], ...patch } }));
   const fileRef = React.useRef(null);
 
   const reset = () => {
@@ -207,6 +210,7 @@ export default function SupplierCatalogImport({ onImported }) {
     setStep('saving');
     setProgress('Cargando productos existentes...');
     const toSave = items.filter((_, i) => selectedItems.has(i));
+    setGuardado({ existentes: { fase: 'activo' }, guardar: { fase: 'espera', hechos: 0, total: toSave.length } });
 
     // 1) Cargar existentes para hacer UPSERT (actualizar en vez de duplicar).
     let existingByKey = {};
@@ -226,6 +230,8 @@ export default function SupplierCatalogImport({ onImported }) {
 
     let saved = 0, updated = 0, done = 0;
     const total = toSave.length;
+    ponGuardado('existentes', { fase: 'hecho', hechos: Object.keys(existingByKey).length, total: Object.keys(existingByKey).length });
+    ponGuardado('guardar', { fase: 'activo', hechos: 0, total });
 
     // 2) Guardar/actualizar en paralelo (rápido, sin límite de entradas).
     await runPool(toSave, 8, async (item) => {
@@ -252,9 +258,10 @@ export default function SupplierCatalogImport({ onImported }) {
         }
       } catch (_) { /* se cuenta como no guardado; continúa */ }
       done++;
-      if (done % 10 === 0 || done === total) setProgress(`Procesando ${done}/${total}...`);
+      if (done % 10 === 0 || done === total) { setProgress(`Procesando ${done}/${total}...`); ponGuardado('guardar', { hechos: done }); }
     });
 
+    ponGuardado('guardar', { fase: 'hecho', hechos: total });
     setStep('done');
     setProgress(`✅ ${saved} nuevos · ${updated} actualizados (de ${total})`);
     onImported && onImported(saved + updated);
@@ -318,6 +325,20 @@ export default function SupplierCatalogImport({ onImported }) {
                 <Loader2 className="w-8 h-8 text-purple-600 animate-spin mx-auto" />
                 <p className="font-semibold text-purple-800">{STEP_LABELS[step]}</p>
                 <p className="text-sm text-purple-600">{progress}</p>
+                {step === 'saving' && (() => {
+                  const pasos = [
+                    { id: 'existentes', label: 'Leer tu base de datos', ...guardado.existentes },
+                    { id: 'guardar', label: 'Guardar y actualizar artículos', ...guardado.guardar },
+                  ];
+                  const pct = porcentajePaso(pasos[1]) ?? 0;
+                  return (
+                    <>
+                      <div className="flex justify-between text-xs text-purple-700 font-medium"><span>Progreso</span><span>{pct}%</span></div>
+                      <div className="w-full bg-purple-200 rounded-full h-2.5 overflow-hidden"><div className="h-2.5 bg-purple-600 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} /></div>
+                      <PasosProgreso pasos={pasos} />
+                    </>
+                  );
+                })()}
                 {step === 'images' && (
                   <p className="text-xs text-purple-500">Esto puede tardar unos minutos dependiendo del número de productos</p>
                 )}
