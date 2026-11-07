@@ -66,7 +66,7 @@ const PROVEEDORES = [
     pais: '🇪🇸 España',
     logo: '🟠',
     descripcion: 'Antes SOL España y posteriormente Nippon Gases. Distribuidor de gases industriales, refrigerantes y especiales. Amplia red de distribución en España.',
-    url_registro: 'https://eu.nipponsanso.com/es//contact-us',
+    url_registro: 'https://eu.nipponsanso.com/es/',
     url_tienda: 'https://eu.nipponsanso.com/es/',
     url_web: 'https://eu.nipponsanso.com/es/',
     telefono: '914 533 000',
@@ -75,7 +75,7 @@ const PROVEEDORES = [
     nota: 'Red de distribución en toda España',
     color: 'from-orange-500 to-orange-700',
     acciones: [
-      { label: 'Contactar delegación', icon: UserPlus, url: 'https://eu.nipponsanso.com/es//contact-us', primary: true },
+      { label: 'Contactar delegación', icon: UserPlus, url: 'https://eu.nipponsanso.com/es/', primary: true },
       { label: 'Web principal', icon: Globe, url: 'https://eu.nipponsanso.com/es/', primary: false },
     ]
   },
