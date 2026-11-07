@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Plus, Ruler, Edit, Trash2, Zap, FileDown, Eye, FileUp } from 'lucide-react';
+import { Plus, Ruler, Edit, Trash2, Zap, Eye, FileUp } from 'lucide-react';
 import { exportarEsquemaElectrico } from '@/lib/planoEsquemaElectrico';
 import { normalizarNombre } from '@/lib/vinculos';
 
@@ -38,7 +38,7 @@ export default function ClientPlanosTab({ contactId, contactName }) {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { cargar(); /* eslint-disable-next-line */ }, [contactId]);
+  useEffect(() => { cargar();   }, [contactId]);
 
   const vincular = async (p) => {
     try {
