@@ -42,7 +42,7 @@ export function mapaIds(filasCopia, actuales, clave) {
 
 function nombresDe(c) {
   const persona = `${c.name || ''} ${c.surname || ''}`.trim();
-  return [persona, c.name, c.company_name].map(normalizarNombre).filter(Boolean);
+  return [persona, c.name, c.company_name, c.full_name, c.company].map(normalizarNombre).filter(Boolean);
 }
 
 /**

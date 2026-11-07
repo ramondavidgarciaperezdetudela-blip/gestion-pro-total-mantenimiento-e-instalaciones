@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.1] — 2026-11-07
+
+### Corregido
+- **Los planos frigoríficos ya salen en la ficha del cliente** (la pestaña «Planos» leía mal la lista y salía vacía). Si tras restaurar una copia hay planos con el nombre del cliente sin vínculo válido, se avisa y se vinculan con un clic.
+
+---
+
 ## [1.115.0] — 2026-11-07
 
 ### Añadido

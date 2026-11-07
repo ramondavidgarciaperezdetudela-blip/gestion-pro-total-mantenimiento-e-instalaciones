@@ -3,8 +3,11 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Plus, Ruler, Edit, Trash2, Zap, FileDown, Eye, FileUp } from 'lucide-react';
+import { Plus, Ruler, Edit, Trash2, Zap, Eye, FileUp } from 'lucide-react';
 import { exportarEsquemaElectrico } from '@/lib/planoEsquemaElectrico';
+import { normalizarNombre } from '@/lib/vinculos';
+
+const comoLista = (r) => (Array.isArray(r) ? r : (r?.items || []));
 
 // Pestaña de planos frigoríficos vinculados a un cliente.
 // Carga los RefrigerationPlan del contacto y permite crear uno nuevo (abre
@@ -14,18 +17,36 @@ import { exportarEsquemaElectrico } from '@/lib/planoEsquemaElectrico';
 // se consulta desde la ficha del propio cliente.
 export default function ClientPlanosTab({ contactId, contactName }) {
   const [planos, setPlanos] = useState([]);
+  const [huerfanos, setHuerfanos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const cargar = async () => {
     setLoading(true);
     try {
-      const res = await base44.entities.RefrigerationPlan.filter({ contact_id: contactId }, { sort: '-created_date', limit: 100 });
-      setPlanos(res?.items || []);
+      // filter devuelve una lista; antes se leía «.items» y, al no existir, la
+      // pestaña salía siempre vacía aunque el plano estuviera bien vinculado.
+      const res = await base44.entities.RefrigerationPlan.filter({ contact_id: contactId }, '-created_date', 100);
+      setPlanos(comoLista(res));
+      // Planos con el nombre de este cliente pero sin vínculo válido (por ejemplo,
+      // tras restaurar una copia antigua): se ofrecen para vincularlos con un clic.
+      const nombre = normalizarNombre(contactName);
+      if (nombre) {
+        const todos = comoLista(await base44.entities.RefrigerationPlan.filter({}, '-created_date', 500).catch(() => []));
+        setHuerfanos(todos.filter((p) => p.contact_id !== contactId && normalizarNombre(p.contact_name) === nombre));
+      } else setHuerfanos([]);
     } catch { setPlanos([]); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { cargar(); /* eslint-disable-next-line */ }, [contactId]);
+  useEffect(() => { cargar();   }, [contactId]);
+
+  const vincular = async (p) => {
+    try {
+      await base44.entities.RefrigerationPlan.update(p.id, { contact_id: contactId, contact_name: contactName });
+      toast.success('Plano vinculado a este cliente');
+      cargar();
+    } catch (e) { toast.error('No se pudo vincular', { description: String(e?.message || e) }); }
+  };
 
   const borrar = async (id) => {
     if (!confirm('¿Borrar este plano? No se puede deshacer.')) return;
@@ -56,6 +77,18 @@ export default function ClientPlanosTab({ contactId, contactName }) {
 
       {planos.length === 0 && (
         <p className="text-gray-400 text-sm text-center py-4">Este cliente todavía no tiene planos frigoríficos.</p>
+      )}
+
+      {huerfanos.length > 0 && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
+          <p className="font-semibold">Planos con el nombre de este cliente que no están vinculados</p>
+          {huerfanos.map((p) => (
+            <div key={p.id} className="mt-1.5 flex items-center gap-2">
+              <span className="flex-1 truncate">{p.name || 'Sin nombre'}</span>
+              <button onClick={() => vincular(p)} className="rounded bg-amber-600 px-2 py-1 text-white hover:bg-amber-700">Vincular a este cliente</button>
+            </div>
+          ))}
+        </div>
       )}
 
       {planos.map((p) => (
