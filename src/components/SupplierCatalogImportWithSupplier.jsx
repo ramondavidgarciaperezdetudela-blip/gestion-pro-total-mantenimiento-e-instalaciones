@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NumberField } from '@/components/ui/number-field';
 import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import PasosProgreso from '@/components/PasosProgreso';
 import DownloadExcelTemplate from '@/components/DownloadExcelTemplate';
 import { iaActivada } from '@/lib/modoSinIA';
 import { leerTarifaPdf } from '@/lib/tarifaPdf';
@@ -307,6 +308,9 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   // Resumen de importación
   const [importSummary, setImportSummary] = useState(null); // { saved, failed: [{index, product_name, product_code, reason}] }
   const [progressPct, setProgressPct] = useState(0);
+  // Estado de cada apartado de la importación (para enseñar su barra y su porcentaje).
+  const [guardado, setGuardado] = useState({ existentes: { fase: 'espera' }, nuevos: { fase: 'espera' }, actualizados: { fase: 'espera' } });
+  const ponGuardado = (k, patch) => setGuardado((g) => ({ ...g, [k]: { ...g[k], ...patch } }));
   const [estimatedSecs, setEstimatedSecs] = useState(0);
   const [failedToRetry, setFailedToRetry] = useState([]);
 
@@ -526,6 +530,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   const handleSave = async () => {
     setStep('saving');
     setProgressPct(0);
+    setGuardado({ existentes: { fase: 'activo' }, nuevos: { fase: 'espera' }, actualizados: { fase: 'espera' } });
     const toSave = parsedRef.current;
     if (!toSave.length) return;
 
@@ -542,6 +547,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       }
     } catch (_) { existing = []; }
 
+    ponGuardado('existentes', { fase: 'hecho', hechos: existing.length, total: existing.length });
     // Índice: product_code → registro existente
     const existingByCode = {};
     existing.forEach(e => {
@@ -583,6 +589,8 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       }
     }
 
+    ponGuardado('nuevos', { fase: toCreate.length ? 'activo' : 'hecho', hechos: 0, total: toCreate.length });
+    ponGuardado('actualizados', { fase: 'espera', hechos: 0, total: toUpdate.length });
     // ── Guardar nuevos en lotes — con fallback a lotes más pequeños si falla ─
     const CREATE_BATCH = 200;
     for (let i = 0; i < toCreate.length; i += CREATE_BATCH) {
@@ -617,8 +625,11 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       const done = saved + updated;
       setProgressPct(Math.round(done / toSave.length * 100));
       setProgress(`Guardando nuevos: ${saved.toLocaleString()} / ${toCreate.length.toLocaleString()}...`);
+      ponGuardado('nuevos', { hechos: saved + failedItems.length, fase: 'activo' });
       onImported && onImported(saved + updated, true);
     }
+    ponGuardado('nuevos', { fase: 'hecho', hechos: toCreate.length });
+    if (toUpdate.length) ponGuardado('actualizados', { fase: 'activo' });
 
     // ── Actualizar existentes en paralelo (lotes de 20 peticiones simultáneas) ──
     const UPDATE_CONCURRENCY = 20;
@@ -640,8 +651,10 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       const done = saved + updated;
       setProgressPct(Math.round(done / toSave.length * 100));
       setProgress(`Actualizando precios: ${updated.toLocaleString()} / ${toUpdate.length.toLocaleString()}...`);
+      ponGuardado('actualizados', { hechos: Math.min(toUpdate.length, i + batch.length) });
       onImported && onImported(saved + updated, true);
     }
+    ponGuardado('actualizados', { fase: 'hecho', hechos: toUpdate.length });
 
     setImportSummary({ saved, updated, failed: failedItems, total: toSave.length });
     setFailedToRetry(failedItems); // Guardar para reintento
@@ -939,7 +952,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                 </div>
 
                 {/* Barra de progreso con contador */}
-                {progressPct > 0 && (
+                {(progressPct > 0 || step === 'saving') && (
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs text-purple-600 font-medium">
                       <span>Progreso: {progressPct}%</span>
@@ -953,6 +966,14 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                     </div>
                   </div>
                 )}
+                <PasosProgreso pasos={step === 'saving' ? [
+                  { id: 'existentes', label: 'Leer la tarifa actual', ...guardado.existentes },
+                  { id: 'nuevos', label: 'Guardar productos nuevos', ...guardado.nuevos },
+                  { id: 'actualizados', label: 'Actualizar precios', ...guardado.actualizados },
+                ] : [
+                  { id: 'leer', label: 'Leer y analizar el archivo', fase: 'activo', hechos: parsedCount || 0, total: null },
+                  { id: 'guardar', label: 'Guardar en la tarifa', fase: 'espera' },
+                ]} />
               </div>
             )}
 
