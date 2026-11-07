@@ -15,6 +15,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.5] — 2026-11-07
+
+### Añadido
+- **Tras actualizar, la app pregunta si mantienes dónde se guardan los datos** («Mantener estos ajustes» o «Cambiar»: Base44, Supabase, servidor propio o solo este dispositivo), con la casilla «No volver a preguntar». Al cambiar se puede volver atrás con «Mantener como está».
+- Guía ilustrada en PDF (`docs/GUIA-ILUSTRADA-DONDE-GUARDAR-LOS-DATOS.pdf`) para configurar Supabase y el servidor propio, con capturas reales de la app y esquemas de los pasos en Supabase.
+- Se incluye `supabase/esquema.sql` también en esta versión (faltaba).
+
+---
+
 ## [1.115.4] — 2026-11-07
 
 ### Corregido
