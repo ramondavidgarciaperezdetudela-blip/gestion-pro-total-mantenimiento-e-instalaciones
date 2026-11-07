@@ -285,21 +285,21 @@ export default function InvoicePreviewDialog({ doc, open, onClose, onSaved, cont
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-slate-800 text-white">
-                  <th className="text-left p-2 text-xs">Descripción</th>
-                  <th className="p-2 text-center text-xs">Cant.</th>
-                  <th className="p-2 text-right text-xs">P.Unit.</th>
-                  {doc.items?.some(i => i.discount > 0) && <th className="p-2 text-right text-xs">Dto%</th>}
-                  <th className="p-2 text-right text-xs">Total</th>
+                  <th className="text-left p-2 text-xs w-full">Descripción</th>
+                  <th className="p-2 text-center text-xs whitespace-nowrap">Cant.</th>
+                  <th className="p-2 text-right text-xs whitespace-nowrap">P.Unit.</th>
+                  {doc.items?.some(i => i.discount > 0) && <th className="p-2 text-right text-xs whitespace-nowrap">Dto%</th>}
+                  <th className="p-2 text-right text-xs whitespace-nowrap">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {doc.items?.map((item, i) => (
                   <tr key={i} className={`border-b ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
                     <td className="p-2 text-xs">{item.description}</td>
-                    <td className="p-2 text-center text-xs">{item.quantity}</td>
-                    <td className="p-2 text-right text-xs">{item.unit_price?.toFixed(2)} €</td>
-                    {doc.items?.some(i => i.discount > 0) && <td className="p-2 text-right text-xs text-orange-600">{item.discount > 0 ? `${item.discount}%` : '-'}</td>}
-                    <td className="p-2 text-right text-xs font-medium">{item.total?.toFixed(2)} €</td>
+                    <td className="p-2 text-center text-xs whitespace-nowrap">{item.quantity}</td>
+                    <td className="p-2 text-right text-xs whitespace-nowrap">{item.unit_price?.toFixed(2)} €</td>
+                    {doc.items?.some(i => i.discount > 0) && <td className="p-2 text-right text-xs whitespace-nowrap text-orange-600">{item.discount > 0 ? `${item.discount}%` : '-'}</td>}
+                    <td className="p-2 text-right text-xs whitespace-nowrap font-medium">{item.total?.toFixed(2)} €</td>
                   </tr>
                 ))}
               </tbody>

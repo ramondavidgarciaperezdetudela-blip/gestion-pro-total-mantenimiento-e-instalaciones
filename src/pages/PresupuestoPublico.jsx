@@ -239,8 +239,8 @@ function PresupuestoPublico() {
             <thead>
               <tr className="border-b border-slate-200">
                 <th className="text-left py-2 text-xs text-gray-500 font-medium">Descripción</th>
-                <th className="text-center py-2 text-xs text-gray-500 font-medium w-12">Cant.</th>
-                <th className="text-right py-2 text-xs text-gray-500 font-medium w-20">Total</th>
+                <th className="text-center py-2 text-xs text-gray-500 font-medium w-12 whitespace-nowrap">Cant.</th>
+                <th className="text-right py-2 text-xs text-gray-500 font-medium w-20 whitespace-nowrap">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -255,8 +255,8 @@ function PresupuestoPublico() {
                       </span>
                     )}
                   </td>
-                  <td className="py-2 text-center text-sm text-gray-500">{item.quantity}</td>
-                  <td className="py-2 text-right text-sm font-medium">{(item.total || 0).toFixed(2)} €</td>
+                  <td className="py-2 text-center text-sm text-gray-500 whitespace-nowrap">{item.quantity}</td>
+                  <td className="py-2 text-right text-sm font-medium whitespace-nowrap">{(item.total || 0).toFixed(2)} €</td>
                 </tr>
               ))}
             </tbody>
