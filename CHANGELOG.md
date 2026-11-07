@@ -15,6 +15,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.111.0] — 2026-11-07
+
+### Añadido
+- **Subir la tarifa de un proveedor desde su ficha:** botón «Subir tarifa (PDF / Excel)» en cada proveedor, con el proveedor ya elegido.
+- **Cálculo de cámaras: alimentación y monobloc.** Se elige 230 V monofásica o 400 V trifásica y se descartan las máquinas de la tarifa que dicen la otra tensión; además de evaporador y condensadora, propone equipos monobloc, y enseña la tensión de cada máquina y el volumen de la cámara.
+
 ## [1.110.0] — 2026-11-07
 
 ### Añadido
