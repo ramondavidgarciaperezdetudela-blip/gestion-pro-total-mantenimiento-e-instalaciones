@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.3] — 2026-11-07
+
+### Corregido
+- Proveedores de gases: teléfonos de Carburos, Nippon Gases y Messer, y web oficial de Nippon.
+
+---
+
 ## [1.115.2] — 2026-11-07
 
 ### Corregido
