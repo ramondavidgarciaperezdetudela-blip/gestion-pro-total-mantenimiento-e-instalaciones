@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NumberField } from '@/components/ui/number-field';
 import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import DownloadExcelTemplate from '@/components/DownloadExcelTemplate';
+import { iaActivada } from '@/lib/modoSinIA';
+import { leerTarifaPdf } from '@/lib/tarifaPdf';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function norm(str) {
@@ -330,6 +332,14 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
 
     try {
       let extracted = [];
+      // Un PDF con texto se lee aquí mismo (sin IA, sin internet y de cualquier tamaño); solo si no es legible se recurre a la IA.
+      let delPdf = null;
+      if (isPdf(file)) {
+        setStep('extracting');
+        setProgress('Leyendo el PDF...');
+        setProgressPct(5);
+        try { delPdf = await leerTarifaPdf(file); } catch { delPdf = null; }
+      }
 
       if (isExcel(file)) {
         setStep('extracting');
@@ -347,6 +357,16 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
           }));
         }
 
+      } else if (isPdf(file) && delPdf?.items?.length) {
+        extracted = delPdf.items;
+        setProgressPct(80);
+        if (applyIva && ivaRate > 0) {
+          extracted = extracted.map(i => ({ ...i, cost_price: Math.round(i.cost_price * (1 + ivaRate / 100) * 100) / 100 }));
+        }
+      } else if (isPdf(file) && !iaActivada()) {
+        setError('No he podido leer una tabla de precios en este PDF (puede ser una foto escaneada o no tener columnas claras). Pide el Excel al proveedor, o activa la IA en Ajustes para que lo analice.');
+        setStep('idle');
+        return;
       } else if (isPdf(file)) {
         setStep('extracting');
 
@@ -788,7 +808,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                     <p className="text-sm font-semibold text-blue-800">📋 Formatos aceptados</p>
                     <p className="text-xs text-blue-600 mt-0.5">
                       <span className="font-bold text-emerald-700">⚡ Excel (.xlsx, .xls, CSV)</span> — instantáneo, sin IA, ilimitado<br/>
-                      <span className="text-amber-700">🤖 PDF</span> — análisis IA (30–90 seg./parte). PDFs grandes se dividen automáticamente
+                      <span className="text-emerald-700 font-bold">📄 PDF con texto</span> — se lee en el momento, sin IA. Si es una foto escaneada, solo con la IA activada
                     </p>
                   </div>
                   <div className="flex-shrink-0"><DownloadExcelTemplate size="sm" /></div>
