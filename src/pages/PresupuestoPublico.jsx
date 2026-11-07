@@ -1,3 +1,4 @@
+import { modoDeLinea, etiquetaIva } from '@/lib/ivaLineas';
 import BotonImprimirCliente from '@/components/BotonImprimirCliente';
 import FirmaClienteBoton from '@/components/FirmaClienteBoton';
 import React, { useState, useEffect, useRef, memo } from 'react';
@@ -247,7 +248,7 @@ function PresupuestoPublico() {
               {(doc.items || []).map((item, i) => (
                 <tr key={i} className="border-b border-slate-50">
                   <td className="py-2 text-sm text-gray-700">
-                    {item.description}
+                    {item.description}{etiquetaIva(item) && <span className="ml-1.5 text-[10px] rounded bg-amber-100 text-amber-800 px-1 py-0.5 whitespace-nowrap">{etiquetaIva(item)}</span>}
                     {(item.reference || item.delivery_days != null || item.delivery_text) && (
                       <span className="block text-[11px] text-gray-400">
                         {item.reference ? `Ref. ${item.reference}` : ''}{item.reference && (item.delivery_days != null || item.delivery_text) ? ' · ' : ''}
@@ -263,7 +264,7 @@ function PresupuestoPublico() {
           </table>
 
           <div className="text-right space-y-1 border-t pt-3">
-            <p className="text-sm text-gray-500">Subtotal: <strong>{(doc.subtotal || 0).toFixed(2)} €</strong></p>
+            <p className="text-sm text-gray-500">{(doc.items || []).some((i) => modoDeLinea(i) !== 'aparte') ? 'Base imponible' : 'Subtotal'}: <strong>{(doc.subtotal || 0).toFixed(2)} €</strong></p>
             <p className="text-sm text-gray-500">IVA ({doc.iva_rate || 21}%): <strong>{(doc.iva_amount || 0).toFixed(2)} €</strong></p>
             <p className="text-xl font-black text-slate-800">TOTAL: {(doc.total || 0).toFixed(2)} €</p>
           </div>

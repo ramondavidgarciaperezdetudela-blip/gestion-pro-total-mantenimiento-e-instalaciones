@@ -1,3 +1,4 @@
+import { totalesDocumento, MODOS_IVA, modoDeLinea, etiquetaIva } from '@/lib/ivaLineas';
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -165,9 +166,7 @@ Devuelve materiales/partidas para presupuesto profesional con descripción, cant
     set('items', [...current.items, { ...s, supplier: supplierOverride || s.supplier || '', discount: 0 }]);
   };
 
-  const subtotal = current.items.reduce((s, i) => s + (i.quantity || 0) * (i.unit_price || 0) * (1 - (i.discount || 0) / 100), 0);
-  const ivaAmount = subtotal * current.ivaRate / 100;
-  const total = subtotal + ivaAmount;
+  const { subtotal, iva_amount: ivaAmount, total } = totalesDocumento(current.items, current.ivaRate);
 
   const buildSaveData = () => ({
     query: current.budgetTitle || aiQuery || 'Presupuesto sin título',
@@ -556,6 +555,7 @@ Devuelve materiales/partidas para presupuesto profesional con descripción, cant
                     <th className="text-center p-2 font-medium text-gray-600 w-24">P.Unit €</th>
                     <th className="text-center p-2 font-medium text-gray-600 w-16">Dto%</th>
                     <th className="text-left p-2 font-medium text-gray-600 hidden sm:table-cell">Proveedor</th>
+                    <th className="text-left p-2 font-medium text-gray-600 w-32">IVA</th>
                     <th className="text-right p-2 font-medium text-gray-600 w-20">Total</th>
                     <th className="p-2 w-8"></th>
                   </tr>
@@ -570,6 +570,7 @@ Devuelve materiales/partidas para presupuesto profesional con descripción, cant
                         <td className="p-1"><NumberField className="h-7 text-xs text-center" value={item.unit_price} onChange={v => updateItem(i, 'unit_price', v)} /></td>
                         <td className="p-1"><NumberField className="h-7 text-xs text-center" value={item.discount || ''} onChange={v => updateItem(i, 'discount', v)} /></td>
                         <td className="p-1 hidden sm:table-cell"><Input className="h-7 text-xs" value={item.supplier || ''} onChange={e => updateItem(i, 'supplier', e.target.value)} /></td>
+                        <td className="p-1"><select className="h-7 w-full text-[11px] border rounded-md px-1 bg-white" title="IVA de esta línea" data-prueba="iva-linea" value={modoDeLinea(item)} onChange={e => updateItem(i, 'iva_modo', e.target.value)}>{Object.entries(MODOS_IVA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></td>
                         <td className="p-2 text-right font-medium text-xs">{lineTotal.toFixed(2)} €</td>
                         <td className="p-1"><button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button></td>
                       </tr>
@@ -578,7 +579,7 @@ Devuelve materiales/partidas para presupuesto profesional con descripción, cant
                 </tbody>
               </table>
               <div className="p-4 border-t bg-gray-50 text-sm space-y-1 text-right">
-                <p>Subtotal: <strong>{subtotal.toFixed(2)} €</strong></p>
+                <p>{current.items.some((i) => modoDeLinea(i) !== 'aparte') ? 'Base imponible' : 'Subtotal'}: <strong>{subtotal.toFixed(2)} €</strong></p>
                 <p>IVA ({current.ivaRate}%): <strong>{ivaAmount.toFixed(2)} €</strong></p>
                 <p className="text-lg font-bold text-blue-700">TOTAL: {total.toFixed(2)} €</p>
               </div>
@@ -704,7 +705,7 @@ Devuelve materiales/partidas para presupuesto profesional con descripción, cant
                   const lt = (item.quantity || 0) * (item.unit_price || 0) * (1 - (item.discount || 0) / 100);
                   return (
                     <tr key={i} className={i % 2 === 0 ? 'bg-gray-50' : ''}>
-                      <td className="p-2">{item.description}{item.supplier && <span className="text-xs text-gray-400 ml-1">({item.supplier})</span>}</td>
+                      <td className="p-2">{item.description}{etiquetaIva(item) && <span className="ml-1.5 text-[10px] rounded bg-amber-100 text-amber-800 px-1 py-0.5 whitespace-nowrap">{etiquetaIva(item)}</span>}{item.supplier && <span className="text-xs text-gray-400 ml-1">({item.supplier})</span>}</td>
                       <td className="p-2 text-center whitespace-nowrap">{item.quantity}</td>
                       <td className="p-2 text-right whitespace-nowrap">{(item.unit_price || 0).toFixed(2)} €</td>
                       <td className="p-2 text-right whitespace-nowrap font-medium">{lt.toFixed(2)} €</td>
@@ -714,7 +715,7 @@ Devuelve materiales/partidas para presupuesto profesional con descripción, cant
               </tbody>
             </table>
             <div className="text-right space-y-1 text-sm border-t pt-2">
-              <p>Subtotal: {previewBudget?.subtotal?.toFixed(2)} €</p>
+              <p>{previewBudget?.items?.some((i) => modoDeLinea(i) !== 'aparte') ? 'Base imponible' : 'Subtotal'}: {previewBudget?.subtotal?.toFixed(2)} €</p>
               <p>IVA ({previewBudget?.ivaRate || 21}%): {previewBudget?.ivaAmount?.toFixed(2)} €</p>
               <p className="text-lg font-bold text-blue-700">TOTAL: {previewBudget?.total?.toFixed(2)} €</p>
             </div>

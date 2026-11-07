@@ -15,6 +15,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.116.0] — 2026-11-08
+
+### Añadido
+- **IVA a elegir en cada línea** de presupuestos, facturas y recibos (y en el presupuesto con IA): *IVA aparte* (se suma, como siempre), *IVA incluido* (el precio escrito ya lleva el IVA) o *Exenta de IVA*. Los totales se recalculan con cada opción; si hay líneas con IVA incluido o exentas, el total muestra «Base imponible». En la vista, la impresión y la página pública, esas líneas llevan una etiqueta.
+- **Plano frigorífico:** selector «IVA de la mano de obra» en el panel de presupuesto (se recuerda la última elección), que se aplica a las líneas de mano de obra al generar el presupuesto.
+- Los documentos antiguos no cambian: sin elección, todo sigue siendo IVA aparte.
+
+---
+
 ## [1.115.6] — 2026-11-08
 
 ### Corregido

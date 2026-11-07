@@ -1,3 +1,4 @@
+import { totalesDocumento, MODOS_IVA, modoDeLinea, etiquetaIva } from '@/lib/ivaLineas';
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -31,9 +32,7 @@ function recalculate(items, iva_rate) {
     ...item,
     total: (item.quantity || 0) * (item.unit_price || 0) * (1 - (item.discount || 0) / 100)
   }));
-  const subtotal = updatedItems.reduce((s, i) => s + i.total, 0);
-  const iva_amount = subtotal * (iva_rate / 100);
-  return { items: updatedItems, subtotal, iva_amount, total: subtotal + iva_amount };
+  return { items: updatedItems, ...totalesDocumento(updatedItems, iva_rate) };
 }
 
 // Genera HTML completo del documento para imprimir/PDF
@@ -42,7 +41,7 @@ function buildPrintHtml(doc, companySettings) {
   const hasDiscount = doc.items?.some(i => i.discount > 0);
   const itemsHtml = (doc.items || []).map((item, i) => `
     <tr style="background:${i % 2 === 0 ? '#f9fafb' : '#fff'}">
-      <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${item.description || ''}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${item.description || ''}${etiquetaIva(item) ? ` <span style="font-size:8px;background:#fef3c7;color:#92400e;border-radius:3px;padding:1px 4px;white-space:nowrap">${etiquetaIva(item)}</span>` : ''}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center">${item.quantity}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right">${(item.unit_price || 0).toFixed(2)} €</td>
       ${hasDiscount ? `<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;color:#d97706">${item.discount > 0 ? item.discount + '%' : '-'}</td>` : ''}
@@ -123,7 +122,7 @@ function buildPrintHtml(doc, companySettings) {
   </table>
 
   <div class="totals">
-    <div class="total-line"><span>Subtotal:</span><span><strong>${(doc.subtotal || 0).toFixed(2)} €</strong></span></div>
+    <div class="total-line"><span>${(doc.items || []).some(i => modoDeLinea(i) !== 'aparte') ? 'Base imponible:' : 'Subtotal:'}</span><span><strong>${(doc.subtotal || 0).toFixed(2)} €</strong></span></div>
     <div class="total-line"><span>IVA (${doc.iva_rate || 21}%):</span><span><strong>${(doc.iva_amount || 0).toFixed(2)} €</strong></span></div>
     <div class="total-final"><span>TOTAL:</span><span>${(doc.total || 0).toFixed(2)} €</span></div>
   </div>
@@ -295,7 +294,7 @@ export default function InvoicePreviewDialog({ doc, open, onClose, onSaved, cont
               <tbody>
                 {doc.items?.map((item, i) => (
                   <tr key={i} className={`border-b ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
-                    <td className="p-2 text-xs">{item.description}</td>
+                    <td className="p-2 text-xs">{item.description}{etiquetaIva(item) && <span className="ml-1.5 text-[10px] rounded bg-amber-100 text-amber-800 px-1 py-0.5 whitespace-nowrap">{etiquetaIva(item)}</span>}</td>
                     <td className="p-2 text-center text-xs whitespace-nowrap">{item.quantity}</td>
                     <td className="p-2 text-right text-xs whitespace-nowrap">{item.unit_price?.toFixed(2)} €</td>
                     {doc.items?.some(i => i.discount > 0) && <td className="p-2 text-right text-xs whitespace-nowrap text-orange-600">{item.discount > 0 ? `${item.discount}%` : '-'}</td>}
@@ -305,7 +304,7 @@ export default function InvoicePreviewDialog({ doc, open, onClose, onSaved, cont
               </tbody>
             </table>
             <div className="text-right space-y-1 text-sm border-t pt-3">
-              <p className="text-gray-600">Subtotal: <strong>{doc.subtotal?.toFixed(2)} €</strong></p>
+              <p className="text-gray-600">{doc.items?.some((i) => modoDeLinea(i) !== 'aparte') ? 'Base imponible' : 'Subtotal'}: <strong>{doc.subtotal?.toFixed(2)} €</strong></p>
               <p className="text-gray-600">IVA ({doc.iva_rate}%): <strong>{doc.iva_amount?.toFixed(2)} €</strong></p>
               <p className="font-bold text-xl text-gray-900">TOTAL: {doc.total?.toFixed(2)} €</p>
             </div>
@@ -408,13 +407,16 @@ export default function InvoicePreviewDialog({ doc, open, onClose, onSaved, cont
                   <NumberField className="col-span-1 text-xs h-8 border border-input rounded-md px-2" value={item.discount} onChange={v => handleItemChange(i, 'discount', v)} />
                   <span className="col-span-1 text-xs text-right font-medium text-green-700">{item.total?.toFixed(2)}</span>
                   <button className="col-span-1 text-red-400 hover:text-red-600 text-lg leading-none text-center" onClick={() => removeItem(i)}>×</button>
+                  <select className="col-span-12 md:col-span-5 text-[11px] h-7 border border-input rounded-md px-1 bg-white" title="IVA de esta línea" data-prueba="iva-linea" value={modoDeLinea(item)} onChange={e => handleItemChange(i, 'iva_modo', e.target.value)}>
+                    {Object.entries(MODOS_IVA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
                 </div>
               ))}
               <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Línea</Button>
             </div>
 
             <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg space-y-1 text-sm">
-              <div className="flex justify-between text-gray-600"><span>Subtotal:</span><span>{form.subtotal?.toFixed(2)} €</span></div>
+              <div className="flex justify-between text-gray-600"><span>{form.items?.some((i) => modoDeLinea(i) !== 'aparte') ? 'Base imponible:' : 'Subtotal:'}</span><span>{form.subtotal?.toFixed(2)} €</span></div>
               <div className="flex justify-between text-gray-600"><span>IVA ({form.iva_rate}%):</span><span>{form.iva_amount?.toFixed(2)} €</span></div>
               <div className="flex justify-between font-bold text-lg text-blue-800"><span>TOTAL:</span><span>{form.total?.toFixed(2)} €</span></div>
             </div>
