@@ -33,4 +33,14 @@ const n = buscarMaquinas(tarifa, { tipo: 'evaporador', kw: 2.0, camaraTipo: 'neg
 ok(n[0].id === 3, 'en negativa prefiere la de congelación', n.map((x) => x.id).join());
 const nada = buscarMaquinas(tarifa, { tipo: 'evaporador', kw: 20 });
 ok(nada[0].insuficiente === true, 'si ninguna llega, lo dice');
+const grupos = [
+  { id: 11, product_name: 'Grupo condensador 3,2 kW 230V monofásico', sale_price: 900 },
+  { id: 12, product_name: 'Grupo condensador 3,2 kW 400V trifásico', sale_price: 1000 },
+  { id: 13, product_name: 'Grupo condensador 3,5 kW', sale_price: 950 },
+  { id: 14, product_name: 'Equipo monobloc 2,5 kW 230V', sale_price: 2100 },
+];
+const t400 = buscarMaquinas(grupos, { tipo: 'condensadora', kw: 3, tension: '400' }).map((x) => x.id);
+ok(t400.includes(12) && t400.includes(13) && !t400.includes(11), 'con 400 V se descarta la monofásica y se mantiene la que no dice tensión', t400.join());
+ok(buscarMaquinas(grupos, { tipo: 'condensadora', kw: 3 }).length === 3, 'sin filtro salen las tres');
+ok(buscarMaquinas(grupos, { tipo: 'monobloc', kw: 2 })[0]?.id === 14, 'reconoce el monobloc');
 console.log(fallos ? `\n${fallos} FALLOS` : '\nTODO OK'); process.exit(fallos ? 1 : 0);

@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Users, MessageCircle, Download, Bell, Clock, Loader2, Search } from 'lucide-react';
+import { Building2, Plus, Phone, Mail, Globe, Trash2, Edit, Key, Eye, EyeOff, ShoppingCart, ExternalLink, Users, MessageCircle, Download, Bell, Clock, Loader2, Search, FileUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchCompanyLogo } from '../components/LogoFetcher';
 import { fetchSupplierDataFromAPI, mapCategoryFromSector } from '../components/SupplierDataFetcher';
+import SupplierCatalogImportWithSupplier from '../components/SupplierCatalogImportWithSupplier';
 import SupplierCatalogManager from '../components/SupplierCatalogManager';
 import SupplierPriceManager from '../components/SupplierPriceManager';
 import CityAutocomplete from '../components/CityAutocomplete';
@@ -235,6 +236,8 @@ export default function Suppliers() {
     return days;
   };
 
+  const [tarifaDe, setTarifaDe] = useState(null); // proveedor al que se sube una tarifa (PDF, Excel o CSV)
+
   const SupplierCard = ({ s }) => {
     const daysUntilReorder = getDaysUntilReorder(s.last_order_date, s.reorder_frequency_days);
     const needsReorder = daysUntilReorder <= 7 && s.enable_notifications;
@@ -257,6 +260,9 @@ export default function Suppliers() {
                 <Badge variant="outline" className="text-[10px]">{s.category}</Badge>
                 {s.api_key && <Badge className="bg-green-100 text-green-700 text-[10px]"><Key className="w-2.5 h-2.5 mr-1" />API</Badge>}
                 {needsReorder && <Badge className="bg-amber-100 text-amber-700 text-[10px]"><Bell className="w-2.5 h-2.5 mr-1" />Revisar</Badge>}
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 ml-auto" data-prueba="subir-tarifa-proveedor" onClick={() => setTarifaDe(s.id)}>
+                  <FileUp className="w-3 h-3" /> Subir tarifa (PDF / Excel)
+                </Button>
               </div>
               
               {s.enable_notifications && s.last_order_date &&
@@ -570,6 +576,9 @@ export default function Suppliers() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <SupplierCatalogImportWithSupplier suppliers={suppliers} sinBoton supplierIdInicial={tarifaDe || ''}
+        abierto={!!tarifaDe} onAbiertoChange={(v) => { if (!v) setTarifaDe(null); }} />
 
       <div className="space-y-3">
         {activeSuppliers.map((s) => <SupplierCard key={s.id} s={s} />)}
