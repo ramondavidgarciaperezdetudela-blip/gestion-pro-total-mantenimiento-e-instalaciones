@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.115.4] — 2026-11-07
+
+### Corregido
+- Nippon Gases: enlace de contacto corregido (abre la web oficial).
+
+---
+
 ## [1.115.3] — 2026-11-07
 
 ### Corregido
