@@ -1,3 +1,4 @@
+import { buscarPorTexto, articuloDeTarifa, articuloDePropio } from '@/lib/buscarArticulos';
 import { totalesDocumento, MODOS_IVA, modoDeLinea, etiquetaIva } from '@/lib/ivaLineas';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { cargarTodo } from '@/lib/cargarTodo';
@@ -262,6 +263,7 @@ export default function Documents() {
   const [refMsg, setRefMsg] = useState('');
   const [refOpciones, setRefOpciones] = useState([]);
   const [refNoEncontrada, setRefNoEncontrada] = useState('');
+  const articulosCache = useRef(null); // tarifas + Mi base de datos, cargados una vez para buscar por texto
 
   const ponerLineaDeReferencia = useCallback((o) => {
     setForm((prev) => {
@@ -292,7 +294,20 @@ export default function Documents() {
         .forEach((p) => opciones.push({ proveedor: p.supplier_name || '', ref: p.reference || p.supplier_ref, descripcion: p.description, precio: p.unit_price || 0, plazo: p.delivery_days, origen: 'Mi base de datos' }));
       if (opciones.length === 1) ponerLineaDeReferencia(opciones[0]);
       else if (opciones.length > 1) { setRefOpciones(opciones); setRefMsg('Esta referencia está en varios sitios. ¿De cuál quieres el precio?'); }
-      else { setRefNoEncontrada(ref); setRefMsg('⚠ La referencia "' + ref + '" no está en ninguna base de datos'); }
+      else {
+        // No es una referencia exacta: se busca por nombre o por un trozo de la descripción.
+        if (!articulosCache.current) {
+          const [tarifas, propios] = await Promise.all([cargarTodo('SupplierPrice').catch(() => []), cargarPropios().catch(() => [])]);
+          articulosCache.current = [
+            ...(tarifas || []).filter((m) => m.is_active !== false).map(articuloDeTarifa),
+            ...(propios || []).filter((p) => p.is_active !== false).map(articuloDePropio),
+          ];
+        }
+        const hallados = buscarPorTexto(articulosCache.current, ref, 15);
+        if (hallados.length === 1) ponerLineaDeReferencia({ ...hallados[0], descripcion: hallados[0].nombre });
+        else if (hallados.length > 1) { setRefOpciones(hallados.map((h) => ({ ...h, descripcion: h.nombre }))); setRefMsg(`${hallados.length} artículos encajan con «${ref}». Elige uno:`); }
+        else { setRefNoEncontrada(ref); setRefMsg('⚠ No hay ningún artículo con «' + ref + '» en la referencia, el nombre ni la descripción'); }
+      }
     } catch {
       setRefMsg('⚠ Error al buscar la referencia');
     }
@@ -1215,13 +1230,13 @@ export default function Documents() {
                 <Search className="w-4 h-4 text-blue-500 flex-shrink-0" />
                 <input
                   className="flex-1 text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
-                  placeholder="Referencia del proveedor → añade el artículo con su descripción y precio"
+                  placeholder="Buscar artículo por referencia, nombre o parte de la descripción → se añade con su precio"
                   value={refBusca}
                   onChange={(e) => setRefBusca(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addLineaPorReferencia(); } }}
                 />
                 <Button size="sm" onClick={addLineaPorReferencia} disabled={refBuscando || !refBusca.trim()} className="bg-blue-600 hover:bg-blue-700 text-white gap-1">
-                  {refBuscando ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}Buscar ref.
+                  {refBuscando ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}Buscar
                 </Button>
               </div>
               {refMsg && <p className="text-xs px-1 text-gray-600">{refMsg}</p>}
@@ -1229,7 +1244,7 @@ export default function Documents() {
                 <div className="flex flex-col gap-1">
                   {refOpciones.map((o, k) => (
                     <button key={k} type="button" onClick={() => ponerLineaDeReferencia(o)} className="text-left text-xs border rounded-md px-2 py-1 hover:bg-blue-50 flex justify-between gap-2">
-                      <span className="truncate">{o.descripcion} <span className="text-gray-400">· {o.proveedor || o.origen}</span></span>
+                      <span className="truncate">{o.ref && <span className="text-gray-500">[{o.ref}] </span>}{o.descripcion} <span className="text-gray-400">· {o.proveedor || o.origen}</span></span>
                       <b className="text-green-700 flex-shrink-0">{Number(o.precio).toFixed(2)} €</b>
                     </button>
                   ))}
