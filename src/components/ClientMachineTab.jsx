@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { uploadImage } from '@/lib/uploadImage';
 import FormularioMaquina, { prepararMaquina } from '@/components/maquinas/FormularioMaquina';
 import { MAQUINA_VACIA } from '@/lib/maquinaFgas';
+import { PlacaEquipo, TarjetaMedida, Estado } from '@/componentes/tema';
 
 const MACHINE_TYPES = [
   { value: 'aire_acondicionado', label: 'Aire Acondicionado' },
@@ -26,6 +27,8 @@ const MACHINE_TYPES = [
   { value: 'grupo_frio', label: 'Grupo de Frío Industrial' },
   { value: 'otro', label: 'Otro' },
 ];
+
+const ESTADO_PLACA = { operativo: 'cerrado', en_reparacion: 'curso', fuera_servicio: 'urgente', baja: 'contorno' };
 
 const STATUS_COLORS = {
   operativo: 'bg-green-100 text-green-700',
@@ -149,37 +152,37 @@ export default function ClientMachineTab({ contactId, contactName }) {
         <Card key={m.id} className="hover:shadow-md transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              {/* Foto */}
-              <div className="w-14 h-14 rounded-lg bg-slate-100 border flex items-center justify-center overflow-hidden flex-shrink-0">
-                {m.photo_url ? (
-                  <img src={m.photo_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <Wrench className="w-6 h-6 text-slate-300" />
+              <div className="flex-1 min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <PlacaEquipo
+                  codigo={m.name || 'Equipo sin nombre'}
+                  tamCodigo={30}
+                  tipo={MACHINE_TYPES.find(t => t.value === m.machine_type)?.label || m.machine_type || 'Equipo'}
+                  estado={<Estado tipo={ESTADO_PLACA[m.status] || 'pendiente'}>{(m.status || 'sin estado').replace(/_/g, ' ')}</Estado>}
+                  distintivos={[m.refrigerant_type, m.hermetic ? 'Hermético' : null].filter(Boolean)}
+                  datos={[
+                    (m.brand || m.model) && { etiqueta: 'Marca y modelo', valor: `${m.brand || ''} ${m.model || ''}`.trim() },
+                    m.serial_number && { etiqueta: 'Nº de serie', valor: m.serial_number },
+                    m.location && { etiqueta: 'Ubicación', valor: m.location },
+                    m.power_kw && { etiqueta: 'Potencia', valor: `${String(m.power_kw).replace('.', ',')} kW` },
+                    m.refrigerant_charge_kg && { etiqueta: 'Carga de refrigerante', valor: `${String(m.refrigerant_charge_kg).replace('.', ',')} kg` },
+                    m.installation_date && { etiqueta: 'Instalación', valor: m.installation_date },
+                    m.next_maintenance_date && { etiqueta: 'Próximo mantenimiento', valor: m.next_maintenance_date },
+                    m.warranty_expiry && { etiqueta: 'Garantía hasta', valor: m.warranty_expiry },
+                  ].filter(Boolean)}
+                />
+                {(Number(m.nominal_low_bar) > 0 || Number(m.nominal_high_bar) > 0) && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+                    {Number(m.nominal_low_bar) > 0 && <TarjetaMedida etiqueta="Presión baja nominal" valor={Number(m.nominal_low_bar)} unidad="bar" />}
+                    {Number(m.nominal_high_bar) > 0 && <TarjetaMedida etiqueta="Presión alta nominal" valor={Number(m.nominal_high_bar)} unidad="bar" />}
+                  </div>
                 )}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold text-sm">{m.name}</p>
-                  <Badge className={`text-[10px] ${STATUS_COLORS[m.status]}`}>{m.status?.replace(/_/g,' ')}</Badge>
-                  <Badge variant="outline" className="text-[10px]">{MACHINE_TYPES.find(t=>t.value===m.machine_type)?.label || m.machine_type}</Badge>
-                </div>
-                <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                  {m.brand && <span>🏷 {m.brand} {m.model}</span>}
-                  {m.serial_number && <span>S/N: {m.serial_number}</span>}
-                  {m.location && <span>📍 {m.location}</span>}
-                  {m.power_kw && <span>⚡ {m.power_kw} kW</span>}
-                  {m.refrigerant_type && <span>❄️ {m.refrigerant_type}</span>}
-                  {m.installation_date && <span>📅 Inst: {m.installation_date}</span>}
-                  {m.next_maintenance_date && <span className="text-orange-600 font-medium">🔧 Próx: {m.next_maintenance_date}</span>}
-                  {m.warranty_expiry && <span>🛡 Garantía hasta: {m.warranty_expiry}</span>}
-                </div>
-                {m.notes && <p className="text-xs text-gray-400 mt-1 italic">{m.notes}</p>}
+                {m.photo_url && <img src={m.photo_url} alt="" className="rounded-lg border object-cover" style={{ maxHeight: 140, alignSelf: 'flex-start' }} />}
+                {m.notes && <p className="text-xs text-gray-400 italic">{m.notes}</p>}
               </div>
 
               <div className="flex flex-col gap-1 flex-shrink-0">
-                <button onClick={() => openEdit(m)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded"><Edit className="w-4 h-4" /></button>
-                <button onClick={() => handleDelete(m.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded"><Trash2 className="w-4 h-4" /></button>
+                <button onClick={() => openEdit(m)} aria-label="Editar equipo" className="p-1.5 text-gray-400 hover:text-blue-600 rounded"><Edit className="w-4 h-4" /></button>
+                <button onClick={() => handleDelete(m.id)} aria-label="Borrar equipo" className="p-1.5 text-gray-400 hover:text-red-600 rounded"><Trash2 className="w-4 h-4" /></button>
               </div>
             </div>
 

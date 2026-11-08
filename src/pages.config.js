@@ -120,6 +120,9 @@ const AISupport = lazy(() => import('./pages/AISupport'));
 const DiagnosticoCarga = lazy(() => import('./pages/DiagnosticoCarga'));
 const TablasRefrigerantes = lazy(() => import('./pages/TablasRefrigerantes'));
 const PlanoIA = lazy(() => import('./pages/PlanoIA'));
+const RepartoDia = lazy(() => import('./pages/RepartoDia'));
+const CalculoCamaraGPT = lazy(() => import('./pages/CalculoCamaraGPT'));
+const Visor3DGPT = lazy(() => import('./pages/Visor3DGPT'));
 import __Layout from './Layout.jsx';
 
 
@@ -195,6 +198,9 @@ export const PAGES = {
     "DiagnosticoCarga": DiagnosticoCarga,
     "TablasRefrigerantes": TablasRefrigerantes,
     "PlanoIA": PlanoIA,
+    "RepartoDia": RepartoDia,
+    "CalculoCamaraGPT": CalculoCamaraGPT,
+    "Visor3DGPT": Visor3DGPT,
 }
 
 export const pagesConfig = {

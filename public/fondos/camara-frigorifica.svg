@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 740" width="900" height="740" fill="none" stroke="#23282B" stroke-width="3">
+  <path d="M450 380L727 540 M450 380L242 500 M450 380V172" stroke-dasharray="10 8" stroke-width="2"/>
+  <path d="M242 500L519 660L727 540V332L450 172L242 292Z"/>
+  <path d="M242 292L519 452L727 332 M519 452V660"/>
+  <path d="M297 532V372L367 412V572Z"/>
+  <path d="M352 490h0" stroke-width="8"/>
+  <path d="M560 380l120-70v60l-120 70z"/>
+  <path d="M575 400l90-52 M575 415l90-52" stroke-width="2"/>
+  <path d="M760 600l70-40v60l-70 40z M760 600l-40-23 70-40 40 23"/>
+  <path d="M220 515L497 675 M220 505v20 M497 665v20" stroke-width="2"/>
+  <path d="M542 675L750 555 M542 665v20 M750 545v20" stroke-width="2"/>
+  <path d="M760 332v208 M750 332h20 M750 540h20" stroke-width="2"/>
+  <g stroke="none" fill="#23282B" font-family="Arial, Helvetica, sans-serif" font-size="24">
+    <text x="300" y="640">4,00 m</text>
+    <text x="640" y="650">3,00 m</text>
+    <text x="772" y="445">2,60 m</text>
+    <text x="760" y="690">U. condensadora</text>
+  </g>
+</svg>

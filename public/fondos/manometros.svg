@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 640" width="800" height="640" fill="none" stroke="#23282B" stroke-width="3">
+  <circle cx="230" cy="220" r="150"/>
+  <circle cx="230" cy="220" r="130"/>
+  <circle cx="570" cy="220" r="150"/>
+  <circle cx="570" cy="220" r="130"/>
+  <path d="M138 312l14-14 M110 220h20 M138 128l14 14 M230 100v20 M322 128l-14 14 M350 220h-20 M322 312l-14-14" stroke-width="2"/>
+  <path d="M478 312l14-14 M450 220h20 M478 128l14 14 M570 100v20 M662 128l-14 14 M690 220h-20 M662 312l-14-14" stroke-width="2"/>
+  <path d="M230 220L160 150" stroke-width="4"/><circle cx="230" cy="220" r="10" fill="#23282B"/>
+  <path d="M570 220L650 170" stroke-width="4"/><circle cx="570" cy="220" r="10" fill="#23282B"/>
+  <path d="M230 370v30 M570 370v30"/>
+  <rect x="160" y="400" width="480" height="70"/>
+  <rect x="110" y="410" width="50" height="50"/>
+  <rect x="640" y="410" width="50" height="50"/>
+  <path d="M260 470c0 60-40 90-40 150 M400 470v150 M540 470c0 60 40 90 40 150"/>
+  <g stroke="none" fill="#23282B" font-family="Arial, Helvetica, sans-serif" font-size="24">
+    <text x="210" y="300">bar</text>
+    <text x="550" y="300">bar</text>
+    <text x="196" y="460">Baja</text>
+    <text x="556" y="460">Alta</text>
+  </g>
+</svg>
