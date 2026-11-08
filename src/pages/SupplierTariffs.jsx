@@ -14,6 +14,7 @@ import {
   Upload, Trash2, Edit, Loader2, PackagePlus, RefreshCw, Check, TrendingDown, AlertTriangle, WifiOff
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { buscarImagenArticulo } from '@/lib/imagenesProductoApp';
 import { tarifasCaducadas, borrarEnLotes, recrearLineas } from '@/lib/borrarTarifas';
 import SupplierCatalogImportWithSupplier from '../components/SupplierCatalogImportWithSupplier';
 import PriceComparator from '../components/PriceComparator';
@@ -147,14 +148,12 @@ export default function SupplierTariffs() {
       lastAutoFetchNameRef.current = productName;
       setAutoFetchingImage(true);
       try {
-        const res = await base44.integrations.Core.InvokeLLM({
-          prompt: `Busca en internet la imagen oficial del producto: "${productName}"${brand ? ` de la marca ${brand}` : ''}${productCode ? `, referencia ${productCode}` : ''}. Devuelve solo la URL directa de la imagen del producto (JPG, PNG o WebP). Si no encuentras una imagen fiable, devuelve null.`,
-          add_context_from_internet: true,
-          response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
-        });
-        if (res?.image_url) {
-          setEditForm(f => ({ ...f, image_url: res.image_url }));
-          toast.success('Imagen encontrada automáticamente');
+        const res = await buscarImagenArticulo({ product_code: productCode, product_name: productName, brand });
+        if (res?.ok) {
+          setEditForm(f => ({ ...f, image_url: res.url }));
+          toast.success(res.por === 'codigo' ? 'Imagen encontrada por el código del proveedor' : 'Imagen encontrada por el nombre');
+        } else if (res?.motivo === 'sin_conexion') {
+          toast.info(res.mensaje);
         }
       } catch (_) {}
       setAutoFetchingImage(false);
@@ -180,16 +179,13 @@ export default function SupplierTariffs() {
       while (idx < pendientes.length && !bulkCancelRef.current) {
         const item = pendientes[idx++];
         try {
-          const res = await base44.integrations.Core.InvokeLLM({
-            prompt: `Busca en internet la imagen oficial del producto: "${item.product_name}"${item.brand ? ` de la marca ${item.brand}` : ''}${item.product_code ? `, referencia ${item.product_code}` : ''}. Devuelve solo la URL directa de la imagen (JPG, PNG o WebP). Si no encuentras una fiable, devuelve null.`,
-            add_context_from_internet: true,
-            response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
-          });
-          if (res?.image_url) {
-            await base44.entities.SupplierPrice.update(item.id, { image_url: res.image_url });
+          const res = await buscarImagenArticulo(item);
+          if (res?.motivo === 'sin_conexion' || res?.motivo === 'sin_motor') { toast.info(res.mensaje); bulkCancelRef.current = true; }
+          if (res?.ok) {
+            await base44.entities.SupplierPrice.update(item.id, { image_url: res.url });
             ok++;
             // actualizar la ficha en pantalla al momento
-            setPrices(prev => prev.map(p => p.id === item.id ? { ...p, image_url: res.image_url } : p));
+            setPrices(prev => prev.map(p => p.id === item.id ? { ...p, image_url: res.url } : p));
           }
         } catch (_) { /* seguir con el siguiente */ }
         done++;

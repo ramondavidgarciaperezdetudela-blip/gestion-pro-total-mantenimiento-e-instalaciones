@@ -125,7 +125,8 @@ export const AREAS = [
       ap('AISearch', 'Búsqueda IA', 'avisos'),
       ap('AIPlanning', 'Planificación IA', 'avisos'),
       ap('SmartReminders', 'Recordatorios IA', 'avisos'),
-      ap('AISupport', 'Soporte IA', 'avisos')
+      ap('AISupport', 'Soporte IA', 'avisos'),
+      ap('CentroIA', 'Centro de IA (módulos y skills)', 'ajustes')
     ]
   },
   {
@@ -149,6 +150,21 @@ export const AREAS = [
   }
 ];
 
+const ICONOS_MODULO = ['cuadro','operacion','clientes','comercial','almacen','facturacion','documentacion','ajustes','reparto','partes','avisos','calendario','cliente','equipo','contrato','presupuesto','visita','calculo','material','pedido','proveedor','factura','cobro','gasto','informe','horas','medidas','empresa','datos'];
+
+/** Pone (o quita) el área «Mis módulos» con los módulos activos creados en el Centro de IA. */
+export function registrarModulos(modulos) {
+  const i = AREAS.findIndex((a) => a.id === 'modulos');
+  const activos = (modulos || []).filter((m) => m && m.id && m.activo !== false);
+  if (!activos.length) { if (i >= 0) AREAS.splice(i, 1); return; }
+  const area = {
+    id: 'modulos', texto: 'Mis módulos', icono: 'cuadro',
+    apartados: activos.map((m) => ap('ModuloIA?id=' + encodeURIComponent(m.id), String(m.nombre || 'Módulo').slice(0, 40),
+      ICONOS_MODULO.includes(m.icono) ? m.icono : 'cuadro', { id: 'Modulo-' + m.id }))
+  };
+  if (i >= 0) AREAS[i] = area; else AREAS.push(area);
+}
+
 const basePagina = (p) => String(p || '').split('?')[0];
 
 /** Área y apartado a los que pertenece una página (null si no está en el menú). */
@@ -158,7 +174,7 @@ const CUELGA_DE = { ContactDetail: 'Contacts', ClientPortal: 'ClientPortal' };
 export function ubicarPagina(nombrePagina, busqueda = '') {
   const pag = CUELGA_DE[basePagina(nombrePagina)] || basePagina(nombrePagina);
   const q = new URLSearchParams(busqueda);
-  const clave = q.get('type') ? 'type' : q.get('panel') ? 'panel' : null;
+  const clave = q.get('type') ? 'type' : q.get('panel') ? 'panel' : q.get('id') ? 'id' : null;
   const tipo = clave && q.get(clave);
   for (const a of AREAS) {
     const exacto = tipo && a.apartados.find((x) => x.pagina === pag + '?' + clave + '=' + tipo);

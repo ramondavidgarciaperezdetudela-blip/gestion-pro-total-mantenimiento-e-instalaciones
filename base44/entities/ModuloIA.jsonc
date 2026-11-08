@@ -1,0 +1,109 @@
+{
+  "name": "ModuloIA",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string",
+      "description": "Nombre del módulo"
+    },
+    "descripcion": {
+      "type": "string"
+    },
+    "icono": {
+      "type": "string"
+    },
+    "html": {
+      "type": "string",
+      "description": "Contenido del módulo (HTML + estilos + script), se ejecuta aislado"
+    },
+    "permisos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Permisos que pide el módulo"
+    },
+    "permisos_concedidos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Permisos concedidos por la persona al activarlo"
+    },
+    "activo": {
+      "type": "boolean",
+      "default": false
+    },
+    "origen": {
+      "type": "string",
+      "enum": [
+        "ia",
+        "importado",
+        "manual"
+      ],
+      "default": "ia"
+    },
+    "version": {
+      "type": "number",
+      "default": 1
+    },
+    "peticion_original": {
+      "type": "string",
+      "description": "Lo que se pidió a la IA"
+    }
+  },
+  "required": [
+    "nombre",
+    "html"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

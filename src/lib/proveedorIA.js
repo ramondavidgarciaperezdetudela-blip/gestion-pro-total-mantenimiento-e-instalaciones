@@ -21,6 +21,8 @@
  * una línea de ellas.
  */
 
+import { llamarClaude, ajustesClaude, hayClave } from '@/lib/iaModulos/claude';
+
 const CLAVE = 'gpt_proveedor_ia';
 
 export const PROVEEDORES = [
@@ -37,6 +39,13 @@ export const PROVEEDORES = [
     libre: true,
     gratis: 'Gratis con tope diario. Modelos de código abierto.',
     nota: 'No hay que instalar nada y vale para el móvil. Necesita una clave gratuita.',
+  },
+  {
+    id: 'anthropic',
+    nombre: 'Claude (Anthropic) con tu clave',
+    libre: false,
+    gratis: 'Se paga en tu cuenta de Anthropic, a tu ritmo y sin créditos de Base44.',
+    nota: 'Si no hay internet o se acaba el saldo, usa automáticamente Ollama si está instalado.',
   },
 ];
 
@@ -659,8 +668,31 @@ export function errorSinConsultas(diagnostico = null) {
   return err;
 }
 
+/** Fallos de Anthropic tras los que merece la pena probar con la IA local. */
+export const fallaPorRedOSaldo = (e) => /No se pudo conectar|saldo|demasiadas consultas|saturado/i.test(String(e?.message || e));
+
+/**
+ * Consulta a Claude con la clave de la empresa. Si no hay internet o el saldo
+ * se ha acabado, repite en Ollama (si está a mano) para no dejar el trabajo parado.
+ */
+export async function llamarAnthropic({ prompt, response_json_schema }, cfg = ajustesIA(), deps = {}) {
+  const claude = deps.llamarClaude || llamarClaude;
+  const local = deps.llamarOllama || llamarOllama;
+  const { texto, pideJson } = prepararPeticion({ prompt, response_json_schema });
+  try {
+    const salida = await claude({ messages: [{ role: 'user', content: texto }], maxTokens: 8000 }, deps.ajustes || ajustesClaude());
+    return pideJson ? (jsonDeRespuesta(salida) ?? salida) : salida;
+  } catch (e) {
+    if (!fallaPorRedOSaldo(e)) throw e;
+    try { return await local({ prompt, response_json_schema }, cfg); } catch { throw e; }
+  }
+}
+
+export { hayClave as hayClaveAnthropic };
+
 /** Manda la consulta al proveedor elegido. */
 export async function consultarIA(peticion, cfg = ajustesIA()) {
+  if (cfg.proveedor === 'anthropic') return llamarAnthropic(peticion, cfg);
   if (cfg.proveedor === 'ollama') return llamarOllama(peticion, cfg);
   if (cfg.proveedor === 'openrouter') return llamarOpenRouter(peticion, cfg);
   throw new Error('Ese proveedor no se atiende aquí.');

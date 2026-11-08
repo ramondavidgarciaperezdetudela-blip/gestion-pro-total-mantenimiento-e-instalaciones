@@ -17,7 +17,7 @@ import BarraNavegacion from './components/BarraNavegacion';
 import AjusteRapidoLetra from './components/AjusteRapidoLetra';
 import BotonesImprimirPantalla from './components/BotonesImprimirPantalla';
 import {
-  ProveedorTema, MenuLateral, MenuMovil, BarraInferior, BarraSuperior, FondoTecnico, Icono, AREAS,
+  ProveedorTema, MenuLateral, MenuMovil, BarraInferior, BarraSuperior, FondoTecnico, Icono, AREAS, registrarModulos,
 } from '@/componentes/tema';
 import { ubicarPagina, FONDO_POR_PAGINA } from '@/componentes/tema/menu';
 import { empresaParaTema, EVENTO_TEMA, guardarLocal, ajustesDeEmpresa } from '@/lib/temaEmpresa';
@@ -45,6 +45,24 @@ function EnlaceMenu({ onAbrir }) {
 export default function Layout({ children, currentPageName }) {
   const contenidoRef = React.useRef(null);
   useEffect(() => { precargarFrecuentes(); }, []);
+  // «Mis módulos»: el área del menú con los módulos activos del Centro de IA.
+  const [, setVersionModulos] = useState(0);
+  useEffect(() => {
+    let vivo = true;
+    const cargar = async () => {
+      try {
+        const { listarModulos, EVENTO_CAMBIOS } = await import('@/lib/iaModulos/datos');
+        const lista = await listarModulos();
+        if (!vivo) return;
+        registrarModulos(lista.filter((m) => m.activo));
+        setVersionModulos((v) => v + 1);
+        window.removeEventListener(EVENTO_CAMBIOS, cargar);
+        window.addEventListener(EVENTO_CAMBIOS, cargar);
+      } catch { /* sin datos todavía */ }
+    };
+    cargar();
+    return () => { vivo = false; };
+  }, []);
   const location = useLocation();
   const [menuMovil, setMenuMovil] = useState(false);
   const [areaMovil, setAreaMovil] = useState(null);

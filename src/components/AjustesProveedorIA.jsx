@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, AlertCircle, Loader2, Download } from 'lucide-react';
 import BuscarOllama from '@/components/BuscarOllama';
+import { SeccionAnthropic, SeccionImagenes } from '@/components/SeccionesIAExtra';
 import {
   PROVEEDORES, MODELOS_OLLAMA, MODELOS_OPENROUTER, modelosGratisOpenRouter,
   escucharAjustesIA, guardarAjustesIA, modelosInstalados, consultarIA, hayPuenteEscritorio,
@@ -195,9 +196,11 @@ export default function AjustesProveedorIA() {
         </div>
       )}
 
+      {cfg.proveedor === 'anthropic' && <SeccionAnthropic />}
+
         <BuscarOllama />
 
-      {elegido.libre && (
+      {(elegido.libre || cfg.proveedor === 'anthropic') && (
         <>
           <button
             type="button"
@@ -230,6 +233,8 @@ export default function AjustesProveedorIA() {
           </p>
         </>
       )}
+
+      <SeccionImagenes />
     </div>
   );
 }
