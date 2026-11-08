@@ -389,7 +389,7 @@ ipcMain.handle('gpt-img-texto', async (_evt, url) => {
   try {
     const u = new URL(String(url || ''));
     const host = u.hostname.toLowerCase();
-    const bueno = u.protocol === 'https:' && (host === 'www.bing.com' || host === 'duckduckgo.com');
+    const bueno = u.protocol === 'https:' && (['www.bing.com', 'duckduckgo.com', 'www.google.com', 'yandex.com'].includes(host));
     if (!bueno) return { ok: false, error: 'Buscador no permitido.' };
     const resp = await fetch(u.href, { headers: { 'User-Agent': UA_BUSCADOR, 'Accept-Language': 'es-ES,es;q=0.9', Referer: 'https://duckduckgo.com/' }, signal: AbortSignal.timeout(15000) });
     if (!resp.ok) return { ok: false, status: resp.status, error: `El buscador respondió ${resp.status}.` };

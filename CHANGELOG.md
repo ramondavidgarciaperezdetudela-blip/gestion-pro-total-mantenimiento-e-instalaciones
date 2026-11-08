@@ -15,6 +15,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.125.0] — 2026-11-08
+
+### Añadido
+- **Más buscadores para las fotos de tarifas:** además de Bing y DuckDuckGo, ahora Google (web) y Yandex; se prueban por orden hasta que uno responde. Con clave de Google propia, ese va primero y funciona también en el navegador. Los ajustes llevan la guía paso a paso para conseguir la clave y el buscador de Google.
+- **Que Claude implemente las peticiones de cambio:** el botón «Que Claude la implemente» crea una incidencia de GitHub con la etiqueta `claude`; el flujo `.github/workflows/claude-implementa.yml` (Claude Code en GitHub) programa el cambio y abre una pull request. Guía en `docs/CLAUDE-IMPLEMENTA.md`.
+
 ## [1.124.0] — 2026-11-08
 
 ### Añadido
