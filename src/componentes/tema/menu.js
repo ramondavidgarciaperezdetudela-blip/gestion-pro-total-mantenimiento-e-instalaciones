@@ -4,6 +4,7 @@
 //   pagina: nombre de la página de pages.config.js
 //   ruta:   dirección dentro del programa (lleva ?type= cuando la página lo usa)
 import { createPageUrl } from '@/utils';
+import { PANELES } from '@/lib/panelesNegocio';
 
 const ap = (pagina, texto, icono, extra = {}) => ({
   id: extra.id || pagina,
@@ -128,6 +129,13 @@ export const AREAS = [
     ]
   },
   {
+    id: 'paneles', texto: 'Paneles del negocio', icono: 'informe',
+    apartados: [
+      ap('PanelesNegocio', 'Resumen completo', 'informe'),
+      ...PANELES.map((p) => ap('PanelesNegocio?panel=' + p.id, p.texto, p.icono, { id: 'Panel-' + p.id }))
+    ]
+  },
+  {
     id: 'ajustes', texto: 'Ajustes', icono: 'ajustes',
     apartados: [
       ap('CompanyConfig', 'Configuración y empresa', 'empresa'),
@@ -149,9 +157,11 @@ const CUELGA_DE = { ContactDetail: 'Contacts', ClientPortal: 'ClientPortal' };
 
 export function ubicarPagina(nombrePagina, busqueda = '') {
   const pag = CUELGA_DE[basePagina(nombrePagina)] || basePagina(nombrePagina);
-  const tipo = new URLSearchParams(busqueda).get('type');
+  const q = new URLSearchParams(busqueda);
+  const clave = q.get('type') ? 'type' : q.get('panel') ? 'panel' : null;
+  const tipo = clave && q.get(clave);
   for (const a of AREAS) {
-    const exacto = tipo && a.apartados.find((x) => x.pagina === pag + '?type=' + tipo);
+    const exacto = tipo && a.apartados.find((x) => x.pagina === pag + '?' + clave + '=' + tipo);
     if (exacto) return { area: a, apartado: exacto };
   }
   for (const a of AREAS) {
