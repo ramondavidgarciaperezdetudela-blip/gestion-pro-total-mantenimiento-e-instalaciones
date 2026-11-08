@@ -1,6 +1,6 @@
 // Conecta la búsqueda de imágenes (imagenesProducto.js) con el aparato real:
 // escritorio (Electron), móvil (Capacitor) o navegador.
-import { buscarImagenProducto, motoresPorDefecto, reducirImagen, ajustesGoogle } from '@/lib/imagenesProducto';
+import { buscarImagenProducto, motoresPorDefecto, reducirImagen, ajustesGoogle, dominiosDe, leerMapaDominios } from '@/lib/imagenesProducto';
 import { base44 } from '@/api/base44Client';
 import { esAppMovil, ajustesIA, consultarIA } from '@/lib/proveedorIA';
 
@@ -17,6 +17,8 @@ async function imagenNativa(url) {
   if (r.status < 200 || r.status >= 300 || !/^image\//.test(tipo) || typeof r.data !== 'string') throw new Error('No es una imagen.');
   return `data:${tipo};base64,${r.data}`;
 }
+
+const lee = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
 
 function crearPuente() {
   if (typeof window !== 'undefined' && window.gptImg?.disponible) {
@@ -64,7 +66,11 @@ export async function buscarImagenArticulo(item) {
 function buscarSinBase44(item) {
   const puente = crearPuente();
   return buscarImagenProducto(
-    { codigo: item.product_code, nombre: item.product_name, marca: item.brand, proveedor: item.supplier_name },
+    {
+      codigo: item.product_code, nombre: item.product_name, marca: item.brand, proveedor: item.supplier_name,
+      // 1.º la web del proveedor y la del fabricante; 2.º internet en general.
+      dominios: dominiosDe({ web: item.supplier_web, marca: item.brand }, leerMapaDominios(lee('gpt_dominios_fabricantes')))
+    },
     {
       motores: motoresPorDefecto({ puente, google: ajustesGoogle() }),
       enLinea: () => (typeof navigator === 'undefined' ? true : navigator.onLine !== false),
