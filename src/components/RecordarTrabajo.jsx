@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { recordarTrabajo } from '@/lib/recuperarTrabajo';
 
 /**
@@ -10,17 +9,11 @@ import { recordarTrabajo } from '@/lib/recuperarTrabajo';
  * recargaría todo otra vez y se perdería lo que se acaba de recuperar.
  */
 export default function RecordarTrabajo() {
-  const navigate = useNavigate();
-
   useEffect(() => {
-    recordarTrabajo((donde) => {
-      // Con HashRouter la pantalla se guarda como "#/Loquesea"; el navegador
-      // de la aplicación espera la ruta sin la almohadilla.
-      const ruta = donde.startsWith('#') ? donde.slice(1) : donde;
-      if (ruta && ruta !== '/') navigate(ruta, { replace: true });
-    });
+    // Al abrir el programa se queda en el menú principal; solo se recupera
+    // el texto a medio escribir.
+    recordarTrabajo(() => {});
     // Solo al arrancar: es lo que sustituye a haber cerrado la aplicación.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return null;
