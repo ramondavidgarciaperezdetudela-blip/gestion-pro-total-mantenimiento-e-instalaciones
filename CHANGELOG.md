@@ -15,6 +15,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.117.0] — 2026-11-08
+
+### Añadido
+- **Copia de seguridad en Google Drive, cada empresa en el suyo.** En Copias de seguridad hay un panel «Copia en Google Drive»: se pega el enlace (y la clave) de un pequeño script que la empresa instala en su propia cuenta de Google, y cada copia se sube también a una carpeta de ese Drive. Las instrucciones y el código están en el propio panel y en la carpeta `drive-copias/`.
+- **Recuperar desde cualquier equipo:** en Restaurar, con el mismo enlace y clave, «Ver copias del Drive» lista las copias y «Usar esta copia» la carga para restaurarla.
+- El enlace y la clave de Drive no se incluyen dentro de las copias.
+
+---
+
 ## [1.116.2] — 2026-11-08
 
 ### Cambiado
