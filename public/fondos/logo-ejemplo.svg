@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" width="640" height="200">
+  <rect x="8" y="8" width="184" height="184" fill="none" stroke="#23282B" stroke-width="12"/>
+  <path d="M112 30 L58 112 H98 L84 170 L144 84 H104 Z" fill="#23282B"/>
+  <text x="224" y="98" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700" fill="#23282B">Instalaciones</text>
+  <text x="224" y="160" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="400" fill="#23282B">Atlántico</text>
+</svg>

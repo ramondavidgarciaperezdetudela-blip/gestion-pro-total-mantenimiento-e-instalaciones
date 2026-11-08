@@ -15,6 +15,23 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.118.0] — 2026-11-08
+
+### Añadido
+- **Nuevo diseño «Carril DIN».** Menú lateral oscuro en el escritorio con las áreas del programa (y los apartados del área abierta), barra superior con la ruta, papel milimetrado de fondo y, en cada pantalla, su dibujo técnico de fondo. Todas las pantallas anteriores siguen accesibles, agrupadas por áreas.
+- **Móvil:** barra inferior fija (Hoy, Partes, Material, Menú) y menú en mosaico de áreas.
+- **Pantalla principal con el cuadro general:** todas las áreas y apartados de un vistazo, con los avisos de hoy y los urgentes.
+- **Reparto del día** (Operación): cada técnico es un carril y cada aviso del SAT un módulo; al arrastrar un aviso al carril de un técnico, se le asigna.
+- **Cálculo de cámaras** y **visor 3D de cámara** (Comercial).
+- **Placa de características** y tarjetas de presión en cada equipo de la ficha del cliente.
+- **Configuración › Logotipo y fondos:** se sube el logotipo y se elige la intensidad del logotipo y de los dibujos de fondo. Se guarda con los datos de la empresa.
+- Prueba del cálculo de cámara (`npm test` ahora ejecuta las pruebas principales).
+
+### Para Base44
+- Añade a la entidad `CompanySettings` los campos `tema_mostrar_logo_fondo`, `tema_opacidad_logo`, `tema_mostrar_dibujo_fondo` y `tema_opacidad_dibujo` (están en `base44/entities/CompanySettings.jsonc`). Sin ellos, los ajustes se recuerdan solo en el aparato.
+
+---
+
 ## [1.117.0] — 2026-11-08
 
 ### Añadido

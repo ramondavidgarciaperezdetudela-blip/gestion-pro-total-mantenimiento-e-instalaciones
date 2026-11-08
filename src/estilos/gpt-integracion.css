@@ -1,0 +1,52 @@
+/*
+  Ajustes para encajar el tema «Carril DIN» en el programa completo.
+  Va DESPUÉS de gpt-tema.css.
+*/
+
+/* La pantalla (todo menos el menú lateral): papel milimetrado detrás del contenido. */
+.gpt-layout { background: var(--gpt-gris-armario); }
+.gpt-pantalla {
+  color: var(--gpt-tinta);
+  background-color: var(--gpt-gris-armario);
+  background-image:
+    linear-gradient(#C0C6C2 1px, transparent 1px),
+    linear-gradient(90deg, #C0C6C2 1px, transparent 1px);
+  background-size: 16px 16px;
+  overflow-x: clip;               /* no corta el «sticky» de las páginas */
+}
+
+/* El contenido de las páginas conserva su flujo normal (bloques apilados). */
+.gpt-contenido--pagina { display: block; max-width: 1440px; padding: 16px 24px 48px; }
+.gpt-contenido--pie { display: block; padding-top: 8px; padding-bottom: 24px; color: var(--gpt-grafito); }
+.gpt-contenido--pie a { color: var(--gpt-azul); }
+@media (max-width: 640px) { .gpt-contenido--pagina { padding-left: 12px; padding-right: 12px; } }
+
+/* Menú lateral: apartados del área abierta. */
+.gpt-lateral { min-height: 100%; }
+.gpt-lateral__sub { display: flex; flex-direction: column; margin: 0 0 8px 29px; border-left: 2px solid var(--gpt-grafito); }
+.gpt-lateral__sub a { min-height: 38px; font-size: 14px; color: var(--gpt-texto-claro); padding-left: 14px; }
+.gpt-lateral__sub a[aria-current="location"] { background: transparent; color: #FFFFFF; font-weight: 700; box-shadow: inset 3px 0 0 var(--gpt-blanco); }
+
+/* Herramientas pequeñas en la barra superior. */
+.gpt-barra__herramientas { display: inline-flex; align-items: center; gap: 4px; }
+.gpt-barra .gpt-boton { text-decoration: none; }
+.gpt-barra { padding-top: 10px; padding-bottom: 10px; }
+
+@media (max-width: 1023px) { .gpt-barra .gpt-cerrar { display: none; } }  /* en el móvil sale en el menú */
+
+/* Los botones del tema no heredan el azul de los enlaces. */
+.gpt-app a.gpt-boton { color: var(--gpt-tinta); }
+.gpt-app a.gpt-boton--primario { color: #FFFFFF; }
+.gpt-app a.gpt-boton--oscuro, .gpt-barra a.gpt-boton--oscuro { color: var(--gpt-blanco); }
+
+/* Modo oscuro del programa: el papel claro se cambia por el fondo oscuro de siempre. */
+.dark .gpt-layout { background: hsl(var(--background)); }
+.dark .gpt-pantalla { color: hsl(var(--foreground)); background-color: hsl(var(--background)); background-image: none; }
+.dark .gpt-contenido--pie { color: hsl(var(--muted-foreground)); }
+.dark .gpt-panel, .dark .gpt-cajetin, .dark .gpt-medida { background: hsl(var(--card)); color: hsl(var(--card-foreground)); }
+.dark .gpt-panel--placa { background: hsl(var(--card)); }
+
+@media print {
+  .gpt-pantalla { background: #FFFFFF !important; }
+  .gpt-barra, .gpt-lateral { display: none !important; }
+}

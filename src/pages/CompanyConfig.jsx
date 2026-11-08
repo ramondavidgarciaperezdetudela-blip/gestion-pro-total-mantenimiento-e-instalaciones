@@ -28,6 +28,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import ValidCharsConfig from '@/components/ValidCharsConfig';
 import { loadLicense, parseLicense, getDeviceId, clearLicense } from '@/lib/licenseManager';
 import { uploadImage } from '@/lib/uploadImage';
+import { AjustesTema } from '@/componentes/tema';
+import { ajustesDeEmpresa, camposDeEntidad, guardarLocal, avisarCambio } from '@/lib/temaEmpresa';
 import { resetStorageConfig } from '@/lib/externalStorage';
 
 // Días de la semana con la misma numeración que usa src/lib/availability.js:
@@ -213,6 +215,7 @@ export default function CompanyConfig() {
     observations_refrigeration: 'Instalación realizada según Reglamento de Seguridad para Instalaciones Frigoríficas, F-Gas RD 115/2017 y normativa de comprobación de fugas.',
   });
   const [recordId, setRecordId] = useState(null);
+  const [temaVals, setTemaVals] = useState(() => ({ logoUrl: '', ...ajustesDeEmpresa(null) }));
   const [saved, setSaved] = useState(false);
   const [rite, setRite] = useState(() => umbralesRite());
   const [logoUploading, setLogoUploading] = useState(false);
@@ -225,6 +228,7 @@ export default function CompanyConfig() {
       if (data.length > 0) {
         const d = data[0];
         setRecordId(d.id);
+        setTemaVals({ logoUrl: d.logo_url || '', ...ajustesDeEmpresa(d) });
         setForm({
           company_name: d.company_name || '',
           nif: d.nif || '',
@@ -257,10 +261,11 @@ export default function CompanyConfig() {
   }, []);
 
   const handleSave = async () => {
+    const datos = { ...form, ...camposDeEntidad({ ...temaVals, logoUrl: form.logo_url }) };
     if (recordId) {
-      await base44.entities.CompanySettings.update(recordId, form);
+      await base44.entities.CompanySettings.update(recordId, datos);
     } else {
-      const created = await base44.entities.CompanySettings.create(form);
+      const created = await base44.entities.CompanySettings.create(datos);
       setRecordId(created.id);
     }
     // El almacén externo cachea su configuración: sin esto habría que cerrar y
@@ -282,6 +287,28 @@ export default function CompanyConfig() {
     } finally {
       setLogoUploading(false);
       e.target.value = '';
+    }
+  };
+
+  // Logotipo y fondos del tema: se ven al momento y, si ya hay empresa
+  // guardada, se guardan en el acto (sin tener que pulsar «Guardar»).
+  const cambiarTema = (v) => {
+    setTemaVals(v);
+    setForm((f) => ({ ...f, logo_url: v.logoUrl || '' }));
+    guardarLocal(v);
+    const campos = camposDeEntidad(v);
+    avisarCambio(campos);
+    if (recordId) {
+      base44.entities.CompanySettings.update(recordId, campos)
+        .catch(() => alert('No se pudo guardar el cambio del tema. Pulsa «Guardar» para reintentarlo.'));
+    }
+  };
+  const subirLogoTema = async (fichero) => {
+    try {
+      return await uploadImage(fichero);   // UploadFile con sus respaldos
+    } catch {
+      alert('Error al subir el logotipo. Comprueba tu conexión e inténtalo de nuevo.');
+      return null;
     }
   };
 
@@ -332,6 +359,7 @@ export default function CompanyConfig() {
           <TabsTrigger value="correo" className="flex-1 text-xs">Correo</TabsTrigger>
           <TabsTrigger value="horario" className="flex-1 text-xs">Horario</TabsTrigger>
           <TabsTrigger value="fuente" className="flex-1 text-xs">Aspecto y letra</TabsTrigger>
+          <TabsTrigger value="logotema" className="flex-1 text-xs">Logotipo y fondos</TabsTrigger>
           <TabsTrigger value="impresion" className="flex-1 text-xs">Impresión</TabsTrigger>
           <TabsTrigger value="documentos" className="flex-1 text-xs">Documentos</TabsTrigger>
           <TabsTrigger value="escaner" className="flex-1 text-xs">Escáner</TabsTrigger>
@@ -690,6 +718,10 @@ export default function CompanyConfig() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="logotema">
+          <AjustesTema valores={{ ...temaVals, logoUrl: form.logo_url || temaVals.logoUrl }} onCambiar={cambiarTema} onSubirLogo={subirLogoTema} />
         </TabsContent>
 
         <TabsContent value="fuente">
