@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { parsearBing, parsearDuck, parsearGoogle, puntuar, ordenar, consultas, buscarImagenProducto, claveCache } from '../src/lib/imagenesProducto.js';
+import { parsearGoogleHtml, parsearYandex, motoresPorDefecto, parsearBing, parsearDuck, parsearGoogle, puntuar, ordenar, consultas, buscarImagenProducto, claveCache } from '../src/lib/imagenesProducto.js';
 
 const bing = `<a class="iusc" m="{&quot;cid&quot;:&quot;x&quot;,&quot;purl&quot;:&quot;https://tienda.es/p/ABC-123&quot;,&quot;murl&quot;:&quot;https://tienda.es/img/abc123.jpg&quot;,&quot;turl&quot;:&quot;https://tse1.mm.bing.net/t.jpg&quot;,&quot;t&quot;:&quot;Valvula ABC-123 Danfoss&quot;}"></a>
 <a m="{&quot;purl&quot;:&quot;https://otro.es/x&quot;,&quot;murl&quot;:&quot;https://otro.es/logo.png&quot;,&quot;t&quot;:&quot;logo tienda&quot;}"></a>`;
@@ -13,6 +13,11 @@ assert.ok(puntuar(c[0], datos) >= 100 && puntuar(c[1], datos) < 20);
 assert.deepEqual(consultas({ codigo: '', nombre: 'x' }).map((q) => q.por), ['nombre']);
 assert.deepEqual(consultas({ codigo: 'a1', nombre: 'x' }).map((q) => q.por), ['codigo', 'nombre']);
 
+const gh = 'x["https://encrypted-tbn0.gstatic.com/a.jpg",90,90] y["https://tienda.es/foto-abc123.jpg",800,600] z["https://tienda.es/foto-abc123.jpg",800,600]';
+assert.deepEqual(parsearGoogleHtml(gh).map((x) => x.url), ['https://tienda.es/foto-abc123.jpg']);
+assert.equal(parsearYandex('"img_href":"https:\\/\\/a.es\\/b.jpg?x=1\\u0026y=2"')[0].url, 'https://a.es/b.jpg?x=1&y=2');
+assert.equal(motoresPorDefecto({ puente: { texto: async () => '' }, google: { clave: 'k', cx: 'c' } }).length, 5, 'Google API + Bing + DuckDuckGo + Google web + Yandex');
+assert.equal(motoresPorDefecto({ puente: null, google: {} }).length, 0);
 const mem = {};
 const d = (extra) => ({ cache: {}, motores: [async () => c], descargar: async (u) => 'data:' + u, enLinea: () => true, ...extra });
 let r = await buscarImagenProducto(datos, d());

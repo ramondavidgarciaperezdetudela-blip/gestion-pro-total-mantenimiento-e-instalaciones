@@ -18,7 +18,7 @@ export default function PestanaPeticiones({ peticiones, conectores, onCambios })
     try {
       const r = await fetch(`https://api.github.com/repos/${github.repo}/issues`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: p.titulo.slice(0, 200), body: peticionEnMarkdown(p) })
+        body: JSON.stringify({ title: p.titulo.slice(0, 200), labels: ['claude'], body: `@claude Implementa esta petición en el programa, con pruebas, y abre una pull request.\n\n${peticionEnMarkdown(p)}` })
       });
       if (!r.ok) throw new Error(`GitHub respondió ${r.status}`);
       const d = await r.json();
@@ -30,7 +30,7 @@ export default function PestanaPeticiones({ peticiones, conectores, onCambios })
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-600">Aquí quedan las funciones que exigen cambiar el propio programa. Cópialas a Claude Code, descárgalas como archivo o, si tienes un conector de GitHub, créalas como incidencia del repositorio.</p>
+      <p className="text-sm text-slate-600">Aquí quedan las funciones que exigen cambiar el propio programa. Cópialas a Claude Code, descárgalas como archivo o, con un conector de GitHub, pulsa «Que Claude la implemente»: se crea la incidencia y el flujo automático del repositorio (Claude Code en GitHub) programa el cambio y abre una pull request para que la revises y la fusiones. Necesita configurar una vez la clave en el repositorio (ver LEEME del Centro de IA en el repositorio: docs/CLAUDE-IMPLEMENTA.md).</p>
       {!peticiones.length && <p className="rounded border border-dashed p-4 text-center text-sm text-slate-600">No hay peticiones.</p>}
       {peticiones.map((p) => (
         <div key={p.id} className="rounded-lg border bg-white p-3" data-prueba="fila-peticion">
@@ -45,7 +45,7 @@ export default function PestanaPeticiones({ peticiones, conectores, onCambios })
           <div className="mt-2 flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => copiar(p)}><Copy className="mr-1 h-4 w-4" />Copiar</Button>
             <Button size="sm" variant="outline" onClick={() => descargarTexto(`peticion-${p.titulo.replace(/[^\w\-]+/g, '_').slice(0, 40)}.md`, peticionEnMarkdown(p), 'text/markdown')}><Download className="mr-1 h-4 w-4" />Descargar .md</Button>
-            {github && !p.url_incidencia && <Button size="sm" variant="outline" disabled={enviando === p.id} onClick={() => incidencia(p)}><Github className="mr-1 h-4 w-4" />Crear incidencia</Button>}
+            {github && !p.url_incidencia && <Button size="sm" variant="outline" disabled={enviando === p.id} onClick={() => incidencia(p)}><Github className="mr-1 h-4 w-4" />Que Claude la implemente</Button>}
             <Button size="sm" variant="outline" className="text-red-600" onClick={async () => { if (window.confirm('¿Borrar esta petición?')) { await borrar('PeticionCambioIA', p.id); onCambios(); } }}><Trash2 className="h-4 w-4" /></Button>
           </div>
         </div>
