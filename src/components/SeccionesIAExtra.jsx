@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { ajustesClaude, guardarAjustesClaude, MODELOS } from '@/lib/iaModulos/claude';
 import { ajustesGoogle, guardarAjustesGoogle } from '@/lib/imagenesProducto';
 
+const leerDominios = () => { try { return localStorage.getItem('gpt_dominios_fabricantes') || ''; } catch { return ''; } };
+const guardarDominios = (v) => { try { localStorage.setItem('gpt_dominios_fabricantes', v); } catch { /* sin sitio */ } };
+
 /** Claude con la clave de la propia empresa. */
 export function SeccionAnthropic() {
   const [c, setC] = useState(ajustesClaude());
@@ -40,6 +43,10 @@ export function SeccionImagenes() {
         funciona sin configurar nada; la foto se guarda reducida dentro del artículo, así se sigue viendo sin conexión. Sin internet no puede buscar fotos nuevas.
         En el navegador hace falta un buscador propio (opcional): clave y motor de Google Programmable Search.
       </p>
+      <p className="text-xs text-slate-600">
+        <b>Orden de búsqueda:</b> 1.º la web del proveedor (el campo «web» de su ficha) y la del fabricante, 2.º todo internet. Para fabricantes que no conozca el programa, escribe aquí una línea por marca con su web:
+      </p>
+      <textarea className="w-full rounded-lg border p-2 font-mono text-xs" rows={3} placeholder={'mimarca=www.mimarca.com'} defaultValue={leerDominios()} onChange={(e) => guardarDominios(e.target.value)} aria-label="Webs de fabricantes" data-prueba="dominios-fabricantes" />
       <details className="rounded-lg bg-slate-50 p-2 text-xs text-slate-700" data-prueba="ayuda-google">
         <summary className="cursor-pointer font-medium">Cómo conseguir la clave y el buscador de Google (gratis, 100 búsquedas al día)</summary>
         <ol className="mt-2 list-decimal space-y-1 pl-5">
