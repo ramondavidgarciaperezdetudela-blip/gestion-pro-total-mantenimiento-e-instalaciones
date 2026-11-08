@@ -27,6 +27,9 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 - **Configuración › Logotipo y fondos:** se sube el logotipo y se elige la intensidad del logotipo y de los dibujos de fondo. Se guarda con los datos de la empresa.
 - Prueba del cálculo de cámara (`npm test` ahora ejecuta las pruebas principales).
 
+### Quitado
+- El diseño antiguo (menú lateral oscuro anterior, barra inferior del móvil y fondos por sección) ya no está en el programa. Quien quiera la versión anterior dispone del paquete «antigua» (1.117.0).
+
 ### Para Base44
 - Añade a la entidad `CompanySettings` los campos `tema_mostrar_logo_fondo`, `tema_opacidad_logo`, `tema_mostrar_dibujo_fondo` y `tema_opacidad_dibujo` (están en `base44/entities/CompanySettings.jsonc`). Sin ellos, los ajustes se recuerdan solo en el aparato.
 
