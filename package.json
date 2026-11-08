@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.116.2",
+  "version": "1.117.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -50,6 +50,7 @@
     "test:huecos": "node scripts/test-huecos.mjs",
     "test:iconoia": "node scripts/test-iconoia.mjs",
     "test:buscar": "node scripts/test-buscar-articulos.mjs",
+    "test:drive": "node scripts/test-copia-drive.mjs",
     "test:iva": "node scripts/test-iva-lineas.mjs",
     "test:vinculos": "node scripts/test-vinculos.mjs",
     "test:filtro": "node scripts/test-filtro.mjs",

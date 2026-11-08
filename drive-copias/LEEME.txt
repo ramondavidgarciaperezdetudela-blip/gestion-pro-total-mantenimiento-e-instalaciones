@@ -1,0 +1,12 @@
+COPIA DE SEGURIDAD EN GOOGLE DRIVE (una por empresa)
+
+Cada empresa instala este script en SU cuenta de Google (por ejemplo kairigarcia.gestionprototal@gmail.com u otro correo de la empresa). Así las copias van al Drive de esa empresa y no al de nadie más.
+
+1. Entra en script.google.com con el correo de la empresa y crea un proyecto nuevo.
+2. Pega el contenido de script-google-drive.gs y cambia CAMBIA-ESTA-CLAVE por una clave larga que te inventes.
+3. Implementar > Nueva implementación > Aplicación web. Ejecutar como: Yo. Acceso: Cualquier usuario. Autoriza los permisos.
+4. Copia la dirección que termina en /exec.
+5. En el programa: Copias de seguridad > Copia en Google Drive. Pega la dirección y la clave, pulsa «Probar y guardar» y marca «Subir a Google Drive cada copia que haga».
+6. Para recuperar desde otro equipo: pestaña Restaurar > pon el mismo enlace y clave > «Ver copias del Drive» > «Usar esta copia».
+
+Las copias quedan en la carpeta «Gestión Pro Total - Copias» del Drive. Quien tenga el enlace y la clave puede leerlas: no los compartas.
