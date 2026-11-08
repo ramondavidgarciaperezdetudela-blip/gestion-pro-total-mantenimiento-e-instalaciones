@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { buscarImagenArticulo } from '@/lib/imagenesProductoApp';
+import { recuperarImagenesDePdf } from '@/lib/imagenesPdf';
+import { reducirImagen } from '@/lib/imagenesProducto';
 import { tarifasCaducadas, borrarEnLotes, recrearLineas } from '@/lib/borrarTarifas';
 import SupplierCatalogImportWithSupplier from '../components/SupplierCatalogImportWithSupplier';
 import PriceComparator from '../components/PriceComparator';
@@ -48,6 +50,12 @@ async function withRetry(fn, maxRetries = 5) {
 
 export default function SupplierTariffs() {
   const [suppliers, setSuppliers] = useState([]);
+  const suppliersRef = useRef([]);
+  suppliersRef.current = suppliers;
+  // Para buscar primero en la web del proveedor del artículo.
+  const conWeb = (item) => ({ ...item, supplier_web: suppliersRef.current.find(x => x.id === item.supplier_id)?.website || '' });
+  const [pdfFotos, setPdfFotos] = useState(null); // { n, total } mientras se leen PDF
+  const pdfFotosRef = useRef(null);
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -56,6 +64,8 @@ export default function SupplierTariffs() {
   const [filterSupplier, setFilterSupplier] = useState('all');
   const [expandedSuppliers, setExpandedSuppliers] = useState(new Set());
   const [editItem, setEditItem] = useState(null);
+  const editItemRef = useRef(null);
+  editItemRef.current = editItem;
   const [editForm, setEditForm] = useState({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [nuevoArticulo, setNuevoArticulo] = useState(null); // null = cerrado · { proveedor } = abierto
@@ -148,10 +158,10 @@ export default function SupplierTariffs() {
       lastAutoFetchNameRef.current = productName;
       setAutoFetchingImage(true);
       try {
-        const res = await buscarImagenArticulo({ product_code: productCode, product_name: productName, brand });
+        const res = await buscarImagenArticulo(conWeb({ product_code: productCode, product_name: productName, brand, supplier_id: editItemRef.current?.supplier_id }));
         if (res?.ok) {
           setEditForm(f => ({ ...f, image_url: res.url }));
-          toast.success(res.por === 'codigo' ? 'Imagen encontrada por el código del proveedor' : 'Imagen encontrada por el nombre');
+          toast.success(res.por === 'web' ? 'Imagen encontrada en la web del proveedor o fabricante' : res.por === 'codigo' ? 'Imagen encontrada por el código del proveedor' : 'Imagen encontrada por el nombre');
         } else if (res?.motivo === 'sin_conexion') {
           toast.info(res.mensaje);
         }
@@ -179,7 +189,7 @@ export default function SupplierTariffs() {
       while (idx < pendientes.length && !bulkCancelRef.current) {
         const item = pendientes[idx++];
         try {
-          const res = await buscarImagenArticulo(item);
+          const res = await buscarImagenArticulo(conWeb(item));
           if (res?.motivo === 'sin_conexion' || res?.motivo === 'sin_motor') { toast.info(res.mensaje); bulkCancelRef.current = true; }
           if (res?.ok) {
             await base44.entities.SupplierPrice.update(item.id, { image_url: res.url });
@@ -363,16 +373,39 @@ export default function SupplierTariffs() {
   };
 
   const handleFetchImage = async () => {
-    if (!editForm.product_name) return;
+    if (!editForm.product_name && !editForm.product_code) return;
     setFetchingImage(true);
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Busca en internet la imagen oficial del producto: "${editForm.product_name}"${editForm.brand ? ` de la marca ${editForm.brand}` : ''}${editForm.product_code ? `, referencia ${editForm.product_code}` : ''}. Devuelve solo la URL directa de la imagen del producto (JPG o PNG). Si no encuentras una imagen fiable, devuelve null.`,
-      add_context_from_internet: true,
-      response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
-    });
-    if (res?.image_url) setEditForm(f => ({ ...f, image_url: res.image_url }));
-    else toast.info('No se encontró imagen para este producto');
+    try {
+      const res = await buscarImagenArticulo(conWeb({ ...editForm, supplier_id: editItem?.supplier_id }));
+      if (res?.ok) { setEditForm(f => ({ ...f, image_url: res.url })); toast.success(res.por === 'web' ? 'Imagen encontrada en la web del proveedor o fabricante' : 'Imagen encontrada'); }
+      else toast.info(res?.mensaje || 'No se encontró imagen para este producto');
+    } catch (e) { toast.error('No se pudo buscar la imagen: ' + (e.message || e)); }
     setFetchingImage(false);
+  };
+
+  // ── Recuperar las fotos que vienen DENTRO de la tarifa en PDF ─────────────
+  const fotosDesdePdf = async (ev) => {
+    const archivos = [...(ev.target.files || [])]; ev.target.value = '';
+    if (!archivos.length) return;
+    const lista = prices.filter(p => !p.image_url && p.product_code && (filterSupplier === 'all' || p.supplier_id === filterSupplier));
+    if (!lista.length) { toast.info('No hay artículos sin imagen y con código en esta lista.'); return; }
+    let ok = 0; let pendientes = lista.map(p => ({ id: p.id, codigo: p.product_code }));
+    try {
+      for (const f of archivos) {
+        if (!pendientes.length) break;
+        setPdfFotos({ n: 0, total: 0, nombre: f.name });
+        const hallados = await recuperarImagenesDePdf(await f.arrayBuffer(), pendientes, reducirImagen, (n, total) => setPdfFotos({ n, total, nombre: f.name }));
+        for (const h of hallados) {
+          await base44.entities.SupplierPrice.update(h.id, { image_url: h.dataUrl });
+          setPrices(prev => prev.map(p => p.id === h.id ? { ...p, image_url: h.dataUrl } : p));
+          ok++;
+        }
+        const hechos = new Set(hallados.map(h => h.id));
+        pendientes = pendientes.filter(p => !hechos.has(p.id));
+      }
+      toast[ok ? 'success' : 'info'](ok ? `Fotos recuperadas del PDF: ${ok} artículos` : 'No he encontrado fotos junto a los códigos de ese PDF. Puedes añadirlas a mano desde la ficha del artículo.');
+    } catch (e) { toast.error('No se pudo leer el PDF: ' + (e.message || e)); }
+    setPdfFotos(null);
   };
 
   const totalProducts = prices.length;
@@ -469,6 +502,11 @@ export default function SupplierTariffs() {
         </Select>
         <Button variant="outline" size="icon" onClick={loadData} title="Recargar">
           <RefreshCw className="w-4 h-4" />
+        </Button>
+        <input ref={pdfFotosRef} type="file" accept="application/pdf,.pdf" multiple className="hidden" onChange={fotosDesdePdf} data-prueba="tarifa-fotos-pdf" />
+        <Button variant="outline" className="gap-2 whitespace-nowrap" onClick={() => pdfFotosRef.current?.click()} disabled={!!pdfFotos}
+          title="Sube la tarifa en PDF y se recuperan las fotos que lleva dentro, por código de artículo" data-prueba="tarifa-fotos-pdf-boton">
+          {pdfFotos ? <><Loader2 className="w-4 h-4 animate-spin" />{`PDF ${pdfFotos.n}/${pdfFotos.total || '…'}`}</> : <><ImageIcon className="w-4 h-4" />Fotos desde PDF</>}
         </Button>
         <Button
           variant={bulkImg ? 'destructive' : 'outline'}

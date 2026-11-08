@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.126.0] — 2026-11-08
+
+### Añadido
+- **Fotos de tarifas: primero la web del proveedor y del fabricante, después internet.** Para cada artículo se busca antes en la web que figura en la ficha del proveedor y en la del fabricante (el programa conoce las de las marcas habituales de frío, clima, electricidad y calefacción; se pueden añadir más en Ajustes de IA, una línea «marca=web»). Solo si no aparece ahí, se busca en todo internet, por código y por nombre.
+- **«Fotos desde PDF»:** sube la tarifa del proveedor en PDF y el programa recupera las fotos que lleva dentro, asignando cada una al artículo cuyo código tiene al lado. Funciona sin conexión. Lo que no encuentre se puede añadir a mano desde la ficha del artículo (subir archivo o pegar enlace).
+- El botón «Buscar imagen en internet» de la ficha del artículo usa ahora el mismo buscador (web del proveedor/fabricante primero).
+
 ## [1.125.0] — 2026-11-08
 
 ### Añadido

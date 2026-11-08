@@ -75,8 +75,52 @@ export function ordenar(cands, datos) {
   return cands.map((c) => ({ ...c, puntos: puntuar(c, datos) })).sort((a, b) => b.puntos - a.puntos);
 }
 
-export const consultas = ({ codigo, nombre, marca, proveedor }) => {
+// Webs oficiales de fabricantes habituales (se pueden ampliar en Ajustes de IA: «marca=dominio»).
+export const DOMINIOS_FABRICANTES = {
+  danfoss: 'danfoss.com', daikin: 'daikin.es', mitsubishi: 'mitsubishielectric.es', carrier: 'carrier.com', bitzer: 'bitzer.de',
+  copeland: 'copeland.com', emerson: 'emerson.com', alco: 'emerson.com', castel: 'castel.it', sanhua: 'sanhuagroup.com', refco: 'refco.ch',
+  testo: 'testo.com', fujitsu: 'fujitsu-general.com', panasonic: 'aircon.panasonic.eu', lg: 'lg.com', samsung: 'samsung.com',
+  toshiba: 'toshiba-aircondition.com', hitachi: 'hitachiaircon.com', gree: 'gree.com', midea: 'midea.com', haier: 'haier.com',
+  grundfos: 'grundfos.com', wilo: 'wilo.com', baxi: 'baxi.es', vaillant: 'vaillant.es', junkers: 'junkers.es', saunier: 'saunierduval.es',
+  schneider: 'se.com', siemens: 'siemens.com', legrand: 'legrand.es', abb: 'abb.com', hager: 'hager.es', carel: 'carel.com',
+  eliwell: 'eliwell.com', dixell: 'dixell.com', ebm: 'ebmpapst.com', ziehl: 'ziehl-abegg.com', frascold: 'frascold.it', dorin: 'dorin.com'
+};
+
+/** «marca=dominio» por líneas → objeto. */
+export function leerMapaDominios(texto) {
+  const m = {};
+  for (const l of String(texto || '').split(/\r?\n/)) {
+    const [k, v] = l.split('=');
+    const dom = hostDe(v);
+    if (k && dom) m[norm(k).replace(/[^a-z0-9]/g, '')] = dom;
+  }
+  return m;
+}
+
+export function hostDe(url) {
+  const t = String(url || '').trim();
+  if (!t) return '';
+  try { return new URL(/^https?:\/\//i.test(t) ? t : 'https://' + t).hostname.replace(/^www\./i, '').toLowerCase(); } catch { return ''; }
+}
+
+/** Dominios donde buscar primero: la web del proveedor y la del fabricante (por marca). */
+export function dominiosDe({ web, marca }, mapaPropio = {}) {
+  const out = [];
+  const w = hostDe(web); if (w) out.push(w);
+  const k = norm(marca).replace(/[^a-z0-9]/g, '');
+  const f = k && (mapaPropio[k] || DOMINIOS_FABRICANTES[k] || Object.entries({ ...DOMINIOS_FABRICANTES, ...mapaPropio }).find(([n]) => k.includes(n))?.[1]);
+  if (f && !out.includes(f)) out.push(f);
+  return out;
+}
+
+const esDeDominio = (c, dominio) => [c.url, c.pagina].some((u) => hostDe(u).endsWith(dominio));
+
+export const consultas = ({ codigo, nombre, marca, proveedor, dominios = [] }) => {
   const q = [];
+  for (const dominio of dominios) {
+    if (String(codigo || '').trim()) q.push({ por: 'codigo', web: true, dominio, texto: `${String(codigo).trim()} site:${dominio}` });
+    if (String(nombre || '').trim()) q.push({ por: 'nombre', web: true, dominio, texto: `${String(nombre).trim()} site:${dominio}` });
+  }
   if (String(codigo || '').trim()) q.push({ por: 'codigo', texto: `${String(codigo).trim()} ${marca || proveedor || ''}`.trim() });
   if (String(nombre || '').trim()) q.push({ por: 'nombre', texto: `${marca || ''} ${String(nombre).trim()}`.trim() });
   return q;
@@ -153,9 +197,12 @@ export async function buscarImagenProducto(datos, d) {
       try { cands = await m(q.texto); hubo = true; if (cands.length) break; } catch { /* siguiente buscador */ }
     }
     if (!cands.length) continue;
+    if (q.web) cands = cands.filter((c) => esDeDominio(c, q.dominio));
+    if (!cands.length) continue;
     let orden = ordenar(cands, datos).slice(0, 8);
     // Por código solo vale lo que de verdad lleva el código; por nombre, lo que se parezca.
-    orden = q.por === 'codigo' ? orden.filter((c) => c.puntos >= 100) : orden.filter((c) => c.puntos >= 20);
+    // En la web del proveedor/fabricante basta con que la página sea suya y hable del artículo.
+    orden = q.por === 'codigo' ? orden.filter((c) => c.puntos >= (q.web ? 60 : 100)) : orden.filter((c) => c.puntos >= (q.web ? 15 : 20));
     if (!orden.length) continue;
     if (q.por === 'nombre' && d.elegirConIA && orden.length > 1) {
       try { const i = await d.elegirConIA(orden, datos); if (Number.isInteger(i) && orden[i]) orden.unshift(...orden.splice(i, 1)); } catch { /* sigue el orden por puntos */ }
@@ -163,7 +210,7 @@ export async function buscarImagenProducto(datos, d) {
     for (const c of orden.slice(0, 4)) {
       try {
         const url = await d.descargar(c.url, c.miniatura);
-        if (url) { cache[k] = { url, por: q.por }; guardarCache(cache); return { ok: true, url, por: q.por }; }
+        if (url) { const por = q.web ? 'web' : q.por; cache[k] = { url, por }; guardarCache(cache); return { ok: true, url, por, dominio: q.dominio }; }
       } catch { /* siguiente candidata */ }
     }
   }

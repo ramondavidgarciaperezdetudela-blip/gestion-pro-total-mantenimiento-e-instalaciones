@@ -37,3 +37,29 @@ const cache = { [claveCache(datos)]: { url: 'data:guardada', por: 'codigo' } };
 r = await buscarImagenProducto(datos, d({ cache, enLinea: () => false }));
 assert.ok(r.ok && r.desdeCache, 'la caché funciona sin conexión');
 console.log('imágenes de producto: OK');
+
+// ── web del proveedor y del fabricante primero ──
+import { dominiosDe, hostDe, leerMapaDominios } from '../src/lib/imagenesProducto.js';
+import { emparejar } from '../src/lib/imagenesPdf.js';
+assert.equal(hostDe('https://www.Danfoss.com/es/'), 'danfoss.com');
+assert.deepEqual(dominiosDe({ web: 'www.frigicoll.es', marca: 'Danfoss' }), ['frigicoll.es', 'danfoss.com']);
+assert.deepEqual(dominiosDe({ web: '', marca: 'Marca Rara' }, leerMapaDominios('marca rara = https://www.rara.com/x')), ['rara.com']);
+assert.deepEqual(consultas({ codigo: 'A1B', nombre: 'n', dominios: ['x.com'] }).map((q) => q.texto), ['A1B site:x.com', 'n site:x.com', 'A1B', 'n']);
+const llamadas = [];
+const motor = async (q) => { llamadas.push(q); return q.includes('site:frigicoll.es')
+  ? [{ url: 'https://www.frigicoll.es/img/abc123.jpg', titulo: 'ABC-123', pagina: 'https://www.frigicoll.es/p/abc123' }, { url: 'https://otra.com/abc123.jpg', titulo: 'ABC-123', pagina: 'https://otra.com/x' }]
+  : [{ url: 'https://general.com/abc123.jpg', titulo: 'ABC-123', pagina: 'https://general.com' }]; };
+r = await buscarImagenProducto({ codigo: 'ABC-123', nombre: 'Valvula', dominios: ['frigicoll.es'] }, { cache: {}, motores: [motor], descargar: async (u) => u, enLinea: () => true });
+assert.ok(r.ok && r.por === 'web' && r.url.startsWith('https://www.frigicoll.es'), 'primero la web del proveedor');
+assert.equal(llamadas.length, 1, 'no hace falta buscar más si la web del proveedor la tiene');
+llamadas.length = 0;
+r = await buscarImagenProducto({ codigo: 'ZZZ-999', nombre: 'Valvula', dominios: ['nada.com'] }, { cache: {}, motores: [async (q) => { llamadas.push(q); return q.includes('site:') ? [] : [{ url: 'https://g.com/zzz999.jpg', titulo: 'ZZZ-999', pagina: '' }]; }], descargar: async (u) => u, enLinea: () => true });
+assert.ok(r.ok && r.por === 'codigo' && llamadas.length === 3, 'si la web no la tiene, sigue en internet');
+
+// ── fotos de un PDF: la más cercana al código ──
+const textos = [{ texto: 'REF ABC-123', x: 100, y: 500 }, { texto: 'XYZ-9', x: 100, y: 200 }, { texto: 'Precio 12,00', x: 300, y: 500 }];
+const imgs = [{ id: 'i1', x: 20, y: 480, w: 60, h: 60 }, { id: 'i2', x: 20, y: 180, w: 60, h: 60 }, { id: 'i3', x: 400, y: 20, w: 60, h: 60 }];
+const pares = emparejar(textos, imgs, [{ id: 'a', codigo: 'abc 123' }, { id: 'b', codigo: 'XYZ9' }, { id: 'c', codigo: 'NOEXISTE' }]);
+assert.deepEqual(pares.map((p) => [p.articulo.id, p.imagen.id]).sort(), [['a', 'i1'], ['b', 'i2']]);
+assert.equal(emparejar([{ texto: 'ABC-123', x: 900, y: 900 }], imgs, [{ id: 'a', codigo: 'ABC-123' }]).length, 0, 'foto demasiado lejos: no se asigna');
+console.log('web del proveedor y fotos de PDF: OK');
