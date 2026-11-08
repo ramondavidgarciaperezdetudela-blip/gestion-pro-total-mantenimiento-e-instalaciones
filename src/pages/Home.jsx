@@ -13,143 +13,15 @@ import AgendaPanel from '../components/AgendaPanel';
 import PendingSignaturesPanel from '../components/PendingSignaturesPanel';
 import { createPageUrl } from '../utils';
 import { Badge } from "@/components/ui/badge";
-import {
-  Calendar, Users, FileText, Wrench, ClipboardList,
-  Thermometer, Sun, BookOpen, Shield, Bot, Settings,
-  Building2, FolderOpen, Zap, BarChart3, Clock, AlertCircle,
-  StickyNote, Package, Palette, Bell, Download, Euro, CheckCircle, XCircle, AlertTriangle,
-  ArrowRight, ChevronRight, ShoppingCart, Search, Navigation, ChevronDown, ChevronUp,
-  Snowflake, Ruler, Filter, Gauge, Droplets, Repeat, History, Briefcase, MessageSquare,
-  Calculator, Layers, RefreshCw, ListChecks, Map, FileBarChart, Sparkles,
-  Images, CalendarClock, Cylinder, ShieldCheck, PenTool, UserPlus } from
+import { Users, FileText, Wrench, Shield,
+  Building2, Clock, AlertCircle, Bell, Euro, CheckCircle, XCircle, AlertTriangle,
+  ArrowRight, ChevronRight, ShoppingCart, Search, ChevronDown, ChevronUp } from
 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
 import PanelControlNegocio from '../components/PanelControlNegocio';
 import { format, startOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
-
-
-// ── Sección dedicada: Refrigeración y Gases ──────────────────────────────────
-// Gases compatibles, cambio de aceite, cálculo de carga y la regla de
-// refrigerantes (propiedades P-T). Todo accesible desde el Inicio.
-const refrigerationLinks = [
-{ name: 'Gases / Equivalencias', page: 'RefrigerantEquiv', icon: Snowflake, color: 'bg-sky-600', desc: 'Gas compatible, aceite y cálculo de carga' },
-{ name: 'Regla Refrigerantes', page: 'DanfossTools', icon: Ruler, color: 'bg-indigo-600', desc: 'Presión-temperatura, entalpía (Danfoss)' },
-{ name: 'Proveedores de Gas', page: 'GasSuppliers', icon: Droplets, color: 'bg-cyan-600', desc: 'Distribuidores y fichas de gases' },
-{ name: 'Cálculo Cámara', page: 'ColdRoomCalc', icon: Thermometer, color: 'bg-blue-600', desc: 'Carga térmica de cámara frigorífica' },
-{ name: 'Potencia A/C', page: 'ACPotenciaCalc', icon: Gauge, color: 'bg-teal-600', desc: 'Frigorías / potencia de climatización' },
-{ name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500', desc: 'Cargas térmicas y aislamiento' },
-{ name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Gauge, color: 'bg-rose-600', desc: 'Esquema frigorífico + presiones y diagnóstico' }];
-
-// ── Accesos directos a TODOS los módulos ─────────────────────────────────────
-const quickLinks = [
-{ name: 'Agenda', page: 'Agenda', icon: Calendar, color: 'bg-blue-500' },
-{ name: 'Disponibilidad', page: 'Availability', icon: Calendar, color: 'bg-emerald-600' },
-{ name: 'Calendario SAT', page: 'SATCalendar', icon: Calendar, color: 'bg-blue-400' },
-{ name: 'Día Técnico', page: 'TechnicianDay', icon: Calendar, color: 'bg-sky-500' },
-{ name: 'Asistente IA', page: 'AIAssistant', icon: Bot, color: 'bg-green-500' },
-{ name: 'Búsqueda IA', page: 'AISearch', icon: Search, color: 'bg-teal-400' },
-{ name: 'Presupuesto IA', page: 'AIBudget', icon: Bot, color: 'bg-purple-500' },
-{ name: 'Informes IA', page: 'AIReports', icon: BarChart3, color: 'bg-fuchsia-400' },
-{ name: 'Planificación IA', page: 'AIPlanning', icon: Bot, color: 'bg-purple-400' },
-{ name: 'SAT', page: 'SAT', icon: Wrench, color: 'bg-orange-500' },
-{ name: 'Chat SAT', page: 'SATChat', icon: MessageSquare, color: 'bg-orange-400' },
-{ name: 'Trabajo Campo', page: 'TechnicianFieldWork', icon: Navigation, color: 'bg-amber-600' },
-{ name: 'Optimizar Ruta', page: 'TecniciansRoutes', icon: Map, color: 'bg-teal-600' },
-{ name: 'Mantenimiento', page: 'Maintenance', icon: ClipboardList, color: 'bg-cyan-500' },
-{ name: 'Plan Mantenim.', page: 'MaintenancePlanning', icon: ListChecks, color: 'bg-cyan-700' },
-{ name: 'Incidencias', page: 'IncidentManagement', icon: AlertTriangle, color: 'bg-rose-600' },
-{ name: 'Historial Averías', page: 'EquipmentFailureHistory', icon: History, color: 'bg-rose-500' },
-{ name: 'Diario Equipos', page: 'EquipmentDiaryPage', icon: BookOpen, color: 'bg-emerald-600' },
-{ name: 'Gases / Equival.', page: 'RefrigerantEquiv', icon: Snowflake, color: 'bg-sky-600' },
-{ name: 'Regla Refriger.', page: 'DanfossTools', icon: Ruler, color: 'bg-indigo-600' },
-{ name: 'Proveedores Gas', page: 'GasSuppliers', icon: Droplets, color: 'bg-cyan-600' },
-{ name: 'Cálculo Cámara', page: 'ColdRoomCalc', icon: Snowflake, color: 'bg-blue-600' },
-{ name: 'Potencia A/C', page: 'ACPotenciaCalc', icon: Gauge, color: 'bg-teal-600' },
-{ name: 'Análisis Plano', page: 'ACPlanAnalysis', icon: Layers, color: 'bg-indigo-500' },
-{ name: 'Plano y Presupuesto', page: 'PlanoIA', icon: Ruler, color: 'bg-indigo-400' },
-{ name: 'Cálculo Térmico', page: 'ThermalCalc', icon: Thermometer, color: 'bg-red-500' },
-{ name: 'Cálculo Multizona', page: 'MultiAreaCalc', icon: Calculator, color: 'bg-red-400' },
-{ name: 'Cálculo Capilar', page: 'CapillaryCalc', icon: Droplets, color: 'bg-cyan-700' },
-{ name: 'Filtro Deshidratador', page: 'FilterCalc', icon: Filter, color: 'bg-amber-600' },
-{ name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Gauge, color: 'bg-rose-600' },
-{ name: 'Tablas Gases', page: 'TablasRefrigerantes', icon: FileBarChart, color: 'bg-sky-700' },
-{ name: 'Electricidad', page: 'ElectricalCalc', icon: Zap, color: 'bg-yellow-500' },
-{ name: 'Baterías', page: 'BatteryCalc', icon: Zap, color: 'bg-yellow-600' },
-{ name: 'Solar+Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-amber-500' },
-{ name: 'Cálculo Solar', page: 'SolarCalc', icon: Sun, color: 'bg-amber-600' },
-{ name: 'Contactos', page: 'Contacts', icon: Users, color: 'bg-emerald-500' },
-{ name: 'Portal Cliente', page: 'ClientPortal', icon: Users, color: 'bg-emerald-400' },
-{ name: 'Factura', page: 'Documents?type=factura', icon: FileText, color: 'bg-violet-500' },
-{ name: 'Presupuesto', page: 'Documents?type=presupuesto', icon: FileText, color: 'bg-blue-600' },
-{ name: 'Documentos', page: 'Documents', icon: FileText, color: 'bg-violet-600' },
-{ name: 'Plantillas', page: 'DocumentTemplates', icon: Palette, color: 'bg-rose-500' },
-{ name: 'Modelos y legalización', page: 'LegalDocs', icon: FileText, color: 'bg-indigo-600' },
-{ name: 'Normativas', page: 'Regulations', icon: Shield, color: 'bg-indigo-500' },
-{ name: 'Manuales', page: 'Manuals', icon: BookOpen, color: 'bg-teal-600' },
-{ name: 'Fichas técnicas máquinas', page: 'FichasMaquinas', icon: FileText, color: 'bg-teal-600' },
-{ name: 'Catálogos', page: 'Catalogs', icon: BookOpen, color: 'bg-teal-500' },
-{ name: 'Inventario', page: 'Inventory', icon: Package, color: 'bg-teal-500' },
-{ name: 'Repuestos', page: 'SparePartsManager', icon: Package, color: 'bg-teal-700' },
-{ name: 'Proveedores', page: 'Suppliers', icon: Building2, color: 'bg-slate-500' },
-{ name: 'Tarifas Prov.', page: 'SupplierTariffs', icon: ShoppingCart, color: 'bg-purple-600' },
-{ name: 'Resumen Compras', page: 'PurchaseSummary', icon: BarChart3, color: 'bg-purple-700' },
-{ name: 'Proyectos', page: 'Projects', icon: FolderOpen, color: 'bg-pink-500' },
-{ name: 'Cronograma', page: 'ProjectTimeline', icon: Clock, color: 'bg-pink-600' },
-{ name: 'Informes', page: 'Reports', icon: BarChart3, color: 'bg-fuchsia-500' },
-{ name: 'Automatizaciones', page: 'Automations', icon: Repeat, color: 'bg-purple-500' },
-{ name: 'Recordatorios', page: 'SmartReminders', icon: Bell, color: 'bg-amber-500' },
-{ name: 'Notas', page: 'Notes', icon: StickyNote, color: 'bg-lime-500' },
-{ name: 'Historial Cambios', page: 'AuditLog', icon: History, color: 'bg-slate-600' },
-{ name: 'Tarjetas', page: 'BusinessCards', icon: Briefcase, color: 'bg-slate-600' },
-{ name: 'Exportar', page: 'ExportData', icon: Download, color: 'bg-lime-600' },
-{ name: 'Copias Seg.', page: 'BackupCenter', icon: Shield, color: 'bg-blue-700' },
-{ name: 'Actualizaciones', page: 'UpdateCenter', icon: RefreshCw, color: 'bg-green-600' },
-{ name: 'Novedades', page: 'Novedades', icon: Sparkles, color: 'bg-amber-500' },
-{ name: 'Plano Frigorífico', page: 'PlanoFrigorifico', icon: Ruler, color: 'bg-cyan-600' },
-{ name: 'Configuración', page: 'CompanyConfig', icon: Settings, color: 'bg-gray-500' },
-{ name: 'Soporte IA', page: 'AISupport', icon: Bot, color: 'bg-blue-500' },
-// Estos faltaban en la lista y por eso no salían en ningún grupo de abajo:
-// los grupos se arman a partir de aquí y lo que no está, se descarta.
-{ name: 'Cálculo Eléctrico', page: 'ElectricalCalc', icon: Zap, color: 'bg-yellow-500' },
-{ name: 'Baterías', page: 'BatteryCalc', icon: Zap, color: 'bg-lime-600' },
-{ name: 'Cálculo Solar', page: 'SolarCalc', icon: Sun, color: 'bg-amber-500' },
-{ name: 'Solar + Baterías', page: 'SolarBatteryCalc', icon: Sun, color: 'bg-orange-500' },
-{ name: 'Tubo Capilar', page: 'CapillaryCalc', icon: Ruler, color: 'bg-cyan-700' },
-{ name: 'Filtro Deshidratador', page: 'FilterCalc', icon: Filter, color: 'bg-amber-600' },
-{ name: 'Diagnóstico Carga', page: 'DiagnosticoCarga', icon: Gauge, color: 'bg-rose-600' },
-{ name: 'Tablas de Gases', page: 'TablasRefrigerantes', icon: Snowflake, color: 'bg-sky-700' },
-{ name: 'Códigos de Error', page: 'CodigosError', icon: AlertTriangle, color: 'bg-red-600' },
-{ name: 'Presiones y Carga', page: 'PresionesGas', icon: Gauge, color: 'bg-blue-700' },
-// Accesos que faltaban en el inicio (estaban en el menú lateral pero no aquí):
-{ name: 'Gases refrigerantes', page: 'GasesRefrigerantes', icon: Cylinder, color: 'bg-sky-600' },
-{ name: 'CADCraft (dibujo CAD)', page: 'CADCraft', icon: PenTool, color: 'bg-cyan-700' },
-{ name: 'Gamas y plan', page: 'PlanGamas', icon: CalendarClock, color: 'bg-cyan-600' },
-{ name: 'Instrumentos', page: 'InstrumentosTaller', icon: Gauge, color: 'bg-orange-600' },
-{ name: 'Informes Aseguradora', page: 'InformesTecnicos', icon: ShieldCheck, color: 'bg-indigo-600' },
-{ name: 'Galería de imágenes', page: 'GaleriaImagenes', icon: Images, color: 'bg-pink-600' },
-{ name: 'Nuevo Contacto', page: 'ContactForm', icon: UserPlus, color: 'bg-emerald-600' }];
-
-// Índice rápido página -> objeto de enlace (para armar los grupos reutilizando icono/color/nombre)
-const _linkByPage = Object.fromEntries(quickLinks.map(l => [l.page, l]));
-
-// Accesos AGRUPADOS por secciones (como el bloque de Refrigeración y Gases).
-const GRUPOS = [
-  { titulo: 'Proveedores y Tarifas', color: '#f59e0b', pages: ['Suppliers', 'SupplierTariffs', 'PurchaseSummary', 'SparePartsManager', 'Inventory', 'Catalogs'] },
-  // Los cálculos van por oficio, igual que en el menú lateral: veintitantas
-  // herramientas seguidas no hay quien las lea.
-  { titulo: 'Electricidad', color: '#eab308', pages: ['ElectricalCalc'] },
-  { titulo: 'Clima', color: '#0ea5e9', pages: ['ACPotenciaCalc', 'ACPlanAnalysis', 'ThermalCalc', 'MultiAreaCalc', 'PlanoIA', 'CodigosError'] },
-  { titulo: 'Refrigeración', color: '#06b6d4', pages: ['ColdRoomCalc', 'CapillaryCalc', 'FilterCalc', 'DiagnosticoCarga', 'RefrigerantEquiv', 'DanfossTools', 'PresionesGas', 'TablasRefrigerantes', 'GasesRefrigerantes', 'PlanoFrigorifico', 'CADCraft'] },
-  { titulo: 'Solar', color: '#f59e0b', pages: ['SolarCalc', 'SolarBatteryCalc', 'BatteryCalc'] },
-  { titulo: 'Documentos', color: '#7C3AED', pages: ['Documents', 'Documents?type=factura', 'Documents?type=presupuesto', 'DocumentTemplates', 'LegalDocs', 'InformesTecnicos', 'GaleriaImagenes'] },
-  { titulo: 'SAT y Trabajo', color: '#F97316', pages: ['SAT', 'SATChat', 'TechnicianFieldWork', 'TecniciansRoutes', 'Maintenance', 'MaintenancePlanning', 'IncidentManagement', 'EquipmentFailureHistory', 'EquipmentDiaryPage', 'PlanGamas', 'InstrumentosTaller'] },
-  { titulo: 'Clientes y Agenda', color: '#10B981', pages: ['Contacts', 'ContactForm', 'ClientPortal', 'Projects', 'ProjectTimeline', 'Agenda', 'Availability', 'SATCalendar', 'TechnicianDay'] },
-  { titulo: 'IA y Asistencia', color: '#3B82F6', pages: ['AIAssistant', 'AISearch', 'AIBudget', 'AIReports', 'AIPlanning', 'AISupport'] },
-  { titulo: 'Herramientas y Manuales', color: '#0891b2', pages: ['Manuals', 'FichasMaquinas', 'Regulations', 'GasSuppliers'] },
-  { titulo: 'Informes y Sistema', color: '#64748b', pages: ['Reports', 'Automations', 'SmartReminders', 'Notes', 'AuditLog', 'BusinessCards', 'ExportData', 'BackupCenter', 'UpdateCenter', 'Novedades', 'CompanyConfig'] },
-].map(g => ({ ...g, links: g.pages.map(p => _linkByPage[p]).filter(Boolean) }));
 
 
 function StatCard({ label, value, sub, icon: Icon, color, linkPage }) {
@@ -469,83 +341,23 @@ export default function Home() {
         </Link>
       )}
 
-      {/* ── Refrigeración y Gases (móvil + escritorio) ─────────────────────── */}
-      <div className="rounded-xl p-4" style={{ background: '#0a1422', border: '1px solid #00D4FF33' }}>
-        <h2 className="mb-1 text-lg font-bold flex items-center gap-2" style={{ color: '#e8eaf0' }}>
-          <Snowflake className="w-5 h-5" style={{ color: '#00D4FF' }} />Refrigeración y Gases
-        </h2>
-        <p className="text-xs mb-3" style={{ color: '#8890a8' }}>
-          Gas compatible, cambio de aceite, cálculo de carga y la regla de refrigerantes (presión-temperatura).
-        </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-          {refrigerationLinks.map((link) => {
-            const Icon = link.icon;
-            return (
-              <Link key={link.page} to={createPageUrl(link.page)}>
-                <div className="group h-full flex flex-col items-center text-center gap-1.5 p-3 rounded-xl transition-all cursor-pointer"
-                  style={{ background: '#ffffff06', border: '1px solid #00D4FF22' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#00D4FF12'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#ffffff06'}>
-                  <div className={`${link.color} p-2.5 rounded-xl text-white group-hover:scale-110 transition-transform shadow-lg`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-bold leading-tight" style={{ color: '#e8eaf0' }}>{link.name}</span>
-                  <span className="text-[10px] leading-tight" style={{ color: '#8890a8' }}>{link.desc}</span>
-                </div>
-              </Link>);
-          })}
-        </div>
-      </div>
-
       {/* ── Códigos de avería por marcas ───────────────────────────────────
           Va aparte y grande a propósito: es lo primero que se busca cuando
           hay una máquina en error y el cliente delante. */}
       <Link to={createPageUrl('CodigosError')} data-prueba="boton-codigos-error">
-        <div className="rounded-xl p-4 flex items-center gap-4 transition-all cursor-pointer"
-          style={{ background: '#1a0e12', border: '1px solid #ef444455' }}
-          onMouseEnter={e => e.currentTarget.style.background = '#26141a'}
-          onMouseLeave={e => e.currentTarget.style.background = '#1a0e12'}>
+        <div className="rounded-xl p-4 flex items-center gap-4 transition-all cursor-pointer bg-red-50 border border-red-200 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-900 dark:hover:bg-red-950/60">
           <div className="bg-red-600 p-3 rounded-xl text-white shadow-lg flex-shrink-0">
             <AlertTriangle className="w-6 h-6" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-lg font-bold" style={{ color: '#e8eaf0' }}>Códigos de avería por marcas</h2>
-            <p className="text-xs" style={{ color: '#8890a8' }}>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Códigos de avería por marcas</h2>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               Busca el código que da la máquina y te dice dónde puede estar la avería.
               Con el teléfono del servicio técnico oficial de cada marca.
             </p>
           </div>
         </div>
       </Link>
-
-      {/* Accesos AGRUPADOS por secciones (móvil + escritorio) */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-bold flex items-center gap-2 px-1" style={{ color: '#e8eaf0' }}>Accesos por secciones</h2>
-        {GRUPOS.map((grupo) => (
-          <div key={grupo.titulo} className="rounded-xl p-4" style={{ background: '#12121e', border: `1px solid ${grupo.color}44` }}>
-            <h3 className="mb-3 text-sm font-bold flex items-center gap-2" style={{ color: grupo.color }}>
-              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: grupo.color }} />{grupo.titulo}
-              <span className="text-[10px] font-normal" style={{ color: '#8890a8' }}>({grupo.links.length})</span>
-            </h3>
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-              {[...grupo.links].sort((a, b) => a.name.localeCompare(b.name, 'es')).map((link) => {
-                const Icon = link.icon;
-                return (
-                  <Link key={link.page} to={createPageUrl(link.page)}>
-                    <div className="group flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all cursor-pointer hover:opacity-90" style={{ background: 'transparent' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#ffffff08'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <div className={`${link.color} p-2.5 rounded-xl text-white group-hover:scale-110 transition-transform shadow-lg`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <span className="text-xs font-semibold text-center leading-tight line-clamp-2" style={{ color: '#8890a8' }}>{link.name}</span>
-                    </div>
-                  </Link>);
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* Todo lo siguiente solo en desktop */}
       <div className="hidden sm:block space-y-6">

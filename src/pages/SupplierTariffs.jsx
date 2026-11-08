@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
-import { NumberField } from '@/components/ui/number-field';
+import CampoPrecio from '@/components/CampoPrecio';
+import ArticuloManualTarifaDialog from '@/components/ArticuloManualTarifaDialog';
+import { precioATexto, completarPrecios } from '@/lib/tarifaManual';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { uploadImage } from '@/lib/uploadImage';
 import {
   Search, Building2, Package, Image as ImageIcon, ChevronDown, ChevronRight,
-  Upload, Trash2, Edit, Loader2, RefreshCw, Check, TrendingDown, AlertTriangle, WifiOff
+  Upload, Trash2, Edit, Loader2, PackagePlus, RefreshCw, Check, TrendingDown, AlertTriangle, WifiOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { tarifasCaducadas, borrarEnLotes, recrearLineas } from '@/lib/borrarTarifas';
@@ -55,6 +57,7 @@ export default function SupplierTariffs() {
   const [editItem, setEditItem] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [savingEdit, setSavingEdit] = useState(false);
+  const [nuevoArticulo, setNuevoArticulo] = useState(null); // null = cerrado · { proveedor } = abierto
   const [fetchingImage, setFetchingImage] = useState(false);
   const [autoFetchingImage, setAutoFetchingImage] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -278,16 +281,32 @@ export default function SupplierTariffs() {
 
   const openEdit = (item) => {
     setEditItem(item);
-    setEditForm({ ...item });
+    // Los precios se editan como texto (coma o punto) y se convierten al guardar.
+    setEditForm({
+      ...item,
+      cost_price: precioATexto(item.cost_price),
+      sale_price: precioATexto(item.sale_price),
+      margin: precioATexto(item.margin)
+    });
   };
 
   const handleSaveEdit = async () => {
+    const { cost, sale, margin } = completarPrecios({ cost: editForm.cost_price, sale: editForm.sale_price, margin: editForm.margin });
+    if (!String(editForm.product_name || '').trim()) { toast.error('Escribe el nombre del producto'); return; }
+    const datos = { ...editForm, cost_price: cost ?? 0, sale_price: sale ?? undefined, margin: margin ?? undefined };
+    if (datos.sale_price === undefined) delete datos.sale_price;
+    if (datos.margin === undefined) delete datos.margin;
     setSavingEdit(true);
-    await base44.entities.SupplierPrice.update(editItem.id, editForm);
-    setPrices(prev => prev.map(p => p.id === editItem.id ? { ...p, ...editForm } : p));
-    setEditItem(null);
-    setSavingEdit(false);
-    toast.success('Producto actualizado');
+    try {
+      await base44.entities.SupplierPrice.update(editItem.id, datos);
+      setPrices(prev => prev.map(p => p.id === editItem.id ? { ...p, ...datos } : p));
+      setEditItem(null);
+      toast.success('Producto actualizado');
+    } catch (e) {
+      toast.error(`No se pudo guardar: ${e?.response?.data?.message || e?.message || 'sin permiso'}. Si la tarifa la creó otra cuenta, entra con la cuenta administradora.`);
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -374,6 +393,9 @@ export default function SupplierTariffs() {
         <div className="flex flex-wrap gap-2 items-center">
           <SupplierProductQuery suppliers={suppliers} />
           <GasSupplierPortal />
+          <Button variant="outline" className="gap-1.5 border-green-300 text-green-700 hover:bg-green-50" onClick={() => setNuevoArticulo({ proveedor: null })} data-prueba="tarifa-anadir-articulo">
+            <PackagePlus className="w-4 h-4" />Añadir artículo
+          </Button>
           <SupplierCatalogImportWithSupplier suppliers={suppliers} onImported={(saved, partial) => {
             if (!partial) loadData();
           }} />
@@ -548,7 +570,10 @@ export default function SupplierTariffs() {
               {isOpen && (
                 <div className="border-t bg-gray-50">
                   <div className="flex flex-wrap items-center gap-2 p-2 bg-white border-b text-xs" data-prueba="barra-borrar-tarifas">
-                    <span className="font-semibold text-gray-600">Eliminar:</span>
+                    <Button size="sm" className="h-7 gap-1 bg-green-600 hover:bg-green-700" onClick={() => setNuevoArticulo({ proveedor: supplier })} data-prueba="tarifa-anadir-aqui">
+                      <PackagePlus className="w-3 h-3" />Añadir artículo a esta tarifa
+                    </Button>
+                    <span className="font-semibold text-gray-600 ml-2">Eliminar:</span>
                     <Button size="sm" variant="outline" className="h-7 gap-1 text-red-600" disabled={!!borrando || !items.some(i => seleccion.has(i.id))}
                       onClick={() => borrarVarias(items.filter(i => seleccion.has(i.id)), 'seleccionadas')} data-prueba="tarifa-borrar-sel">
                       <Trash2 className="w-3 h-3" />Seleccionadas ({items.filter(i => seleccion.has(i.id)).length})
@@ -640,6 +665,17 @@ export default function SupplierTariffs() {
         })}
       </div>}
 
+      <ArticuloManualTarifaDialog
+        open={!!nuevoArticulo}
+        proveedores={suppliers}
+        proveedorInicial={nuevoArticulo?.proveedor || null}
+        onClose={() => setNuevoArticulo(null)}
+        onCreado={(reg) => {
+          setPrices(prev => [reg, ...prev]);
+          if (reg.supplier_id) setExpandedSuppliers(prev => new Set(prev).add(reg.supplier_id));
+        }}
+      />
+
       {/* Dialog editar producto */}
       <Dialog open={!!editItem} onOpenChange={o => !o && setEditItem(null)}>
         <DialogContent className="max-w-md">
@@ -711,15 +747,15 @@ export default function SupplierTariffs() {
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="text-xs text-gray-500">Precio coste (€)</label>
-                  <NumberField value={editForm.cost_price ?? ''} onChange={v => setEditForm(f => ({ ...f, cost_price: v }))} />
+                  <CampoPrecio value={editForm.cost_price} onChange={v => setEditForm(f => ({ ...f, cost_price: v }))} data-prueba="editar-cost_price" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Precio venta (€)</label>
-                  <NumberField value={editForm.sale_price ?? ''} onChange={v => setEditForm(f => ({ ...f, sale_price: v }))} />
+                  <CampoPrecio value={editForm.sale_price} onChange={v => setEditForm(f => ({ ...f, sale_price: v }))} data-prueba="editar-sale_price" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Margen (%)</label>
-                  <NumberField value={editForm.margin ?? ''} onChange={v => setEditForm(f => ({ ...f, margin: v }))} />
+                  <CampoPrecio value={editForm.margin} onChange={v => setEditForm(f => ({ ...f, margin: v }))} data-prueba="editar-margin" />
                 </div>
               </div>
               <Input placeholder="Unidad (ud, m, kg...)" value={editForm.unit || ''} onChange={e => setEditForm(f => ({ ...f, unit: e.target.value }))} />
