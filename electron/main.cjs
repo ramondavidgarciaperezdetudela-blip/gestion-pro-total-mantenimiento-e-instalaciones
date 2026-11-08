@@ -153,6 +153,7 @@ const DESTINOS_IA_PERMITIDOS = [
   /^https?:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?\//,
   /^https?:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?\//,
   /^https:\/\/openrouter\.ai\//,
+  /^https:\/\/api\.anthropic\.com\//,
 ];
 
 // ── La IA del ordenador, también para el móvil y la tablet ─────────────────
@@ -376,6 +377,38 @@ ipcMain.handle('gpt-ia-fetch', async (_evt, { url, method, headers, body, tiempo
   } catch (err) {
     return { ok: false, status: null, error: String(err?.message || err) };
   }
+});
+
+
+// ── Buscar la foto de un artículo de tarifa ────────────────────────────────
+// El navegador no puede leer los buscadores de imágenes (CORS); el proceso
+// principal sí. Solo se consultan dos buscadores y solo se descargan imágenes
+// públicas por https, nunca direcciones de la red interna.
+const UA_BUSCADOR = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+ipcMain.handle('gpt-img-texto', async (_evt, url) => {
+  try {
+    const u = new URL(String(url || ''));
+    const host = u.hostname.toLowerCase();
+    const bueno = u.protocol === 'https:' && (host === 'www.bing.com' || host === 'duckduckgo.com');
+    if (!bueno) return { ok: false, error: 'Buscador no permitido.' };
+    const resp = await fetch(u.href, { headers: { 'User-Agent': UA_BUSCADOR, 'Accept-Language': 'es-ES,es;q=0.9', Referer: 'https://duckduckgo.com/' }, signal: AbortSignal.timeout(15000) });
+    if (!resp.ok) return { ok: false, status: resp.status, error: `El buscador respondió ${resp.status}.` };
+    const texto = await resp.text();
+    return { ok: true, texto: texto.slice(0, 3 * 1024 * 1024) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+});
+
+ipcMain.handle('gpt-img-imagen', async (_evt, url) => {
+  try {
+    if (!direccionDeDocumentoValida(url)) return { ok: false, error: 'Dirección no válida.' };
+    const resp = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': UA_BUSCADOR }, signal: AbortSignal.timeout(20000) });
+    if (!resp.ok) return { ok: false, status: resp.status, error: `Respondió ${resp.status}.` };
+    const tipo = (resp.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(tipo)) return { ok: false, error: 'No es una imagen.' };
+    const datos = Buffer.from(await resp.arrayBuffer());
+    if (datos.length > 4 * 1024 * 1024) return { ok: false, error: 'La imagen pesa demasiado.' };
+    return { ok: true, dataUrl: `data:${tipo};base64,${datos.toString('base64')}` };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 });
 
 // ── Impresoras del ordenador ───────────────────────────────────────────────

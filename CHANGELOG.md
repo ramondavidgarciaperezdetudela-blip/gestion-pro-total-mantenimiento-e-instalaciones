@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.124.0] — 2026-11-08
+
+### Añadido
+- **Claude con tu propia clave como IA de todo el programa** (Configuración → IA y Centro de IA → Ajustes de IA). Se usa la clave de la API de la cuenta de Anthropic que ya usas; Anthropic no permite entrar con usuario y contraseña ni con una suscripción Pro/Max desde otros programas. Si no hay internet o se acaba el saldo, el programa repite la consulta en **Ollama** (IA local, gratis, sin límite y sin internet) cuando está instalado.
+- **El Centro de IA usa la IA que elijas:** Claude, Ollama (sin límite y sin conexión) u OpenRouter. Los modelos locales pequeños crean módulos más sencillos.
+- **Imágenes de las tarifas de proveedores:** el programa busca la foto de cada artículo primero por el **código del proveedor** y, si no la encuentra, por el **nombre** (la IA elegida desempata). Funciona en la app de escritorio y en el móvil sin configurar nada; en el navegador, con un buscador de Google propio (opcional). La foto se reduce y se guarda dentro del artículo, así se sigue viendo sin conexión; sin internet no se buscan fotos nuevas y se avisa sin estropear nada.
+
 ## [1.123.0] — 2026-11-08
 
 ### Añadido

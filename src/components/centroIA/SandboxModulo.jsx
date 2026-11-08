@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { navigateTo } from '@/utils';
 import { documentoDelModulo } from '@/lib/iaModulos/modulo';
 import { crearPuente } from '@/lib/iaModulos/puente';
-import { llamarClaude, ajustesClaude } from '@/lib/iaModulos/claude';
+import { conversar } from '@/lib/iaModulos/iaCentro';
 import { leerSecreto } from '@/lib/iaModulos/datos';
 
 /**
@@ -20,7 +20,7 @@ export default function SandboxModulo({ modulo, concedidos = [], conectores = []
   const manejar = useMemo(() => crearPuente({
     base44, modulo: { id: modulo?.id || 'prueba', nombre: modulo?.nombre }, concedidos, modoPrueba, conectores,
     secretoDe: leerSecreto,
-    preguntarIA: async (pregunta, sistema) => llamarClaude({ system: sistema || undefined, messages: [{ role: 'user', content: pregunta }], maxTokens: 4000 }, ajustesClaude()),
+    preguntarIA: async (pregunta, sistema) => conversar({ system: sistema || undefined, messages: [{ role: 'user', content: pregunta }], maxTokens: 4000 }),
     avisar: (t, tipo) => (tipo === 'error' ? toast.error(t) : toast.success(t)),
     irA: (p) => navigateTo(p),
     registrar: (t) => onRegistro?.(t)
