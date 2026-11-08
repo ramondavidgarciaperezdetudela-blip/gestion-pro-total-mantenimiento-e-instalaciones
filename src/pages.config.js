@@ -121,6 +121,7 @@ const DiagnosticoCarga = lazy(() => import('./pages/DiagnosticoCarga'));
 const TablasRefrigerantes = lazy(() => import('./pages/TablasRefrigerantes'));
 const PlanoIA = lazy(() => import('./pages/PlanoIA'));
 const RepartoDia = lazy(() => import('./pages/RepartoDia'));
+const PanelesNegocio = lazy(() => import('./pages/PanelesNegocio'));
 const CalculoCamaraGPT = lazy(() => import('./pages/CalculoCamaraGPT'));
 const Visor3DGPT = lazy(() => import('./pages/Visor3DGPT'));
 import __Layout from './Layout.jsx';
@@ -199,6 +200,7 @@ export const PAGES = {
     "TablasRefrigerantes": TablasRefrigerantes,
     "PlanoIA": PlanoIA,
     "RepartoDia": RepartoDia,
+    "PanelesNegocio": PanelesNegocio,
     "CalculoCamaraGPT": CalculoCamaraGPT,
     "Visor3DGPT": Visor3DGPT,
 }

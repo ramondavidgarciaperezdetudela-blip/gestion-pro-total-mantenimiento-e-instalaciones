@@ -15,6 +15,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.120.0] — 2026-11-08
+
+### Cambiado
+- **Pantalla principal limpia:** solo el cuadro general con todas las áreas del programa (y el aviso de copia de seguridad si toca). Se quitan de ahí los paneles de datos y los accesos rápidos.
+- **Nuevo menú «Paneles del negocio»** con submenús para abrir cada panel por separado: Cómo va el negocio, Cifras clave, Hoy (citas, documentos y SAT), Tablero SAT, Agenda y firmas pendientes, Tareas y avisos, Presupuestos aceptados y rechazados, Estado de documentos y facturas, Ingresos y trabajos pendientes, Compras y proveedores, Mantenimiento y stock bajo, Clientes recientes y crear documento, y Automatizaciones. «Resumen completo» los muestra todos juntos como antes.
+- Los paneles ahora también se ven en el móvil.
+
+---
+
 ## [1.119.0] — 2026-11-08
 
 ### Añadido
