@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 860" width="640" height="860" fill="none" stroke="#23282B" stroke-width="3">
+  <rect x="120" y="110" width="400" height="560"/>
+  <rect x="140" y="130" width="360" height="520"/>
+  <rect x="270" y="20" width="100" height="90"/>
+  <rect x="295" y="20" width="50" height="90"/>
+  <rect x="250" y="520" width="140" height="56"/>
+  <circle cx="200" cy="600" r="18"/>
+  <circle cx="440" cy="600" r="18"/>
+  <path d="M200 600l10-10 M440 600l-10-10"/>
+  <rect x="190" y="180" width="260" height="260"/>
+  <path d="M220 210h200 M220 240h200 M220 270h200 M220 300h200 M220 330h200 M220 360h200 M220 390h200"/>
+  <path d="M175 670v110 M245 670v110 M320 670v110 M395 670v110 M465 670v110"/>
+  <path d="M165 780h20 M235 780h20 M310 780h20 M385 780h20 M455 780h20"/>
+  <path d="M60 110v560 M50 110h20 M50 670h20 M60 110l-6 16 M60 110l6 16 M60 670l-6-16 M60 670l6-16" stroke-width="2"/>
+  <path d="M120 80h400 M120 70v20 M520 70v20 M120 80l16-6 M120 80l16 6 M520 80l-16-6 M520 80l-16 6" stroke-width="2"/>
+  <g stroke="none" fill="#23282B" font-family="Arial, Helvetica, sans-serif" font-size="22">
+    <text x="292" y="68">400</text>
+    <text x="20" y="400" transform="rotate(-90 32 400)">720</text>
+    <text x="150" y="820">Ida</text>
+    <text x="222" y="820">ACS</text>
+    <text x="300" y="820">Gas</text>
+    <text x="378" y="820">AF</text>
+    <text x="448" y="820">Ret.</text>
+  </g>
+</svg>

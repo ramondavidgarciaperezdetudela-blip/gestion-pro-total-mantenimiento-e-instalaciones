@@ -167,6 +167,22 @@
         ]
       }
     },
+    "tema_mostrar_logo_fondo": {
+      "type": "boolean",
+      "description": "Tema Carril DIN: mostrar el logotipo de fondo en la pantalla principal"
+    },
+    "tema_opacidad_logo": {
+      "type": "number",
+      "description": "Tema Carril DIN: intensidad del logotipo de fondo (0 a 0,3)"
+    },
+    "tema_mostrar_dibujo_fondo": {
+      "type": "boolean",
+      "description": "Tema Carril DIN: mostrar dibujos t\u00e9cnicos de fondo en cada pantalla"
+    },
+    "tema_opacidad_dibujo": {
+      "type": "number",
+      "description": "Tema Carril DIN: intensidad de los dibujos de fondo (0 a 0,4)"
+    },
     "public_app_url": {
       "type": "string",
       "description": "Direcci\u00f3n p\u00fablica del programa. Con ella se arma el QR de verificaci\u00f3n de los documentos; sin ella el QR apunta al aparato desde el que se imprime y al cliente no le abre nada"

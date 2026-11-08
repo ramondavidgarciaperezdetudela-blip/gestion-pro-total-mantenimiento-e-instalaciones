@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" width="1000" height="500" fill="none" stroke="#23282B" stroke-width="3">
+  <path d="M60 360V120h560l160 110 120 30v100z"/>
+  <path d="M620 120v240 M640 140h50l90 80h-140z"/>
+  <path d="M120 150h440v170H120z"/>
+  <path d="M120 200h440 M120 250h440 M240 150v170 M380 150v170"/>
+  <circle cx="220" cy="370" r="52"/>
+  <circle cx="220" cy="370" r="22"/>
+  <circle cx="780" cy="370" r="52"/>
+  <circle cx="780" cy="370" r="22"/>
+  <path d="M40 422h920"/>
+  <path d="M60 460h880 M60 450v20 M940 450v20 M60 460l16-6 M60 460l16 6 M940 460l-16-6 M940 460l-16 6" stroke-width="2"/>
+  <path d="M20 120v302 M10 120h20 M10 422h20 M20 120l-6 16 M20 120l6 16 M20 422l-6-16 M20 422l6-16" stroke-width="2"/>
+  <g stroke="none" fill="#23282B" font-family="Arial, Helvetica, sans-serif" font-size="22">
+    <text x="455" y="492">4,95 m</text>
+    <text x="34" y="100">1,94 m</text>
+    <text x="260" y="182">Estantería con stock</text>
+  </g>
+</svg>

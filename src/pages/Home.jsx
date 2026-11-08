@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import PullToRefresh from '../components/PullToRefresh';
+import CuadroGeneralHome from '../components/CuadroGeneralHome';
 import MobileKPIView from '../components/MobileKPIView';
 import ChangeOpinionAlerts from '../components/ChangeOpinionAlerts';
 import PendingTasksPanel from '../components/PendingTasksPanel';
@@ -314,12 +315,15 @@ export default function Home() {
         <img src={company.logo_url} alt="Logo" className="h-12 w-12 rounded-xl object-cover" style={{ border: '1px solid #1e1e30' }} />
         }
         <div>
-          <h1 className="text-3xl font-extrabold" style={{ color: '#e8eaf0' }}>
+          <h1 className="text-3xl font-extrabold" style={{ color: 'inherit' }}>
             {company?.company_name || 'Panel de Control'}
           </h1>
-          <p className="text-sm font-medium capitalize" style={{ color: '#00D4FF99' }}>{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
+          <p className="text-sm font-medium capitalize" style={{ color: 'var(--gpt-grafito, #474A50)' }}>{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
         </div>
       </div>
+
+      {/* ── Cuadro general: todas las áreas y apartados del programa ── */}
+      <CuadroGeneralHome />
 
       {/* ── Panel de control inicial: cómo va el negocio de un vistazo ── */}
       <PanelControlNegocio />
