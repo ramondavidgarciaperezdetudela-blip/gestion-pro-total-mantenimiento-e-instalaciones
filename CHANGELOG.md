@@ -15,6 +15,19 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.119.0] — 2026-11-08
+
+### Añadido
+- **Artículos a mano en cualquier tarifa.** Botón **«Añadir artículo»** arriba y **«Añadir artículo a esta tarifa»** dentro de cada proveedor: se escribe nombre, referencia, marca, coste, venta, margen, unidad y notas, y se guarda solo ese artículo sin tocar el resto de la tarifa. Lo que dejes en blanco entre coste, venta y margen se calcula con lo demás. Hay «Guardar y añadir otro» para meter varios seguidos.
+
+### Corregido
+- **Editar precios en las tarifas.** Los cuadros de coste, venta y margen son ahora de texto libre (coma o punto, al pulsar se selecciona el valor para escribir encima). Si guardar falla (por ejemplo, tarifa creada por otra cuenta), ahora sale un aviso claro en lugar de quedarse sin hacer nada.
+
+### Cambiado
+- **Pantalla principal sin los bloques negros de accesos** («Refrigeración y Gases» y «Accesos por secciones»): todos esos accesos están en el cuadro general de arriba y en el menú lateral.
+
+---
+
 ## [1.118.0] — 2026-11-08
 
 ### Añadido

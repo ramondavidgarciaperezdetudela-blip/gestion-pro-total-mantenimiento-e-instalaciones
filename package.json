@@ -1,7 +1,7 @@
 {
   "name": "gestion-pro-total-fuera-base44",
   "private": true,
-  "version": "1.118.0",
+  "version": "1.119.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,8 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
     "test:camara": "node scripts/test-calculo-camara.mjs",
-    "test": "npm run test:camara && npm run test:iva && npm run test:buscar && npm run test:drive && npm run test:capilar && npm run test:clima && npm run test:carga && npm run test:config && npm run test:copia",
+    "test:tarifa": "node scripts/test-tarifa-manual.mjs",
+    "test": "npm run test:camara && npm run test:tarifa && npm run test:iva && npm run test:buscar && npm run test:drive && npm run test:capilar && npm run test:clima && npm run test:carga && npm run test:config && npm run test:copia",
     "test:capilar": "node scripts/test-capilar.mjs",
     "test:gases": "node scripts/test-saturacion.mjs",
     "test:equivalencias": "node scripts/test-equivalencias.mjs",
