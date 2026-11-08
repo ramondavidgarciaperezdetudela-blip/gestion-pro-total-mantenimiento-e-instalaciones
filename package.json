@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.122.0",
+  "version": "1.123.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,10 +10,12 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
     "test:camara": "node scripts/test-calculo-camara.mjs",
+    "gen:catalogo": "node scripts/gen-catalogo-entidades.mjs",
+    "test:ia": "node scripts/test-centro-ia.mjs",
     "test:diarios": "node scripts/test-vinculo-diarios.mjs",
     "test:precarga": "node scripts/test-precarga.mjs",
     "test:tarifa": "node scripts/test-tarifa-manual.mjs",
-    "test": "npm run test:camara && npm run test:diarios && npm run test:precarga && npm run test:tarifa && npm run test:iva && npm run test:buscar && npm run test:drive && npm run test:capilar && npm run test:clima && npm run test:carga && npm run test:config && npm run test:copia",
+    "test": "npm run test:camara && npm run test:ia && npm run test:diarios && npm run test:precarga && npm run test:tarifa && npm run test:iva && npm run test:buscar && npm run test:drive && npm run test:capilar && npm run test:clima && npm run test:carga && npm run test:config && npm run test:copia",
     "test:capilar": "node scripts/test-capilar.mjs",
     "test:gases": "node scripts/test-saturacion.mjs",
     "test:equivalencias": "node scripts/test-equivalencias.mjs",

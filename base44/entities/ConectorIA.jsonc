@@ -1,0 +1,89 @@
+{
+  "name": "ConectorIA",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "http",
+        "github"
+      ],
+      "default": "http"
+    },
+    "url_base": {
+      "type": "string",
+      "description": "Dirección base https del servicio"
+    },
+    "cabecera_nombre": {
+      "type": "string",
+      "description": "Nombre de la cabecera de autenticación (la clave se guarda solo en cada aparato)"
+    },
+    "repo": {
+      "type": "string",
+      "description": "usuario/repositorio (conector GitHub)"
+    },
+    "notas": {
+      "type": "string"
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "nombre"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

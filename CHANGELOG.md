@@ -15,6 +15,19 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.123.0] — 2026-11-08
+
+### Añadido
+- **Centro de IA** (menú «IA y asistencia»). Permite configurar el programa con funciones propias:
+  - **Pídele una función:** describes lo que quieres y Claude (con la clave de Anthropic de cada empresa) crea una pantalla nueva. Se puede probar antes de guardar («modo prueba»: lee tus datos, pero no escribe ni envía nada) y se activa al aprobar los permisos que pide. Si lo pedido exige cambiar el propio código del programa, se guarda como petición de cambio.
+  - **Mis módulos:** las pantallas creadas aparecen en un área nueva del menú, «Mis módulos». Se pueden activar, desactivar, mejorar con IA, revisar sus permisos, exportar o borrar.
+  - **Skills:** instrucciones permanentes para la IA (tono, normativa, diseño) con plantillas para empezar.
+  - **Conectores:** webs/APIs y GitHub. La clave se guarda solo en el aparato y nunca entra en las copias de seguridad.
+  - **Complementos:** exportar e importar módulos, skills y conectores en un archivo. Todo lo importado entra desactivado y sin permisos.
+  - **Peticiones:** cambios del programa pedidos a la IA, con copiar, descargar .md y crear incidencia en GitHub.
+- Seguridad: los módulos corren aislados (sin red ni acceso al programa) y solo hablan por un puente que comprueba cada permiso; nunca ven usuarios, ajustes de empresa, contraseñas ni claves.
+- Cinco entidades nuevas de Base44: `ModuloIA`, `SkillIA`, `ConectorIA`, `PeticionCambioIA` y `DatoModulo`.
+
 ## [1.122.0] — 2026-11-08
 
 ### Corregido

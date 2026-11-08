@@ -3,7 +3,7 @@ export { ProveedorTema, useTema, FONDOS } from './TemaContexto.jsx';
 export { FondoTecnico } from './FondoTecnico.jsx';
 export { Cajetin, Estado, BarraSuperior, Panel, Pantalla } from './Basicos.jsx';
 export { MenuLateral, CuadroGeneral, MenuMovil, BarraInferior } from './Menus.jsx';
-export { AREAS } from './menu.js';
+export { AREAS, registrarModulos } from './menu.js';
 export { CarrilReparto, BandejaSinAsignar } from './CarrilReparto.jsx';
 export { PlacaEquipo, TarjetaMedida, GraficoEvolucion, valorarMedida } from './Equipos.jsx';
 export { CalculoCamara, SelectorEquipo } from './CalculoCamara.jsx';
