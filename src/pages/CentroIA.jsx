@@ -3,7 +3,7 @@ import { Sparkles } from 'lucide-react';
 import NavBar from '@/components/NavBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { listarModulos, listarSkills, listarConectores, listarPeticiones } from '@/lib/iaModulos/datos';
-import { hayClave } from '@/lib/iaModulos/claude';
+import { iaLista } from '@/lib/iaModulos/iaCentro';
 import ChatFuncion from '@/components/centroIA/ChatFuncion';
 import PestanaModulos from '@/components/centroIA/PestanaModulos';
 import PestanaSkills from '@/components/centroIA/PestanaSkills';
@@ -30,14 +30,14 @@ export default function CentroIA() {
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
 
-  const sinClave = !hayClave();
+  const sinClave = !iaLista();
   return (
     <div className="mx-auto max-w-4xl p-3 sm:p-6">
       <NavBar title="Centro de IA" />
       <div className="mb-4 flex items-center gap-2"><Sparkles className="h-6 w-6 text-violet-600" /><h1 className="text-xl font-bold" data-prueba="titulo-centro-ia">Centro de IA</h1></div>
       {sinClave && (
         <div className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm" data-prueba="aviso-sin-clave">
-          Para pedirle funciones a la IA hace falta tu clave de Anthropic. <button type="button" className="font-semibold underline" onClick={() => setPestana('ajustes')}>Ponla en Ajustes de IA</button>.
+          Para pedirle funciones a la IA hace falta elegir una IA: Claude con tu clave u Ollama (gratis, sin límite y sin internet). <button type="button" className="font-semibold underline" onClick={() => setPestana('ajustes')}>Elígela en Ajustes de IA</button>.
         </div>
       )}
       <Tabs value={pestana} onValueChange={setPestana}>

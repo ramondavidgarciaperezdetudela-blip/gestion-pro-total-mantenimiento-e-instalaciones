@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import catalogo from '@/lib/iaModulos/catalogoEntidades.json';
 import { construirSistema, recortarHistorial } from '@/lib/iaModulos/promptIA';
 import { extraerRespuesta, validarModulo, validarSkill, validarPeticion } from '@/lib/iaModulos/modulo';
-import { llamarClaude, ajustesClaude, hayClave } from '@/lib/iaModulos/claude';
+import { conversar, iaLista } from '@/lib/iaModulos/iaCentro';
 import { describePermiso } from '@/lib/iaModulos/permisos';
 import { crear, editar, avisarCambios } from '@/lib/iaModulos/datos';
 import SandboxModulo from './SandboxModulo';
@@ -72,7 +72,6 @@ export default function ChatFuncion({ skills, conectores, moduloEditando, onTerm
   const [cargando, setCargando] = useState(false);
   const [confirmar, setConfirmar] = useState(null); // índice del mensaje a activar
   const fin = useRef(null);
-  const cfg = ajustesClaude();
 
   useEffect(() => { fin.current?.scrollIntoView?.({ block: 'end' }); }, [mensajes, cargando]);
   useEffect(() => { if (moduloEditando) setMensajes([]); }, [moduloEditando?.id]);
@@ -80,13 +79,13 @@ export default function ChatFuncion({ skills, conectores, moduloEditando, onTerm
   const enviar = async (t = texto) => {
     const limpio = t.trim();
     if (!limpio || cargando) return;
-    if (!hayClave(cfg)) { toast.error('Primero pon tu clave de Anthropic en «Ajustes de IA».'); return; }
+    if (!iaLista()) { toast.error('Primero elige la IA en «Ajustes de IA».'); return; }
     const nuevos = [...mensajes, { rol: 'user', texto: limpio }];
     setMensajes(nuevos); setTexto(''); setCargando(true);
     try {
       const historial = recortarHistorial(nuevos.map((m) => ({ role: m.rol, content: m.raw || m.texto })));
       const sistema = construirSistema({ catalogo, skills, conectores: conectores.filter((c) => c.activo !== false), modulo: moduloEditando });
-      const bruto = await llamarClaude({ system: sistema, messages: historial }, ajustesClaude());
+      const bruto = await conversar({ system: sistema, messages: historial });
       const r = extraerRespuesta(bruto);
       let propuesta = null;
       if (r.error) propuesta = { error: r.error };
@@ -153,7 +152,7 @@ export default function ChatFuncion({ skills, conectores, moduloEditando, onTerm
             {m.propuesta && <Propuesta p={m.propuesta} guardado={m.guardado} onGuardar={() => guardar(i)} conectores={conectores} />}
           </div>
         ))}
-        {cargando && <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />La IA está trabajando… puede tardar un minuto.</div>}
+        {cargando && <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />La IA está trabajando… con un modelo local puede tardar varios minutos.</div>}
         <div ref={fin} />
       </div>
       <div className="flex gap-2">

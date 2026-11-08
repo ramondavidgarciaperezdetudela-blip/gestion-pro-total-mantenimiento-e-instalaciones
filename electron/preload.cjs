@@ -47,6 +47,13 @@ contextBridge.exposeInMainWorld('gptDocs', {
   descargar: (url) => ipcRenderer.invoke('gpt-doc-descargar', url),
 });
 
+// Buscar la foto de un artículo de tarifa (buscadores de imágenes + descarga).
+contextBridge.exposeInMainWorld('gptImg', {
+  disponible: true,
+  texto: (url) => ipcRenderer.invoke('gpt-img-texto', url),
+  imagen: (url) => ipcRenderer.invoke('gpt-img-imagen', url),
+});
+
 // Impresoras del ordenador: listarlas y mandar a imprimir a la elegida.
 contextBridge.exposeInMainWorld('gptImpresion', {
   disponible: true,
