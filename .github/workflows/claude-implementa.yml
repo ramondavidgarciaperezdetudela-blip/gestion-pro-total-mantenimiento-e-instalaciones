@@ -1,0 +1,33 @@
+# Claude implementa las peticiones de cambio creadas desde el Centro de IA.
+# Se activa al crear/etiquetar una incidencia con la etiqueta «claude» o al comentar «@claude».
+# Necesita el secreto ANTHROPIC_API_KEY del repositorio (ver docs/CLAUDE-IMPLEMENTA.md).
+name: Claude implementa peticiones
+
+on:
+  issues:
+    types: [opened, labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  claude:
+    if: >-
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'claude')) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && github.event.comment.author_association != 'NONE')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          label_trigger: claude
+          claude_args: --max-turns 40

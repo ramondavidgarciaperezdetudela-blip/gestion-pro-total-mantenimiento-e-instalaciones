@@ -31,6 +31,26 @@ export function parsearDuck(json) {
   return (o?.results || []).filter((r) => r.image).map((r) => ({ url: r.image, miniatura: r.thumbnail || '', titulo: r.title || '', pagina: r.url || '' }));
 }
 
+/** Candidatas de la página de imágenes de Google (sin clave): las direcciones van en matrices ["url",ancho,alto]. */
+export function parsearGoogleHtml(html) {
+  const out = []; const vistos = new Set();
+  for (const m of String(html).matchAll(/\["(https?:\/\/[^"\\]+?\.(?:jpe?g|png|webp)[^"\\]*)",\s*(\d+),\s*(\d+)\]/gi)) {
+    if (/gstatic\.com|google\.com/i.test(m[1]) || vistos.has(m[1])) continue;
+    vistos.add(m[1]); out.push({ url: m[1], miniatura: '', titulo: '', pagina: '' });
+  }
+  return out;
+}
+
+/** Candidatas de Yandex Imágenes. */
+export function parsearYandex(html) {
+  const out = [];
+  for (const m of String(html).matchAll(/"img_href":"(https?:[^"]+)"/g)) {
+    const url = m[1].replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+    out.push({ url, miniatura: '', titulo: '', pagina: '' });
+  }
+  return out;
+}
+
 /** Candidatas de Google Programmable Search (searchType=image). */
 export function parsearGoogle(json) {
   return (json?.items || []).filter((r) => r.link).map((r) => ({ url: r.link, miniatura: r.image?.thumbnailLink || '', titulo: r.title || '', pagina: r.image?.contextLink || '' }));
@@ -92,6 +112,14 @@ export function reducirImagen(dataUrl, lado = 420) {
 /** Buscadores accesibles según dónde corre el programa. Cada uno devuelve candidatas. */
 export function motoresPorDefecto({ puente, google }) {
   const motores = [];
+  // Con clave propia de Google, ese va primero: es el más fiable.
+  if (google?.clave && google?.cx) {
+    motores.push(async (q) => {
+      const r = await fetch(`https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(google.clave)}&cx=${encodeURIComponent(google.cx)}&searchType=image&num=10&q=${encodeURIComponent(q)}`);
+      if (!r.ok) throw new Error(`Google respondió ${r.status}`);
+      return parsearGoogle(await r.json());
+    });
+  }
   if (puente) {
     motores.push(async (q) => parsearBing(await puente.texto(`https://www.bing.com/images/search?q=${encodeURIComponent(q)}&form=HDRSC2&first=1&setlang=es`)));
     motores.push(async (q) => {
@@ -100,13 +128,8 @@ export function motoresPorDefecto({ puente, google }) {
       if (!vqd) return [];
       return parsearDuck(await puente.texto(`https://duckduckgo.com/i.js?l=es-es&o=json&q=${encodeURIComponent(q)}&vqd=${vqd}&f=,,,,,&p=1`));
     });
-  }
-  if (google?.clave && google?.cx) {
-    motores.push(async (q) => {
-      const r = await fetch(`https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(google.clave)}&cx=${encodeURIComponent(google.cx)}&searchType=image&num=10&q=${encodeURIComponent(q)}`);
-      if (!r.ok) throw new Error(`Google respondió ${r.status}`);
-      return parsearGoogle(await r.json());
-    });
+    motores.push(async (q) => parsearGoogleHtml(await puente.texto(`https://www.google.com/search?tbm=isch&hl=es&q=${encodeURIComponent(q)}`)));
+    motores.push(async (q) => parsearYandex(await puente.texto(`https://yandex.com/images/search?text=${encodeURIComponent(q)}`)));
   }
   return motores;
 }
