@@ -1,3 +1,4 @@
+import { planDeVinculos } from '@/lib/vinculoDiarios';
 import React, { useState, useEffect } from 'react';
 import BuscadorCliente from '@/components/BuscadorCliente';
 import { base44 } from '@/api/base44Client';
@@ -65,17 +66,46 @@ export default function EquipmentDiaryPage() {
     loadAll();
   }, []);
 
-  const loadAll = async () => {
+  const loadAll = async (conVinculo = true) => {
     setLoading(true);
-    const [d, c, comp] = await Promise.all([
-      base44.entities.EquipmentDiary.list('-created_date', 200),
-      base44.entities.Contact.list('name', 200),
+    const [d, c, comp, maq] = await Promise.all([
+      base44.entities.EquipmentDiary.list('-created_date', 1000),
+      base44.entities.Contact.list('name', 1000),
       base44.entities.CompanySettings.list(),
+      base44.entities.ClientMachine.list('-created_date', 2000).catch(() => []),
     ]);
-    setDiaries(d);
     setContacts(c);
     if (comp.length > 0) setCompany(comp[0]);
+    let diarios = d;
+    if (conVinculo) {
+      const { lista, n } = await vincular(d, c, maq);
+      diarios = lista;
+      if (n > 0) toast.success(`${n} diario${n > 1 ? 's' : ''} vinculado${n > 1 ? 's' : ''} con su cliente y equipo`);
+    }
+    setDiaries(diarios);
     setLoading(false);
+  };
+
+  // Vincula cada diario con su cliente (por id o por nombre) y con su máquina (serie / tipo).
+  const vincular = async (diarios, contactos, maquinas) => {
+    const plan = planDeVinculos({
+      diarios, contactos,
+      maquinasDe: (id) => (maquinas || []).filter((m) => m.contact_id === id)
+    });
+    const lista = [...diarios];
+    let n = 0;
+    for (const x of plan) {
+      const i = lista.findIndex((y) => y.id === x.diarioId);
+      if (i < 0) continue;
+      const nuevo = { ...lista[i], ...x.cambios };
+      try { await base44.entities.EquipmentDiary.update(nuevo.id, nuevo); lista[i] = nuevo; n++; } catch { /* sigue con los demás */ }
+    }
+    return { lista, n };
+  };
+
+  const sincronizarAhora = async () => {
+    await loadAll(true);
+    toast.info('Diarios revisados: cada uno queda vinculado a su cliente por nombre y a su equipo por tipo.');
   };
 
   const saveDiary = async () => {
@@ -181,6 +211,9 @@ export default function EquipmentDiaryPage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Wrench className="w-6 h-6 text-orange-600" />Diario de Reparaciones de Equipos
         </h1>
+        <Button variant="outline" onClick={sincronizarAhora} data-prueba="diarios-sincronizar" title="Vincula los diarios con sus clientes por nombre y con sus equipos por tipo">
+          Vincular con clientes
+        </Button>
         <Button className="bg-orange-600 hover:bg-orange-700" onClick={() => { setEditingDiary(null); setDiaryForm(EMPTY_DIARY); setDiaryDialogOpen(true); }}>
           <Plus className="w-4 h-4 mr-1" />Nuevo equipo
         </Button>
