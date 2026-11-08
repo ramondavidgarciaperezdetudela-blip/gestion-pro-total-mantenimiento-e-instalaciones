@@ -116,6 +116,8 @@ const RefrigerantEquiv = lazy(() => import('./pages/RefrigerantEquiv'));
 const SharingWarning = lazy(() => import('./pages/SharingWarning'));
 const UpdateCenter = lazy(() => import('./pages/UpdateCenter'));
 const Novedades = lazy(() => import('./pages/Novedades'));
+const CentroIA = lazy(() => import('./pages/CentroIA'));
+const ModuloIA = lazy(() => import('./pages/ModuloIA'));
 const AISupport = lazy(() => import('./pages/AISupport'));
 const DiagnosticoCarga = lazy(() => import('./pages/DiagnosticoCarga'));
 const TablasRefrigerantes = lazy(() => import('./pages/TablasRefrigerantes'));
@@ -195,6 +197,8 @@ export const PAGES = {
     "SharingWarning": SharingWarning,
     "UpdateCenter": UpdateCenter,
     "Novedades": Novedades,
+    "CentroIA": CentroIA,
+    "ModuloIA": ModuloIA,
     "AISupport": AISupport,
     "DiagnosticoCarga": DiagnosticoCarga,
     "TablasRefrigerantes": TablasRefrigerantes,
