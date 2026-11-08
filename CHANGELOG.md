@@ -15,6 +15,18 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.122.0] — 2026-11-08
+
+### Corregido
+- **Los diarios de reparaciones se vinculan con el cliente por su nombre y con el equipo por su tipo.** Antes la ficha del cliente solo enseñaba los diarios con su identificador exacto, y los creados sin cliente, con un registro duplicado o importados solo con el nombre quedaban sueltos. Ahora el cliente se reconoce por nombre (sin mayúsculas, tildes ni signos, y en cualquier orden nombre/apellidos o por nombre de empresa) y el equipo por número de serie o por tipo de equipo (con marca/modelo/nombre si hay varios del mismo tipo). Si dos clientes se llaman igual no se adivina: ese diario se deja sin tocar.
+- La ficha del cliente trae sola los diarios que son suyos y avisa de cuántos ha vinculado; el diario de reparaciones general hace lo mismo al abrirse y tiene el botón **«Vincular con clientes»**. La pasada es repetible: volver a ejecutarla no cambia nada más.
+
+### Añadido
+- Filtro por **tipo de equipo** en los diarios de la ficha del cliente.
+- La lista general carga hasta 1.000 diarios (antes 200).
+
+---
+
 ## [1.121.0] — 2026-11-08
 
 ### Mejorado

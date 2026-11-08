@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Wrench, ChevronUp, Trash2, Edit, FileSpreadsheet, Camera, FolderOpen, X, Printer, MessageCircle, Send, Image } from 'lucide-react';
 import SignatureCanvas from './SignaturePad';
 import { toast } from 'sonner';
+import { planDeVinculos, filtrarPorTipo, tiposPresentes } from '@/lib/vinculoDiarios';
 import PhotoGallery from './PhotoGallery';
 import { uploadImage } from '@/lib/uploadImage';
 import PhotosWithNames from './PhotosWithNames';
@@ -54,16 +55,52 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
   const [expandedDiary, setExpandedDiary] = useState(null);
   const [company, setCompany] = useState(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [tipoFiltro, setTipoFiltro] = useState('todos');
 
   useEffect(() => {
     loadDiaries();
     base44.entities.CompanySettings.list().then(d => d.length > 0 && setCompany(d[0]));
   }, [contactId]);
 
+  // Carga los diarios del cliente y, además, vincula los que son suyos pero no están
+  // enlazados por id: se reconocen por el NOMBRE del cliente y por el tipo/serie del equipo.
   const loadDiaries = async () => {
     setLoading(true);
-    const data = await base44.entities.EquipmentDiary.filter({ contact_id: contactId }, '-created_date');
-    setDiaries(data);
+    try {
+      const [propios, todos, contactos, maquinas] = await Promise.all([
+        base44.entities.EquipmentDiary.filter({ contact_id: contactId }, '-created_date'),
+        base44.entities.EquipmentDiary.list('-created_date', 1000).catch(() => []),
+        base44.entities.Contact.list('name', 1000).catch(() => []),
+        base44.entities.ClientMachine.filter({ contact_id: contactId }).catch(() => [])
+      ]);
+      const ajenos = (todos || []).filter((d) => d.contact_id !== contactId);
+      const plan = planDeVinculos({
+        diarios: [...(propios || []), ...ajenos],
+        contactos,
+        maquinasDe: (id) => (id === contactId ? maquinas : [])
+      }).filter((x) => {
+        const d = [...propios, ...ajenos].find((y) => y.id === x.diarioId);
+        return (x.cambios.contact_id || d?.contact_id) === contactId;
+      });
+      const todosLosDiarios = [...(propios || []), ...ajenos];
+      let vinculadosNuevos = 0;
+      const resultado = [...(propios || [])];
+      for (const x of plan) {
+        const d = todosLosDiarios.find((y) => y.id === x.diarioId);
+        if (!d) continue;
+        const nuevo = { ...d, ...x.cambios };
+        try {
+          await base44.entities.EquipmentDiary.update(d.id, nuevo);
+        } catch { continue; }
+        if (d.contact_id !== contactId) { resultado.push(nuevo); vinculadosNuevos++; }
+        else { const i = resultado.findIndex((y) => y.id === d.id); if (i >= 0) resultado[i] = nuevo; }
+      }
+      setDiaries(resultado);
+      if (vinculadosNuevos > 0) toast.success(`${vinculadosNuevos} diario${vinculadosNuevos > 1 ? 's' : ''} vinculado${vinculadosNuevos > 1 ? 's' : ''} a este cliente por nombre`);
+    } catch {
+      const data = await base44.entities.EquipmentDiary.filter({ contact_id: contactId }, '-created_date');
+      setDiaries(data);
+    }
     setLoading(false);
   };
 
@@ -259,7 +296,18 @@ export default function EquipmentDiaryTab({ contactId, contactName, contactPhone
         </div>
       )}
 
-      {diaries.map(diary => (
+      {tiposPresentes(diaries).length > 1 && (
+        <div className="flex flex-wrap gap-1.5" data-prueba="filtro-tipo-diario">
+          {[{ tipo: 'todos', n: diaries.length }, ...tiposPresentes(diaries)].map(({ tipo, n }) => (
+            <button key={tipo} type="button" onClick={() => setTipoFiltro(tipo)}
+              className={`text-xs px-2.5 py-1 rounded-full border ${tipoFiltro === tipo ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-600 hover:bg-orange-50'}`}>
+              {tipo === 'todos' ? 'Todos' : tipo.replace(/_/g, ' ')} ({n})
+            </button>
+          ))}
+        </div>
+      )}
+
+      {filtrarPorTipo(diaries, tipoFiltro).map(diary => (
         <Card key={diary.id} className="overflow-hidden">
           <CardContent className="p-0">
             {/* Cabecera del equipo */}
