@@ -190,13 +190,9 @@ export function recordarTrabajo(irA) {
 
   if (!guardado) return;
   const hayEscrito = Object.keys(guardado.campos || {}).length > 0;
-  const otraPantalla = guardado.donde && guardado.donde !== dondeEstamos();
-  if (!hayEscrito && !otraPantalla) return;
-
-  if (otraPantalla) {
-    try { irA(guardado.donde); } catch { /* si no se puede, al menos los campos */ }
-  }
-
+  // El programa SIEMPRE abre en el menú principal, no en la pantalla donde se
+  // dejó. Lo que se estaba escribiendo se devuelve igualmente en cuanto se abre
+  // el mismo formulario. (`irA` se mantiene por compatibilidad y no se usa.)
   if (!hayEscrito) return;
 
   vigilarParaDevolver(guardado);

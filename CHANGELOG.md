@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.116.2] — 2026-11-08
+
+### Cambiado
+- **Al abrir el programa siempre se entra en el menú principal**, no en la pantalla donde se dejó. Si había texto a medio escribir se sigue devolviendo al abrir ese mismo formulario.
+
+---
+
 ## [1.116.1] — 2026-11-08
 
 ### Añadido
