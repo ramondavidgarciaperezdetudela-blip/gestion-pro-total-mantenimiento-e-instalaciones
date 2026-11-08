@@ -15,7 +15,7 @@ const AJUSTES = /^(gpt_|gpt:|ia_|plano_|backupConfig$|regulations_|supplier_|gas
 
 // Dentro de lo anterior, lo que NO es un ajuste: estado pasajero, avisos,
 // sesiones, licencia de este aparato y contraseñas de soporte.
-const EXCLUIDAS = /^(gpt_ultimo_error|gpt_last_update_check|gpt_vinculado_auto|gpt_trabajo_a_medias|gpt_cloud_upload_state|gpt_daily_autoupdate_last_date|gpt_license_v1|gpt_support_pwd|gpt_aviso_|gpt_emoji_recent|gpt_storage_notice_dismissed|regulations_last_check)/;
+const EXCLUIDAS = /^(gpt_ultimo_error|gpt_last_update_check|gpt_vinculado_auto|gpt_trabajo_a_medias|gpt_cloud_upload_state|gpt_drive_copia|gpt_daily_autoupdate_last_date|gpt_license_v1|gpt_support_pwd|gpt_aviso_|gpt_emoji_recent|gpt_storage_notice_dismissed|regulations_last_check)/;
 const SECRETAS = /token|session|sesion|auth|access|password_hash/i;
 
 export function esAjuste(clave) {

@@ -29,6 +29,8 @@ import {
 } from '@/lib/guardarCopia';
 
 import { normalizarCopia, limpiarTexto, motivoCopiaIlegible } from '@/lib/copiaFormato';
+import CopiaDrivePanel from '@/components/CopiaDrivePanel';
+import { leerDrive, driveListo, crearSubidor } from '@/lib/copiaDrive';
 
 const ALL_ENTITIES = [
   'Contact', 'Invoice', 'SATOrder', 'MaintenanceSheet', 'StockItem',
@@ -297,9 +299,16 @@ export default function BackupCenter() {
    * justo al final, cuando parecía que ya estaba hecha. Vive aquí, en una
    * función suelta, porque lo usan la copia normal Y las copias de rescate.
    */
-  const escribirCopiaPorSecciones = async ({ fileName, datos, secciones, extra = {}, avisar }) => {
-    const fichero = await abrirCopiaPorPartes({ nombre: fileName, destino: destinoMovil, carpetaPC });
-    if (!fichero.ok) return { ok: false, error: fichero.error };
+  const escribirCopiaPorSecciones = async ({ fileName, datos, secciones, extra = {}, avisar, aDrive = false }) => {
+    const fichero0 = await abrirCopiaPorPartes({ nombre: fileName, destino: destinoMovil, carpetaPC });
+    if (!fichero0.ok) return { ok: false, error: fichero0.error };
+    // Copia en el Drive de la empresa: recibe lo mismo que se escribe en el
+    // fichero, por trozos, sin juntarlo entero en memoria.
+    const cfgDrive = leerDrive();
+    const subidor = aDrive && cfgDrive.auto && driveListo(cfgDrive) ? crearSubidor(cfgDrive, fileName) : null;
+    const fichero = subidor
+      ? { ...fichero0, escribir: async (t) => { subidor.anadir(t); await fichero0.escribir(t); } }
+      : fichero0;
 
     const cabecera = {
       exported_at: new Date().toISOString(),
@@ -328,7 +337,10 @@ export default function BackupCenter() {
       }
       await fichero.escribir('\n}\n');
       const guardado = await fichero.cerrar();
-      return guardado.ok ? { ok: true, ...guardado, nombre: fileName } : { ok: false, error: guardado.error };
+      const drive = subidor ? await subidor.cerrar() : null;
+      return guardado.ok
+        ? { ok: true, ...guardado, nombre: fileName, drive }
+        : { ok: false, error: guardado.error };
     } catch (err) {
       await fichero.cancelar();
       return { ok: false, error: err?.message || 'error desconocido' };
@@ -398,6 +410,7 @@ export default function BackupCenter() {
       fileName,
       datos: allData,
       secciones: entitiesToBackup,
+      aDrive: true,
       avisar: (seccion, i) => {
         setProgress(`Escribiendo ${ENTITY_LABELS[seccion] || seccion}…`);
         setProgressPct(90 + Math.round((i / entitiesToBackup.length) * 9));
@@ -442,7 +455,10 @@ export default function BackupCenter() {
     const limpiezaMsg = duplicadosQuitados > 0
       ? ` · ${duplicadosQuitados.toLocaleString()} repetidos omitidos (la copia queda con uno de cada)`
       : '';
-    setProgress(`✅ Copia completada: ${totalExported.toLocaleString()} registros en ${entitiesToBackup.length} secciones${limpiezaMsg}`);
+    const driveMsg = guardado.drive
+      ? (guardado.drive.ok ? ' · subida también a Google Drive' : ` · ⚠️ NO se pudo subir a Google Drive (${guardado.drive.error}); la copia local sí está guardada`)
+      : '';
+    setProgress(`✅ Copia completada: ${totalExported.toLocaleString()} registros en ${entitiesToBackup.length} secciones${limpiezaMsg}${driveMsg}`);
     setLoading(false);
     setTimeout(() => { setProgress(''); setProgressPct(0); }, 4000);
 
@@ -458,14 +474,20 @@ export default function BackupCenter() {
   const handleRestoreFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setRestoreFile(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => cargarTextoCopia(file.name, ev.target.result);
+    reader.readAsText(file);
+  };
+
+  // Lee el texto de una copia, venga de un fichero o de Google Drive.
+  const cargarTextoCopia = (nombre, textoCrudo) => {
+    setRestoreFile(nombre);
     setRestoreData(null);
     setRestoreStatus('');
     setRestoreProgress('');
-    const reader = new FileReader();
-    reader.onload = (ev) => {
+    {
       try {
-        const texto = limpiarTexto(ev.target.result);
+        const texto = limpiarTexto(textoCrudo);
         let crudo;
         try { crudo = JSON.parse(texto); } catch (err) { throw new Error(motivoCopiaIlegible(texto, err)); }
         // Vale la copia de cualquier versión: no se mira ni el número de versión ni el nombre de la app.
@@ -481,8 +503,7 @@ export default function BackupCenter() {
       } catch (err) {
         setRestoreStatus(`err:${err?.message || 'Archivo no válido.'}`);
       }
-    };
-    reader.readAsText(file);
+    }
   };
 
   const doRestore = async () => {
@@ -772,6 +793,7 @@ export default function BackupCenter() {
       {/* ═══════════ TAB: CREAR BACKUP ═══════════ */}
       {tab === 'backup' && (
         <div className="space-y-4">
+          <CopiaDrivePanel modo="copia" />
           {/* Banner de acción rápida */}
           <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
             <CardContent className="p-6">
@@ -958,6 +980,8 @@ export default function BackupCenter() {
                   <p className="text-sm text-gray-600 mt-0.5">Sube un archivo JSON generado por esta aplicación para recuperar tus datos.</p>
                 </div>
               </div>
+
+              <CopiaDrivePanel modo="restaurar" onElegida={cargarTextoCopia} />
 
               {/* Soltar / seleccionar archivo */}
               <div
