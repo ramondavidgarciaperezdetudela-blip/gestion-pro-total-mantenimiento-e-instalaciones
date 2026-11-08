@@ -15,6 +15,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.121.0] — 2026-11-08
+
+### Mejorado
+- **Menú lateral de un solo clic.** Al pasar el ratón por un área (Operación, Comercial, Cálculo…) se abre a su derecha la lista de apartados, y un clic en el apartado abre la pantalla. Antes había que pulsar el área y luego buscar el apartado. Pulsar el área sigue abriendo su primer apartado, y con el teclado se abre al enfocar (Esc la cierra).
+- **Las pantallas abren más rápido.** Al acercar el ratón (o tocar) un enlace del menú o del cuadro general, la pantalla se empieza a descargar antes del clic, y al arrancar se adelantan las más usadas (SAT, clientes, documentos, agenda, reparto, inventario, tarifas…).
+- **Al abrir una pantalla el menú y la barra ya no desaparecen**: solo cambia el contenido, con un indicador de carga en su sitio.
+
+---
+
 ## [1.120.0] — 2026-11-08
 
 ### Cambiado

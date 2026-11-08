@@ -1,6 +1,9 @@
 import ImportacionEnSegundoPlano from '@/components/ImportacionEnSegundoPlano';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { Suspense } from 'react';
+import { precargarFrecuentes } from '@/lib/precarga';
+import EnlaceRapido from '@/components/EnlaceRapido';
 import { base44 } from '@/api/base44Client';
 import { LogOut, Search, X } from 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
@@ -35,12 +38,13 @@ function EnlaceMenu({ onAbrir }) {
         <a href="#menu" {...resto} onClick={(e) => { e.preventDefault(); onAbrir(); }}>{children}</a>
       );
     }
-    return <Link to={to} {...resto}>{children}</Link>;
+    return <EnlaceRapido to={to} {...resto}>{children}</EnlaceRapido>;
   };
 }
 
 export default function Layout({ children, currentPageName }) {
   const contenidoRef = React.useRef(null);
+  useEffect(() => { precargarFrecuentes(); }, []);
   const location = useLocation();
   const [menuMovil, setMenuMovil] = useState(false);
   const [areaMovil, setAreaMovil] = useState(null);
@@ -170,7 +174,7 @@ export default function Layout({ children, currentPageName }) {
             paginaActual={sitio?.apartado?.id}
             usuario={usuario?.full_name || usuario?.name || usuario?.email}
             rol={usuario?.role}
-            Enlace={Link}
+            Enlace={EnlaceRapido}
             rutaInicio="/"
           />
         </aside>
@@ -187,7 +191,10 @@ export default function Layout({ children, currentPageName }) {
 
           <main className="gpt-contenido gpt-contenido--pagina pb-28 lg:pb-6 min-w-0 w-full" style={{ contain: 'layout style' }}>
             <BarraNavegacion enInicio={currentPageName === 'Home'} />
-            <div ref={contenidoRef} className="min-w-0 w-full">{children}</div>
+            <div ref={contenidoRef} className="min-w-0 w-full">
+              {/* Suspense propio: al abrir una pantalla el menú y la barra se quedan; solo cambia el contenido. */}
+              <Suspense fallback={<div className="flex items-center justify-center h-32"><div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin opacity-60" /></div>}>{children}</Suspense>
+            </div>
             <ImportacionEnSegundoPlano />
             <BotonesImprimirPantalla
               nodoRef={contenidoRef}

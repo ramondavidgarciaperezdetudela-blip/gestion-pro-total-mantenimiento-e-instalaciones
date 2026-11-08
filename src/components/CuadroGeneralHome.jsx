@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import EnlaceRapido from './EnlaceRapido';
 import { base44 } from '@/api/base44Client';
 import { CuadroGeneral } from '@/componentes/tema';
 import { format } from 'date-fns';
@@ -33,5 +33,5 @@ export default function CuadroGeneralHome() {
     return () => { vivo = false; };
   }, []);
 
-  return <CuadroGeneral estados={estados} Enlace={Link} />;
+  return <CuadroGeneral estados={estados} Enlace={EnlaceRapido} />;
 }
