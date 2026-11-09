@@ -15,6 +15,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.127.0] — 2026-11-09
+
+### Añadido
+- **Cambiar el margen de ganancia desde Tarifas de proveedores** (botón «Cambiar margen»): escribes el nuevo margen (por ejemplo, 35 en lugar del 30 actual) y eliges si se aplica a **todas las tarifas juntas**, a **unas tarifas seleccionadas** o a **una sola**. Antes de aplicar muestra cuántos artículos cambian y cuántos se quedan como están (los que no tienen coste no se tocan); la venta se recalcula como coste + margen. Opción de cambiar solo los que aún no tienen precio de venta. Con barra de progreso, porcentaje y tiempos, y se puede detener.
+
+### Mejorado
+- **«Fotos desde PDF» mucho más rápido y apto para equipos con poca memoria:** el PDF se lee por trozos desde el propio archivo (sin copiarlo entero a memoria), solo se analizan las imágenes de las páginas donde aparece algún código pendiente, cada foto se reduce directamente a miniatura y se guarda al momento, se libera la memoria de cada página y la pantalla no se queda bloqueada. En equipos de 4 GB o menos se usan miniaturas más pequeñas y se descartan fotos enormes en vez de colgarse. La búsqueda de códigos es instantánea aunque la tarifa tenga decenas de miles de artículos.
+- **Barra de progreso con porcentaje, tiempo transcurrido y tiempo restante**, página que se está leyendo, fotos encontradas y botón «Detener».
+- **Informe de lo que no se ha podido recuperar:** al terminar, el programa avisa de cuántas fotos faltan y lista las referencias; el botón «Descargar fichero de las que faltan» da un CSV (se abre con Excel) con proveedor, referencia, nombre y motivo, para buscar esas fotos y añadirlas desde la ficha del artículo.
+
 ## [1.126.0] — 2026-11-08
 
 ### Añadido
