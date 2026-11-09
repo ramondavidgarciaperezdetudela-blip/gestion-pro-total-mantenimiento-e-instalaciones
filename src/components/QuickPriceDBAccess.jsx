@@ -118,7 +118,7 @@ export default function QuickPriceDBAccess() {
       <button
         onClick={() => setOpen(true)}
         title="Base de precios (Alt+P)"
-        className="fixed bottom-24 right-4 z-40 lg:bottom-6 lg:right-6 w-14 h-14 rounded-full bg-blue-700 hover:bg-blue-800 text-white shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 print:hidden"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] right-4 z-40 lg:bottom-6 lg:right-6 w-14 h-14 rounded-full bg-blue-700 hover:bg-blue-800 text-white shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 print:hidden"
         style={{ boxShadow: '0 4px 24px rgba(30,58,138,0.4)' }}
       >
         <BookOpen className="w-6 h-6" />
