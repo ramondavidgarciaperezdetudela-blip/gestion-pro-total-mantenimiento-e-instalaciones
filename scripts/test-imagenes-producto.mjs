@@ -63,3 +63,17 @@ const pares = emparejar(textos, imgs, [{ id: 'a', codigo: 'abc 123' }, { id: 'b'
 assert.deepEqual(pares.map((p) => [p.articulo.id, p.imagen.id]).sort(), [['a', 'i1'], ['b', 'i2']]);
 assert.equal(emparejar([{ texto: 'ABC-123', x: 900, y: 900 }], imgs, [{ id: 'a', codigo: 'ABC-123' }]).length, 0, 'foto demasiado lejos: no se asigna');
 console.log('web del proveedor y fotos de PDF: OK');
+
+// ── rendimiento: índice por código y informe ──
+import { indexarCodigos, codigosEnTexto } from '../src/lib/imagenesPdf.js';
+import { construirCsvFotos } from '../src/lib/informeFotos.js';
+const arts = Array.from({ length: 20000 }, (_, i) => ({ id: i, codigo: 'COD' + String(i).padStart(6, '0') }));
+const indice = indexarCodigos(arts);
+assert.deepEqual(codigosEnTexto('Ref. COD-000123 precio', indice), ['cod000123']);
+assert.deepEqual(codigosEnTexto('COD 000124', indice), ['cod000124'], 'código partido en dos palabras');
+const gran = Array.from({ length: 300 }, (_, i) => ({ texto: 'COD' + String(i * 50).padStart(6, '0'), x: i, y: i }));
+const t0 = Date.now(); const pp = emparejar(gran, [{ id: 'i', x: 0, y: 0, w: 5000, h: 5000 }], arts, 1e9, indice); const ms = Date.now() - t0;
+assert.equal(pp.length, 1); assert.ok(ms < 500, 'emparejar con 20.000 artículos tarda ' + ms + ' ms');
+const csv = construirCsvFotos([{ proveedor: 'Frío "SL"', codigo: 'A;1', nombre: 'Válvula', motivo: 'No aparece', pagina: 3, archivo: 'x.pdf' }]);
+assert.ok(csv.startsWith('\uFEFF"Proveedor"') && csv.includes('"Frío ""SL"""') && csv.includes('"A;1"'));
+console.log('rendimiento PDF e informe: OK');

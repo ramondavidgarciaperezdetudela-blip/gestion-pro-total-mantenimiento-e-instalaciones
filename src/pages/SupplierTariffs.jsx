@@ -11,12 +11,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { uploadImage } from '@/lib/uploadImage';
 import {
   Search, Building2, Package, Image as ImageIcon, ChevronDown, ChevronRight,
-  Upload, Trash2, Edit, Loader2, PackagePlus, RefreshCw, Check, TrendingDown, AlertTriangle, WifiOff
+  Upload, Trash2, Edit, Loader2, PackagePlus, Percent, RefreshCw, Check, TrendingDown, AlertTriangle, WifiOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { buscarImagenArticulo } from '@/lib/imagenesProductoApp';
 import { recuperarImagenesDePdf } from '@/lib/imagenesPdf';
-import { reducirImagen } from '@/lib/imagenesProducto';
+import { construirCsvFotos, MOTIVO_SIN_FOTO } from '@/lib/informeFotos';
+import { descargarTexto } from '@/lib/iaModulos/datos';
+import ProgresoFotosPdf from '@/components/ProgresoFotosPdf';
+import MargenMasivoDialog from '@/components/MargenMasivoDialog';
 import { tarifasCaducadas, borrarEnLotes, recrearLineas } from '@/lib/borrarTarifas';
 import SupplierCatalogImportWithSupplier from '../components/SupplierCatalogImportWithSupplier';
 import PriceComparator from '../components/PriceComparator';
@@ -54,7 +57,9 @@ export default function SupplierTariffs() {
   suppliersRef.current = suppliers;
   // Para buscar primero en la web del proveedor del artículo.
   const conWeb = (item) => ({ ...item, supplier_web: suppliersRef.current.find(x => x.id === item.supplier_id)?.website || '' });
-  const [pdfFotos, setPdfFotos] = useState(null); // { n, total } mientras se leen PDF
+  const [pdfFotos, setPdfFotos] = useState(null); // estado del diálogo de progreso de «Fotos desde PDF»
+  const pdfControl = useRef(null);
+  const [margenAbierto, setMargenAbierto] = useState(false);
   const pdfFotosRef = useRef(null);
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -389,23 +394,65 @@ export default function SupplierTariffs() {
     if (!archivos.length) return;
     const lista = prices.filter(p => !p.image_url && p.product_code && (filterSupplier === 'all' || p.supplier_id === filterSupplier));
     if (!lista.length) { toast.info('No hay artículos sin imagen y con código en esta lista.'); return; }
-    let ok = 0; let pendientes = lista.map(p => ({ id: p.id, codigo: p.product_code }));
+    const porId = new Map(lista.map(p => [p.id, p]));
+    const filaDe = (id, motivo, pagina, archivo) => {
+      const p = porId.get(id) || {};
+      return { proveedor: p.supplier_name, codigo: p.product_code, nombre: p.product_name, motivo, pagina, archivo };
+    };
+    pdfControl.current = new AbortController();
+    const senal = pdfControl.current.signal;
+    const inicio = Date.now();
+    const bytesTotal = archivos.reduce((t, f) => t + f.size, 0) || 1;
+    let bytesHechos = 0; let encontradas = 0; let nFallos = 0;
+    const informe = [];
+    let pendientes = lista.map(p => ({ id: p.id, codigo: p.product_code }));
+    const guardados = new Set();
+    let cancelado = false;
+    const pon = (f, n, extra = {}) => setPdfFotos({ fase: 'leyendo', archivo: f.name, nArchivo: n, totalArchivos: archivos.length, pagina: 0, totalPaginas: 0, avance: bytesHechos / bytesTotal, inicio, encontradas, fallos: nFallos, filasInforme: [], ...extra });
     try {
-      for (const f of archivos) {
-        if (!pendientes.length) break;
-        setPdfFotos({ n: 0, total: 0, nombre: f.name });
-        const hallados = await recuperarImagenesDePdf(await f.arrayBuffer(), pendientes, reducirImagen, (n, total) => setPdfFotos({ n, total, nombre: f.name }));
-        for (const h of hallados) {
-          await base44.entities.SupplierPrice.update(h.id, { image_url: h.dataUrl });
-          setPrices(prev => prev.map(p => p.id === h.id ? { ...p, image_url: h.dataUrl } : p));
-          ok++;
-        }
-        const hechos = new Set(hallados.map(h => h.id));
-        pendientes = pendientes.filter(p => !hechos.has(p.id));
+      for (let n = 0; n < archivos.length; n++) {
+        const f = archivos[n];
+        if (!pendientes.length || senal.aborted) break;
+        pon(f, n + 1);
+        // Guardado en segundo plano con un máximo de 4 a la vez, para no frenar la lectura.
+        const enCurso = new Set();
+        const guardar = async ({ id, dataUrl }) => {
+          while (enCurso.size >= 4) await Promise.race(enCurso);
+          const t = (async () => {
+            try {
+              await base44.entities.SupplierPrice.update(id, { image_url: dataUrl });
+              setPrices(prev => prev.map(p => p.id === id ? { ...p, image_url: dataUrl } : p));
+              guardados.add(id); encontradas++;
+            } catch (e) {
+              nFallos++; informe.push(filaDe(id, 'La foto se recuperó pero no se pudo guardar: ' + (e.message || e), null, f.name));
+            }
+          })();
+          enCurso.add(t); t.finally(() => enCurso.delete(t));
+        };
+        const r = await recuperarImagenesDePdf(f, pendientes, {
+          senal, onFoto: guardar,
+          onProgreso: ({ pagina, total }) => pon(f, n + 1, { pagina, totalPaginas: total, avance: (bytesHechos + f.size * (pagina / Math.max(total, 1))) / bytesTotal })
+        });
+        await Promise.all([...enCurso]);
+        for (const x of r.fallos) { nFallos++; informe.push(x.id ? filaDe(x.id, x.motivo, x.pagina, f.name) : { proveedor: '', codigo: '', nombre: '', motivo: x.motivo, pagina: x.pagina, archivo: f.name }); }
+        const fallidosIds = new Set(r.fallos.map(x => x.id));
+        pendientes = pendientes.filter(p => !guardados.has(p.id) && !fallidosIds.has(p.id));
+        bytesHechos += f.size;
+        if (r.cancelado) cancelado = true;
       }
-      toast[ok ? 'success' : 'info'](ok ? `Fotos recuperadas del PDF: ${ok} artículos` : 'No he encontrado fotos junto a los códigos de ese PDF. Puedes añadirlas a mano desde la ficha del artículo.');
-    } catch (e) { toast.error('No se pudo leer el PDF: ' + (e.message || e)); }
-    setPdfFotos(null);
+    } catch (e) {
+      toast.error('No se pudo leer el PDF: ' + (e.message || e));
+      informe.push({ proveedor: '', codigo: '', nombre: '', motivo: 'Error al leer el PDF: ' + (e.message || e), archivo: '' });
+    }
+    // Lo que no ha salido en ningún PDF y no ha dado error: sin foto junto a su código.
+    const yaEnInforme = new Set(informe.map(i => i.codigo));
+    if (!cancelado) for (const p of pendientes) { const pr = porId.get(p.id); if (pr && !yaEnInforme.has(pr.product_code)) informe.push(filaDe(p.id, MOTIVO_SIN_FOTO, null, '')); }
+    setPdfFotos({ fase: 'terminado', cancelado, archivo: '', nArchivo: archivos.length, totalArchivos: archivos.length, pagina: 0, totalPaginas: 0, avance: cancelado ? bytesHechos / bytesTotal : 1, inicio, encontradas, fallos: nFallos, filasInforme: informe });
+  };
+
+  const descargarInformeFotos = () => {
+    if (!pdfFotos?.filasInforme?.length) return;
+    descargarTexto(`fotos-no-recuperadas-${new Date().toISOString().slice(0, 10)}.csv`, construirCsvFotos(pdfFotos.filasInforme), 'text/csv');
   };
 
   const totalProducts = prices.length;
@@ -413,6 +460,8 @@ export default function SupplierTariffs() {
 
   return (
     <div className="space-y-4">
+      <MargenMasivoDialog abierto={margenAbierto} onCerrar={() => setMargenAbierto(false)} suppliers={suppliers} prices={prices} onAplicado={(f) => setPrices(f)} />
+      <ProgresoFotosPdf estado={pdfFotos} onCancelar={() => pdfControl.current?.abort()} onCerrar={() => setPdfFotos(null)} onDescargar={descargarInformeFotos} />
       {/* Cabecera */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -422,6 +471,9 @@ export default function SupplierTariffs() {
         <div className="flex flex-wrap gap-2 items-center">
           <SupplierProductQuery suppliers={suppliers} />
           <GasSupplierPortal />
+          <Button variant="outline" className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50" onClick={() => setMargenAbierto(true)} data-prueba="tarifa-cambiar-margen">
+            <Percent className="w-4 h-4" />Cambiar margen
+          </Button>
           <Button variant="outline" className="gap-1.5 border-green-300 text-green-700 hover:bg-green-50" onClick={() => setNuevoArticulo({ proveedor: null })} data-prueba="tarifa-anadir-articulo">
             <PackagePlus className="w-4 h-4" />Añadir artículo
           </Button>
@@ -504,9 +556,9 @@ export default function SupplierTariffs() {
           <RefreshCw className="w-4 h-4" />
         </Button>
         <input ref={pdfFotosRef} type="file" accept="application/pdf,.pdf" multiple className="hidden" onChange={fotosDesdePdf} data-prueba="tarifa-fotos-pdf" />
-        <Button variant="outline" className="gap-2 whitespace-nowrap" onClick={() => pdfFotosRef.current?.click()} disabled={!!pdfFotos}
+        <Button variant="outline" className="gap-2 whitespace-nowrap" onClick={() => pdfFotosRef.current?.click()} disabled={pdfFotos?.fase === 'leyendo'}
           title="Sube la tarifa en PDF y se recuperan las fotos que lleva dentro, por código de artículo" data-prueba="tarifa-fotos-pdf-boton">
-          {pdfFotos ? <><Loader2 className="w-4 h-4 animate-spin" />{`PDF ${pdfFotos.n}/${pdfFotos.total || '…'}`}</> : <><ImageIcon className="w-4 h-4" />Fotos desde PDF</>}
+          {pdfFotos?.fase === 'leyendo' ? <><Loader2 className="w-4 h-4 animate-spin" />{`${Math.floor((pdfFotos.avance || 0) * 100)} %`}</> : <><ImageIcon className="w-4 h-4" />Fotos desde PDF</>}
         </Button>
         <Button
           variant={bulkImg ? 'destructive' : 'outline'}
