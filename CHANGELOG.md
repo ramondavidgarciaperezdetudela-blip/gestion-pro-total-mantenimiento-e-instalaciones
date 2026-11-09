@@ -15,6 +15,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.128.0] — 2026-11-09
+
+### Corregido
+- **El botón del Asistente Técnico IA quedaba escondido bajo la barra de abajo en móvil y tablet** (y tapado por el icono de la base de precios en escritorio), y no se podía abrir. Ahora está siempre encima del icono de la base de datos, por encima de la barra y de la zona de gestos del móvil. La ventana del chat se abre ajustada a la pantalla (en el móvil ocupa el ancho disponible) y deja a la vista la barra de abajo.
+
 ## [1.127.0] — 2026-11-09
 
 ### Añadido
