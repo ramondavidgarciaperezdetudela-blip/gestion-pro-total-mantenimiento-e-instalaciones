@@ -73,7 +73,7 @@ Pregunta: ${input}`,
       {/* Botón flotante */}
       {!open &&
       <button
-        onClick={() => setOpen(true)} className="bg-gradient-to-br text-white text-xl font-black rounded-full fixed bottom-6 right-6 z-40 w-14 h-14 from-purple-600 to-purple-700 shadow-lg hover:shadow-xl transition-all hover:scale-110 flex items-center justify-center"
+        onClick={() => setOpen(true)} className="bg-gradient-to-br text-white text-xl font-black rounded-full fixed bottom-[calc(env(safe-area-inset-bottom)+9rem)] right-4 lg:bottom-[5.75rem] lg:right-6 z-40 w-14 h-14 print:hidden from-purple-600 to-purple-700 shadow-lg hover:shadow-xl transition-all hover:scale-110 flex items-center justify-center"
 
         title="Asistente IA">
         
@@ -83,7 +83,7 @@ Pregunta: ${input}`,
 
       {/* Chat window */}
       {open &&
-      <Card className="fixed bottom-6 right-6 z-50 w-96 max-h-[600px] shadow-2xl border-purple-200">
+      <Card className="fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-50 w-auto max-h-[min(600px,calc(100dvh-6rem))] overflow-hidden shadow-2xl border-purple-200 sm:inset-x-auto sm:right-4 sm:w-96 lg:bottom-6 lg:right-6 print:hidden">
           <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-3 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <Bot className="w-4 h-4" />
