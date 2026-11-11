@@ -81,27 +81,103 @@ function conColores(html) {
   return REGLA_COLOR + html;
 }
 
+/**
+ * Imprime dentro de la propia página con un marco oculto, SIN ventana nueva.
+ *
+ * Las ventanas emergentes se bloqueaban o no se abrían (programa instalado,
+ * navegador del móvil, pestañas dentro de otra ventana) y el botón Imprimir
+ * parecía muerto. El marco oculto tiene tamaño de folio —uno de 1 px imprime en
+ * blanco en algunos navegadores—, espera a que carguen las imágenes y lanza el
+ * diálogo de impresión directamente.
+ */
+function imprimirEnMarco(html) {
+  return new Promise((resolve) => {
+    let marco;
+    try {
+      marco = document.createElement('iframe');
+      marco.setAttribute('aria-hidden', 'true');
+      marco.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;visibility:hidden;';
+      document.body.appendChild(marco);
+      const doc = marco.contentDocument;
+      doc.open();
+      doc.write(html);
+      doc.close();
+    } catch (err) {
+      console.error('printHelper: no se pudo preparar el marco:', err);
+      try { marco?.remove(); } catch { /* nada */ }
+      resolve(false);
+      return;
+    }
+    const retirar = () => setTimeout(() => { try { marco.remove(); } catch { /* retirado */ } }, 60000);
+    const lanzar = () => {
+      try {
+        const v = marco.contentWindow;
+        v.focus();
+        v.print();
+        retirar();
+        resolve(true);
+      } catch (e) {
+        console.error('printHelper: el marco no pudo imprimir:', e);
+        try { marco.remove(); } catch { /* nada */ }
+        resolve(false);
+      }
+    };
+    // Esperar a las imágenes (logo, firmas, fotos), con tope de 4 s.
+    const imgs = Array.from(marco.contentDocument.images || []);
+    const pendientes = imgs.filter((i) => !i.complete);
+    if (!pendientes.length) { setTimeout(lanzar, 150); return; }
+    let quedan = pendientes.length;
+    const uno = () => { if (--quedan <= 0) setTimeout(lanzar, 100); };
+    pendientes.forEach((i) => { i.addEventListener('load', uno); i.addEventListener('error', uno); });
+    setTimeout(() => { if (quedan > 0) { quedan = 0; lanzar(); } }, 4000);
+  });
+}
+
+/** Último recurso: ventana nueva con window.print(). */
+function imprimirEnVentana(html) {
+  const win = window.open('', '_blank');
+  if (!win) return false;
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { try { win.print(); } catch { /* el usuario puede imprimir a mano */ } }, 800);
+  return true;
+}
+
+function fueCancelado(motivo) {
+  return /cancel/i.test(String(motivo || ''));
+}
+
 export async function printDocument(htmlOriginal, title = 'Gestión Pro Total') {
   const html = conColores(htmlOriginal);
   // Programa instalado en el ordenador: se manda a la impresora elegida. Si no
   // hay ninguna elegida, sale el diálogo del sistema como siempre.
   if (hayPuenteImpresion()) {
     const elegida = impresoraElegida();
-    const r = await window.gptImpresion.imprimir({
-      html, impresora: elegida || null, silencioso: !!elegida,
-    });
+    let r = null;
+    try {
+      r = await window.gptImpresion.imprimir({
+        html, impresora: elegida || null, silencioso: !!elegida,
+      });
+    } catch (e) { console.error('printHelper: puente de impresión:', e); }
     if (r?.ok) return true;
     // Si la elegida ha fallado (apagada, sin papel, ya no existe), se vuelve a
     // intentar con el diálogo del sistema en vez de dejarlo en nada.
     if (elegida) {
-      const r2 = await window.gptImpresion.imprimir({ html, impresora: null, silencioso: false });
+      let r2 = null;
+      try { r2 = await window.gptImpresion.imprimir({ html, impresora: null, silencioso: false }); } catch { /* sigue */ }
       if (r2?.ok) return true;
+      if (fueCancelado(r2?.motivo)) return false;
       avisar(`No se ha podido imprimir en «${elegida}»: ${r?.motivo || 'no responde'}. `
         + 'Comprueba que está encendida, o elige otra en Configuración → Impresión.');
       return false;
     }
-    // Sin impresora elegida y con el diálogo cancelado no hay nada que avisar.
-    return false;
+    // Cancelado a propósito: nada que avisar.
+    if (fueCancelado(r?.motivo)) return false;
+    // Fallo real del puente (no cancelación): se imprime desde la propia página.
+    if (r && r.ok === false && !r.motivo) return false;
+    return imprimirEnMarco(html);
   }
 
   // App de Android: sistema de impresión nativo.
@@ -118,40 +194,11 @@ export async function printDocument(htmlOriginal, title = 'Gestión Pro Total') 
     }
   }
 
-  // Navegador y escritorio: ventana emergente.
-  const win = window.open('', '_blank');
-  if (win) {
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 800);
-    return true;
-  }
-
-  // Respaldo: iframe oculto (cuando las ventanas emergentes están bloqueadas).
-  try {
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:0;';
-    document.body.appendChild(iframe);
-    iframe.contentDocument.open();
-    iframe.contentDocument.write(html);
-    iframe.contentDocument.close();
-    setTimeout(() => {
-      try {
-        iframe.contentWindow.print();
-      } catch (e) {
-        console.error('printHelper: el navegador no permitió imprimir:', e);
-        avisar('El navegador ha bloqueado la impresión. Permite las ventanas emergentes de esta página e inténtalo de nuevo.');
-      }
-      setTimeout(() => { try { iframe.remove(); } catch { /* ya retirado */ } }, 3000);
-    }, 600);
-    return true;
-  } catch (err) {
-    console.error('printHelper: error al imprimir:', err);
-    avisar('No se pudo abrir la ventana de impresión.');
-    return false;
-  }
+  // Navegador y escritorio: directamente desde la página, sin ventanas nuevas.
+  if (await imprimirEnMarco(html)) return true;
+  if (imprimirEnVentana(html)) return true;
+  avisar('El navegador ha bloqueado la impresión. Permite las ventanas emergentes de esta página e inténtalo de nuevo.');
+  return false;
 }
 
 /*
