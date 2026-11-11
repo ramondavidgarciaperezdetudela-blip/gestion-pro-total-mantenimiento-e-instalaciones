@@ -34,6 +34,7 @@ import FichaClienteResumen from '@/components/clientes/FichaClienteResumen';
 import NavegacionFicha from '@/components/clientes/NavegacionFicha';
 import ArbolDocumentos from '@/components/clientes/ArbolDocumentos';
 import { construirArbol } from '@/lib/arbolDocumentos';
+import { borrarCopias, copiasHuerfanas } from '@/lib/copiasDocumentos';
 import { clienteAFormulario, prepararCliente, nombreDeCliente } from '@/lib/cliente';
 
 function ChangeHistoryTab({ contactId }) {
@@ -329,6 +330,16 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
     setDocuments(docs);setNotes(nts);setAppointments(apts);
   };
 
+  // Limpia las copias de documentos que ya se borraron antes de esta corrección.
+  const limpiado = React.useRef(new Set());
+  React.useEffect(() => {
+    const huerfanas = copiasHuerfanas(documents, invoices).filter((d) => !limpiado.current.has(d.id));
+    if (!huerfanas.length || !invoices) return;
+    huerfanas.forEach((d) => limpiado.current.add(d.id));
+    Promise.all(huerfanas.map((d) => base44.entities.ClientDocument.delete(d.id).catch(() => {})))
+      .then(() => setDocuments((prev) => prev.filter((d) => !huerfanas.some((h) => h.id === d.id))));
+  }, [documents, invoices]);
+
   const deleteSat = async (id) => {
     if (!confirm('¿Eliminar esta orden SAT?')) return;
     await base44.entities.SATOrder.delete(id);
@@ -388,7 +399,13 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
   };
 
   const deleteInvoice = async (id) => {
+    const doc = invoices.find((i) => i.id === id);
     await base44.entities.Invoice.delete(id);
+    // La copia en Documentación también se borra con el documento.
+    try {
+      const borradas = doc ? await borrarCopias(base44, documents, doc) : [];
+      if (borradas.length) setDocuments((prev) => prev.filter((d) => !borradas.includes(d.id)));
+    } catch (e) { console.warn('[ContactDetail] copia no borrada:', e); }
     const inv = await base44.entities.Invoice.filter({ contact_id: contactId });
     setInvoices(inv);
   };

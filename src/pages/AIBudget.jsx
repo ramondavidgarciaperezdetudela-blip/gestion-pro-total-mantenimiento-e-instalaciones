@@ -229,7 +229,19 @@ Devuelve materiales/partidas para presupuesto profesional con descripción, cant
 
   const deleteBudget = async (id) => {
     if (!confirm('¿Eliminar este presupuesto?')) return;
+    const b = budgets?.find?.((x) => x.id === id);
     await base44.entities.AIConsultation.delete(id);
+    // Y su copia en la Documentación del cliente.
+    try {
+      if (b?.contact_id) {
+        const docs = await base44.entities.ClientDocument.filter({ contact_id: b.contact_id });
+        const titulo = String(b.query || 'Presupuesto IA').trim();
+        await Promise.all(docs
+          .filter((d) => d.doc_type === 'presupuesto' && !d.file_url && !d.reference_id
+            && String(d.title || '').trim() === titulo && /^Total:/.test(String(d.description || '')))
+          .map((d) => base44.entities.ClientDocument.delete(d.id).catch(() => {})));
+      }
+    } catch (e) { console.warn('[AIBudget] copia no borrada:', e); }
     if (current.editingId === id) setCurrent({ ...EMPTY_BUDGET });
     loadAll();
   };
