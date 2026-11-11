@@ -1,7 +1,7 @@
 import { base44 } from '@/api/base44Client';
 import { mapaIds, reenlazarFilas } from '@/lib/vinculos';
 import {
-  enLotes, sinMetadatos, planRestauracion,
+  enLotes, sinMetadatos, planRestauracion, planSobrantes,
   planDuplicados, revisarPlanDuplicados, quitarDuplicados,
 } from '@/lib/copiasLotes';
 import {
@@ -262,6 +262,9 @@ export async function runBackupJob(entities, entityLabels = {}, onProgress, opci
 
 const stripMeta = sinMetadatos;
 
+// Ajustes únicos: no se "espejan" (solo hay uno y se actualiza).
+const SIN_ESPEJO = new Set(['CompanySettings', 'SystemSettings']);
+
 /**
  * Restaura las entidades indicadas en paralelo (varias entidades a la vez;
  * dentro de cada una, por lotes, para no saturar la API).
@@ -425,6 +428,22 @@ export async function runRestoreJob(
         LOTES_A_LA_VEZ,
       );
       total += porHacer;
+      // Que quede EXACTAMENTE lo de la copia: lo que hay ahora y no está en ella
+      // (clientes antiguos, duplicados…) se quita. Antes se quedaba, y había que
+      // borrarlo a mano.
+      if (opciones.espejo !== false && !SIN_ESPEJO.has(ent)) {
+        const { sobran, motivo } = planSobrantes(existing, rows, keyers[ent]);
+        if (motivo === 'sin_coincidencias') {
+          avisos.push(`«${label}» no se ha limpiado: ningún registro de la copia coincide con los actuales, `
+            + 'así que no se borra nada por si acaso es otra copia.');
+        } else if (sobran.length) {
+          setSeccion(ent, { fase: 'borrando' });
+          report(` (quitando ${sobran.length} que no están en la copia)`);
+          let quitados = 0;
+          await runPool(sobran, (rec) => pedir(freno, () => E.delete(rec.id)).then(() => { quitados++; }).catch(trackFail), BORRADOS_A_LA_VEZ);
+          if (quitados) avisos.push(`«${label}»: se han quitado ${quitados.toLocaleString()} registros que no estaban en la copia o estaban repetidos.`);
+        }
+      }
     }
     setSeccion(ent, { fase: 'hecho', leidos: rows.length });
     done++;

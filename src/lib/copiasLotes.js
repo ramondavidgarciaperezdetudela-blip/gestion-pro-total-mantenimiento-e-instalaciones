@@ -79,17 +79,54 @@ export function firmaRegistro(valor) {
  * @param {Function|null} clave  cómo reconocer que dos registros son el mismo
  * @returns {{aCrear:Array, aActualizar:Array, sinCambios:number}}
  */
+/**
+ * Para cada clave, EL registro actual que se queda. Si hay varios con la misma
+ * clave (duplicados antiguos) se prefiere el que tiene el mismo id que el de la
+ * copia y, si no, el primero. Así actualizar, vincular y borrar sobrantes
+ * hablan siempre del mismo registro.
+ */
+export function elegirPorClave(existentes, filas, clave) {
+  const idsCopia = new Set((filas || []).map((f) => f?.id).filter(Boolean));
+  const porClave = new Map();
+  for (const r of existentes || []) {
+    const k = clave(r);
+    if (!k) continue;
+    const previo = porClave.get(k);
+    if (!previo || (!idsCopia.has(previo.id) && idsCopia.has(r.id))) porClave.set(k, r);
+  }
+  return porClave;
+}
+
+/**
+ * Los registros que hay ahora y NO están en la copia (o son duplicados de uno
+ * que sí está): son los que hay que quitar para que quede exactamente lo
+ * guardado. No se borra nada si la copia y lo actual no comparten ni un solo
+ * registro (casi seguro que es otra copia o que falla la clave), ni los que no
+ * tienen clave para reconocerlos.
+ * @returns {{sobran:Array, motivo:string}}
+ */
+export function planSobrantes(existentes, filas, clave) {
+  if (!clave || !(existentes || []).length || !(filas || []).length) return { sobran: [], motivo: 'vacio' };
+  const clavesCopia = new Set((filas || []).map(clave).filter(Boolean));
+  const elegidos = elegirPorClave(existentes, filas, clave);
+  const hayComun = [...elegidos.keys()].some((k) => clavesCopia.has(k));
+  if (!hayComun) return { sobran: [], motivo: 'sin_coincidencias' };
+  const sobran = [];
+  for (const r of existentes) {
+    const k = clave(r);
+    if (!k || !r.id) continue;
+    if (!clavesCopia.has(k) || elegidos.get(k) !== r) sobran.push(r);
+  }
+  return { sobran, motivo: '' };
+}
+
 export function planRestauracion(existentes, filas, clave) {
   const aCrear = [];
   const aActualizar = [];
   let sinCambios = 0;
 
   if (clave) {
-    const porClave = new Map();
-    for (const r of existentes || []) {
-      const k = clave(r);
-      if (k) porClave.set(k, r);
-    }
+    const porClave = elegirPorClave(existentes, filas, clave);
     for (const fila of filas || []) {
       const k = clave(fila);
       const datos = sinMetadatos(fila);
