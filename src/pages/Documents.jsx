@@ -41,6 +41,7 @@ import { useParametrosUrl } from '@/lib/parametrosUrl';
 import { direccionPublica, AVISO_SIN_DIRECCION, faltaParaAvisos } from '@/lib/copiaFirmada';
 import { abrirEnlaceAvisando, enlaceWhatsApp } from '@/lib/abrirEnlace';
 import { compartirDocumentoWhatsApp } from '@/lib/compartirDocumentoWhatsApp';
+import { borrarCopias } from '@/lib/copiasDocumentos';
 
 const DOC_TYPES = ['factura', 'presupuesto', 'recibo'];
 const STATUSES = ['borrador', 'enviado', 'pagado', 'vencido', 'cancelado'];
@@ -491,6 +492,7 @@ export default function Documents() {
             contact_id: form.contact_id, contact_name: form.contact_name,
             title: `${docLabel} ${form.doc_number || ''}`,
             doc_type: form.doc_type, date: form.date,
+            reference_id: savedDoc?.id,
             description: `Total: ${form.total?.toFixed(2)} € | Estado: ${form.status}`
           }).catch(() => {}); // No bloquea el guardado del documento
         }
@@ -542,7 +544,15 @@ export default function Documents() {
 
   const handleDelete = async (id) => {
     if (!confirm('¿Eliminar este documento?')) return;
+    const doc = docs.find((d) => d.id === id);
     await base44.entities.Invoice.delete(id);
+    // Y su copia en Documentación del cliente, para que no se quede huérfana.
+    try {
+      if (doc?.contact_id) {
+        const delCliente = await base44.entities.ClientDocument.filter({ contact_id: doc.contact_id });
+        await borrarCopias(base44, delCliente, doc);
+      }
+    } catch (e) { console.warn('[Documents] No se pudo limpiar la copia en Documentación:', e); }
     setDocs(docs.filter((d) => d.id !== id));
   };
 

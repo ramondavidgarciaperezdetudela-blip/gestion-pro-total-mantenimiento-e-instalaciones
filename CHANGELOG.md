@@ -15,6 +15,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.130.0] — 2026-11-11
+
+### Corregido
+- **Al borrar un presupuesto, factura o recibo ya desaparece de Documentación del cliente.** La copia que se guarda en la ficha del cliente no llevaba vínculo con el original y se quedaba para siempre. Ahora la copia lleva el vínculo, se borra junto con el documento (desde Documentos, desde la ficha del cliente y desde Presupuestos IA) y las copias huérfanas de borrados anteriores se ocultan y se limpian solas al abrir la ficha.
+
 ## [1.129.0] — 2026-11-11
 
 ### Corregido
