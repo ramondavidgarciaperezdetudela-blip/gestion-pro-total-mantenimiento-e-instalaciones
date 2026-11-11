@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.130.0",
+  "version": "1.131.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,10 +16,11 @@
     "test:margen": "node scripts/test-margen-masivo.mjs",
     "test:imprimir": "node scripts/test-imprimir.mjs",
     "test:copias": "node scripts/test-copias-documentos.mjs",
+    "test:espejo": "node scripts/test-restaurar-espejo.mjs",
     "test:diarios": "node scripts/test-vinculo-diarios.mjs",
     "test:precarga": "node scripts/test-precarga.mjs",
     "test:tarifa": "node scripts/test-tarifa-manual.mjs",
-    "test": "npm run test:camara && npm run test:ia && npm run test:imagenes && npm run test:margen && npm run test:imprimir && npm run test:copias && npm run test:diarios && npm run test:precarga && npm run test:tarifa && npm run test:iva && npm run test:buscar && npm run test:drive && npm run test:capilar && npm run test:clima && npm run test:carga && npm run test:config && npm run test:copia",
+    "test": "npm run test:camara && npm run test:ia && npm run test:imagenes && npm run test:margen && npm run test:imprimir && npm run test:copias && npm run test:espejo && npm run test:diarios && npm run test:precarga && npm run test:tarifa && npm run test:iva && npm run test:buscar && npm run test:drive && npm run test:capilar && npm run test:clima && npm run test:carga && npm run test:config && npm run test:copia",
     "test:capilar": "node scripts/test-capilar.mjs",
     "test:gases": "node scripts/test-saturacion.mjs",
     "test:equivalencias": "node scripts/test-equivalencias.mjs",

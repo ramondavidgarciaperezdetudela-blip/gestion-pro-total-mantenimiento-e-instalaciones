@@ -65,7 +65,7 @@ const KEYERS = {
   SupplierPrice:      (r) => (_s(r.product_code) && `${_s(r.supplier_id)}|${_s(r.product_code)}`) || (_s(r.product_name) && `${_s(r.supplier_id)}|${_s(r.product_name)}`) || null,
   PriceItem:          (r) => _s(r.supplier_ref) || _s(r.description) || null,
   Invoice:            (r) => (_s(r.doc_number) && `${_s(r.doc_type)}|${_s(r.doc_number)}`) || null,
-  SATOrder:           (r) => _s(r.order_number) || null,
+  SATOrder:           (r) => _s(r.order_number) || (_s(r.date) && `${_s(r.contact_name)}|${_s(r.date)}|${_s(r.type)}|${_s(r.description).slice(0, 40)}`) || null,
   MaintenanceSheet:   (r) => _s(r.sheet_number) || null,
   StockItem:          (r) => _s(r.sku) || _s(r.ref) || _s(r.name) || null,
   Project:            (r) => _s(r.name) || null,
@@ -553,7 +553,7 @@ export default function BackupCenter() {
       const igualesMsg = sinCambios > 0
         ? ` ${sinCambios.toLocaleString()} ya estaban igual y no ha hecho falta tocarlos.`
         : '';
-      const okMsg = `${invisibles.length ? '⚠️ Restauración enviada al servidor, pero NO se ve:' : '✅ Restauración completa:'} ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar)'} en ${entitiesToRestore.length} secciones.${igualesMsg}`;
+      const okMsg = `${invisibles.length ? '⚠️ Restauración enviada al servidor, pero NO se ve:' : '✅ Restauración completa:'} ${total.toLocaleString()} registros ${restoreMode === 'clean' ? 'restaurados' : 'actualizados/añadidos (sin duplicar; lo que no estaba en la copia se ha quitado)'} en ${entitiesToRestore.length} secciones.${igualesMsg}`;
       let cuentaMsg = '';
       if (invisibles.length) {
         try {
@@ -1021,7 +1021,7 @@ export default function BackupCenter() {
                       <span className="font-semibold text-sm text-gray-900">Actualizar (recomendado)</span>
                       {restoreMode === 'update' && <CheckCircle className="w-4 h-4 text-blue-600 ml-auto" />}
                     </div>
-                    <p className="text-xs text-gray-500">Solo añade los registros que <strong>faltan</strong>. No borra nada de lo existente. Ideal para recuperar datos perdidos.</p>
+                    <p className="text-xs text-gray-500">Deja cada sección <strong>exactamente como está en la copia</strong>: añade lo que falta, actualiza lo que cambió y <strong>quita lo que no está en la copia</strong> (clientes antiguos o repetidos). Los partes SAT, facturas y documentos quedan unidos a su cliente.</p>
                   </button>
                   <button
                     onClick={() => setRestoreMode('clean')}

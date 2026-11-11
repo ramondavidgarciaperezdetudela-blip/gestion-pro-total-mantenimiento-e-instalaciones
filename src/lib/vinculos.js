@@ -26,10 +26,15 @@ export function normalizarNombre(s) {
 export function mapaIds(filasCopia, actuales, clave) {
   const mapa = new Map();
   if (!clave) return mapa;
+  const idsCopia = new Set((filasCopia || []).map((f) => f?.id).filter(Boolean));
   const porClave = new Map();
   for (const r of actuales || []) {
     const k = clave(r);
-    if (k && r.id && !porClave.has(k)) porClave.set(k, r.id);
+    if (!k || !r.id) continue;
+    // Con duplicados antiguos se prefiere el que ya tiene el id de la copia
+    // (el mismo que elige la restauración para actualizar y conservar).
+    const previo = porClave.get(k);
+    if (!previo || (!idsCopia.has(previo) && idsCopia.has(r.id))) porClave.set(k, r.id);
   }
   for (const f of filasCopia || []) {
     if (!f?.id) continue;

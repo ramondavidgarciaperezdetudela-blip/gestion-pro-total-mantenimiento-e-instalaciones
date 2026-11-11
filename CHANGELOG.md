@@ -15,6 +15,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.131.0] — 2026-11-11
+
+### Corregido
+- **Restaurar una copia deja exactamente lo que guardaste.** Antes se quedaban los clientes antiguos o repetidos que no estaban en la copia y había que borrarlos a mano. Ahora, al restaurar, lo que no está en la copia (o está repetido) se quita; si la copia no coincide con nada de lo actual no se borra nada, por seguridad.
+- **Los partes SAT quedan unidos a su cliente al restaurar.** Con clientes repetidos, el parte se vinculaba a uno de los antiguos y al borrarlo perdía al cliente. Ahora siempre se une al cliente que se conserva, y los partes sin número se reconocen por fecha y cliente para no duplicarse.
+
 ## [1.130.0] — 2026-11-11
 
 ### Corregido
