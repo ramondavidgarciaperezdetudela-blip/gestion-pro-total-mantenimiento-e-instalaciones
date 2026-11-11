@@ -447,14 +447,24 @@ ipcMain.handle('gpt-impresoras', async () => {
  */
 ipcMain.handle('gpt-imprimir', async (_evt, { html, impresora, silencioso, margenes, tamanoPapel }) => {
   let oculta = null;
+  let fichero = null;
   try {
     oculta = new BrowserWindow({
       show: false,
       webPreferences: { contextIsolation: true, nodeIntegration: false, javascript: false },
     });
-    await oculta.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(String(html || '')));
+    // Antes se cargaba como "data:" y los documentos con fotos o firmas (muy
+    // grandes) no cargaban: el diálogo de imprimir no salía. Con un fichero
+    // temporal no hay límite de tamaño.
+    fichero = path.join(os.tmpdir(), `gpt-imprimir-${Date.now()}-${Math.random().toString(36).slice(2)}.html`);
+    fs.writeFileSync(fichero, String(html || ''), 'utf8');
+    await new Promise((resolve, reject) => {
+      oculta.webContents.once('did-finish-load', resolve);
+      oculta.webContents.once('did-fail-load', (_e, _c, desc) => reject(new Error(desc || 'no cargó')));
+      oculta.loadFile(fichero).catch(reject);
+    });
     // Un respiro para que carguen las imágenes (logo, firmas, fotos).
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 600));
 
     const opciones = {
       silent: !!silencioso && !!impresora,
@@ -472,6 +482,7 @@ ipcMain.handle('gpt-imprimir', async (_evt, { html, impresora, silencioso, marge
     return { ok: false, motivo: String(err && err.message ? err.message : err) };
   } finally {
     if (oculta) { try { oculta.destroy(); } catch { /* ya cerrada */ } }
+    if (fichero) { try { fs.unlinkSync(fichero); } catch { /* ya borrado */ } }
   }
 });
 

@@ -15,6 +15,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.129.0] — 2026-11-11
+
+### Corregido
+- **Imprimir directamente desde la vista previa y desde las páginas del cliente.** Antes había que exportar a PDF y luego imprimir. Ahora el botón Imprimir abre el diálogo de impresión en el acto: en navegador con un marco oculto de la propia página (sin ventanas emergentes que se bloquean), en el programa de escritorio con un fichero temporal (los documentos con fotos o firmas ya no fallan) y en Android con el sistema de impresión nativo. Si el programa de escritorio falla, imprime desde la propia página en vez de quedarse sin hacer nada.
+- El botón «Imprimir o guardar en PDF» de los presupuestos y partes que ve el cliente también funciona dentro del programa.
+
 ## [1.128.0] — 2026-11-09
 
 ### Corregido
