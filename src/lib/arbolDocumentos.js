@@ -6,6 +6,8 @@
  *
  * Cada archivo lleva `tab`: la pestaña de la ficha donde se gestiona.
  */
+import { copiasDeDocumento, copiasHuerfanas } from './copiasDocumentos.js';
+
 const num = (...xs) => xs.find((x) => x !== undefined && x !== null && String(x).trim() !== '') ?? '';
 const euros = (t) => (t === undefined || t === null || t === '' || Number.isNaN(Number(t)) ? '' : `${Number(t).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
 const fechaDe = (x) => String(x?.date || x?.report_date || x?.updated_date || x?.created_date || '').slice(0, 10);
@@ -21,7 +23,9 @@ export const MENUS_DOCUMENTALES = ['administracion', 'servicio', 'legalizacion',
  * @returns {{id:string, titulo:string, total:number, hijos:{id:string, titulo:string, tab:string, archivos:object[]}[]}[]}
  */
 export function construirArbol({ invoices = [], satOrders = [], maintenance = [], documents = [], calculations = [], insuranceReports = [], planos = [] } = {}) {
-  const docs = documents.filter((d) => !esLegal(d));
+  // Copias de facturas/presupuestos/recibos cuyo original ya se borró: no se muestran.
+  const huerfanas = new Set(copiasHuerfanas(documents, invoices).map((d) => d.id));
+  const docs = documents.filter((d) => !esLegal(d) && !huerfanas.has(d.id));
   const porTipo = (t) => docs.filter((d) => d.doc_type === t);
   const idsPropios = (lista) => new Set(lista.map((x) => String(x.id)));
   const copiaDe = (lista) => { const ids = idsPropios(lista); return (d) => d.reference_id && ids.has(String(d.reference_id)); };
@@ -30,7 +34,7 @@ export function construirArbol({ invoices = [], satOrders = [], maintenance = []
 
   const factura = (tipo) => {
     const propios = invoices.filter((i) => i.doc_type === tipo);
-    const copias = porTipo(tipo).filter((d) => !copiaDe(propios)(d));
+    const copias = porTipo(tipo).filter((d) => !copiaDe(propios)(d) && !propios.some((i) => copiasDeDocumento([d], i).length));
     return [
       ...propios.map((i) => ({ id: `inv-${i.id}`, titulo: `${num(i.doc_number, i.title, 'Sin número')}`, fecha: fechaDe(i), detalle: [euros(i.total), i.status].filter(Boolean).join(' · '), url: i.file_url || '', tab: tipo === 'factura' ? 'facturas' : tipo === 'presupuesto' ? 'presupuestos' : 'recibos' })),
       ...copias.map((d) => docComoArchivo(d, tipo === 'factura' ? 'facturas' : tipo === 'presupuesto' ? 'presupuestos' : 'recibos')),
