@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Sparkles, Loader2, Send, Trash2, Pencil, Mail } from 'lucide-react';
+import { Plus, Sparkles, Loader2, Send, Trash2, Pencil, Mail, Globe, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { cargarTodo } from '@/lib/cargarTodo';
-import { consultarIA } from '@/lib/proveedorIA';
+import { consultarIA, ajustesIA } from '@/lib/proveedorIA';
+import { elegirPlantillas, textoPlantilla, huecosSinRellenar, urlBusquedaModelo, motivoIA } from '@/lib/plantillasNotas';
 import { abrirEnlaceAvisando, enlaceWhatsApp } from '@/lib/abrirEnlace';
 import { direccionPublica, AVISO_SIN_DIRECCION } from '@/lib/copiaFirmada';
 import { printDocument } from '@/lib/printHelper';
@@ -31,6 +32,7 @@ export default function NotasInformativas() {
   const [edicion, setEdicion] = useState(null);   // {id?, title, body}
   const [temaIA, setTemaIA] = useState('');
   const [pensando, setPensando] = useState(false);
+  const [propuestas, setPropuestas] = useState([]);
   const [audiencia, setAudiencia] = useState('todos');
   const [elegidos, setElegidos] = useState(new Set());
   const [filtro, setFiltro] = useState('');
@@ -62,6 +64,8 @@ export default function NotasInformativas() {
   const guardarNota = async () => {
     const t = (edicion?.title || '').trim(); const b = (edicion?.body || '').trim();
     if (!t || !b) { toast.error('Escribe el título y el texto de la nota.'); return; }
+    const huecos = huecosSinRellenar(b);
+    if (huecos.length && !confirm(`Quedan huecos por completar en el texto: ${huecos.slice(0, 4).join(', ')}${huecos.length > 4 ? '…' : ''}\n\n¿Guardar la nota así?`)) return;
     try {
       if (edicion.id) {
         await base44.entities.NotaInformativa.update(edicion.id, { title: t, body: b, made_with_ai: !!edicion.ia });
@@ -70,21 +74,32 @@ export default function NotasInformativas() {
         const n = await base44.entities.NotaInformativa.create({ title: t, body: b, status: 'borrador', made_with_ai: !!edicion.ia });
         setSel(n.id);
       }
-      setEdicion(null); setTemaIA('');
+      setEdicion(null); setTemaIA(''); setPropuestas([]);
       await cargar();
     } catch (err) { toast.error(`No se pudo guardar: ${err?.message || err}`); }
   };
 
+  // Siempre salen DOS opciones: un texto estándar de modelo (al instante, sin
+  // IA ni internet) y la versión de la IA. Si la IA no responde, el estándar ya
+  // está ahí y se explica por qué ha fallado.
   const redactarIA = async () => {
-    if (!temaIA.trim()) { toast.error('Cuéntale a la IA de qué trata la nota.'); return; }
+    if (!temaIA.trim()) { toast.error('Cuéntale de qué trata la nota (por ejemplo: cierre por vacaciones).'); return; }
+    const estandar = elegirPlantillas(temaIA, 2).map((p) => ({ id: `std-${p.id}`, origen: 'estandar', titulo: p.titulo, cuerpo: textoPlantilla(p, empresa) }));
+    setPropuestas([{ id: 'ia', origen: 'ia', cargando: true }, ...estandar]);
     setPensando(true);
     try {
       const r = leerNotaIA(await consultarIA(peticionNotaIA({ tema: temaIA, empresa })));
       if (!r.cuerpo) throw new Error('La IA no ha devuelto texto.');
-      setEdicion((e) => ({ ...e, title: r.titulo || e.title, body: r.cuerpo, ia: true }));
-      toast.success('Borrador listo: léelo y cámbiale lo que quieras antes de guardarlo.');
-    } catch (err) { toast.error(`La IA no ha podido: ${err?.message || err}. Comprueba el proveedor en Ajustes de IA.`, { duration: 9000 }); }
-    finally { setPensando(false); }
+      setPropuestas((ps) => ps.map((x) => (x.id === 'ia' ? { id: 'ia', origen: 'ia', titulo: r.titulo || temaIA.slice(0, 60), cuerpo: r.cuerpo } : x)));
+    } catch (err) {
+      const motivo = motivoIA(err, ajustesIA().proveedor);
+      setPropuestas((ps) => ps.map((x) => (x.id === 'ia' ? { id: 'ia', origen: 'ia', error: motivo } : x)));
+    } finally { setPensando(false); }
+  };
+  const usarPropuesta = (p) => {
+    setEdicion((e) => ({ ...e, title: p.titulo, body: p.cuerpo, ia: p.origen === 'ia' }));
+    setPropuestas([]);
+    toast.success('Texto puesto en la nota: léelo y cámbiale lo que quieras.');
   };
 
   const borrarNota = async () => {
@@ -224,8 +239,29 @@ export default function NotasInformativas() {
                 <p className="text-sm font-medium">Pídele a la IA que la redacte</p>
                 <Textarea rows={2} value={temaIA} onChange={(e) => setTemaIA(e.target.value)} placeholder="Ej.: avisar de que cerramos del 10 al 24 de agosto y de cómo pedir urgencias" />
                 <Button size="sm" variant="outline" className="gap-1" disabled={pensando} onClick={redactarIA} data-testid="redactar-ia">
-                  {pensando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Redactar borrador
+                  {pensando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Redactar (IA + modelo estándar)
                 </Button>
+                <Button size="sm" variant="ghost" className="ml-2 gap-1" onClick={() => abrirEnlaceAvisando(urlBusquedaModelo(temaIA), (m) => toast.error(m, { duration: 10000 }))} data-testid="buscar-internet">
+                  <Globe className="h-4 w-4" />Ver modelos en internet
+                </Button>
+                {propuestas.length > 0 && (
+                  <div className="space-y-2 pt-1" data-testid="propuestas">
+                    {propuestas.map((p) => (
+                      <div key={p.id} className="rounded-md border bg-background p-2 text-sm" data-propuesta={p.origen}>
+                        <p className="mb-1 flex items-center gap-1 font-medium">
+                          {p.origen === 'ia' ? <Sparkles className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                          {p.origen === 'ia' ? 'Versión de la IA' : `Modelo estándar: ${p.titulo}`}
+                        </p>
+                        {p.cargando && <p className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />La IA está redactando…</p>}
+                        {p.error && <p className="text-amber-700">La IA no ha podido: {p.error} Usa el modelo estándar de abajo o configura la IA en Ajustes de IA.</p>}
+                        {p.cuerpo && <>
+                          <p className="line-clamp-4 whitespace-pre-wrap text-muted-foreground">{p.cuerpo}</p>
+                          <Button size="sm" variant="outline" className="mt-1" onClick={() => usarPropuesta(p)} data-testid={`usar-${p.origen}`}>Usar este texto</Button>
+                        </>}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <Input placeholder="Título de la nota" value={edicion.title} onChange={(e) => setEdicion({ ...edicion, title: e.target.value })} data-testid="nota-titulo" />
               <Textarea rows={10} placeholder="Texto de la nota (separa los párrafos con una línea en blanco)" value={edicion.body} onChange={(e) => setEdicion({ ...edicion, body: e.target.value })} data-testid="nota-texto" />
