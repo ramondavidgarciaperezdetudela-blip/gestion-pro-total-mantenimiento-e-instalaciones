@@ -5,7 +5,7 @@
 // Entidades que ningún módulo puede tocar: datos de acceso de la empresa y los propios
 // registros del Centro de IA (un módulo no puede darse permisos a sí mismo).
 export const ENTIDADES_PROHIBIDAS = new Set([
-  'User', 'CompanySettings', 'ModuloIA', 'SkillIA', 'ConectorIA', 'PeticionCambioIA', 'DatoModulo'
+  'User', 'CompanySettings', 'ModuloIA', 'SkillIA', 'ConectorIA', 'PeticionCambioIA', 'DatoModulo', 'NotaEnvio'
 ]);
 
 // Campos que nunca salen por el puente ni se pueden escribir desde un módulo.

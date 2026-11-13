@@ -33,6 +33,7 @@ import FormularioCliente from '@/components/clientes/FormularioCliente';
 import FichaClienteResumen from '@/components/clientes/FichaClienteResumen';
 import NavegacionFicha from '@/components/clientes/NavegacionFicha';
 import ArbolDocumentos from '@/components/clientes/ArbolDocumentos';
+import NotasInformativasCliente from '@/components/clientes/NotasInformativasCliente';
 import { construirArbol } from '@/lib/arbolDocumentos';
 import { borrarCopias, copiasHuerfanas } from '@/lib/copiasDocumentos';
 import { clienteAFormulario, prepararCliente, nombreDeCliente } from '@/lib/cliente';
@@ -755,6 +756,11 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
           <ArbolDocumentos
             arbol={construirArbol({ invoices, satOrders, maintenance, documents, calculations, insuranceReports, planos })}
             onAbrir={(a) => { if (a.url) window.open(a.url, '_blank', 'noopener'); else if (a.tab) setPestana(a.tab); }} />
+        </TabsContent>
+
+        {/* NOTAS INFORMATIVAS: enviadas al cliente y firmadas */}
+        <TabsContent value="notas_info">
+          <NotasInformativasCliente contactId={contactId} onCambio={reloadAll} />
         </TabsContent>
 
         {/* FACTURAS */}

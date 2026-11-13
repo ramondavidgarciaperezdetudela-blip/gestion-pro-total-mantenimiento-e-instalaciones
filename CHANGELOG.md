@@ -15,6 +15,17 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.132.0] — 2026-11-13
+
+### Añadido
+- **Notas informativas a clientes con firma de lectura** (Clientes → Notas informativas). Escribes la nota a mano o le pides un borrador a la IA y lo cambias antes de guardarla; eliges mandarla a todos los clientes o solo a algunos; y la envías por WhatsApp, correo o copiando el enlace personal de cada cliente. El cliente la lee y la firma desde su enlace (página pública `/nota-publica`), y la firma queda guardada con fecha y hora.
+- Cada firma se archiva sola en la ficha del cliente (pestaña Archivos y notas → Notas informativas, y en Documentación → Otros archivos → Notas informativas firmadas), donde se puede recuperar e imprimir con la constancia de lectura. Cada envío conserva el texto tal como lo recibió el cliente, aunque después edites la nota.
+- También se puede recoger la firma sin enlace: que el cliente firme en tu pantalla o subir la foto/PDF del papel firmado.
+- Entran en las copias de seguridad (NotaInformativa y NotaEnvio). Funciones nuevas de Base44: `getNotaPublica`, `firmarNota` (avisa a la empresa por correo) y `enviarNotaInformativa` (correo a varios clientes).
+
+### Nota
+- La firma a distancia por enlace y el correo masivo necesitan Base44; en la versión sin Base44 se firma en pantalla o con el papel escaneado.
+
 ## [1.131.0] — 2026-11-11
 
 ### Corregido

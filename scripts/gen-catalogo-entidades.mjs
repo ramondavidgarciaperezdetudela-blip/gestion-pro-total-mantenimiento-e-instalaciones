@@ -6,7 +6,7 @@ import path from 'node:path';
 
 const DIR = 'base44/entities';
 const SENSIBLE = /(password|passwd|token|secret|api_?key|clave_?api|iban|card_?number|pin_?code)/i;
-const FUERA = new Set(['User', 'CompanySettings', 'ModuloIA', 'SkillIA', 'ConectorIA', 'PeticionCambioIA', 'DatoModulo']); // = ENTIDADES_PROHIBIDAS
+const FUERA = new Set(['User', 'CompanySettings', 'ModuloIA', 'SkillIA', 'ConectorIA', 'PeticionCambioIA', 'DatoModulo', 'NotaEnvio']); // = ENTIDADES_PROHIBIDAS
 const quitaComentarios = (t) => t.replace(/("(?:\\.|[^"\\])*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g, (m, s) => s || '');
 
 const salida = {};

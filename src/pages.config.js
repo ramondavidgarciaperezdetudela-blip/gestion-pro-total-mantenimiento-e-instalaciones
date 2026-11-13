@@ -117,6 +117,7 @@ const SharingWarning = lazy(() => import('./pages/SharingWarning'));
 const UpdateCenter = lazy(() => import('./pages/UpdateCenter'));
 const Novedades = lazy(() => import('./pages/Novedades'));
 const CentroIA = lazy(() => import('./pages/CentroIA'));
+const NotasInformativas = lazy(() => import('./pages/NotasInformativas'));
 const ModuloIA = lazy(() => import('./pages/ModuloIA'));
 const AISupport = lazy(() => import('./pages/AISupport'));
 const DiagnosticoCarga = lazy(() => import('./pages/DiagnosticoCarga'));
@@ -198,6 +199,7 @@ export const PAGES = {
     "UpdateCenter": UpdateCenter,
     "Novedades": Novedades,
     "CentroIA": CentroIA,
+    "NotasInformativas": NotasInformativas,
     "ModuloIA": ModuloIA,
     "AISupport": AISupport,
     "DiagnosticoCarga": DiagnosticoCarga,
