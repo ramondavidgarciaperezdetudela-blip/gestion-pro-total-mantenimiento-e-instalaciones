@@ -15,6 +15,17 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.134.0] — 2026-11-13
+
+### Añadido
+- **Notas personalizadas para cada cliente, también al enviarlas a todos.** La nota se guarda con los avisos y, al prepararla para los clientes, el programa rellena solo en cada una: `[nombre de cliente]`, `[nombre de tu empresa]`, `[Tu nombre]` (el usuario que la envía), `[Teléfono / Correo electrónico]` (los de la empresa) y `[fecha]` (la del envío), además de `[teléfono]`, `[correo electrónico]`, `[dirección]`, `[web]` y los datos propios del cliente (`[teléfono del cliente]`…). Se aceptan mayúsculas, tildes y llaves. Si falta algún dato, el aviso se queda visible. Botones para insertarlos y vista previa con un cliente real. Los modelos estándar ya llevan fecha, saludo y despedida con estos avisos.
+- **La nota queda en la ficha de cada cliente desde que se prepara** (pendiente de firma) y la misma ficha pasa a «firmada» cuando firma, sin duplicarse.
+- **Editar:** la nota guardada se puede cambiar cuando quieras y puedes aplicar el cambio a los envíos pendientes (los ya firmados no cambian); también se puede editar el texto de un cliente concreto.
+- El correo de aviso de firma incluye ahora el texto de la nota y la firma.
+
+### Cambiado
+- Los huecos de fecha de los modelos (p. ej. fecha del cambio) pasan a `[FECHA DEL CAMBIO]`; `[fecha]` es siempre la de envío.
+
 ## [1.133.0] — 2026-11-13
 
 ### Corregido
