@@ -14,7 +14,7 @@ const fechaDe = (x) => String(x?.date || x?.report_date || x?.updated_date || x?
 const esLegal = (d) => String(d?.title || '').startsWith('LEGAL:');
 
 /** Tipos de ClientDocument que tienen submenú propio; el resto va a «Otros archivos». */
-const TIPOS_DOC_PROPIOS = new Set(['factura', 'presupuesto', 'recibo', 'orden_sat', 'ficha_mantenimiento', 'calculo_termico', 'calculo_solar', 'manual', 'foto_equipo', 'diagnostico_frigorifico', 'informe']);
+const TIPOS_DOC_PROPIOS = new Set(['factura', 'presupuesto', 'recibo', 'orden_sat', 'ficha_mantenimiento', 'calculo_termico', 'calculo_solar', 'manual', 'foto_equipo', 'diagnostico_frigorifico', 'informe', 'nota_informativa']);
 
 export const MENUS_DOCUMENTALES = ['administracion', 'servicio', 'legalizacion', 'calculos', 'equipos', 'otros'];
 
@@ -61,6 +61,7 @@ export function construirArbol({ invoices = [], satOrders = [], maintenance = []
   ];
   const solares = porTipo('calculo_solar').map((d) => docComoArchivo(d, 'calcs'));
 
+  const notasInfo = porTipo('nota_informativa').map((d) => docComoArchivo(d, 'notas_info'));
   const manuales = porTipo('manual').map((d) => docComoArchivo(d, 'files'));
   const fotos = porTipo('foto_equipo').map((d) => docComoArchivo(d, 'fotos_equipo'));
   const otros = docs.filter((d) => !TIPOS_DOC_PROPIOS.has(d.doc_type)).map((d) => docComoArchivo(d, 'files'));
@@ -76,7 +77,7 @@ export function construirArbol({ invoices = [], satOrders = [], maintenance = []
     menu('legalizacion', 'Legalización', [['legales', 'Certificados, memorias y boletines', 'legalizacion', legales]]),
     menu('calculos', 'Cálculos', [['termicos', 'Cálculos térmicos y de climatización', 'calcs', termicos], ['solares', 'Cálculos solares', 'calcs', solares]]),
     menu('equipos', 'Equipos y manuales', [['manuales', 'Manuales', 'files', manuales], ['planos', 'Planos y archivos CAD', 'planos', archivosPlanos], ['fotos', 'Fotos de equipos', 'fotos_equipo', fotos]]),
-    menu('otros', 'Otros archivos', [['varios', 'Archivos varios', 'files', otros]]),
+    menu('otros', 'Otros archivos', [['notasinfo', 'Notas informativas firmadas', 'notas_info', notasInfo], ['varios', 'Archivos varios', 'files', otros]]),
   ];
 }
 

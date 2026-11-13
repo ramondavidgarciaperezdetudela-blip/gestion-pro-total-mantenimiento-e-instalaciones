@@ -88,6 +88,7 @@ class ErrorBoundary extends Component {
   }
 }
 const SATPublico = lazy(() => import('./pages/SATPublico'));
+const NotaPublica = lazy(() => import('./pages/NotaPublica'));
 const VerificarDocumento = lazy(() => import('./pages/VerificarDocumento'));
 const SupplierTariffs = lazy(() => import('./pages/SupplierTariffs'));
 const PurchaseSummary = lazy(() => import('./pages/PurchaseSummary'));
@@ -200,6 +201,7 @@ const AuthenticatedApp = () => {
           ))}
           <Route path="/presupuesto-publico" element={<PresupuestoPublico />} />
           <Route path="/sat-publico" element={<SATPublico />} />
+          <Route path="/nota-publica" element={<NotaPublica />} />
           <Route path="/verificar-documento" element={<VerificarDocumento />} />
           <Route path="/SupplierTariffs" element={<LayoutWrapper currentPageName="SupplierTariffs"><SupplierTariffs /></LayoutWrapper>} />
           <Route path="/PurchaseSummary" element={<LayoutWrapper currentPageName="PurchaseSummary"><PurchaseSummary /></LayoutWrapper>} />

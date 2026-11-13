@@ -42,6 +42,7 @@ export const AREAS = [
     apartados: [
       ap('Contacts', 'Clientes', 'cliente'),
       ap('ContactForm', 'Nuevo cliente', 'cliente'),
+      ap('NotasInformativas', 'Notas informativas (firma de lectura)', 'plantilla'),
       ap('ClientPortal', 'Portal del cliente', 'portal'),
       ap('Projects', 'Proyectos', 'plano'),
       ap('ProjectTimeline', 'Cronograma', 'calendario')
