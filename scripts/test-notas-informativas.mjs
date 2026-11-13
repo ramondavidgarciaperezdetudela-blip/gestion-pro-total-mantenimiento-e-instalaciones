@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { webcrypto } from 'node:crypto';
+// Node 18 no trae crypto global (los navegadores sí).
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
 import { textoAHtml, crearEnvios, enlaceNota, resumenEnvios, htmlNotaFirmada, leerNotaIA, documentoDeFicha, sincronizarFirmadas, registrarFirma, mensajeNota } from '../src/lib/notasInformativas.js';
 // XSS: el texto se escapa
 assert.ok(!textoAHtml('<script>x</script>\n\nhola').includes('<script>'));
