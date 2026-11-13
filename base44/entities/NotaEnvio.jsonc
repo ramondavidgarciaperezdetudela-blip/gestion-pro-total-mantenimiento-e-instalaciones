@@ -64,6 +64,10 @@
     "client_doc_id": {
       "type": "string",
       "description": "Documento archivado en la ficha del cliente"
+    },
+    "client_doc_estado": {
+      "type": "string",
+      "description": "Estado del documento archivado en la ficha (pendiente/firmada)"
     }
   },
   "required": [

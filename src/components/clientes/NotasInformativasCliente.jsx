@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { printDocument } from '@/lib/printHelper';
-import { htmlNotaFirmada, sincronizarFirmadas } from '@/lib/notasInformativas';
+import { htmlNotaFirmada, sincronizarDocumentos } from '@/lib/notasInformativas';
 import FilaEnvio from '@/components/notas/FilaEnvio';
 import FirmaNotaDialog from '@/components/notas/FirmaNotaDialog';
 
@@ -22,7 +22,7 @@ export default function NotasInformativasCliente({ contactId, onCambio }) {
         base44.entities.CompanySettings.list(),
       ]);
       setEmpresa(cs?.[0] || null);
-      const nuevas = await sincronizarFirmadas(base44, lista);
+      const nuevas = await sincronizarDocumentos(base44, lista);
       const porId = new Map(nuevas.map((n) => [n.id, n]));
       const completa = lista.map((e) => porId.get(e.id) || e)
         .sort((a, b) => String(b.signed_at || b.created_date || '').localeCompare(String(a.signed_at || a.created_date || '')));
@@ -37,7 +37,7 @@ export default function NotasInformativasCliente({ contactId, onCambio }) {
   return (
     <div className="mt-2 rounded-lg border bg-card" data-testid="notas-cliente">
       {envios.length === 0
-        ? <p className="p-4 text-sm text-muted-foreground">A este cliente aún no se le ha enviado ninguna nota informativa. Se mandan desde Clientes → Notas informativas.</p>
+        ? <p className="p-4 text-sm text-muted-foreground">A este cliente aún no se le ha preparado ninguna nota informativa. Se mandan desde Clientes → Notas informativas.</p>
         : envios.map((e) => <FilaEnvio key={e.id} envio={e} mostrarNota onFirmar={setFirmando} onImprimir={imprimir} />)}
       <FirmaNotaDialog envio={firmando} onCerrar={() => setFirmando(null)} onFirmada={cargar} />
     </div>
