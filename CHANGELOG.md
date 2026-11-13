@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.133.0] — 2026-11-13
+
+### Corregido
+- **«Redactar» en las notas informativas ya siempre te da un texto.** Antes, si la IA no estaba configurada o no respondía (por ejemplo sin Ollama encendido o sin clave), no pasaba nada. Ahora salen dos opciones a la vez: la versión de la IA y un modelo estándar (cierre por vacaciones, horarios, tarifas, mantenimiento, gases refrigerantes, interrupción de servicio, facturación, protección de datos, urgencias…) que aparece al instante, sin IA ni internet. Si la IA falla, se explica el motivo en palabras llanas.
+- Botón «Ver modelos en internet» para buscar un modelo en el navegador.
+- Los huecos del modelo van entre [corchetes] y el programa avisa antes de guardar la nota si quedan sin completar.
+
 ## [1.132.0] — 2026-11-13
 
 ### Añadido
