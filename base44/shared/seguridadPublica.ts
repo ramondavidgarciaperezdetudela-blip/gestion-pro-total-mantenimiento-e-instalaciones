@@ -109,3 +109,18 @@ export function ordenPublica(order: any) {
 export function empresaPublica(company: any) {
   return soloCampos(company, CAMPOS_EMPRESA);
 }
+
+/** Comparación de claves sin pistas por el tiempo que tarda. */
+export function mismaClave(a: unknown, b: unknown): boolean {
+  const x = String(a ?? ''); const y = String(b ?? '');
+  if (!x || x.length !== y.length) return false;
+  let r = 0;
+  for (let i = 0; i < x.length; i++) r |= x.charCodeAt(i) ^ y.charCodeAt(i);
+  return r === 0;
+}
+
+/** Campos de la nota informativa que el cliente puede ver en su enlace. */
+const CAMPOS_NOTA = ['id', 'nota_title', 'nota_body', 'contact_name', 'status', 'signed_at', 'signature', 'signature_via', 'sent_date'];
+export function notaPublica(envio: any) {
+  return soloCampos(envio, CAMPOS_NOTA);
+}

@@ -11,7 +11,7 @@ export const MENUS_FICHA = [
   { id: 'legalizacion', titulo: '📜 Legalización', subs: [['legalizacion', 'Documentos legales']] },
   { id: 'calculos', titulo: '🧮 Cálculos', subs: [['calcs', 'Cálculos']] },
   { id: 'equipos', titulo: '🏭 Equipos', subs: [['maquinaria', 'Maquinaria'], ['instalaciones', 'Instalaciones'], ['planos', 'Planos'], ['fotos_equipo', 'Fotos de equipo'], ['galeria_fotos', 'Galería']] },
-  { id: 'archivos', titulo: '🗂️ Archivos y notas', subs: [['files', 'Archivos'], ['notes', 'Notas'], ['historial', 'Historial de cambios']] },
+  { id: 'archivos', titulo: '🗂️ Archivos y notas', subs: [['files', 'Archivos'], ['notes', 'Notas'], ['notas_info', 'Notas informativas'], ['historial', 'Historial de cambios']] },
 ];
 
 export const menuDePestana = (tab) => MENUS_FICHA.find((m) => m.subs.some((s) => s[0] === tab)) || MENUS_FICHA[0];

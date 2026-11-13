@@ -40,7 +40,7 @@ const ALL_ENTITIES = [
   'AIConsultation', 'SATChatMessage', 'EquipmentDiary',
   // Añadidas para cubrir TODOS los apartados del programa:
   'ChangeOpinionRequest', 'ClientMachine', 'DocumentTemplate',
-  'EquipmentFailure', 'InsuranceReport', 'SATWorkTemplate', 'SupplierCatalog', 'FichaTecnicaMaquina', 'SystemSettings',
+  'EquipmentFailure', 'InsuranceReport', 'SATWorkTemplate', 'SupplierCatalog', 'FichaTecnicaMaquina', 'NotaInformativa', 'NotaEnvio', 'SystemSettings',
   // Planos frigoríficos (con su vista 3D y el cliente al que pertenecen) y el catálogo propio de elementos del plano:
   'RefrigerationPlan', 'PlanoCatalogItem',
 ];
@@ -86,6 +86,8 @@ const KEYERS = {
   InsuranceReport:    (r) => _s(r.report_number) || null,
   RefrigerationPlan:  (r) => (_s(r.name) && `${_s(r.contact_id)}|${_s(r.name)}`) || null,
   PlanoCatalogItem:   (r) => _s(r.name) || _s(r.label) || null,
+  NotaInformativa:    (r) => (_s(r.title) && `${_s(r.title)}|${_s(r.created_date).slice(0, 10)}`) || null,
+  NotaEnvio:          (r) => (_s(r.nota_id) && _s(r.contact_id) && `${_s(r.nota_id)}|${_s(r.contact_id)}`) || null,
   FichaTecnicaMaquina: (r) => _s(r.key) || (_s(r.manufacturer) && `${_s(r.manufacturer)}|${_s(r.model)}`) || null,
   // ChangeLog, AIConsultation, SATChatMessage, EquipmentDiary, ChangeOpinionRequest,
   // EquipmentFailure → histórico: sin clave (solo añadir lo que falte)
@@ -125,6 +127,8 @@ const ENTITY_LABELS = {
   RefrigerationPlan: 'Planos Frigoríficos (con vista 3D)',
   PlanoCatalogItem: 'Catálogo de elementos del plano',
   FichaTecnicaMaquina: 'Fichas técnicas de máquinas',
+  NotaInformativa: 'Notas informativas',
+  NotaEnvio: 'Envíos y firmas de notas informativas',
 };
 
 const STORAGE_KEY = 'backupConfig';

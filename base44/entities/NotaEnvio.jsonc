@@ -1,0 +1,143 @@
+{
+  "name": "NotaEnvio",
+  "type": "object",
+  "properties": {
+    "nota_id": {
+      "type": "string"
+    },
+    "nota_title": {
+      "type": "string"
+    },
+    "nota_body": {
+      "type": "string",
+      "description": "Copia del texto tal y como lo recibió el cliente"
+    },
+    "contact_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "token": {
+      "type": "string",
+      "description": "Clave secreta del enlace personal del cliente"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendiente",
+        "firmada"
+      ],
+      "default": "pendiente"
+    },
+    "sent_via": {
+      "type": "string"
+    },
+    "sent_date": {
+      "type": "string"
+    },
+    "signature": {
+      "type": "string",
+      "description": "Firma del cliente (imagen)"
+    },
+    "signed_at": {
+      "type": "string"
+    },
+    "signature_via": {
+      "type": "string",
+      "enum": [
+        "enlace",
+        "pantalla",
+        "papel"
+      ]
+    },
+    "signed_file_url": {
+      "type": "string",
+      "description": "Documento firmado en papel y escaneado"
+    },
+    "client_doc_id": {
+      "type": "string",
+      "description": "Documento archivado en la ficha del cliente"
+    }
+  },
+  "required": [
+    "nota_id",
+    "contact_id"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "email": "kairigardia.gestionprototal@gmail.com"
+          }
+        }
+      ]
+    }
+  }
+}
