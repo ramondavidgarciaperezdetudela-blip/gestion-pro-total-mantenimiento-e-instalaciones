@@ -1,7 +1,7 @@
 {
   "name": "gestion-pro-total-fuera-base44",
   "private": true,
-  "version": "1.132.0",
+  "version": "1.133.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -18,10 +18,11 @@
     "test:copias": "node scripts/test-copias-documentos.mjs",
     "test:espejo": "node scripts/test-restaurar-espejo.mjs",
     "test:notas": "node scripts/test-notas-informativas.mjs",
+    "test:plantillas": "node scripts/test-plantillas-notas.mjs",
     "test:diarios": "node scripts/test-vinculo-diarios.mjs",
     "test:tarifa": "node scripts/test-tarifa-manual.mjs",
     "test:precarga": "node scripts/test-precarga.mjs",
-    "test": "npm run test:camara && npm run test:ia && npm run test:imagenes && npm run test:margen && npm run test:imprimir && npm run test:copias && npm run test:espejo && npm run test:notas && npm run test:diarios && npm run test:tarifa && npm run test:precarga && npm run test:iva && npm run test:buscar && npm run test:drive && npm run test:capilar && npm run test:clima && npm run test:carga && npm run test:config && npm run test:copia",
+    "test": "npm run test:camara && npm run test:ia && npm run test:imagenes && npm run test:margen && npm run test:imprimir && npm run test:copias && npm run test:espejo && npm run test:notas && npm run test:plantillas && npm run test:diarios && npm run test:tarifa && npm run test:precarga && npm run test:iva && npm run test:buscar && npm run test:drive && npm run test:capilar && npm run test:clima && npm run test:carga && npm run test:config && npm run test:copia",
     "test:capilar": "node scripts/test-capilar.mjs",
     "test:gases": "node scripts/test-saturacion.mjs",
     "test:equivalencias": "node scripts/test-equivalencias.mjs",
