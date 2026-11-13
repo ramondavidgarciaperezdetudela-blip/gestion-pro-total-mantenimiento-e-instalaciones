@@ -15,7 +15,7 @@ import { direccionPublica, AVISO_SIN_DIRECCION } from '@/lib/copiaFirmada';
 import { printDocument } from '@/lib/printHelper';
 import {
   crearEnvios, enlaceNota, mensajeNota, resumenEnvios, htmlNotaFirmada,
-  peticionNotaIA, leerNotaIA, sincronizarFirmadas,
+  peticionNotaIA, leerNotaIA, sincronizarDocumentos, actualizarPendientes, personalizar, datosDeNota, MARCADORES,
 } from '@/lib/notasInformativas';
 import FilaEnvio from '@/components/notas/FilaEnvio';
 import FirmaNotaDialog from '@/components/notas/FirmaNotaDialog';
@@ -37,6 +37,9 @@ export default function NotasInformativas() {
   const [elegidos, setElegidos] = useState(new Set());
   const [filtro, setFiltro] = useState('');
   const [firmando, setFirmando] = useState(null);
+  const [editEnvio, setEditEnvio] = useState(null);
+  const [remitente, setRemitente] = useState('');
+  const refTexto = React.useRef(null);
   const [enviandoCorreos, setEnviandoCorreos] = useState(false);
 
   const cargar = useCallback(async () => {
@@ -47,11 +50,12 @@ export default function NotasInformativas() {
       ]);
       setEmpresa(cs?.[0] || null);
       setClientes(c);
-      const nuevas = await sincronizarFirmadas(base44, e);
+      try { const yo = await base44.auth.me(); setRemitente(yo?.full_name || yo?.name || ''); } catch { /* sin usuario: firma la empresa */ }
+      const nuevas = await sincronizarDocumentos(base44, e);
       const porId = new Map(nuevas.map((x) => [x.id, x]));
       setEnvios(e.map((x) => porId.get(x.id) || x));
       setNotas(n);
-      if (nuevas.length) toast.success(`${nuevas.length} nota${nuevas.length === 1 ? '' : 's'} firmada${nuevas.length === 1 ? '' : 's'} desde la última vez: ya están en la ficha de ${nuevas.length === 1 ? 'su cliente' : 'sus clientes'}.`, { duration: 9000 });
+      if (nuevas.length) toast.success(`${nuevas.length} nota${nuevas.length === 1 ? '' : 's'} firmada${nuevas.length === 1 ? '' : 's'} desde la última vez: ya figura${nuevas.length === 1 ? '' : 'n'} como firmada${nuevas.length === 1 ? '' : 's'} en la ficha de ${nuevas.length === 1 ? 'su cliente' : 'sus clientes'}.`, { duration: 9000 });
     } catch (err) { toast.error(`No se pudieron cargar las notas: ${err?.message || err}`); }
     finally { setCargando(false); }
   }, []);
@@ -60,6 +64,7 @@ export default function NotasInformativas() {
   const nota = notas.find((n) => n.id === sel) || null;
   const enviosNota = useMemo(() => envios.filter((e) => e.nota_id === sel), [envios, sel]);
   const base = direccionPublica(empresa);
+  const contexto = { empresa, remitente };
 
   const guardarNota = async () => {
     const t = (edicion?.title || '').trim(); const b = (edicion?.body || '').trim();
@@ -69,7 +74,12 @@ export default function NotasInformativas() {
     try {
       if (edicion.id) {
         await base44.entities.NotaInformativa.update(edicion.id, { title: t, body: b, made_with_ai: !!edicion.ia });
-        if (enviosNota.some((e) => e.nota_id === edicion.id)) toast.info('Los envíos ya hechos conservan el texto que recibió cada cliente.');
+        const pendientes = envios.filter((e) => e.nota_id === edicion.id && e.status !== 'firmada');
+        const firmadas = envios.filter((e) => e.nota_id === edicion.id && e.status === 'firmada').length;
+        if (pendientes.length && confirm(`Esta nota ya está preparada para ${pendientes.length} cliente${pendientes.length === 1 ? '' : 's'} que aún no la han firmado.\n\n¿Aplicar el cambio también a esos envíos (con el nombre de cada uno)?`)) {
+          const n = await actualizarPendientes(base44, { id: edicion.id, title: t, body: b }, pendientes, clientes, contexto);
+          toast.success(`Texto actualizado en ${n} envío${n === 1 ? '' : 's'} pendiente${n === 1 ? '' : 's'}.${firmadas ? ' Los ya firmados no cambian.' : ''}`);
+        } else if (firmadas) toast.info('Las notas ya firmadas conservan el texto que firmó cada cliente.');
       } else {
         const n = await base44.entities.NotaInformativa.create({ title: t, body: b, status: 'borrador', made_with_ai: !!edicion.ia });
         setSel(n.id);
@@ -96,6 +106,22 @@ export default function NotasInformativas() {
       setPropuestas((ps) => ps.map((x) => (x.id === 'ia' ? { id: 'ia', origen: 'ia', error: motivo } : x)));
     } finally { setPensando(false); }
   };
+  const nombreEjemplo = clientes[0] ? nombreCliente(clientes[0]) : 'Ana García';
+  const insertar = (marca) => {
+    const el = refTexto.current;
+    setEdicion((e) => {
+      const t = e.body || '';
+      const i = el?.selectionStart ?? t.length; const f = el?.selectionEnd ?? i;
+      return { ...e, body: t.slice(0, i) + marca + t.slice(f) };
+    });
+  };
+  const guardarEnvio = async () => {
+    if (!editEnvio?.nota_body?.trim()) { toast.error('El texto no puede quedar vacío.'); return; }
+    try {
+      await base44.entities.NotaEnvio.update(editEnvio.id, { nota_title: editEnvio.nota_title, nota_body: editEnvio.nota_body });
+      setEditEnvio(null); toast.success('Texto de este cliente actualizado.'); await cargar();
+    } catch (err) { toast.error(`No se pudo guardar: ${err?.message || err}`); }
+  };
   const usarPropuesta = (p) => {
     setEdicion((e) => ({ ...e, title: p.titulo, body: p.cuerpo, ia: p.origen === 'ia' }));
     setPropuestas([]);
@@ -105,20 +131,23 @@ export default function NotasInformativas() {
   const borrarNota = async () => {
     if (!nota || !confirm(`¿Borrar la nota «${nota.title}»? Se quitan los envíos pendientes; los ya firmados se conservan en la ficha de cada cliente.`)) return;
     try {
-      await Promise.all(enviosNota.filter((e) => e.status !== 'firmada').map((e) => base44.entities.NotaEnvio.delete(e.id)));
+      await Promise.all(enviosNota.filter((e) => e.status !== 'firmada').map(async (e) => {
+        if (e.client_doc_id && e.client_doc_id !== 'ok') await base44.entities.ClientDocument.delete(e.client_doc_id).catch(() => {});
+        await base44.entities.NotaEnvio.delete(e.id);
+      }));
       await base44.entities.NotaInformativa.delete(nota.id);
       setSel(null); await cargar();
     } catch (err) { toast.error(`No se pudo borrar: ${err?.message || err}`); }
   };
 
   const destinatarios = audiencia === 'todos' ? clientes : clientes.filter((c) => elegidos.has(c.id));
-  const nuevosEnvios = nota ? crearEnvios(nota, destinatarios, enviosNota) : [];
+  const nuevosEnvios = nota ? crearEnvios(nota, destinatarios, enviosNota, contexto) : [];
   const preparar = async () => {
     if (!nuevosEnvios.length) { toast.info('No hay clientes nuevos a los que preparar la nota.'); return; }
     try {
       await base44.entities.NotaEnvio.bulkCreate(nuevosEnvios);
       await base44.entities.NotaInformativa.update(nota.id, { audience: audiencia, status: 'enviada', sent_date: new Date().toISOString() });
-      toast.success(`Preparada para ${nuevosEnvios.length} cliente${nuevosEnvios.length === 1 ? '' : 's'}. Ahora envíala desde la lista.`);
+      toast.success(`Preparada para ${nuevosEnvios.length} cliente${nuevosEnvios.length === 1 ? '' : 's'}, cada una con su nombre y el de tu empresa, y guardada en la ficha de cada cliente. Ahora envíala desde la lista.`, { duration: 8000 });
       setElegidos(new Set()); await cargar();
     } catch (err) { toast.error(`No se pudieron preparar los envíos: ${err?.message || err}`); }
   };
@@ -223,7 +252,7 @@ export default function NotasInformativas() {
                     {enviandoCorreos ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}Enviar por correo a los pendientes
                   </Button>
                 </div>
-                {enviosNota.map((e) => <FilaEnvio key={e.id} envio={e} onWhatsApp={porWhatsApp} onCorreo={porCorreo} onCopiar={copiar} onFirmar={setFirmando} onImprimir={imprimir} />)}
+                {enviosNota.map((e) => <FilaEnvio key={e.id} envio={e} onWhatsApp={porWhatsApp} onCorreo={porCorreo} onCopiar={copiar} onFirmar={setFirmando} onImprimir={imprimir} onEditar={(x) => setEditEnvio({ ...x })} />)}
               </div>
             )}
           </div>
@@ -264,10 +293,37 @@ export default function NotasInformativas() {
                 )}
               </div>
               <Input placeholder="Título de la nota" value={edicion.title} onChange={(e) => setEdicion({ ...edicion, title: e.target.value })} data-testid="nota-titulo" />
-              <Textarea rows={10} placeholder="Texto de la nota (separa los párrafos con una línea en blanco)" value={edicion.body} onChange={(e) => setEdicion({ ...edicion, body: e.target.value })} data-testid="nota-texto" />
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-muted-foreground">Se rellenan solos al preparar cada envío (clic para insertar):</span>
+                {MARCADORES.map((m, i) => (
+                  <Button key={m} type="button" size="sm" variant="outline" className="h-7" onClick={() => insertar(m)} data-testid={`insertar-${i}`}>{m}</Button>
+                ))}
+              </div>
+              <Textarea ref={refTexto} rows={10} placeholder="Texto de la nota (separa los párrafos con una línea en blanco)" value={edicion.body} onChange={(e) => setEdicion({ ...edicion, body: e.target.value })} data-testid="nota-texto" />
+              {/\[nombre/i.test(edicion.body) && (
+                <p className="rounded border bg-muted/40 p-2 text-xs text-muted-foreground" data-testid="vista-previa-personal">
+                  <strong>Así la verá, por ejemplo, {nombreEjemplo}:</strong> {personalizar(edicion.body, datosDeNota({ cliente: clientes[0] || { __nombre: nombreEjemplo }, empresa, remitente })).slice(0, 320)}…
+                </p>
+              )}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setEdicion(null)}>Cancelar</Button>
                 <Button onClick={guardarNota} data-testid="guardar-nota">Guardar nota</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!editEnvio} onOpenChange={(o) => { if (!o) setEditEnvio(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Texto para {editEnvio?.contact_name}</DialogTitle></DialogHeader>
+          {editEnvio && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Solo cambia la nota de este cliente; las demás no se tocan.</p>
+              <Input value={editEnvio.nota_title} onChange={(e) => setEditEnvio({ ...editEnvio, nota_title: e.target.value })} />
+              <Textarea rows={10} value={editEnvio.nota_body} onChange={(e) => setEditEnvio({ ...editEnvio, nota_body: e.target.value })} data-testid="envio-texto" />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditEnvio(null)}>Cancelar</Button>
+                <Button onClick={guardarEnvio} data-testid="guardar-envio">Guardar</Button>
               </div>
             </div>
           )}

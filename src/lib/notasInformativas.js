@@ -32,6 +32,74 @@ export function nuevoToken() {
   return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
 }
 
+// ── Marcadores que se rellenan solos con los datos de cada cliente ─────────
+const sinAcentos = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/\s*\/\s*/g, ' / ').replace(/\s+/g, ' ').trim();
+
+// marcador (sin acentos ni mayúsculas) → qué dato lleva
+const MARCAS = {
+  cliente: ['nombre de cliente', 'nombre del cliente', 'nombre cliente', 'nombre de la cliente', 'cliente'],
+  empresa: ['nombre de tu empresa', 'nombre de su empresa', 'nombre de la empresa', 'nombre de mi empresa',
+    'nombre de nuestra empresa', 'nombre empresa', 'nombre de empresa', 'empresa'],
+  remitente: ['tu nombre', 'su nombre', 'mi nombre', 'nombre del remitente', 'nombre y apellidos', 'tu nombre y apellidos', 'firma', 'tu firma'],
+  telefonoCorreo: ['telefono / correo electronico', 'telefono / correo', 'telefono / email', 'telefono / e-mail', 'telefono y correo electronico',
+    'telefono o correo electronico', 'correo electronico / telefono', 'datos de contacto', 'tus datos de contacto', 'contacto'],
+  telefono: ['telefono', 'tu telefono', 'telefono de contacto', 'telefono de la empresa', 'tu telefono de contacto'],
+  correo: ['correo electronico', 'correo', 'email', 'e-mail', 'tu correo electronico', 'tu correo', 'tu email', 'correo de contacto', 'correo electronico de contacto'],
+  direccion: ['direccion de la empresa', 'tu direccion', 'direccion de tu empresa'],
+  web: ['web', 'pagina web', 'sitio web', 'tu web'],
+  telefonoCliente: ['telefono del cliente', 'telefono de cliente'],
+  correoCliente: ['correo del cliente', 'email del cliente', 'correo electronico del cliente'],
+  direccionCliente: ['direccion del cliente', 'direccion de cliente'],
+  fecha: ['fecha', 'fecha de hoy', 'fecha de envio', 'fecha de la nota', 'fecha actual', 'hoy'],
+};
+const DATO_DE = new Map(Object.entries(MARCAS).flatMap(([dato, lista]) => lista.map((m) => [m, dato])));
+export const MARCADOR_CLIENTE = '[nombre de cliente]';
+export const MARCADOR_EMPRESA = '[nombre de tu empresa]';
+export const MARCADORES = [
+  '[nombre de cliente]', '[nombre de tu empresa]', '[Tu nombre]', '[Teléfono / Correo electrónico]', '[fecha]',
+];
+
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+/** 13 de noviembre de 2026 */
+export const fechaEscrita = (d = new Date()) => `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+
+/** ¿Este [hueco] es uno de los que el programa rellena solo? */
+export const esMarcadorAutomatico = (hueco) => DATO_DE.has(sinAcentos(String(hueco).replace(/^[\[{]|[\]}]$/g, '')));
+
+/**
+ * Los datos con los que se rellena una nota para UN cliente.
+ * @param cliente   el contacto
+ * @param empresa   CompanySettings
+ * @param remitente nombre de quien firma la nota (el usuario); si no se sabe, la empresa
+ */
+export function datosDeNota({ cliente, empresa, remitente, fecha } = {}) {
+  const c = cliente || {};
+  const e = empresa || {};
+  const nombreCliente = c.__nombre || nombreDe(c);
+  const contacto = [e.phone, e.email].filter(Boolean).join(' / ');
+  return {
+    cliente: nombreCliente, empresa: e.company_name || '', remitente: remitente || e.company_name || '',
+    telefonoCorreo: contacto, telefono: e.phone || '', correo: e.email || '', direccion: e.address || '', web: e.website || '',
+    telefonoCliente: c.phone || c.mobile || '', correoCliente: c.email || '',
+    direccionCliente: [c.address, c.city].filter(Boolean).join(', '),
+    fecha: fechaEscrita(fecha instanceof Date ? fecha : new Date()),
+  };
+}
+
+/**
+ * Pone en la nota los datos de este cliente y de la empresa donde aparezcan
+ * [nombre de cliente], [nombre de tu empresa], [Tu nombre], [Teléfono / Correo
+ * electrónico]… (con o sin mayúsculas, tildes, corchetes o llaves). Si falta el
+ * dato, el marcador se queda tal cual para que se vea.
+ */
+export function personalizar(texto, datos = {}) {
+  return String(texto ?? '').replace(/[\[{][^\]}\n]{2,45}[\]}]/g, (m) => {
+    const dato = DATO_DE.get(sinAcentos(m.slice(1, -1)));
+    return (dato && datos[dato]) ? datos[dato] : m;
+  });
+}
+
 const nombreDe = (c) => `${c?.name || ''} ${c?.surname || ''}`.trim() || c?.company_name || c?.full_name || 'Cliente';
 
 /**
@@ -40,17 +108,18 @@ const nombreDe = (c) => `${c?.name || ''} ${c?.surname || ''}`.trim() || c?.comp
  * @param {object[]} clientes
  * @param {object[]} existentes  envíos que ya hay (de esa nota)
  */
-export function crearEnvios(nota, clientes = [], existentes = []) {
+export function crearEnvios(nota, clientes = [], existentes = [], contexto = {}) {
   const ya = new Set(existentes.filter((e) => String(e.nota_id) === String(nota.id)).map((e) => String(e.contact_id)));
   const vistos = new Set();
   const salida = [];
   for (const c of clientes) {
     if (!c?.id || ya.has(String(c.id)) || vistos.has(String(c.id))) continue;
     vistos.add(String(c.id));
+    const datos = datosDeNota({ cliente: c, empresa: contexto?.empresa, remitente: contexto?.remitente, fecha: contexto?.fecha });
     salida.push({
       nota_id: nota.id,
-      nota_title: nota.title,
-      nota_body: nota.body,
+      nota_title: personalizar(nota.title, datos),
+      nota_body: personalizar(nota.body, datos),
       contact_id: c.id,
       contact_name: nombreDe(c),
       contact_email: c.email || '',
@@ -123,6 +192,7 @@ export function peticionNotaIA({ tema, tono = 'cercano y profesional', empresa }
     prompt: `Eres el redactor de comunicaciones de ${empresa?.company_name || 'una empresa de servicios técnicos (climatización, frío industrial, electricidad)'}. `
       + `Redacta una NOTA INFORMATIVA para clientes, en español de España, tono ${tono}, clara y breve (máximo 180 palabras), `
       + 'sin inventar datos, precios ni fechas que no se indiquen. Debe poder leerse en el móvil. '
+      + `Empieza con «Estimado/a ${MARCADOR_CLIENTE},» y cierra con la despedida, ${MARCADORES[2]} y ${MARCADORES[1]}, y con ${MARCADORES[3]} si invitas a contactar; pon ${MARCADORES[4]} en la primera línea para la fecha; escribe esos marcadores EXACTAMENTE así, entre corchetes, porque el programa los sustituye por los datos de cada cliente y de la empresa. `
       + `Tema o puntos a incluir:\n${tema}\n\nDevuelve un título corto y el texto, con párrafos separados por una línea en blanco, sin viñetas raras ni HTML.`,
     response_json_schema: {
       type: 'object',
@@ -137,43 +207,83 @@ export function leerNotaIA(r) {
   return { titulo: String(o.titulo || o.title || '').trim(), cuerpo: String(o.cuerpo || o.body || o.texto || '').replace(/<[^>]+>/g, '').trim() };
 }
 
-/** Datos de la copia de la firma en la ficha del cliente. */
+/** Documento que se guarda en la ficha del cliente: desde que se envía (pendiente) y, al firmar, firmado. */
 export function documentoDeFicha(envio) {
+  const firmada = envio.status === 'firmada';
   return {
     contact_id: envio.contact_id,
     contact_name: envio.contact_name,
-    title: `Nota informativa firmada: ${envio.nota_title}`,
+    title: firmada ? `Nota informativa firmada: ${envio.nota_title}` : `Nota informativa (pendiente de firma): ${envio.nota_title}`,
     doc_type: 'nota_informativa',
-    date: String(envio.signed_at || new Date().toISOString()).slice(0, 10),
+    date: String(firmada ? envio.signed_at : (envio.sent_date || envio.created_date || new Date().toISOString())).slice(0, 10),
     file_url: envio.signed_file_url || '',
     reference_id: envio.id,
-    description: `Leída y firmada el ${fechaLarga(envio.signed_at)} ${VIA[envio.signature_via] || ''}`.trim(),
+    description: firmada
+      ? `Leída y firmada el ${fechaLarga(envio.signed_at)} ${VIA[envio.signature_via] || ''}`.trim()
+      : 'Enviada al cliente. Pendiente de firma.',
   };
 }
 
 /**
- * Las firmas que llegan por el enlace las guarda el servidor en el envío.
- * Aquí, con la cuenta del usuario, se archivan en la ficha del cliente (así la
- * ficha es suya y la ve) y se devuelve cuántas firmas nuevas había.
+ * Mantiene la ficha del cliente al día con sus notas:
+ *  · toda nota preparada para un cliente se guarda en SU ficha (como pendiente);
+ *  · cuando la firma (por su enlace, en pantalla o en papel) el mismo documento
+ *    pasa a «firmado», sin duplicarse.
+ * Se hace con la cuenta del usuario, así la ficha es suya y la ve.
+ * @returns las firmas que acaban de llegar a la ficha (para avisar).
  */
-export async function sincronizarFirmadas(base44, envios = []) {
-  const nuevas = envios.filter((e) => e.status === 'firmada' && !e.client_doc_id);
-  const hechas = [];
-  for (const e of nuevas) {
+export async function sincronizarDocumentos(base44, envios = []) {
+  const nuevasFirmas = [];
+  for (const e of envios) {
+    const firmada = e.status === 'firmada';
     try {
-      const doc = await base44.entities.ClientDocument.create(documentoDeFicha(e));
-      await base44.entities.NotaEnvio.update(e.id, { client_doc_id: doc?.id || 'ok' });
-      hechas.push({ ...e, client_doc_id: doc?.id || 'ok' });
-    } catch (err) { console.warn('[notas] no se pudo archivar la firma:', err); }
+      if (!e.client_doc_id) {
+        const doc = await base44.entities.ClientDocument.create(documentoDeFicha(e));
+        const marca = { client_doc_id: doc?.id || 'ok', client_doc_estado: firmada ? 'firmada' : 'pendiente' };
+        await base44.entities.NotaEnvio.update(e.id, marca);
+        Object.assign(e, marca);
+        if (firmada) nuevasFirmas.push(e);
+      } else if (firmada && e.client_doc_estado !== 'firmada') {
+        const { title, description, file_url, date } = documentoDeFicha(e);
+        if (e.client_doc_id !== 'ok') await base44.entities.ClientDocument.update(e.client_doc_id, { title, description, file_url, date });
+        await base44.entities.NotaEnvio.update(e.id, { client_doc_estado: 'firmada' });
+        e.client_doc_estado = 'firmada';
+        nuevasFirmas.push(e);
+      }
+    } catch (err) { console.warn('[notas] no se pudo actualizar la ficha del cliente:', err); }
   }
-  return hechas;
+  return nuevasFirmas;
 }
+
+/** Se mantiene por compatibilidad: ahora archiva también las pendientes. */
+export const sincronizarFirmadas = sincronizarDocumentos;
 
 /** Registrar una firma tomada aquí (pantalla o papel). */
 export async function registrarFirma(base44, envio, { signature = '', signed_file_url = '', via = 'pantalla' }) {
   const datos = { status: 'firmada', signature, signed_file_url, signature_via: via, signed_at: new Date().toISOString() };
   await base44.entities.NotaEnvio.update(envio.id, datos);
   const completo = { ...envio, ...datos };
-  const [hecha] = await sincronizarFirmadas(base44, [completo]);
-  return hecha || completo;
+  await sincronizarDocumentos(base44, [completo]);
+  return completo;
+}
+
+/**
+ * Cambiar el texto de una nota que ya se preparó: los envíos PENDIENTES se
+ * rehacen con el texto nuevo (y los datos de cada cliente); los ya firmados no
+ * se tocan, porque lo que firmó el cliente no puede cambiar.
+ */
+export async function actualizarPendientes(base44, nota, envios = [], clientes = [], contexto = {}) {
+  let n = 0;
+  for (const e of envios) {
+    if (e.status === 'firmada' || String(e.nota_id) !== String(nota.id)) continue;
+    const c = clientes.find((x) => String(x.id) === String(e.contact_id));
+    const datos = datosDeNota({ cliente: c || { __nombre: e.contact_name }, empresa: contexto?.empresa, remitente: contexto?.remitente, fecha: e.sent_date || e.created_date ? new Date(e.sent_date || e.created_date) : undefined });
+    const cambios = { nota_title: personalizar(nota.title, datos), nota_body: personalizar(nota.body, datos) };
+    await base44.entities.NotaEnvio.update(e.id, cambios);
+    if (e.client_doc_id && e.client_doc_id !== 'ok') {
+      await base44.entities.ClientDocument.update(e.client_doc_id, { title: documentoDeFicha({ ...e, ...cambios }).title }).catch(() => {});
+    }
+    n++;
+  }
+  return n;
 }

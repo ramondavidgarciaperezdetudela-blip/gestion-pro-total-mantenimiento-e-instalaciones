@@ -35,6 +35,7 @@ Deno.serve(async (req) => {
           subject: `✅ Nota informativa firmada — ${envio.contact_name}`,
           body: `<div style="font-family:Arial,sans-serif;max-width:560px"><h2 style="color:#1e3a5f">Nota informativa firmada</h2>`
             + `<p><strong>${esc(envio.contact_name)}</strong> ha leído y firmado «${esc(envio.nota_title)}».</p>`
+            + `<div style="border-left:3px solid #1e3a5f;padding:6px 12px;margin:12px 0;color:#333"><strong>${esc(envio.nota_title)}</strong>${String(envio.nota_body || '').split(/\n{2,}/).map((p: string) => `<p style="margin:6px 0">${esc(p).replace(/\n/g, '<br>')}</p>`).join('')}</div>`
             + `<p style="color:#555">Firmada el ${esc(new Date(signedAt).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }))}.</p>`
             + `<img src="${firma}" alt="Firma" style="max-width:240px;border:1px solid #e5e7eb;background:#fff;padding:4px"/>`
             + `<p style="font-size:12px;color:#999">Se archivará en la ficha del cliente al abrir Notas informativas.</p></div>`,

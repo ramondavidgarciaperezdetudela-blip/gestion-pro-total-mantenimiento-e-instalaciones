@@ -77,7 +77,7 @@ export function construirArbol({ invoices = [], satOrders = [], maintenance = []
     menu('legalizacion', 'Legalización', [['legales', 'Certificados, memorias y boletines', 'legalizacion', legales]]),
     menu('calculos', 'Cálculos', [['termicos', 'Cálculos térmicos y de climatización', 'calcs', termicos], ['solares', 'Cálculos solares', 'calcs', solares]]),
     menu('equipos', 'Equipos y manuales', [['manuales', 'Manuales', 'files', manuales], ['planos', 'Planos y archivos CAD', 'planos', archivosPlanos], ['fotos', 'Fotos de equipos', 'fotos_equipo', fotos]]),
-    menu('otros', 'Otros archivos', [['notasinfo', 'Notas informativas firmadas', 'notas_info', notasInfo], ['varios', 'Archivos varios', 'files', otros]]),
+    menu('otros', 'Otros archivos', [['notasinfo', 'Notas informativas', 'notas_info', notasInfo], ['varios', 'Archivos varios', 'files', otros]]),
   ];
 }
 
