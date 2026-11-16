@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import SupplierCatalogImport from './SupplierCatalogImport';
+import { cargarPropios } from '@/lib/miBaseDatos';
+import { norm } from '@/lib/buscarArticulos';
+import { olvidarArticulos } from '@/lib/articulosProveedores';
 
 /**
  * PriceItemSelector — Selector de conceptos desde base de precios
@@ -32,8 +35,8 @@ export default function PriceItemSelector({ onSelect, trigger }) {
 
   const load = async () => {
     setLoading(true);
-    const data = await base44.entities.PriceItem.list('description', 200);
-    setItems(data.filter(i => i.is_active !== false));
+    // Todos los artículos (antes solo los 200 primeros)
+    setItems(await cargarPropios().catch(() => []));
     setLoading(false);
   };
 
@@ -41,9 +44,15 @@ export default function PriceItemSelector({ onSelect, trigger }) {
     if (open) load();
   }, [open]);
 
-  const filtered = items.filter(i =>
-    !search || i.description?.toLowerCase().includes(search.toLowerCase()) || i.notes?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Por descripción, notas, referencias, marca o proveedor; sin tildes y con palabras en cualquier orden
+  const filtered = React.useMemo(() => {
+    const palabras = norm(search).split(/\s+/).filter(Boolean);
+    if (!palabras.length) return items.slice(0, 300);
+    return items.filter(i => {
+      const t = norm(`${i.description} ${i.notes} ${i.reference} ${i.supplier_ref} ${i.brand} ${i.supplier_name} ${i.section}`);
+      return palabras.every(w => t.includes(w));
+    }).slice(0, 300);
+  }, [items, search]);
 
   const handleSelect = (item) => {
     onSelect({
@@ -67,6 +76,7 @@ export default function PriceItemSelector({ onSelect, trigger }) {
     });
     setNewForm({ description: '', unit_price: '', unit: 'ud', category: 'mano_obra', notes: '', image_url: '' });
     setAddingNew(false);
+    olvidarArticulos();
     load();
   };
 
@@ -132,7 +142,7 @@ export default function PriceItemSelector({ onSelect, trigger }) {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 className="pl-9"
-                placeholder="Buscar concepto..."
+                placeholder="Buscar por nombre, descripción, referencia, marca o proveedor…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 autoFocus
@@ -188,6 +198,8 @@ export default function PriceItemSelector({ onSelect, trigger }) {
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${CATEGORIES[item.category]?.color || 'bg-gray-100 text-gray-600'}`}>
                             {CATEGORIES[item.category]?.label || item.category}
                           </span>
+                          {item.supplier_name && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{item.supplier_name}</span>}
+                          {(item.reference || item.supplier_ref) && <span className="text-[10px] text-gray-500 font-mono">{item.reference || item.supplier_ref}</span>}
                           {item.brand && <span className="text-[10px] text-gray-400">{item.brand}</span>}
                           {item.notes && <span className="text-[10px] text-gray-400 truncate">{item.notes}</span>}
                         </div>

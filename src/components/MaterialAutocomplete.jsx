@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
-import { Package, ChevronRight, Image } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Package, ChevronRight } from 'lucide-react';
+import { buscarIndexado } from '@/lib/buscarArticulos';
+import { cargarIndiceArticulos } from '@/lib/articulosProveedores';
 
 /**
  * Input de descripción con autocompletado desde PriceItem y SupplierPrice.
@@ -13,123 +14,47 @@ import { Package, ChevronRight, Image } from 'lucide-react';
  *   onSelectItem  - ({ description, unit_price, notes, supplier_name? }) => void
  *   placeholder   - string
  *   className     - string extra para el input
- *   allPrices     - array ya cargado (para evitar re-fetches) [opcional]
  */
-export default function MaterialAutocomplete({ value, onChange, onSelectItem, placeholder = 'Descripción', className = '', allPrices }) {
-  const [suggestions, setSuggestions] = useState([]);
+export default function MaterialAutocomplete({ value, onChange, onSelectItem, placeholder = 'Descripción', className = '' }) {
+  const [indice, setIndice] = useState(null);
+  const [consulta, setConsulta] = useState('');
+  const [proveedor, setProveedor] = useState('');
   const [show, setShow] = useState(false);
-  const [localPrices, setLocalPrices] = useState(null);
-  const [supplierOptions, setSupplierOptions] = useState(null); // { base: item, options: [SupplierPrice] }
   const wrapperRef = useRef(null);
   const debounceRef = useRef(null);
+  const escrito = useRef(false); // solo se busca cuando la persona teclea, no al rellenar una elección
 
-  // Cargar precios una sola vez si no se pasan desde fuera
-  useEffect(() => {
-    if (allPrices) return;
-    Promise.all([
-      base44.entities.PriceItem.filter({ is_active: true }),
-      base44.entities.SupplierPrice.filter({ is_active: true }),
-    ]).then(([prices, supplierPrices]) => {
-      setLocalPrices({ prices, supplierPrices });
-    });
-  }, [allPrices]);
+  // Los artículos se cargan una sola vez para todo el programa (ver articulosProveedores.js)
+  useEffect(() => { cargarIndiceArticulos().then(setIndice).catch(() => {}); }, []);
 
-  const getPrices = useCallback(() => {
-    if (allPrices) return allPrices;
-    return localPrices;
-  }, [allPrices, localPrices]);
-
-  // Buscar sugerencias cuando cambia el texto
   useEffect(() => {
     clearTimeout(debounceRef.current);
-    if (!value || value.length < 2) { setSuggestions([]); setShow(false); return; }
-    debounceRef.current = setTimeout(() => {
-      const data = getPrices();
-      if (!data) return;
-      const q = value.toLowerCase();
+    if (!escrito.current) return;
+    debounceRef.current = setTimeout(() => { setConsulta(value || ''); setProveedor(''); }, 120);
+    return () => clearTimeout(debounceRef.current);
+  }, [value]);
 
-      // Buscar en PriceItem
-      const priceHits = (data.prices || []).filter(p =>
-        p.description?.toLowerCase().includes(q) || (p.notes || '').toLowerCase().includes(q)
-      ).slice(0, 8).map(p => ({
-        type: 'price',
-        id: p.id,
-        description: p.description,
-        unit_price: p.unit_price,
-        unit: p.unit || 'ud',
-        notes: p.notes,
-        category: p.category,
-        image_url: p.image_url || null,
-      }));
+  const res = useMemo(() => (indice && escrito.current ? buscarIndexado(indice, consulta, { proveedor, max: 12 }) : null), [indice, consulta, proveedor]);
+  const suggestions = res?.items || [];
 
-      // Buscar en SupplierPrice
-      const supplierHits = (data.supplierPrices || []).filter(p =>
-        p.product_name?.toLowerCase().includes(q) || p.product_code?.toLowerCase().includes(q) || (p.notes || '').toLowerCase().includes(q)
-      ).slice(0, 8).map(p => ({
-        type: 'supplier',
-        id: p.id,
-        description: p.product_name,
-        unit_price: p.sale_price || p.cost_price,
-        unit: p.unit || 'ud',
-        notes: p.notes,
-        supplier_name: p.supplier_name,
-        product_code: p.product_code,
-        category: p.category,
-      }));
-
-      // Unir y deduplicar por descripción (preferir PriceItem)
-      const all = [...priceHits];
-      supplierHits.forEach(sh => {
-        if (!all.some(ph => ph.description?.toLowerCase() === sh.description?.toLowerCase())) {
-          all.push(sh);
-        }
-      });
-
-      setSuggestions(all.slice(0, 10));
-      setShow(all.length > 0);
-    }, 220);
-  }, [value, getPrices]);
+  useEffect(() => { setShow(!!res && (suggestions.length > 0 || !!proveedor)); }, [res]);
 
   // Cerrar al hacer click fuera
   useEffect(() => {
-    const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) { setShow(false); setSupplierOptions(null); } };
+    const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setShow(false); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleSelectSuggestion = (item) => {
-    // Comprobar si hay varias entradas de proveedor para la misma descripción
-    const data = getPrices();
-    const sameDesc = (data?.supplierPrices || []).filter(sp =>
-      sp.product_name?.toLowerCase() === item.description?.toLowerCase() && sp.is_active !== false
-    );
-
-    if (sameDesc.length > 1) {
-      // Mostrar selector de proveedor
-      setSupplierOptions({ base: item, options: sameDesc });
-      setShow(false);
-    } else {
-      applyItem(item);
-    }
-  };
-
-  const applyItem = (item) => {
+  const applyItem = (a) => {
+    escrito.current = false;
+    const item = {
+      description: a.nombre, unit_price: a.precio || 0, unit: a.unidad || 'ud', notes: '',
+      supplier_name: a.proveedor || '', product_code: a.ref || '', reference: a.ref || '', delivery_days: a.plazo ?? null,
+    };
     onChange && onChange(item.description);
     onSelectItem && onSelectItem(item);
-    setSuggestions([]);
     setShow(false);
-    setSupplierOptions(null);
-  };
-
-  const handleSupplierChoice = (sp) => {
-    applyItem({
-      description: sp.product_name,
-      unit_price: sp.sale_price || sp.cost_price,
-      unit: sp.unit || 'ud',
-      notes: sp.notes,
-      supplier_name: sp.supplier_name,
-      product_code: sp.product_code,
-    });
   };
 
   return (
@@ -138,80 +63,43 @@ export default function MaterialAutocomplete({ value, onChange, onSelectItem, pl
         className={`w-full text-xs h-8 border border-input rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring ${className}`}
         placeholder={placeholder}
         value={value}
-        onChange={e => { onChange && onChange(e.target.value); setSupplierOptions(null); }}
+        onChange={e => { escrito.current = true; onChange && onChange(e.target.value); }}
         onFocus={() => { if (suggestions.length > 0) setShow(true); }}
       />
 
       {/* Dropdown sugerencias */}
-      {show && suggestions.length > 0 && (
-        <div className="absolute z-[200] top-full left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-56 overflow-y-auto">
-          {suggestions.map((item) => (
-            <button key={item.id} type="button"
+      {show && (
+        <div className="absolute z-[200] top-full left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-64 overflow-y-auto">
+          {(res?.proveedores?.length || 0) > 1 && (
+            <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b bg-gray-50 sticky top-0">
+              <button type="button" onMouseDown={(e) => { e.preventDefault(); setProveedor(''); }}
+                className={`text-[10px] px-2 py-0.5 rounded-full border ${!proveedor ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600'}`}>Todos</button>
+              {res.proveedores.slice(0, 8).map((p) => (
+                <button key={p.nombre} type="button" onMouseDown={(e) => { e.preventDefault(); setProveedor(p.nombre); }}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border ${proveedor === p.nombre ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600'}`}>{p.nombre} ({p.n})</button>
+              ))}
+            </div>
+          )}
+          {suggestions.map((a, i) => (
+            <button key={`${a.id || i}-${i}`} type="button"
               className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 border-b last:border-0 transition-colors"
-              onMouseDown={e => { e.preventDefault(); handleSelectSuggestion(item); }}>
-              {/* Miniatura imagen */}
-              <div className="w-8 h-8 flex-shrink-0 rounded border bg-gray-50 flex items-center justify-center overflow-hidden">
-                {item.image_url ? (
-                  <img src={item.image_url} alt="" className="w-full h-full object-contain"
-                    onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
-                ) : null}
-                <div className={`w-full h-full items-center justify-center ${item.image_url ? 'hidden' : 'flex'}`}>
-                  <Image className="w-3 h-3 text-gray-300" />
-                </div>
-              </div>
+              onMouseDown={e => { e.preventDefault(); applyItem(a); }}>
+              <Package className="w-4 h-4 text-gray-300 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-gray-800 truncate">{item.description}</p>
-                <div className="flex items-center gap-1.5">
-                  {item.supplier_name && (
-                    <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full">{item.supplier_name}</span>
-                  )}
-                  {item.category && (
-                    <span className="text-[9px] text-gray-400">{item.category.replace(/_/g, ' ')}</span>
-                  )}
-                  {item.notes && <span className="text-[9px] text-gray-400 truncate">{item.notes}</span>}
+                <p className="text-xs font-medium text-gray-800 truncate">{a.nombre}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${a.proveedor ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{a.proveedor || 'Sin proveedor'}</span>
+                  {a.ref && <span className="text-[9px] text-gray-500 font-mono">{a.ref}</span>}
                 </div>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <span className="text-sm font-bold text-emerald-700">{(item.unit_price || 0).toFixed(2)}€</span>
-                <span className="text-[9px] text-gray-400">/{item.unit}</span>
+                <span className="text-sm font-bold text-emerald-700">{(a.precio || 0).toFixed(2)}€</span>
+                <span className="text-[9px] text-gray-400">/{a.unidad || 'ud'}</span>
                 <ChevronRight className="w-3 h-3 text-gray-300" />
               </div>
             </button>
           ))}
-        </div>
-      )}
-
-      {/* Selector de proveedor */}
-      {supplierOptions && (
-        <div className="absolute z-[200] top-full left-0 right-0 mt-0.5 bg-white border border-blue-200 rounded-xl shadow-2xl">
-          <div className="px-3 py-2 border-b bg-blue-50 rounded-t-xl">
-            <p className="text-xs font-bold text-blue-800 flex items-center gap-1.5">
-              <Package className="w-3.5 h-3.5" />
-              Disponible en varios proveedores — elige:
-            </p>
-          </div>
-          {supplierOptions.options.map((sp) => (
-            <button key={sp.id} type="button"
-              className="w-full text-left flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-blue-50 border-b last:border-0 transition-colors"
-              onMouseDown={e => { e.preventDefault(); handleSupplierChoice(sp); }}>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-gray-800">{sp.supplier_name}</p>
-                {sp.product_code && <p className="text-[9px] text-gray-400">Ref: {sp.product_code}</p>}
-                {sp.notes && <p className="text-[9px] text-gray-400 truncate">{sp.notes}</p>}
-              </div>
-              <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                <span className="text-sm font-bold text-emerald-700">{((sp.sale_price || sp.cost_price) || 0).toFixed(2)}€</span>
-                {sp.cost_price && sp.sale_price && sp.sale_price !== sp.cost_price && (
-                  <span className="text-[9px] text-gray-400">coste: {sp.cost_price.toFixed(2)}€</span>
-                )}
-              </div>
-            </button>
-          ))}
-          <button type="button"
-            className="w-full text-center text-xs text-gray-400 py-1.5 hover:bg-gray-50"
-            onMouseDown={e => { e.preventDefault(); applyItem(supplierOptions.base); }}>
-            Usar precio sin proveedor específico
-          </button>
+          {suggestions.length === 0 && <p className="text-center text-xs text-gray-400 py-3">Nada con ese texto en este proveedor</p>}
         </div>
       )}
     </div>

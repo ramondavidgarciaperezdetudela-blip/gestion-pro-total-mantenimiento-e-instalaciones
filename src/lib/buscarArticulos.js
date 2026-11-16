@@ -47,3 +47,66 @@ export function buscarPorTexto(articulos = [], texto = '', max = 12) {
   }
   return fuera;
 }
+
+
+// ── Búsqueda indexada y con filtro de proveedor ─────────────────────────────
+// El texto de cada artículo se normaliza UNA sola vez (al cargar), así que cada
+// pulsación solo compara cadenas ya preparadas: con decenas de miles de
+// artículos sigue siendo instantáneo.
+
+const compacto = (t) => norm(t).replace(/[^a-z0-9]/g, '');
+
+/** Prepara la lista para buscar rápido. Se hace una vez y se reutiliza. */
+export function indexar(articulos = []) {
+  return articulos.map((a) => {
+    const ref = norm(a.ref); const nombre = norm(a.nombre);
+    const prov = norm(a.proveedor);
+    return { a, ref, refC: compacto(a.ref), nombre, prov, todo: `${ref} ${nombre} ${norm(a.extra)} ${prov}` };
+  });
+}
+
+/**
+ * @param indice  resultado de indexar()
+ * @param texto   lo escrito
+ * @param opc     { campo: 'todo'|'nombre'|'ref', proveedor: '' (todos), max: 60 }
+ * @returns { items, total, proveedores: [{ nombre, n }] }
+ *   `proveedores` cuenta las coincidencias de CADA proveedor (sin aplicar el filtro de
+ *   proveedor), para poder decir «está en Zanotti (3) y KIDE (1)».
+ */
+export function buscarIndexado(indice = [], texto = '', opc = {}) {
+  const { campo = 'todo', proveedor = '', max = 60 } = opc;
+  const q = norm(texto);
+  const vacio = { items: [], total: 0, proveedores: [] };
+  if (q.length < 2) return vacio;
+  const palabras = q.split(/\s+/).filter(Boolean);
+  const qC = compacto(texto);
+  const filtroProv = norm(proveedor);
+  const cuenta = new Map();
+  const hallados = [];
+  for (const e of indice) {
+    const campoTxt = campo === 'ref' ? e.ref : campo === 'nombre' ? e.nombre : e.todo;
+    let ok = palabras.every((w) => campoTxt.includes(w));
+    // Referencia escrita de otra forma (con o sin guiones, puntos o espacios).
+    if (!ok && qC.length >= 3 && campo !== 'nombre') ok = e.refC.includes(qC);
+    if (!ok) continue;
+    const nombreProv = e.a.proveedor || 'Sin proveedor';
+    cuenta.set(nombreProv, (cuenta.get(nombreProv) || 0) + 1);
+    if (filtroProv && e.prov !== filtroProv) continue;
+    let puntos = 1;
+    if (e.ref === q || (qC && e.refC === qC)) puntos = 100;
+    else if (e.ref.startsWith(q)) puntos = 80;
+    else if (e.ref.includes(q)) puntos = 60;
+    else if (e.nombre.startsWith(q)) puntos = 50;
+    else if (e.nombre.includes(q)) puntos = 40;
+    else if (palabras.every((w) => e.nombre.includes(w))) puntos = 20;
+    hallados.push({ a: e.a, puntos, largo: e.nombre.length });
+  }
+  hallados.sort((x, y) => y.puntos - x.puntos || x.largo - y.largo);
+  const vistos = new Set(); const items = [];
+  for (const { a } of hallados) {
+    const k = `${norm(a.ref)}|${norm(a.nombre)}|${norm(a.proveedor)}|${a.origen}`;
+    if (vistos.has(k)) continue; vistos.add(k); items.push(a);
+  }
+  const proveedores = [...cuenta].map(([nombre, n]) => ({ nombre, n })).sort((x, y) => y.n - x.n || x.nombre.localeCompare(y.nombre));
+  return { items: items.slice(0, max), total: items.length, proveedores };
+}
