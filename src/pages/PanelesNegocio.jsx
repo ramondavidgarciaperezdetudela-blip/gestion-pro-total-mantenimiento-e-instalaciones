@@ -4,6 +4,7 @@ import { tituloPanel } from '../lib/panelesNegocio';
 import PullToRefresh from '../components/PullToRefresh';
 import ChangeOpinionAlerts from '../components/ChangeOpinionAlerts';
 import PendingTasksPanel from '../components/PendingTasksPanel';
+import CentroTareasAvisos from '../components/CentroTareasAvisos';
 import AutomationStatus from '../components/AutomationStatus';
 import DocumentsStatusPanel from '../components/DocumentsStatusPanel';
 import MissingSATSignatures from '../components/MissingSATSignatures';
@@ -182,12 +183,14 @@ export default function PanelesNegocio() {
   return (
     <PullToRefresh onRefresh={handleRefresh}>
     <div className="space-y-5">
-      <div>
+      <div className={panel === 'tareas' ? 'hidden' : ''}>
         <h1 className="text-3xl font-extrabold" style={{ color: 'inherit' }} data-prueba="titulo-panel">{tituloPanel(panel)}</h1>
         <p className="text-sm font-medium capitalize" style={{ color: 'var(--gpt-grafito, #474A50)' }}>{format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}</p>
       </div>
 
       {ver('negocio') && <PanelControlNegocio />}
+      {/* «Tareas y avisos»: lista con acciones directas; la barra del título queda fija y solo se mueve la lista */}
+      {panel === 'tareas' && <CentroTareasAvisos />}
 
       {/* Todo lo siguiente solo en desktop */}
       <div className="space-y-6">
@@ -207,16 +210,16 @@ export default function PanelesNegocio() {
 
       {showTertiaryPanels && (
         <>
-          {ver('tareas') && <PendingTasksPanel />}
+          {ver('tareas') && panel !== 'tareas' && <PendingTasksPanel />}
           {ver('automatizaciones') && <AutomationStatus />}
           {ver('documentos') && <DocumentsStatusPanel />}
-          {ver('tareas') && <MissingSATSignatures />}
-          {ver('tareas') && <ChangeOpinionAlerts />}
+          {ver('tareas') && panel !== 'tareas' && <MissingSATSignatures />}
+          {ver('tareas') && panel !== 'tareas' && <ChangeOpinionAlerts />}
         </>
       )}
 
       {/* Alertas */}
-      {ver('tareas') && alerts.length > 0 &&
+      {ver('tareas') && panel !== 'tareas' && alerts.length > 0 &&
       <div className="space-y-2">
           {alerts.map((a, i) =>
         <Link key={i} to={createPageUrl(a.page)}>

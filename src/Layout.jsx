@@ -7,6 +7,7 @@ import EnlaceRapido from '@/components/EnlaceRapido';
 import { base44 } from '@/api/base44Client';
 import { LogOut, Search, X } from 'lucide-react';
 import NotificationsPanel from './components/NotificationsPanel';
+import VentanaTareasAvisos from './components/VentanaTareasAvisos';
 import ThemeToggle from './components/ThemeToggle';
 import GlobalSearch from './components/GlobalSearch';
 import AIChat from './components/AIChat';
@@ -132,6 +133,8 @@ export default function Layout({ children, currentPageName }) {
   const sitio = ubicarPagina(currentPageName, location.search);
   const areaActual = sitio?.area;
   const titulo = sitio?.apartado?.texto || currentPageName;
+  // «Tareas y avisos» lleva PDF e Imprimir en su propia barra de título; los flotantes taparían la lista.
+  const sinFlotantes = currentPageName === 'PanelesNegocio' && new URLSearchParams(location.search).get('panel') === 'tareas';
   const fondoTipo = FONDO_POR_PAGINA[currentPageName];
   const empresaTema = React.useMemo(() => empresaParaTema(company), [company]);
 
@@ -214,9 +217,10 @@ export default function Layout({ children, currentPageName }) {
               <Suspense fallback={<div className="flex items-center justify-center h-32"><div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin opacity-60" /></div>}>{children}</Suspense>
             </div>
             <ImportacionEnSegundoPlano />
+            <VentanaTareasAvisos />
             <BotonesImprimirPantalla
               nodoRef={contenidoRef}
-              pagina={currentPageName}
+              pagina={sinFlotantes ? 'Home' : currentPageName}
               titulo={titulo}
             />
           </main>
