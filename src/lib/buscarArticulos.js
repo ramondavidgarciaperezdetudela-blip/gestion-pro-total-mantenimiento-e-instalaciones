@@ -60,35 +60,55 @@ const compacto = (t) => norm(t).replace(/[^a-z0-9]/g, '');
 export function indexar(articulos = []) {
   return articulos.map((a) => {
     const ref = norm(a.ref); const nombre = norm(a.nombre);
-    const prov = norm(a.proveedor);
-    return { a, ref, refC: compacto(a.ref), nombre, prov, todo: `${ref} ${nombre} ${norm(a.extra)} ${prov}` };
+    const prov = norm(a.proveedor); const extra = norm(a.extra);
+    return { a, ref, refC: compacto(a.ref), nombre, extra, prov, todo: `${ref} ${nombre} ${extra} ${prov}` };
   });
 }
+
+/** Proveedores del índice con cuántos artículos tiene cada uno (para elegir proveedor sin escribir nada). */
+export function proveedoresDelIndice(indice = []) {
+  const cuenta = new Map();
+  for (const e of indice) { const n = e.a.proveedor || 'Sin proveedor'; cuenta.set(n, (cuenta.get(n) || 0) + 1); }
+  return [...cuenta].map(([nombre, n]) => ({ nombre, n })).sort((x, y) => x.nombre.localeCompare(y.nombre));
+}
+
+const CAMPOS = { todo: (e) => e.todo, nombre: (e) => e.nombre, ref: (e) => e.ref, extra: (e) => `${e.extra} ${e.prov}` };
 
 /**
  * @param indice  resultado de indexar()
  * @param texto   lo escrito
- * @param opc     { campo: 'todo'|'nombre'|'ref', proveedor: '' (todos), max: 60 }
- * @returns { items, total, proveedores: [{ nombre, n }] }
- *   `proveedores` cuenta las coincidencias de CADA proveedor (sin aplicar el filtro de
- *   proveedor), para poder decir «está en Zanotti (3) y KIDE (1)».
+ * @param opc     { campo: 'todo'|'nombre'|'ref'|'extra', proveedor: '' (todos), max: 60 }
+ *                'extra' = marca, categoría, notas y proveedor.
+ * @returns { items, total, proveedores: [{ nombre, n }], parcial }
+ *   - `proveedores` cuenta las coincidencias de CADA proveedor (sin aplicar el filtro de
+ *     proveedor), para poder decir «está en Zanotti (3) y KIDE (1)».
+ *   - Sin texto pero con proveedor elegido, enseña los artículos de ese proveedor (por nombre).
+ *   - Si ninguno tiene TODAS las palabras, devuelve los que tienen alguna (`parcial: true`),
+ *     primero los que reúnen más palabras.
  */
 export function buscarIndexado(indice = [], texto = '', opc = {}) {
   const { campo = 'todo', proveedor = '', max = 60 } = opc;
   const q = norm(texto);
-  const vacio = { items: [], total: 0, proveedores: [] };
-  if (q.length < 2) return vacio;
+  const filtroProv = norm(proveedor);
+  if (q.length < 2) {
+    if (!filtroProv) return { items: [], total: 0, proveedores: proveedoresDelIndice(indice), parcial: false };
+    const propios = indice.filter((e) => e.prov === filtroProv).sort((x, y) => x.nombre.localeCompare(y.nombre));
+    return { items: propios.slice(0, max).map((e) => e.a), total: propios.length, proveedores: proveedoresDelIndice(indice), parcial: false };
+  }
   const palabras = q.split(/\s+/).filter(Boolean);
   const qC = compacto(texto);
-  const filtroProv = norm(proveedor);
+  const sacar = CAMPOS[campo] || CAMPOS.todo;
   const cuenta = new Map();
   const hallados = [];
+  const sueltas = []; // coincidencias parciales (por si no hay ninguna completa)
   for (const e of indice) {
-    const campoTxt = campo === 'ref' ? e.ref : campo === 'nombre' ? e.nombre : e.todo;
-    let ok = palabras.every((w) => campoTxt.includes(w));
+    const campoTxt = sacar(e);
+    let aciertos = 0;
+    for (const w of palabras) if (campoTxt.includes(w)) aciertos++;
+    let ok = aciertos === palabras.length;
     // Referencia escrita de otra forma (con o sin guiones, puntos o espacios).
-    if (!ok && qC.length >= 3 && campo !== 'nombre') ok = e.refC.includes(qC);
-    if (!ok) continue;
+    if (!ok && qC.length >= 3 && (campo === 'todo' || campo === 'ref')) ok = e.refC.includes(qC);
+    if (!ok) { if (aciertos > 0 && palabras.length > 1) sueltas.push({ e, aciertos }); continue; }
     const nombreProv = e.a.proveedor || 'Sin proveedor';
     cuenta.set(nombreProv, (cuenta.get(nombreProv) || 0) + 1);
     if (filtroProv && e.prov !== filtroProv) continue;
@@ -101,6 +121,16 @@ export function buscarIndexado(indice = [], texto = '', opc = {}) {
     else if (palabras.every((w) => e.nombre.includes(w))) puntos = 20;
     hallados.push({ a: e.a, puntos, largo: e.nombre.length });
   }
+  let parcial = false;
+  if (!hallados.length && !cuenta.size && sueltas.length) {
+    parcial = true;
+    for (const { e, aciertos } of sueltas) {
+      const nombreProv = e.a.proveedor || 'Sin proveedor';
+      cuenta.set(nombreProv, (cuenta.get(nombreProv) || 0) + 1);
+      if (filtroProv && e.prov !== filtroProv) continue;
+      hallados.push({ a: e.a, puntos: aciertos, largo: e.nombre.length });
+    }
+  }
   hallados.sort((x, y) => y.puntos - x.puntos || x.largo - y.largo);
   const vistos = new Set(); const items = [];
   for (const { a } of hallados) {
@@ -108,5 +138,28 @@ export function buscarIndexado(indice = [], texto = '', opc = {}) {
     if (vistos.has(k)) continue; vistos.add(k); items.push(a);
   }
   const proveedores = [...cuenta].map(([nombre, n]) => ({ nombre, n })).sort((x, y) => y.n - x.n || x.nombre.localeCompare(y.nombre));
-  return { items: items.slice(0, max), total: items.length, proveedores };
+  return { items: items.slice(0, max), total: items.length, proveedores, parcial };
+}
+
+/**
+ * Foto de cada línea de un documento, buscándola en los artículos (por referencia y proveedor;
+ * si no, solo por referencia; si no, por la descripción exacta). Las fotos NO se guardan dentro
+ * del documento: así los documentos no pesan y, si cambias la foto del artículo, se actualiza.
+ * @returns {Map<number,string>} índice de línea → foto (solo las líneas que tienen)
+ */
+export function fotosDeLineas(indice = [], items = []) {
+  const conFoto = indice.filter((e) => e.a.imagen);
+  const porRefProv = new Map(); const porRef = new Map(); const porNombre = new Map();
+  for (const e of conFoto) {
+    if (e.refC) { porRefProv.set(`${e.refC}|${e.prov}`, e.a.imagen); if (!porRef.has(e.refC)) porRef.set(e.refC, e.a.imagen); }
+    if (e.nombre && !porNombre.has(e.nombre)) porNombre.set(e.nombre, e.a.imagen);
+  }
+  const out = new Map();
+  items.forEach((it, i) => {
+    if (it?.image_url) { out.set(i, it.image_url); return; }
+    const rc = compacto(it?.reference || ''); const pv = norm(it?.supplier_name || '');
+    const f = (rc && (porRefProv.get(`${rc}|${pv}`) || porRef.get(rc))) || porNombre.get(norm(it?.description || ''));
+    if (f) out.set(i, f);
+  });
+  return out;
 }

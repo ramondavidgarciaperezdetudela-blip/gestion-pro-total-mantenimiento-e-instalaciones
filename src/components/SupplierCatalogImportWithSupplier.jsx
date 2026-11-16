@@ -12,18 +12,14 @@ import { iniciarImportacion, avanzarImportacion, terminarImportacion, avisoFinal
 import DownloadExcelTemplate from '@/components/DownloadExcelTemplate';
 import { iaActivada } from '@/lib/modoSinIA';
 import { leerTarifaPdf } from '@/lib/tarifaPdf';
+import { numeroTarifa } from '@/lib/numeroTarifa';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function norm(str) {
   return String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 }
 
-function toNumber(val) {
-  if (val === null || val === undefined || val === '') return null;
-  if (typeof val === 'number') return isFinite(val) ? val : null;
-  const n = parseFloat(String(val).replace(/[€\s]/g, '').replace(',', '.'));
-  return isNaN(n) ? null : n;
-}
+const toNumber = numeroTarifa;
 
 const ALIASES_NAME  = ['descripcion', 'descripción', 'nombre', 'producto', 'denominacion', 'designacion', 'detalle', 'concepto', 'item'];
 const ALIASES_PRICE = ['pvp', 'precio', 'price', 'tarifa', 'importe', 'coste', 'cost', 'venta', 'eur'];
@@ -59,6 +55,9 @@ function parseExcel(file) {
       try {
         const wb = XLSX.read(e.target.result, {
           type: 'array',
+          // En CSV/TSV/TXT los números se dejan como texto: «9,5» o «1.949,69» los entiende numeroTarifa;
+          // si lo leyera la librería, «9,5» se convertiría en 95.
+          raw: /\.(csv|tsv|txt)$/i.test(file.name || ''),
           cellDates: false,
           cellStyles: false,
           cellNF: false,
@@ -332,7 +331,8 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
   };
 
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
-  const isExcel = (f) => /\.(xlsx|xls|csv)$/i.test(f?.name || '');
+  // Hojas de cálculo y tablas de cualquier programa: Excel (.xlsx, .xlsm, .xlsb, .xls), LibreOffice (.ods), CSV/TSV, texto, tablas web (.html) y XML de Excel.
+  const isExcel = (f) => /\.(xlsx|xlsm|xlsb|xls|ods|fods|csv|tsv|txt|html?|xml)$/i.test(f?.name || '');
   const isPdf   = (f) => /\.pdf$/i.test(f?.name || '');
 
   const handleExtract = async () => {
@@ -870,13 +870,13 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
                   >
                     <Upload className="w-10 h-10 text-purple-400 mx-auto mb-3" />
                     <p className="font-semibold text-gray-700">Arrastra o haz clic para subir</p>
-                    <p className="text-sm text-gray-400 mt-1">PDF, Excel (.xlsx, .xls) o CSV</p>
+                    <p className="text-sm text-gray-400 mt-1">PDF (tabla o catálogo), Excel, LibreOffice (.ods), CSV, TXT o tabla web (.html)</p>
                     {file && (
                       <div className="mt-3 inline-flex items-center gap-2 bg-purple-100 text-purple-800 px-3 py-1.5 rounded-lg text-sm font-medium">
                         <FileSpreadsheet className="w-4 h-4" /> {file.name}
                       </div>
                     )}
-                    <input ref={fileRef} type="file" accept=".pdf,.xlsx,.xls,.csv" className="hidden"
+                    <input ref={fileRef} type="file" accept=".pdf,.xlsx,.xlsm,.xlsb,.xls,.ods,.fods,.csv,.tsv,.txt,.html,.htm,.xml" className="hidden"
                      onChange={async e => {
                        const f = e.target.files[0];
                        if (!f) return;

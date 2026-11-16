@@ -15,6 +15,21 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.136.0] — 2026-11-16
+
+### Mejorado
+- **Fotos al buscar y al añadir artículos.** En «Buscar en proveedores» y en el desplegable de la descripción de cada línea sale la **foto** de cada artículo (una miniatura) para reconocerlo de un vistazo.
+- **Al imprimir un documento pregunta por las fotos:** *sin fotos*, *con todas* o *solo las que yo elija* (con la lista de líneas y su foto para marcar). Recuerda lo último que elegiste. Las fotos no se guardan dentro del documento (no pesa), se toman del artículo.
+- **Filtro por proveedor más completo:** se puede elegir el proveedor **sin escribir nada** y ver sus artículos, y con el proveedor elegido sirven todos los tipos de búsqueda (todo, nombre/descripción, referencia, marca/categoría). Si ningún artículo tiene todas las palabras, enseña los que tienen alguna (los de más coincidencias primero).
+- **La pantalla «Tarifas por proveedor» busca igual:** sin tildes, palabras en cualquier orden y referencia con otro formato.
+- **Importar tarifas y catálogos de más tipos de archivo:** además de PDF y Excel, ahora LibreOffice (.ods), .xlsm, .xlsb, CSV/TSV, TXT y tablas web (.html). Los **catálogos en PDF que no son una tabla** (artículos con su referencia y precio repartidos por la página) se leen por líneas, sin IA.
+- **Búsqueda de fotos en internet desde el navegador, sin IA:** hasta ahora solo funcionaba en el programa de escritorio y en el móvil. En la versión con Base44 la hace una función del servidor (`buscarImagenWeb`, hay que desplegarla).
+
+### Corregido
+- **Precios con coma en CSV/TXT:** «9,5» se leía como 95 y «1.949,69» como 1,949. Ahora se leen bien («9,5» → 9,50; «1.949,69» → 1949,69), también en Excel con texto.
+
+---
+
 ## [1.135.0] — 2026-11-16
 
 ### Mejorado

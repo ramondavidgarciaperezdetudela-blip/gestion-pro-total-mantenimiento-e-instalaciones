@@ -21,6 +21,8 @@ import CargaDeGas from '@/components/CargaDeGas';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
 import { BuscarEnProveedores } from '../components/BuscadorArticulos';
+import ElegirFotosImpresion, { modoFotosGuardado, lineasConFoto } from '../components/ElegirFotosImpresion';
+import { fotosParaLineas } from '@/lib/articulosProveedores';
 import ImportarPresupuestoDialog from '../components/ImportarPresupuestoDialog';
 import ArticuloNuevoDialog from '../components/ArticuloNuevoDialog';
 import { cargarPropios, diferenciasConBase } from '../lib/miBaseDatos';
@@ -767,7 +769,15 @@ export default function Documents() {
   // mandarlo por WhatsApp con el PDF adjunto). Antes era el cuerpo entero de
   // exportPDF; ahora va aparte para poder reaprovecharlo sin abrir la vista
   // previa cuando lo que se quiere es enviarlo, no mirarlo.
-  const construirHtmlDocumento = async (doc) => {
+  // `fotos`: { mapa: Map línea→foto, con: Set de líneas que llevan foto }. Sin él, según lo último que elegiste
+  // (lo que se manda por WhatsApp sale con todas las fotos solo si dijiste «todas»).
+  const construirHtmlDocumento = async (doc, fotos = null) => {
+    if (!fotos && modoFotosGuardado() === 'todas') {
+      const mapa = await fotosParaLineas(doc.items || []);
+      fotos = { mapa, con: lineasConFoto('todas', mapa, new Set()) };
+    }
+    const fotoDe = (i) => (fotos?.con?.has(i) ? fotos.mapa.get(i) : '');
+    const hayFotos = (doc.items || []).some((_, i) => fotoDe(i));
     const csArr = await base44.entities.CompanySettings.list();
     const cs = csArr?.[0] || {};
     // QR de verificación del documento (abre la página pública de verificación).
@@ -809,6 +819,7 @@ export default function Documents() {
     const plazoTxt = (i) => (i.delivery_days === 0 ? 'Inmediata' : i.delivery_days != null ? (i.delivery_days >= 30 && i.delivery_days % 30 === 0 ? `${i.delivery_days / 30} mes${i.delivery_days / 30 === 1 ? '' : 'es'}` : `${i.delivery_days} día${i.delivery_days === 1 ? '' : 's'}`) : (i.delivery_text || ''));
     const itemsHtml = (doc.items || []).map((item, i) => `
       <tr style="background:${i % 2 === 0 ? '#f9fafb' : '#fff'}">
+        ${hayFotos ? `<td style="padding:4px 6px;border-bottom:1px solid #e5e7eb;width:54px;text-align:center">${fotoDe(i) ? `<img src="${fotoDe(i)}" style="max-width:48px;max-height:48px;object-fit:contain" alt="" />` : ''}</td>` : ''}
         ${hasRef ? `<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;color:#555">${item.reference || ''}</td>` : ''}
         <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${item.description || ''}${etiquetaIva(item) ? ` <span style="font-size:8px;background:#fef3c7;color:#92400e;border-radius:3px;padding:1px 4px;white-space:nowrap">${etiquetaIva(item)}</span>` : ''}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center">${item.quantity}</td>
@@ -844,7 +855,7 @@ export default function Documents() {
       ${doc.contact_nif?`<div style="font-size:9px;color:#555">NIF: ${doc.contact_nif}</div>`:''}
       ${doc.contact_address?`<div style="font-size:9px;color:#555">${doc.contact_address}</div>`:''}
     </div>
-    <table><thead><tr>${hasRef?'<th>Ref.</th>':''}<th>Descripción</th><th class="center">Cant.</th><th class="right">P.Unit.</th>${hasDiscount?'<th class="right">Dto%</th>':''}${hasPlazo?'<th class="center">Plazo</th>':''}<th class="right">Total</th></tr></thead>
+    <table><thead><tr>${hayFotos?'<th></th>':''}${hasRef?'<th>Ref.</th>':''}<th>Descripción</th><th class="center">Cant.</th><th class="right">P.Unit.</th>${hasDiscount?'<th class="right">Dto%</th>':''}${hasPlazo?'<th class="center">Plazo</th>':''}<th class="right">Total</th></tr></thead>
     <tbody>${itemsHtml}</tbody></table>
     <div class="totals">
       <div style="display:flex;justify-content:flex-end;gap:20px;font-size:9px;color:#555"><span>${(doc.items||[]).some(i => modoDeLinea(i) !== 'aparte') ? 'Base imponible:' : 'Subtotal:'}</span><span><strong>${(doc.subtotal||0).toFixed(2)} €</strong></span></div>
@@ -874,9 +885,16 @@ export default function Documents() {
     };
   };
 
-  const exportPDF = async (doc) => {
-    const v = await construirHtmlDocumento(doc);
+  const [fotosDlg, setFotosDlg] = useState(null); // { doc, mapa }
+  const abrirVistaPrevia = async (doc, fotos) => {
+    const v = await construirHtmlDocumento(doc, fotos);
     setVistaPrevia({ titulo: v.titulo, html: v.html, nombreFichero: v.nombreFichero, doc });
+  };
+  // Si algún artículo tiene foto, se pregunta si el documento sale con fotos (todas, ninguna o las elegidas).
+  const exportPDF = async (doc) => {
+    const mapa = await fotosParaLineas(doc.items || []);
+    if (mapa.size === 0) return abrirVistaPrevia(doc, null);
+    setFotosDlg({ doc, mapa });
   };
 
   // Enviar el presupuesto o la factura por WhatsApp con el PDF adjunto.
@@ -925,8 +943,11 @@ export default function Documents() {
 
   return (
     <div className="space-y-4">
+      <ElegirFotosImpresion abierto={!!fotosDlg} items={fotosDlg?.doc?.items || []} fotos={fotosDlg?.mapa}
+        onCancelar={() => setFotosDlg(null)}
+        onConfirmar={(con) => { const d = fotosDlg; setFotosDlg(null); abrirVistaPrevia(d.doc, { mapa: d.mapa, con }); }} />
       {vistaPrevia && (
-        <VistaPreviaDocumento
+      <VistaPreviaDocumento
           titulo={vistaPrevia.titulo}
           html={vistaPrevia.html}
           nombreFichero={vistaPrevia.nombreFichero}
