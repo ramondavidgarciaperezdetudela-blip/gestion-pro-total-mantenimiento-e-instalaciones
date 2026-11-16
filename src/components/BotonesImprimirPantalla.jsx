@@ -9,7 +9,7 @@ import { imprimirPantalla, pantallaAPdf } from '@/lib/printHelper';
  */
 const PAGINAS_SIN_BOTONES = new Set(['Home', 'CADCraft', 'Login', 'License', 'Licencia']);
 
-export default function BotonesImprimirPantalla({ nodoRef, titulo, pagina }) {
+export default function BotonesImprimirPantalla({ nodoRef, titulo, pagina, enLinea = false, sinTeclado = false }) {
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState('');
 
@@ -36,6 +36,7 @@ export default function BotonesImprimirPantalla({ nodoRef, titulo, pagina }) {
   }, [nodoRef, titulo, ocupado]);
 
   useEffect(() => {
+    if (sinTeclado) return undefined;
     const alTeclear = (e) => {
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') {
         e.preventDefault();
@@ -44,10 +45,21 @@ export default function BotonesImprimirPantalla({ nodoRef, titulo, pagina }) {
     };
     window.addEventListener('keydown', alTeclear);
     return () => window.removeEventListener('keydown', alTeclear);
-  }, [hacer]);
+  }, [hacer, sinTeclado]);
 
-  if (PAGINAS_SIN_BOTONES.has(pagina)) return null;
+  if (PAGINAS_SIN_BOTONES.has(pagina) && !enLinea) return null;
 
+  // En línea: los dos botones van dentro de la barra de título de la pantalla (no flotan sobre la lista).
+  if (enLinea) {
+    const chico = 'inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60';
+    return (
+      <span data-no-imprimir className="inline-flex items-center gap-1.5 print:hidden">
+        {aviso && <span className="max-w-[10rem] truncate text-[11px] text-slate-500" title={aviso}>{aviso}</span>}
+        <button type="button" className={chico} disabled={ocupado} onClick={() => hacer('pdf')} title="Guardar como PDF" data-prueba="avisos-pdf"><FileDown className="h-4 w-4" /><span className="hidden sm:inline">PDF</span></button>
+        <button type="button" className={chico} disabled={ocupado} onClick={() => hacer('imprimir')} title="Imprimir" data-prueba="avisos-imprimir"><Printer className="h-4 w-4" /><span className="hidden sm:inline">Imprimir</span></button>
+      </span>
+    );
+  }
   const estilo = 'inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60';
   return (
     <div data-no-imprimir className="fixed bottom-24 right-3 lg:bottom-5 lg:right-5 z-30 flex flex-col items-end gap-1 print:hidden">

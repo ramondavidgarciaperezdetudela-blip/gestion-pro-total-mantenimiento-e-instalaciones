@@ -15,6 +15,17 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.137.0] — 2026-11-16
+
+### Mejorado
+- **«Tareas y avisos» se abre por encima de cualquier pantalla.** Antes la campana dibujaba su ventana dentro de la barra superior y las pestañas del programa la tapaban. Ahora se abre fuera de todas las barras, desde la campana o desde el apartado «Tareas y avisos» del menú, sin sacarte de la pantalla en la que estás. Se cierra con la X, tocando fuera o con Esc.
+- **Todo en un solo sitio, sin ir cliente por cliente.** Una única lista con: presupuestos sin respuesta, facturas vencidas o por vencer, SAT pendientes, firmas que faltan, mantenimientos atrasados, citas de hoy, proyectos vencidos y cambios de opinión. Filtro por tipo y buscador por cliente o número.
+- **Acciones directas en cada aviso:** *anular* el presupuesto, factura, orden SAT, cita o proyecto (con confirmación), marcar cobrada, pasar el SAT a en curso o completado, confirmar o dar por hecha una cita, completar o pausar un proyecto, marcar atendido un cambio de opinión, recordatorio por WhatsApp (busca el teléfono del cliente al pulsar), «Abrir para cambiar» y «Ficha» del cliente. «Quitar aviso» lo esconde sin tocar el documento, y en «Anulados» se puede restaurar.
+- **Barra de título fija con PDF e Imprimir a la derecha.** Solo se mueve la lista; el título y los filtros se quedan arriba. En esta pantalla ya no flotan los botones PDF e Imprimir sobre la lista.
+- **El número de la campana** sale de la misma lista que la ventana, así que siempre coinciden. Las listas ya no se limitan a los 60 documentos más recientes, y un mantenimiento solo avisa si la última revisión de ese equipo es antigua.
+
+---
+
 ## [1.136.0] — 2026-11-16
 
 ### Mejorado
