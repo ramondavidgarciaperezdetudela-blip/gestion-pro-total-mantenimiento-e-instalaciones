@@ -20,6 +20,7 @@ import QRCodeLib from 'qrcode';
 import CargaDeGas from '@/components/CargaDeGas';
 import SupplierProductSearch from '../components/SupplierProductSearch';
 import PriceItemSelector from '../components/PriceItemSelector';
+import { BuscarEnProveedores } from '../components/BuscadorArticulos';
 import ImportarPresupuestoDialog from '../components/ImportarPresupuestoDialog';
 import ArticuloNuevoDialog from '../components/ArticuloNuevoDialog';
 import { cargarPropios, diferenciasConBase } from '../lib/miBaseDatos';
@@ -1352,6 +1353,7 @@ export default function Documents() {
                   data-prueba="abrir-carga-gas" className="border-sky-300 text-sky-700">
                   <Snowflake className="w-3 h-3 mr-1" />Carga de gas
                 </Button>
+                <BuscarEnProveedores onSelect={(a) => ponerLineaDeReferencia({ ...a, descripcion: a.nombre })} />
                 <PriceItemSelector onSelect={(item) => {
                   setForm((prev) => {
                     const newItems = [...prev.items, { _id: ++_itemId, description: item.description, quantity: item.quantity || 1, unit_price: item.unit_price, discount: 0, total: item.unit_price }];
