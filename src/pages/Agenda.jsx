@@ -39,7 +39,19 @@ export default function Agenda() {
 
   useEffect(() => {
     loadAppointments();
-    base44.entities.Contact.list('name', 500).then(setContacts);
+    base44.entities.Contact.list('name', 500).then((lista) => {
+      setContacts(lista);
+      // Desde la ficha de un cliente («Nueva cita»): abre el formulario con ese cliente ya puesto.
+      let idCliente = null;
+      try { idCliente = new URLSearchParams(window.location.search).get('contact_id') || (window.location.hash.split('?')[1] ? new URLSearchParams(window.location.hash.split('?')[1]).get('contact_id') : null); } catch { /* sin parámetros */ }
+      const c = idCliente ? lista.find((x) => x.id === idCliente) : null;
+      if (c) {
+        const nombre = `${c.name} ${c.surname || ''}`.trim();
+        setForm((f) => ({ ...f, contact_name: nombre, contact_id: c.id, address: c.address ? `${c.address}, ${c.city || ''}` : f.address }));
+        setContactSearch(nombre);
+        setDialogOpen(true);
+      }
+    });
     base44.entities.SATOrder.filter({ status: 'pendiente' }, '-date', 200).then(setSatOrders)
       .catch(() => base44.entities.SATOrder.list('-date', 200).then(orders => setSatOrders(orders.filter(o => o.status === 'pendiente' || o.status === 'en_curso'))));
   }, []);
@@ -147,7 +159,11 @@ export default function Agenda() {
           <PrintButton contentRef={printRef} title="Agenda" />
           <Dialog open={dialogOpen} onOpenChange={() => {}}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-2" />Nueva cita</Button>
+              <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
+                setEditingAppt(null); setLinkedSAT(null); setContactSearch('');
+                setForm({ title: '', description: '', contact_name: '', contact_id: '', date: format(new Date(), 'yyyy-MM-dd'), time_start: '09:00', time_end: '10:00', address: '', type: 'otro', status: 'pendiente', priority: 'media', notes: '' });
+                setDialogOpen(true);
+              }}><Plus className="w-4 h-4 mr-2" />Nueva cita</Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onVolver={() => { setDialogOpen(false); setEditingAppt(null); }} textoVolver="Volver sin guardar" onPointerDownOutside={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
               <DialogHeader>

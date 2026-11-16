@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.138.0] — 2026-11-16
+
+### Corregido
+- **«Nueva cita» en la Agenda no abría nada.** El botón no hacía nada porque la ventana de la cita no se abría desde él. Ahora abre el formulario vacío con la fecha de hoy. Editar una cita existente ya funcionaba y sigue igual.
+
+---
+
 ## [1.137.0] — 2026-11-16
 
 ### Mejorado
