@@ -53,6 +53,7 @@ const registro = {
   updateSupplierPricesOnline: noDisponible('updateSupplierPricesOnline', 'consulta webs de proveedores desde un servidor.'),
   generatePreventiveMaintenance: noDisponible('generatePreventiveMaintenance', 'se genera desde el servidor.'),
   getSpanishPostalCodes: noDisponible('getSpanishPostalCodes', 'consulta una base de códigos postales externa.'),
+  buscarImagenWeb: noDisponible('buscarImagenWeb', 'en el navegador necesita un servidor; en el programa de escritorio y en el móvil se busca directamente.'),
   downloadLegalDocuments: noDisponible('downloadLegalDocuments', 'se genera desde el servidor.'),
 };
 

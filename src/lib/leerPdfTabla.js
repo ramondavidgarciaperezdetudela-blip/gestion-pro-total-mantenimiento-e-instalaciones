@@ -3,6 +3,20 @@
 
 import { detectarColumnas } from './importarPresupuesto.js';
 
+export async function trozosDePdf(buffer) {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const worker = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
+  pdfjs.GlobalWorkerOptions.workerSrc = worker;
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(buffer), useSystemFonts: true }).promise;
+  const trozos = [];
+  for (let n = 1; n <= pdf.numPages; n++) {
+    const pagina = await pdf.getPage(n);
+    const contenido = await pagina.getTextContent();
+    for (const i of contenido.items) trozos.push({ t: i.str, x: i.transform[4], y: i.transform[5] - (n - 1) * 100000, w: i.width });
+  }
+  return trozos;
+}
+
 export async function filasDePdf(buffer) {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const worker = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
@@ -23,7 +37,7 @@ export function filasDeTrozos(trozos, opciones = {}) {
   return filasConPosicion(trozos, opciones).map((f) => f.map((c) => c.t));
 }
 
-function filasConPosicion(trozos, { tolY = 3, hueco = 6 } = {}) {
+export function filasConPosicion(trozos, { tolY = 3, hueco = 6 } = {}) {
   const items = trozos.filter((i) => i.t && i.t.trim() !== '').sort((a, b) => b.y - a.y || a.x - b.x);
   const grupos = [];
   for (const it of items) {

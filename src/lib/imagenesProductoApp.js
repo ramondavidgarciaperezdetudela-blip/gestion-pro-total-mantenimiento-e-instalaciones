@@ -18,6 +18,11 @@ async function imagenNativa(url) {
   return `data:${tipo};base64,${r.data}`;
 }
 
+// La función del servidor solo existe en la versión con Base44; en la versión sin Base44 no se ofrece.
+function puenteWebDisponible() {
+  try { return localStorage.getItem('gpt_almacen') ? !/"modo"\s*:\s*"local"/.test(localStorage.getItem('gpt_almacen')) && !!base44?.functions?.invoke : !!base44?.functions?.invoke; } catch { return false; }
+}
+
 const lee = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
 
 function crearPuente() {
@@ -28,6 +33,16 @@ function crearPuente() {
     };
   }
   if (esAppMovil()) return { texto: textoNativo, imagen: imagenNativa };
+  // Navegador: lo leen por él los servidores de Base44 (función «buscarImagenWeb»), sin IA ni créditos de IA.
+  if (typeof window !== 'undefined' && window.location?.protocol?.startsWith('http') && puenteWebDisponible()) {
+    const llamar = async (accion, url) => {
+      const r = await base44.functions.invoke('buscarImagenWeb', { accion, url });
+      const d = r?.data ?? r;
+      if (d?.error) throw new Error(d.error);
+      return d;
+    };
+    return { texto: async (u) => (await llamar('texto', u)).texto, imagen: async (u) => (await llamar('imagen', u)).dataUrl };
+  }
   return null;
 }
 

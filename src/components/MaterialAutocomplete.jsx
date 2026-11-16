@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Package, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
+import { Miniatura } from './BuscadorArticulos';
 import { buscarIndexado } from '@/lib/buscarArticulos';
 import { cargarIndiceArticulos } from '@/lib/articulosProveedores';
 
@@ -50,7 +51,7 @@ export default function MaterialAutocomplete({ value, onChange, onSelectItem, pl
     escrito.current = false;
     const item = {
       description: a.nombre, unit_price: a.precio || 0, unit: a.unidad || 'ud', notes: '',
-      supplier_name: a.proveedor || '', product_code: a.ref || '', reference: a.ref || '', delivery_days: a.plazo ?? null,
+      supplier_name: a.proveedor || '', product_code: a.ref || '', reference: a.ref || '', delivery_days: a.plazo ?? null, image_url: a.imagen || '',
     };
     onChange && onChange(item.description);
     onSelectItem && onSelectItem(item);
@@ -84,7 +85,7 @@ export default function MaterialAutocomplete({ value, onChange, onSelectItem, pl
             <button key={`${a.id || i}-${i}`} type="button"
               className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 border-b last:border-0 transition-colors"
               onMouseDown={e => { e.preventDefault(); applyItem(a); }}>
-              <Package className="w-4 h-4 text-gray-300 flex-shrink-0" />
+              <Miniatura src={a.imagen} tam="w-8 h-8" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-gray-800 truncate">{a.nombre}</p>
                 <div className="flex items-center gap-1.5 flex-wrap">
