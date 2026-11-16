@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buscarPorTexto, articuloDeTarifa, articuloDePropio, norm, indexar, buscarIndexado } from '../src/lib/buscarArticulos.js';
+import { buscarPorTexto, articuloDeTarifa, articuloDePropio, norm, indexar, buscarIndexado, proveedoresDelIndice, fotosDeLineas } from '../src/lib/buscarArticulos.js';
 const lista = [
   articuloDeTarifa({ product_code: 'MDB635EB13XX', product_name: 'Equipo frigorífico ZANOTTI partido axial R134A 400V', supplier_name: 'Zanotti', sale_price: 19849.69 }),
   articuloDeTarifa({ product_code: 'ZX100', product_name: 'Evaporador cúbico 2 ventiladores', supplier_name: 'Zanotti', cost_price: 800 }),
@@ -52,6 +52,38 @@ assert.equal(buscarIndexado(L, 'MDB 635').items[0].ref, 'MDB635');
 // palabras sueltas, tildes
 assert.equal(buscarIndexado(L, 'FRIGORIFICO partido').items[0].ref, 'MDB635');
 assert.equal(buscarIndexado(L, 'a').total, 0);
+// sin escribir nada: elegir proveedor y ver sus artículos; y la lista de proveedores
+assert.deepEqual(proveedoresDelIndice(L).map((p) => p.nombre), ['Frigicoll', 'Salvador Escoda', 'Sin proveedor', 'Zanotti']);
+r = buscarIndexado(L, '', { proveedor: 'Zanotti' });
+assert.equal(r.items.length, 1); assert.equal(r.items[0].ref, 'MDB635');
+assert.equal(buscarIndexado(L, '').items.length, 0);
+// proveedor + cualquier tipo de búsqueda
+assert.equal(buscarIndexado(L, 'cu12', { proveedor: 'Frigicoll', campo: 'ref' }).items.length, 1);
+assert.equal(buscarIndexado(L, 'cu12', { proveedor: 'Zanotti', campo: 'ref' }).items.length, 0);
+// marca / categoría
+const M = indexar([articuloDeTarifa({ product_code: 'A1', product_name: 'Compresor', brand: 'Danfoss', category: 'refrigeracion', supplier_name: 'X' })]);
+assert.equal(buscarIndexado(M, 'danfoss', { campo: 'extra' }).total, 1);
+assert.equal(buscarIndexado(M, 'danfoss', { campo: 'nombre' }).total, 0);
+// ninguna con todas las palabras → las que tengan alguna, marcadas como parciales
+r = buscarIndexado(L, 'cobre axial');
+assert.equal(r.parcial, true); assert.ok(r.items.length >= 2);
+assert.equal(buscarIndexado(L, 'cobre bobina').parcial, false);
+// fotos de las líneas de un documento
+const F = indexar([
+  { ...articuloDeTarifa({ product_code: 'CU-12', product_name: 'Tubo cobre', supplier_name: 'Escoda' }), imagen: 'data:img/escoda' },
+  { ...articuloDeTarifa({ product_code: 'CU-12', product_name: 'Tubo cobre', supplier_name: 'Frigicoll' }), imagen: 'data:img/frigi' },
+  { ...articuloDeTarifa({ product_code: 'Z1', product_name: 'Sin foto', supplier_name: 'Escoda' }) },
+  { ...articuloDePropio({ reference: 'P9', description: 'Bobina cable 3x2,5' }), imagen: 'data:img/propia' },
+]);
+const fl = fotosDeLineas(F, [
+  { reference: 'cu 12', supplier_name: 'Frigicoll' },   // misma referencia con otro formato y proveedor concreto
+  { reference: 'CU-12' },                               // sin proveedor: la primera que haya
+  { reference: 'Z1', supplier_name: 'Escoda' },         // sin foto
+  { description: 'bobina CABLE 3x2,5' },                // solo por descripción
+  { reference: 'X', image_url: 'http://x/f.jpg' },      // ya traía su foto
+]);
+assert.equal(fl.get(0), 'data:img/frigi'); assert.equal(fl.get(1), 'data:img/escoda');
+assert.equal(fl.has(2), false); assert.equal(fl.get(3), 'data:img/propia'); assert.equal(fl.get(4), 'http://x/f.jpg');
 // rapidez: 100.000 artículos
 const gran = indexar(Array.from({ length: 100000 }, (_, i) => articuloDeTarifa({ product_code: `R${i}`, product_name: `Artículo número ${i} tornillo`, supplier_name: `Prov${i % 40}` })));
 const t0 = Date.now();

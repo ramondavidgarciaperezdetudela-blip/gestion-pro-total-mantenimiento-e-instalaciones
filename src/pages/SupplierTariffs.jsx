@@ -15,6 +15,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { buscarImagenArticulo } from '@/lib/imagenesProductoApp';
+import { norm } from '@/lib/buscarArticulos';
+
+const textoBusqueda = new WeakMap(); // texto ya preparado de cada artículo (se calcula una vez)
 import { recuperarImagenesDePdf } from '@/lib/imagenesPdf';
 import { construirCsvFotos, MOTIVO_SIN_FOTO } from '@/lib/informeFotos';
 import { descargarTexto } from '@/lib/iaModulos/datos';
@@ -257,14 +260,20 @@ export default function SupplierTariffs() {
 
   // Agrupar por proveedor
   const grouped = useMemo(() => {
-    const q = search.toLowerCase().trim();
+    // Mismas reglas que el buscador de documentos: sin tildes, palabras sueltas en cualquier orden,
+    // y el texto de cada artículo se prepara una sola vez (no en cada pulsación).
+    const palabras = norm(search).split(/\s+/).filter(Boolean);
+    const compactoQ = norm(search).replace(/[^a-z0-9]/g, '');
     const filtered = prices.filter(p => {
-      const matchSearch = !q ||
-        p.product_name?.toLowerCase().includes(q) ||
-        p.product_code?.toLowerCase().includes(q) ||
-        p.category?.toLowerCase().includes(q) ||
-        p.supplier_name?.toLowerCase().includes(q) ||
-        p.notes?.toLowerCase().includes(q);
+      let matchSearch = !palabras.length;
+      if (!matchSearch) {
+        let t = textoBusqueda.get(p);
+        if (t === undefined) {
+          t = norm(`${p.product_code} ${p.product_name} ${p.brand} ${p.category} ${p.supplier_name} ${p.notes}`);
+          textoBusqueda.set(p, t);
+        }
+        matchSearch = palabras.every(w => t.includes(w)) || (compactoQ.length >= 3 && norm(p.product_code).replace(/[^a-z0-9]/g, '').includes(compactoQ));
+      }
       const matchCat = filterCategory === 'all' || p.category === filterCategory;
       const matchSupp = filterSupplier === 'all' || p.supplier_id === filterSupplier;
       return matchSearch && matchCat && matchSupp;

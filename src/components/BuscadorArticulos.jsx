@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Package, Loader2, RefreshCw } from 'lucide-react';
+import { Search, Package, Loader2, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,20 @@ const CAMPOS = [
   { id: 'todo', texto: 'Todo' },
   { id: 'nombre', texto: 'Nombre / descripción' },
   { id: 'ref', texto: 'Referencia' },
+  { id: 'extra', texto: 'Marca / categoría' },
 ];
+
+/** Foto pequeña del artículo para reconocerlo de un vistazo (o un icono si aún no tiene). */
+export function Miniatura({ src, tam = 'w-10 h-10' }) {
+  const [fallo, setFallo] = useState(false);
+  return (
+    <div className={`${tam} flex-shrink-0 rounded border bg-gray-50 flex items-center justify-center overflow-hidden`}>
+      {src && !fallo
+        ? <img src={src} alt="" loading="lazy" className="w-full h-full object-contain" onError={() => setFallo(true)} />
+        : <ImageIcon className="w-4 h-4 text-gray-300" />}
+    </div>
+  );
+}
 
 /**
  * Buscador de artículos de todos los proveedores y de «Mi base de datos».
@@ -44,6 +57,7 @@ export default function BuscadorArticulos({ onSelect, autoFocus = true }) {
   // Para el filtro: los proveedores que tienen coincidencias (se conserva el elegido aunque no tenga).
   const provs = res?.proveedores || [];
   const buscando = consulta.trim().length >= 2;
+  const hayLista = buscando || !!proveedor; // con un proveedor elegido se ven sus artículos aunque no se escriba nada
 
   return (
     <div className="space-y-2">
@@ -62,7 +76,7 @@ export default function BuscadorArticulos({ onSelect, autoFocus = true }) {
         ))}
         <select value={proveedor} onChange={(e) => setProveedor(e.target.value)} data-prueba="filtro-proveedor"
           className="ml-auto h-7 text-xs border border-input rounded-md px-2 max-w-[55%]">
-          <option value="">{buscando && provs.length ? `Todos los proveedores (${provs.length})` : 'Todos los proveedores'}</option>
+          <option value="">{provs.length ? `Todos los proveedores (${provs.length})` : 'Todos los proveedores'}</option>
           {provs.map((p) => <option key={p.nombre} value={p.nombre}>{p.nombre} ({p.n})</option>)}
           {proveedor && !provs.some((p) => p.nombre === proveedor) && <option value={proveedor}>{proveedor} (0)</option>}
         </select>
@@ -74,8 +88,9 @@ export default function BuscadorArticulos({ onSelect, autoFocus = true }) {
           <p className="text-center text-sm text-red-500 py-4">No se han podido cargar los artículos.{' '}
             <button className="underline" onClick={() => cargar(true)}>Reintentar</button></p>
         )}
-        {indice && !buscando && <p className="text-center text-xs text-gray-400 py-6">Escribe al menos 2 letras. Hay {indice.length.toLocaleString('es-ES')} artículos en total.</p>}
-        {res && buscando && res.items.length === 0 && (
+        {indice && !hayLista && <p className="text-center text-xs text-gray-400 py-6">Escribe al menos 2 letras, o elige un proveedor para ver sus artículos. Hay {indice.length.toLocaleString('es-ES')} artículos en total.</p>}
+        {res?.parcial && res.items.length > 0 && <p className="text-center text-[11px] text-amber-600 py-1">Ninguno tiene todas las palabras. Estos tienen alguna (los de más coincidencias, primero).</p>}
+        {res && hayLista && res.items.length === 0 && (
           <p className="text-center text-sm text-gray-400 py-6">
             Nada con «{consulta}»{proveedor ? ` en ${proveedor}` : ''}.{proveedor && <> <button className="underline" onClick={() => setProveedor('')}>Buscar en todos los proveedores</button></>}
           </p>
@@ -83,7 +98,7 @@ export default function BuscadorArticulos({ onSelect, autoFocus = true }) {
         {res?.items.map((a, i) => (
           <button key={`${a.origen}-${a.id || i}-${i}`} type="button" onClick={() => onSelect?.(a)}
             className="w-full text-left flex items-center gap-2 p-2 rounded-lg border border-transparent hover:border-blue-200 hover:bg-blue-50">
-            <Package className="w-4 h-4 text-gray-300 flex-shrink-0" />
+            <Miniatura src={a.imagen} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{a.nombre || '(sin descripción)'}</p>
               <div className="flex items-center gap-1.5 flex-wrap mt-0.5">

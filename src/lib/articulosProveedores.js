@@ -2,7 +2,7 @@
 // UNA vez y guardados en memoria. Así abrir el buscador una segunda vez es instantáneo.
 import { cargarTodo } from '@/lib/cargarTodo';
 import { cargarPropios } from '@/lib/miBaseDatos';
-import { articuloDeTarifa, articuloDePropio, indexar } from '@/lib/buscarArticulos';
+import { articuloDeTarifa, articuloDePropio, indexar, fotosDeLineas } from '@/lib/buscarArticulos';
 
 const VIGENCIA_MS = 10 * 60 * 1000;
 let guardado = null; // { cuando, indice }
@@ -24,4 +24,9 @@ export async function cargarIndiceArticulos(forzar = false) {
     return indice;
   })().finally(() => { enCurso = null; });
   return enCurso;
+}
+
+/** Fotos de las líneas de un documento (línea → foto). Si no se pueden leer los artículos, sin fotos. */
+export async function fotosParaLineas(items = []) {
+  try { return fotosDeLineas(await cargarIndiceArticulos(), items); } catch { return new Map(); }
 }
