@@ -25,6 +25,7 @@ import CompanyHeader from '../components/CompanyHeader';
 import PhotoGallery from '../components/PhotoGallery';
 import CargaDeGas from '@/components/CargaDeGas';
 import PriceItemSelector from '../components/PriceItemSelector';
+import { BuscarEnProveedores } from '../components/BuscadorArticulos';
 import SATTemplateSelector from '../components/SATTemplateSelector';
 import { withTimeout, getFallbackPhotosSize, MAX_TOTAL_FALLBACK_PAYLOAD, PHOTOS_TOO_LARGE_MESSAGE } from '@/lib/uploadImage';
 import { describeSaveError, esErrorDeFotoDemasiadoGrande, reducirFotos, tamanoFotoMayor, guardarLimiteAprendido } from '@/lib/saveErrorMessage';
@@ -784,6 +785,7 @@ export default function SAT() {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-sm font-medium">Materiales utilizados</label>
                 <div className="flex gap-1">
+                  <BuscarEnProveedores onSelect={a => setForm(prev => ({ ...prev, materials_used: [...(prev.materials_used || []), { material: a.nombre, quantity: 1, unit_price: a.precio || 0 }] }))} />
                   <PriceItemSelector onSelect={item => setForm(prev => ({ ...prev, materials_used: [...(prev.materials_used || []), { material: item.description, quantity: item.quantity || 1, unit_price: item.unit_price }] }))} />
                   <Button size="sm" variant="outline" onClick={addMaterial}><Plus className="w-3 h-3 mr-1" />Manual</Button>
                   {/* Carga de gas: el gas, los kilos, el precio y el impuesto,

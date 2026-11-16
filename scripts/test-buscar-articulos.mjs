@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buscarPorTexto, articuloDeTarifa, articuloDePropio, norm } from '../src/lib/buscarArticulos.js';
+import { buscarPorTexto, articuloDeTarifa, articuloDePropio, norm, indexar, buscarIndexado } from '../src/lib/buscarArticulos.js';
 const lista = [
   articuloDeTarifa({ product_code: 'MDB635EB13XX', product_name: 'Equipo frigorífico ZANOTTI partido axial R134A 400V', supplier_name: 'Zanotti', sale_price: 19849.69 }),
   articuloDeTarifa({ product_code: 'ZX100', product_name: 'Evaporador cúbico 2 ventiladores', supplier_name: 'Zanotti', cost_price: 800 }),
@@ -26,4 +26,36 @@ const muchos = Array.from({ length: 30 }, (_, i) => articuloDePropio({ reference
 assert.equal(buscarPorTexto(muchos, 'tornillo', 5).length, 5);
 assert.equal(buscarPorTexto([muchos[0], muchos[0]], 'tornillo').length, 1);
 assert.equal(norm('  ÁÉÍ  '), 'aei');
-console.log('Buscar artículos: OK');
+
+// ── Búsqueda indexada con filtro de proveedor ──
+const L = indexar([
+  articuloDeTarifa({ product_code: 'CU-1/2-A', product_name: 'Tubería de cobre aislada 1/2"', supplier_name: 'Salvador Escoda', sale_price: 9 }),
+  articuloDeTarifa({ product_code: 'CU12', product_name: 'Tubo cobre recocido 1/2 pulgada', supplier_name: 'Frigicoll', sale_price: 8 }),
+  articuloDeTarifa({ product_code: 'MDB635', product_name: 'Equipo frigorífico partido axial', supplier_name: 'Zanotti', sale_price: 100 }),
+  articuloDePropio({ reference: 'PROP-1', description: 'Cobre en bobina', unit_price: 5 }),
+]);
+let r = buscarIndexado(L, 'cobre');
+assert.equal(r.total, 3);
+assert.deepEqual(r.proveedores.map((p) => p.nombre).sort(), ['Frigicoll', 'Salvador Escoda', 'Sin proveedor']);
+// filtro por proveedor: solo ese, pero los recuentos siguen mostrando todos
+r = buscarIndexado(L, 'cobre', { proveedor: 'frigicoll' });
+assert.equal(r.items.length, 1); assert.equal(r.items[0].ref, 'CU12'); assert.equal(r.proveedores.length, 3);
+// campo: solo referencia / solo nombre
+assert.equal(buscarIndexado(L, 'cobre', { campo: 'ref' }).total, 0);
+assert.equal(buscarIndexado(L, 'cu12', { campo: 'ref' }).items[0].ref, 'CU12');
+assert.equal(buscarIndexado(L, 'zanotti', { campo: 'nombre' }).total, 0); // el proveedor no es nombre
+assert.equal(buscarIndexado(L, 'zanotti').total, 1); // pero sí en «todo»
+// referencia escrita con otros separadores
+assert.equal(buscarIndexado(L, 'cu 1/2 a', { campo: 'ref' }).total, 1);
+assert.equal(buscarIndexado(L, 'cu-12').items[0]?.ref, 'CU12');
+assert.equal(buscarIndexado(L, 'MDB 635').items[0].ref, 'MDB635');
+// palabras sueltas, tildes
+assert.equal(buscarIndexado(L, 'FRIGORIFICO partido').items[0].ref, 'MDB635');
+assert.equal(buscarIndexado(L, 'a').total, 0);
+// rapidez: 100.000 artículos
+const gran = indexar(Array.from({ length: 100000 }, (_, i) => articuloDeTarifa({ product_code: `R${i}`, product_name: `Artículo número ${i} tornillo`, supplier_name: `Prov${i % 40}` })));
+const t0 = Date.now();
+for (let i = 0; i < 20; i++) buscarIndexado(gran, 'tornillo 99');
+const ms = (Date.now() - t0) / 20;
+assert.ok(ms < 150, `búsqueda lenta: ${ms} ms`);
+console.log('Buscar artículos: OK (' + ms.toFixed(0) + ' ms con 100.000 artículos)');

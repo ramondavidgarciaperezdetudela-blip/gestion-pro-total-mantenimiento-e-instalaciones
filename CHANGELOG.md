@@ -15,6 +15,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.135.0] — 2026-11-16
+
+### Mejorado
+- **Buscar artículos de proveedores al poner líneas en un documento.** Nuevo botón «Buscar en proveedores» (en presupuestos, facturas, recibos y en los materiales del SAT): se busca por nombre, descripción, referencia o palabras sueltas, sin importar tildes, mayúsculas ni el orden. Cada resultado dice **en qué proveedor está**, su referencia y su precio, y hay un **filtro de proveedor** con el número de coincidencias de cada uno («Frigicoll (3), Zanotti (1)…»). También se puede limitar a «Nombre / descripción» o a «Referencia» (esta acepta la referencia con o sin guiones, puntos o espacios).
+- **Rápido:** los artículos se cargan una vez y se preparan para buscar; con 100.000 artículos cada búsqueda tarda unos 16 ms.
+- **El desplegable de la descripción de cada línea** ya busca igual (palabras sueltas, sin tildes, por referencia) y enseña el proveedor de cada opción, con botones para quedarse con uno solo.
+- **«Base de precios»** buscaba solo en los 200 primeros artículos y solo en la descripción; ahora lee todos y busca también por referencia, marca y proveedor.
+
 ## [1.134.0] — 2026-11-13
 
 ### Añadido
