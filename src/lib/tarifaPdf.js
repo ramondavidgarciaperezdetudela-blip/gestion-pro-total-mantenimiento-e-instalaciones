@@ -3,6 +3,7 @@
 import { filasDePdf, trozosDePdf } from './leerPdfTabla.js';
 import { articulosDeCatalogo } from './catalogoPdf.js';
 import { lineasDeFilas } from './importarPresupuesto.js';
+import { pareceCatalogoRevista, leerCatalogoRevista } from './catalogoRevistaPdf.js';
 
 /** De las líneas leídas a los artículos de tarifa (referencia, nombre, precio, unidad). Descarta lo que no tiene precio. */
 export function itemsDeLineas(lineas = []) {
@@ -25,7 +26,24 @@ export function itemsDeLineas(lineas = []) {
   return items;
 }
 
-export async function leerTarifaPdf(file) {
+export async function leerTarifaPdf(file, { onProgreso, senal, conFotos = true } = {}) {
+  // Catálogo «de revista» (foto + título + tabla de referencias y precios): se leen artículos Y fotos.
+  try {
+    const sondeo = await pareceCatalogoRevista(file);
+    if (sondeo.ok) {
+      const r = await leerCatalogoRevista(file, { onProgreso, senal, conFotos });
+      if (r.items.length) {
+        const sinFoto = r.items.length - r.conFoto;
+        return {
+          items: r.items, cancelado: r.cancelado,
+          avisos: [
+            `Catálogo con fotos: leí ${r.items.length.toLocaleString('es-ES')} artículos de ${r.paginas} páginas y encontré la foto de ${r.conFoto.toLocaleString('es-ES')}.${sinFoto > 0 ? ` Los ${sinFoto.toLocaleString('es-ES')} sin foto se pueden completar luego con «Rellenar imágenes» (búsqueda en internet).` : ''} Revisa los datos antes de añadirlos.`,
+            ...r.avisos,
+          ],
+        };
+      }
+    }
+  } catch { /* si falla, se prueba con el método de siempre */ }
   const buffer = await file.arrayBuffer();
   const filas = await filasDePdf(buffer);
   const { lineas, avisos } = lineasDeFilas(filas);
