@@ -26,21 +26,36 @@ export function itemsDeLineas(lineas = []) {
   return items;
 }
 
+/** Pone a los artículos de `items` la foto que trae su misma referencia en `conFoto` (mapa código → foto). */
+export function unirFotosPorCodigo(items, conFoto) {
+  let n = 0;
+  for (const it of items) {
+    if (it.image_url) continue;
+    const f = conFoto.get(String(it.product_code || '').trim().toLowerCase());
+    if (f) { it.image_url = f; n++; }
+  }
+  return n;
+}
+
 export async function leerTarifaPdf(file, { onProgreso, senal, conFotos = true } = {}) {
-  // Catálogo «de revista» (foto + título + tabla de referencias y precios): se leen artículos Y fotos.
+  // Catálogo o folleto «de revista» (foto + título + tabla de referencias y precios): se leen artículos Y fotos.
+  let revista = null;
   try {
     const sondeo = await pareceCatalogoRevista(file);
     if (sondeo.ok) {
       const r = await leerCatalogoRevista(file, { onProgreso, senal, conFotos });
       if (r.items.length) {
+        const sinNombre = r.items.filter((i) => i.product_name === i.product_code).length;
         const sinFoto = r.items.length - r.conFoto;
-        return {
-          items: r.items, cancelado: r.cancelado,
+        revista = {
+          items: r.items, cancelado: r.cancelado, sinNombre,
           avisos: [
-            `Catálogo con fotos: leí ${r.items.length.toLocaleString('es-ES')} artículos de ${r.paginas} páginas y encontré la foto de ${r.conFoto.toLocaleString('es-ES')}.${sinFoto > 0 ? ` Los ${sinFoto.toLocaleString('es-ES')} sin foto se pueden completar luego con «Rellenar imágenes» (búsqueda en internet).` : ''} Revisa los datos antes de añadirlos.`,
+            `Catálogo con fotos: leí ${r.items.length.toLocaleString('es-ES')} artículos de ${r.paginas} páginas y encontré la foto de ${r.conFoto.toLocaleString('es-ES')}.${sinFoto > 0 ? ` Los ${sinFoto.toLocaleString('es-ES')} sin foto se pueden completar luego con «Rellenar imágenes» (búsqueda en internet por nombre o referencia).` : ''} Revisa los datos antes de añadirlos.`,
             ...r.avisos,
           ],
         };
+        // Si casi todos tienen nombre propio, vale tal cual
+        if (r.cancelado || sinNombre <= r.items.length * 0.4) return revista;
       }
     }
   } catch { /* si falla, se prueba con el método de siempre */ }
@@ -48,7 +63,16 @@ export async function leerTarifaPdf(file, { onProgreso, senal, conFotos = true }
   const filas = await filasDePdf(buffer);
   const { lineas, avisos } = lineasDeFilas(filas);
   const items = itemsDeLineas(lineas);
-  if (items.length) return { items, avisos };
+  if (items.length) {
+    // La tabla da mejores nombres; las fotos que encontró el lector de revista se unen por referencia
+    if (revista) {
+      const mapa = new Map(revista.items.filter((i) => i.image_url).map((i) => [String(i.product_code).trim().toLowerCase(), i.image_url]));
+      const n = unirFotosPorCodigo(items, mapa);
+      if (n) avisos.push(`He unido ${n.toLocaleString('es-ES')} fotos del PDF a los artículos por su referencia.`);
+    }
+    return { items, avisos };
+  }
+  if (revista) return revista;
   // No hay tabla: catálogo con los artículos repartidos por la página → se lee línea a línea.
   try {
     const cat = articulosDeCatalogo(await trozosDePdf(buffer));

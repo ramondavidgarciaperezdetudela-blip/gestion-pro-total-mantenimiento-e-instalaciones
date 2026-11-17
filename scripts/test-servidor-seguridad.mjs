@@ -1,11 +1,19 @@
 // Prueba del blindaje del servidor propio: arranca uno temporal y le lanza ataques típicos.
 import { spawn } from 'node:child_process';
+import http from 'node:http';
 import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import assert from 'node:assert/strict';
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gpt-seg-'));
 const web = path.join(dir, 'web'); fs.mkdirSync(web); fs.writeFileSync(path.join(web, 'index.html'), '<html>ok</html>');
 fs.writeFileSync(path.join(dir, 'secreto-fuera.txt'), 'NO DEBE SALIR');
+const falso = http.createServer((q, r) => {
+  if (q.url.startsWith('/foto')) { r.writeHead(200, { 'Content-Type': 'image/png' }); return r.end(Buffer.from('PNGDATA')); }
+  if (q.url.startsWith('/svg')) { r.writeHead(200, { 'Content-Type': 'image/svg+xml' }); return r.end('<svg/>'); }
+  r.writeHead(200, { 'Content-Type': 'text/html' }); r.end('<html>resultado de busqueda</html>');
+});
+await new Promise((ok) => falso.listen(0, '127.0.0.1', ok));
+const puertoFalso = falso.address().port;
 const puerto = 20000 + Math.floor(Math.random() * 20000);
-const hijo = spawn(process.execPath, ['servidor-datos/servidor.mjs'], { env: { ...process.env, PUERTO: String(puerto), DATOS: path.join(dir, 'datos'), WEB: web, ADMIN_EMAIL: 'a@b.es', ADMIN_PASSWORD: 'claveSegura123', FALLOS_LOGIN: '4' }, stdio: 'pipe' });
+const hijo = spawn(process.execPath, ['servidor-datos/servidor.mjs'], { env: { ...process.env, PUERTO: String(puerto), DATOS: path.join(dir, 'datos'), WEB: web, ADMIN_EMAIL: 'a@b.es', ADMIN_PASSWORD: 'claveSegura123', FALLOS_LOGIN: '4', PERMITIR_WEB_LOCAL: '', }, stdio: 'pipe' });
 const base = `http://127.0.0.1:${puerto}`;
 for (let i = 0; i < 50; i++) { try { await fetch(base + '/api/estado'); break; } catch { await new Promise((r) => setTimeout(r, 150)); } }
 const post = (r, b, h = {}) => fetch(base + r, { method: 'POST', headers: { 'Content-Type': 'application/json', ...h }, body: typeof b === 'string' ? b : JSON.stringify(b) });
@@ -38,6 +46,12 @@ try {
       const r = await post('/api/correo', { smtp, to: 'a@b.es', subject: 's', body: 'b' }, H()); assert.ok(r.status >= 400, JSON.stringify(smtp));
     }
   });
+  await t('/api/web: sin sesión no; a la red interna no; puertos raros no', async () => {
+    assert.equal((await post('/api/web', { accion: 'texto', url: 'https://example.com' })).status, 401);
+    for (const url of [`http://127.0.0.1:${puertoFalso}/`, 'http://169.254.169.254/latest', 'http://192.168.1.1/', 'ftp://example.com/', 'https://example.com:22/', 'file:///etc/passwd']) {
+      const r = await post('/api/web', { accion: 'texto', url }, H()); assert.ok(r.status >= 400, url);
+    }
+  });
   await t('cambiar la clave invalida las sesiones antiguas', async () => {
     const r = await post('/api/clave', { actual: 'claveSegura123', nueva: 'otraClave456' }, H()); assert.equal(r.status, 200);
     assert.equal((await fetch(base + '/api/datos/Client', { headers: H() })).status, 401);
@@ -48,5 +62,20 @@ try {
     assert.equal(ultimo.status, 429);
     assert.equal((await post('/api/login', { email: 'a@b.es', password: 'otraClave456' })).status, 429); // aunque acierte, sigue bloqueado
   });
-} finally { hijo.kill(); fs.rmSync(dir, { recursive: true, force: true }); }
+  // Camino bueno: con permiso local (solo pruebas) el servidor sí trae páginas e imágenes
+  const puerto2 = puerto + 1; const dir2 = path.join(dir, 'datos2');
+  const hijo2 = spawn(process.execPath, ['servidor-datos/servidor.mjs'], { env: { ...process.env, PUERTO: String(puerto2), DATOS: dir2, WEB: web, ADMIN_EMAIL: 'a@b.es', ADMIN_PASSWORD: 'claveSegura123', PERMITIR_WEB_LOCAL: '1' }, stdio: 'pipe' });
+  try {
+    const base2 = `http://127.0.0.1:${puerto2}`;
+    for (let i = 0; i < 50; i++) { try { await fetch(base2 + '/api/estado'); break; } catch { await new Promise((r) => setTimeout(r, 150)); } }
+    const tk = (await (await fetch(base2 + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'a@b.es', password: 'claveSegura123' }) })).json()).token;
+    const web2 = (b) => fetch(base2 + '/api/web', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk }, body: JSON.stringify(b) }).then(async (r) => ({ s: r.status, j: await r.json() }));
+    await t('/api/web trae una página y una imagen, y rechaza SVG/no-imagen', async () => {
+      const a = await web2({ accion: 'texto', url: `http://127.0.0.1:${puertoFalso}/x` }); assert.match(a.j.texto, /resultado de busqueda/);
+      const b = await web2({ accion: 'imagen', url: `http://127.0.0.1:${puertoFalso}/foto.png` }); assert.match(b.j.dataUrl, /^data:image\/png;base64,/);
+      assert.ok((await web2({ accion: 'imagen', url: `http://127.0.0.1:${puertoFalso}/svg` })).s >= 400);
+      assert.ok((await web2({ accion: 'imagen', url: `http://127.0.0.1:${puertoFalso}/x` })).s >= 400);
+    });
+  } finally { hijo2.kill(); }
+} finally { falso.close(); hijo.kill(); fs.rmSync(dir, { recursive: true, force: true }); }
 console.log(`Seguridad del servidor: ${ok} pruebas correctas`);

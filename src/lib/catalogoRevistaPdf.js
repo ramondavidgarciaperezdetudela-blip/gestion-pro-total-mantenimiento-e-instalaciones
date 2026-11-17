@@ -55,8 +55,31 @@ export async function pareceCatalogoRevista(archivo, { paginas = 60 } = {}) {
       } finally { try { pagina.cleanup(); } catch { /* nada */ } }
       if (arts >= 30) break;
     }
-    return { ok: arts >= 8 && conFoto >= 3 && conFoto >= arts * 0.15, articulos: arts, conFoto };
+    const libro = arts >= 8 && conFoto >= 3 && conFoto >= arts * 0.15;
+    // folleto corto (pocas páginas) con alguna foto de producto: también cuenta
+    const folleto = pdf.numPages <= 12 && arts >= 3 && conFoto >= 1;
+    return { ok: libro || folleto, articulos: arts, conFoto };
   } finally { await cerrar(); }
+}
+
+/**
+ * Mismo producto (título y descripción iguales) en varias medidas, aunque esté en otra página o en otro bloque:
+ * todas las medidas usan la foto principal, la que más se repite (si empatan, la primera).
+ * Devuelve cuántos artículos quedan con foto.
+ */
+export function compartirFotoPrincipal(items, grupoDe) {
+  const grupos = new Map();
+  for (const it of items) { const g = grupoDe.get(it); if (g) { if (!grupos.has(g)) grupos.set(g, []); grupos.get(g).push(it); } }
+  for (const lista of grupos.values()) {
+    if (lista.length < 2) continue;
+    const cuenta = new Map();
+    for (const it of lista) if (it.image_url) cuenta.set(it.image_url, (cuenta.get(it.image_url) || 0) + 1);
+    if (!cuenta.size) continue;
+    let mejor = ''; let n = 0;
+    for (const [u, c] of cuenta) if (c > n) { mejor = u; n = c; }
+    for (const it of lista) it.image_url = mejor;
+  }
+  return items.filter((i) => i.image_url).length;
 }
 
 /**
@@ -67,7 +90,7 @@ export async function pareceCatalogoRevista(archivo, { paginas = 60 } = {}) {
 export async function leerCatalogoRevista(archivo, { onProgreso = () => {}, senal, conFotos = true } = {}) {
   const { pdfjs, pdf, poca, cerrar } = await abrir(archivo);
   const lado = poca ? 220 : 260; const maxPixeles = poca ? 12e6 : 40e6;
-  const items = []; const porCodigo = new Map(); const avisos = [];
+  const items = []; const porCodigo = new Map(); const avisos = []; const grupoDe = new Map();
   let conFoto = 0; let cancelado = false; let fallosFoto = 0;
   try {
     for (let n = 1; n <= pdf.numPages; n++) {
@@ -76,8 +99,8 @@ export async function leerCatalogoRevista(archivo, { onProgreso = () => {}, sena
       try {
         pagina = await pdf.getPage(n);
         const trozos = trozosDeTexto(await pagina.getTextContent());
-        // Páginas sin ningún precio con «€»: ni se miran las fotos (es lo más lento)
-        if (trozos.some((t) => /\d\s*€/.test(t.t))) {
+        // Páginas sin ningún precio (con «€» o con decimales): ni se miran las fotos (es lo más lento)
+        if (trozos.some((t) => /\d\s*€|\d[,.]\d{2}\b/.test(t.t))) {
           const fotos = fotosDePagina(pdfjs.OPS, await pagina.getOperatorList());
           const arts = articulosDePagina(trozos, fotos);
           const miniaturas = new Map();
@@ -95,8 +118,9 @@ export async function leerCatalogoRevista(archivo, { onProgreso = () => {}, sena
               }
               url = miniaturas.get(a._foto) || '';
             }
-            const { _foto, _bloque, ...item } = a; // eslint-disable-line no-unused-vars
+            const { _foto, _bloque, _grupo, ...item } = a; // eslint-disable-line no-unused-vars
             item.image_url = url;
+            grupoDe.set(item, _grupo);
             const clave = item.product_code.toLowerCase();
             const previo = porCodigo.get(clave);
             if (previo) { // mismo código en otra página: se queda con el que trae foto
@@ -115,6 +139,7 @@ export async function leerCatalogoRevista(archivo, { onProgreso = () => {}, sena
       await cederPantalla();
     }
   } finally { await cerrar(); }
+  if (conFotos) conFoto = compartirFotoPrincipal(items, grupoDe);
   if (fallosFoto) avisos.push(`${fallosFoto} fotos no se pudieron leer (se quedan sin foto).`);
   return { items, paginas: pdf.numPages, conFoto, avisos, cancelado };
 }

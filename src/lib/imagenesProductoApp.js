@@ -1,7 +1,9 @@
 // Conecta la búsqueda de imágenes (imagenesProducto.js) con el aparato real:
 // escritorio (Electron), móvil (Capacitor) o navegador.
-import { buscarImagenProducto, motoresPorDefecto, reducirImagen, ajustesGoogle, dominiosDe, leerMapaDominios } from '@/lib/imagenesProducto';
+import { buscarImagenProducto, nombreBase, motoresPorDefecto, reducirImagen, ajustesGoogle, dominiosDe, leerMapaDominios } from '@/lib/imagenesProducto';
 import { base44 } from '@/api/base44Client';
+import { leerConfig } from '@/nube/config';
+import { peticion } from '@/nube/almacenRemoto';
 import { esAppMovil, ajustesIA, consultarIA } from '@/lib/proveedorIA';
 
 async function textoNativo(url) {
@@ -33,6 +35,15 @@ function crearPuente() {
     };
   }
   if (esAppMovil()) return { texto: textoNativo, imagen: imagenNativa };
+  // Navegador con servidor propio: lo lee el servidor (comprueba que la dirección sea pública)
+  const cfg = (() => { try { return leerConfig(); } catch { return null; } })();
+  if (cfg?.modo === 'servidor' && cfg.url) {
+    const llamar = async (accion, url) => {
+      const r = await peticion(`${cfg.url}/api/web`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion, url }) });
+      return r.json();
+    };
+    return { texto: async (u) => (await llamar('texto', u)).texto, imagen: async (u) => (await llamar('imagen', u)).dataUrl };
+  }
   // Navegador: lo leen por él los servidores de Base44 (función «buscarImagenWeb»), sin IA ni créditos de IA.
   if (typeof window !== 'undefined' && window.location?.protocol?.startsWith('http') && puenteWebDisponible()) {
     const llamar = async (accion, url) => {
@@ -68,7 +79,7 @@ export async function buscarImagenArticulo(item) {
   if (!r.ok && r.motivo === 'sin_motor' && ajustesIA().proveedor === 'base44') {
     try {
       const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `Busca en internet la imagen oficial del producto: "${item.product_name}"${item.brand ? ` de la marca ${item.brand}` : ''}${item.product_code ? `, referencia ${item.product_code}` : ''}. Devuelve solo la URL directa de la imagen (JPG, PNG o WebP). Si no encuentras una fiable, devuelve null.`,
+        prompt: `Busca en internet la imagen oficial del producto: "${nombreBase(item.product_name) || item.product_name}"${item.notes ? ` (${String(item.notes).slice(0, 80)})` : ''}${item.brand ? ` de la marca ${item.brand}` : ''}${item.product_code ? `, referencia ${item.product_code}` : ''}. Devuelve solo la URL directa de la imagen (JPG, PNG o WebP). Si no encuentras una fiable, devuelve null.`,
         add_context_from_internet: true,
         response_json_schema: { type: 'object', properties: { image_url: { type: 'string' } } }
       });
@@ -82,7 +93,7 @@ function buscarSinBase44(item) {
   const puente = crearPuente();
   return buscarImagenProducto(
     {
-      codigo: item.product_code, nombre: item.product_name, marca: item.brand, proveedor: item.supplier_name,
+      codigo: item.product_code, nombre: nombreBase(item.product_name) || item.product_name, descripcion: item.notes, marca: item.brand, proveedor: item.supplier_name,
       // 1.º la web del proveedor y la del fabricante; 2.º internet en general.
       dominios: dominiosDe({ web: item.supplier_web, marca: item.brand }, leerMapaDominios(lee('gpt_dominios_fabricantes')))
     },

@@ -135,6 +135,8 @@ export function articulosDePagina(trozos = [], imagenes = []) {
     out.push({
       product_code: sinNota(a.cod.t), product_name: nombre, cost_price: Math.round(a.precio * 100) / 100,
       brand: '', unit: 'ud', category: 'material', notes: a.b.descripcion || '', image_url: '', _foto: fotoDe.get(a.b.clave) || null, _bloque: a.b.clave,
+      // mismo título y descripción con otra medida = mismo producto (comparte la foto principal)
+      _grupo: a.b.titulo ? limpia(`${a.b.titulo}|${a.b.descripcion || ''}`).toLowerCase() : '',
     });
   }
   // Dos productos con el mismo título y medida en la página: se distinguen por su descripción («Cepillado», «Sin cepillar»…)

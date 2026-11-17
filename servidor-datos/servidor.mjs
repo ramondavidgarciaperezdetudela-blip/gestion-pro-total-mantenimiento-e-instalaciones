@@ -9,6 +9,8 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import https from 'node:https';
+import zlib from 'node:zlib';
 import dns from 'node:dns/promises';
 import net from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -181,6 +183,48 @@ const cuerpoJson = async (req, max = MAX_CUERPO) => {
   try { return b.length ? JSON.parse(b.toString('utf8')) : {}; } catch { throw Object.assign(new Error('El cuerpo de la petición no es JSON válido.'), { codigo: 400 }); }
 };
 
+// ── Lectura de páginas e imágenes de internet (para «Rellenar imágenes» desde el navegador) ──────────
+// Un navegador no puede leer Bing/Google por sí solo; el servidor sí. Solo con sesión iniciada, solo http(s) a
+// puertos 80/443, nunca a la red interna (la dirección se comprueba y se fija antes de conectar) y con límites.
+const MAX_WEB_TEXTO = 2.5 * 1024 * 1024; const MAX_WEB_IMAGEN = 6 * 1024 * 1024;
+async function traerWeb(urlTxt, { imagen = false } = {}, saltos = 0) {
+  let u; try { u = new URL(String(urlTxt)); } catch { throw new Error('Dirección no válida.'); }
+  if (!/^https?:$/.test(u.protocol)) throw new Error('Solo se permiten direcciones http o https.');
+  if (u.username || u.password) throw new Error('Dirección no válida.');
+  const puerto = Number(u.port || (u.protocol === 'https:' ? 443 : 80));
+  const permitirLocal = /^(1|si|sí|true)$/i.test(process.env.PERMITIR_WEB_LOCAL || ''); // solo para las pruebas
+  if (!permitirLocal && puerto !== 80 && puerto !== 443) throw new Error('Puerto no permitido.');
+  const host = u.hostname.replace(/^\[|\]$/g, '');
+  let dir;
+  try { dir = net.isIP(host) ? { address: host, family: net.isIP(host) } : (await dns.lookup(host, { all: true }))[0]; } catch { throw new Error('No se encuentra esa página.'); }
+  if (!dir) throw new Error('No se encuentra esa página.');
+  if (!permitirLocal && esPrivada(dir.address)) throw new Error('Esa dirección está en una red interna.');
+  const lib = u.protocol === 'https:' ? https : http;
+  const respuesta = await new Promise((resolver, rechazar) => {
+    const req = lib.request({
+      host: u.hostname.replace(/^\[|\]$/g, ''), port: puerto, path: u.pathname + u.search, method: 'GET', timeout: 15000,
+      lookup: (_h, _o, cb) => cb(null, dir.address, dir.family), // se conecta justo a la dirección ya comprobada
+      headers: { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'Accept-Language': 'es-ES,es;q=0.9', 'Accept-Encoding': 'gzip, br', Accept: imagen ? 'image/*' : 'text/html,application/json,*/*' },
+    }, resolver);
+    req.on('timeout', () => req.destroy(new Error('La página tarda demasiado.')));
+    req.on('error', rechazar); req.end();
+  });
+  if (respuesta.statusCode >= 300 && respuesta.statusCode < 400 && respuesta.headers.location) {
+    respuesta.resume();
+    if (saltos >= 4) throw new Error('Demasiadas redirecciones.');
+    return traerWeb(new URL(respuesta.headers.location, u).href, { imagen }, saltos + 1);
+  }
+  if (respuesta.statusCode < 200 || respuesta.statusCode >= 300) { respuesta.resume(); throw new Error(`La página respondió ${respuesta.statusCode}.`); }
+  const tipo = String(respuesta.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+  if (imagen && (!/^image\//.test(tipo) || /svg/.test(tipo))) { respuesta.resume(); throw new Error('No es una imagen.'); }
+  const max = imagen ? MAX_WEB_IMAGEN : MAX_WEB_TEXTO;
+  const cod = String(respuesta.headers['content-encoding'] || '').toLowerCase();
+  const flujo = cod === 'gzip' ? respuesta.pipe(zlib.createGunzip()) : cod === 'br' ? respuesta.pipe(zlib.createBrotliDecompress()) : respuesta;
+  const trozos = []; let total = 0;
+  for await (const t of flujo) { total += t.length; if (total > max) { respuesta.destroy(); throw new Error('El archivo es demasiado grande.'); } trozos.push(t); }
+  return { tipo, datos: Buffer.concat(trozos) };
+}
+
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.pdf': 'application/pdf', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.webmanifest': 'application/manifest+json' };
 function estatico(req, res, base, ruta, spa) {
   let rel;
@@ -244,6 +288,14 @@ const servidor = http.createServer(async (req, res) => {
       if (!yo) return fallo(res, 401, 'Sesión caducada: vuelve a entrar.');
 
       if (ruta === '/api/yo') return json(res, 200, publico(yo));
+      if (ruta === '/api/web' && req.method === 'POST') {
+        const d = await cuerpoJson(req, MAX_CUERPO_CORTO);
+        try {
+          const r = await traerWeb(d.url, { imagen: d.accion === 'imagen' });
+          if (d.accion === 'imagen') return json(res, 200, { dataUrl: `data:${r.tipo};base64,${r.datos.toString('base64')}` });
+          return json(res, 200, { texto: r.datos.toString('utf8') });
+        } catch (e) { return fallo(res, 502, e.message || 'No se pudo leer la página.'); }
+      }
       if (ruta === '/api/correo' && req.method === 'POST') {
         const d = await cuerpoJson(req);
         const c = d.smtp || {};

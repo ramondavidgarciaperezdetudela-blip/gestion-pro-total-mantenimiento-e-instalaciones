@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { buscarImagenArticulo } from '@/lib/imagenesProductoApp';
+import { nombreBase } from '@/lib/imagenesProducto';
 import { norm } from '@/lib/buscarArticulos';
 
 const textoBusqueda = new WeakMap(); // texto ya preparado de cada artículo (se calcula una vez)
@@ -184,36 +185,48 @@ export default function SupplierTariffs() {
   const fillMissingImages = async () => {
     if (bulkImg) { bulkCancelRef.current = true; return; } // segundo clic = detener
     // Productos sin imagen (respetando el filtro de proveedor si hay uno activo)
-    const pendientes = prices.filter(p =>
+    const sinFoto = prices.filter(p =>
       !p.image_url && (filterSupplier === 'all' || p.supplier_id === filterSupplier)
     );
-    if (pendientes.length === 0) { toast.info('No hay productos sin imagen'); return; }
+    if (sinFoto.length === 0) { toast.info('No hay productos sin imagen'); return; }
+    // Mismo producto en varias medidas = una sola búsqueda: todas usan la foto principal
+    const claveGrupo = (p) => `${p.supplier_id || ''}|${nombreBase(p.product_name).toLowerCase()}|${String(p.notes || '').toLowerCase().slice(0, 60)}`;
+    const conFotoDe = new Map();
+    for (const p of prices) if (p.image_url && nombreBase(p.product_name)) { const k = claveGrupo(p); if (!conFotoDe.has(k)) conFotoDe.set(k, p.image_url); }
+    const grupos = new Map();
+    for (const p of sinFoto) { const k = nombreBase(p.product_name) ? claveGrupo(p) : `id|${p.id}`; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(p); }
+    const pendientes = [...grupos.entries()].map(([k, lista]) => ({ k, lista }));
     bulkCancelRef.current = false;
-    setBulkImg({ done: 0, total: pendientes.length, ok: 0 });
+    setBulkImg({ done: 0, total: sinFoto.length, ok: 0 });
     let done = 0, ok = 0;
     const CONC = 2; // 2 en paralelo para no saturar
     let idx = 0;
+    const poner = async (lista, url) => {
+      for (const it of lista) {
+        try { await base44.entities.SupplierPrice.update(it.id, { image_url: url }); ok++; } catch (_) { /* seguir */ }
+      }
+      const ids = new Set(lista.map(i => i.id));
+      setPrices(prev => prev.map(p => ids.has(p.id) ? { ...p, image_url: url } : p));
+    };
     const worker = async () => {
       while (idx < pendientes.length && !bulkCancelRef.current) {
-        const item = pendientes[idx++];
+        const { k, lista } = pendientes[idx++];
         try {
-          const res = await buscarImagenArticulo(conWeb(item));
-          if (res?.motivo === 'sin_conexion' || res?.motivo === 'sin_motor') { toast.info(res.mensaje); bulkCancelRef.current = true; }
-          if (res?.ok) {
-            await base44.entities.SupplierPrice.update(item.id, { image_url: res.url });
-            ok++;
-            // actualizar la ficha en pantalla al momento
-            setPrices(prev => prev.map(p => p.id === item.id ? { ...p, image_url: res.url } : p));
+          if (conFotoDe.has(k)) await poner(lista, conFotoDe.get(k)); // ya hay una medida con foto
+          else {
+            const res = await buscarImagenArticulo(conWeb(lista[0]));
+            if (res?.motivo === 'sin_conexion' || res?.motivo === 'sin_motor') { toast.info(res.mensaje); bulkCancelRef.current = true; }
+            if (res?.ok) await poner(lista, res.url);
           }
         } catch (_) { /* seguir con el siguiente */ }
-        done++;
-        setBulkImg({ done, total: pendientes.length, ok });
+        done += lista.length;
+        setBulkImg({ done, total: sinFoto.length, ok });
         await new Promise(r => setTimeout(r, 250)); // ritmo suave
       }
     };
     await Promise.all(Array.from({ length: Math.min(CONC, pendientes.length) }, worker));
     setBulkImg(null);
-    toast.success(`Imágenes rellenadas: ${ok} de ${pendientes.length}${bulkCancelRef.current ? ' (detenido)' : ''}`);
+    toast.success(`Imágenes rellenadas: ${ok} de ${sinFoto.length}${bulkCancelRef.current ? ' (detenido)' : ''}`);
   };
 
   // ── Actualizar precio/foto/descripción desde la web del proveedor ──────────
