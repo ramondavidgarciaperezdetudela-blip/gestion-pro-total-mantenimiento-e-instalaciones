@@ -13,6 +13,7 @@ import MollierDiagram from '@/components/MollierDiagram';
 import CargaLatente from '@/components/instrumentos/CargaLatente';
 import EsquemaInteractivoAC from '@/components/EsquemaInteractivoAC';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
+import { todosLosPrecios } from '@/lib/todosPrecios';
 
 // ─── Tipos de máquina disponibles (definición explícita y ordenada) ─────────
 const TIPOS_MAQUINA = [
@@ -422,7 +423,7 @@ export default function ACPotenciaCalc() {
 
   useEffect(() => {
     base44.entities.Contact.list('name', 500).then(setContacts).catch(() => {});
-    base44.entities.Supplier.list('name', 200).then(setSuppliers).catch(() => {});
+    base44.entities.Supplier.list('name', 100000).then(setSuppliers).catch(() => {});
     loadHistorial();
   }, []);
 
@@ -678,10 +679,7 @@ EXCLUYE SIEMPRE: baños, aseos, garajes, jardines, terrazas.`;
       let preciosProveedor = [];
       if (proveedorSeleccionado) {
         try {
-          const precios = await base44.entities.SupplierPrice.filter({
-            supplier_id: proveedorSeleccionado
-          });
-          preciosProveedor = precios.slice(0, 500);
+          preciosProveedor = await todosLosPrecios(base44, { supplier_id: proveedorSeleccionado });
         } catch { preciosProveedor = []; }
       }
 

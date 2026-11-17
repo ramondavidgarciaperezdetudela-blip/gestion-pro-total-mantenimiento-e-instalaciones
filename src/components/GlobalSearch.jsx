@@ -1,3 +1,4 @@
+import { todosLosPrecios } from '@/lib/todosPrecios';
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
@@ -38,8 +39,8 @@ export default function GlobalSearch({ open, onClose }) {
       base44.entities.StockItem.list('-created_date', 300),
       base44.entities.ClientMachine.list('-created_date', 300),
       base44.entities.Note.list('-date', 100),
-      base44.entities.Supplier.list('-created_date', 300),
-      base44.entities.SupplierPrice.list('-created_date', 500),
+      base44.entities.Supplier.list('-created_date', 100000),
+      todosLosPrecios(base44),
     ]).then(([contacts, invoices, sat, maintenance, stock, equipment, notes, suppliers, supplierprices]) => {
       setAllData({ contacts, invoices, sat, maintenance, stock, equipment, notes, suppliers, supplierprices });
       setLoading(false);

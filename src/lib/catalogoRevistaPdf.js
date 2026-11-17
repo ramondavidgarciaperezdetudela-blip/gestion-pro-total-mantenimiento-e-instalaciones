@@ -93,7 +93,7 @@ export function compartirFotoPrincipal(items, grupoDe) {
  */
 export async function leerCatalogoRevista(archivo, { onProgreso = () => {}, senal, conFotos = true } = {}) {
   const { pdfjs, pdf, poca, cerrar } = await abrir(archivo);
-  const lado = poca ? 220 : 260; const maxPixeles = poca ? 12e6 : 40e6;
+  const lado = poca ? 360 : 480; const maxPixeles = poca ? 12e6 : 40e6;
   const items = []; const porCodigo = new Map(); const avisos = []; const grupoDe = new Map();
   let conFoto = 0; let cancelado = false; let fallosFoto = 0;
   try {
@@ -166,7 +166,7 @@ export async function fotosParaItems(archivo, items, { onProgreso = () => {}, se
     if (c.length >= 3) { if (!porCodigo.has(c)) porCodigo.set(c, []); porCodigo.get(c).push(it); } else if (norm(it.product_name).length >= 8) porNombre.push({ it, k: norm(it.product_name).slice(0, 22) });
   }
   const { pdfjs, pdf, poca, cerrar } = await abrir(archivo);
-  const lado = poca ? 220 : 260; const maxPixeles = poca ? 6e6 : 16e6;
+  const lado = poca ? 360 : 480; const maxPixeles = poca ? 6e6 : 16e6;
   const colocado = new Set(); let puestas = 0; const grupoDe = new Map();
   try {
     // 1) logos/adornos: pdf.js llama «g_…» a las imágenes que se usan en más de una página (el logo, un sello…)
@@ -249,7 +249,7 @@ export async function recuperarFotosPorCodigo(archivo, articulos, { onProgreso =
   if (!pendientes.size) return resultado;
   const { pdfjs, pdf, poca, cerrar } = await abrir(archivo);
   resultado.paginas = pdf.numPages;
-  const lado = poca ? 280 : 340; const maxPixeles = poca ? 8e6 : 24e6;
+  const lado = poca ? 360 : 480; const maxPixeles = poca ? 8e6 : 24e6;
   const fotoDe = new Map(); // id del artículo → dataUrl (para repartirla luego a sus otras medidas)
   const dar = async (art, dataUrl, n) => {
     if (!pendientes.has(art.id)) return;

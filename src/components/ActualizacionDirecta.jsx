@@ -5,6 +5,7 @@ import { Newspaper, Euro, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { procesarPorLotes, iniciarTarea, cederHilo } from '@/lib/descargas';
 import { imagenDeWikimedia, descargarTarifa, cambiosDePrecio, normativaDelDia } from '@/lib/fuentesDirectas';
+import { todosLosPrecios } from '@/lib/todosPrecios';
 
 const CLAVE_NORMATIVA = 'gpt_normativa_directa';
 
@@ -46,12 +47,12 @@ export default function ActualizacionDirecta() {
   });
 
   const bajarTarifas = envolver(async () => {
-    const proveedores = (await base44.entities.Supplier.list('-created_date', 500)).filter((p) => /^https?:\/\//i.test(p.api_url || ''));
+    const proveedores = (await base44.entities.Supplier.list('-created_date', 100000)).filter((p) => /^https?:\/\//i.test(p.api_url || ''));
     if (!proveedores.length) { toast.info('Ningún proveedor tiene un enlace a su tarifa (campo «enlace API/tarifa» de la ficha del proveedor).'); return; }
     let cambiados = 0;
     await procesarPorLotes(proveedores, async (prov) => {
       const tarifa = await descargarTarifa(prov.api_url);
-      const guardados = await base44.entities.SupplierPrice.filter({ supplier_id: prov.id });
+      const guardados = await todosLosPrecios(base44, { supplier_id: prov.id });
       const cambios = cambiosDePrecio(guardados, tarifa);
       for (const c of cambios) { await base44.entities.SupplierPrice.update(c.id, { cost_price: c.despues }); await cederHilo(); }
       cambiados += cambios.length;

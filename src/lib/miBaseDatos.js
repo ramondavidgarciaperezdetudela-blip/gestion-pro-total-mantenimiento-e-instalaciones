@@ -59,7 +59,7 @@ export async function cargarPropios() {
 
 export async function cargarProveedores() {
   try {
-    const lista = await base44.entities.Supplier.list('name', 500);
+    const lista = await base44.entities.Supplier.list('name', 100000);
     return [...new Set([...PROVEEDORES_BASE, ...(lista || []).map((s) => s.name).filter(Boolean)])];
   } catch { return [...PROVEEDORES_BASE]; }
 }

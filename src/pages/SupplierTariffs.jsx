@@ -23,6 +23,7 @@ import { recuperarImagenesDePdf } from '@/lib/imagenesPdf';
 import { recuperarFotosPorCodigo } from '@/lib/catalogoRevistaPdf';
 import { construirCsvFotos, MOTIVO_SIN_FOTO } from '@/lib/informeFotos';
 import { descargarTexto } from '@/lib/iaModulos/datos';
+import VisorImagenes from '@/components/VisorImagenes';
 import ProgresoFotosPdf from '@/components/ProgresoFotosPdf';
 import MargenMasivoDialog from '@/components/MargenMasivoDialog';
 import { tarifasCaducadas, borrarEnLotes, recrearLineas } from '@/lib/borrarTarifas';
@@ -65,6 +66,7 @@ export default function SupplierTariffs() {
   const [pdfFotos, setPdfFotos] = useState(null); // estado del diálogo de progreso de «Fotos desde PDF»
   const pdfControl = useRef(null);
   const [margenAbierto, setMargenAbierto] = useState(false);
+  const [visor, setVisor] = useState(null); // { fotos, i, titulo } para ampliar una foto
   const pdfFotosRef = useRef(null);
   const [pidoProveedor, setPidoProveedor] = useState(null); // { accion: 'pdf' | 'rellenar', id } mientras se pregunta de qué proveedor es la tarifa
   const proveedorFotosRef = useRef('all');
@@ -766,10 +768,13 @@ export default function SupplierTariffs() {
                                 {item.image_url ? (
                                   <img 
                                     src={item.image_url} 
-                                    alt="" 
-                                    className="w-full h-full object-contain"
+                                    alt="Ampliar foto"
+                                    title="Pulsa para ampliar"
+                                    data-prueba="tarifa-foto"
+                                    className="w-full h-full object-contain cursor-zoom-in"
                                     loading="lazy"
                                     decoding="async"
+                                    onClick={() => { const con = items.filter(x => x.image_url); setVisor({ fotos: con.map(x => ({ url: x.image_url, etiqueta: x.product_name })), i: Math.max(0, con.findIndex(x => x.id === item.id)), titulo: item.product_name }); }}
                                     onError={e => { e.target.style.display = 'none'; }} 
                                   />
                                 ) : (
@@ -841,8 +846,11 @@ export default function SupplierTariffs() {
                   {editForm.image_url ? (
                     <img 
                       src={editForm.image_url} 
-                      alt="" 
-                      className="w-full h-full object-contain"
+                      alt="Ampliar foto"
+                      title="Pulsa para ampliar"
+                      data-prueba="edit-foto"
+                      className="w-full h-full object-contain cursor-zoom-in"
+                      onClick={() => setVisor({ fotos: [{ url: editForm.image_url, etiqueta: editForm.product_name || '' }], i: 0, titulo: editForm.product_name || '' })}
                       loading="lazy"
                       decoding="async"
                     />
@@ -928,6 +936,7 @@ export default function SupplierTariffs() {
           )}
         </DialogContent>
       </Dialog>
+      {visor && <VisorImagenes fotos={visor.fotos} inicio={visor.i} titulo={visor.titulo} onCerrar={() => setVisor(null)} />}
     </div>
   );
 }
