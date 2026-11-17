@@ -15,6 +15,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.141.0] — 2026-11-17
+
+### Corregido
+- **Tarifas y folletos en PDF leídos como tabla ya traen las imágenes.** Antes se leían los precios pero las fotos se perdían. Ahora cada artículo recibe la foto más cercana de su página (la imagen del bloque), se ignoran logos y sellos repetidos y fondos a página completa, y las medidas del mismo producto comparten la foto principal.
+- Se leen también las fotos que los programas de maquetación (InDesign, Canva, Illustrator) guardan dentro de «formularios» del PDF: en el catálogo de Tarragona suben de 6.310 a 6.794 artículos con foto.
+- Si un PDF no trae fotos de producto, el aviso lo dice y sugiere «Rellenar imágenes».
+
+---
+
 ## [1.140.0] — 2026-11-17
 
 ### Mejorado
