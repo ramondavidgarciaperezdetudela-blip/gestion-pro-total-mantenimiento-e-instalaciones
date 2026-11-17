@@ -109,10 +109,37 @@ jobs:
           cp -r cadcraft-hvac/support cadcraft-bin/support
           cp cadcraft/LICENSE-MIT cadcraft/LICENSE-APACHE cadcraft/NOTICE cadcraft-bin/
 
+      # Firma de Windows (quita el aviso azul de SmartScreen «Windows protegió su PC»).
+      # Se activa SOLA cuando existen los secretos del repositorio; sin ellos el instalador sale sin firmar.
+      # Pasos: GUIA-FIRMAR-WINDOWS.md. Dos formas (elige UNA):
+      #  A) Azure Artifact Signing (unos 10 $/mes, sin token físico): AZURE_TENANT_ID, AZURE_CLIENT_ID,
+      #     AZURE_CLIENT_SECRET, AZ_FIRMA_ENDPOINT, AZ_FIRMA_CUENTA, AZ_FIRMA_PERFIL, AZ_FIRMA_EDITOR
+      #  B) Certificado .pfx de una autoridad (OV) exportable: WIN_CSC_LINK (el .pfx en base64) y WIN_CSC_KEY_PASSWORD
       - name: Build desktop installers
-        run: npx electron-builder --publish never
+        shell: bash
+        run: |
+          ARGS=""
+          if [ "$RUNNER_OS" = "Windows" ] && [ -n "$AZ_FIRMA_ENDPOINT" ] && [ -n "$AZURE_CLIENT_ID" ]; then
+            echo "Firmando con Azure Artifact Signing"
+            ARGS="-c.win.azureSignOptions.publisherName=$AZ_FIRMA_EDITOR -c.win.azureSignOptions.endpoint=$AZ_FIRMA_ENDPOINT -c.win.azureSignOptions.certificateProfileName=$AZ_FIRMA_PERFIL -c.win.azureSignOptions.codeSigningAccountName=$AZ_FIRMA_CUENTA"
+          elif [ "$RUNNER_OS" = "Windows" ] && [ -n "$CSC_LINK" ]; then
+            echo "Firmando con el certificado .pfx"
+          else
+            echo "Sin certificado de firma: el instalador de Windows saldrá sin firmar"
+            unset CSC_LINK CSC_KEY_PASSWORD
+          fi
+          npx electron-builder --publish never $ARGS
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZ_FIRMA_ENDPOINT: ${{ secrets.AZ_FIRMA_ENDPOINT }}
+          AZ_FIRMA_CUENTA: ${{ secrets.AZ_FIRMA_CUENTA }}
+          AZ_FIRMA_PERFIL: ${{ secrets.AZ_FIRMA_PERFIL }}
+          AZ_FIRMA_EDITOR: ${{ secrets.AZ_FIRMA_EDITOR }}
 
       - name: Publish installers to Release
         uses: softprops/action-gh-release@v2
