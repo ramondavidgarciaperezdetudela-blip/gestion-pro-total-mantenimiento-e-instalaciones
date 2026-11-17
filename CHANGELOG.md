@@ -15,6 +15,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.140.0] — 2026-11-17
+
+### Mejorado
+- **Mismo producto en varias medidas = misma foto.** En catálogos y tarifas, los artículos con el mismo título y descripción (aunque estén en otra página u otro bloque) comparten la foto principal. «Rellenar imágenes» busca una sola vez por producto y aplica la foto a todas sus medidas.
+- **Folletos tipo tarifa.** Los folletos cortos con fotos de producto y precios (con o sin «€») se leen con todos sus datos y su imagen. Si la tabla da mejores nombres, se usa y se le unen las fotos por referencia.
+- **Rellenar imágenes** busca en internet por nombre (sin la medida), por descripción y por referencia, y recuerda lo encontrado.
+- **Desde el navegador con servidor propio**, la búsqueda de imágenes funciona: el servidor lee los buscadores (nueva ruta protegida `/api/web`, solo con sesión, solo direcciones públicas y con límites).
+
+---
+
 ## [1.139.0] — 2026-11-17
 
 ### Corregido
