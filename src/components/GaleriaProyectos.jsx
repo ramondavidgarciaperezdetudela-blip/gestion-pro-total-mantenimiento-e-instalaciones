@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit3, Trash2, FolderOpen, AlertTriangle, CheckCircle2, Circle } from 'lucide-react';
+import { Edit3, Trash2, FolderOpen, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { differenceInDays, parseISO, format } from 'date-fns';
 
 /**

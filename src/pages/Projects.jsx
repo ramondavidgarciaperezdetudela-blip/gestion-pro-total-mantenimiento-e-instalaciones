@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
-  Plus, FolderOpen, Trash2, Edit, ChevronDown, ChevronUp, CheckCircle2, Circle, AlertTriangle, Zap, ListTodo, GripVertical, LayoutGrid
+  Plus, FolderOpen, Trash2, Edit, ChevronDown, ChevronUp, CheckCircle2, Circle, AlertTriangle, Zap, ListTodo, GripVertical
 } from 'lucide-react';
 import GaleriaProyectos from '@/components/GaleriaProyectos';
 import { format, differenceInDays, parseISO } from 'date-fns';

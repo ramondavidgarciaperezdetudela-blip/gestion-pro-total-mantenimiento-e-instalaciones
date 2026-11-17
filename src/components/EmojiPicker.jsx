@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Download, X, Loader2, Clock, Star, Globe, Smile } from 'lucide-react';
+import { Search, Download, X, Loader2, Globe, Smile } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ─── Emojis comunes embebidos (sin internet) ──────────────────────────────────
