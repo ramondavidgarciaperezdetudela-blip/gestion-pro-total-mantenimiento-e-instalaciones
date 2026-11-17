@@ -15,6 +15,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.144.0] — 2026-11-17
+
+### Sin límites en las tarifas
+- La lista de tarifas carga **todos** los artículos (sin tope de 500.000) y todos los proveedores (antes 200). La importación ya no tenía tope: probado con 11.421 artículos, todos guardados sin error.
+
+### Corregido
+- **«Fotos desde PDF» era lentísimo** (más de 20 minutos con 11.421 artículos, parecía que no encontraba nada): la lista se repintaba entera por cada foto. Ahora se pinta por tandas: el catálogo de Tarragona completo se recupera en **2 min 36 s** (11.302 fotos guardadas en sus artículos; las 119 restantes salen en el informe con su motivo). Probado en la aplicación de escritorio real y en el navegador.
+
+---
+
 ## [1.143.0] — 2026-11-17
 
 ### Corregido
