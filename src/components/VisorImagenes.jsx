@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download } from 'lucide-react';
 
 // Visor a pantalla completa: flechas/teclado para pasar, lupa para ampliar.
@@ -22,7 +23,8 @@ export default function VisorImagenes({ fotos = [], inicio = 0, titulo = '', onC
   const f = fotos[i];
   const url = typeof f === 'string' ? f : f.url;
   const pie = typeof f === 'string' ? '' : f.etiqueta;
-  return (
+  // Portal al <body>: si un contenedor padre tiene transform/filter, 'fixed' deja de cubrir la pantalla.
+  return createPortal(
     <div className="fixed inset-0 z-[200] bg-black/90 flex flex-col" role="dialog" aria-label="Visor de imágenes" data-testid="visor-imagenes">
       <div className="flex items-center gap-2 text-white p-3">
         <div className="flex-1 min-w-0">
@@ -41,6 +43,7 @@ export default function VisorImagenes({ fotos = [], inicio = 0, titulo = '', onC
           <button aria-label="Siguiente" className="fixed right-2 top-1/2 -translate-y-1/2 bg-white/20 text-white rounded-full p-2" onClick={() => ir(1)}><ChevronRight className="w-6 h-6" /></button>
         </>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

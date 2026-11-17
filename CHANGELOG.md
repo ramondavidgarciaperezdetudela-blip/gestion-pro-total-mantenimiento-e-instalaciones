@@ -15,6 +15,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.145.0] — 2026-11-17
+
+### Añadido
+- **Las fotos se pueden ampliar.** En las tarifas, pulsa la foto de cualquier artículo (o la del cuadro de edición) y se abre el visor a pantalla completa con lupa, flechas y teclado para pasar a las demás fotos.
+
+### Cambiado
+- **Fotos más ligeras pero más nítidas.** Se guardan en WebP (≈35 % menos peso que JPEG con la misma calidad; JPEG de respaldo donde no exista) y con más resolución (hasta 480 px de lado), así se ven bien al ampliarlas sin engordar la base de datos.
+- **Sin tope de artículos por proveedor.** Todas las pantallas que consultan precios de proveedor (buscador global, presupuestos con IA, calculadoras, consulta de producto, resumen de compras…) leen ahora TODOS los precios por tandas, en lugar de los primeros 500 o 1000.
+
 ## [1.144.0] — 2026-11-17
 
 ### Sin límites en las tarifas

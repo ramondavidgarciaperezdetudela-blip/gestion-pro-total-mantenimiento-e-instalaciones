@@ -90,7 +90,9 @@ export function aMiniatura(obj, lado, maxPixeles) {
     g.drawImage(completo, 0, 0, pequeno.width, pequeno.height);
     completo.width = 0; // suelta la memoria cuanto antes
   } else return null;
-  const url = pequeno.toDataURL('image/jpeg', 0.8);
+  // WebP pesa ~35 % menos que JPEG con la misma calidad; donde no se pueda crear (Safari antiguo) se usa JPEG
+  let url = pequeno.toDataURL('image/webp', 0.78);
+  if (!url.startsWith('data:image/webp')) url = pequeno.toDataURL('image/jpeg', 0.8);
   pequeno.width = 0;
   return url;
 }
@@ -111,7 +113,7 @@ export async function recuperarImagenesDePdf(archivo, articulos, { onProgreso = 
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
   const poca = modoPocaMemoria();
-  const lado = poca ? 320 : 420;
+  const lado = poca ? 360 : 480;
   const maxPixeles = poca ? 12e6 : 40e6;
   const url = URL.createObjectURL(archivo);
   const tarea = pdfjs.getDocument({ url, useSystemFonts: true, disableFontFace: true, isEvalSupported: false, rangeChunkSize: poca ? 131072 : 524288, disableAutoFetch: true, stopAtErrors: false });
