@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tag } from 'lucide-react';
+import { todosLosPrecios } from '@/lib/todosPrecios';
 
 /**
  * Muestra un selector de proveedor y el precio real del producto del catálogo.
@@ -23,7 +24,7 @@ export default function SupplierPriceLookup({ materialName, defaultPrice }) {
     setSelectedSupplier(supplierId);
     if (!supplierId) { setMatched(null); return; }
     setLoading(true);
-    const prices = await base44.entities.SupplierPrice.filter({ supplier_id: supplierId });
+    const prices = await todosLosPrecios(base44, { supplier_id: supplierId });
     setSupplierPrices(prices || []);
     // Fuzzy match: find best price for this material
     const keywords = materialName.toLowerCase().split(' ').filter(w => w.length > 3);

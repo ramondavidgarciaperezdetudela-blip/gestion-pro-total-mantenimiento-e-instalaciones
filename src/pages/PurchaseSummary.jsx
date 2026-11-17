@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Package, Building2, TrendingDown, Loader2, Search, FolderOpen } from 'lucide-react';
+import { todosLosPrecios } from '@/lib/todosPrecios';
 
 const COLORS = ['#1e3a5f', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
 
@@ -18,8 +19,8 @@ export default function PurchaseSummary() {
 
   useEffect(() => {
     Promise.all([
-      base44.entities.SupplierPrice.list('-created_date', 1000),
-      base44.entities.Supplier.list('name', 100),
+      todosLosPrecios(base44),
+      base44.entities.Supplier.list('name', 100000),
       base44.entities.Invoice.list('-date', 500),
     ]).then(([p, s, inv]) => {
       setPrices(p);

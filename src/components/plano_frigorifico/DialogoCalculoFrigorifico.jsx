@@ -4,6 +4,7 @@ import { Calculator, X, Snowflake, PackageSearch } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { camarasDePlano, cargaFrigorifica, ajustesPorDefecto } from '@/lib/planoCargaFrigorifica';
 import { buscarMaquinas } from '@/lib/planoBuscarPrecios';
+import { todosLosPrecios } from '@/lib/todosPrecios';
 
 const CLAVE_PROVEEDOR = 'plano_proveedor_elegido';
 const aNum = (t) => parseFloat(String(t).replace(',', '.'));
@@ -44,7 +45,7 @@ export default function DialogoCalculoFrigorifico({ open, walls, onClose, onAnad
     if (!open || !proveedor) { setPrecios([]); return undefined; }
     let vivo = true;
     setCargando(true);
-    base44.entities.SupplierPrice.filter({ supplier_id: proveedor }, '-created_date', 5000)
+    todosLosPrecios(base44, { supplier_id: proveedor })
       .then((r) => { if (vivo) setPrecios(lista(r)); })
       .catch(() => { if (vivo) setPrecios([]); })
       .finally(() => { if (vivo) setCargando(false); });

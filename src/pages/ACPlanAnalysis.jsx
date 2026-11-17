@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import NavBar from '@/components/NavBar';
+import { todosLosPrecios } from '@/lib/todosPrecios';
 
 // Colores por tipo de maquina (coinciden con el canvas y las tarjetas)
 const MACHINE_COLORS = { split: '#ef4444', mural: '#ef4444', consola: '#3b82f6', suelo: '#3b82f6', cassette: '#8b5cf6', conductos: '#f59e0b' };
@@ -331,7 +332,7 @@ export default function ACPlanAnalysis() {
 
   useEffect(() => {
     base44.entities.Contact.list('name', 500).then(setContacts).catch(() => {});
-    base44.entities.SupplierPrice.list('-created_date', 2000, 0).then(prices => {
+    todosLosPrecios(base44).then(prices => {
       const map = {};
       prices.forEach(p => {
         if (p.supplier_id && !map[p.supplier_id])
@@ -343,7 +344,7 @@ export default function ACPlanAnalysis() {
 
   useEffect(() => {
     if (!supplierId) { setSupplierPrices([]); return; }
-    base44.entities.SupplierPrice.filter({ supplier_id: supplierId })
+    todosLosPrecios(base44, { supplier_id: supplierId })
       .then(setSupplierPrices).catch(() => setSupplierPrices([]));
   }, [supplierId]);
 

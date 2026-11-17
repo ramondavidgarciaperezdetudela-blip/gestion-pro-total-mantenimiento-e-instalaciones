@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Trash2, Plus, Upload, Loader2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
+import { todosLosPrecios } from '@/lib/todosPrecios';
 
 export default function SupplierPriceManager({ supplierId, supplierName }) {
   const [prices, setPrices] = useState([]);
@@ -28,7 +29,7 @@ export default function SupplierPriceManager({ supplierId, supplierName }) {
   });
 
   const loadPrices = async () => {
-    const data = await base44.entities.SupplierPrice.filter({ supplier_id: supplierId });
+    const data = await todosLosPrecios(base44, { supplier_id: supplierId });
     setPrices(data || []);
   };
 

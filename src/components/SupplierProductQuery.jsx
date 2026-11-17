@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Search, Package, Loader2, ExternalLink, CheckCircle, AlertCircle, Globe, Database } from 'lucide-react';
 import { toast } from 'sonner';
+import { todosLosPrecios } from '@/lib/todosPrecios';
 
 // Busca en la base de datos local primero, luego consulta online si no hay resultado suficiente
 async function queryLocal(ref, supplierName) {
@@ -14,7 +15,7 @@ async function queryLocal(ref, supplierName) {
   results.push(...byCode);
   // Si no hay resultados, buscar por nombre parcial
   if (results.length === 0) {
-    const all = await base44.entities.SupplierPrice.list(null, 200);
+    const all = await todosLosPrecios(base44);
     const q = ref.toLowerCase();
     const byName = all.filter(p =>
       p.product_code?.toLowerCase().includes(q) ||

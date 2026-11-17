@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Droplet, Gauge, AlertCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea } from 'recharts';
+import { todosLosPrecios } from '@/lib/todosPrecios';
 
 // Magnus formula para presión de saturación (hPa)
 function saturationPressure(temp) {
@@ -223,7 +224,7 @@ export default function ColdRoomHumidityCalc({ tempCold = 2, presionEvap = 5.72,
   useEffect(() => {
     Promise.all([
       base44.entities.Supplier.filter({ is_active: true }),
-      base44.entities.SupplierPrice.list('-created_date', 1000),
+      todosLosPrecios(base44),
     ]).then(([supp, prices]) => {
       setSuppliers(supp);
       const pricesMap = {};
