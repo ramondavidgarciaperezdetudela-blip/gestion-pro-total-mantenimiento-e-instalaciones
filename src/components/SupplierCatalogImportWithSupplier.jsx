@@ -349,7 +349,14 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
         setStep('extracting');
         setProgress('Leyendo el PDF...');
         setProgressPct(5);
-        try { delPdf = await leerTarifaPdf(file); } catch { delPdf = null; }
+        try {
+          delPdf = await leerTarifaPdf(file, {
+            onProgreso: ({ pagina, total, articulos, fotos }) => {
+              setProgress(`Leyendo el catálogo: página ${pagina} de ${total} · ${articulos.toLocaleString()} artículos · ${fotos.toLocaleString()} con foto`);
+              setProgressPct(5 + Math.round((pagina / total) * 70));
+            },
+          });
+        } catch { delPdf = null; }
       }
 
       if (isExcel(file)) {
@@ -566,8 +573,10 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     ponGuardado('existentes', { fase: 'hecho', hechos: existing.length, total: existing.length });
     // Índice: product_code → registro existente
     const existingByCode = {};
+    const existingByName = {}; // los artículos sin referencia se reconocen por su nombre (así una versión nueva no los duplica)
     existing.forEach(e => {
       if (e.product_code) existingByCode[e.product_code.trim().toLowerCase()] = e;
+      else if (e.product_name) existingByName[norm(e.product_name)] = e;
     });
 
     let saved = 0;
@@ -584,8 +593,9 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
       const salePrice = costPrice > 0 ? Math.round(costPrice * (1 + margin / 100) * 100) / 100 : 0;
       const codeKey = (item.product_code || '').trim().toLowerCase();
 
-      if (codeKey && existingByCode[codeKey]) {
-        toUpdate.push({ ex: existingByCode[codeKey], item, costPrice, salePrice, idx: i });
+      const previo = codeKey ? existingByCode[codeKey] : existingByName[norm(item.product_name)];
+      if (previo) {
+        toUpdate.push({ ex: previo, item, costPrice, salePrice, idx: i });
       } else {
         toCreate.push({
           supplier_id:   supplierId,
@@ -659,6 +669,11 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
           sale_price: salePrice,
           margin: costPrice > 0 ? margin : ex.margin,
           product_name: item.product_name || ex.product_name,
+          // una versión nueva del catálogo también actualiza foto, descripción, marca y unidad (sin borrar lo que ya hay si la nueva no lo trae)
+          ...(item.image_url ? { image_url: item.image_url } : {}),
+          ...(item.notes ? { notes: item.notes } : {}),
+          ...(item.brand ? { brand: item.brand } : {}),
+          ...(item.unit && item.unit !== 'ud' ? { unit: item.unit } : {}),
         })
       ));
       results.forEach((r, ri) => {
@@ -704,8 +719,10 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
     } catch (_) { existing = []; }
 
     const existingByCode = {};
+    const existingByName = {}; // los artículos sin referencia se reconocen por su nombre (así una versión nueva no los duplica)
     existing.forEach(e => {
       if (e.product_code) existingByCode[e.product_code.trim().toLowerCase()] = e;
+      else if (e.product_name) existingByName[norm(e.product_name)] = e;
     });
 
     let saved = 0;
@@ -722,8 +739,9 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
         const salePrice = costPrice > 0 ? Math.round(costPrice * (1 + margin / 100) * 100) / 100 : 0;
         const codeKey = (item.product_code || '').trim().toLowerCase();
 
-        if (codeKey && existingByCode[codeKey]) {
-          toRetry.push({ ex: existingByCode[codeKey], item, costPrice, salePrice, idx, isUpdate: true });
+        const previo = codeKey ? existingByCode[codeKey] : existingByName[norm(item.product_name)];
+        if (previo) {
+          toRetry.push({ ex: previo, item, costPrice, salePrice, idx, isUpdate: true });
         } else {
           toRetry.push({
             supplier_id: supplierId,
@@ -784,6 +802,11 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
           sale_price: salePrice,
           margin: costPrice > 0 ? margin : ex.margin,
           product_name: item.product_name || ex.product_name,
+          // una versión nueva del catálogo también actualiza foto, descripción, marca y unidad (sin borrar lo que ya hay si la nueva no lo trae)
+          ...(item.image_url ? { image_url: item.image_url } : {}),
+          ...(item.notes ? { notes: item.notes } : {}),
+          ...(item.brand ? { brand: item.brand } : {}),
+          ...(item.unit && item.unit !== 'ud' ? { unit: item.unit } : {}),
         })
       ));
       results.forEach((r, ri) => {

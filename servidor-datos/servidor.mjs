@@ -9,6 +9,8 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import dns from 'node:dns/promises';
+import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
@@ -16,6 +18,10 @@ const PUERTO = Number(process.env.PUERTO || 8787);
 const DATOS = path.resolve(process.env.DATOS || path.join(AQUI, '..', 'datos-gpt'));
 const WEB = path.resolve(process.env.WEB || path.join(AQUI, '..', 'dist'));
 const MAX_CUERPO = 60 * 1024 * 1024;
+const MAX_CUERPO_CORTO = 64 * 1024; // inicio de sesión, claves, cuentas…: nunca necesitan más
+// Detrás de un proxy con HTTPS (Caddy, Nginx, Cloudflare Tunnel…) la IP real viene en X-Forwarded-For.
+const CONFIAR_PROXY = /^(1|si|sí|true)$/i.test(process.env.CONFIAR_PROXY || '');
+const DURACION_SESION = Number(process.env.DIAS_SESION || 7) * 24 * 3600 * 1000;
 
 fs.mkdirSync(path.join(DATOS, 'entidades'), { recursive: true });
 fs.mkdirSync(path.join(DATOS, 'archivos'), { recursive: true });
@@ -43,8 +49,10 @@ function comprobar(pass, guardado) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 const b64 = (x) => Buffer.from(x).toString('base64url');
+// «v» = huella de la clave: al cambiarla (o si alguien la roba y tú la cambias) todas las sesiones abiertas dejan de valer.
+const huellaClave = (u) => crypto.createHash('sha256').update(String(u.clave)).digest('hex').slice(0, 12);
 function firmar(carga) {
-  const cuerpo = b64(JSON.stringify({ ...carga, exp: Date.now() + 30 * 24 * 3600 * 1000 }));
+  const cuerpo = b64(JSON.stringify({ ...carga, exp: Date.now() + DURACION_SESION }));
   return `${cuerpo}.${crypto.createHmac('sha256', SECRETO).update(cuerpo).digest('base64url')}`;
 }
 function verificar(token) {
@@ -96,33 +104,102 @@ for (const s of ['SIGINT', 'SIGTERM']) process.on(s, () => { volcar(); process.e
 
 // ── HTTP ──────────────────────────────────────────────────────────────────
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': process.env.ORIGEN_PERMITIDO || '*', // en internet: pon aquí la dirección de tu web
   'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Nombre',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
 };
-const json = (res, codigo, obj) => { res.writeHead(codigo, { ...CORS, 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
+// Cabeceras que se ponen a TODO lo que sale del servidor
+const SEGURIDAD = {
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'X-Frame-Options': 'DENY',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Permissions-Policy': 'geolocation=(self), camera=(self), microphone=(self), payment=(), usb=()',
+};
+// La aplicación (HTML): solo carga código de sí misma; no se puede incrustar en otra web; sin plugins ni <base> ajenos.
+const CSP_APP = [
+  "default-src 'self'", "script-src 'self' 'unsafe-inline' blob:", "worker-src 'self' blob:",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https:", "media-src 'self' data: blob:", "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:*",
+  "frame-src 'self' blob: data:", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'",
+].join('; ');
+// Archivos subidos: nunca se ejecutan (un .html o .svg subido no puede leer la sesión de la aplicación).
+const CSP_ARCHIVO = "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox";
+const esHttps = (req) => req.socket.encrypted || /https/i.test(req.headers['x-forwarded-proto'] || '') || /^(1|si|sí|true)$/i.test(process.env.FORZAR_HTTPS || '');
+const cabeceras = (req, extra = {}) => ({ ...SEGURIDAD, ...(req && esHttps(req) ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' } : {}), ...extra });
+const json = (res, codigo, obj) => { res.writeHead(codigo, { ...CORS, ...cabeceras(res.req), 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
 const fallo = (res, codigo, message) => json(res, codigo, { message });
 
-function cuerpo(req) {
+// ── Frenos contra adivinar claves y saturar el servidor ───────────────────
+const ipDe = (req) => {
+  if (CONFIAR_PROXY) { const x = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim(); if (x) return x; }
+  return req.socket.remoteAddress || '?';
+};
+const intentos = new Map(); // clave → { n, hasta }
+const FALLOS_MAX = Number(process.env.FALLOS_LOGIN || 6); const BLOQUEO_MS = 15 * 60 * 1000;
+function bloqueado(clave) { const x = intentos.get(clave); if (!x) return 0; if (x.hasta && x.hasta > Date.now()) return x.hasta - Date.now(); if (x.hasta) intentos.delete(clave); return 0; }
+function falloLogin(clave) {
+  const x = intentos.get(clave) || { n: 0, hasta: 0 }; x.n++;
+  if (x.n >= FALLOS_MAX) { x.hasta = Date.now() + BLOQUEO_MS; x.n = 0; }
+  intentos.set(clave, x);
+}
+const peticiones = new Map(); // ip → { desde, n }
+const PETICIONES_MIN = Number(process.env.PETICIONES_POR_MINUTO || 1500);
+function demasiadas(ip) {
+  const t = Date.now(); const x = peticiones.get(ip);
+  if (!x || t - x.desde > 60000) { peticiones.set(ip, { desde: t, n: 1 }); return false; }
+  return ++x.n > PETICIONES_MIN;
+}
+setInterval(() => { const t = Date.now(); for (const [k, v] of peticiones) if (t - v.desde > 120000) peticiones.delete(k); for (const [k, v] of intentos) if (!v.hasta && false) intentos.delete(k); }, 60000).unref();
+const CLAVE_FALSA = hash('clave-que-no-existe'); // para tardar lo mismo si el correo no existe (no revela qué cuentas hay)
+
+// Correo: solo puertos de correo y nunca hacia la red interna (evita usar el servidor para escanear tu red)
+const PUERTOS_CORREO = new Set([25, 465, 587, 2525]);
+const esPrivada = (ip) => {
+  if (net.isIPv4(ip)) { const [a, b] = ip.split('.').map(Number); return a === 10 || a === 127 || a === 0 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254) || (a === 100 && b >= 64 && b <= 127); }
+  if (net.isIPv6(ip)) { const l = ip.toLowerCase(); return l === '::1' || l === '::' || l.startsWith('fc') || l.startsWith('fd') || l.startsWith('fe80') || l.startsWith('::ffff:127.') || l.startsWith('::ffff:10.') || l.startsWith('::ffff:192.168.'); }
+  return true;
+};
+async function comprobarDestinoCorreo(host, port) {
+  if (!PUERTOS_CORREO.has(Number(port))) throw new Error('Puerto de correo no permitido (usa 465, 587, 25 o 2525).');
+  if (/^(1|si|sí|true)$/i.test(process.env.PERMITIR_CORREO_LOCAL || '')) return;
+  let dirs;
+  try { dirs = net.isIP(host) ? [{ address: host }] : await dns.lookup(host, { all: true }); } catch { throw new Error('No se encuentra el servidor de correo.'); }
+  if (!dirs.length || dirs.some((d) => esPrivada(d.address))) throw new Error('El servidor de correo no puede estar en una red interna.');
+}
+
+function cuerpo(req, max = MAX_CUERPO) {
   return new Promise((resolve, reject) => {
     const trozos = []; let n = 0;
-    req.on('data', (c) => { n += c.length; if (n > MAX_CUERPO) { reject(Object.assign(new Error('Archivo demasiado grande.'), { codigo: 413 })); req.destroy(); } else trozos.push(c); });
+    req.on('data', (c) => { n += c.length; if (n > max) { reject(Object.assign(new Error('Archivo demasiado grande.'), { codigo: 413 })); req.destroy(); } else trozos.push(c); });
     req.on('end', () => resolve(Buffer.concat(trozos)));
     req.on('error', reject);
   });
 }
-const cuerpoJson = async (req) => { const b = await cuerpo(req); return b.length ? JSON.parse(b.toString('utf8')) : {}; };
+const cuerpoJson = async (req, max = MAX_CUERPO) => {
+  const b = await cuerpo(req, max);
+  try { return b.length ? JSON.parse(b.toString('utf8')) : {}; } catch { throw Object.assign(new Error('El cuerpo de la petición no es JSON válido.'), { codigo: 400 }); }
+};
 
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.pdf': 'application/pdf', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.webmanifest': 'application/manifest+json' };
-function estatico(res, base, ruta, spa) {
-  let f = path.normalize(path.join(base, decodeURIComponent(ruta)));
-  if (!f.startsWith(base)) return fallo(res, 403, 'Prohibido');
+function estatico(req, res, base, ruta, spa) {
+  let rel;
+  try { rel = decodeURIComponent(ruta); } catch { return fallo(res, 400, 'Dirección no válida.'); }
+  if (rel.includes('\0')) return fallo(res, 400, 'Dirección no válida.');
+  let f = path.resolve(base, rel);
+  const dentro = (x) => { const r = path.relative(base, x); return r === '' || (!r.startsWith('..') && !path.isAbsolute(r)); };
+  if (!dentro(f)) return fallo(res, 403, 'Prohibido');
   if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) {
     if (!spa) return fallo(res, 404, 'No existe');
     f = path.join(base, 'index.html');
     if (!fs.existsSync(f)) return fallo(res, 404, 'Aún no has compilado la aplicación (npm run build).');
   }
-  res.writeHead(200, { 'Content-Type': TIPOS[path.extname(f).toLowerCase()] || 'application/octet-stream', ...(spa ? {} : CORS) });
+  const ext = path.extname(f).toLowerCase();
+  const tipo = TIPOS[ext] || 'application/octet-stream';
+  const extra = spa
+    ? (ext === '.html' ? { 'Content-Security-Policy': CSP_APP, 'Cache-Control': 'no-cache' } : { 'Cache-Control': 'public, max-age=3600' })
+    : { ...CORS, 'Content-Security-Policy': CSP_ARCHIVO, 'Content-Disposition': ext === '.svg' || tipo === 'application/octet-stream' ? 'attachment' : 'inline', 'Cache-Control': 'private, max-age=3600' };
+  res.writeHead(200, { 'Content-Type': tipo, ...cabeceras(req, extra) });
   fs.createReadStream(f).pipe(res);
 }
 
@@ -130,33 +207,40 @@ const servidor = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
     const ruta = url.pathname;
+    if (demasiadas(ipDe(req))) { res.setHeader('Retry-After', '60'); return fallo(res, 429, 'Demasiadas peticiones. Espera un minuto.'); }
     if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
 
-    if (ruta === '/api/estado') return json(res, 200, { ok: true, nombre: 'gestion-pro-total', usuarios: usuarios.length });
+    if (ruta === '/api/estado') return json(res, 200, { ok: true, nombre: 'gestion-pro-total' });
 
     if (ruta === '/api/registro' && req.method === 'POST') {
-      const d = await cuerpoJson(req);
+      const d = await cuerpoJson(req, MAX_CUERPO_CORTO);
       const email = String(d.email || '').trim().toLowerCase();
       if (usuarios.length > 0) return fallo(res, 403, 'El registro está cerrado: pide al administrador que te cree la cuenta.');
       if (!/^\S+@\S+\.\S+$/.test(email)) return fallo(res, 400, 'El correo no es válido.');
       if (String(d.password || '').length < 8) return fallo(res, 400, 'La contraseña debe tener al menos 8 caracteres.');
       const u = { id: crypto.randomUUID(), email, nombre: d.nombre || email, role: 'admin', clave: hash(d.password) };
       usuarios.push(u); guardarUsuarios();
-      return json(res, 200, { token: firmar({ id: u.id }), user: publico(u) });
+      return json(res, 200, { token: firmar({ id: u.id, v: huellaClave(u) }), user: publico(u) });
     }
     if (ruta === '/api/login' && req.method === 'POST') {
-      const d = await cuerpoJson(req);
-      const u = usuarios.find((x) => x.email === String(d.email || '').trim().toLowerCase());
-      if (!u || !comprobar(String(d.password || ''), u.clave)) return fallo(res, 401, 'Correo o contraseña incorrectos.');
-      return json(res, 200, { token: firmar({ id: u.id }), user: publico(u) });
+      const d = await cuerpoJson(req, MAX_CUERPO_CORTO);
+      const correo = String(d.email || '').trim().toLowerCase();
+      const claveIp = `ip:${ipDe(req)}`; const claveCorreo = `mail:${correo}`;
+      const espera = Math.max(bloqueado(claveIp), bloqueado(claveCorreo));
+      if (espera) { res.setHeader('Retry-After', Math.ceil(espera / 1000)); return fallo(res, 429, `Demasiados intentos. Espera ${Math.ceil(espera / 60000)} minutos y vuelve a probar.`); }
+      const u = usuarios.find((x) => x.email === correo);
+      const bien = comprobar(String(d.password || ''), u ? u.clave : CLAVE_FALSA) && !!u;
+      if (!bien) { falloLogin(claveIp); falloLogin(claveCorreo); console.warn(`[seguridad] intento de acceso fallido (${ipDe(req)}) con «${correo.slice(0, 60)}»`); return fallo(res, 401, 'Correo o contraseña incorrectos.'); }
+      intentos.delete(claveIp); intentos.delete(claveCorreo);
+      return json(res, 200, { token: firmar({ id: u.id, v: huellaClave(u) }), user: publico(u) });
     }
 
     // Archivos subidos: se sirven sin sesión (la dirección lleva un nombre único e imposible de adivinar)
-    if (ruta.startsWith('/archivos/') && req.method === 'GET') return estatico(res, path.join(DATOS, 'archivos'), ruta.slice('/archivos/'.length), false);
+    if (ruta.startsWith('/archivos/') && req.method === 'GET') return estatico(req, res, path.join(DATOS, 'archivos'), ruta.slice('/archivos/'.length), false);
 
     if (ruta.startsWith('/api/')) {
       const sesion = verificar((req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
-      const yo = sesion && usuarios.find((u) => u.id === sesion.id);
+      const yo = sesion && usuarios.find((u) => u.id === sesion.id && sesion.v === huellaClave(u));
       if (!yo) return fallo(res, 401, 'Sesión caducada: vuelve a entrar.');
 
       if (ruta === '/api/yo') return json(res, 200, publico(yo));
@@ -164,20 +248,22 @@ const servidor = http.createServer(async (req, res) => {
         const d = await cuerpoJson(req);
         const c = d.smtp || {};
         try {
+          await comprobarDestinoCorreo(String(c.host || ''), c.port);
           await enviarCorreo({ host: c.host, port: c.port, user: c.user, pass: c.pass, ssl: c.ssl !== false, de: c.de, nombre: c.nombre, para: d.to, asunto: d.subject, texto: d.body, html: d.html });
           return json(res, 200, { ok: true });
         } catch (e) { return fallo(res, 502, e.message || 'No se pudo enviar el correo.'); }
       }
       if (ruta === '/api/clave' && req.method === 'POST') {
-        const d = await cuerpoJson(req);
+        const d = await cuerpoJson(req, MAX_CUERPO_CORTO);
         if (!comprobar(String(d.actual || ''), yo.clave)) return fallo(res, 403, 'La clave actual no es correcta.');
         if (String(d.nueva || '').length < 8) return fallo(res, 400, 'La clave nueva debe tener al menos 8 caracteres.');
         yo.clave = hash(String(d.nueva)); guardarUsuarios();
-        return json(res, 200, { ok: true });
+        // Las demás sesiones abiertas caducan (la huella cambió); esta recibe una nueva
+        return json(res, 200, { ok: true, token: firmar({ id: yo.id, v: huellaClave(yo) }) });
       }
       if (ruta === '/api/usuarios' && req.method === 'POST') {
         if (yo.role !== 'admin') return fallo(res, 403, 'Solo el administrador crea cuentas.');
-        const d = await cuerpoJson(req); const email = String(d.email || '').trim().toLowerCase();
+        const d = await cuerpoJson(req, MAX_CUERPO_CORTO); const email = String(d.email || '').trim().toLowerCase();
         if (!/^\S+@\S+\.\S+$/.test(email) || String(d.password || '').length < 8) return fallo(res, 400, 'Correo o contraseña no válidos.');
         if (usuarios.some((u) => u.email === email)) return fallo(res, 409, 'Ese correo ya existe.');
         const u = { id: crypto.randomUUID(), email, nombre: d.nombre || email, role: d.role === 'admin' ? 'admin' : 'user', clave: hash(d.password) };
@@ -188,8 +274,9 @@ const servidor = http.createServer(async (req, res) => {
         let bruto = 'archivo';
         try { bruto = decodeURIComponent(req.headers['x-nombre'] || 'archivo'); } catch { /* nombre raro */ }
         const nombre = bruto.replace(/[^\w.\-]+/g, '_').replace(/^\.+/, '') || 'archivo';
+        if (/\.(html?|xhtml|js|mjs|cjs|php|exe|bat|cmd|com|scr|msi|sh|jar|dll|ps1|vbs)$/i.test(nombre)) return fallo(res, 415, 'Ese tipo de archivo no se puede subir.');
         const datos = await cuerpo(req);
-        const final = `${crypto.randomBytes(6).toString('hex')}-${nombre}`.slice(0, 160);
+        const final = `${crypto.randomBytes(16).toString('hex')}-${nombre}`.slice(0, 160);
         fs.writeFileSync(path.join(DATOS, 'archivos', final), datos);
         return json(res, 200, { ruta: `/archivos/${encodeURIComponent(final)}` });
       }
@@ -213,13 +300,15 @@ const servidor = http.createServer(async (req, res) => {
       }
       return fallo(res, 404, 'Ruta desconocida.');
     }
-    return estatico(res, WEB, ruta === '/' ? 'index.html' : ruta.slice(1), true);
+    return estatico(req, res, WEB, ruta === '/' ? 'index.html' : ruta.slice(1), true);
   } catch (e) {
     console.error('[servidor]', e);
     return fallo(res, e.codigo || 500, e.codigo === 413 ? e.message : 'Error interno del servidor.');
   }
 });
 
+// Contra conexiones lentas que dejan el servidor bloqueado
+servidor.headersTimeout = 20000; servidor.requestTimeout = 120000; servidor.keepAliveTimeout = 10000; servidor.maxHeadersCount = 60;
 servidor.listen(PUERTO, '0.0.0.0', () => {
   console.log(`Gestión Pro Total — servidor en marcha en el puerto ${PUERTO}`);
   console.log(`Datos guardados en: ${DATOS}`);
