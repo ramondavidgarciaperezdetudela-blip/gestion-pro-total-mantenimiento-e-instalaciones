@@ -189,7 +189,7 @@ export async function fotosParaItems(archivo, items, { onProgreso = () => {}, se
         if (hallados.length) {
           const [, , pw, ph] = pagina.view || [0, 0, 600, 800];
           const fotos = fotosDePagina(pdfjs.OPS, await pagina.getOperatorList())
-            .filter((f) => Math.max(f.w, f.h) >= 50 && Math.min(f.w, f.h) >= 18 && f.w * f.h >= 1500 && f.w * f.h < pw * ph * 0.6 && !repetida(f));
+            .filter((f) => Math.max(f.w, f.h) >= 28 && Math.min(f.w, f.h) >= 18 && f.w * f.h >= 800 && f.w * f.h < pw * ph * 0.6 && !repetida(f));
           if (fotos.length) {
             const mini = new Map();
             for (const h of hallados) {

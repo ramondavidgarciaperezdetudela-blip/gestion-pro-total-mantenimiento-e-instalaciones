@@ -15,6 +15,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.146.0] — 2026-11-18
+
+### Corregido
+- **Al volver a subir una tarifa se actualizan precios y fotos solos.** Comprobado en pantalla: una segunda versión de la tarifa cambia los precios de los artículos que ya existían, pone sus fotos nuevas y añade los artículos nuevos, sin duplicar ninguno.
+- **Tarifas en tabla con fotos pequeñas:** las miniaturas de producto de 30–50 puntos (típicas de las listas de precios con una foto por fila) no se detectaban y el artículo se quedaba sin imagen. Ahora se importan.
+
 ## [1.145.0] — 2026-11-17
 
 ### Añadido
