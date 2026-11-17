@@ -228,3 +228,100 @@ export async function fotosParaItems(archivo, items, { onProgreso = () => {}, se
   const tras = compartirFotoPrincipal(items, grupoDe);
   return puestas + Math.max(0, tras - antes - 0);
 }
+
+
+/**
+ * «Fotos desde PDF»: recupera las fotos de la tarifa/catálogo para los artículos que ya están guardados (por código).
+ * Mismo resultado que recuperarImagenesDePdf, pero entiende catálogos de revista (foto + tabla), fotos dentro de
+ * «formularios» y tarifas con una foto por bloque o por página. Las medidas del mismo producto comparten la foto.
+ * @param {{id:any,codigo:string,nombre?:string}[]} articulos
+ */
+export async function recuperarFotosPorCodigo(archivo, articulos, { onProgreso = () => {}, onFoto, senal } = {}) {
+  const resultado = { encontradas: [], fallos: [], paginas: 0, cancelado: false };
+  const pendientes = new Map();
+  const porCodigo = new Map();
+  for (const a of articulos) {
+    const c = String(a.codigo || '').trim().toLowerCase();
+    if (c.length < 3) continue;
+    pendientes.set(a.id, a);
+    if (!porCodigo.has(c)) porCodigo.set(c, []); porCodigo.get(c).push(a);
+  }
+  if (!pendientes.size) return resultado;
+  const { pdfjs, pdf, poca, cerrar } = await abrir(archivo);
+  resultado.paginas = pdf.numPages;
+  const lado = poca ? 280 : 340; const maxPixeles = poca ? 8e6 : 24e6;
+  const fotoDe = new Map(); // id del artículo → dataUrl (para repartirla luego a sus otras medidas)
+  const dar = async (art, dataUrl, n) => {
+    if (!pendientes.has(art.id)) return;
+    try { await onFoto({ id: art.id, dataUrl, pagina: n }); resultado.encontradas.push(art.id); fotoDe.set(art.id, dataUrl); }
+    catch (e) { resultado.fallos.push({ id: art.id, motivo: String(e?.message || e), pagina: n }); }
+    pendientes.delete(art.id);
+  };
+  try {
+    for (let n = 1; n <= pdf.numPages; n++) {
+      if (senal?.aborted) { resultado.cancelado = true; break; }
+      onProgreso({ pagina: n, total: pdf.numPages, encontradas: resultado.encontradas.length });
+      if (!pendientes.size) break;
+      let pagina;
+      try {
+        pagina = await pdf.getPage(n);
+        const trozos = trozosDeTexto(await pagina.getTextContent());
+        const hallados = []; const vistos = new Set();
+        for (const t of trozos) for (const tok of (t.t.match(/[A-Za-z0-9][\w.\-/]{2,}/g) || [])) {
+          for (const a of porCodigo.get(tok.toLowerCase()) || []) if (pendientes.has(a.id) && !vistos.has(a.id)) { vistos.add(a.id); hallados.push({ a, x: t.x, y: t.y, cod: tok.toLowerCase() }); }
+        }
+        if (!hallados.length) continue; // sin códigos nuestros en la página: ni se miran las fotos
+        const [, , pw, ph] = pagina.view || [0, 0, 600, 800];
+        const fotos = fotosDePagina(pdfjs.OPS, await pagina.getOperatorList())
+          .filter((f) => Math.max(f.w, f.h) >= 50 && Math.min(f.w, f.h) >= 18 && f.w * f.h >= 1500 && f.w * f.h < pw * ph * 0.6);
+        if (!fotos.length) continue;
+        // 1.º la lectura de catálogo (la foto del bloque de cada referencia); 2.º la foto más cercana
+        const delBloque = new Map();
+        try { for (const r of articulosDePagina(trozos, fotos)) if (r._foto) delBloque.set(String(r.product_code).toLowerCase(), r._foto); } catch { /* sigue con la cercanía */ }
+        const mini = new Map();
+        const miniatura = async (id) => {
+          if (mini.has(id)) return mini.get(id);
+          let url = '';
+          try {
+            const obj = await new Promise((res) => {
+              const t = setTimeout(() => res(null), 4000);
+              try { const almacen = String(id).startsWith('g_') ? pagina.commonObjs : pagina.objs; almacen.get(id, (o) => { clearTimeout(t); res(o); }); } catch { clearTimeout(t); res(null); }
+            });
+            url = aMiniatura(obj, lado, maxPixeles) || '';
+          } catch { url = ''; }
+          mini.set(id, url); return url;
+        };
+        for (const h of hallados) {
+          let id = delBloque.get(h.cod);
+          if (!id) {
+            let d0 = Infinity;
+            for (const f of fotos) {
+              const dx = Math.max(f.x - h.x, 0, h.x - (f.x + f.w)); const dy = Math.max(f.y - h.y, 0, h.y - (f.y + f.h));
+              const d = Math.hypot(dx, dy);
+              if (d < d0) { d0 = d; id = f.id; }
+            }
+            if (d0 > 320) id = null; // demasiado lejos: probablemente no es su foto
+          }
+          if (!id) continue;
+          const url = await miniatura(id);
+          if (url) await dar(h.a, url, n);
+        }
+      } catch (e) {
+        resultado.fallos.push({ id: null, motivo: `Página ${n}: ${String(e?.message || e)}`, pagina: n });
+      } finally { try { pagina?.cleanup(); } catch { /* nada */ } }
+      if (n % (poca ? 5 : 25) === 0) { try { await pdf.cleanup(); } catch { /* nada */ } }
+      await cederPantalla();
+    }
+    // Mismo producto en otra medida (mismo nombre sin la medida): comparte la foto principal
+    if (!resultado.cancelado && pendientes.size) {
+      const porNombre = new Map();
+      for (const a of articulos) { const url = fotoDe.get(a.id); const b = nombreBase(a.nombre || '').toLowerCase(); if (url && b.length >= 6 && !porNombre.has(b)) porNombre.set(b, url); }
+      for (const a of [...pendientes.values()]) {
+        const url = porNombre.get(nombreBase(a.nombre || '').toLowerCase());
+        if (url) await dar(a, url, 0);
+      }
+    }
+    onProgreso({ pagina: pdf.numPages, total: pdf.numPages, encontradas: resultado.encontradas.length });
+  } finally { await cerrar(); }
+  return resultado;
+}
