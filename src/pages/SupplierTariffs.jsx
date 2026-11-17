@@ -109,7 +109,7 @@ export default function SupplierTariffs() {
       // por fecha de creación no es estable y hace que la paginación por
       // páginas se salte o repita artículos, "perdiendo" parte del catálogo.
       [supp, firstBatch] = await withRetry(() => Promise.all([
-        base44.entities.Supplier.list('name', 200),
+        base44.entities.Supplier.list('name', 100000),
         base44.entities.SupplierPrice.filter({}, null, PAGE, 0),
       ]));
     } catch (err) {
@@ -126,9 +126,8 @@ export default function SupplierTariffs() {
     if (firstBatch.length === PAGE) {
       let allPrices = [...firstBatch];
       let skip = PAGE;
-      // Sin tope artificial: cargar TODAS las tarifas (guardia de seguridad muy
-      // alta por si hay catálogos enormes, p. ej. Salvador Escoda ~64.000 refs).
-      const MAX_RECORDS = 500000;
+      // Sin ningún tope: se cargan TODOS los artículos, sean 10.000 o 1.000.000.
+      const MAX_RECORDS = Infinity;
 
       const loadBatchesInParallel = async () => {
         while (skip < MAX_RECORDS) {
@@ -434,6 +433,12 @@ export default function SupplierTariffs() {
     let pendientes = lista.map(p => ({ id: p.id, codigo: p.product_code, nombre: p.product_name }));
     const guardados = new Set();
     let cancelado = false;
+    // Las fotos se pintan en la lista por tandas: repintar miles de filas por cada foto hacía la carga lentísima.
+    const nuevasFotos = new Map(); let volcando = null;
+    const volcarFotos = (ya = false) => {
+      const hacer = () => { volcando = null; if (!nuevasFotos.size) return; const lote = new Map(nuevasFotos); nuevasFotos.clear(); setPrices(prev => prev.map(p => lote.has(p.id) ? { ...p, image_url: lote.get(p.id) } : p)); };
+      if (ya) { clearTimeout(volcando); hacer(); } else if (!volcando) volcando = setTimeout(hacer, 1500);
+    };
     const pon = (f, n, extra = {}) => setPdfFotos({ fase: 'leyendo', archivo: f.name, nArchivo: n, totalArchivos: archivos.length, pagina: 0, totalPaginas: 0, avance: bytesHechos / bytesTotal, inicio, encontradas, fallos: nFallos, filasInforme: [], ...extra });
     try {
       for (let n = 0; n < archivos.length; n++) {
@@ -447,7 +452,7 @@ export default function SupplierTariffs() {
           const t = (async () => {
             try {
               await base44.entities.SupplierPrice.update(id, { image_url: dataUrl });
-              setPrices(prev => prev.map(p => p.id === id ? { ...p, image_url: dataUrl } : p));
+              nuevasFotos.set(id, dataUrl); volcarFotos();
               guardados.add(id); encontradas++;
             } catch (e) {
               nFallos++; informe.push(filaDe(id, 'La foto se recuperó pero no se pudo guardar: ' + (e.message || e), null, f.name));
@@ -476,6 +481,7 @@ export default function SupplierTariffs() {
       toast.error('No se pudo leer el PDF: ' + (e.message || e));
       informe.push({ proveedor: '', codigo: '', nombre: '', motivo: 'Error al leer el PDF: ' + (e.message || e), archivo: '' });
     }
+    volcarFotos(true);
     // Lo que no ha salido en ningún PDF y no ha dado error: sin foto junto a su código.
     const yaEnInforme = new Set(informe.map(i => i.codigo));
     if (!cancelado) for (const p of pendientes) { const pr = porId.get(p.id); if (pr && !yaEnInforme.has(pr.product_code)) informe.push(filaDe(p.id, MOTIVO_SIN_FOTO, null, '')); }
