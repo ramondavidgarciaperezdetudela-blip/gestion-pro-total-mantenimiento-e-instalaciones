@@ -20,6 +20,7 @@ import { norm } from '@/lib/buscarArticulos';
 
 const textoBusqueda = new WeakMap(); // texto ya preparado de cada artículo (se calcula una vez)
 import { recuperarImagenesDePdf } from '@/lib/imagenesPdf';
+import { recuperarFotosPorCodigo } from '@/lib/catalogoRevistaPdf';
 import { construirCsvFotos, MOTIVO_SIN_FOTO } from '@/lib/informeFotos';
 import { descargarTexto } from '@/lib/iaModulos/datos';
 import ProgresoFotosPdf from '@/components/ProgresoFotosPdf';
@@ -430,7 +431,7 @@ export default function SupplierTariffs() {
     const bytesTotal = archivos.reduce((t, f) => t + f.size, 0) || 1;
     let bytesHechos = 0; let encontradas = 0; let nFallos = 0;
     const informe = [];
-    let pendientes = lista.map(p => ({ id: p.id, codigo: p.product_code }));
+    let pendientes = lista.map(p => ({ id: p.id, codigo: p.product_code, nombre: p.product_name }));
     const guardados = new Set();
     let cancelado = false;
     const pon = (f, n, extra = {}) => setPdfFotos({ fase: 'leyendo', archivo: f.name, nArchivo: n, totalArchivos: archivos.length, pagina: 0, totalPaginas: 0, avance: bytesHechos / bytesTotal, inicio, encontradas, fallos: nFallos, filasInforme: [], ...extra });
@@ -454,10 +455,16 @@ export default function SupplierTariffs() {
           })();
           enCurso.add(t); t.finally(() => enCurso.delete(t));
         };
-        const r = await recuperarImagenesDePdf(f, pendientes, {
+        const opciones = {
           senal, onFoto: guardar,
           onProgreso: ({ pagina, total }) => pon(f, n + 1, { pagina, totalPaginas: total, avance: (bytesHechos + f.size * (pagina / Math.max(total, 1))) / bytesTotal })
-        });
+        };
+        // Motor nuevo (catálogos con foto + tabla, fotos dentro de formularios, una foto por página). Si no saca ninguna, se prueba el clásico.
+        let r = await recuperarFotosPorCodigo(f, pendientes, opciones);
+        if (!r.encontradas.length && !r.cancelado && !senal.aborted) {
+          const r2 = await recuperarImagenesDePdf(f, pendientes, opciones);
+          r = { ...r2, fallos: [...r.fallos, ...r2.fallos] };
+        }
         await Promise.all([...enCurso]);
         for (const x of r.fallos) { nFallos++; informe.push(x.id ? filaDe(x.id, x.motivo, x.pagina, f.name) : { proveedor: '', codigo: '', nombre: '', motivo: x.motivo, pagina: x.pagina, archivo: f.name }); }
         const fallidosIds = new Set(r.fallos.map(x => x.id));
