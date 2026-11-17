@@ -45,6 +45,7 @@ export function filasConPosicion(trozos, { tolY = 3, hueco = 6 } = {}) {
     if (g) g.items.push(it); else grupos.push({ y: it.y, items: [it] });
   }
   return grupos.sort((a, b) => b.y - a.y).map((g) => {
+    const fila = (() => {
     const orden = g.items.sort((a, b) => a.x - b.x);
     const celdas = []; let actual = null; let finX = -1e9;
     for (const it of orden) {
@@ -58,6 +59,9 @@ export function filasConPosicion(trozos, { tolY = 3, hueco = 6 } = {}) {
     }
     if (actual !== null) celdas.push(actual);
     return celdas.map((c) => ({ ...c, t: c.t.trim() }));
+    })();
+    fila.y = g.y; // altura de la fila (la usa el lector de catálogos de revista)
+    return fila;
   });
 }
 

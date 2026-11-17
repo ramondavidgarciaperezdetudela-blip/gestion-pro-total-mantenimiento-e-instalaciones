@@ -74,6 +74,28 @@ La aplicación Android admite direcciones `http://` de tu red; fuera de casa usa
 ## 7. Copias de seguridad del servidor
 Todo está en la carpeta de datos (`datos-gpt` o la que elijas con `DATOS`): copiarla entera, con el servidor parado o no, es una copia completa. Haz además copias con **Copia de seguridad → Exportar** desde la aplicación; son independientes del servidor.
 
+## 8. Publicar en internet con seguridad
+Si vas a abrir el servidor a internet (para trabajar desde fuera de casa), sigue **todos** estos pasos. No lo expongas directamente sin ellos.
+
+1. **Usa siempre HTTPS.** Sin cifrado, contraseñas y datos de clientes viajan a la vista. La forma más fácil:
+   - **Cloudflare Tunnel** (gratis, no abres puertos del router): instala `cloudflared` y apunta tu dominio a `http://localhost:8787`.
+   - O **Caddy** delante del servidor (consigue el certificado solo): `tudominio.es { reverse_proxy localhost:8787 }`.
+2. **Con un proxy delante**, arranca el servidor con `CONFIAR_PROXY=1` (así los bloqueos por intentos fallidos usan la dirección real del visitante) y `FORZAR_HTTPS=1`.
+3. **Fija el origen permitido**: `ORIGEN_PERMITIDO=https://tudominio.es` (por defecto acepta cualquiera).
+4. **Contraseña de administrador larga** (12+ caracteres) y cámbiala nada más entrar; borra `ADMIN-CLAVE.txt`.
+5. **No abras más puerto que el 443** del proxy; el puerto 8787 debe quedar solo para uso interno.
+6. **Copias de seguridad** de la carpeta de datos fuera del servidor (Drive, disco externo) y guarda `secreto.txt`: quien lo tenga puede firmar sesiones.
+7. Mantén al día el sistema, Node y la aplicación.
+
+Qué hace el servidor por ti: bloquea 15 minutos tras 6 intentos fallidos (ajustable con `FALLOS_LOGIN`), limita las peticiones por minuto (`PETICIONES_POR_MINUTO`), caduca las sesiones al cambiar la contraseña (y a los `DIAS_SESION`, por defecto 7), no deja subir archivos ejecutables ni .html y aísla los archivos subidos, impide que el correo apunte a tu red interna, añade cabeceras de seguridad y no revela qué cuentas existen.
+
+Variables disponibles: `PUERTO`, `DATOS`, `WEB`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `CONFIAR_PROXY`, `FORZAR_HTTPS`, `ORIGEN_PERMITIDO`, `FALLOS_LOGIN`, `PETICIONES_POR_MINUTO`, `DIAS_SESION`.
+
+### Lo que este servidor NO cubre
+- Los enlaces públicos de presupuestos y SAT que usan Base44 solo piden el identificador del documento; si usas Base44, valora añadir un código secreto a esos enlaces y revisar las reglas de acceso de cada entidad en su panel.
+- No hay doble factor (2FA) ni registro de auditoría detallado.
+- Los datos del navegador y del móvil no van cifrados en el propio aparato: protege el dispositivo con bloqueo de pantalla.
+
 ## Límites que conviene conocer
 - El servidor es sencillo: pensado para una empresa pequeña (unos pocos usuarios a la vez), no para cientos.
 - El correo directo desde la aplicación sale por el servidor, con el SMTP que pongas en Configuración → Correo.

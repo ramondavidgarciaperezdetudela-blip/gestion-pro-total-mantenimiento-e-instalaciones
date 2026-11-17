@@ -15,6 +15,23 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.139.0] — 2026-11-17
+
+### Corregido
+- **Catálogos y revistas en PDF con fotos.** Al importar un catálogo en formato revista (fotos + tablas de código y precio) la aplicación ahora lee el título, la descripción, la variante, el código, el precio y **la foto de cada artículo**. Con el catálogo de Tarragona de 524 páginas: 11.421 artículos, 6.310 con foto. Los que no tienen foto se completan con **«Rellenar imágenes»** (búsqueda en internet).
+- **Actualizar un catálogo ya cargado** ahora también actualiza las imágenes, la descripción y el precio, no solo el precio; y no duplica artículos que no tienen código.
+- Barra de progreso al leer PDFs grandes y posibilidad de cancelar.
+
+### Seguridad (servidor propio)
+- Bloqueo temporal tras varios intentos fallidos de inicio de sesión (por dirección y por correo) y límite de peticiones por minuto.
+- Las sesiones abiertas caducan al cambiar la contraseña.
+- Cabeceras de seguridad en todas las respuestas (nosniff, no incrustable, política de contenido, HSTS con HTTPS).
+- Archivos subidos: nombres impredecibles, no se aceptan .html/.js/.exe…, y se sirven aislados (sandbox) para que no puedan ejecutar código en la aplicación.
+- Corregido el acceso a carpetas fuera de la web (`../`), el envío de correo ya no puede apuntar a la red interna, límites de tamaño y tiempos de conexión, y `/api/estado` no revela cuántos usuarios hay.
+- Nueva guía «Publicar en internet con seguridad» en `GUIA-SERVIDOR-PROPIO.md` y pruebas automáticas (`npm run test:seguridad`).
+
+---
+
 ## [1.138.0] — 2026-11-16
 
 ### Corregido

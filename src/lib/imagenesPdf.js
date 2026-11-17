@@ -67,7 +67,7 @@ export function emparejar(textos, imagenes, articulos, maxDistancia = 170, indic
 const por = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
 
 /** Foto de pdf.js → miniatura JPEG, sin pasar por una copia a tamaño completo siempre que se pueda. */
-function aMiniatura(obj, lado, maxPixeles) {
+export function aMiniatura(obj, lado, maxPixeles) {
   if (!obj) return null;
   const ancho = obj.bitmap ? (obj.bitmap.displayWidth || obj.bitmap.width || obj.width) : obj.width;
   const alto = obj.bitmap ? (obj.bitmap.displayHeight || obj.bitmap.height || obj.height) : obj.height;
