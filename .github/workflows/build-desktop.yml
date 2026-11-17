@@ -3,14 +3,14 @@ name: Build Desktop Installers
 # Compila los instaladores de escritorio (Windows, macOS y Linux) y los publica
 # como Release. Linux (.deb/.AppImage) sirve también para el contenedor Linux de
 # Chromebook.
-# - Disparo manual sin "version": actualiza la release rodante "desktop-latest".
+# - Disparo manual sin "version": actualiza la release rodante "desktop-fuera-latest".
 # - Disparo manual con "version" (ej: v1.0.0) o al empujar una etiqueta vX.Y.Z:
 #   publica una Release oficial con ese número (creando la etiqueta si no existe).
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Etiqueta de versión a publicar (ej: v1.0.0). Vacío = release rodante desktop-latest."
+        description: "Etiqueta de versión a publicar (ej: v1.0.0). Vacío = release rodante desktop-fuera-latest."
         required: false
         default: ""
       mac:
@@ -32,7 +32,7 @@ jobs:
       - name: Crear/actualizar Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest') }}
+          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-fuera-latest') }}
           name: ${{ (inputs.version != '' || startsWith(github.ref, 'refs/tags/')) && format('Gestión Pro Total {0}', inputs.version != '' && inputs.version || github.ref_name) || 'Gestión Pro Total — Instaladores de escritorio' }}
           body: |
             Gestión Pro Total — descargas de esta versión.
@@ -144,7 +144,7 @@ jobs:
       - name: Publish installers to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest') }}
+          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-fuera-latest') }}
           files: |
             release/*.exe
             release/*.dmg
