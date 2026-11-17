@@ -65,6 +65,8 @@ export default function SupplierTariffs() {
   const pdfControl = useRef(null);
   const [margenAbierto, setMargenAbierto] = useState(false);
   const pdfFotosRef = useRef(null);
+  const [pidoProveedor, setPidoProveedor] = useState(null); // { accion: 'pdf' | 'rellenar', id } mientras se pregunta de qué proveedor es la tarifa
+  const proveedorFotosRef = useRef('all');
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -182,11 +184,11 @@ export default function SupplierTariffs() {
   useEffect(() => { loadData(); }, []);
 
   // ── Rellenar imágenes que faltan, en segundo plano y poco a poco ───────────
-  const fillMissingImages = async () => {
+  const fillMissingImages = async (idProveedor = filterSupplier) => {
     if (bulkImg) { bulkCancelRef.current = true; return; } // segundo clic = detener
-    // Productos sin imagen (respetando el filtro de proveedor si hay uno activo)
+    // Solo los productos sin imagen del proveedor elegido: mucho menos que buscar en todo el catálogo
     const sinFoto = prices.filter(p =>
-      !p.image_url && (filterSupplier === 'all' || p.supplier_id === filterSupplier)
+      !p.image_url && (idProveedor === 'all' || p.supplier_id === idProveedor)
     );
     if (sinFoto.length === 0) { toast.info('No hay productos sin imagen'); return; }
     // Mismo producto en varias medidas = una sola búsqueda: todas usan la foto principal
@@ -414,8 +416,9 @@ export default function SupplierTariffs() {
   const fotosDesdePdf = async (ev) => {
     const archivos = [...(ev.target.files || [])]; ev.target.value = '';
     if (!archivos.length) return;
-    const lista = prices.filter(p => !p.image_url && p.product_code && (filterSupplier === 'all' || p.supplier_id === filterSupplier));
-    if (!lista.length) { toast.info('No hay artículos sin imagen y con código en esta lista.'); return; }
+    const idProv = proveedorFotosRef.current || 'all';
+    const lista = prices.filter(p => !p.image_url && p.product_code && (idProv === 'all' || p.supplier_id === idProv));
+    if (!lista.length) { toast.info('No hay artículos sin imagen y con código de ese proveedor.'); return; }
     const porId = new Map(lista.map(p => [p.id, p]));
     const filaDe = (id, motivo, pagina, archivo) => {
       const p = porId.get(id) || {};
@@ -483,6 +486,33 @@ export default function SupplierTariffs() {
   return (
     <div className="space-y-4">
       <MargenMasivoDialog abierto={margenAbierto} onCerrar={() => setMargenAbierto(false)} suppliers={suppliers} prices={prices} onAplicado={(f) => setPrices(f)} />
+      <Dialog open={!!pidoProveedor} onOpenChange={(a) => { if (!a) setPidoProveedor(null); }}>
+        <DialogContent className="max-w-md" data-prueba="pregunta-proveedor-fotos">
+          <DialogHeader><DialogTitle>¿De qué proveedor es la tarifa?</DialogTitle></DialogHeader>
+          <p className="text-sm text-slate-600">
+            {pidoProveedor?.accion === 'pdf'
+              ? 'Así solo se buscan las fotos de los artículos de ese proveedor dentro del PDF y la carga va mucho más rápida.'
+              : 'Así solo se buscan en internet las imágenes de ese proveedor (en su web y por referencia) y va mucho más rápido.'}
+          </p>
+          <Select value={pidoProveedor?.id || ''} onValueChange={(v) => setPidoProveedor(p => ({ ...p, id: v }))}>
+            <SelectTrigger data-prueba="pregunta-proveedor-select"><SelectValue placeholder="Elige el proveedor o la tarifa" /></SelectTrigger>
+            <SelectContent>
+              {suppliers.map(sp => {
+                const n = prices.filter(p => p.supplier_id === sp.id && !p.image_url).length;
+                return <SelectItem key={sp.id} value={sp.id}>{sp.name} · {n.toLocaleString('es-ES')} sin foto</SelectItem>;
+              })}
+              <SelectItem value="all">Todos los proveedores (más lento)</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setPidoProveedor(null)}>Cancelar</Button>
+            <Button disabled={!pidoProveedor?.id} data-prueba="pregunta-proveedor-seguir" onClick={() => {
+              const { accion, id } = pidoProveedor; setPidoProveedor(null);
+              if (accion === 'pdf') { proveedorFotosRef.current = id; pdfFotosRef.current?.click(); } else fillMissingImages(id);
+            }}>{pidoProveedor?.accion === 'pdf' ? 'Elegir el PDF' : 'Buscar imágenes'}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <ProgresoFotosPdf estado={pdfFotos} onCancelar={() => pdfControl.current?.abort()} onCerrar={() => setPdfFotos(null)} onDescargar={descargarInformeFotos} />
       {/* Cabecera */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -578,13 +608,13 @@ export default function SupplierTariffs() {
           <RefreshCw className="w-4 h-4" />
         </Button>
         <input ref={pdfFotosRef} type="file" accept="application/pdf,.pdf" multiple className="hidden" onChange={fotosDesdePdf} data-prueba="tarifa-fotos-pdf" />
-        <Button variant="outline" className="gap-2 whitespace-nowrap" onClick={() => pdfFotosRef.current?.click()} disabled={pdfFotos?.fase === 'leyendo'}
+        <Button variant="outline" className="gap-2 whitespace-nowrap" onClick={() => setPidoProveedor({ accion: 'pdf', id: filterSupplier !== 'all' ? filterSupplier : '' })} disabled={pdfFotos?.fase === 'leyendo'}
           title="Sube la tarifa en PDF y se recuperan las fotos que lleva dentro, por código de artículo" data-prueba="tarifa-fotos-pdf-boton">
           {pdfFotos?.fase === 'leyendo' ? <><Loader2 className="w-4 h-4 animate-spin" />{`${Math.floor((pdfFotos.avance || 0) * 100)} %`}</> : <><ImageIcon className="w-4 h-4" />Fotos desde PDF</>}
         </Button>
         <Button
           variant={bulkImg ? 'destructive' : 'outline'}
-          onClick={fillMissingImages}
+          onClick={() => (bulkImg ? fillMissingImages() : setPidoProveedor({ accion: 'rellenar', id: filterSupplier !== 'all' ? filterSupplier : '' }))}
           className="gap-2 whitespace-nowrap"
           title="Buscar y rellenar las imágenes que faltan, en segundo plano"
         >

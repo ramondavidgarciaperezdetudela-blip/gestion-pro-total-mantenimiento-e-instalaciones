@@ -15,6 +15,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.142.0] — 2026-11-17
+
+### Mejorado
+- **«Fotos desde PDF» y «Rellenar imágenes que faltan» preguntan primero de qué proveedor es la tarifa.** Solo se buscan las fotos de los artículos de ese proveedor (con el número de artículos sin foto de cada uno), así la carga es mucho más rápida. «Todos los proveedores» sigue disponible, pero más lento.
+
+### Windows
+- El flujo de compilación firma el instalador de Windows automáticamente cuando se añaden los secretos de firma (Azure Artifact Signing o certificado .pfx). Nueva guía `GUIA-FIRMAR-WINDOWS.md` con los pasos, costes y qué hacer mientras tanto. Sin certificado, Windows seguirá avisando: es la única forma real de quitar el aviso de SmartScreen.
+
+---
+
 ## [1.141.0] — 2026-11-17
 
 ### Corregido

@@ -3,14 +3,14 @@ name: Build Desktop Installers
 # Compila los instaladores de escritorio (Windows, macOS y Linux) y los publica
 # como Release. Linux (.deb/.AppImage) sirve también para el contenedor Linux de
 # Chromebook.
-# - Disparo manual sin "version": actualiza la release rodante "desktop-fuera-latest".
+# - Disparo manual sin "version": actualiza la release rodante "desktop-latest".
 # - Disparo manual con "version" (ej: v1.0.0) o al empujar una etiqueta vX.Y.Z:
 #   publica una Release oficial con ese número (creando la etiqueta si no existe).
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Etiqueta de versión a publicar (ej: v1.0.0). Vacío = release rodante desktop-fuera-latest."
+        description: "Etiqueta de versión a publicar (ej: v1.0.0). Vacío = release rodante desktop-latest."
         required: false
         default: ""
       mac:
@@ -32,7 +32,7 @@ jobs:
       - name: Crear/actualizar Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-fuera-latest') }}
+          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest') }}
           name: ${{ (inputs.version != '' || startsWith(github.ref, 'refs/tags/')) && format('Gestión Pro Total {0}', inputs.version != '' && inputs.version || github.ref_name) || 'Gestión Pro Total — Instaladores de escritorio' }}
           body: |
             Gestión Pro Total — descargas de esta versión.
@@ -109,15 +109,42 @@ jobs:
           cp -r cadcraft-hvac/support cadcraft-bin/support
           cp cadcraft/LICENSE-MIT cadcraft/LICENSE-APACHE cadcraft/NOTICE cadcraft-bin/
 
+      # Firma de Windows (quita el aviso azul de SmartScreen «Windows protegió su PC»).
+      # Se activa SOLA cuando existen los secretos del repositorio; sin ellos el instalador sale sin firmar.
+      # Pasos: GUIA-FIRMAR-WINDOWS.md. Dos formas (elige UNA):
+      #  A) Azure Artifact Signing (unos 10 $/mes, sin token físico): AZURE_TENANT_ID, AZURE_CLIENT_ID,
+      #     AZURE_CLIENT_SECRET, AZ_FIRMA_ENDPOINT, AZ_FIRMA_CUENTA, AZ_FIRMA_PERFIL, AZ_FIRMA_EDITOR
+      #  B) Certificado .pfx de una autoridad (OV) exportable: WIN_CSC_LINK (el .pfx en base64) y WIN_CSC_KEY_PASSWORD
       - name: Build desktop installers
-        run: npx electron-builder --publish never
+        shell: bash
+        run: |
+          ARGS=""
+          if [ "$RUNNER_OS" = "Windows" ] && [ -n "$AZ_FIRMA_ENDPOINT" ] && [ -n "$AZURE_CLIENT_ID" ]; then
+            echo "Firmando con Azure Artifact Signing"
+            ARGS="-c.win.azureSignOptions.publisherName=$AZ_FIRMA_EDITOR -c.win.azureSignOptions.endpoint=$AZ_FIRMA_ENDPOINT -c.win.azureSignOptions.certificateProfileName=$AZ_FIRMA_PERFIL -c.win.azureSignOptions.codeSigningAccountName=$AZ_FIRMA_CUENTA"
+          elif [ "$RUNNER_OS" = "Windows" ] && [ -n "$CSC_LINK" ]; then
+            echo "Firmando con el certificado .pfx"
+          else
+            echo "Sin certificado de firma: el instalador de Windows saldrá sin firmar"
+            unset CSC_LINK CSC_KEY_PASSWORD
+          fi
+          npx electron-builder --publish never $ARGS
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZ_FIRMA_ENDPOINT: ${{ secrets.AZ_FIRMA_ENDPOINT }}
+          AZ_FIRMA_CUENTA: ${{ secrets.AZ_FIRMA_CUENTA }}
+          AZ_FIRMA_PERFIL: ${{ secrets.AZ_FIRMA_PERFIL }}
+          AZ_FIRMA_EDITOR: ${{ secrets.AZ_FIRMA_EDITOR }}
 
       - name: Publish installers to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-fuera-latest') }}
+          tag_name: ${{ inputs.version != '' && inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest') }}
           files: |
             release/*.exe
             release/*.dmg
