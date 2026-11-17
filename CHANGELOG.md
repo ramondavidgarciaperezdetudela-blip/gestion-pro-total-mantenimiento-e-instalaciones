@@ -15,6 +15,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.143.0] — 2026-11-17
+
+### Corregido
+- **«Fotos desde PDF» no recuperaba ninguna foto** (con el catálogo de Tarragona: 0 fotos tras 10 minutos). Nuevo motor: entiende catálogos con foto + tabla de referencias, fotos dentro de formularios del PDF y tarifas con una foto por bloque o página. Con el mismo catálogo: **11.302 de 11.421 fotos en 1 minuto**. Las medidas del mismo producto comparten la foto. Si el motor nuevo no saca ninguna, se prueba el clásico.
+- Las fotos se guardan en los artículos del proveedor elegido (la pregunta «¿De qué proveedor es la tarifa?» llegó en la 1.142.0).
+
+---
+
 ## [1.142.0] — 2026-11-17
 
 ### Mejorado
