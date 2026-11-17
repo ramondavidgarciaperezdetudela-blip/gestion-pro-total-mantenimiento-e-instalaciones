@@ -115,7 +115,10 @@ export function dominiosDe({ web, marca }, mapaPropio = {}) {
 
 const esDeDominio = (c, dominio) => [c.url, c.pagina].some((u) => hostDe(u).endsWith(dominio));
 
-export const consultas = ({ codigo, nombre, marca, proveedor, dominios = [] }) => {
+/** Nombre del producto sin la medida/variante: «LADRILLO CARAVISTA — 24x11 Rojo · Cepillado» → «LADRILLO CARAVISTA». */
+export const nombreBase = (n) => String(n || '').split(/\s+[—–]\s+|\s+·\s+/)[0].replace(/\s+/g, ' ').trim();
+
+export const consultas = ({ codigo, nombre, marca, proveedor, descripcion, dominios = [] }) => {
   const q = [];
   for (const dominio of dominios) {
     if (String(codigo || '').trim()) q.push({ por: 'codigo', web: true, dominio, texto: `${String(codigo).trim()} site:${dominio}` });
@@ -123,6 +126,11 @@ export const consultas = ({ codigo, nombre, marca, proveedor, dominios = [] }) =
   }
   if (String(codigo || '').trim()) q.push({ por: 'codigo', texto: `${String(codigo).trim()} ${marca || proveedor || ''}`.trim() });
   if (String(nombre || '').trim()) q.push({ por: 'nombre', texto: `${marca || ''} ${String(nombre).trim()}`.trim() });
+  // por la descripción del producto (cuando el nombre solo no basta)
+  const desc = String(descripcion || '').replace(/\s+/g, ' ').trim().slice(0, 70);
+  if (String(nombre || '').trim() && desc.length >= 8) q.push({ por: 'nombre', texto: `${String(nombre).trim()} ${desc}`.trim() });
+  // y, al final, el nombre con el proveedor
+  if (String(nombre || '').trim() && proveedor && !String(marca || '').trim()) q.push({ por: 'nombre', texto: `${String(nombre).trim()} ${proveedor}`.trim() });
   return q;
 };
 
@@ -132,6 +140,7 @@ export function guardarCache(c, almacen = globalThis.localStorage) {
   if (claves.length > 400) for (const k of claves.slice(0, claves.length - 400)) delete c[k];
   try { almacen.setItem(CLAVE_CACHE, JSON.stringify(c)); } catch { /* sin sitio */ }
 }
+export const claveCacheNombre = ({ proveedor, nombre }) => alfanum(proveedor) + '|n|' + alfanum(nombre);
 export const claveCache = ({ proveedor, codigo, nombre }) => alfanum(proveedor) + '|' + (alfanum(codigo) || alfanum(nombre));
 
 export const ajustesGoogle = (almacen = globalThis.localStorage) => { try { return JSON.parse(almacen.getItem(CLAVE_GOOGLE) || '{}'); } catch { return {}; } };
@@ -186,10 +195,12 @@ export function motoresPorDefecto({ puente, google }) {
 export async function buscarImagenProducto(datos, d) {
   const qs = consultas(datos);
   if (!qs.length) return { ok: false, motivo: 'sin_datos', mensaje: 'El artículo no tiene código ni nombre.' };
-  const cache = d.cache ?? leerCache(); const k = claveCache(datos);
-  if (cache[k]?.url) return { ok: true, url: cache[k].url, por: cache[k].por, desdeCache: true };
+  const cache = d.cache ?? leerCache(); const k = claveCache(datos); const kn = claveCacheNombre(datos);
+  // misma descripción en otra medida = misma foto: se mira también por el nombre sin la medida
+  const previa = cache[k]?.url ? cache[k] : (alfanum(datos.nombre) ? cache[kn] : null);
+  if (previa?.url) return { ok: true, url: previa.url, por: previa.por, desdeCache: true };
   if (d.enLinea && !d.enLinea()) return { ok: false, motivo: 'sin_conexion', mensaje: 'Sin conexión: la búsqueda de imágenes necesita internet. Las ya encontradas se siguen viendo.' };
-  if (!d.motores?.length) return { ok: false, motivo: 'sin_motor', mensaje: 'Este navegador no puede buscar imágenes por sí solo. Usa la aplicación de escritorio o el móvil, o pon tu clave de Google en Ajustes de IA.' };
+  if (!d.motores?.length) return { ok: false, motivo: 'sin_motor', mensaje: 'Este navegador no puede buscar imágenes por sí solo. Usa la aplicación de escritorio o el móvil, conecta tu servidor propio, o pon tu clave de Google en Ajustes de IA.' };
   let hubo = false;
   for (const q of qs) {
     let cands = [];
@@ -210,7 +221,7 @@ export async function buscarImagenProducto(datos, d) {
     for (const c of orden.slice(0, 4)) {
       try {
         const url = await d.descargar(c.url, c.miniatura);
-        if (url) { const por = q.web ? 'web' : q.por; cache[k] = { url, por }; guardarCache(cache); return { ok: true, url, por, dominio: q.dominio }; }
+        if (url) { const por = q.web ? 'web' : q.por; cache[k] = { url, por }; if (alfanum(datos.nombre)) cache[kn] = { url, por }; guardarCache(cache); return { ok: true, url, por, dominio: q.dominio }; }
       } catch { /* siguiente candidata */ }
     }
   }

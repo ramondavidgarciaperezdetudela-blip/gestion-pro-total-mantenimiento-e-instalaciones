@@ -29,4 +29,20 @@ assert.equal(por['10821986']._foto, 'img_a'); assert.equal(por['10923073']._foto
 assert.equal(por['25032683']._foto, 'img_b', 'cada bloque con su foto');
 // imagen girada 90°
 const c = cajaDeMatriz([0, 50, -80, 0, 100, 10]); assert.deepEqual([c.x, c.y, c.w, c.h], [20, 10, 80, 50]);
+
+// misma descripción en otra medida → todas con la foto principal (la que más se repite)
+const { compartirFotoPrincipal } = await import('../src/lib/catalogoRevistaPdf.js');
+const { unirFotosPorCodigo } = await import('../src/lib/tarifaPdf.js');
+const { nombreBase, consultas } = await import('../src/lib/imagenesProducto.js');
+const mk = (c, img) => ({ product_code: c, image_url: img });
+const A = [mk('1', 'F1'), mk('2', ''), mk('3', 'F1'), mk('4', 'F9'), mk('5', 'OTRO')];
+const g = new Map([[A[0], 'x|d'], [A[1], 'x|d'], [A[2], 'x|d'], [A[3], 'x|d'], [A[4], 'y|d']]);
+assert.equal(compartirFotoPrincipal(A, g), 5);
+assert.deepEqual(A.map((a) => a.image_url), ['F1', 'F1', 'F1', 'F1', 'OTRO']);
+const B = [mk('AB-1', ''), mk('zz', '')];
+assert.equal(unirFotosPorCodigo(B, new Map([['ab-1', 'FOTO']])), 1); assert.equal(B[0].image_url, 'FOTO'); assert.equal(B[1].image_url, '');
+// búsqueda de imágenes: por nombre sin medida y por descripción
+assert.equal(nombreBase('LADRILLO CARAVISTA — 24x11.5x5 Rojo · Cepillado'), 'LADRILLO CARAVISTA');
+const q = consultas({ codigo: '10821986', nombre: 'LADRILLO CARAVISTA', descripcion: 'Pieza cerámica para fachada', proveedor: 'Tarragona' }).map((x) => x.texto);
+assert.ok(q.some((t) => t.includes('10821986')) && q.some((t) => t === 'LADRILLO CARAVISTA') && q.some((t) => t.includes('Pieza cerámica')), q.join(' | '));
 console.log('Catálogo de revista: todo correcto');
