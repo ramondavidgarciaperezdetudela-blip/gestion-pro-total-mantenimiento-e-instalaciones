@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Wifi, WifiOff, RefreshCw, CheckCircle } from 'lucide-react';
+import { WifiOff, RefreshCw, CheckCircle } from 'lucide-react';
 
 export default function OfflineSyncBanner() {
   const [online, setOnline] = useState(navigator.onLine);

@@ -1,9 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Search, Copy, Check, X } from 'lucide-react';
+import { Search, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ─── Todos los bloques Unicode presentes en Windows (Character Map completo) ──

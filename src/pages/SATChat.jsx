@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Send, X, Wrench, ChevronRight, Loader2, Camera } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { uploadImage } from '@/lib/uploadImage';
 import { uploadPhotosSequential } from '@/lib/uploadPhotosSequential';
 
 export default function SATChat() {
