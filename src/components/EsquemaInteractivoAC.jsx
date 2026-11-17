@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { NumberField } from '@/components/ui/number-field';
 import { Thermometer, Wind, SlidersHorizontal } from 'lucide-react';
 import ACSystemDiagram from '@/components/ACSystemDiagram';
 

@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Search, Trash2, Edit, Image, X, Printer, Mail, StickyNote } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { uploadImage } from '@/lib/uploadImage';
 import { uploadPhotosSequential } from '@/lib/uploadPhotosSequential';
 
 const EMPTY = { title: '', content: '', contact_name: '', contact_id: '', tags: '', date: format(new Date(), 'yyyy-MM-dd'), photos: [] };
