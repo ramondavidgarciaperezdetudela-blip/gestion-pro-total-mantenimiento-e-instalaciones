@@ -5,6 +5,7 @@
 // página cada vez y de cada foto solo se guarda una miniatura.
 import { articulosDePagina, cajaDeMatriz } from './catalogoRevista.js';
 import { aMiniatura, modoPocaMemoria } from './imagenesPdf.js';
+import { nombreBase } from './imagenesProducto.js';
 
 const cederPantalla = () => new Promise((r) => setTimeout(r, 0));
 const por = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
@@ -32,7 +33,10 @@ function fotosDePagina(OPS, ops) {
     if (fn === OPS.save) pila.push(ctm.slice());
     else if (fn === OPS.restore) ctm = pila.pop() || ctm;
     else if (fn === OPS.transform) ctm = por(a, ctm);
-    else if (fn === OPS.paintImageXObject) out.push({ id: a[0], ...cajaDeMatriz(ctm) });
+    // Muchos PDF (InDesign, Canva, Illustrator) meten las fotos dentro de «formularios» con su propia matriz
+    else if (OPS.paintFormXObjectBegin !== undefined && fn === OPS.paintFormXObjectBegin) { pila.push(ctm.slice()); if (Array.isArray(a?.[0])) ctm = por(a[0], ctm); }
+    else if (OPS.paintFormXObjectEnd !== undefined && fn === OPS.paintFormXObjectEnd) ctm = pila.pop() || ctm;
+    else if (fn === OPS.paintImageXObject || (OPS.paintImageXObjectRepeat !== undefined && fn === OPS.paintImageXObjectRepeat) || (OPS.paintJpegXObject !== undefined && fn === OPS.paintJpegXObject)) out.push({ id: a[0], ...cajaDeMatriz(ctm) });
   });
   return out;
 }
@@ -142,4 +146,85 @@ export async function leerCatalogoRevista(archivo, { onProgreso = () => {}, sena
   if (conFotos) conFoto = compartirFotoPrincipal(items, grupoDe);
   if (fallosFoto) avisos.push(`${fallosFoto} fotos no se pudieron leer (se quedan sin foto).`);
   return { items, paginas: pdf.numPages, conFoto, avisos, cancelado };
+}
+
+
+const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
+ * Para tarifas y folletos que se leyeron como TABLA (sin fotos): busca cada artículo en su página y le pone la
+ * foto más cercana de esa página (la imagen que lleva la página/el bloque). Los logos que se repiten en
+ * todas las páginas y los fondos a página completa se ignoran. Las medidas del mismo producto comparten foto.
+ * Devuelve cuántos artículos recibieron foto.
+ */
+export async function fotosParaItems(archivo, items, { onProgreso = () => {}, senal } = {}) {
+  const pendientes = items.filter((i) => !i.image_url);
+  if (!pendientes.length) return 0;
+  const porCodigo = new Map(); const porNombre = [];
+  for (const it of pendientes) {
+    const c = String(it.product_code || '').trim().toLowerCase();
+    if (c.length >= 3) { if (!porCodigo.has(c)) porCodigo.set(c, []); porCodigo.get(c).push(it); } else if (norm(it.product_name).length >= 8) porNombre.push({ it, k: norm(it.product_name).slice(0, 22) });
+  }
+  const { pdfjs, pdf, poca, cerrar } = await abrir(archivo);
+  const lado = poca ? 220 : 260; const maxPixeles = poca ? 6e6 : 16e6;
+  const colocado = new Set(); let puestas = 0; const grupoDe = new Map();
+  try {
+    // 1) logos/adornos: pdf.js llama «g_…» a las imágenes que se usan en más de una página (el logo, un sello…)
+    const repetida = (f) => String(f.id).startsWith('g_');
+    // 2) cada página
+    for (let n = 1; n <= pdf.numPages; n++) {
+      if (senal?.aborted) break;
+      let pagina;
+      try {
+        pagina = await pdf.getPage(n);
+        const trozos = trozosDeTexto(await pagina.getTextContent());
+        const hallados = [];
+        const vistos = new Set();
+        for (const t of trozos) {
+          for (const tok of (t.t.match(/[A-Za-z0-9][\w.\-/]{2,}/g) || [])) {
+            for (const it of porCodigo.get(tok.toLowerCase()) || []) if (!colocado.has(it) && !vistos.has(it)) { vistos.add(it); hallados.push({ it, x: t.x, y: t.y }); }
+          }
+          if (porNombre.length) { const nt = norm(t.t); for (const o of porNombre) if (!colocado.has(o.it) && !vistos.has(o.it) && nt.includes(o.k)) { vistos.add(o.it); hallados.push({ it: o.it, x: t.x, y: t.y }); } }
+        }
+        if (hallados.length) {
+          const [, , pw, ph] = pagina.view || [0, 0, 600, 800];
+          const fotos = fotosDePagina(pdfjs.OPS, await pagina.getOperatorList())
+            .filter((f) => Math.max(f.w, f.h) >= 50 && Math.min(f.w, f.h) >= 18 && f.w * f.h >= 1500 && f.w * f.h < pw * ph * 0.6 && !repetida(f));
+          if (fotos.length) {
+            const mini = new Map();
+            for (const h of hallados) {
+              let mejor = null; let dMejor = Infinity;
+              for (const f of fotos) {
+                const dx = Math.max(f.x - h.x, 0, h.x - (f.x + f.w)); const dy = Math.max(f.y - h.y, 0, h.y - (f.y + f.h));
+                const d = Math.hypot(dx, dy) - Math.sqrt(f.w * f.h) * 0.05; // a igual distancia, la más grande
+                if (d < dMejor) { dMejor = d; mejor = f; }
+              }
+              if (!mejor) continue;
+              if (!mini.has(mejor.id)) {
+                let url = '';
+                try {
+                  const obj = await new Promise((res) => {
+                    const t = setTimeout(() => res(null), 4000);
+                    try { const almacen = String(mejor.id).startsWith('g_') ? pagina.commonObjs : pagina.objs; almacen.get(mejor.id, (o) => { clearTimeout(t); res(o); }); } catch { clearTimeout(t); res(null); }
+                  });
+                  url = aMiniatura(obj, lado, maxPixeles) || '';
+                } catch { url = ''; }
+                mini.set(mejor.id, url);
+              }
+              const url = mini.get(mejor.id);
+              if (url) { h.it.image_url = url; colocado.add(h.it); puestas++; }
+            }
+          }
+        }
+      } catch { /* esa página se queda sin fotos */ } finally { try { pagina?.cleanup(); } catch { /* nada */ } }
+      if (n % 5 === 0 || n === pdf.numPages) onProgreso({ pagina: n, total: pdf.numPages, articulos: items.length, fotos: puestas });
+      if (n % (poca ? 5 : 25) === 0) { try { await pdf.cleanup(); } catch { /* nada */ } }
+      await cederPantalla();
+    }
+  } finally { await cerrar(); }
+  // mismas medidas del mismo producto = foto principal
+  for (const it of items) { const b = nombreBase(it.product_name); if (b) grupoDe.set(it, norm(b)); }
+  const antes = items.filter((i) => i.image_url).length;
+  const tras = compartirFotoPrincipal(items, grupoDe);
+  return puestas + Math.max(0, tras - antes - 0);
 }

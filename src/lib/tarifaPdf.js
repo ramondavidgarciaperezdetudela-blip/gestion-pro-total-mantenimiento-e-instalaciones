@@ -3,7 +3,7 @@
 import { filasDePdf, trozosDePdf } from './leerPdfTabla.js';
 import { articulosDeCatalogo } from './catalogoPdf.js';
 import { lineasDeFilas } from './importarPresupuesto.js';
-import { pareceCatalogoRevista, leerCatalogoRevista } from './catalogoRevistaPdf.js';
+import { pareceCatalogoRevista, leerCatalogoRevista, fotosParaItems } from './catalogoRevistaPdf.js';
 
 /** De las líneas leídas a los artículos de tarifa (referencia, nombre, precio, unidad). Descarta lo que no tiene precio. */
 export function itemsDeLineas(lineas = []) {
@@ -35,6 +35,17 @@ export function unirFotosPorCodigo(items, conFoto) {
     if (f) { it.image_url = f; n++; }
   }
   return n;
+}
+
+/** Tarifa leída como tabla: le pone a cada artículo la foto de su página (la más cercana). */
+async function ponerFotos(file, items, avisos, { onProgreso, senal, conFotos }) {
+  if (!conFotos || !items.length) return;
+  try {
+    await fotosParaItems(file, items, { onProgreso, senal });
+    const con = items.filter((i) => i.image_url).length;
+    if (con) avisos.push(`Fotos del PDF: ${con.toLocaleString('es-ES')} de ${items.length.toLocaleString('es-ES')} artículos llevan la imagen de su página. Los demás se pueden completar con «Rellenar imágenes».`);
+    else avisos.push('No encontré fotos de producto en este PDF. Usa «Rellenar imágenes» para buscarlas en internet por nombre o referencia.');
+  } catch { avisos.push('No pude leer las fotos de este PDF. Usa «Rellenar imágenes» para buscarlas en internet.'); }
 }
 
 export async function leerTarifaPdf(file, { onProgreso, senal, conFotos = true } = {}) {
@@ -70,13 +81,18 @@ export async function leerTarifaPdf(file, { onProgreso, senal, conFotos = true }
       const n = unirFotosPorCodigo(items, mapa);
       if (n) avisos.push(`He unido ${n.toLocaleString('es-ES')} fotos del PDF a los artículos por su referencia.`);
     }
+    await ponerFotos(file, items, avisos, { onProgreso, senal, conFotos });
     return { items, avisos };
   }
   if (revista) return revista;
   // No hay tabla: catálogo con los artículos repartidos por la página → se lee línea a línea.
   try {
     const cat = articulosDeCatalogo(await trozosDePdf(buffer));
-    if (cat.items.length) return { items: cat.items, avisos: ['Este PDF no es una tabla: he leído cada artículo con su referencia y precio por líneas. Revisa los datos antes de añadirlos.'] };
+    if (cat.items.length) {
+      const av = ['Este PDF no es una tabla: he leído cada artículo con su referencia y precio por líneas. Revisa los datos antes de añadirlos.'];
+      await ponerFotos(file, cat.items, av, { onProgreso, senal, conFotos });
+      return { items: cat.items, avisos: av };
+    }
   } catch { /* se queda sin artículos */ }
   return { items, avisos };
 }
