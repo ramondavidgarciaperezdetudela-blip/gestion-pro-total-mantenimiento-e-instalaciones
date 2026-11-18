@@ -15,6 +15,18 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.149.0] — 2026-11-18
+
+### Corregido
+- **Móvil — «Tareas y avisos»:** la ventana ya no sube por debajo de la barra del teléfono (hora, batería…): deja el margen de seguridad arriba y el botón de cerrar queda a la vista. Abajo hay dos botones grandes, **Atrás** y **Menú principal**.
+
+### Añadido
+- **«Marcar completada»** en todas las tareas y avisos (facturas, presupuestos, SAT, firmas, proyectos…): desaparece de la lista y se puede recuperar en «Anulados».
+- Los mantenimientos ya no vuelven a avisar hasta la revisión del año siguiente cuando se pulsa «Quitar aviso» o «Revisión hecha» (comprobado: tras recargar la app no reaparecen y el mensaje indica la fecha en que volverán).
+
+### Cambiado
+- Las listas de SAT y mantenimientos que alimentan los avisos leen hasta 5.000 registros (antes 300).
+
 ## [1.148.0] — 2026-11-18
 
 ### Corregido

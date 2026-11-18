@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Bell, X, RefreshCw, MessageCircle, ExternalLink, User, EyeOff, Undo2, Loader2, CheckCircle, Search } from 'lucide-react';
+import { ArrowLeft, Home, AlertTriangle, Bell, X, RefreshCw, MessageCircle, ExternalLink, User, EyeOff, Undo2, Loader2, CheckCircle, Search } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import BotonesImprimirPantalla from './BotonesImprimirPantalla';
-import { TIPOS, filtrarAvisos, contarPorTipo, leerAnulados, guardarAnulados } from '@/lib/tareasAvisos';
+import { TIPOS, filtrarAvisos, contarPorTipo, leerAnulados, guardarAnulados, aplazarAviso, restaurarAviso } from '@/lib/tareasAvisos';
 import { cargarAvisos, aplicarAccion, recordatorioWhatsApp, olvidarAvisos, EVENTO_AVISOS } from '@/lib/tareasAvisosDatos';
 
 const COLOR = {
@@ -47,8 +47,15 @@ export default function CentroTareasAvisos({ onCerrar, enVentana = false, tipoIn
   const nAnulados = (avisos || []).filter((a) => anulados.includes(a.id)).length;
 
   const avisar = (m) => { setMensaje(m); setTimeout(() => setMensaje(''), 5000); };
-  const anular = (a) => { const n = [...anulados, a.id]; setAnulados(n); guardarAnulados(n); olvidarAvisos(); };
-  const restaurar = (a) => { const n = anulados.filter((x) => x !== a.id); setAnulados(n); guardarAnulados(n); olvidarAvisos(); };
+  const anular = (a) => {
+    // Las revisiones periódicas no vuelven a salir hasta que toque la del año que viene; el resto, hasta que se restauren.
+    if (a.volverEl) aplazarAviso(a.id, a.volverEl); else guardarAnulados([...anulados, a.id]);
+    setAnulados(leerAnulados()); olvidarAvisos();
+    if (a.volverEl) avisar(`Aviso quitado. Volverá a salir el ${a.volverEl}, cuando toque la revisión.`);
+  };
+  const completada = (a) => { guardarAnulados([...anulados, a.id]); setAnulados(leerAnulados()); olvidarAvisos(); avisar('Tarea marcada como completada. No volverá a salir (puedes verla en «Anulados»).'); };
+  const revisionHecha = (a) => { aplazarAviso(a.id, a.hechoHasta || a.volverEl); setAnulados(leerAnulados()); olvidarAvisos(); avisar(`Revisión marcada como hecha. No volverá a avisar hasta el ${a.hechoHasta || a.volverEl}.`); };
+  const restaurar = (a) => { restaurarAviso(a.id); setAnulados(leerAnulados()); olvidarAvisos(); };
 
   const hacer = async (a, accion) => {
     if (accion.confirmar && !window.confirm(accion.confirmar)) return;
@@ -126,15 +133,24 @@ export default function CentroTareasAvisos({ onCerrar, enVentana = false, tipoIn
                 </button>
               ))}
               <Link to={createPageUrl(a.pagina)} onClick={onCerrar} className={`${btn} border-blue-200 text-blue-700 bg-white hover:bg-blue-50`} data-prueba="accion-abrir"><ExternalLink className="w-3 h-3" />Abrir para cambiar</Link>
+              {a.tipo === 'mantenimiento' && !verAnulados && <button type="button" onClick={() => revisionHecha(a)} className={`${btn} border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50`} data-prueba="accion-revision-hecha" title="Marca la revisión como hecha: el aviso vuelve el año que viene"><CheckCircle className="w-3 h-3" />Revisión hecha</button>}
               {a.contactId && <Link to={createPageUrl(`ContactDetail?id=${a.contactId}`)} onClick={onCerrar} className={`${btn} border-slate-200 text-slate-600 bg-white hover:bg-slate-50`}><User className="w-3 h-3" />Ficha</Link>}
               {a.mensaje && <button type="button" onClick={() => whatsapp(a)} className={`${btn} border-green-200 text-green-700 bg-white hover:bg-green-50`}><MessageCircle className="w-3 h-3" />WhatsApp</button>}
+              {!verAnulados && a.tipo !== 'mantenimiento' && <button type="button" onClick={() => completada(a)} className={`${btn} border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50`} data-prueba="accion-completada" title="Marca la tarea como completada: deja de salir en la lista"><CheckCircle className="w-3 h-3" />Marcar completada</button>}
               {verAnulados
                 ? <button type="button" onClick={() => restaurar(a)} className={`${btn} border-slate-200 text-slate-600 bg-white`} data-prueba="accion-restaurar"><Undo2 className="w-3 h-3" />Restaurar aviso</button>
-                : <button type="button" onClick={() => anular(a)} className={`${btn} border-slate-200 text-slate-500 bg-white hover:bg-slate-100`} data-prueba="accion-descartar" title="Quita este aviso de la lista (no cambia el documento)"><EyeOff className="w-3 h-3" />Quitar aviso</button>}
+                : <button type="button" onClick={() => anular(a)} className={`${btn} border-slate-200 text-slate-500 bg-white hover:bg-slate-100`} data-prueba="accion-descartar" title={a.volverEl ? "Quita el aviso hasta la revisión del año que viene" : "Quita este aviso de la lista (no cambia el documento)"}><EyeOff className="w-3 h-3" />Quitar aviso</button>}
             </div>
           </div>
         ))}
       </div>
+      {/* En el móvil: botones grandes abajo para volver y para ir al menú principal (arriba puede quedar tapado por la barra del teléfono) */}
+      {enVentana && onCerrar && (
+        <div className="sm:hidden flex-shrink-0 grid grid-cols-2 gap-2 border-t bg-slate-50 p-2" data-prueba="barra-movil-avisos">
+          <button type="button" onClick={onCerrar} className="flex items-center justify-center gap-1.5 rounded-lg border bg-white py-2.5 text-sm font-semibold text-slate-700" data-prueba="movil-atras"><ArrowLeft className="w-4 h-4" />Atrás</button>
+          <Link to={createPageUrl('Home')} onClick={onCerrar} className="flex items-center justify-center gap-1.5 rounded-lg bg-slate-800 py-2.5 text-sm font-semibold text-white" data-prueba="movil-menu"><Home className="w-4 h-4" />Menú principal</Link>
+        </div>
+      )}
     </div>
   );
 }

@@ -22,9 +22,9 @@ export async function cargarAvisos(forzar = false) {
   enCurso = (async () => {
     // allSettled: si una lista falla (sin conexión, entidad no creada…), las demás siguen.
     const [inv, sat, man, cit, pro, opi] = await Promise.allSettled([
-      E.Invoice.filter({ status: { $in: ['enviado', 'vencido'] } }, '-date', 300),
-      E.SATOrder.list('-date', 300),
-      E.MaintenanceSheet.list('-date', 300),
+      E.Invoice.filter({ status: { $in: ['enviado', 'vencido'] } }, '-date', 5000),
+      E.SATOrder.list('-date', 5000),
+      E.MaintenanceSheet.list('-date', 5000),
       E.Appointment.filter({ date: hoyTxt }),
       E.Project.list('-end_date', 100),
       E.ChangeOpinionRequest.filter({ status: 'pendiente' }, '-created_date'),
