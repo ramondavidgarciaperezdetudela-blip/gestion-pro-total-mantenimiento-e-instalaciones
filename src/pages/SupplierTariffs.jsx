@@ -82,6 +82,9 @@ export default function SupplierTariffs() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [activeTab, setActiveTab] = useState('tarifas');
   const [seleccion, setSeleccion] = useState(() => new Set());
+  const [limites, setLimites] = useState({}); // artículos que se dibujan por tarifa (con 10.000 líneas, dibujarlas todas bloquea el aparato)
+  const [verFotos, setVerFotos] = useState({}); // por tarifa: 'todas' | 'con' | 'sin'
+  const [rotas, setRotas] = useState(() => new Set()); // fotos guardadas que el aparato no consigue mostrar
   const [borrando, setBorrando] = useState(null); // { hechas, total }
   const imageFileRef = useRef(null);
   // Relleno de imágenes en segundo plano (por lotes, poco a poco)
@@ -599,7 +602,7 @@ export default function SupplierTariffs() {
                 </div>
                 <div className="flex-1 text-left">
                   <p className="font-semibold text-gray-900">{supplier.name}</p>
-                  <p className="text-xs text-gray-500">{items.length} productos en tarifa · {items.filter(i => !i.image_url).length} sin imagen</p>
+                  <p className="text-xs text-gray-500">{items.length} productos en tarifa · {items.filter(i => i.image_url).length} con foto · {items.filter(i => !i.image_url).length} sin imagen{items.some(i => rotas.has(i.id)) ? ` · ${items.filter(i => rotas.has(i.id)).length} con foto que no se puede mostrar` : ''}</p>
                 </div>
                 <Badge variant="outline" className="text-xs hidden sm:inline-flex">{supplier.category || 'general'}</Badge>
                 <div onClick={e => e.stopPropagation()}>
@@ -630,8 +633,18 @@ export default function SupplierTariffs() {
                     </Button>
                     {borrando && <span className="text-gray-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />{borrando.hechas}/{borrando.total}</span>}
                   </div>
+                  <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 bg-white border-b text-xs" data-prueba="barra-ver-fotos">
+                    <span className="font-semibold text-gray-600">Ver:</span>
+                    {[['todas', 'Todos'], ['con', 'Con foto'], ['sin', 'Sin foto']].map(([k, t]) => (
+                      <button key={k} type="button" data-prueba={`ver-${k}`} onClick={() => { setVerFotos(v => ({ ...v, [supplier.id]: k })); setLimites(l => ({ ...l, [supplier.id]: 100 })); }}
+                        className={`px-2.5 py-1 rounded-full border ${((verFotos[supplier.id] || 'todas') === k) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>{t}</button>
+                    ))}
+                    <span className="text-gray-400 ml-auto" data-prueba="ver-contador">
+                      {(() => { const f = verFotos[supplier.id] || 'todas'; const n = items.filter(i => f === 'todas' || (f === 'con' ? i.image_url : !i.image_url)).length; return `${Math.min(n, limites[supplier.id] || 100).toLocaleString('es-ES')} de ${n.toLocaleString('es-ES')}`; })()}
+                    </span>
+                  </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full min-w-[720px] text-sm">
                       <thead>
                         <tr className="bg-gray-100 text-xs text-gray-500 uppercase">
                           <th className="text-left p-3 w-12">
@@ -640,20 +653,21 @@ export default function SupplierTariffs() {
                               onChange={(e) => setSeleccion(prev => { const n = new Set(prev); items.forEach(i => e.target.checked ? n.add(i.id) : n.delete(i.id)); return n; })} />
                           </th>
                           <th className="text-left p-3">Producto</th>
-                          <th className="text-left p-3 hidden sm:table-cell">Ref.</th>
-                          <th className="text-left p-3 hidden md:table-cell">Categoría</th>
-                          <th className="text-right p-3">Coste</th>
-                          <th className="text-right p-3">Venta</th>
-                          <th className="text-right p-3 hidden sm:table-cell">Margen</th>
+                          <th className="text-left p-3 hidden sm:table-cell whitespace-nowrap">Ref.</th>
+                          <th className="text-left p-3 hidden md:table-cell whitespace-nowrap">Categoría</th>
+                          <th className="text-right p-3 whitespace-nowrap">Coste</th>
+                          <th className="text-right p-3 whitespace-nowrap">Venta</th>
+                          <th className="text-right p-3 hidden sm:table-cell whitespace-nowrap">Margen</th>
                           <th className="p-3 w-20"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {items.map(item => (
+                        {items.filter(i => { const f = verFotos[supplier.id] || 'todas'; return f === 'todas' || (f === 'con' ? i.image_url : !i.image_url); }).slice(0, limites[supplier.id] || 100).map(item => (
                           <tr key={item.id} className="bg-white hover:bg-blue-50 transition-colors">
-                            <td className="p-2">
+                            <td className="p-2 w-24 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
                               <input type="checkbox" aria-label="Seleccionar" data-prueba="tarifa-sel" checked={seleccion.has(item.id)} onChange={() => alternarSeleccion(item.id)} />
-                              <div className="w-10 h-10 rounded-lg border bg-gray-50 flex items-center justify-center overflow-hidden">
+                              <div className="w-10 h-10 shrink-0 rounded-lg border bg-gray-50 flex items-center justify-center overflow-hidden">
                                 {item.image_url ? (
                                   <img 
                                     src={item.image_url} 
@@ -664,28 +678,30 @@ export default function SupplierTariffs() {
                                     loading="lazy"
                                     decoding="async"
                                     onClick={() => { const con = items.filter(x => x.image_url); setVisor({ fotos: con.map(x => ({ url: x.image_url, etiqueta: x.product_name })), i: Math.max(0, con.findIndex(x => x.id === item.id)), titulo: item.product_name }); }}
-                                    onError={e => { e.target.style.display = 'none'; }} 
+                                    onError={e => { e.target.style.display = 'none'; setRotas(prev => prev.has(item.id) ? prev : new Set(prev).add(item.id)); }} 
                                   />
                                 ) : (
                                   <ImageIcon className="w-4 h-4 text-gray-300" />
                                 )}
+                                {item.image_url && rotas.has(item.id) && <ImageIcon className="w-4 h-4 text-red-400" title="Tiene foto guardada pero no se puede mostrar" />}
+                              </div>
                               </div>
                             </td>
                             <td className="p-3">
                               <p className="font-medium text-gray-900 line-clamp-2">{item.product_name}</p>
                               {item.notes && <p className="text-xs text-gray-400 truncate max-w-xs">{item.notes}</p>}
                             </td>
-                            <td className="p-3 hidden sm:table-cell text-xs text-gray-500 font-mono">{item.product_code || '—'}</td>
-                            <td className="p-3 hidden md:table-cell">
+                            <td className="p-3 hidden sm:table-cell text-xs text-gray-500 font-mono whitespace-nowrap">{item.product_code || '—'}</td>
+                            <td className="p-3 hidden md:table-cell whitespace-nowrap">
                               <Badge variant="outline" className="text-[10px]">{item.category || '—'}</Badge>
                             </td>
-                            <td className="p-3 text-right font-semibold text-gray-800">
+                            <td className="p-3 text-right font-semibold text-gray-800 whitespace-nowrap">
                               {item.cost_price != null ? `${Number(item.cost_price).toFixed(2)} €` : '—'}
                             </td>
-                            <td className="p-3 text-right font-semibold text-emerald-700">
+                            <td className="p-3 text-right font-semibold text-emerald-700 whitespace-nowrap">
                               {item.sale_price != null ? `${Number(item.sale_price).toFixed(2)} €` : '—'}
                             </td>
-                            <td className="p-3 text-right hidden sm:table-cell text-xs">
+                            <td className="p-3 text-right hidden sm:table-cell text-xs whitespace-nowrap">
                               {item.margin != null ? <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-semibold">{item.margin}%</span> : '—'}
                             </td>
                             <td className="p-3">
@@ -703,6 +719,15 @@ export default function SupplierTariffs() {
                       </tbody>
                     </table>
                   </div>
+                  {(() => {
+                    const f = verFotos[supplier.id] || 'todas'; const n = items.filter(i => f === 'todas' || (f === 'con' ? i.image_url : !i.image_url)).length; const lim = limites[supplier.id] || 100;
+                    return n > lim ? (
+                      <div className="flex flex-wrap justify-center gap-2 p-3 bg-white border-t">
+                        <Button size="sm" variant="outline" data-prueba="mostrar-mas" onClick={() => setLimites(l => ({ ...l, [supplier.id]: lim + 200 }))}>Mostrar 200 más</Button>
+                        <Button size="sm" variant="outline" data-prueba="mostrar-todas" onClick={() => setLimites(l => ({ ...l, [supplier.id]: n }))}>Mostrar las {n.toLocaleString('es-ES')}</Button>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               )}
             </div>
