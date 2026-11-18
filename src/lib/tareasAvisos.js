@@ -1,6 +1,6 @@
 // Tareas y avisos: todo lo que hay pendiente en el negocio, en una sola lista, con las acciones
 // para resolverlo sin ir cliente por cliente. Aquí solo hay lógica pura (se prueba con node).
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, addYears, format } from 'date-fns';
 
 export const TIPOS = {
   presupuesto: 'Presupuestos sin respuesta',
@@ -17,13 +17,43 @@ const PESO = { rojo: 0, naranja: 1, amarillo: 2, azul: 3 };
 const CLAVE = 'gpt_avisos_anulados';
 const CLAVE_ANTIGUA = 'dismissed_notifs'; // la campana de antes
 
-/** Avisos que la persona ha anulado (se esconden hasta que los restaure). */
+const CLAVE_APLAZADOS = 'gpt_avisos_aplazados'; // { idAviso: 'AAAA-MM-DD' } = el aviso vuelve a salir ese día
+
+const leerAplazados = () => { try { const v = JSON.parse(localStorage.getItem(CLAVE_APLAZADOS) || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return {}; } };
+const hoyTxt = () => format(new Date(), 'yyyy-MM-dd');
+
+/** Avisos que la persona ha anulado (se esconden hasta que los restaure) + los aplazados que aún no han vuelto a tocar. */
 export function leerAnulados() {
   const lee = (k) => { try { const v = JSON.parse(localStorage.getItem(k) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; } };
-  return [...new Set([...lee(CLAVE), ...lee(CLAVE_ANTIGUA)])];
+  const hoy = hoyTxt();
+  const aplazados = Object.entries(leerAplazados()).filter(([, hasta]) => String(hasta) > hoy).map(([id]) => id);
+  return [...new Set([...lee(CLAVE), ...lee(CLAVE_ANTIGUA), ...aplazados])];
 }
 export function guardarAnulados(ids) {
-  try { localStorage.setItem(CLAVE, JSON.stringify([...new Set(ids)])); localStorage.removeItem(CLAVE_ANTIGUA); } catch { /* sin sitio */ }
+  try {
+    const fijos = new Set(ids);
+    localStorage.setItem(CLAVE, JSON.stringify([...fijos].filter((id) => !(id in leerAplazados()))));
+    localStorage.removeItem(CLAVE_ANTIGUA);
+  } catch { /* sin sitio */ }
+}
+/** Esconde un aviso hasta una fecha (p. ej. la revisión del año que viene). */
+export function aplazarAviso(id, hasta) {
+  try { const a = leerAplazados(); a[id] = hasta; localStorage.setItem(CLAVE_APLAZADOS, JSON.stringify(a)); } catch { /* sin sitio */ }
+}
+/** Deshace tanto la anulación fija como el aplazamiento. */
+export function restaurarAviso(id) {
+  try {
+    const a = leerAplazados(); delete a[id]; localStorage.setItem(CLAVE_APLAZADOS, JSON.stringify(a));
+    const f = JSON.parse(localStorage.getItem(CLAVE) || '[]'); localStorage.setItem(CLAVE, JSON.stringify(f.filter((x) => x !== id)));
+  } catch { /* sin sitio */ }
+}
+/** Próximo aniversario de la última revisión (fecha + k años, k≥1) que sea posterior a hoy. */
+export function proximaRevision(fecha, hoy = new Date()) {
+  try {
+    const base = parseISO(String(fecha).slice(0, 10)); const h = format(hoy, 'yyyy-MM-dd');
+    for (let k = 1; k <= 60; k++) { const f = format(addYears(base, k), 'yyyy-MM-dd'); if (f > h) return f; }
+  } catch { /* fecha rara */ }
+  return null;
 }
 
 const dias = (fecha, hoy) => { try { return fecha ? differenceInDays(hoy, parseISO(String(fecha).slice(0, 10))) : null; } catch { return null; } };
@@ -106,6 +136,8 @@ export function construirAvisos({ invoices = [], sats = [], mantenimientos = [],
       titulo: `${m.contact_name || 'Sin cliente'} — ${[m.equipment_brand, m.equipment_model].filter(Boolean).join(' ') || 'equipo'}`,
       detalle: `${m.type || 'Mantenimiento'} · última revisión hace ${n} días`,
       contactId: m.contact_id, contactName: m.contact_name, pagina: 'Maintenance',
+      // al quitar el aviso o marcar la revisión como hecha, no vuelve hasta que toque la del año que viene
+      volverEl: proximaRevision(m.date, hoy), hechoHasta: proximaRevision(format(hoy, 'yyyy-MM-dd'), hoy),
       mensaje: (c) => `Estimado/a ${c}, su mantenimiento está pendiente (última revisión hace ${n} días). ¿Le programamos una cita?`,
       acciones: [],
     });
