@@ -55,9 +55,9 @@ export function iniciarTrabajoFotos({ precios, idProveedor = 'all', proveedores 
 
   let idx = 0;
   const poner = async (lista, url) => {
-    // las actualizaciones a la base de datos van de 4 en 4 para no frenar el programa
-    for (let i = 0; i < lista.length; i += 4) {
-      await Promise.all(lista.slice(i, i + 4).map((it) => base44.entities.SupplierPrice.update(it.id, { image_url: url }).catch(() => null)));
+    // Todas las fotos del grupo se guardan en UNA escritura (los servidores limitan las peticiones por minuto)
+    try { await base44.entities.SupplierPrice.bulkUpdate(lista.map((it) => ({ id: it.id, image_url: url }))); } catch { /* se reintenta una a una */
+      for (const it of lista) await base44.entities.SupplierPrice.update(it.id, { image_url: url }).catch(() => null);
     }
     oyentesFoto.forEach((f) => f({ ids: lista.map((x) => x.id), url }));
   };
