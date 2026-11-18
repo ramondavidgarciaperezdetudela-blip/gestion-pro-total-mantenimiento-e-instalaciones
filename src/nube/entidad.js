@@ -80,9 +80,17 @@ export function crearEntidad(ent) {
       return copia(r);
     },
     async bulkUpdate(lista) {
-      const salida = [];
-      for (const d of lista || []) { if (d?.id) salida.push(await api.update(d.id, d)); }
-      return salida;
+      // Una sola escritura para todo el lote (antes era una petición por registro: 11.000 fotos = 11.000 peticiones).
+      const todo = await todos(ent);
+      const porId = new Map(todo.map((x) => [x.id, x]));
+      const regs = [];
+      for (const d of lista || []) {
+        const actual = d?.id && porId.get(d.id);
+        if (actual) regs.push({ ...actual, ...copia(d), id: d.id, created_date: actual.created_date, updated_date: ahora() });
+      }
+      if (regs.length) await guardar(regs);
+      regs.forEach((r) => emitir(ent, 'update', r));
+      return copia(regs);
     },
     async updateMany(q, datos) {
       const objetivo = (await todos(ent)).filter((r) => cumple(r, q));

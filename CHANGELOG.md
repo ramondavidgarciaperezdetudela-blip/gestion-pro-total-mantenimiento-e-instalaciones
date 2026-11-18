@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.148.0] — 2026-11-18
+
+### Corregido
+- **Las fotos de los PDF y de internet no se guardaban bien con servidor propio (ni Supabase).** Cada foto era una petición al servidor; con 11.000 fotos se superaba el límite de 1.500 peticiones por minuto y muchas se rechazaban, además de reescribir todo el fichero de datos cada vez y llegar a bloquear la pantalla por falta de memoria. Ahora las fotos se guardan en lotes de 100 (una sola escritura por lote). Con el catálogo de Tarragona: 11.302 fotos en 3 min 14 s y 145 peticiones (antes más de 1.900 y la pantalla se caía).
+- La búsqueda de fotos en internet también guarda por grupos (una escritura por artículo-grupo en vez de una por medida).
+- `bulkUpdate` de los almacenes propios escribe el lote de una vez.
+
 ## [1.147.0] — 2026-11-18
 
 ### Cambiado
