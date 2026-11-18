@@ -12,6 +12,7 @@ import { iniciarImportacion, avanzarImportacion, terminarImportacion, avisoFinal
 import DownloadExcelTemplate from '@/components/DownloadExcelTemplate';
 import { iaActivada } from '@/lib/modoSinIA';
 import { leerTarifaPdf } from '@/lib/tarifaPdf';
+import { tieneDescripcion, separarSinDescripcion } from '@/lib/descripcionArticulo';
 import { numeroTarifa } from '@/lib/numeroTarifa';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -168,6 +169,7 @@ function parseExcel(file) {
         const dataStart = Math.max(0, hRow + 1);
         const items = [];
         let skipped = 0;
+        let sinDesc = 0;
 
         for (let r = dataStart; r < raw.length; r++) {
           const row = raw[r];
@@ -178,6 +180,7 @@ function parseExcel(file) {
 
           const name = String(row[iName] ?? '').trim();
           if (!name || name.length < 2) { skipped++; continue; }
+          if (!tieneDescripcion(name, iCode >= 0 ? row[iCode] : '')) { skipped++; sinDesc++; continue; } // solo números / solo la referencia
 
           // Ignorar filas que son subcabeceras repetidas
           const n = norm(name);
@@ -206,6 +209,7 @@ function parseExcel(file) {
 
         console.log(`[Parser] ✅ Extraídos: ${items.length} | Ignorados: ${skipped}`);
         console.log('[Parser] Muestra:', JSON.stringify(items.slice(0, 3)));
+        items.sinDescripcion = sinDesc;
         resolve(items);
 
       } catch (err) {
@@ -364,6 +368,7 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
         setProgress('Leyendo archivo Excel...');
         setProgressPct(10);
         extracted = await parseExcel(file);
+        if (extracted.sinDescripcion) toast.info(`${extracted.sinDescripcion.toLocaleString('es-ES')} filas sin descripción (solo números) no se importan: no sabemos qué son ni se puede buscar su foto.`, { duration: 9000 });
         setProgressPct(80);
 
         if (applyIva && ivaRate > 0) {
@@ -524,6 +529,16 @@ export default function SupplierCatalogImportWithSupplier({ suppliers = [], onIm
 
       setProgressPct(100);
       // Guardar en ref (no en estado) para evitar re-renders con 64K ítems
+      {
+        const { validos, descartados } = separarSinDescripcion(extracted);
+        if (descartados.length) toast.info(`${descartados.length.toLocaleString('es-ES')} artículos sin descripción (solo números) no se importan: no sabemos qué son ni se puede buscar su foto.`, { duration: 9000 });
+        extracted = validos;
+      }
+      if (extracted.length === 0) {
+        setError('Todas las filas leídas venían sin descripción (solo números). Revisa que la columna de nombre o descripción esté bien elegida.');
+        setStep('idle');
+        return;
+      }
       parsedRef.current = extracted;
       setParsedCount(extracted.length);
       setStep('preview');
