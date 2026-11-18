@@ -29,6 +29,10 @@ export function esCodigoRevista(t) {
   if (!/\d/.test(c)) return false;
   return /^\d{5,13}$/.test(c) || (/[A-Za-z]/.test(c) && /\d/.test(c));
 }
+// «CL20060» es la referencia del proveedor; «MUPR-09-H14X» es el modelo (va en la descripción, no es otro artículo)
+const esRefPura = (t) => /^(?:[A-Za-z]{1,4}\d{4,}|\d{5,13})$/.test(limpia(t));
+const esModelo = (t) => /[A-Za-z]{2,}[-/]\d/.test(limpia(t));
+const ES_SERIE = /^(serie|gama|l[ií]nea|modelo|colecci[oó]n)\b/i;
 const esPrecioCelda = (t) => ES_PRECIO.test(limpia(t)) || /^\d[\d.]*[,.]\d{2}\s*€$/.test(limpia(t));
 
 /** Parte de mayúsculas entre las letras de un texto (0..1). */
@@ -64,11 +68,13 @@ export function articulosDePagina(trozos = [], imagenes = []) {
   const arts = [];
   for (const c of celdas) {
     if (!esCodigoRevista(sinNota(c.t))) continue;
+    // el modelo que viene justo después de la referencia («CL20060  MUPR-09-H14X …») es descripción, no otro artículo
+    if (esModelo(c.t) && celdas.some((o) => o !== c && esRefPura(sinNota(o.t)) && o.x2 <= c.x + 2 && c.x - o.x2 < 60 && Math.abs(o.y - c.y) <= 10)) continue;
     const derecha = celdas.filter((o) => o !== c && o.x >= c.x2 - 2 && Math.abs(o.y - c.y) <= TOL_Y && esPrecioCelda(o.t)).sort((a, b) => a.x - b.x);
     if (!derecha.length) continue;
     const p = derecha[0];
     // si hay otro código entre medias, ese precio es de otro artículo
-    const otroCodigo = celdas.some((o) => o !== c && o.x > c.x && o.x < p.x && Math.abs(o.y - c.y) <= TOL_Y && esCodigoRevista(sinNota(o.t)));
+    const otroCodigo = celdas.some((o) => o !== c && o.x > c.x && o.x < p.x && Math.abs(o.y - c.y) <= TOL_Y && esCodigoRevista(sinNota(o.t)) && !(esRefPura(sinNota(c.t)) && esModelo(o.t)));
     if (otroCodigo) continue;
     const precio = aNumero(p.t.match(/\d[\d.]*[,.]\d{2}/)?.[0] ?? p.t);
     if (!(precio > 0)) continue;
@@ -139,6 +145,8 @@ export function articulosDePagina(trozos = [], imagenes = []) {
       _grupo: a.b.titulo ? limpia(`${a.b.titulo}|${a.b.descripcion || ''}`).toLowerCase() : '',
     });
   }
+  // Foto al LADO de la tabla (no encima): cada foto va con todas las filas de su serie
+  fotosLateralesDePagina(arts, out, celdas, fotos);
   // Dos productos con el mismo título y medida en la página: se distinguen por su descripción («Cepillado», «Sin cepillar»…)
   const veces = new Map(); out.forEach((o) => veces.set(o.product_name, (veces.get(o.product_name) || 0) + 1));
   out.forEach((o) => { if (veces.get(o.product_name) > 1 && o.notes) o.product_name = limpia(`${o.product_name} · ${o.notes.slice(0, 40)}`); });
@@ -214,4 +222,84 @@ export function cajaDeMatriz(m) {
   const py = [m[5], m[5] + m[1], m[5] + m[3], m[5] + m[1] + m[3]];
   const x = Math.min(...px); const y = Math.min(...py);
   return { x, y, w: Math.max(...px) - x, h: Math.max(...py) - y };
+}
+
+
+/**
+ * Catálogos con la foto A UN LADO de la tabla (típico de climatización: foto del equipo a la izquierda y, a su
+ * derecha, «Serie H14X» con su tabla Código | Artículo | €). Cada foto se asigna a TODAS las filas de la tabla
+ * (o tramo de tabla) que tiene al lado, hasta que cambia la serie o la foto. Solo rellena los artículos que
+ * la lectura normal (foto encima del título) dejó sin foto, y pone como nombre la descripción de la fila.
+ */
+function fotosLateralesDePagina(arts, out, celdas, fotos) {
+  if (!arts.length) return;
+  const candidatas = fotos.filter((f) => f.w * f.h >= 3000);
+  // 1) columnas de tablas (por la posición de la referencia) y descripción de cada fila (entre la referencia y el precio)
+  const columnas = [];
+  arts.map((a, i) => ({ a, i })).sort((p, q) => q.a.cod.y - p.a.cod.y).forEach((r) => {
+    const col = columnas.find((c) => Math.abs(c.x - r.a.cod.x) <= 8);
+    if (col) col.filas.push(r); else columnas.push({ x: r.a.cod.x, filas: [r] });
+  });
+  for (const col of columnas) {
+    const { filas } = col;
+    filas.forEach((r, k) => {
+      const a = r.a; const arriba = filas[k - 1]?.a; const abajo = filas[k + 1]?.a;
+      const techo = arriba ? Math.min((a.cod.y + arriba.cod.y) / 2, a.cod.y + 22) : a.cod.y + 16;
+      const suelo = abajo ? (a.cod.y + abajo.cod.y) / 2 : a.cod.y - 28;
+      const cs = celdas.filter((o) => !o.tipo && o.x >= a.cod.x2 - 2 && o.x < a.pre.x - 2 && o.y < techo && o.y >= suelo && !ES_SERIE.test(limpia(o.t)) && !/^(art[ií]culo|descripci[oó]n|designaci[oó]n|pvp|precio|€)$/i.test(limpia(o.t)))
+        .sort((p, q) => (Math.abs(p.y - q.y) <= 2.5 ? p.x - q.x : q.y - p.y));
+      cs.forEach((o) => { o.tipo = 'desc'; });
+      r.mid = limpia(cs.map((o) => o.t).join(' '));
+    });
+  }
+  // 2) tramos: una tabla (o parte de ella) = filas seguidas sin título de serie, cabecera de tabla ni hueco grande entre medias
+  const hayCorte = (xL, xR, yAlto, yBajo) => celdas.some((o) => !o.tipo && o.x >= xL - 6 && o.x2 <= xR + 6 && o.y < yAlto - TOL_Y && o.y > yBajo + TOL_Y
+    && (ES_SERIE.test(limpia(o.t)) || /^c[oó]digo$/i.test(limpia(o.t)) || (mayusculas(o.t) >= 0.6 && /[A-Za-zÁÉÍÓÚÑ]{4}/.test(o.t))));
+  const tramos = [];
+  for (const col of columnas) {
+    let cur = [];
+    const pasos = col.filas.slice(1).map((r, k) => col.filas[k].a.cod.y - r.a.cod.y).sort((p, q) => p - q);
+    const normal = pasos.length ? pasos[Math.floor(pasos.length / 2)] : 30;
+    col.filas.forEach((r, k) => {
+      if (k > 0) {
+        const prev = col.filas[k - 1].a; const xR = Math.max(prev.pre.x2, r.a.pre.x2);
+        if (prev.cod.y - r.a.cod.y > Math.max(2.2 * normal, 34) || hayCorte(col.x, xR, prev.cod.y, r.a.cod.y)) { tramos.push(cur); cur = []; }
+      }
+      cur.push(r);
+    });
+    if (cur.length) tramos.push(cur);
+  }
+  // 3) foto de cada tramo: la grande que tiene al lado (izquierda o derecha) a su altura; si hay dos fotos grandes
+  //    una debajo de otra dentro del mismo tramo, ahí cambia el modelo y el tramo se parte
+  const trabajo = [...tramos];
+  while (trabajo.length) {
+    const filas = trabajo.shift();
+    const xL = Math.min(...filas.map((r) => r.a.cod.x)); const xR = Math.max(...filas.map((r) => r.a.pre.x2));
+    const alto = filas[0].a.cod.y + 16; const bajo = filas[filas.length - 1].a.cod.y - 24;
+    const sup = alto + 55; const inf = bajo - 12;
+    const solapa = (f) => Math.max(0, Math.min(f.y + f.h, sup) - Math.max(f.y, inf));
+    const buenas = candidatas.filter((f) => ((f.x + f.w <= xL + 14 && xL - (f.x + f.w) <= 140) || (f.x >= xR - 14 && f.x - xR <= 140)) && solapa(f) >= 0.35 * Math.min(f.h, sup - inf));
+    if (!buenas.length) continue;
+    const mayor = Math.max(...buenas.map((f) => f.w * f.h));
+    const grandes = buenas.filter((f) => f.w * f.h >= 0.35 * mayor).sort((p, q) => (q.y + q.h) - (p.y + p.h));
+    let cortado = false;
+    for (let g = 0; g + 1 < grandes.length && !cortado; g++) {
+      const A = grandes[g]; const B = grandes[g + 1];
+      if (A.y >= B.y + B.h - 6) { // A encima de B, sin solaparse
+        const corte = (A.y + (B.y + B.h)) / 2;
+        const parteAlta = filas.filter((r) => r.a.cod.y >= corte); const parteBaja = filas.filter((r) => r.a.cod.y < corte);
+        if (parteAlta.length && parteBaja.length) { trabajo.push(parteAlta, parteBaja); cortado = true; }
+      }
+    }
+    if (cortado) continue;
+    const foto = grandes.sort((p, q) => solapa(q) - solapa(p) || q.w * q.h - p.w * p.h)[0];
+    // serie: el título más cercano por encima de la primera fila
+    const serie = celdas.filter((o) => !o.tipo || o.tipo === 'titulo').filter((o) => ES_SERIE.test(limpia(o.t)) && o.y > filas[0].a.cod.y && o.y - filas[0].a.cod.y <= 60 && o.x >= xL - 25 && o.x <= xR)
+      .sort((p, q) => p.y - q.y)[0];
+    for (const r of filas) {
+      const it = out[r.i];
+      if (!it._foto) { it._foto = foto.id; it._grupo = ''; it._bloque = `lado|${foto.id}|${Math.round(alto)}`; }
+      if (r.mid) { it.product_name = r.mid; if (serie && !it.notes) it.notes = limpia(serie.t); }
+    }
+  }
 }
