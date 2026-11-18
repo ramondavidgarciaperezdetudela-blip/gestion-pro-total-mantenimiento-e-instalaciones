@@ -5,6 +5,13 @@ import { cumple, ordenar, recortar } from './consulta';
 import { usuarioActual } from './autenticacion';
 
 const TTL_REMOTO = 4000;
+// Las tablas grandes (tarifas con miles de artículos y fotos pesan cientos de MB) NO se vuelven a bajar entera
+// cada pocos segundos: cada descarga son cientos de MB leídos y convertidos en memoria, y en una tablet o un móvil
+// eso congela la pantalla («parpadea») o hace que el sistema cierre y recargue la aplicación. Lo que graba ESTE
+// aparato ya se anota en la copia en memoria; lo que graben otros se ve al pulsar «Recargar» o a los pocos minutos.
+const UMBRAL_GRANDE = 1000;
+const TTL_GRANDE = 10 * 60 * 1000;
+const ttlDe = (c) => (c.lista.length >= UMBRAL_GRANDE ? TTL_GRANDE : TTL_REMOTO);
 const cache = new Map(); // ent -> { t, lista }
 const oyentes = new Map(); // ent -> Set
 escucharConfig(() => cache.clear());
@@ -23,7 +30,7 @@ function emitir(ent, type, data) {
 async function todos(ent) {
   const c = cache.get(ent);
   const remoto = leerConfig()?.modo !== 'local';
-  if (c && (!remoto || Date.now() - c.t < TTL_REMOTO)) return c.lista;
+  if (c && (!remoto || Date.now() - c.t < ttlDe(c))) return c.lista;
   const lista = await almacenActivo().listar(ent);
   cache.set(ent, { t: Date.now(), lista });
   return lista;
@@ -124,6 +131,7 @@ export function crearEntidad(ent) {
       if (leerConfig()?.modo !== 'local') {
         t = setInterval(async () => {
           try {
+            if ((cache.get(ent)?.lista.length || 0) >= UMBRAL_GRANDE) return; // tablas grandes: no se vuelven a bajar solas
             cache.delete(ent);
             const lista = await todos(ent);
             const firma = lista.map((r) => `${r.id}:${r.updated_date}`).sort().join('|');
@@ -139,3 +147,5 @@ export function crearEntidad(ent) {
 }
 
 export function vaciarCache() { cache.clear(); }
+/** Fuerza que la próxima consulta de esta tabla vuelva a bajarla del servidor (botón «Recargar»). */
+export function olvidarTabla(ent) { cache.delete(ent); }
