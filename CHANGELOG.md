@@ -15,6 +15,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.152.0] — 2026-11-18
+
+### Añadido
+- **Catálogos con la foto al lado de la tabla.** En páginas como «Split de pared» (foto del equipo a la izquierda y, a su derecha, «Serie H14X» con su tabla Código | Artículo | €), cada foto se asigna ahora a TODAS las filas de la tabla que tiene al lado, hasta que cambia la serie o el modelo, y así en todo el catálogo. Si dentro de una misma tabla hay otra banda de serie («SERIE H12») con su propia foto, esa serie lleva la suya. Las pegatinas, el QR y los iconos de la página no se toman por foto del producto.
+- **Descripción del artículo.** Cuando la tabla trae el modelo y la descripción entre la referencia y el precio, el artículo se guarda con ella («MUPR-09-H14X Refrigeración 2.720 W - Calefacción 3.130 W») y con la referencia del proveedor (CL20060); la serie queda en las notas.
+
+### Cambiado
+- Los nombres largos de la tarifa se ven en tres líneas.
+
 ## [1.151.0] — 2026-11-18
 
 ### Corregido
