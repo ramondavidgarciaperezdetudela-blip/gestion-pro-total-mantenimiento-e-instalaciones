@@ -114,6 +114,7 @@ export function crearEntidad(ent) {
       ids.forEach((id) => emitir(ent, 'delete', { id }));
       return { success: true, deleted: ids.length };
     },
+    borradoEnBloque: true, // deleteMany({id:{$in:[…]}}) borra exactamente esos ids, en una sola operación
     async schema() { return { name: ent, properties: {} }; },
     subscribe(fn) {
       if (!oyentes.has(ent)) oyentes.set(ent, new Set());

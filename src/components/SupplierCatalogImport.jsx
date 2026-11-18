@@ -8,6 +8,7 @@ import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, Image } fro
 import { Badge } from '@/components/ui/badge';
 import PasosProgreso, { porcentajePaso } from '@/components/PasosProgreso';
 import { toast } from 'sonner';
+import { tieneDescripcion } from '@/lib/descripcionArticulo';
 import { iniciarImportacion, avanzarImportacion, terminarImportacion, avisoFinal } from '@/lib/importacionFondo';
 
 /**
@@ -169,7 +170,7 @@ export default function SupplierCatalogImport({ onImported }) {
       }
 
       // Filtrar filas vacías o sin descripción
-      extracted = extracted.filter(i => i?.description && String(i.description).trim().length > 1);
+      extracted = extracted.filter(i => i?.description && String(i.description).trim().length > 1 && tieneDescripcion(i.description, i.supplier_ref));
 
       if (extracted.length === 0) {
         setError('No se pudieron extraer productos. Comprueba que el archivo tiene filas con nombre de producto y precio.');

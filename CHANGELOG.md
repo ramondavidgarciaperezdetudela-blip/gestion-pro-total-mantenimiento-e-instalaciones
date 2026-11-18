@@ -15,6 +15,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.150.0] — 2026-11-18
+
+### Cambiado
+- **Artículos sin descripción no se importan.** Si en una tarifa (Excel, CSV o PDF) una fila solo trae números —o solo su referencia— y ninguna descripción que diga qué es, ya no se añade: no sabemos qué artículo es ni se puede buscar su foto. Al importar, la app avisa de cuántas filas ha descartado.
+- **Eliminar una tarifa entera es de golpe.** «Toda la tarifa de…» borra por bloques de 1.000 líneas en una sola operación (antes iba línea por línea). Si algún bloque falla, solo ese se reintenta una a una para decir cuáles no se pudieron borrar. El botón Deshacer también recupera por bloques.
+
 ## [1.149.0] — 2026-11-18
 
 ### Corregido
