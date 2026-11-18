@@ -56,21 +56,23 @@ export function iniciarTrabajoFotosPdf({ archivos, precios, idProveedor = 'all' 
         let ultimaMarca = 0;
         const actualizar = (extra = {}) => poner({ archivo: f.name, nArchivo: n + 1, avance: bytesHechos / bytesTotal, encontradas, fallos: nFallos, ...extra });
         actualizar(); paso(`Leyendo ${f.name} (${n + 1} de ${archivos.length})`);
-        const enCurso = new Set();
-        const guardar = async ({ id, dataUrl }) => {
-          while (enCurso.size >= 4) await Promise.race(enCurso);
-          const tt = (async () => {
-            try {
-              await base44.entities.SupplierPrice.update(id, { image_url: dataUrl });
-              cola.push({ id, url: dataUrl }); if (!t) t = setTimeout(volcar, 500);
-              guardados.add(id); encontradas++;
-            } catch (e) { nFallos++; informe.push(filaDe(id, 'La foto se recuperó pero no se pudo guardar: ' + (e.message || e), null, f.name)); }
-          })();
-          enCurso.add(tt); tt.finally(() => enCurso.delete(tt));
+        // Las fotos se juntan y se guardan en lotes de 100 (una sola escritura por lote, no una por foto)
+        let lote = []; let guardando = Promise.resolve(); let ultimoLote = Date.now();
+        const escribir = (l) => {
+          guardando = guardando.then(async () => {
+            try { await base44.entities.SupplierPrice.bulkUpdate(l.map((x) => ({ id: x.id, image_url: x.dataUrl }))); }
+            catch (e) {
+              for (const x of l) { try { await base44.entities.SupplierPrice.update(x.id, { image_url: x.dataUrl }); } catch (e2) { l.fallo = true; nFallos++; informe.push(filaDe(x.id, 'La foto se recuperó pero no se pudo guardar: ' + (e2.message || e2), null, f.name)); x.malo = true; } }
+            }
+            for (const x of l) if (!x.malo) { cola.push({ id: x.id, url: x.dataUrl }); guardados.add(x.id); encontradas++; }
+            if (!t) t = setTimeout(volcar, 500);
+          });
         };
+        const guardar = async ({ id, dataUrl }) => { lote.push({ id, dataUrl }); if (lote.length >= 100) { escribir(lote); lote = []; ultimoLote = Date.now(); } };
         const opciones = {
           senal, onFoto: guardar,
           onProgreso: ({ pagina, total }) => {
+            if (lote.length && Date.now() - ultimoLote > 2000) { escribir(lote); lote = []; ultimoLote = Date.now(); }
             actualizar({ pagina, totalPaginas: total, avance: (bytesHechos + f.size * (pagina / Math.max(total, 1))) / bytesTotal });
             if (pagina - ultimaMarca >= 25) { ultimaMarca = pagina; estado = { ...estado }; paso(`Página ${pagina} de ${total}: ${encontradas.toLocaleString('es-ES')} fotos guardadas`, 'ok'); emitir(); }
           },
@@ -81,7 +83,8 @@ export function iniciarTrabajoFotosPdf({ archivos, precios, idProveedor = 'all' 
           const r2 = await recuperarImagenesDePdf(f, pendientes, opciones);
           r = { ...r2, fallos: [...r.fallos, ...r2.fallos] };
         }
-        await Promise.all([...enCurso]);
+        if (lote.length) { escribir(lote); lote = []; }
+        await guardando;
         for (const x of r.fallos) { nFallos++; informe.push(x.id ? filaDe(x.id, x.motivo, x.pagina, f.name) : { proveedor: '', codigo: '', nombre: '', motivo: x.motivo, pagina: x.pagina, archivo: f.name }); }
         const fallidos = new Set(r.fallos.map((x) => x.id));
         pendientes = pendientes.filter((p) => !guardados.has(p.id) && !fallidos.has(p.id));
