@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, useSyncExternalStore } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
 import CampoPrecio from '@/components/CampoPrecio';
@@ -15,16 +15,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { buscarImagenArticulo } from '@/lib/imagenesProductoApp';
-import { nombreBase } from '@/lib/imagenesProducto';
 import { norm } from '@/lib/buscarArticulos';
 
 const textoBusqueda = new WeakMap(); // texto ya preparado de cada artículo (se calcula una vez)
-import { recuperarImagenesDePdf } from '@/lib/imagenesPdf';
-import { recuperarFotosPorCodigo } from '@/lib/catalogoRevistaPdf';
-import { construirCsvFotos, MOTIVO_SIN_FOTO } from '@/lib/informeFotos';
-import { descargarTexto } from '@/lib/iaModulos/datos';
+import { iniciarTrabajoFotosPdf, leerTrabajoFotosPdf, suscribirTrabajoFotosPdf } from '@/lib/trabajoFotosPdf';
 import VisorImagenes from '@/components/VisorImagenes';
-import ProgresoFotosPdf from '@/components/ProgresoFotosPdf';
+import { iniciarTrabajoFotos, detenerTrabajoFotos, leerTrabajoFotos, suscribirTrabajoFotos, suscribirFotoNueva } from '@/lib/trabajoFotos';
 import MargenMasivoDialog from '@/components/MargenMasivoDialog';
 import { tarifasCaducadas, borrarEnLotes, recrearLineas } from '@/lib/borrarTarifas';
 import SupplierCatalogImportWithSupplier from '../components/SupplierCatalogImportWithSupplier';
@@ -63,8 +59,6 @@ export default function SupplierTariffs() {
   suppliersRef.current = suppliers;
   // Para buscar primero en la web del proveedor del artículo.
   const conWeb = (item) => ({ ...item, supplier_web: suppliersRef.current.find(x => x.id === item.supplier_id)?.website || '' });
-  const [pdfFotos, setPdfFotos] = useState(null); // estado del diálogo de progreso de «Fotos desde PDF»
-  const pdfControl = useRef(null);
   const [margenAbierto, setMargenAbierto] = useState(false);
   const [visor, setVisor] = useState(null); // { fotos, i, titulo } para ampliar una foto
   const pdfFotosRef = useRef(null);
@@ -91,8 +85,9 @@ export default function SupplierTariffs() {
   const [borrando, setBorrando] = useState(null); // { hechas, total }
   const imageFileRef = useRef(null);
   // Relleno de imágenes en segundo plano (por lotes, poco a poco)
-  const [bulkImg, setBulkImg] = useState(null); // { done, total, ok } | null
-  const bulkCancelRef = useRef(false);
+  const fotosFondo = useSyncExternalStore(suscribirTrabajoFotos, leerTrabajoFotos, leerTrabajoFotos);
+  const pdfFondo = useSyncExternalStore(suscribirTrabajoFotosPdf, leerTrabajoFotosPdf, leerTrabajoFotosPdf);
+  const bulkImg = fotosFondo.activa ? { done: fotosFondo.hechos, total: fotosFondo.total, ok: fotosFondo.encontradas } : null;
   // Actualización desde la web del proveedor (precio/foto/descripción)
   const [bulkUpd, setBulkUpd] = useState(null); // { done, total, ok } | null
   const bulkUpdCancelRef = useRef(false);
@@ -186,52 +181,19 @@ export default function SupplierTariffs() {
   useEffect(() => { loadData(); }, []);
 
   // ── Rellenar imágenes que faltan, en segundo plano y poco a poco ───────────
-  const fillMissingImages = async (idProveedor = filterSupplier) => {
-    if (bulkImg) { bulkCancelRef.current = true; return; } // segundo clic = detener
-    // Solo los productos sin imagen del proveedor elegido: mucho menos que buscar en todo el catálogo
-    const sinFoto = prices.filter(p =>
-      !p.image_url && (idProveedor === 'all' || p.supplier_id === idProveedor)
-    );
-    if (sinFoto.length === 0) { toast.info('No hay productos sin imagen'); return; }
-    // Mismo producto en varias medidas = una sola búsqueda: todas usan la foto principal
-    const claveGrupo = (p) => `${p.supplier_id || ''}|${nombreBase(p.product_name).toLowerCase()}|${String(p.notes || '').toLowerCase().slice(0, 60)}`;
-    const conFotoDe = new Map();
-    for (const p of prices) if (p.image_url && nombreBase(p.product_name)) { const k = claveGrupo(p); if (!conFotoDe.has(k)) conFotoDe.set(k, p.image_url); }
-    const grupos = new Map();
-    for (const p of sinFoto) { const k = nombreBase(p.product_name) ? claveGrupo(p) : `id|${p.id}`; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(p); }
-    const pendientes = [...grupos.entries()].map(([k, lista]) => ({ k, lista }));
-    bulkCancelRef.current = false;
-    setBulkImg({ done: 0, total: sinFoto.length, ok: 0 });
-    let done = 0, ok = 0;
-    const CONC = 2; // 2 en paralelo para no saturar
-    let idx = 0;
-    const poner = async (lista, url) => {
-      for (const it of lista) {
-        try { await base44.entities.SupplierPrice.update(it.id, { image_url: url }); ok++; } catch (_) { /* seguir */ }
-      }
-      const ids = new Set(lista.map(i => i.id));
-      setPrices(prev => prev.map(p => ids.has(p.id) ? { ...p, image_url: url } : p));
-    };
-    const worker = async () => {
-      while (idx < pendientes.length && !bulkCancelRef.current) {
-        const { k, lista } = pendientes[idx++];
-        try {
-          if (conFotoDe.has(k)) await poner(lista, conFotoDe.get(k)); // ya hay una medida con foto
-          else {
-            const res = await buscarImagenArticulo(conWeb(lista[0]));
-            if (res?.motivo === 'sin_conexion' || res?.motivo === 'sin_motor') { toast.info(res.mensaje); bulkCancelRef.current = true; }
-            if (res?.ok) await poner(lista, res.url);
-          }
-        } catch (_) { /* seguir con el siguiente */ }
-        done += lista.length;
-        setBulkImg({ done, total: sinFoto.length, ok });
-        await new Promise(r => setTimeout(r, 250)); // ritmo suave
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(CONC, pendientes.length) }, worker));
-    setBulkImg(null);
-    toast.success(`Imágenes rellenadas: ${ok} de ${sinFoto.length}${bulkCancelRef.current ? ' (detenido)' : ''}`);
+  const fillMissingImages = (idProveedor = filterSupplier) => {
+    if (fotosFondo.activa) { detenerTrabajoFotos(); return; } // segundo clic = detener
+    const lanzada = iniciarTrabajoFotos({ precios: prices, idProveedor, proveedores: suppliersRef.current });
+    if (!lanzada) toast.info('No hay productos sin imagen');
+    else toast.info('Buscando fotos en segundo plano: puedes seguir trabajando; el panel de abajo a la izquierda enseña cada paso.');
   };
+  // Las fotos que va encontrando la búsqueda de fondo se pintan aquí según llegan (juntas, cada medio segundo)
+  useEffect(() => {
+    let cola = []; let t = null;
+    const volcar = () => { t = null; const lote = cola; cola = []; if (!lote.length) return; const mapa = new Map(); for (const { ids, url } of lote) for (const id of ids) mapa.set(id, url); setPrices((prev) => prev.map((p) => (mapa.has(p.id) ? { ...p, image_url: mapa.get(p.id) } : p))); };
+    const quitar = suscribirFotoNueva((x) => { cola.push(x); if (!t) t = setTimeout(volcar, 500); });
+    return () => { quitar(); if (t) clearTimeout(t); };
+  }, []);
 
   // ── Actualizar precio/foto/descripción desde la web del proveedor ──────────
   const updateFromSupplierWeb = async () => {
@@ -414,85 +376,13 @@ export default function SupplierTariffs() {
     setFetchingImage(false);
   };
 
-  // ── Recuperar las fotos que vienen DENTRO de la tarifa en PDF ─────────────
-  const fotosDesdePdf = async (ev) => {
+  // ── Recuperar las fotos que vienen DENTRO de la tarifa en PDF (en segundo plano, con panel en todas las pantallas) ──
+  const fotosDesdePdf = (ev) => {
     const archivos = [...(ev.target.files || [])]; ev.target.value = '';
     if (!archivos.length) return;
-    const idProv = proveedorFotosRef.current || 'all';
-    const lista = prices.filter(p => !p.image_url && p.product_code && (idProv === 'all' || p.supplier_id === idProv));
-    if (!lista.length) { toast.info('No hay artículos sin imagen y con código de ese proveedor.'); return; }
-    const porId = new Map(lista.map(p => [p.id, p]));
-    const filaDe = (id, motivo, pagina, archivo) => {
-      const p = porId.get(id) || {};
-      return { proveedor: p.supplier_name, codigo: p.product_code, nombre: p.product_name, motivo, pagina, archivo };
-    };
-    pdfControl.current = new AbortController();
-    const senal = pdfControl.current.signal;
-    const inicio = Date.now();
-    const bytesTotal = archivos.reduce((t, f) => t + f.size, 0) || 1;
-    let bytesHechos = 0; let encontradas = 0; let nFallos = 0;
-    const informe = [];
-    let pendientes = lista.map(p => ({ id: p.id, codigo: p.product_code, nombre: p.product_name }));
-    const guardados = new Set();
-    let cancelado = false;
-    // Las fotos se pintan en la lista por tandas: repintar miles de filas por cada foto hacía la carga lentísima.
-    const nuevasFotos = new Map(); let volcando = null;
-    const volcarFotos = (ya = false) => {
-      const hacer = () => { volcando = null; if (!nuevasFotos.size) return; const lote = new Map(nuevasFotos); nuevasFotos.clear(); setPrices(prev => prev.map(p => lote.has(p.id) ? { ...p, image_url: lote.get(p.id) } : p)); };
-      if (ya) { clearTimeout(volcando); hacer(); } else if (!volcando) volcando = setTimeout(hacer, 1500);
-    };
-    const pon = (f, n, extra = {}) => setPdfFotos({ fase: 'leyendo', archivo: f.name, nArchivo: n, totalArchivos: archivos.length, pagina: 0, totalPaginas: 0, avance: bytesHechos / bytesTotal, inicio, encontradas, fallos: nFallos, filasInforme: [], ...extra });
-    try {
-      for (let n = 0; n < archivos.length; n++) {
-        const f = archivos[n];
-        if (!pendientes.length || senal.aborted) break;
-        pon(f, n + 1);
-        // Guardado en segundo plano con un máximo de 4 a la vez, para no frenar la lectura.
-        const enCurso = new Set();
-        const guardar = async ({ id, dataUrl }) => {
-          while (enCurso.size >= 4) await Promise.race(enCurso);
-          const t = (async () => {
-            try {
-              await base44.entities.SupplierPrice.update(id, { image_url: dataUrl });
-              nuevasFotos.set(id, dataUrl); volcarFotos();
-              guardados.add(id); encontradas++;
-            } catch (e) {
-              nFallos++; informe.push(filaDe(id, 'La foto se recuperó pero no se pudo guardar: ' + (e.message || e), null, f.name));
-            }
-          })();
-          enCurso.add(t); t.finally(() => enCurso.delete(t));
-        };
-        const opciones = {
-          senal, onFoto: guardar,
-          onProgreso: ({ pagina, total }) => pon(f, n + 1, { pagina, totalPaginas: total, avance: (bytesHechos + f.size * (pagina / Math.max(total, 1))) / bytesTotal })
-        };
-        // Motor nuevo (catálogos con foto + tabla, fotos dentro de formularios, una foto por página). Si no saca ninguna, se prueba el clásico.
-        let r = await recuperarFotosPorCodigo(f, pendientes, opciones);
-        if (!r.encontradas.length && !r.cancelado && !senal.aborted) {
-          const r2 = await recuperarImagenesDePdf(f, pendientes, opciones);
-          r = { ...r2, fallos: [...r.fallos, ...r2.fallos] };
-        }
-        await Promise.all([...enCurso]);
-        for (const x of r.fallos) { nFallos++; informe.push(x.id ? filaDe(x.id, x.motivo, x.pagina, f.name) : { proveedor: '', codigo: '', nombre: '', motivo: x.motivo, pagina: x.pagina, archivo: f.name }); }
-        const fallidosIds = new Set(r.fallos.map(x => x.id));
-        pendientes = pendientes.filter(p => !guardados.has(p.id) && !fallidosIds.has(p.id));
-        bytesHechos += f.size;
-        if (r.cancelado) cancelado = true;
-      }
-    } catch (e) {
-      toast.error('No se pudo leer el PDF: ' + (e.message || e));
-      informe.push({ proveedor: '', codigo: '', nombre: '', motivo: 'Error al leer el PDF: ' + (e.message || e), archivo: '' });
-    }
-    volcarFotos(true);
-    // Lo que no ha salido en ningún PDF y no ha dado error: sin foto junto a su código.
-    const yaEnInforme = new Set(informe.map(i => i.codigo));
-    if (!cancelado) for (const p of pendientes) { const pr = porId.get(p.id); if (pr && !yaEnInforme.has(pr.product_code)) informe.push(filaDe(p.id, MOTIVO_SIN_FOTO, null, '')); }
-    setPdfFotos({ fase: 'terminado', cancelado, archivo: '', nArchivo: archivos.length, totalArchivos: archivos.length, pagina: 0, totalPaginas: 0, avance: cancelado ? bytesHechos / bytesTotal : 1, inicio, encontradas, fallos: nFallos, filasInforme: informe });
-  };
-
-  const descargarInformeFotos = () => {
-    if (!pdfFotos?.filasInforme?.length) return;
-    descargarTexto(`fotos-no-recuperadas-${new Date().toISOString().slice(0, 10)}.csv`, construirCsvFotos(pdfFotos.filasInforme), 'text/csv');
+    const ok = iniciarTrabajoFotosPdf({ archivos, precios: prices, idProveedor: proveedorFotosRef.current || 'all' });
+    if (!ok) toast.info(pdfFondo.fase === 'leyendo' ? 'Ya hay una recuperación de fotos en marcha.' : 'No hay artículos sin imagen y con código de ese proveedor.');
+    else toast.info('Recuperando fotos del PDF en segundo plano: puedes seguir trabajando; el panel de abajo a la izquierda enseña cada paso.');
   };
 
   const totalProducts = prices.length;
@@ -528,7 +418,6 @@ export default function SupplierTariffs() {
           </div>
         </DialogContent>
       </Dialog>
-      <ProgresoFotosPdf estado={pdfFotos} onCancelar={() => pdfControl.current?.abort()} onCerrar={() => setPdfFotos(null)} onDescargar={descargarInformeFotos} />
       {/* Cabecera */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -623,9 +512,9 @@ export default function SupplierTariffs() {
           <RefreshCw className="w-4 h-4" />
         </Button>
         <input ref={pdfFotosRef} type="file" accept="application/pdf,.pdf" multiple className="hidden" onChange={fotosDesdePdf} data-prueba="tarifa-fotos-pdf" />
-        <Button variant="outline" className="gap-2 whitespace-nowrap" onClick={() => setPidoProveedor({ accion: 'pdf', id: filterSupplier !== 'all' ? filterSupplier : '' })} disabled={pdfFotos?.fase === 'leyendo'}
+        <Button variant="outline" className="gap-2 whitespace-nowrap" onClick={() => setPidoProveedor({ accion: 'pdf', id: filterSupplier !== 'all' ? filterSupplier : '' })} disabled={pdfFondo.fase === 'leyendo'}
           title="Sube la tarifa en PDF y se recuperan las fotos que lleva dentro, por código de artículo" data-prueba="tarifa-fotos-pdf-boton">
-          {pdfFotos?.fase === 'leyendo' ? <><Loader2 className="w-4 h-4 animate-spin" />{`${Math.floor((pdfFotos.avance || 0) * 100)} %`}</> : <><ImageIcon className="w-4 h-4" />Fotos desde PDF</>}
+          {pdfFondo.fase === 'leyendo' ? <><Loader2 className="w-4 h-4 animate-spin" />{`${Math.floor((pdfFondo.avance || 0) * 100)} %`}</> : <><ImageIcon className="w-4 h-4" />Fotos desde PDF</>}
         </Button>
         <Button
           variant={bulkImg ? 'destructive' : 'outline'}

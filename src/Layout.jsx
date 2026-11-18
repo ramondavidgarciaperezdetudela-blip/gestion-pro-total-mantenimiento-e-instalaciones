@@ -1,4 +1,5 @@
 import ImportacionEnSegundoPlano from '@/components/ImportacionEnSegundoPlano';
+import FotosEnSegundoPlano from '@/components/FotosEnSegundoPlano';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Suspense } from 'react';
@@ -217,6 +218,7 @@ export default function Layout({ children, currentPageName }) {
               <Suspense fallback={<div className="flex items-center justify-center h-32"><div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin opacity-60" /></div>}>{children}</Suspense>
             </div>
             <ImportacionEnSegundoPlano />
+            <FotosEnSegundoPlano />
             <VentanaTareasAvisos />
             <BotonesImprimirPantalla
               nodoRef={contenidoRef}

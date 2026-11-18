@@ -174,6 +174,7 @@ export async function fotosParaItems(archivo, items, { onProgreso = () => {}, se
     // 2) cada página
     for (let n = 1; n <= pdf.numPages; n++) {
       if (senal?.aborted) break;
+      await new Promise((r) => setTimeout(r, 0)); // cede el hilo: la pantalla sigue respondiendo mientras se leen las páginas
       let pagina;
       try {
         pagina = await pdf.getPage(n);
@@ -261,6 +262,7 @@ export async function recuperarFotosPorCodigo(archivo, articulos, { onProgreso =
     for (let n = 1; n <= pdf.numPages; n++) {
       if (senal?.aborted) { resultado.cancelado = true; break; }
       onProgreso({ pagina: n, total: pdf.numPages, encontradas: resultado.encontradas.length });
+      await new Promise((r) => setTimeout(r, 0)); // cede el hilo: la pantalla sigue respondiendo mientras se leen las páginas
       if (!pendientes.size) break;
       let pagina;
       try {

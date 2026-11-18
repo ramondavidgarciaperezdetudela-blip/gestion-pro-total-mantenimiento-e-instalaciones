@@ -127,6 +127,7 @@ export async function recuperarImagenesDePdf(archivo, articulos, { onProgreso = 
     for (let n = 1; n <= pdf.numPages; n++) {
       if (senal?.aborted) { resultado.cancelado = true; break; }
       onProgreso({ pagina: n, total: pdf.numPages, encontradas: resultado.encontradas.length });
+      await new Promise((r) => setTimeout(r, 0)); // cede el hilo: la pantalla sigue respondiendo mientras se leen las páginas
       if (!pendientes.size) { onProgreso({ pagina: pdf.numPages, total: pdf.numPages, encontradas: resultado.encontradas.length }); break; }
       let pagina;
       try {
