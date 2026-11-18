@@ -688,7 +688,7 @@ export default function SupplierTariffs() {
                               </div>
                             </td>
                             <td className="p-3">
-                              <p className="font-medium text-gray-900 line-clamp-2">{item.product_name}</p>
+                              <p className="font-medium text-gray-900 line-clamp-3">{item.product_name}</p>
                               {item.notes && <p className="text-xs text-gray-400 truncate max-w-xs">{item.notes}</p>}
                             </td>
                             <td className="p-3 hidden sm:table-cell text-xs text-gray-500 font-mono whitespace-nowrap">{item.product_code || '—'}</td>
