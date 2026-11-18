@@ -20,40 +20,60 @@ export function tarifasCaducadas(items = [], { hoy = Date.now(), antesDe = null 
 }
 
 /**
- * Borra por lotes. No se detiene si alguna falla: devuelve cuáles no se pudieron
- * borrar y por qué (casi siempre permisos: la línea la creó otra cuenta).
+ * Borra de golpe: UNA petición por cada 1.000 líneas (`deleteMany` con la lista de ids), no una por línea.
+ * Si el servidor rechaza un bloque entero, solo ese bloque se reintenta línea a línea para saber cuáles
+ * fallan y por qué (casi siempre permisos: la línea la creó otra cuenta).
  */
-export async function borrarEnLotes(api, items, { concurrencia = 5, onProgreso, freno } = {}) {
+export async function borrarEnLotes(api, items, { concurrencia = 5, bloque = 1000, onProgreso, freno } = {}) {
   const borradas = [];
   const fallidas = [];
-  let i = 0;
-  const trabajador = async () => {
-    while (i < items.length) {
-      if (freno?.parar) return;
-      const item = items[i++];
-      try {
-        await api.delete(item.id);
-        borradas.push(item);
-      } catch (e) {
-        fallidas.push({ item, error: e?.response?.data?.message || e?.message || 'error desconocido' });
-      }
-      onProgreso?.(borradas.length + fallidas.length, items.length);
-    }
+  const hecho = () => borradas.length + fallidas.length;
+  const uno = async (item) => {
+    try { await api.delete(item.id); borradas.push(item); }
+    catch (e) { fallidas.push({ item, error: e?.response?.data?.message || e?.message || 'error desconocido' }); }
   };
-  await Promise.all(Array.from({ length: Math.max(1, concurrencia) }, trabajador));
+  for (let d = 0; d < items.length; d += bloque) {
+    if (freno?.parar) break;
+    const trozo = items.slice(d, d + bloque);
+    let hechoDeGolpe = false;
+    // Solo si la entidad garantiza que `deleteMany` con ids borra exactamente esos (almacén propio): en otros back-ends una consulta mal entendida podría borrar de más.
+    if (api.borradoEnBloque === true && typeof api.deleteMany === 'function' && trozo.length > 1) {
+      try {
+        await api.deleteMany({ id: { $in: trozo.map((x) => x.id) } });
+        borradas.push(...trozo);
+        hechoDeGolpe = true;
+      } catch { /* se prueba una a una solo este bloque */ }
+    }
+    if (!hechoDeGolpe) {
+      let i = 0;
+      const trabajador = async () => { while (i < trozo.length) { if (freno?.parar) return; await uno(trozo[i++]); } };
+      await Promise.all(Array.from({ length: Math.max(1, concurrencia) }, trabajador));
+    }
+    onProgreso?.(hecho(), items.length);
+  }
   return { borradas, fallidas };
 }
 
-/** Vuelve a crear líneas borradas (sin los campos que pone el servidor). */
-export async function recrearLineas(api, items, { concurrencia = 5 } = {}) {
+/** Vuelve a crear líneas borradas (sin los campos que pone el servidor), por bloques de 500 si se puede. */
+export async function recrearLineas(api, items, { concurrencia = 5, bloque = 500 } = {}) {
   const limpias = items.map(({ id, created_date, updated_date, created_by, created_by_id, ...resto }) => resto); // eslint-disable-line no-unused-vars
-  let i = 0; let hechas = 0;
-  const trabajador = async () => {
-    while (i < limpias.length) {
-      const fila = limpias[i++];
-      try { await api.create(fila); hechas++; } catch { /* se cuenta como no recuperada */ }
-    }
+  let hechas = 0;
+  const unaAUna = async (lista) => {
+    let i = 0;
+    const trabajador = async () => {
+      while (i < lista.length) {
+        const fila = lista[i++];
+        try { await api.create(fila); hechas++; } catch { /* se cuenta como no recuperada */ }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.max(1, concurrencia) }, trabajador));
   };
-  await Promise.all(Array.from({ length: Math.max(1, concurrencia) }, trabajador));
+  for (let d = 0; d < limpias.length; d += bloque) {
+    const trozo = limpias.slice(d, d + bloque);
+    if (api.borradoEnBloque === true && typeof api.bulkCreate === 'function' && trozo.length > 1) {
+      try { await api.bulkCreate(trozo); hechas += trozo.length; continue; } catch { /* este bloque, una a una */ }
+    }
+    await unaAUna(trozo);
+  }
   return hechas;
 }

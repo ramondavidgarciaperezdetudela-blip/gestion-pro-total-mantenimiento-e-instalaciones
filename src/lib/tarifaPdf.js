@@ -3,6 +3,7 @@
 import { filasDePdf, trozosDePdf } from './leerPdfTabla.js';
 import { articulosDeCatalogo } from './catalogoPdf.js';
 import { lineasDeFilas } from './importarPresupuesto.js';
+import { tieneDescripcion, separarSinDescripcion } from './descripcionArticulo.js';
 import { pareceCatalogoRevista, leerCatalogoRevista, fotosParaItems } from './catalogoRevistaPdf.js';
 
 /** De las líneas leídas a los artículos de tarifa (referencia, nombre, precio, unidad). Descarta lo que no tiene precio. */
@@ -12,9 +13,9 @@ export function itemsDeLineas(lineas = []) {
   for (const l of lineas) {
     const precio = Number(l.unit_price);
     if (!(precio > 0)) continue;
-    const nombre = String(l.description || l.reference || '').trim();
-    if (!nombre) continue;
     const codigo = String(l.reference || '').trim();
+    const nombre = String(l.description || '').trim();
+    if (!tieneDescripcion(nombre, codigo)) continue; // solo números o solo la referencia: no sabemos qué es
     const clave = `${codigo.toLowerCase()}|${nombre.toLowerCase()}|${precio}`;
     if (vistos.has(clave)) continue;
     vistos.add(clave);
@@ -48,7 +49,7 @@ async function ponerFotos(file, items, avisos, { onProgreso, senal, conFotos }) 
   } catch { avisos.push('No pude leer las fotos de este PDF. Usa «Rellenar imágenes» para buscarlas en internet.'); }
 }
 
-export async function leerTarifaPdf(file, { onProgreso, senal, conFotos = true } = {}) {
+async function leerTarifaPdfCompleta(file, { onProgreso, senal, conFotos = true } = {}) {
   // Catálogo o folleto «de revista» (foto + título + tabla de referencias y precios): se leen artículos Y fotos.
   let revista = null;
   try {
@@ -95,4 +96,15 @@ export async function leerTarifaPdf(file, { onProgreso, senal, conFotos = true }
     }
   } catch { /* se queda sin artículos */ }
   return { items, avisos };
+}
+
+/** Lee la tarifa en PDF y descarta los artículos sin descripción (solo números o solo la referencia). */
+export async function leerTarifaPdf(file, opciones = {}) {
+  const r = await leerTarifaPdfCompleta(file, opciones);
+  const { validos, descartados } = separarSinDescripcion(r.items || []);
+  if (!descartados.length) return r;
+  return {
+    ...r, items: validos, sinDescripcion: descartados.length,
+    avisos: [...(r.avisos || []), `No he importado ${descartados.length.toLocaleString('es-ES')} artículos porque solo traían números o la referencia, sin descripción: no sabemos qué son ni se puede buscar su foto.`],
+  };
 }
