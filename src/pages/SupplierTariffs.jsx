@@ -22,6 +22,7 @@ import { iniciarTrabajoFotosPdf, leerTrabajoFotosPdf, suscribirTrabajoFotosPdf }
 import VisorImagenes from '@/components/VisorImagenes';
 import { iniciarTrabajoFotos, detenerTrabajoFotos, leerTrabajoFotos, suscribirTrabajoFotos, suscribirFotoNueva } from '@/lib/trabajoFotos';
 import MargenMasivoDialog from '@/components/MargenMasivoDialog';
+import { olvidarTabla } from '@/nube/entidad';
 import { tarifasCaducadas, borrarEnLotes, recrearLineas } from '@/lib/borrarTarifas';
 import SupplierCatalogImportWithSupplier from '../components/SupplierCatalogImportWithSupplier';
 import PriceComparator from '../components/PriceComparator';
@@ -97,8 +98,10 @@ export default function SupplierTariffs() {
   const autoFetchTimerRef = useRef(null);
   const lastAutoFetchNameRef = useRef('');
 
+  const yaCargado = useRef(false);
   const loadData = async () => {
-    setLoading(true);
+    // La primera vez sale «Cargando…»; al recargar después se deja la lista a la vista y se cambia sin parpadeo.
+    if (!yaCargado.current) setLoading(true);
     setLoadError(false);
     const PAGE = 1000;
 
@@ -119,9 +122,11 @@ export default function SupplierTariffs() {
       return;
     }
 
+    const recarga = yaCargado.current; // al recargar con la lista ya en pantalla, se cambia de una vez al final (sin que la lista encoja y crezca)
     setSuppliers(supp);
-    setPrices(firstBatch);
+    if (!recarga || firstBatch.length < PAGE) setPrices(firstBatch);
     setLoading(false);
+    yaCargado.current = true;
 
     if (firstBatch.length === PAGE) {
       let allPrices = [...firstBatch];
@@ -151,7 +156,7 @@ export default function SupplierTariffs() {
           // simultáneas; nos aseguramos de no mostrarlo duplicado.
           const seen = new Set();
           allPrices = allPrices.filter(p => (p.id && !seen.has(p.id)) ? (seen.add(p.id), true) : !p.id);
-          setPrices([...allPrices]);
+          if (!recarga || !hasMore) setPrices([...allPrices]);
           if (!hasMore) break;
         }
       };
@@ -511,7 +516,7 @@ export default function SupplierTariffs() {
             {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button variant="outline" size="icon" onClick={loadData} title="Recargar">
+        <Button variant="outline" size="icon" onClick={() => { olvidarTabla("SupplierPrice"); olvidarTabla("Supplier"); loadData(); }} title="Recargar">
           <RefreshCw className="w-4 h-4" />
         </Button>
         <input ref={pdfFotosRef} type="file" accept="application/pdf,.pdf" multiple className="hidden" onChange={fotosDesdePdf} data-prueba="tarifa-fotos-pdf" />

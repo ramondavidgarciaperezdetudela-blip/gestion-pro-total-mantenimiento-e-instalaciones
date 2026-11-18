@@ -15,6 +15,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.153.0] — 2026-11-19
+
+### Corregido
+- **Menos parpadeos y recargas del programa con tarifas grandes.** Con los datos en el servidor propio o en Supabase, cada consulta suelta a una tabla de miles de artículos con fotos (tarifas de 10.000 líneas, cientos de MB) volvía a bajar la tabla ENTERA si habían pasado más de 4 segundos. En una tablet o un móvil eso congelaba la pantalla o hacía que el sistema cerrase y recargase la aplicación. Ahora las tablas de más de 1.000 registros se descargan una vez y se mantienen al día con lo que graba este aparato; en la prueba, abrir la tarifa y hacer tres consultas sueltas pasó de 4 descargas completas a 1. Los cambios de otros aparatos se ven al pulsar «Recargar» (que ahora vuelve a bajar los datos) o pasados 10 minutos.
+- **Recargar la tarifa ya no parpadea.** Al recargar con la lista a la vista, se cambia de una vez al final en lugar de vaciarse, encogerse y volver a crecer.
+
 ## [1.152.0] — 2026-11-18
 
 ### Añadido
