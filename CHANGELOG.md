@@ -15,6 +15,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.151.0] — 2026-11-18
+
+### Corregido
+- **Tarifa bien puesta en tablet y móvil.** Las columnas Ref., Categoría, Coste, Venta y Margen ya no se parten letra a letra: tienen su ancho y la tabla se desliza si no cabe. La casilla de selección y la foto van una al lado de la otra.
+- **Tarifas de miles de artículos.** Se dibujan de 100 en 100 (botones «Mostrar 200 más» y «Mostrar las N»), así el aparato no se bloquea y las fotos cargan al momento.
+
+### Añadido
+- **Filtro Todos / Con foto / Sin foto** en cada tarifa, con contador. La cabecera dice cuántos artículos llevan foto.
+- **Foto guardada que no se puede mostrar:** se marca con un icono rojo y la cabecera lo cuenta, para no confundirla con «sin foto».
+
 ## [1.150.0] — 2026-11-18
 
 ### Cambiado
