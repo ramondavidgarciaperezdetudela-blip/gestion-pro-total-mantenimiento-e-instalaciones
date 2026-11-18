@@ -38,9 +38,9 @@ export default function VentanaTareasAvisos() {
 
   if (!abierta || typeof document === 'undefined') return null;
   return createPortal(
-    <div className="fixed inset-0 flex items-stretch sm:items-center justify-center sm:p-4 print:hidden" style={{ zIndex: 100000 }} role="dialog" aria-modal="true" aria-label="Tareas y avisos" data-prueba="ventana-avisos">
+    <div className="fixed inset-0 flex items-stretch sm:items-center justify-center sm:p-4 print:hidden pt-[max(env(safe-area-inset-top),2.25rem)] pb-[env(safe-area-inset-bottom)] sm:pt-4 sm:pb-4" style={{ zIndex: 100000 }} role="dialog" aria-modal="true" aria-label="Tareas y avisos" data-prueba="ventana-avisos">
       <div className="absolute inset-0 bg-black/55" onClick={() => setAbierta(false)} />
-      <div className="relative w-full sm:max-w-3xl h-full sm:h-[90vh] rounded-none sm:rounded-2xl shadow-2xl overflow-hidden bg-white">
+      <div className="relative w-full sm:max-w-3xl h-full sm:h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden bg-white">
         <CentroTareasAvisos enVentana tipoInicial={tipo} onCerrar={() => setAbierta(false)} />
       </div>
     </div>,

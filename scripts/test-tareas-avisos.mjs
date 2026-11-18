@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { construirAvisos, filtrarAvisos, contarPorTipo, leerAnulados, guardarAnulados } from '../src/lib/tareasAvisos.js';
+import { construirAvisos, filtrarAvisos, contarPorTipo, leerAnulados, guardarAnulados, aplazarAviso, restaurarAviso, proximaRevision } from '../src/lib/tareasAvisos.js';
 const hoy = new Date('2026-11-16T10:00:00Z');
 const d = (n) => new Date(hoy.getTime() - n * 864e5).toISOString().slice(0, 10);
 const av = construirAvisos({
@@ -53,6 +53,21 @@ localStorage.setItem('dismissed_notifs', JSON.stringify(['viejo']));
 assert.deepEqual(leerAnulados(), ['viejo']);
 guardarAnulados(['viejo', 'x', 'x']);
 assert.deepEqual(leerAnulados().sort(), ['viejo', 'x']);
+// revisión periódica: al quitar el aviso no vuelve hasta que toque la del año que viene
+{
+  const m3 = av.find((a) => a.id === 'mant-m3');
+  assert.ok(m3.volverEl > new Date().toISOString().slice(0, 10), 'vuelve en el futuro');
+  assert.ok(Math.abs((new Date(m3.volverEl) - Date.now()) / 864e5 - 265) < 3, 'unos 265 días: aniversario de la revisión de hace 100 días');
+  assert.ok(m3.hechoHasta > m3.volverEl, 'marcada como hecha hoy: dentro de un año');
+  aplazarAviso('mant-m3', m3.volverEl);
+  assert.ok(leerAnulados().includes('mant-m3'), 'oculto mientras no llegue la fecha');
+  guardarAnulados(leerAnulados()); // guardar otras anulaciones no lo convierte en fijo
+  aplazarAviso('mant-m3', '2000-01-01');
+  assert.equal(leerAnulados().includes('mant-m3'), false, 'llegada la fecha vuelve a salir');
+  aplazarAviso('mant-m3', m3.volverEl); restaurarAviso('mant-m3');
+  assert.equal(leerAnulados().includes('mant-m3'), false, 'restaurar lo devuelve');
+  assert.equal(proximaRevision('2024-02-29', new Date('2026-11-18')), '2027-02-28');
+}
 console.log('Tareas y avisos: OK');
 {
   const dia = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
