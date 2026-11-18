@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import { Loader2 } from 'lucide-react';
 import { leerImportacion, suscribirImportacion, segundosRestantes, textoTiempo } from '@/lib/importacionFondo';
 
@@ -14,7 +15,7 @@ export default function ImportacionEnSegundoPlano() {
   if (!st.activa) return null;
   const gastado = Math.round((Date.now() - st.inicio) / 1000);
   const resta = segundosRestantes(st.pct, st.inicio);
-  return (
+  return createPortal(
     <div className="fixed bottom-4 right-4 z-[10050] w-72 rounded-xl border border-purple-200 bg-white shadow-xl p-3 text-xs" role="status" data-prueba="importacion-fondo">
       <div className="flex items-center gap-2 mb-1.5">
         <Loader2 className="w-4 h-4 text-purple-600 animate-spin" />
@@ -28,6 +29,7 @@ export default function ImportacionEnSegundoPlano() {
         <span className="truncate">{st.detalle}</span>
         <span className="tabular-nums shrink-0 ml-2">{textoTiempo(gastado)}{resta != null ? ` · quedan ~${textoTiempo(resta)}` : ''}</span>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

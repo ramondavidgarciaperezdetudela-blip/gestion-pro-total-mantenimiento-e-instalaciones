@@ -15,6 +15,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.147.0] — 2026-11-18
+
+### Cambiado
+- **«Fotos desde PDF» ya no bloquea el programa.** Antes abría una ventana que impedía usar nada hasta terminar. Ahora corre en segundo plano: puedes cambiar de pantalla y trabajar, y un panel abajo a la izquierda (visible en cualquier pantalla) enseña la página, las fotos guardadas, el tiempo y los pasos; al acabar muestra el resumen y el fichero de las que faltan.
+- **Búsqueda de fotos en internet más rápida:** 12 búsquedas a la vez (antes 6) y 20 s máximo por artículo (antes 30).
+- **La lectura del PDF cede el hilo entre páginas**, así la pantalla sigue respondiendo.
+
+### Corregido
+- Los paneles de avance en segundo plano (fotos e importación) se pintaban en mitad de la página en lugar de en la esquina de la pantalla.
+
 ## [1.146.0] — 2026-11-18
 
 ### Corregido
