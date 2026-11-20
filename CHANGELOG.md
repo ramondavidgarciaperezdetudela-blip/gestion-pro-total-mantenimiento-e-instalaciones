@@ -15,6 +15,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.155.0] — 2026-11-20
+
+### Corregido
+- **Si el programa se reinicia o se recarga, vuelves a la pantalla en la que estabas trabajando** (antes caía siempre en el menú principal y había que volver a abrirla). Se recuerda la última pantalla y, si el reinicio ocurre en los 15 minutos siguientes (Android que cierra la ventana al ir a WhatsApp o a la cámara, recarga, actualización), se abre esa misma. Abrir el programa más tarde sigue empezando en el menú. Las páginas que abre el cliente no se ven afectadas. Lo que estabas escribiendo se sigue devolviendo a su formulario.
+
 ## [1.154.0] — 2026-11-20
 
 ### Corregido
