@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, Mail, Copy, PenLine, Pencil, Printer, CheckCircle2, Clock } from 'lucide-react';
-import { ESTADOS, fechaLarga } from '@/lib/notasInformativas';
+import { estadoDe, estaSinEnviar, fechaLarga } from '@/lib/notasInformativas';
 
 /** Una fila de envío: estado y las acciones que tocan según esté firmada o no. */
 export default function FilaEnvio({ envio, onWhatsApp, onCorreo, onCopiar, onFirmar, onImprimir, onEditar, mostrarNota = false }) {
@@ -10,9 +10,9 @@ export default function FilaEnvio({ envio, onWhatsApp, onCorreo, onCopiar, onFir
     <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 last:border-0" data-envio={envio.id}>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{mostrarNota ? envio.nota_title : envio.contact_name}</p>
-        <p className={`flex items-center gap-1 text-xs ${firmada ? 'text-green-700' : 'text-amber-700'}`}>
+        <p className={`flex items-center gap-1 text-xs ${firmada ? 'text-green-700' : estaSinEnviar(envio) ? 'text-slate-500' : 'text-amber-700'}`} data-estado-envio={estaSinEnviar(envio) ? 'sin-enviar' : firmada ? 'firmada' : 'enviada'}>
           {firmada ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-          {ESTADOS[envio.status] || envio.status}{firmada && envio.signed_at ? ` · ${fechaLarga(envio.signed_at)}` : ''}
+          {estadoDe(envio)}{firmada && envio.signed_at ? ` · ${fechaLarga(envio.signed_at)}` : ''}
         </p>
       </div>
       {!firmada && onEditar && <Button size="sm" variant="outline" onClick={() => onEditar(envio)} title="Editar el texto de este cliente" data-testid="editar-envio"><Pencil className="h-4 w-4" /></Button>}

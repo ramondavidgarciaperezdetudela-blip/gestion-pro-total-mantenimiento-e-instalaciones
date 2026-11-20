@@ -15,6 +15,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.154.0] — 2026-11-20
+
+### Corregido
+- **Las notas informativas ya no quedan «pendientes de envío» si no las has enviado.** Al modificar o preparar una nota para los clientes, no se marca como enviada ni se archiva en la ficha del cliente como «pendiente de firma». Solo cuenta como enviada cuando pulsas tú **WhatsApp** o **correo**.
+- Estados claros en cada cliente: «Preparada · sin enviar», «Enviada · pendiente de firma» y «Firmada». El botón de correo masivo solo envía las que aún no se han enviado.
+- Las que una versión anterior ya había archivado como pendientes sin enviarse se retiran de la ficha del cliente.
+
 ## [1.153.0] — 2026-11-19
 
 ### Corregido
