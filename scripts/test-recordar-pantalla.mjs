@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { guardarPantalla, pantallaARecuperar, VENTANA_MS } from '../src/lib/recordarPantalla.js';
+const mem = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
+const a = mem(); const t0 = 1_000_000_000_000;
+guardarPantalla('/SAT?id=3', a, t0);
+assert.equal(pantallaARecuperar('/', a, t0 + 60_000), '/SAT?id=3', 'reinicio reciente: vuelve a la pantalla');
+assert.equal(pantallaARecuperar('/', a, t0 + VENTANA_MS + 1), null, 'pasado un rato: abre el menú');
+assert.equal(pantallaARecuperar('/Clientes', a, t0 + 1000), null, 'si ya se abrió otra pantalla, no se mueve');
+guardarPantalla('/', a, t0 + 5); assert.equal(pantallaARecuperar('/', a, t0 + 10), null, 'estar en el menú borra el recuerdo');
+guardarPantalla('/presupuesto-publico?x=1', a, t0); assert.equal(pantallaARecuperar('/', a, t0 + 10), null, 'páginas del cliente: nunca');
+console.log('recordar pantalla: OK');
