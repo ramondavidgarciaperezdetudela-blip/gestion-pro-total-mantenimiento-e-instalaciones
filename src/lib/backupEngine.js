@@ -161,18 +161,18 @@ export async function fetchAllRecordsFast(ent, opciones = {}) {
  * registros (cientos de MB) antes de escribir el primero.
  * @returns {Promise<number>} cuántos registros se han entregado
  */
-export async function leerPorPaginas(ent, { freno = crearFreno(), tam = PAGE, onPagina, onPage } = {}) {
+export async function leerPorPaginas(ent, { freno = crearFreno(), tam = PAGE, onPagina, onPage, desde = 0 } = {}) {
   const E = entidades[ent];
   if (!E) return 0;
   const vistos = new Set();   // solo los id (pocos bytes): la paginación por desplazamiento puede repetir alguno
   let total = 0;
-  const entregar = async (batch) => {
+  const entregar = async (batch, sigSkip) => {
     const nuevos = (batch || []).filter((r) => !(r?.id && vistos.has(r.id)));
     for (const r of nuevos) if (r?.id) vistos.add(r.id);
     total += nuevos.length; onPage?.(total);
-    if (nuevos.length) await onPagina(nuevos);
+    if (nuevos.length) await onPagina(nuevos, sigSkip);
   };
-  let skip = 0;
+  let skip = desde;
   for (let guard = 0; guard < 5000; guard++) {
     let batch;
     try { batch = await pedir(freno, () => E.filter({}, null, tam, skip)); }
@@ -180,13 +180,13 @@ export async function leerPorPaginas(ent, { freno = crearFreno(), tam = PAGE, on
       if (skip === 0 && !esDemasiadasPeticiones(e)) {
         // El servidor no admite filter: camino de siempre (todo junto), pero entregado por trozos.
         const todo = (await fetchAllRecordsFast(ent, { freno })) || [];
-        for (let i = 0; i < todo.length; i += tam) await entregar(todo.slice(i, i + tam));
+        for (let i = desde; i < todo.length; i += tam) await entregar(todo.slice(i, i + tam), Math.min(i + tam, todo.length));
         return total;
       }
       throw errorLecturaIncompleta(ent, e);
     }
     if (!batch || batch.length === 0) break;
-    await entregar(batch);
+    await entregar(batch, skip + batch.length);
     if (batch.length < tam) break;
     skip += tam;
   }
@@ -280,7 +280,7 @@ export async function runBackupJob(entities, entityLabels = {}, onProgress, opci
     try {
       if (escribirPorPaginas && !sinDuplicados) {
         // Lectura y escritura a la vez, página a página: la sección nunca está entera en memoria.
-        const n = await escribirPorPaginas(ent, (alPagina) => leerPorPaginas(ent, { freno, tam: tamPagina, onPagina: alPagina, onPage: (k) => setSeccion(ent, { leidos: k }) }));
+        const n = await escribirPorPaginas(ent, (alPagina, desde = 0) => leerPorPaginas(ent, { freno, tam: tamPagina, desde, onPagina: alPagina, onPage: (k) => setSeccion(ent, { leidos: k }) }));
         conteos[ent] = n;
         setSeccion(ent, { fase: 'hecho', leidos: n, total: n });
         done++;

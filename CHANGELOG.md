@@ -15,6 +15,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.157.0] — 2026-11-20
+
+### Corregido
+- **La copia de seguridad en Android se retoma sola si el programa se cierra.** La copia se va guardando por tramos en el teléfono y un diario apunta hasta dónde llegó. Si Android cierra el programa (sin memoria, etc.), al volver a la pantalla de copias sigue desde el último punto guardado, sin repetir nada. Cada vez que se retoma, las páginas son la mitad de grandes para gastar menos memoria. Al terminar, los tramos se unen en el fichero definitivo y se borran. Si hay una copia interrumpida, sale un aviso con «Continuar la copia» y «Empezar de nuevo».
+- **El cierre al 92 %:** la subida a Google Drive iba acumulando en memoria todos los trozos pendientes cuando era más lenta que la copia (cientos de MB al final). Ahora espera y nunca tiene más de dos trozos a la vez. Si algo falla al leer una sección, lo ya copiado no se tira: se puede continuar.
+
 ## [1.156.0] — 2026-11-20
 
 ### Corregido

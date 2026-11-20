@@ -201,9 +201,11 @@ export function detectarEntorno(win = globalThis.window) {
  *   cancelar()       lo deja como esté (al fallar a mitad)
  */
 export async function abrirCopiaPorPartes({
-  nombre, destino, carpetaPC, win = globalThis.window,
+  nombre, destino, carpetaPC, win = globalThis.window, diario = null,
 }) {
   const entorno = detectarEntorno(win);
+  // Móvil con diario: copia REANUDABLE (se guarda por tramos y se puede retomar si el programa se cierra).
+  if (entorno === 'movil' && diario) return abrirReanudableMovil({ nombre, destino, diario });
 
   if (entorno === 'escritorio') {
     const abierto = await win.gptCopias.abrirPorPartes(nombre, carpetaPC || undefined);
@@ -261,6 +263,29 @@ const avisoEscritorio = (r) => (r.perdida
   : r.alternativa
     ? 'La carpeta del programa no admitía escritura, así que la copia se ha guardado en Documentos.'
     : undefined);
+
+/**
+ * Copia reanudable en Android: los tramos van a la carpeta interna de la aplicación y, al terminar, se unen en el fichero
+ * definitivo (Documentos, etc.). Si el programa se cierra a medias, los tramos y el diario siguen ahí.
+ */
+async function abrirReanudableMovil({ nombre, destino, diario }) {
+  const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+  const { crearEscritorReanudable, guardarDiario } = await import('./copiaReanudable.js');
+  const carpeta = `copia-en-curso/${diario.id}`;
+  let final = null;
+  const fs = {
+    escribirParte: (n, t) => Filesystem.writeFile({ path: `${carpeta}/${n}`, data: t, directory: Directory.Data, encoding: Encoding.UTF8, recursive: true }),
+    leerParte: async (n) => (await Filesystem.readFile({ path: `${carpeta}/${n}`, directory: Directory.Data, encoding: Encoding.UTF8 })).data,
+    crearFinal: async () => { final = await abrirEnMovilPorPartes({ nombre, destino }); if (!final.ok) throw new Error(final.error); },
+    anadirFinal: (t) => final.escribir(t),
+    cerrarFinal: async () => final.cerrar(),
+    cancelarFinal: async () => { if (final?.ok) await final.cancelar(); },
+    borrarPartes: async () => { try { await Filesystem.rmdir({ path: carpeta, directory: Directory.Data, recursive: true }); } catch { /* ya no está */ } },
+  };
+  const e = crearEscritorReanudable({ fs, diario, guardar: (d) => guardarDiario(d) });
+  return { ok: true, entorno: 'movil', reanudable: true, ...e,
+    set alMontar(f) { e.alMontar = f; }, set alProgreso(f) { e.alProgreso = f; } };
+}
 
 /** Lo mismo en Android: primero se crea el fichero y después se le va añadiendo. */
 async function abrirEnMovilPorPartes({ nombre, destino }) {

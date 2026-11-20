@@ -3,6 +3,7 @@ import { recogerConfigLocal, aplicarConfigLocal } from '@/lib/configLocal';
 import { toast } from 'sonner';
 import React, { useState, useEffect, useRef } from 'react';
 import { escribirSeccionPorTrozos, escribirSeccionPorPaginas } from '@/lib/escribirSeccion';
+import { leerDiario, guardarDiario, borrarDiario, nuevoDiario, pendientes as seccionesPendientes, tamPaginaPara, MAX_REINTENTOS } from '@/lib/copiaReanudable';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -245,6 +246,7 @@ export default function BackupCenter() {
   const [restorePct, setRestorePct] = useState(0);
   const [restoreSelectedEntities, setRestoreSelectedEntities] = useState(new Set());
   const [restoreMode, setRestoreMode] = useState('update'); // 'clean' | 'update'
+  const [copiaInterrumpida, setCopiaInterrumpida] = useState(() => (detectarEntorno() === 'movil' ? leerDiario() : null));
   const [copiaRecuperada, setCopiaRecuperada] = useState(false); // copia rota de la que solo se rescató una parte
 
   // Duplicados. Ahora son DOS pasos: primero se mira, luego —si se quiere— se
@@ -307,15 +309,17 @@ export default function BackupCenter() {
    */
   // Abre el fichero y devuelve cómo ir añadiéndole secciones UNA A UNA (cada una en trozos de ~1 MB), para no tener la copia
   // entera en memoria. Un solo ritmo de escritura aunque varias secciones terminen de leerse a la vez.
-  const abrirEscritorCopia = async ({ fileName, numSecciones, extra = {}, aDrive = false }) => {
-    const fichero0 = await abrirCopiaPorPartes({ nombre: fileName, destino: destinoMovil, carpetaPC });
+  const abrirEscritorCopia = async ({ fileName, numSecciones, extra = {}, aDrive = false, diario = null }) => {
+    const fichero0 = await abrirCopiaPorPartes({ nombre: fileName, destino: destinoMovil, carpetaPC, diario });
     if (!fichero0.ok) return { ok: false, error: fichero0.error };
     // Copia en el Drive de la empresa: recibe lo mismo que se escribe en el
     // fichero, por trozos, sin juntarlo entero en memoria.
     const cfgDrive = leerDrive();
     const subidor = aDrive && cfgDrive.auto && driveListo(cfgDrive) ? crearSubidor(cfgDrive, fileName) : null;
-    const fichero = subidor
-      ? { ...fichero0, escribir: async (t) => { subidor.anadir(t); await fichero0.escribir(t); } }
+    // En una copia reanudable la subida a Drive se hace al unir los tramos (con freno); en las demás, a la vez que se escribe.
+    if (fichero0.reanudable && subidor) fichero0.alMontar = (t) => subidor.anadir(t);
+    const fichero = subidor && !fichero0.reanudable
+      ? { ...fichero0, escribir: async (t) => { await subidor.anadir(t); await fichero0.escribir(t); } }
       : fichero0;
 
     const cabecera = {
@@ -333,11 +337,14 @@ export default function BackupCenter() {
     let roto = null;
     const encadenar = (fn) => { const t = cola.then(fn); cola = t.catch(() => {}); return t; };
     try {
-      await fichero.escribir('{\n');
-      const claves = Object.keys(cabecera);
-      for (let i = 0; i < claves.length; i++) {
-        const k = claves[i];
-        await fichero.escribir(`${JSON.stringify(k)}:${JSON.stringify(cabecera[k])}${i < claves.length - 1 ? ',' : ''}\n`);
+      if (!(diario && diario.cabecera)) {
+        await fichero.escribir('{\n');
+        const claves = Object.keys(cabecera);
+        for (let i = 0; i < claves.length; i++) {
+          const k = claves[i];
+          await fichero.escribir(`${JSON.stringify(k)}:${JSON.stringify(cabecera[k])}${i < claves.length - 1 ? ',' : ''}\n`);
+        }
+        await fichero.punto?.({ cabecera: true });
       }
     } catch (err) {
       await fichero.cancelar();
@@ -353,11 +360,21 @@ export default function BackupCenter() {
       escribirPorPaginas: (nombre, leer) => encadenar(async () => {
         if (roto) throw roto;
         try {
-          return await escribirSeccionPorPaginas(fichero, nombre, (anadir) => leer(async (regs) => {
-            try { await anadir(regs); } catch (e) { throw new Error(`ESCRIBIR: ${e?.message || e}`); }
-          }));
+          // Si la sección estaba a medias (copia retomada), se sigue por donde iba.
+          const rep = diario?.actual?.ent === nombre ? diario.actual : null;
+          let acumulado = rep ? rep.n : 0;
+          const n = await escribirSeccionPorPaginas(fichero, nombre, async (anadir) => {
+            const total = await leer(async (regs, sigSkip) => {
+              try { await anadir(regs); acumulado += regs.length; await fichero.punto?.({ ent: nombre, skip: sigSkip, n: acumulado }); }
+              catch (e) { throw new Error(`ESCRIBIR: ${e?.message || e}`); }
+            }, rep ? rep.skip : 0);
+            return (rep ? rep.n : 0) + total;
+          }, { reanudar: rep });
+          await fichero.punto?.({ hecha: nombre, n });
+          return n;
         } catch (e) { roto = e; throw e; }
       }),
+      progresoMontaje: (f) => { fichero.alProgreso = f; },
       cerrar: async () => {
         try {
           await cola;
@@ -413,44 +430,67 @@ export default function BackupCenter() {
   };
 
   // ─── EXPORTAR BACKUP ──────────────────────────────────────────────────────
-  const doBackup = async () => {
+  const doBackup = async ({ empezarDeNuevo = false } = {}) => {
     setLoading(true);
     setProgress('Iniciando copia de seguridad...');
     setProgressPct(5);
 
-    const entitiesToBackup = ALL_ENTITIES.filter(e => selectedEntities.has(e));
+    // Copia REANUDABLE (móvil): se guarda por tramos con un diario. Si el programa se cierra a medias, al volver se sigue por
+    // donde iba. Con «quitar repetidos» la copia necesita todo junto, así que ahí no se usa.
+    const movil = detectarEntorno() === 'movil';
+    let diario = null;
+    if (movil && !config.sin_duplicados) {
+      if (empezarDeNuevo) borrarDiario();
+      diario = leerDiario();
+      if (diario) diario.intentos = (diario.intentos || 0) + 1;
+      else diario = nuevoDiario(nombreCopia(new Date()), ALL_ENTITIES.filter(e => selectedEntities.has(e)));
+      guardarDiario(diario);
+      setCopiaInterrumpida(null);
+    }
+    const entitiesToBackup = diario ? diario.entidades : ALL_ENTITIES.filter(e => selectedEntities.has(e));
+    if (diario?.intentos > 0) setProgress(`Retomando la copia interrumpida: ya estaban hechas ${Object.keys(diario.hechas).length} de ${entitiesToBackup.length} secciones…`);
 
     // Que la pantalla no se apague a mitad de una copia larga (si no, Android puede cerrar la aplicación).
     let pantalla = null;
     try { pantalla = await navigator.wakeLock?.request?.('screen'); } catch { /* no disponible */ }
     const soltarPantalla = () => { try { pantalla?.release?.(); } catch { /* da igual */ } };
 
-    const fileName = nombreCopia(new Date());
+    const fileName = diario ? diario.nombre : nombreCopia(new Date());
     // El fichero se abre ANTES de leer y cada sección se escribe en cuanto se lee y se suelta de la memoria. Antes se leía todo
     // a memoria y luego se escribía: con muchas fotos, Android se quedaba sin memoria, cerraba la aplicación y se perdía la copia.
-    const escritor = await abrirEscritorCopia({ fileName, numSecciones: entitiesToBackup.length, aDrive: true });
+    const escritor = await abrirEscritorCopia({ fileName, numSecciones: entitiesToBackup.length, aDrive: true, diario });
     if (!escritor.ok) {
       soltarPantalla();
       setProgressPct(0); setProgress(`❌ No se pudo guardar la copia: ${escritor.error}`);
       setUltimaCopia(null); setLoading(false);
       return;
     }
-    const movil = detectarEntorno() === 'movil';
     const { fallos, duplicadosQuitados, conteos } = await runBackupJob(
-      entitiesToBackup, ENTITY_LABELS,
+      diario ? seccionesPendientes(diario) : entitiesToBackup, ENTITY_LABELS,
       (msg, pct) => { setProgress(msg); setProgressPct(pct); },
       {
         sinDuplicados: !!config.sin_duplicados,
         concurrencia: movil ? 1 : undefined,
         alLeerSeccion: (ent, registros) => escritor.escribirSeccion(ent, registros),
         escribirPorPaginas: escritor.escribirPorPaginas,
-        tamPagina: movil ? 1000 : undefined,
+        tamPagina: movil ? tamPaginaPara(diario) : undefined,
       },
     );
 
     // Una sección que no se ha podido leer entera NO se guarda como vacía. Una
     // copia a medias que parece correcta es peor que no tener copia: el día que
     // se restaure con "copia limpia" borrará lo que a ella le faltaba.
+    if (diario) for (const [e, n] of Object.entries(diario.hechas)) if (conteos[e] == null) conteos[e] = n;
+    if (fallos.length > 0 && diario) {
+      // Lo ya copiado NO se tira: queda guardado y al volver a pulsar «Hacer copia» se sigue desde ahí.
+      soltarPantalla();
+      setProgressPct(0);
+      setProgress(`⚠️ La copia se ha parado en ${fallos.map(f => f.etiqueta).join(', ')} (${String(fallos[0].motivo).replace('ESCRIBIR: ', '')}). Lo ya hecho está guardado: pulsa «Hacer copia ahora» y continúa desde ahí.`);
+      setCopiaInterrumpida(diario);
+      setUltimaCopia(null);
+      setLoading(false);
+      return;
+    }
     if (fallos.length > 0) {
       await escritor.cancelar();
       soltarPantalla();
@@ -467,18 +507,21 @@ export default function BackupCenter() {
       return;
     }
 
-    setProgress('Cerrando el archivo...');
+    setProgress('Uniendo la copia en un solo archivo...');
     setProgressPct(95);
+    escritor.progresoMontaje?.((k, total) => { setProgress(`Uniendo la copia en un solo archivo… ${Math.round((k / total) * 100)}%`); setProgressPct(95 + Math.round((k / total) * 4)); });
     const guardado = await escritor.cerrar();
     soltarPantalla();
 
     if (!guardado.ok) {
       setProgressPct(0);
-      setProgress(`❌ No se pudo guardar la copia: ${guardado.error}`);
+      setProgress(`❌ No se pudo guardar la copia: ${guardado.error}${diario ? ' Los tramos siguen guardados: vuelve a pulsar «Hacer copia ahora» para terminar de unirlos.' : ''}`);
+      if (diario) setCopiaInterrumpida(diario);
       setUltimaCopia(null);
       setLoading(false);
       return;   // sin fichero no hay copia: no se apunta en el historial
     }
+    if (diario) { borrarDiario(); setCopiaInterrumpida(null); }
 
     // El contenido de la copia NO se guarda en memoria: ya está en disco, y
     // tenerlo aquí además era parte del problema con las copias grandes.
@@ -524,6 +567,15 @@ export default function BackupCenter() {
       elegirDondeDejarla(copia);
     }
   };
+
+  // Si el programa se cerró a mitad de una copia, al volver se retoma sola (hasta MAX_REINTENTOS veces seguidas).
+  const retomadaRef = useRef(false);
+  useEffect(() => {
+    if (retomadaRef.current) return;
+    retomadaRef.current = true;
+    const d = detectarEntorno() === 'movil' ? leerDiario() : null;
+    if (d && (d.intentos || 0) < MAX_REINTENTOS) doBackup();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── RESTAURAR BACKUP ────────────────────────────────────────────────────
   const handleRestoreFile = (e) => {
@@ -860,6 +912,18 @@ export default function BackupCenter() {
       {/* ═══════════ TAB: CREAR BACKUP ═══════════ */}
       {tab === 'backup' && (
         <div className="space-y-4">
+          {copiaInterrumpida && !loading && (
+            <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 space-y-2" data-prueba="copia-interrumpida">
+              <p className="font-semibold text-amber-900">Hay una copia interrumpida</p>
+              <p className="text-sm text-amber-900">
+                Se quedó a medias ({Object.keys(copiaInterrumpida.hechas).length} de {copiaInterrumpida.entidades.length} secciones guardadas). Lo hecho no se ha perdido: puedes continuar desde ahí.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                <Button data-prueba="copia-continuar" onClick={() => doBackup()}>Continuar la copia</Button>
+                <Button variant="outline" data-prueba="copia-empezar-de-nuevo" onClick={() => doBackup({ empezarDeNuevo: true })}>Empezar de nuevo</Button>
+              </div>
+            </div>
+          )}
           <CopiaDrivePanel modo="copia" />
           {/* Banner de acción rápida */}
           <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
