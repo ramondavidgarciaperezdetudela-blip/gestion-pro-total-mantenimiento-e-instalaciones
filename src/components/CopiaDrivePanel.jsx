@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import scriptDrive from '../../drive-copias/script-google-drive.gs?raw';
 import {
   leerDrive, guardarDrive, normalizarEnlace, driveListo, probarDrive,
-  listarCopiasDrive, descargarCopiaDrive,
+  listarCopiasDrive, descargarCopiaDrive, generarClave, scriptConClave,
 } from '@/lib/copiaDrive';
 
 const fmtMB = (b) => `${(b / 1048576).toFixed(b > 1048576 ? 1 : 2)} MB`;
@@ -27,6 +27,11 @@ export default function CopiaDrivePanel({ modo = 'copia', onElegida }) {
   const [copias, setCopias] = useState(null);
   const [pct, setPct] = useState(0);
 
+  // Clave nueva al abrir la guía: va ya puesta en el código que se copia y en el campo de abajo.
+  const abrirGuia = () => {
+    if (!guia && !cfg.clave) cambiar({ clave: generarClave() });
+    setGuia(!guia);
+  };
   const cambiar = (parche) => setCfg((c) => ({ ...c, ...parche }));
 
   const guardar = async () => {
@@ -102,7 +107,7 @@ export default function CopiaDrivePanel({ modo = 'copia', onElegida }) {
             <div className="flex gap-2 flex-wrap">
               <Button data-prueba="drive-guardar" onClick={guardar} disabled={ocupado}>{ocupado ? 'Comprobando…' : 'Probar y guardar'}</Button>
               {driveListo(cfg) && <Button variant="outline" onClick={desconectar}>Quitar enlace</Button>}
-              <Button variant="outline" onClick={() => setGuia(!guia)}>
+              <Button variant="outline" data-prueba="drive-guia" onClick={abrirGuia}>
                 {guia ? <ChevronDown className="w-4 h-4 mr-1" /> : <ChevronRight className="w-4 h-4 mr-1" />} Cómo conseguir el enlace
               </Button>
             </div>
@@ -111,14 +116,16 @@ export default function CopiaDrivePanel({ modo = 'copia', onElegida }) {
 
         {guia && (
           <div className="text-sm text-gray-700 bg-blue-50 rounded-lg p-3 space-y-2">
-            <p className="font-semibold">Se hace una sola vez, con la cuenta de Google de la empresa:</p>
-            <ol className="list-decimal ml-5 space-y-1">
-              <li>Entra en <b>script.google.com</b> con el correo de la empresa y pulsa «Nuevo proyecto».</li>
-              <li>Borra lo que haya, pega el código de abajo y <b>cambia CAMBIA-ESTA-CLAVE</b> por una clave larga inventada por ti.</li>
-              <li>Pulsa <b>Implementar → Nueva implementación → Aplicación web</b>. «Ejecutar como»: <b>Yo</b>. «Quién tiene acceso»: <b>Cualquier usuario</b>. Autoriza los permisos que pide Google.</li>
-              <li>Copia la dirección que termina en <b>/exec</b>, pégala arriba junto con la clave y pulsa «Probar y guardar».</li>
+            <p className="font-semibold">Se hace una sola vez, con la cuenta de Google de la empresa. Sigue los pasos EN ORDEN:</p>
+            <ol className="list-decimal ml-5 space-y-2" data-prueba="drive-pasos">
+              <li>Pulsa <b>«Copiar el código»</b> (abajo). Ya lleva dentro tu clave: <b>no tienes que cambiar nada</b>. La clave ya está puesta en el campo «Clave» de arriba.</li>
+              <li>Abre <b>script.google.com</b> con el correo de la empresa, pulsa <b>«Nuevo proyecto»</b>, borra lo que haya y <b>pega</b> el código. Pulsa el disquete 💾 (Guardar).</li>
+              <li><b>Dar permiso a tu Drive</b> (este es el paso que se suele olvidar): arriba, junto a «Ejecutar», elige la función <b>autorizar</b> y pulsa <b>▶ Ejecutar</b>. Google te pedirá entrar con tu cuenta y contraseña: pulsa «Revisar permisos» → elige tu cuenta → <b>«Avanzado»</b> → <b>«Ir a … (no seguro)»</b> → <b>«Permitir»</b>. Que ponga «no seguro» es normal: es tu propio script.</li>
+              <li>Pulsa <b>Implementar → Nueva implementación</b>, el engranaje ⚙ → <b>Aplicación web</b>. «Ejecutar como»: <b>Yo</b>. «Quién tiene acceso»: <b>Cualquier usuario</b>. Pulsa Implementar.</li>
+              <li>Copia la dirección que termina en <b>/exec</b>, pégala en «Enlace» (arriba) y pulsa <b>«Probar y guardar»</b>. Si falla, el mensaje te dice qué paso falta.</li>
+              <li>Marca <b>«Subir a Google Drive cada copia que haga»</b>. Para recuperarla en cualquier equipo: Restaurar → mismo enlace y clave → «Ver copias del Drive» → «Usar esta copia».</li>
             </ol>
-            <Button variant="outline" size="sm" onClick={() => { navigator.clipboard?.writeText(scriptDrive); toast.success('Código copiado'); }}>
+            <Button variant="outline" size="sm" data-prueba="drive-copiar" onClick={() => { navigator.clipboard?.writeText(scriptConClave(scriptDrive, cfg.clave)); toast.success('Código copiado, con tu clave puesta'); }}>
               <Copy className="w-4 h-4 mr-1" /> Copiar el código
             </Button>
             <p className="text-xs text-gray-600">Quien conozca el enlace Y la clave puede ver las copias: no los compartas. Mientras no se llene el Drive, no tiene coste.</p>

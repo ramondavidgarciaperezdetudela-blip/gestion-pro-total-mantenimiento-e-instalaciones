@@ -15,6 +15,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.156.0] — 2026-11-20
+
+### Corregido
+- **Copia de seguridad en Android: ya no se cierra el programa a mitad de la copia.** La causa era que cada sección (por ejemplo las tarifas con miles de fotos) se leía ENTERA en memoria antes de escribir nada; el móvil se quedaba sin memoria, reiniciaba la aplicación y el fichero quedaba roto. Ahora se lee y se escribe página a página (en el móvil, de 1.000 en 1.000): nunca hay más de una página en memoria.
+- **Se pueden recuperar copias dañadas** (error «El archivo está dañado… Expected ',' or '}'…»): se leen las secciones y registros que están enteros y se avisa de lo que falta. Una copia rescatada solo se puede restaurar en modo «actualizar» (no borra nada).
+- **Copia en Google Drive: pasos claros y a prueba de errores.** El programa genera la clave y la pone ya dentro del código que se copia (antes había que cambiarla a mano, y si se olvidaba daba «clave incorrecta»). Nuevo paso «autorizar» en el script para que Google pida el permiso (antes no pedía nada y la aplicación no conectaba). Cada fallo dice qué paso falta (acceso «Cualquier usuario», permiso sin dar, clave que no coincide, sin internet).
+- El script de Drive (v2) guarda cada copia en trozos dentro de su carpeta, comprueba al final que están todos y no ofrece copias a medias; así aguanta copias de cientos de MB. Las copias antiguas siguen apareciendo. **Hay que pegar el script nuevo** (el programa lo da) y elegir «Nueva versión» al implementar.
+
 ## [1.155.0] — 2026-11-20
 
 ### Corregido

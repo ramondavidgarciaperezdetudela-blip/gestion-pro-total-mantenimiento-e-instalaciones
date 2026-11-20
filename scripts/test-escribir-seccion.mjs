@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { escribirSeccionPorTrozos } from '../src/lib/escribirSeccion.js';
+const salida = []; const f = { escribir: async (t) => { salida.push(t); } };
+const regs = Array.from({ length: 5000 }, (_, i) => ({ id: i, nombre: 'cliente ' + i, foto: 'x'.repeat(2000), acentos: 'ñáé"\\' }));
+await f.escribir('{"a":1'); await escribirSeccionPorTrozos(f, 'Contact', regs, { trozoBytes: 200_000, respiro: async () => {} });
+await escribirSeccionPorTrozos(f, 'Vacia', [], { respiro: async () => {} }); await escribirSeccionPorTrozos(f, 'Grande', [{ foto: 'y'.repeat(300_000) }], { trozoBytes: 1000, respiro: async () => {} });
+await f.escribir('}');
+const j = JSON.parse(salida.join('')); assert.deepEqual(j.Contact, regs); assert.deepEqual(j.Vacia, []); assert.equal(j.Grande[0].foto.length, 300_000);
+const mayor = Math.max(...salida.slice(0, -3).map((t) => t.length));
+assert.ok(mayor < 250_000, 'ningún trozo se pasa mucho del límite: ' + mayor);
+console.log('escribir sección por trozos: OK (', salida.length, 'trozos, mayor', mayor, ')');

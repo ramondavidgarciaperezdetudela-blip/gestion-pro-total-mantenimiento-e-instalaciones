@@ -155,6 +155,45 @@ export async function fetchAllRecordsFast(ent, opciones = {}) {
 }
 
 /**
+ * Lee una entidad PÁGINA A PÁGINA entregando cada página (onPagina) y soltándola: nunca hay más de una página en memoria.
+ *
+ * Es lo que evita que Android cierre la aplicación al copiar tarifas con miles de fotos: antes se juntaban TODOS los
+ * registros (cientos de MB) antes de escribir el primero.
+ * @returns {Promise<number>} cuántos registros se han entregado
+ */
+export async function leerPorPaginas(ent, { freno = crearFreno(), tam = PAGE, onPagina, onPage } = {}) {
+  const E = entidades[ent];
+  if (!E) return 0;
+  const vistos = new Set();   // solo los id (pocos bytes): la paginación por desplazamiento puede repetir alguno
+  let total = 0;
+  const entregar = async (batch) => {
+    const nuevos = (batch || []).filter((r) => !(r?.id && vistos.has(r.id)));
+    for (const r of nuevos) if (r?.id) vistos.add(r.id);
+    total += nuevos.length; onPage?.(total);
+    if (nuevos.length) await onPagina(nuevos);
+  };
+  let skip = 0;
+  for (let guard = 0; guard < 5000; guard++) {
+    let batch;
+    try { batch = await pedir(freno, () => E.filter({}, null, tam, skip)); }
+    catch (e) {
+      if (skip === 0 && !esDemasiadasPeticiones(e)) {
+        // El servidor no admite filter: camino de siempre (todo junto), pero entregado por trozos.
+        const todo = (await fetchAllRecordsFast(ent, { freno })) || [];
+        for (let i = 0; i < todo.length; i += tam) await entregar(todo.slice(i, i + tam));
+        return total;
+      }
+      throw errorLecturaIncompleta(ent, e);
+    }
+    if (!batch || batch.length === 0) break;
+    await entregar(batch);
+    if (batch.length < tam) break;
+    skip += tam;
+  }
+  return total;
+}
+
+/**
  * Cuenta los registros de una entidad SIN traerse los registros.
  *
  * Contar pidiendo la ficha entera era lo que hacía que la pantalla de copias
@@ -221,7 +260,10 @@ export function getBackupState() { return state; }
  * @returns {Promise<{datos: Record<string, any[]>, fallos: Array, duplicadosQuitados: number}>}
  */
 export async function runBackupJob(entities, entityLabels = {}, onProgress, opciones = {}) {
-  const { sinDuplicados = false } = opciones;
+  // alLeerSeccion: si se da, cada sección se entrega (para escribirla en el fichero) en cuanto se lee y se SUELTA de la memoria,
+  // en vez de acumular todas: en el móvil, con muchas fotos, acumularlo todo hacía que Android cerrase la aplicación.
+  const { sinDuplicados = false, alLeerSeccion = null, concurrencia = ENTITY_CONCURRENCY, escribirPorPaginas = null, tamPagina = PAGE } = opciones;
+  const conteos = {};
   publish({ active: true, kind: 'backup', message: 'Iniciando copia de seguridad...', pct: 5, secciones: {} });
   const freno = crearFrenoGlobal();
   const datos = {};
@@ -236,14 +278,29 @@ export async function runBackupJob(entities, entityLabels = {}, onProgress, opci
     publish({ message: msg, pct: Math.round(5 + (done / entities.length) * 85) });
     setSeccion(ent, { label, leidos: 0, fase: 'leyendo' });
     try {
+      if (escribirPorPaginas && !sinDuplicados) {
+        // Lectura y escritura a la vez, página a página: la sección nunca está entera en memoria.
+        const n = await escribirPorPaginas(ent, (alPagina) => leerPorPaginas(ent, { freno, tam: tamPagina, onPagina: alPagina, onPage: (k) => setSeccion(ent, { leidos: k }) }));
+        conteos[ent] = n;
+        setSeccion(ent, { fase: 'hecho', leidos: n, total: n });
+        done++;
+        const pctP = Math.round(5 + (done / entities.length) * 85);
+        onProgress?.(`Exportado ${label} (${done}/${entities.length})`, pctP);
+        publish({ message: `Exportando... (${done}/${entities.length})`, pct: pctP });
+        return;
+      }
       let registros = (await fetchAllRecordsFast(ent, { freno, onPage: (n) => setSeccion(ent, { leidos: n }) })) || [];
       if (sinDuplicados) {
         const { limpios, quitados } = quitarDuplicados(registros);
         registros = limpios;
         duplicadosQuitados += quitados;
       }
-      datos[ent] = registros;
-      setSeccion(ent, { fase: 'hecho', leidos: registros.length, total: registros.length });
+      conteos[ent] = registros.length;
+      if (alLeerSeccion) {
+        try { await alLeerSeccion(ent, registros); } catch (e) { throw new Error(`ESCRIBIR: ${e?.message || e}`); }
+      } else datos[ent] = registros;
+      registros = null;
+      setSeccion(ent, { fase: 'hecho', leidos: conteos[ent], total: conteos[ent] });
     } catch (err) {
       // No se pone [] : una sección que no se ha podido leer NO es una sección
       // vacía, y confundirlas es lo que convierte una copia en una trampa.
@@ -254,10 +311,10 @@ export async function runBackupJob(entities, entityLabels = {}, onProgress, opci
     const pct = Math.round(5 + (done / entities.length) * 85);
     onProgress?.(`Exportado ${label} (${done}/${entities.length})`, pct);
     publish({ message: `Exportando... (${done}/${entities.length})`, pct });
-  }, ENTITY_CONCURRENCY);
+  }, concurrencia);
 
   publish({ active: false, message: '', pct: 100 });
-  return { datos, fallos, duplicadosQuitados };
+  return { datos, fallos, duplicadosQuitados, conteos };
 }
 
 const stripMeta = sinMetadatos;
