@@ -2,6 +2,7 @@ import { base44 } from '@/api/base44Client';
 import { recogerConfigLocal, aplicarConfigLocal } from '@/lib/configLocal';
 import { toast } from 'sonner';
 import React, { useState, useEffect, useRef } from 'react';
+import { escribirSeccionPorTrozos, escribirSeccionPorPaginas } from '@/lib/escribirSeccion';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +29,7 @@ import {
   abrirCopiaPorPartes,
 } from '@/lib/guardarCopia';
 
-import { normalizarCopia, limpiarTexto, motivoCopiaIlegible } from '@/lib/copiaFormato';
+import { normalizarCopia, limpiarTexto, motivoCopiaIlegible, rescatarCopiaDanada } from '@/lib/copiaFormato';
 import CopiaDrivePanel from '@/components/CopiaDrivePanel';
 import { leerDrive, driveListo, crearSubidor } from '@/lib/copiaDrive';
 
@@ -244,6 +245,7 @@ export default function BackupCenter() {
   const [restorePct, setRestorePct] = useState(0);
   const [restoreSelectedEntities, setRestoreSelectedEntities] = useState(new Set());
   const [restoreMode, setRestoreMode] = useState('update'); // 'clean' | 'update'
+  const [copiaRecuperada, setCopiaRecuperada] = useState(false); // copia rota de la que solo se rescató una parte
 
   // Duplicados. Ahora son DOS pasos: primero se mira, luego —si se quiere— se
   // borra. Antes era un solo botón que analizaba y borraba de una tacada, así
@@ -303,7 +305,9 @@ export default function BackupCenter() {
    * justo al final, cuando parecía que ya estaba hecha. Vive aquí, en una
    * función suelta, porque lo usan la copia normal Y las copias de rescate.
    */
-  const escribirCopiaPorSecciones = async ({ fileName, datos, secciones, extra = {}, avisar, aDrive = false }) => {
+  // Abre el fichero y devuelve cómo ir añadiéndole secciones UNA A UNA (cada una en trozos de ~1 MB), para no tener la copia
+  // entera en memoria. Un solo ritmo de escritura aunque varias secciones terminen de leerse a la vez.
+  const abrirEscritorCopia = async ({ fileName, numSecciones, extra = {}, aDrive = false }) => {
     const fichero0 = await abrirCopiaPorPartes({ nombre: fileName, destino: destinoMovil, carpetaPC });
     if (!fichero0.ok) return { ok: false, error: fichero0.error };
     // Copia en el Drive de la empresa: recibe lo mismo que se escribe en el
@@ -318,13 +322,16 @@ export default function BackupCenter() {
       exported_at: new Date().toISOString(),
       version: '3.0',
       app: 'TechManager Pro',
-      entities_count: secciones.length,
+      entities_count: numSecciones,
       // Los ajustes del propio aparato (aspecto, IA, impresión…) para no tener
       // que ponerlos a mano al restaurar.
       config_local: recogerConfigLocal(),
       ...extra,
     };
 
+    let cola = Promise.resolve();
+    let roto = null;
+    const encadenar = (fn) => { const t = cola.then(fn); cola = t.catch(() => {}); return t; };
     try {
       await fichero.escribir('{\n');
       const claves = Object.keys(cabecera);
@@ -332,23 +339,56 @@ export default function BackupCenter() {
         const k = claves[i];
         await fichero.escribir(`${JSON.stringify(k)}:${JSON.stringify(cabecera[k])}${i < claves.length - 1 ? ',' : ''}\n`);
       }
-      for (let i = 0; i < secciones.length; i++) {
-        const seccion = secciones[i];
-        avisar?.(seccion, i);
-        await fichero.escribir(`,\n${JSON.stringify(seccion)}:${JSON.stringify(datos[seccion] || [])}`);
-        // Un respiro al navegador para que no se congele la pantalla.
-        await new Promise(r => setTimeout(r, 0));
-      }
-      await fichero.escribir('\n}\n');
-      const guardado = await fichero.cerrar();
-      const drive = subidor ? await subidor.cerrar() : null;
-      return guardado.ok
-        ? { ok: true, ...guardado, nombre: fileName, drive }
-        : { ok: false, error: guardado.error };
     } catch (err) {
       await fichero.cancelar();
       return { ok: false, error: err?.message || 'error desconocido' };
     }
+    return {
+      ok: true,
+      escribirSeccion: (nombre, registros) => encadenar(async () => {
+        if (roto) throw roto;
+        try { await escribirSeccionPorTrozos(fichero, nombre, registros); } catch (e) { roto = e; throw e; }
+      }),
+      // Lee y escribe la sección por páginas (solo una en memoria). Ocupa la cola mientras dura, para que dos secciones no se mezclen.
+      escribirPorPaginas: (nombre, leer) => encadenar(async () => {
+        if (roto) throw roto;
+        try {
+          return await escribirSeccionPorPaginas(fichero, nombre, (anadir) => leer(async (regs) => {
+            try { await anadir(regs); } catch (e) { throw new Error(`ESCRIBIR: ${e?.message || e}`); }
+          }));
+        } catch (e) { roto = e; throw e; }
+      }),
+      cerrar: async () => {
+        try {
+          await cola;
+          if (roto) throw roto;
+          await fichero.escribir('\n}\n');
+          const guardado = await fichero.cerrar();
+          const drive = subidor ? await subidor.cerrar() : null;
+          return guardado.ok ? { ok: true, ...guardado, nombre: fileName, drive } : { ok: false, error: guardado.error };
+        } catch (err) {
+          await fichero.cancelar();
+          return { ok: false, error: err?.message || 'error desconocido' };
+        }
+      },
+      cancelar: async () => { try { await cola; } catch { /* da igual */ } await fichero.cancelar(); },
+    };
+  };
+
+  // Escribe una copia cuyos datos ya están en memoria (copias de rescate, que son pequeñas), por trozos.
+  const escribirCopiaPorSecciones = async ({ fileName, datos, secciones, extra = {}, avisar, aDrive = false }) => {
+    const w = await abrirEscritorCopia({ fileName, numSecciones: secciones.length, extra, aDrive });
+    if (!w.ok) return { ok: false, error: w.error };
+    try {
+      for (let i = 0; i < secciones.length; i++) {
+        avisar?.(secciones[i], i);
+        await w.escribirSeccion(secciones[i], datos[secciones[i]] || []);
+      }
+    } catch (err) {
+      await w.cancelar();
+      return { ok: false, error: err?.message || 'error desconocido' };
+    }
+    return w.cerrar();
   };
 
   /**
@@ -380,46 +420,57 @@ export default function BackupCenter() {
 
     const entitiesToBackup = ALL_ENTITIES.filter(e => selectedEntities.has(e));
 
-    // Varias secciones a la vez (no una a una): en cuentas con muchos datos
-    // (documentos, fotos, órdenes SAT...) la copia tarda mucho menos.
-    const { datos: exported, fallos, duplicadosQuitados } = await runBackupJob(
+    // Que la pantalla no se apague a mitad de una copia larga (si no, Android puede cerrar la aplicación).
+    let pantalla = null;
+    try { pantalla = await navigator.wakeLock?.request?.('screen'); } catch { /* no disponible */ }
+    const soltarPantalla = () => { try { pantalla?.release?.(); } catch { /* da igual */ } };
+
+    const fileName = nombreCopia(new Date());
+    // El fichero se abre ANTES de leer y cada sección se escribe en cuanto se lee y se suelta de la memoria. Antes se leía todo
+    // a memoria y luego se escribía: con muchas fotos, Android se quedaba sin memoria, cerraba la aplicación y se perdía la copia.
+    const escritor = await abrirEscritorCopia({ fileName, numSecciones: entitiesToBackup.length, aDrive: true });
+    if (!escritor.ok) {
+      soltarPantalla();
+      setProgressPct(0); setProgress(`❌ No se pudo guardar la copia: ${escritor.error}`);
+      setUltimaCopia(null); setLoading(false);
+      return;
+    }
+    const movil = detectarEntorno() === 'movil';
+    const { fallos, duplicadosQuitados, conteos } = await runBackupJob(
       entitiesToBackup, ENTITY_LABELS,
       (msg, pct) => { setProgress(msg); setProgressPct(pct); },
-      { sinDuplicados: !!config.sin_duplicados },
+      {
+        sinDuplicados: !!config.sin_duplicados,
+        concurrencia: movil ? 1 : undefined,
+        alLeerSeccion: (ent, registros) => escritor.escribirSeccion(ent, registros),
+        escribirPorPaginas: escritor.escribirPorPaginas,
+        tamPagina: movil ? 1000 : undefined,
+      },
     );
 
     // Una sección que no se ha podido leer entera NO se guarda como vacía. Una
     // copia a medias que parece correcta es peor que no tener copia: el día que
     // se restaure con "copia limpia" borrará lo que a ella le faltaba.
     if (fallos.length > 0) {
+      await escritor.cancelar();
+      soltarPantalla();
+      const alEscribir = fallos.some(f => String(f.motivo).startsWith('ESCRIBIR:'));
       setProgressPct(0);
-      setProgress(
-        `❌ Copia NO guardada. El servidor ha cortado la lectura de: ${fallos.map(f => f.etiqueta).join(', ')}. `
-        + 'Se para a propósito, porque el fichero habría salido incompleto sin avisar. '
-        + 'Espera un par de minutos y vuelve a darle.'
-      );
+      setProgress(alEscribir
+        ? `❌ Copia NO guardada: no se pudo escribir el fichero en el teléfono (${fallos.find(f => String(f.motivo).startsWith('ESCRIBIR:')).motivo.replace('ESCRIBIR: ', '')}). `
+          + 'Comprueba que hay espacio libre y vuelve a intentarlo.'
+        : `❌ Copia NO guardada. El servidor ha cortado la lectura de: ${fallos.map(f => f.etiqueta).join(', ')}. `
+          + 'Se para a propósito, porque el fichero habría salido incompleto sin avisar. '
+          + 'Espera un par de minutos y vuelve a darle.');
       setUltimaCopia(null);
       setLoading(false);
       return;
     }
 
-    const allData = { ...exported };
-
-    setProgress('Generando archivo...');
-    setProgressPct(90);
-
-    const fileName = nombreCopia(new Date());
-
-    const guardado = await escribirCopiaPorSecciones({
-      fileName,
-      datos: allData,
-      secciones: entitiesToBackup,
-      aDrive: true,
-      avisar: (seccion, i) => {
-        setProgress(`Escribiendo ${ENTITY_LABELS[seccion] || seccion}…`);
-        setProgressPct(90 + Math.round((i / entitiesToBackup.length) * 9));
-      },
-    });
+    setProgress('Cerrando el archivo...');
+    setProgressPct(95);
+    const guardado = await escritor.cerrar();
+    soltarPantalla();
 
     if (!guardado.ok) {
       setProgressPct(0);
@@ -437,7 +488,7 @@ export default function BackupCenter() {
     if (guardado.entorno === 'escritorio') refrescarCarpeta();
 
     // Guardar en historial
-    const totalExported = entitiesToBackup.reduce((s, e) => s + (allData[e]?.length || 0), 0);
+    const totalExported = entitiesToBackup.reduce((s, e) => s + (conteos[e] || 0), 0);
     const newEntry = {
       date: new Date().toISOString(),
       fileName,
@@ -493,7 +544,15 @@ export default function BackupCenter() {
       try {
         const texto = limpiarTexto(textoCrudo);
         let crudo;
-        try { crudo = JSON.parse(texto); } catch (err) { throw new Error(motivoCopiaIlegible(texto, err)); }
+        let aviso = '';
+        setCopiaRecuperada(false);
+        try { crudo = JSON.parse(texto); } catch (err) {
+          // Copia rota (p. ej. el programa se cerró a mitad de la copia): se recupera todo lo que esté entero.
+          const rescate = rescatarCopiaDanada(texto);
+          if (!rescate || !rescate.registros) throw new Error(motivoCopiaIlegible(texto, err));
+          crudo = rescate.datos; setCopiaRecuperada(true);
+          aviso = ` · ⚠️ COPIA DAÑADA: se han recuperado los registros que estaban enteros${rescate.danadas.length ? ` (faltan algunos de: ${rescate.danadas.map((d) => ENTITY_LABELS[d] || d).join(', ')})` : ''}${rescate.perdidaFinal ? ' y lo que venía después del corte' : ''}. Solo se puede restaurar en modo «actualizar», que no borra nada.`;
+        }
         // Vale la copia de cualquier versión: no se mira ni el número de versión ni el nombre de la app.
         const norm = normalizarCopia(crudo, ALL_ENTITIES);
         const parsed = { ...norm.cabecera, ...norm.datos };
@@ -503,7 +562,7 @@ export default function BackupCenter() {
         setRestoreSelectedEntities(new Set(available));
         const total = available.reduce((s, e) => s + (parsed[e]?.length || 0), 0);
         const nAjustes = Object.keys(parsed.config_local || {}).length;
-        setRestoreStatus(`ok:Archivo válido · ${available.length} secciones · ${total.toLocaleString()} registros${nAjustes ? ` · ${nAjustes} ajustes del programa` : ''}`);
+        setRestoreStatus(`ok:Archivo válido · ${available.length} secciones · ${total.toLocaleString()} registros${nAjustes ? ` · ${nAjustes} ajustes del programa` : ''}${aviso}`);
       } catch (err) {
         setRestoreStatus(`err:${err?.message || 'Archivo no válido.'}`);
       }
@@ -513,6 +572,10 @@ export default function BackupCenter() {
   const doRestore = async () => {
     if (!restoreData) return;
     const entitiesToRestore = seccionesDeCopia(restoreData).filter(e => restoreSelectedEntities.has(e));
+    if (copiaRecuperada && restoreMode === 'clean') {
+      window.alert('Esta copia estaba dañada y solo se ha podido recuperar una parte. «Copia limpia» borraría lo que ahora no está en ella; elige «Actualizar» (no borra nada).');
+      return;
+    }
     setRestoring(true);
     setRestorePct(0);
 

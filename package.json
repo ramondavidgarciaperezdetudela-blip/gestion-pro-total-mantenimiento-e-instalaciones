@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "private": true,
-  "version": "1.155.0",
+  "version": "1.156.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,7 +22,7 @@
     "test:diarios": "node scripts/test-vinculo-diarios.mjs",
     "test:precarga": "node scripts/test-precarga.mjs",
     "test:tarifa": "node scripts/test-tarifa-manual.mjs",
-    "test": "npm run test:camara && npm run test:ia && npm run test:imagenes && npm run test:margen && npm run test:imprimir && npm run test:copias && npm run test:espejo && npm run test:notas && npm run test:plantillas && npm run test:diarios && npm run test:precarga && npm run test:descripcion && npm run test:tarifa && npm run test:iva && npm run test:buscar && npm run test:catalogo && npm run test:avisos && npm run test:revista && npm run test:lateral && npm run test:pantalla && npm run test:seguridad && npm run test:numeros && npm run test:drive && npm run test:capilar && npm run test:clima && npm run test:carga && npm run test:config && npm run test:copia",
+    "test": "npm run test:camara && npm run test:ia && npm run test:imagenes && npm run test:margen && npm run test:imprimir && npm run test:copias && npm run test:espejo && npm run test:notas && npm run test:plantillas && npm run test:diarios && npm run test:precarga && npm run test:descripcion && npm run test:tarifa && npm run test:iva && npm run test:buscar && npm run test:catalogo && npm run test:avisos && npm run test:revista && npm run test:lateral && npm run test:escribirseccion && npm run test:pantalla && npm run test:copia-paginas && npm run test:copia-danada && npm run test:seguridad && npm run test:numeros && npm run test:drive && npm run test:capilar && npm run test:clima && npm run test:carga && npm run test:config && npm run test:copia",
     "test:capilar": "node scripts/test-capilar.mjs",
     "test:gases": "node scripts/test-saturacion.mjs",
     "test:equivalencias": "node scripts/test-equivalencias.mjs",
@@ -69,7 +69,10 @@
     "test:avisos": "node scripts/test-tareas-avisos.mjs",
     "test:revista": "node scripts/test-catalogo-revista.mjs",
     "test:lateral": "node scripts/test-revista-lateral.mjs",
+    "test:escribirseccion": "node scripts/test-escribir-seccion.mjs",
     "test:pantalla": "node scripts/test-recordar-pantalla.mjs",
+    "test:copia-paginas": "node scripts/test-copia-por-paginas.mjs",
+    "test:copia-danada": "node scripts/test-copia-danada.mjs",
     "test:seguridad": "node scripts/test-servidor-seguridad.mjs",
     "test:numeros": "node scripts/test-numero-tarifa.mjs",
     "test:drive": "node scripts/test-copia-drive.mjs",
