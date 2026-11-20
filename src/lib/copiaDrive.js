@@ -102,18 +102,28 @@ export function crearSubidor(cfg, nombre, f) {
   let cola = Promise.resolve();
   let fallo = null;
 
+  let pendientes = 0;
+  let avisar = null;
   const enviar = (datos) => {
     const k = n++;
+    pendientes++;
     cola = cola.then(async () => {
-      if (fallo) return;
-      try { await llamar(cfg, { accion: 'parte', nombre, n: k, datos }, f); } catch (e) { fallo = e; }
+      if (!fallo) { try { await llamar(cfg, { accion: 'parte', nombre, n: k, datos }, f); } catch (e) { fallo = e; } }
+      pendientes--; if (avisar) { const a = avisar; avisar = null; a(); }
     });
   };
 
   return {
-    anadir(t) {
+    /**
+     * Añade texto. Si la subida va más lenta que la copia, ESPERA aquí: antes los trozos pendientes se acumulaban todos en
+     * memoria (cientos de MB) y el móvil cerraba la aplicación casi al final de la copia.
+     */
+    async anadir(t) {
       buffer += t;
-      while (buffer.length >= TROZO) { enviar(buffer.slice(0, TROZO)); buffer = buffer.slice(TROZO); }
+      while (buffer.length >= TROZO) {
+        enviar(buffer.slice(0, TROZO)); buffer = buffer.slice(TROZO);
+        while (pendientes >= 2 && !fallo) await new Promise((r) => { avisar = r; });
+      }
     },
     async cerrar() {
       if (buffer.length || n === 0) { enviar(buffer); buffer = ''; }
