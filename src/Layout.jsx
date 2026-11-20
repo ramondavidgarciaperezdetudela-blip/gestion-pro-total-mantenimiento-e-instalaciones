@@ -1,7 +1,8 @@
 import ImportacionEnSegundoPlano from '@/components/ImportacionEnSegundoPlano';
 import FotosEnSegundoPlano from '@/components/FotosEnSegundoPlano';
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { guardarPantalla, pantallaARecuperar } from '@/lib/recordarPantalla';
 import { Suspense } from 'react';
 import { precargarFrecuentes } from '@/lib/precarga';
 import EnlaceRapido from '@/components/EnlaceRapido';
@@ -66,6 +67,18 @@ export default function Layout({ children, currentPageName }) {
     return () => { vivo = false; };
   }, []);
   const location = useLocation();
+  const navegar = useNavigate();
+  // Al arrancar, si hace poco se estaba en otra pantalla (reinicio, Android que cierra la ventana…), se vuelve a ella.
+  const [arranque] = useState(() => ({ hecho: false }));
+  useEffect(() => {
+    const ruta = location.pathname + location.search;
+    if (!arranque.hecho) {
+      arranque.hecho = true;
+      const volver = pantallaARecuperar(location.pathname);
+      if (volver) { navegar(volver, { replace: true }); return; }
+    }
+    guardarPantalla(ruta);
+  }, [location.pathname, location.search]); // eslint-disable-line react-hooks/exhaustive-deps
   const [menuMovil, setMenuMovil] = useState(false);
   const [areaMovil, setAreaMovil] = useState(null);
   const [company, setCompany] = useState(null);
