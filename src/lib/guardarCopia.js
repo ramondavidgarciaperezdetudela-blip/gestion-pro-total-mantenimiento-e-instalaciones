@@ -265,30 +265,49 @@ const avisoEscritorio = (r) => (r.perdida
     : undefined);
 
 /**
- * Copia reanudable en Android: los tramos van a la carpeta interna de la aplicación y, al terminar, se unen en el fichero
- * definitivo (Documentos, etc.). Si el programa se cierra a medias, los tramos y el diario siguen ahí.
+ * Copia reanudable en Android: se escribe DIRECTAMENTE en el fichero definitivo (la carpeta elegida), página a página.
+ * El diario guarda dónde está y cuántos bytes lleva; si el programa se cierra, al volver se sigue añadiendo al mismo fichero.
  */
 async function abrirReanudableMovil({ nombre, destino, diario }) {
-  const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+  const { Filesystem, Directory } = await import('@capacitor/filesystem');
   const { crearEscritorReanudable, guardarDiario } = await import('./copiaReanudable.js');
-  const carpeta = `copia-en-curso/${diario.id}`;
-  let final = null;
+  const retomando = diario.bytes > 0 && diario.dir && diario.ruta;
+  const abierto = await abrirEnMovilPorPartes({ nombre, destino, existente: retomando ? { dir: diario.dir, ruta: diario.ruta } : null });
+  if (!abierto.ok) return abierto;
+  diario.dir = abierto.dir; diario.ruta = abierto.ruta; guardarDiario(diario);
+  const opc = () => ({ path: abierto.ruta, directory: Directory[abierto.dir] });
   const fs = {
-    escribirParte: (n, t) => Filesystem.writeFile({ path: `${carpeta}/${n}`, data: t, directory: Directory.Data, encoding: Encoding.UTF8, recursive: true }),
-    leerParte: async (n) => (await Filesystem.readFile({ path: `${carpeta}/${n}`, directory: Directory.Data, encoding: Encoding.UTF8 })).data,
-    crearFinal: async () => { final = await abrirEnMovilPorPartes({ nombre, destino }); if (!final.ok) throw new Error(final.error); },
-    anadirFinal: (t) => final.escribir(t),
-    cerrarFinal: async () => final.cerrar(),
-    cancelarFinal: async () => { if (final?.ok) await final.cancelar(); },
-    borrarPartes: async () => { try { await Filesystem.rmdir({ path: carpeta, directory: Directory.Data, recursive: true }); } catch { /* ya no está */ } },
+    anadir: (t) => abierto.escribir(t),
+    tamano: async () => (await Filesystem.stat(opc())).size,
+    // Capacitor no sabe recortar un fichero: se copian los primeros `bytes` a uno nuevo y se sustituye.
+    recortar: async (bytes) => {
+      const tmp = `${abierto.ruta}.recortando`;
+      await Filesystem.writeFile({ path: tmp, data: '', directory: Directory[abierto.dir] });
+      for (let off = 0; off < bytes; off += 1_000_000) {
+        const { data } = await Filesystem.readFile({ ...opc(), offset: off, length: Math.min(1_000_000, bytes - off) });
+        await Filesystem.appendFile({ path: tmp, data, directory: Directory[abierto.dir] });
+      }
+      await Filesystem.deleteFile(opc());
+      await Filesystem.rename({ from: tmp, to: abierto.ruta, directory: Directory[abierto.dir], toDirectory: Directory[abierto.dir] });
+    },
+    cerrar: () => abierto.cerrar(),
+    cancelar: () => abierto.cancelar(),
   };
   const e = crearEscritorReanudable({ fs, diario, guardar: (d) => guardarDiario(d) });
-  return { ok: true, entorno: 'movil', reanudable: true, ...e,
-    set alMontar(f) { e.alMontar = f; }, set alProgreso(f) { e.alProgreso = f; } };
+  /** Entrega lo ya escrito (por trozos) a quien lo pida; sirve para subirlo a Drive al retomar una copia. */
+  const leerPrefijo = async (alTexto) => {
+    const dec = new TextDecoder();
+    for (let off = 0; off < diario.bytes; off += 1_000_000) {
+      const { data } = await Filesystem.readFile({ ...opc(), offset: off, length: Math.min(1_000_000, diario.bytes - off) });
+      const bin = atob(data); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      await alTexto(dec.decode(u8, { stream: true }));
+    }
+  };
+  return { ok: true, entorno: 'movil', reanudable: true, retomando, aviso: abierto.aviso, leerPrefijo, ...e };
 }
 
 /** Lo mismo en Android: primero se crea el fichero y después se le va añadiendo. */
-async function abrirEnMovilPorPartes({ nombre, destino }) {
+async function abrirEnMovilPorPartes({ nombre, destino, existente = null }) {
   const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
   const elegido = destino?.directorio && Directory[destino.directorio] ? destino.directorio : 'Documents';
   const ruta = rutaRelativa(destino?.subcarpeta ?? SUBCARPETA_POR_DEFECTO, nombre);
@@ -303,6 +322,10 @@ async function abrirEnMovilPorPartes({ nombre, destino }) {
 
   let dir = elegido;
   let aviso;
+  if (existente) {
+    // Copia retomada: el fichero ya existe, solo se le sigue añadiendo.
+    return construirEscritorMovil({ Filesystem, Directory, Encoding, dir: existente.dir, ruta: existente.ruta, aviso });
+  }
   try {
     if (elegido === 'Documents') {
       try {
@@ -324,10 +347,17 @@ async function abrirEnMovilPorPartes({ nombre, destino }) {
     }
   }
 
+  return construirEscritorMovil({ Filesystem, Directory, Encoding, dir, ruta, aviso });
+}
+
+/** Escritor sobre un fichero de Android ya creado: añade al final, cierra devolviendo dónde está, o lo borra. */
+function construirEscritorMovil({ Filesystem, Directory, Encoding, dir, ruta, aviso }) {
   let bytes = 0;
   return {
     ok: true,
     entorno: 'movil',
+    dir, ruta,
+    aviso,
     escribir: async (trozo) => {
       await Filesystem.appendFile({
         path: ruta, data: trozo, directory: Directory[dir], encoding: Encoding.UTF8,

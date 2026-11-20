@@ -15,6 +15,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.158.0] — 2026-11-20
+
+### Cambiado
+- **La copia de seguridad en el móvil se escribe directamente en el fichero final, en la carpeta que has elegido, a medida que se va leyendo.** Ya no se guardan tramos temporales ni se unen al final: página a página (de 1.000 en 1.000 registros) se lee, se escribe en el fichero y se suelta de la memoria. El diario sigue apuntando hasta dónde llegó, así que si el programa se cierra, al volver continúa en el mismo fichero (si quedó un trozo a medias por el cierre, se recorta y se sigue). Si hay Drive, lo ya escrito se sube primero y el resto a la vez que se escribe.
+
 ## [1.157.0] — 2026-11-20
 
 ### Corregido
