@@ -312,13 +312,20 @@ export default function BackupCenter() {
   const abrirEscritorCopia = async ({ fileName, numSecciones, extra = {}, aDrive = false, diario = null }) => {
     const fichero0 = await abrirCopiaPorPartes({ nombre: fileName, destino: destinoMovil, carpetaPC, diario });
     if (!fichero0.ok) return { ok: false, error: fichero0.error };
+    if (fichero0.retomando) {
+      // El fichero debe tener justo lo apuntado en el diario (si quedó un trozo de más por el cierre, se recorta).
+      let entero = false;
+      try { entero = await fichero0.comprobarFichero(); } catch { entero = false; }
+      if (!entero) return { ok: false, perdido: true, error: 'El fichero de la copia interrumpida ya no está entero.' };
+    }
     // Copia en el Drive de la empresa: recibe lo mismo que se escribe en el
     // fichero, por trozos, sin juntarlo entero en memoria.
     const cfgDrive = leerDrive();
     const subidor = aDrive && cfgDrive.auto && driveListo(cfgDrive) ? crearSubidor(cfgDrive, fileName) : null;
-    // En una copia reanudable la subida a Drive se hace al unir los tramos (con freno); en las demás, a la vez que se escribe.
-    if (fichero0.reanudable && subidor) fichero0.alMontar = (t) => subidor.anadir(t);
-    const fichero = subidor && !fichero0.reanudable
+    // Si se retoma una copia, lo que ya estaba escrito se sube primero a Drive (leyéndolo del fichero, por trozos).
+    if (subidor && fichero0.retomando) { try { await fichero0.leerPrefijo((t) => subidor.anadir(t)); } catch { /* si no se puede, la copia local sigue bien */ } }
+    // La subida a Drive va a la vez que se escribe, con freno: si Drive va más lento, se espera (no se acumula en memoria).
+    const fichero = subidor
       ? { ...fichero0, escribir: async (t) => { await subidor.anadir(t); await fichero0.escribir(t); } }
       : fichero0;
 
@@ -374,7 +381,6 @@ export default function BackupCenter() {
           return n;
         } catch (e) { roto = e; throw e; }
       }),
-      progresoMontaje: (f) => { fichero.alProgreso = f; },
       cerrar: async () => {
         try {
           await cola;
@@ -459,6 +465,11 @@ export default function BackupCenter() {
     // El fichero se abre ANTES de leer y cada sección se escribe en cuanto se lee y se suelta de la memoria. Antes se leía todo
     // a memoria y luego se escribía: con muchas fotos, Android se quedaba sin memoria, cerraba la aplicación y se perdía la copia.
     const escritor = await abrirEscritorCopia({ fileName, numSecciones: entitiesToBackup.length, aDrive: true, diario });
+    if (!escritor.ok && escritor.perdido) {
+      // La copia interrumpida no se puede seguir (el fichero desapareció o se estropeó): se empieza una nueva.
+      soltarPantalla(); borrarDiario(); setCopiaInterrumpida(null); setLoading(false);
+      return doBackup({ empezarDeNuevo: true });
+    }
     if (!escritor.ok) {
       soltarPantalla();
       setProgressPct(0); setProgress(`❌ No se pudo guardar la copia: ${escritor.error}`);
@@ -507,15 +518,14 @@ export default function BackupCenter() {
       return;
     }
 
-    setProgress('Uniendo la copia en un solo archivo...');
+    setProgress('Cerrando el archivo...');
     setProgressPct(95);
-    escritor.progresoMontaje?.((k, total) => { setProgress(`Uniendo la copia en un solo archivo… ${Math.round((k / total) * 100)}%`); setProgressPct(95 + Math.round((k / total) * 4)); });
     const guardado = await escritor.cerrar();
     soltarPantalla();
 
     if (!guardado.ok) {
       setProgressPct(0);
-      setProgress(`❌ No se pudo guardar la copia: ${guardado.error}${diario ? ' Los tramos siguen guardados: vuelve a pulsar «Hacer copia ahora» para terminar de unirlos.' : ''}`);
+      setProgress(`❌ No se pudo guardar la copia: ${guardado.error}${diario ? ' Lo escrito sigue guardado: vuelve a pulsar «Hacer copia ahora» para continuar.' : ''}`);
       if (diario) setCopiaInterrumpida(diario);
       setUltimaCopia(null);
       setLoading(false);
