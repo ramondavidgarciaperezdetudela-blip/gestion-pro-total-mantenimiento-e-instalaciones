@@ -14,7 +14,7 @@ import { abrirEnlaceAvisando, enlaceWhatsApp } from '@/lib/abrirEnlace';
 import { direccionPublica, AVISO_SIN_DIRECCION } from '@/lib/copiaFirmada';
 import { printDocument } from '@/lib/printHelper';
 import {
-  crearEnvios, enlaceNota, mensajeNota, resumenEnvios, htmlNotaFirmada,
+  crearEnvios, estaSinEnviar, enlaceNota, mensajeNota, resumenEnvios, htmlNotaFirmada,
   peticionNotaIA, leerNotaIA, sincronizarDocumentos, actualizarPendientes, personalizar, datosDeNota, MARCADORES,
 } from '@/lib/notasInformativas';
 import FilaEnvio from '@/components/notas/FilaEnvio';
@@ -146,8 +146,8 @@ export default function NotasInformativas() {
     if (!nuevosEnvios.length) { toast.info('No hay clientes nuevos a los que preparar la nota.'); return; }
     try {
       await base44.entities.NotaEnvio.bulkCreate(nuevosEnvios);
-      await base44.entities.NotaInformativa.update(nota.id, { audience: audiencia, status: 'enviada', sent_date: new Date().toISOString() });
-      toast.success(`Preparada para ${nuevosEnvios.length} cliente${nuevosEnvios.length === 1 ? '' : 's'}, cada una con su nombre y el de tu empresa, y guardada en la ficha de cada cliente. Ahora envíala desde la lista.`, { duration: 8000 });
+      await base44.entities.NotaInformativa.update(nota.id, { audience: audiencia }); // NO se marca como enviada: eso solo ocurre cuando tú pulsas WhatsApp o correo
+      toast.success(`Preparada para ${nuevosEnvios.length} cliente${nuevosEnvios.length === 1 ? '' : 's'}, cada una con su nombre y el de tu empresa. NO se ha enviado nada: envíala tú desde la lista (WhatsApp o correo) cuando quieras; hasta entonces no consta en la ficha del cliente.`, { duration: 8000 });
       setElegidos(new Set()); await cargar();
     } catch (err) { toast.error(`No se pudieron preparar los envíos: ${err?.message || err}`); }
   };
@@ -166,8 +166,8 @@ export default function NotasInformativas() {
   const imprimir = (e) => printDocument(htmlNotaFirmada({ envio: e, empresa }), `Nota informativa - ${e.contact_name}`);
 
   const correosMasivos = async () => {
-    const lista = enviosNota.filter((e) => e.status !== 'firmada' && /@/.test(e.contact_email || ''));
-    if (!lista.length) { toast.info('No hay pendientes con correo.'); return; }
+    const lista = enviosNota.filter((e) => estaSinEnviar(e) && /@/.test(e.contact_email || ''));
+    if (!lista.length) { toast.info('No hay notas sin enviar con correo.'); return; }
     if (!confirm(`¿Enviar la nota por correo a ${lista.length} cliente${lista.length === 1 ? '' : 's'}?`)) return;
     setEnviandoCorreos(true);
     try {
@@ -205,7 +205,7 @@ export default function NotasInformativas() {
               <button key={n.id} type="button" onClick={() => setSel(n.id)} data-nota={n.id}
                 className={`block w-full border-b px-3 py-2 text-left last:border-0 hover:bg-accent ${sel === n.id ? 'bg-accent' : ''}`}>
                 <span className="block truncate text-sm font-semibold">{n.title}</span>
-                <span className="text-xs text-muted-foreground">{r.total ? `${r.firmadas}/${r.total} firmadas` : 'Borrador'}</span>
+                <span className="text-xs text-muted-foreground">{r.total ? `${r.firmadas}/${r.total} firmadas${r.sinEnviar ? ` · ${r.sinEnviar} sin enviar` : ''}` : 'Borrador'}</span>
               </button>
             );
           })}
@@ -247,9 +247,9 @@ export default function NotasInformativas() {
             {enviosNota.length > 0 && (
               <div className="rounded-lg border bg-card">
                 <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-                  <p className="flex-1 text-sm font-semibold">{res.firmadas} firmadas · {res.pendientes} pendientes</p>
-                  <Button size="sm" variant="outline" className="gap-1" disabled={enviandoCorreos || !res.pendientes} onClick={correosMasivos}>
-                    {enviandoCorreos ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}Enviar por correo a los pendientes
+                  <p className="flex-1 text-sm font-semibold">{res.firmadas} firmadas · {res.enviadas} enviadas sin firmar · {res.sinEnviar} sin enviar</p>
+                  <Button size="sm" variant="outline" className="gap-1" disabled={enviandoCorreos || !res.sinEnviar} onClick={correosMasivos}>
+                    {enviandoCorreos ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}Enviar por correo las que faltan por enviar
                   </Button>
                 </div>
                 {enviosNota.map((e) => <FilaEnvio key={e.id} envio={e} onWhatsApp={porWhatsApp} onCorreo={porCorreo} onCopiar={copiar} onFirmar={setFirmando} onImprimir={imprimir} onEditar={(x) => setEditEnvio({ ...x })} />)}

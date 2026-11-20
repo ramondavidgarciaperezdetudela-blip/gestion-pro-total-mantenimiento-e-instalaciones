@@ -15,6 +15,11 @@
 
 export const ESTADOS = { pendiente: 'Pendiente de firma', firmada: 'Firmada' };
 
+/** Una nota preparada para un cliente que todavía NO se ha mandado (ni por WhatsApp, ni por correo) ni la ha firmado en persona. */
+export const estaSinEnviar = (e) => !!e && e.status !== 'firmada' && !e.sent_date;
+/** Texto del estado tal como es de verdad: preparada, enviada sin firmar, o firmada. */
+export const estadoDe = (e) => (e?.status === 'firmada' ? ESTADOS.firmada : estaSinEnviar(e) ? 'Preparada · sin enviar' : 'Enviada · pendiente de firma');
+
 const esc = (v) => String(v ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -152,7 +157,8 @@ export function mensajeNota({ envio, empresa, enlace }) {
 
 export function resumenEnvios(envios = []) {
   const firmadas = envios.filter((e) => e.status === 'firmada').length;
-  return { total: envios.length, firmadas, pendientes: envios.length - firmadas };
+  const sinEnviar = envios.filter(estaSinEnviar).length;
+  return { total: envios.length, firmadas, pendientes: envios.length - firmadas, sinEnviar, enviadas: envios.length - firmadas - sinEnviar };
 }
 
 const fechaLarga = (iso) => {
@@ -237,6 +243,17 @@ export async function sincronizarDocumentos(base44, envios = []) {
   for (const e of envios) {
     const firmada = e.status === 'firmada';
     try {
+      // Preparada pero NO enviada: no consta en la ficha del cliente hasta que se le mande (o la firme). Si una versión
+      // anterior ya la había puesto como «pendiente de firma», se quita.
+      if (estaSinEnviar(e)) {
+        if (e.client_doc_id) {
+          if (e.client_doc_id !== 'ok') await base44.entities.ClientDocument.delete(e.client_doc_id).catch(() => {});
+          const marca = { client_doc_id: '', client_doc_estado: '' };
+          await base44.entities.NotaEnvio.update(e.id, marca);
+          Object.assign(e, marca);
+        }
+        continue;
+      }
       if (!e.client_doc_id) {
         const doc = await base44.entities.ClientDocument.create(documentoDeFicha(e));
         const marca = { client_doc_id: doc?.id || 'ok', client_doc_estado: firmada ? 'firmada' : 'pendiente' };

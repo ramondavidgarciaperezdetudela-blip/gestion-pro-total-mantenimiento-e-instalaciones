@@ -14,7 +14,7 @@ assert.equal(envs[0].nota_body, 'Cerramos.');                      // copia del 
 assert.equal(crearEnvios(nota, cs, [{ nota_id: 'n1', contact_id: 'c1' }]).length, 1); // no repite
 assert.equal(enlaceNota('https://x.es/', { id: 'e1', token: 't' }), 'https://x.es/nota-publica?id=e1&t=t');
 assert.equal(enlaceNota('', { id: 'e1', token: 't' }), '');
-assert.deepEqual(resumenEnvios([{ status: 'firmada' }, { status: 'pendiente' }]), { total: 2, firmadas: 1, pendientes: 1 });
+assert.deepEqual(resumenEnvios([{ status: 'firmada' }, { status: 'pendiente' }, { status: 'pendiente', sent_date: '2026-11-01' }]), { total: 3, firmadas: 1, pendientes: 2, sinEnviar: 1, enviadas: 1 });
 assert.ok(mensajeNota({ envio: envs[0], empresa: { company_name: 'GPT' }, enlace: 'L' }).cuerpo.includes('L'));
 const f = { ...envs[0], id: 'e1', status: 'firmada', signed_at: '2026-11-13T10:00:00Z', signature: 'data:image/png;base64,AAA', signature_via: 'enlace' };
 const h = htmlNotaFirmada({ envio: f, empresa: { company_name: 'GPT' } });
@@ -24,6 +24,7 @@ assert.ok(htmlNotaFirmada({ envio: envs[0], empresa: {} }).includes('PENDIENTE D
 assert.equal(leerNotaIA('{"titulo":"T","cuerpo":"<b>C</b>"}').cuerpo, 'C');
 assert.equal(documentoDeFicha(f).doc_type, 'nota_informativa');
 // Personalización
+import { estaSinEnviar, estadoDe } from '../src/lib/notasInformativas.js';
 import { personalizar, datosDeNota, actualizarPendientes, sincronizarDocumentos, esMarcadorAutomatico } from '../src/lib/notasInformativas.js';
 const d = datosDeNota({ cliente: { name: 'Ana', surname: 'Gil', phone: '600', email: 'ana@x.es' }, empresa: { company_name: 'Frío SL', phone: '971000000', email: 'info@frio.es' }, remitente: 'David García' });
 assert.equal(personalizar('Estimado/a [nombre de cliente], de [Nombre de tu EMPRESA]', d), 'Estimado/a Ana Gil, de Frío SL');
@@ -45,9 +46,19 @@ assert.equal(masivo[1].nota_title, 'Aviso a Luis Pons');
 // Ficha: pendiente al preparar y la MISMA ficha pasa a firmada
 const docs = new Map(); let seq = 0; const upd = [];
 const b44 = { entities: {
-  ClientDocument: { create: async (x) => { const id = 'd' + (++seq); docs.set(id, { id, ...x }); return { id }; }, update: async (id, x) => { docs.set(id, { ...docs.get(id), ...x }); } },
+  ClientDocument: { create: async (x) => { const id = 'd' + (++seq); docs.set(id, { id, ...x }); return { id }; }, update: async (id, x) => { docs.set(id, { ...docs.get(id), ...x }); }, delete: async (id) => { docs.delete(id); } },
   NotaEnvio: { update: async (id, x) => { upd.push([id, x]); } } } };
-const e1 = { ...masivo[0], id: 'e1', created_date: '2026-11-13T08:00:00Z' };
+// Preparada SIN enviar: no consta en la ficha del cliente
+const sinEnv = { ...masivo[0], id: 'e0', created_date: '2026-11-13T08:00:00Z' };
+await sincronizarDocumentos(b44, [sinEnv]);
+assert.equal(docs.size, 0, 'una nota preparada pero no enviada no se archiva como pendiente en la ficha');
+// Una que una versión anterior ya archivó como pendiente sin haberse enviado: se retira
+docs.set('dx', { id: 'dx', title: 'Nota informativa (pendiente de firma): x' });
+const vieja = { ...masivo[0], id: 'e00', client_doc_id: 'dx', client_doc_estado: 'pendiente' };
+await sincronizarDocumentos(b44, [vieja]);
+assert.equal(docs.size, 0); assert.equal(vieja.client_doc_id, '');
+// Al enviarla (WhatsApp o correo) ya sí consta como pendiente de firma
+const e1 = { ...masivo[0], id: 'e1', created_date: '2026-11-13T08:00:00Z', sent_via: 'whatsapp', sent_date: '2026-11-13T09:00:00Z' };
 await sincronizarDocumentos(b44, [e1]);
 assert.equal(docs.size, 1); assert.match(docs.get('d1').title, /pendiente de firma/); assert.equal(docs.get('d1').contact_id, 'k1');
 assert.equal((await sincronizarDocumentos(b44, [e1])).length, 0); assert.equal(docs.size, 1);  // idempotente
@@ -56,6 +67,7 @@ const nuevas = await sincronizarDocumentos(b44, [f1]);
 assert.equal(nuevas.length, 1); assert.equal(docs.size, 1);                                  // no duplica
 assert.match(docs.get('d1').title, /firmada/); assert.match(docs.get('d1').description, /firmada el/);
 assert.equal((await sincronizarDocumentos(b44, [f1])).length, 0);
+assert.equal(estaSinEnviar(sinEnv), true); assert.equal(estaSinEnviar(e1), false); assert.equal(estadoDe(sinEnv), 'Preparada · sin enviar'); assert.equal(estadoDe(e1), 'Enviada · pendiente de firma');
 const r = await registrarFirma(b44, { ...masivo[1], id: 'e9' }, { signature: 'data:image/png;base64,B', via: 'pantalla' });
 assert.equal(r.status, 'firmada'); assert.equal(docs.size, 2);
 // Editar la nota: se rehacen los pendientes, no los firmados

@@ -56,8 +56,8 @@ assert.deepEqual(leerAnulados().sort(), ['viejo', 'x']);
 // revisión periódica: al quitar el aviso no vuelve hasta que toque la del año que viene
 {
   const m3 = av.find((a) => a.id === 'mant-m3');
-  assert.ok(m3.volverEl > new Date().toISOString().slice(0, 10), 'vuelve en el futuro');
-  assert.ok(Math.abs((new Date(m3.volverEl) - Date.now()) / 864e5 - 265) < 3, 'unos 265 días: aniversario de la revisión de hace 100 días');
+  assert.ok(m3.volverEl > hoy.toISOString().slice(0, 10), 'vuelve en el futuro');
+  assert.ok(Math.abs((new Date(m3.volverEl) - hoy.getTime()) / 864e5 - 265) < 3, 'unos 265 días: aniversario de la revisión de hace 100 días');
   assert.ok(m3.hechoHasta > m3.volverEl, 'marcada como hecha hoy: dentro de un año');
   aplazarAviso('mant-m3', m3.volverEl);
   assert.ok(leerAnulados().includes('mant-m3'), 'oculto mientras no llegue la fecha');
