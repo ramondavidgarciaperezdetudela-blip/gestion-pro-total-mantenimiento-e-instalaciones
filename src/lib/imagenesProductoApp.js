@@ -4,6 +4,7 @@ import { buscarImagenProducto, nombreBase, motoresPorDefecto, reducirImagen, aju
 import { base44 } from '@/api/base44Client';
 import { leerConfig } from '@/nube/config';
 import { peticion } from '@/nube/almacenRemoto';
+import { buscarEnWebProveedor, leerPlantillasPropias, leerAprendidas, guardarAprendida, hostDeWeb } from '@/lib/webProveedor';
 import { esAppMovil, ajustesIA, consultarIA } from '@/lib/proveedorIA';
 
 async function textoNativo(url) {
@@ -93,11 +94,18 @@ function buscarSinBase44(item) {
   const puente = crearPuente();
   return buscarImagenProducto(
     {
-      codigo: item.product_code, nombre: nombreBase(item.product_name) || item.product_name, descripcion: item.notes, marca: item.brand, proveedor: item.supplier_name,
+      web: item.supplier_web, codigo: item.product_code, nombre: nombreBase(item.product_name) || item.product_name, descripcion: item.notes, marca: item.brand, proveedor: item.supplier_name,
       // 1.º la web del proveedor y la del fabricante; 2.º internet en general.
       dominios: dominiosDe({ web: item.supplier_web, marca: item.brand }, leerMapaDominios(lee('gpt_dominios_fabricantes')))
     },
     {
+      webProveedor: puente ? (dt) => buscarEnWebProveedor(dt, {
+        texto: puente.texto,
+        descargar: async (url) => { const d = await puente.imagen(url); return (await reducirImagen(d)) || d; },
+        plantillaPropia: leerPlantillasPropias(lee('gpt_web_plantillas'))[hostDeWeb(dt.web)],
+        aprendida: leerAprendidas()[hostDeWeb(dt.web)],
+        aprender: guardarAprendida
+      }) : null,
       motores: motoresPorDefecto({ puente, google: ajustesGoogle() }),
       enLinea: () => (typeof navigator === 'undefined' ? true : navigator.onLine !== false),
       elegirConIA,

@@ -15,6 +15,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.160.0] — 2026-11-21
+
+### Añadido
+- **Búsqueda de imágenes y precios en la web de cada proveedor.** Al buscar la foto de un artículo, el programa entra primero en la web del proveedor de su ficha (Salvador Escoda, Obramat, Kide, Saltoki… y los que añadas): detecta el buscador de la propia web y busca por código y por nombre; si no sale, recorre los submenús de su página de tarifas (refrigeración, agua, gas, electricidad…) según el tipo de artículo. Trae la foto y el **precio actual de la web** (en la ficha del artículo, botón «Poner como coste»). Hace pocas peticiones a la vez y con pausa para no saturar la web. Si no la encuentra, sigue con la búsqueda de siempre (web del fabricante, Bing, DuckDuckGo…).
+- En Ajustes de IA se puede escribir el buscador de un proveedor cuya web no se detecte sola.
+
 ## [1.159.0] — 2026-11-21
 
 ### Cambiado
