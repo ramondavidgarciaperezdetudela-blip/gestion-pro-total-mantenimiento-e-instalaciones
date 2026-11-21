@@ -128,3 +128,12 @@ export const unirDatos = (...ds) => { const r = {}; for (const d of ds) for (con
 /** Enlace a Google Maps con la dirección completa. */
 export const enlaceMapa = (p) => { const q = [p.address, p.postal_code, p.city, p.province].filter(Boolean).join(', '); return q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : ''; };
 export const direccionCompleta = (p) => [p.address, [p.postal_code, p.city].filter(Boolean).join(' '), p.province].filter(Boolean).join(', ');
+
+// ── Mapa y GPS ────────────────────────────────────────────────────────────
+const consulta = (p) => [p.address, p.postal_code, p.city, p.province, p.country && p.country !== 'España' ? p.country : ''].filter(Boolean).join(', ');
+/** Ruta desde donde estés hasta la dirección (Google Maps elige la más rápida; en el móvil abre la app de mapas). */
+export const enlaceRuta = (p) => { const q = consulta(p); return q ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving` : ''; };
+/** Lo mismo en Waze (avisa de atascos y radares). */
+export const enlaceWaze = (p) => { const q = consulta(p); return q ? `https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes` : ''; };
+/** Plano para incrustar en la ficha (necesita internet). */
+export const urlMapaIncrustado = (p) => { const q = consulta(p); return q ? `https://www.google.com/maps?q=${encodeURIComponent(q)}&z=16&output=embed&hl=es` : ''; };

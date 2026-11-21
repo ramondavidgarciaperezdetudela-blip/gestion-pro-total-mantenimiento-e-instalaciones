@@ -30,6 +30,7 @@ import InterventionHistoryTab from '../components/InterventionHistoryTab';
 import ClientPlanosTab from '../components/ClientPlanosTab';
 import { useParametrosUrl } from '@/lib/parametrosUrl';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
+import { enlaceRuta } from '@/lib/fichaProveedor';
 import FichaClienteResumen from '@/components/clientes/FichaClienteResumen';
 import NavegacionFicha from '@/components/clientes/NavegacionFicha';
 import ArbolDocumentos from '@/components/clientes/ArbolDocumentos';
@@ -314,8 +315,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
   };
 
   const openGPS = () => {
-    const addr = encodeURIComponent(`${contact.address || ''}, ${contact.city || ''}, ${contact.province || ''}`);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${addr}`, '_blank');
+    window.open(enlaceRuta(contact), '_blank');
   };
 
   const reloadAll = async () => {
