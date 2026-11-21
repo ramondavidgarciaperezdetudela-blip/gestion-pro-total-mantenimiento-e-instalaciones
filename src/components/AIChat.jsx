@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bot, X, Send, Loader2, Copy } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { createPortal } from 'react-dom';
 
 export default function AIChat() {
   const [open, setOpen] = useState(false);
@@ -70,20 +71,21 @@ Pregunta: ${input}`,
 
   return (
     <>
-      {/* Botón flotante */}
-      {!open &&
+      {/* Botón pequeño dentro de la barra superior, junto a «Buscar»: se mueve con la barra y no tapa nada */}
       <button
-        onClick={() => setOpen(true)} className="bg-gradient-to-br text-white text-xl font-black rounded-full fixed bottom-[calc(env(safe-area-inset-bottom)+9rem)] right-4 lg:bottom-[5.75rem] lg:right-6 z-40 w-14 h-14 print:hidden from-purple-600 to-purple-700 shadow-lg hover:shadow-xl transition-all hover:scale-110 flex items-center justify-center"
-
-        title="Asistente IA">
-        
-          <Bot className="w-6 h-6" />
-        </button>
-      }
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="gpt-boton gpt-boton--oscuro print:hidden"
+        style={{ minHeight: 40, paddingInline: 10 }}
+        title="Asistente IA"
+        aria-label="Asistente IA"
+        data-prueba="boton-ia">
+        <Bot className="w-4 h-4 text-purple-300" />
+      </button>
 
       {/* Chat window */}
-      {open &&
-      <Card className="fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-50 w-auto max-h-[min(600px,calc(100dvh-6rem))] overflow-hidden shadow-2xl border-purple-200 sm:inset-x-auto sm:right-4 sm:w-96 lg:bottom-6 lg:right-6 print:hidden">
+      {open && createPortal(
+      <Card className="fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-50 w-auto max-h-[min(600px,calc(100dvh-6rem))] overflow-hidden shadow-2xl border-purple-200 sm:inset-x-auto sm:right-4 sm:w-96 lg:bottom-6 lg:right-6 print:hidden" style={{ zIndex: 200 }}>
           <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-3 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <Bot className="w-4 h-4" />
@@ -188,8 +190,8 @@ Pregunta: ${input}`,
               <Send className="w-3.5 h-3.5" />
             </Button>
           </div>
-        </Card>
-      }
+        </Card>,
+      document.body)}
     </>);
 
 }
