@@ -15,6 +15,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.161.0] — 2026-11-21
+
+### Añadido
+- **Descarga masiva de fotos: ahora también trae el precio.** Al encontrar un artículo en la web del proveedor se guarda la foto y, si el coste estaba vacío, el precio actual de la web; si la descripción estaba vacía, también el nombre que da la web. El panel de abajo cuenta cuántos han recibido precio.
+- **Varios resultados en la web: eliges al final.** Si la web del proveedor da más de un resultado para un artículo, no se guarda ninguno a ciegas: se apuntan y, cuando acaba el proceso, sale una ventana con las fotos, nombres y precios de cada opción para marcar la correcta (o «Ninguno»). Al guardar se rellenan en la ficha la foto, el precio y la descripción que falten.
+
 ## [1.160.0] — 2026-11-21
 
 ### Añadido

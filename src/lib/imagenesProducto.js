@@ -204,6 +204,7 @@ export async function buscarImagenProducto(datos, d) {
   if (d.webProveedor && datos.web) {
     try {
       const w = await d.webProveedor(datos);
+      if (w?.motivo === 'varias') return w; // varios resultados: que elija la persona (descarga masiva)
       if (w?.ok) { cache[k] = { url: w.url, por: 'web' }; if (alfanum(datos.nombre)) cache[kn] = { url: w.url, por: 'web' }; guardarCache(cache); return { ...w, por: 'web', dominio: hostDe(datos.web) }; }
     } catch { /* se sigue con los buscadores de imágenes */ }
   }
