@@ -15,6 +15,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.164.0] — 2026-11-21
+
+### Añadido
+- **Subir archivos al catálogo del proveedor.** En la pestaña «Catálogos» de la ficha del proveedor hay un botón **«Subir archivo»** para subir desde el ordenador (o el móvil) un catálogo o una tarifa ya descargados: PDF, Excel, Word, CSV, presentaciones, imágenes o ZIP (hasta 50 MB cada uno, varios a la vez). Quedan en la lista con su nombre y tamaño, y se abren o descargan con un clic. También está como tipo «Archivo subido» al añadir un catálogo.
+
 ## [1.163.0] — 2026-11-21
 
 ### Añadido

@@ -6,13 +6,29 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Trash2, Plus, Download, RefreshCw, Loader2, Link as LinkIcon, FileText } from 'lucide-react';
+import { Trash2, Plus, Download, RefreshCw, Loader2, Link as LinkIcon, FileText, Upload } from 'lucide-react';
+import { uploadFile } from '@/lib/uploadImage';
 import { toast } from 'sonner';
 
 const CATALOG_TYPES = [
 { value: 'pdf_url', label: 'Enlace a PDF', icon: LinkIcon },
 { value: 'productos', label: 'Lista de productos', icon: FileText },
-{ value: 'documento', label: 'Documento descargable', icon: Download }];
+{ value: 'documento', label: 'Documento descargable', icon: Download },
+{ value: 'archivo', label: 'Archivo subido (PDF, Excel, Word…)', icon: Upload }];
+
+const ACEPTADOS = '.pdf,.xls,.xlsx,.xlsm,.csv,.doc,.docx,.odt,.ods,.txt,.rtf,.ppt,.pptx,.zip,.jpg,.jpeg,.png,.webp';
+const MAX_MB = 50;
+// Descarga con el nombre original del archivo (si la dirección es de otro origen, el navegador ignoraría el nombre)
+async function descargarArchivo(ev, c) {
+  ev.preventDefault();
+  try {
+    const r = await fetch(c.url); if (!r.ok) throw new Error(String(r.status));
+    const u = URL.createObjectURL(await r.blob());
+    const a = document.createElement('a'); a.href = u; a.download = c.file_name || 'archivo'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 10000);
+  } catch { window.open(c.url, '_blank'); }
+}
+const tamanoTexto = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
 
 
 export default function SupplierCatalogManager({ supplierId, supplierName, supplierCategory }) {
@@ -20,6 +36,8 @@ export default function SupplierCatalogManager({ supplierId, supplierName, suppl
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCatalog, setEditingCatalog] = useState(null);
   const [fetching, setFetching] = useState(false);
+  const [subiendo, setSubiendo] = useState(false);
+  const entrada = React.useRef(null);
   const [form, setForm] = useState({
     catalog_type: 'pdf_url',
     title: '',
@@ -126,6 +144,28 @@ export default function SupplierCatalogManager({ supplierId, supplierName, suppl
     setFetching(false);
   };
 
+  // Sube uno o varios ficheros del ordenador (catálogo o tarifa ya descargados) a la ficha del proveedor
+  const subirArchivos = async (lista) => {
+    const ficheros = [...(lista || [])];
+    if (!ficheros.length) return;
+    setSubiendo(true); let ok = 0;
+    for (const f of ficheros) {
+      if (f.size > MAX_MB * 1048576) { toast.error(`«${f.name}» pesa más de ${MAX_MB} MB y no se sube.`); continue; }
+      try {
+        const url = await uploadFile(f);
+        await base44.entities.SupplierCatalog.create({
+          supplier_id: supplierId, supplier_name: supplierName, supplier_category: supplierCategory,
+          catalog_type: 'archivo', title: f.name.replace(/\.[^.]+$/, ''), file_name: f.name, file_size: f.size, file_type: f.type || '',
+          url, auto_update_enabled: false, last_updated: new Date().toISOString()
+        });
+        ok++;
+      } catch (e) { toast.error(`No se pudo subir «${f.name}»: ${e?.message || 'error'}`); }
+    }
+    setSubiendo(false);
+    if (entrada.current) entrada.current.value = '';
+    if (ok) { await loadCatalogs(); toast.success(ok === 1 ? 'Archivo subido al catálogo del proveedor' : `${ok} archivos subidos al catálogo del proveedor`); }
+  };
+
   const handleEdit = (catalog) => {
     setEditingCatalog(catalog);
     setForm({
@@ -145,6 +185,11 @@ export default function SupplierCatalogManager({ supplierId, supplierName, suppl
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-semibold text-sm">Catálogos de {supplierName}</h3>
         <div className="flex gap-2">
+          <input ref={entrada} type="file" multiple accept={ACEPTADOS} className="hidden" onChange={(e) => subirArchivos(e.target.files)} data-prueba="catalogo-archivo-entrada" />
+          <Button onClick={() => entrada.current?.click()} disabled={subiendo} size="sm" variant="outline" className="text-xs h-8 border-green-300 text-green-700 hover:bg-green-50" data-prueba="catalogo-subir-archivo" title="Sube un PDF, Excel, Word… que tengas en el ordenador">
+            {subiendo ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
+            {subiendo ? 'Subiendo…' : 'Subir archivo'}
+          </Button>
           <Button
             onClick={() => {
               setEditingCatalog(null);
@@ -172,7 +217,7 @@ export default function SupplierCatalogManager({ supplierId, supplierName, suppl
 
       <div className="space-y-2">
         {catalogs.length === 0 ?
-        <p className="text-xs text-gray-400">Sin catálogos. Busca en internet o añade manualmente.</p> :
+        <p className="text-xs text-gray-400">Sin catálogos. Sube un archivo de tu ordenador, busca en internet o añade uno a mano.</p> :
 
         catalogs.map((catalog) =>
         <Card key={catalog.id} className="p-3">
@@ -182,16 +227,20 @@ export default function SupplierCatalogManager({ supplierId, supplierName, suppl
                   {catalog.description && <p className="text-gray-600 mb-1 text-sm font-black">{catalog.description}</p>}
                   <div className="flex items-center gap-2 text-[10px] text-gray-500">
                     <span className="px-1.5 py-0.5 bg-slate-100 rounded">{catalog.catalog_type}</span>
+                    {catalog.file_name && <span className="truncate max-w-[14rem]" title={catalog.file_name}>{catalog.file_name}{catalog.file_size ? ` · ${tamanoTexto(catalog.file_size)}` : ''}</span>}
                     {catalog.last_updated &&
                 <span>Act. {new Date(catalog.last_updated).toLocaleDateString()}</span>
                 }
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  {catalog.url &&
+                  {catalog.url && (catalog.catalog_type === 'archivo' || catalog.file_name ?
+              <a href={catalog.url} download={catalog.file_name || true} onClick={(ev) => descargarArchivo(ev, catalog)} className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="Abrir / descargar el archivo" data-prueba="catalogo-descargar">
+                      <Download className="w-4 h-4" />
+                    </a> :
               <a href={catalog.url} target="_blank" rel="noopener noreferrer" className="p-1.5 text-blue-500 hover:bg-blue-50 rounded">
                       <LinkIcon className="w-4 h-4" />
-                    </a>
+                    </a>)
               }
                   <button onClick={() => handleEdit(catalog)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded">
                     <FileText className="w-4 h-4" />
