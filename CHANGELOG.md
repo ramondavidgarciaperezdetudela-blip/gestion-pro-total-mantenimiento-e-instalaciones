@@ -15,6 +15,17 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.162.0] — 2026-11-21
+
+### Corregido
+- **«Abrir web del proveedor» ya abre la web.** Con webs guardadas sin «https://» (Saltoki, Comfred, Hidroelectric SYG…) el enlace se tomaba por una página de la propia aplicación: en escritorio salía otra ventana de Gestión Pro Total y, al cerrarla, se cerraba también el programa principal. Ahora las webs se corrigen solas (al abrir la lista y al guardar) y en la aplicación de escritorio ningún enlace abre ya una ventana nueva del programa: todo lo externo va al navegador del sistema.
+- **Logotipo del proveedor: falla mucho menos.** Ahora se lee de la propia web del proveedor (logotipo de la cabecera, datos de la web, icono de la web) y se guarda reducido dentro de la ficha; antes dependía de un servicio externo que ya no responde.
+
+### Añadido
+- **Dirección en la ficha del proveedor** (calle y número, polígono…) más código postal, ciudad y provincia, con enlace al mapa en la tarjeta.
+- **Ficha más completa:** razón social, CIF/NIF, país, móvil, WhatsApp, horario, forma de pago, plazo de entrega, pedido mínimo y descuento acordado.
+- **Completar desde la web del proveedor:** en la ficha, un botón rellena solo los campos vacíos (dirección, teléfono, correo, CIF, logotipo) leyendo su web y su página de contacto; y arriba, «Completar desde sus webs» lo hace con todos los proveedores a la vez, sin tocar lo ya escrito.
+
 ## [1.161.0] — 2026-11-21
 
 ### Añadido

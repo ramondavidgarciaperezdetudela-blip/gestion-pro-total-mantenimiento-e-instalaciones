@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
+import { urlWeb } from '@/lib/fichaProveedor';
 import { base44 } from '@/api/base44Client';
 import { loadValidChars } from '@/components/ValidCharsConfig';
 import { uploadImage } from '@/lib/uploadImage';
@@ -333,7 +334,7 @@ function OnlinePriceUpdatePanel({ supplier, prices, onUpdated, onFixed, bgState,
         <p className="text-xs text-blue-600">
           La IA recorrerá <strong>todos los {prices.length} productos</strong> de <strong>{supplier.name}</strong> en lotes continuos.
           {supplier.website && (
-            <> · <a href={supplier.website} target="_blank" rel="noopener noreferrer" className="underline">{supplier.website}</a></>
+            <> · <a href={urlWeb(supplier.website) || undefined} target="_blank" rel="noopener noreferrer" className="underline">{supplier.website}</a></>
           )}
         </p>
       </div>

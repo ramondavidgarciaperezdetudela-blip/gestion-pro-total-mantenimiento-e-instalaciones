@@ -19,6 +19,14 @@ import SupplierCatalogManager from '../components/SupplierCatalogManager';
 import SupplierPriceManager from '../components/SupplierPriceManager';
 import CityAutocomplete from '../components/CityAutocomplete';
 import { uploadImage } from '@/lib/uploadImage';
+import { urlWeb, enlaceMapa, direccionCompleta } from '@/lib/fichaProveedor';
+import { completarDesdeWeb } from '@/lib/fichaProveedorApp';
+import { MapPin } from 'lucide-react';
+
+// Web guardada sin «https://» (p. ej. «saltoki.es»): se normaliza al guardar y al abrir
+const limpiaWeb = (t) => { const u = urlWeb(t); return u ? u.replace(/^(https?:\/\/[^/]+)\/$/, '$1') : String(t || '').trim(); };
+// Datos que se pueden completar leyendo la web del proveedor
+const CAMPOS_WEB = ['address', 'postal_code', 'city', 'province', 'phone', 'email', 'legal_name', 'tax_id'];
 
 const CATEGORIES = ['clima', 'refrigeracion', 'electrico', 'solar', 'fontaneria', 'general'];
 
@@ -80,7 +88,9 @@ const EMPTY_FORM = {
   phone: '', email: '', contact_person: '', notes: '', is_active: true,
   api_key: '', api_url: '', client_code: '', password_hint: '',
   commercials: [], logo_url: '', last_order_date: '', reorder_frequency_days: 30,
-  enable_notifications: false, province: '', city: ''
+  enable_notifications: false, province: '', city: '',
+  address: '', postal_code: '', country: 'España', legal_name: '', tax_id: '', mobile: '', whatsapp: '', opening_hours: '',
+  payment_terms: '', delivery_time: '', min_order: '', discount: ''
 };
 
 const EMPTY_COMMERCIAL = { name: '', phone: '', whatsapp: '', email: '', notes: '' };
@@ -105,6 +115,11 @@ export default function Suppliers() {
         then(() => base44.entities.Supplier.list().then(setSuppliers));
       } else {
         setSuppliers(data);
+        // Webs guardadas sin «https://»: se corrigen para que el enlace abra la web y no otra ventana del programa
+        for (const x of data) {
+          const c = {}; for (const k of ['website', 'login_url']) { if (x[k] && !/^https?:\/\//i.test(x[k]) && urlWeb(x[k])) c[k] = limpiaWeb(x[k]); }
+          if (Object.keys(c).length) base44.entities.Supplier.update(x.id, c).then(() => setSuppliers((l) => l.map((y) => (y.id === x.id ? { ...y, ...c } : y)))).catch(() => {});
+        }
       }
     });
   }, []);
@@ -115,10 +130,11 @@ export default function Suppliers() {
       return;
     }
     try {
+      const datos = { ...form, website: limpiaWeb(form.website), login_url: limpiaWeb(form.login_url) };
       if (editing) {
-        await base44.entities.Supplier.update(editing.id, form);
+        await base44.entities.Supplier.update(editing.id, datos);
       } else {
-        await base44.entities.Supplier.create(form);
+        await base44.entities.Supplier.create(datos);
       }
       const updated = await base44.entities.Supplier.list();
       setSuppliers(updated);
@@ -143,18 +159,60 @@ export default function Suppliers() {
       client_code: s.client_code || '', password_hint: s.password_hint || '',
       commercials: s.commercials || [], logo_url: s.logo_url || '',
       last_order_date: s.last_order_date || '', reorder_frequency_days: s.reorder_frequency_days || 30,
-      enable_notifications: s.enable_notifications !== false, province: s.province || '', city: s.city || ''
+      enable_notifications: s.enable_notifications !== false, province: s.province || '', city: s.city || '',
+      address: s.address || '', postal_code: s.postal_code || '', country: s.country || 'España', legal_name: s.legal_name || '', tax_id: s.tax_id || '',
+      mobile: s.mobile || '', whatsapp: s.whatsapp || '', opening_hours: s.opening_hours || '', payment_terms: s.payment_terms || '',
+      delivery_time: s.delivery_time || '', min_order: s.min_order || '', discount: s.discount || ''
     });
     setDialogOpen(true);
   };
 
+  // Logotipo: primero el de la propia web del proveedor (cabecera, datos de la web, icono); si no, la búsqueda de siempre
   const handleAutoFetchLogo = async () => {
     setFetchingLogo(true);
-    const logo = await fetchCompanyLogo(form.website, form.name);
-    if (logo) {
-      setForm((prev) => ({ ...prev, logo_url: logo }));
-    }
+    let logo = null;
+    try { logo = (await completarDesdeWeb({ web: form.website, name: form.name })).logo || null; } catch { /* se prueba el otro método */ }
+    if (!logo) logo = await fetchCompanyLogo(urlWeb(form.website) || form.website, form.name);
+    if (logo) { setForm((prev) => ({ ...prev, logo_url: logo })); toast.success('Logotipo encontrado'); }
+    else toast.info('No he encontrado el logotipo. Comprueba la web del proveedor o sube una imagen.');
     setFetchingLogo(false);
+  };
+
+  // Completa SOLO los campos vacíos de la ficha abierta con lo que da la web del proveedor
+  const [completando, setCompletando] = useState(false);
+  const handleCompletarFicha = async () => {
+    if (!urlWeb(form.website)) { toast.info('Escribe primero la web del proveedor.'); return; }
+    setCompletando(true);
+    try {
+      const r = await completarDesdeWeb({ web: form.website, name: form.name });
+      const nuevos = {}; for (const k of CAMPOS_WEB) if (r.datos?.[k] && !String(form[k] || '').trim()) nuevos[k] = r.datos[k];
+      if (r.logo && !form.logo_url) nuevos.logo_url = r.logo;
+      if (Object.keys(nuevos).length) { setForm((prev) => ({ ...prev, ...nuevos })); toast.success(`Completado desde su web: ${Object.keys(nuevos).map((k) => ({ address: 'dirección', postal_code: 'C.P.', city: 'ciudad', province: 'provincia', phone: 'teléfono', email: 'email', legal_name: 'razón social', tax_id: 'CIF', logo_url: 'logotipo' }[k])).join(', ')}`); }
+      else toast.info(r.motivo === 'sin_puente' ? 'Este navegador no puede leer la web del proveedor. Usa la aplicación de escritorio, el móvil o tu servidor propio.' : 'No he encontrado datos nuevos en su web.');
+    } catch (e) { toast.error('No se pudo leer la web: ' + (e.message || e)); }
+    setCompletando(false);
+  };
+
+  // Todos los proveedores a la vez: rellena lo que falte (dirección, teléfono, CIF, logotipo…) sin tocar lo ya escrito
+  const [lote, setLote] = useState(null);
+  const completarTodos = async () => {
+    if (lote) { setLote({ ...lote, parar: true }); return; }
+    const lista = suppliers.filter((x) => urlWeb(x.website) && (!x.address || !x.logo_url || !x.postal_code));
+    if (!lista.length) { toast.info('Todos los proveedores con web ya tienen dirección y logotipo.'); return; }
+    let parar = false; const est = { hecho: 0, total: lista.length, con: 0, parar: false }; setLote({ ...est });
+    for (const x of lista) {
+      if (parar) break;
+      try {
+        const r = await completarDesdeWeb({ web: x.website, name: x.name });
+        const nuevos = {}; for (const k of CAMPOS_WEB) if (r.datos?.[k] && !String(x[k] || '').trim()) nuevos[k] = r.datos[k];
+        if (r.logo && !x.logo_url && r.motivo !== 'sin_puente') nuevos.logo_url = r.logo;
+        if (Object.keys(nuevos).length) { await base44.entities.Supplier.update(x.id, nuevos); est.con++; }
+      } catch { /* sigue con el siguiente */ }
+      est.hecho++; setLote((l) => { parar = !!l?.parar; return { ...est, parar }; });
+    }
+    setSuppliers(await base44.entities.Supplier.list());
+    setLote(null);
+    toast.success(`Revisados ${est.hecho} proveedores: ${est.con} completados con datos de su web.`);
   };
 
   const handleFetchSupplierData = async () => {
@@ -275,7 +333,16 @@ export default function Suppliers() {
               }
               
               {s.notes && <p className="text-gray-500 mb-2 text-sm font-black">{s.notes}</p>}
+              {(s.address || s.city || s.province) &&
+              <a href={enlaceMapa(s)} target="_blank" rel="noopener noreferrer" className="flex items-start gap-1 text-xs text-slate-700 hover:text-blue-700 mb-1" title="Ver en el mapa" data-prueba="proveedor-direccion">
+                <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" /><span>{direccionCompleta(s)}</span>
+              </a>}
+              {(s.legal_name || s.tax_id || s.opening_hours || s.payment_terms || s.delivery_time || s.min_order || s.discount) &&
+              <p className="text-[11px] text-gray-500 mb-1.5" data-prueba="proveedor-mas-datos">
+                {[s.legal_name, s.tax_id && `CIF ${s.tax_id}`, s.opening_hours && `Horario: ${s.opening_hours}`, s.payment_terms && `Pago: ${s.payment_terms}`, s.delivery_time && `Entrega: ${s.delivery_time}`, s.min_order && `Pedido mínimo: ${s.min_order}`, s.discount && `Dto.: ${s.discount}`].filter(Boolean).join(' · ')}
+              </p>}
               <div className="flex flex-wrap gap-3 text-xs mb-2">
+                {s.mobile && <a href={`tel:${s.mobile}`} className="flex items-center gap-1 text-blue-600"><Phone className="w-3 h-3" />{s.mobile}</a>}
                 {s.phone && <a href={`tel:${s.phone}`} className="flex items-center gap-1 text-blue-600"><Phone className="w-3 h-3" />{s.phone}</a>}
                 {s.email && <a href={`mailto:${s.email}`} className="flex items-center gap-1 text-blue-600"><Mail className="w-3 h-3" />{s.email}</a>}
               </div>
@@ -301,14 +368,14 @@ export default function Suppliers() {
             </div>
             
             <div className="flex items-center gap-1 ml-auto flex-shrink-0">
-              {s.login_url &&
-              <a href={s.login_url} target="_blank" rel="noopener noreferrer"
+              {urlWeb(s.login_url) &&
+              <a href={urlWeb(s.login_url)} target="_blank" rel="noopener noreferrer"
               className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Tienda online">
                   <ShoppingCart className="w-4 h-4" />
                 </a>
               }
-              {s.website &&
-              <a href={s.website} target="_blank" rel="noopener noreferrer"
+              {urlWeb(s.website) &&
+              <a href={urlWeb(s.website)} target="_blank" rel="noopener noreferrer"
               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Sitio web">
                   <Globe className="w-4 h-4" />
                 </a>
@@ -326,6 +393,10 @@ export default function Suppliers() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Proveedores / Distribuidores</h1>
+        <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={completarTodos} data-prueba="proveedores-completar-todos" title="Lee la web de cada proveedor y rellena lo que falte: dirección, teléfono, CIF y logotipo">
+          {lote ? <Loader2 className="w-3 h-3 animate-spin" /> : <Globe className="w-3 h-3" />}
+          {lote ? `Revisando ${lote.hecho}/${lote.total} (pulsa para parar)` : 'Completar desde sus webs'}
+        </Button>
         <Dialog open={dialogOpen} onOpenChange={() => {}}>
           <DialogTrigger asChild>
             <Button className="bg-slate-700 hover:bg-slate-800" onClick={() => {setEditing(null);setForm(EMPTY_FORM);setDialogOpen(true);}}><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
@@ -453,6 +524,7 @@ export default function Suppliers() {
 
                    <Input placeholder="URL tienda / pedidos online" value={form.login_url} onChange={(e) => setForm({ ...form, login_url: e.target.value })} />
                 
+                <Input placeholder="Dirección (calle, número, polígono…)" value={form.address || ''} onChange={(e) => setForm({ ...form, address: e.target.value })} data-prueba="proveedor-form-direccion" />
                 <div className="grid grid-cols-3 gap-2">
                   <CityAutocomplete
                     city={form.city}
@@ -468,6 +540,29 @@ export default function Suppliers() {
                   <Input placeholder="Teléfono" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                   <Input placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
+                <Button type="button" variant="outline" className="w-full text-xs h-8 gap-1" onClick={handleCompletarFicha} disabled={completando || !form.website} data-prueba="proveedor-completar-web">
+                  {completando ? <Loader2 className="w-3 h-3 animate-spin" /> : <Globe className="w-3 h-3" />}
+                  {completando ? 'Leyendo su web…' : 'Completar dirección, teléfono, CIF y logotipo desde su web'}
+                </Button>
+                <details className="rounded-lg border p-2" data-prueba="proveedor-mas-empresa">
+                  <summary className="cursor-pointer text-sm font-medium text-slate-700">Más información de la empresa</summary>
+                  <div className="mt-2 space-y-2">
+                    <Input placeholder="Razón social (nombre legal)" value={form.legal_name || ''} onChange={(e) => setForm({ ...form, legal_name: e.target.value })} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input placeholder="CIF / NIF" value={form.tax_id || ''} onChange={(e) => setForm({ ...form, tax_id: e.target.value })} />
+                      <Input placeholder="País" value={form.country || ''} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+                      <Input placeholder="Móvil" value={form.mobile || ''} onChange={(e) => setForm({ ...form, mobile: e.target.value })} />
+                      <Input placeholder="WhatsApp" value={form.whatsapp || ''} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} />
+                    </div>
+                    <Input placeholder="Horario (ej. L-V 7:30-18:00)" value={form.opening_hours || ''} onChange={(e) => setForm({ ...form, opening_hours: e.target.value })} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input placeholder="Forma de pago (ej. 60 días)" value={form.payment_terms || ''} onChange={(e) => setForm({ ...form, payment_terms: e.target.value })} />
+                      <Input placeholder="Plazo de entrega (ej. 24-48 h)" value={form.delivery_time || ''} onChange={(e) => setForm({ ...form, delivery_time: e.target.value })} />
+                      <Input placeholder="Pedido mínimo (ej. 150 €)" value={form.min_order || ''} onChange={(e) => setForm({ ...form, min_order: e.target.value })} />
+                      <Input placeholder="Descuento acordado (ej. 35 %)" value={form.discount || ''} onChange={(e) => setForm({ ...form, discount: e.target.value })} />
+                    </div>
+                  </div>
+                </details>
                 <Input placeholder="Persona de contacto" value={form.contact_person} onChange={(e) => setForm({ ...form, contact_person: e.target.value })} />
                 <Textarea placeholder="Notas" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
 
@@ -563,8 +658,8 @@ export default function Suppliers() {
                 </div>
                 <div className="border rounded-lg p-3 space-y-2">
                   <p className="text-sm font-medium">Acceso directo</p>
-                  {form.login_url ?
-                  <a href={form.login_url} target="_blank" rel="noopener noreferrer"
+                  {urlWeb(form.login_url) ?
+                  <a href={urlWeb(form.login_url)} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 text-blue-600 text-sm hover:underline">
                       <ExternalLink className="w-4 h-4" /> Ir a la tienda online
                     </a> :
