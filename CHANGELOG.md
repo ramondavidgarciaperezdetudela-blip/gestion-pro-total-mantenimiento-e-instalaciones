@@ -15,6 +15,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.165.0] — 2026-11-21
+
+### Cambiado
+- **Sin límite de peso al subir catálogos y documentos.** Se quita el tope de 50 MB del catálogo de proveedor y los de más abajo que impedían subir archivos grandes: el servidor propio (guardaba cada archivo entero en memoria con un máximo de 60 MB) ahora lo escribe directo a disco, sin tamaño ni tiempo máximo; y el tiempo de espera de la subida ya no es fijo (45 s): crece con el tamaño del archivo, así un catálogo de cientos de MB no se corta.
+- **Modo local (sin servidor):** los archivos grandes que no son fotos (más de 8 MB) se guardan aparte en el aparato y no dentro de la ficha, para que el programa no se vuelva lento; se abren o descargan con un clic como siempre. Esos archivos grandes no entran en la copia de seguridad en JSON: cópialos aparte si los necesitas fuera del aparato.
+
 ## [1.164.0] — 2026-11-21
 
 ### Añadido

@@ -3,6 +3,9 @@ import { compressImage, compressImageToDataURL } from './compressImage';
 import { isExternalStorageEnabled, uploadToExternalStorage } from './externalStorage';
 
 const UPLOAD_TIMEOUT_MS = 45000;
+// Sin límite de peso: el tiempo máximo crece con el tamaño (se admite una conexión de 50 KB/s como mínimo),
+// así un catálogo de cientos de MB no se corta a los 45 segundos.
+const tiempoPara = (file) => Math.max(UPLOAD_TIMEOUT_MS, Math.ceil((file?.size || 0) / (50 * 1024)) * 1000);
 // Si UploadFile falla (créditos de integración agotados, red caída...),
 // se usa un Data URL comprimido como fallback para que la foto quede
 // guardada igualmente. Esto no aumenta coste porque solo ocurre cuando
@@ -167,7 +170,7 @@ export async function uploadImage(file, compressOpts, limiteLocal) {
     const compressed = await compressImage(file, compressOpts);
     const { file_url } = await withTimeout(
       base44.sinAvisos.integrations.Core.UploadFile({ file: compressed }),
-      UPLOAD_TIMEOUT_MS,
+      tiempoPara(compressed),
       UPLOAD_TIMEOUT_MESSAGE
     );
     return file_url;
@@ -233,7 +236,7 @@ export async function uploadFile(file) {
     try {
       const { file_url } = await withTimeout(
         base44.sinAvisos.integrations.Core.UploadFile({ file }),
-        UPLOAD_TIMEOUT_MS,
+        tiempoPara(file),
         UPLOAD_TIMEOUT_MESSAGE
       );
       return file_url;
