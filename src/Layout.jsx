@@ -174,6 +174,9 @@ export default function Layout({ children, currentPageName }) {
       <button type="button" onClick={() => setSearchOpen(true)} className="gpt-boton gpt-boton--oscuro" aria-label="Buscar (Ctrl+K)" style={{ minHeight: 40 }}>
         <Search className="w-4 h-4" /><span className="hidden sm:inline">Buscar</span>
       </button>
+      {/* Asistente IA y Base de precios: iconos pequeños en la barra, junto a Buscar (antes flotaban abajo a la derecha y tapaban botones) */}
+      <AIChat />
+      <QuickPriceDBAccess />
       <span className="gpt-barra__herramientas">
         <AjusteRapidoLetra compacto />
         <ThemeToggle size="w-5 h-5" />
@@ -188,8 +191,6 @@ export default function Layout({ children, currentPageName }) {
   return (
     <ProveedorTema empresa={empresaTema}>
       <div className="gpt-app gpt-layout min-h-screen flex" dir="ltr" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <AIChat />
-        <QuickPriceDBAccess />
         <BackupProgressIndicator />
         <DescargasGlobal />
         <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />

@@ -114,14 +114,17 @@ export default function QuickPriceDBAccess() {
 
   return (
     <>
-      {/* Botón flotante */}
+      {/* Botón pequeño dentro de la barra superior, junto a «Buscar»: se mueve con la barra y no tapa nada */}
       <button
+        type="button"
         onClick={() => setOpen(true)}
         title="Base de precios (Alt+P)"
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] right-4 z-40 lg:bottom-6 lg:right-6 w-14 h-14 rounded-full bg-blue-700 hover:bg-blue-800 text-white shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 print:hidden"
-        style={{ boxShadow: '0 4px 24px rgba(30,58,138,0.4)' }}
+        aria-label="Base de precios"
+        className="gpt-boton gpt-boton--oscuro print:hidden"
+        style={{ minHeight: 40, paddingInline: 10 }}
+        data-prueba="boton-base-precios"
       >
-        <BookOpen className="w-6 h-6" />
+        <BookOpen className="w-4 h-4 text-sky-300" />
       </button>
 
       <datalist id="apartados-base">{listaDeApartados(items).map(a => <option key={a} value={a} />)}</datalist>

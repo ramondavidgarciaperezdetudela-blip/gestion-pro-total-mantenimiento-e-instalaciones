@@ -15,6 +15,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.159.0] — 2026-11-21
+
+### Cambiado
+- **Los botones del Asistente IA y de la Base de precios ya no flotan abajo a la derecha** (tapaban los botones de imprimir y otras opciones). Ahora son dos iconos pequeños en la barra de arriba, junto a «Buscar», y se mueven con la barra. El panel del asistente y la ventana de la base de precios se abren igual que antes (Alt+P sigue funcionando).
+
 ## [1.158.0] — 2026-11-20
 
 ### Cambiado
