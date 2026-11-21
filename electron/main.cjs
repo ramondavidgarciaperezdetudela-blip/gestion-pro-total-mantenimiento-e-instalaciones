@@ -670,13 +670,18 @@ function createWindow() {
     win.loadFile(indexHtml);
   });
 
-  // Abrir enlaces externos en el navegador del sistema, no en la app.
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http')) {
-      shell.openExternal(url);
-      return { action: 'deny' };
-    }
-    return { action: 'allow' };
+  // Los enlaces externos se abren en el navegador del sistema y NUNCA en otra ventana de la aplicación
+  // (un enlace sin «https://» se abría como una segunda ventana de Gestión Pro Total; al cerrarla se cerraba todo).
+  const abrirFuera = (url) => {
+    try {
+      const u = new URL(url);
+      if (/^(https?|mailto|tel):$/.test(u.protocol)) shell.openExternal(u.href);
+    } catch { /* dirección rara: no se abre nada */ }
+  };
+  win.webContents.setWindowOpenHandler(({ url }) => { abrirFuera(url); return { action: 'deny' }; });
+  // Dentro de la ventana solo se navega por los ficheros de la propia aplicación
+  win.webContents.on('will-navigate', (ev, url) => {
+    if (!/^file:/i.test(url)) { ev.preventDefault(); abrirFuera(url); }
   });
 
   if (isDev) win.webContents.openDevTools({ mode: 'detach' });
