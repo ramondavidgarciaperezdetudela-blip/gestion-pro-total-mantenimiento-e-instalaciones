@@ -200,6 +200,13 @@ export async function buscarImagenProducto(datos, d) {
   const previa = cache[k]?.url ? cache[k] : (alfanum(datos.nombre) ? cache[kn] : null);
   if (previa?.url) return { ok: true, url: previa.url, por: previa.por, desdeCache: true };
   if (d.enLinea && !d.enLinea()) return { ok: false, motivo: 'sin_conexion', mensaje: 'Sin conexión: la búsqueda de imágenes necesita internet. Las ya encontradas se siguen viendo.' };
+  // 1.º la propia web del proveedor (su buscador y sus submenús de tarifas): foto y precio actual
+  if (d.webProveedor && datos.web) {
+    try {
+      const w = await d.webProveedor(datos);
+      if (w?.ok) { cache[k] = { url: w.url, por: 'web' }; if (alfanum(datos.nombre)) cache[kn] = { url: w.url, por: 'web' }; guardarCache(cache); return { ...w, por: 'web', dominio: hostDe(datos.web) }; }
+    } catch { /* se sigue con los buscadores de imágenes */ }
+  }
   if (!d.motores?.length) return { ok: false, motivo: 'sin_motor', mensaje: 'Este navegador no puede buscar imágenes por sí solo. Usa la aplicación de escritorio o el móvil, conecta tu servidor propio, o pon tu clave de Google en Ajustes de IA.' };
   let hubo = false;
   for (const q of qs) {
