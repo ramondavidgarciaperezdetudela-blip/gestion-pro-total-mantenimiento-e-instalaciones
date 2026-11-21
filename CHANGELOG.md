@@ -15,6 +15,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.162.1] — 2026-11-21
+
+### Corregido
+- **Código postal de Vila-seca (y municipios parecidos).** Al escribir la ciudad en una ficha, el programa ponía el código más bajo de los que toca el municipio, aunque lo compartiera con otro (Vila-seca salía con el 43206 de Reus). Ahora elige el código propio del municipio: Vila-seca → 43480. Las fichas ya guardadas con el código antiguo hay que corregirlas a mano o volver a escribir la ciudad.
+
 ## [1.162.0] — 2026-11-21
 
 ### Corregido

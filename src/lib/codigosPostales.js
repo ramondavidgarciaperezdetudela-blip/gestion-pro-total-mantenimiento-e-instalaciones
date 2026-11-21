@@ -169,12 +169,16 @@ export async function buscarPorMunicipio(texto, limite = 25) {
   if (q.length < 2) return [];
   const { municipios, porCp } = await cargar();
 
-  // Código postal de cada municipio (el más bajo, que suele ser el del casco).
-  const cpDeMunicipio = new Map();
+  // Código postal de cada municipio: el más bajo de los que son SOLO suyos (el del casco urbano). Si todos
+  // los códigos se comparten con otro municipio, el más bajo de ellos. Así Vila-seca da 43480 y no el 43206,
+  // que comparte con Reus.
+  const cpDeMunicipio = new Map(); const propio = new Set();
   for (const [cp, indices] of porCp) {
     for (const i of indices) {
+      const exclusivo = indices.length === 1;
       const actual = cpDeMunicipio.get(i);
-      if (!actual || cp < actual) cpDeMunicipio.set(i, cp);
+      const mejor = !actual || (exclusivo && !propio.has(i)) || ((exclusivo === propio.has(i)) && cp < actual);
+      if (mejor) { cpDeMunicipio.set(i, cp); if (exclusivo) propio.add(i); }
     }
   }
 
