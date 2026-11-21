@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Trash2, Plus, Download, RefreshCw, Loader2, Link as LinkIcon, FileText, Upload } from 'lucide-react';
 import { uploadFile } from '@/lib/uploadImage';
+import { borrarArchivoLocal } from '@/nube/archivosLocales';
 import { toast } from 'sonner';
 
 const CATALOG_TYPES = [
@@ -17,9 +18,9 @@ const CATALOG_TYPES = [
 { value: 'archivo', label: 'Archivo subido (PDF, Excel, Word…)', icon: Upload }];
 
 const ACEPTADOS = '.pdf,.xls,.xlsx,.xlsm,.csv,.doc,.docx,.odt,.ods,.txt,.rtf,.ppt,.pptx,.zip,.jpg,.jpeg,.png,.webp';
-const MAX_MB = 50;
 // Descarga con el nombre original del archivo (si la dirección es de otro origen, el navegador ignoraría el nombre)
 async function descargarArchivo(ev, c) {
+  if (String(c.url).startsWith('gptblob:')) return; // lo abre el vigilante de archivos locales
   ev.preventDefault();
   try {
     const r = await fetch(c.url); if (!r.ok) throw new Error(String(r.status));
@@ -90,7 +91,9 @@ export default function SupplierCatalogManager({ supplierId, supplierName, suppl
   const handleDelete = async (id) => {
     if (!window.confirm('¿Eliminar este catálogo?')) return;
     try {
+      const antes = catalogs.find((c) => c.id === id);
       await base44.entities.SupplierCatalog.delete(id);
+      if (antes?.url) borrarArchivoLocal(antes.url);
       toast.success('Catálogo eliminado');
     } catch (e) {
       toast.error(`No se pudo eliminar: ${e?.response?.data?.message || e?.message || 'sin permiso'}. Si lo creó otra cuenta, entra con la cuenta administradora.`);
@@ -150,7 +153,6 @@ export default function SupplierCatalogManager({ supplierId, supplierName, suppl
     if (!ficheros.length) return;
     setSubiendo(true); let ok = 0;
     for (const f of ficheros) {
-      if (f.size > MAX_MB * 1048576) { toast.error(`«${f.name}» pesa más de ${MAX_MB} MB y no se sube.`); continue; }
       try {
         const url = await uploadFile(f);
         await base44.entities.SupplierCatalog.create({

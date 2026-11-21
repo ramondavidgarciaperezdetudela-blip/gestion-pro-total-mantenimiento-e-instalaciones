@@ -4,6 +4,7 @@ import { peticion } from './almacenRemoto';
 import { leerError } from './errores';
 import { crearEntidad } from './entidad';
 import { ajustesIA, consultarIA } from '@/lib/proveedorIA';
+import { UMBRAL_GRANDE, guardarArchivoLocal } from './archivosLocales';
 
 const aDataUrl = (archivo) => new Promise((res, rej) => {
   const fr = new FileReader();
@@ -17,7 +18,11 @@ const nombreSeguro = (n) => `${Date.now()}-${Math.random().toString(16).slice(2,
 async function subirArchivo({ file }) {
   const c = leerConfig();
   if (!file) throw new Error('No hay ningún archivo que subir.');
-  if (!c || c.modo === 'local') return { file_url: await aDataUrl(file), url: undefined };
+  if (!c || c.modo === 'local') {
+    // Sin límite de peso: los archivos grandes que no son fotos se guardan aparte (ver archivosLocales.js)
+    if (file.size > UMBRAL_GRANDE && !String(file.type || '').startsWith('image/')) return { file_url: await guardarArchivoLocal(file), url: undefined };
+    return { file_url: await aDataUrl(file), url: undefined };
+  }
   const nombre = nombreSeguro(file.name);
   if (c.modo === 'servidor') {
     const r = await peticion(`${c.url}/api/archivos`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-Nombre': encodeURIComponent(nombre) }, body: file });

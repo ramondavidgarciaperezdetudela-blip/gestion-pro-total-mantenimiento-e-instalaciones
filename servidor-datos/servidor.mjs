@@ -12,6 +12,7 @@ import crypto from 'node:crypto';
 import https from 'node:https';
 import zlib from 'node:zlib';
 import dns from 'node:dns/promises';
+import { pipeline } from 'node:stream/promises';
 import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 
@@ -327,9 +328,11 @@ const servidor = http.createServer(async (req, res) => {
         try { bruto = decodeURIComponent(req.headers['x-nombre'] || 'archivo'); } catch { /* nombre raro */ }
         const nombre = bruto.replace(/[^\w.\-]+/g, '_').replace(/^\.+/, '') || 'archivo';
         if (/\.(html?|xhtml|js|mjs|cjs|php|exe|bat|cmd|com|scr|msi|sh|jar|dll|ps1|vbs)$/i.test(nombre)) return fallo(res, 415, 'Ese tipo de archivo no se puede subir.');
-        const datos = await cuerpo(req);
+        // Sin límite de peso: el archivo va directo a disco según llega (no se guarda entero en memoria)
         const final = `${crypto.randomBytes(16).toString('hex')}-${nombre}`.slice(0, 160);
-        fs.writeFileSync(path.join(DATOS, 'archivos', final), datos);
+        const destino = path.join(DATOS, 'archivos', final);
+        try { await pipeline(req, fs.createWriteStream(destino)); }
+        catch (e) { try { fs.unlinkSync(destino); } catch { /* no llegó a crearse */ } throw Object.assign(new Error(e?.code === 'ENOSPC' ? 'No queda espacio en el disco del servidor.' : 'Se cortó la subida del archivo.'), { codigo: e?.code === 'ENOSPC' ? 507 : 400 }); }
         return json(res, 200, { ruta: `/archivos/${encodeURIComponent(final)}` });
       }
       const m = ruta.match(/^\/api\/datos\/([^/]+)$/);
@@ -355,12 +358,14 @@ const servidor = http.createServer(async (req, res) => {
     return estatico(req, res, WEB, ruta === '/' ? 'index.html' : ruta.slice(1), true);
   } catch (e) {
     console.error('[servidor]', e);
-    return fallo(res, e.codigo || 500, e.codigo === 413 ? e.message : 'Error interno del servidor.');
+    return fallo(res, e.codigo || 500, [413, 400, 507].includes(e.codigo) ? e.message : 'Error interno del servidor.');
   }
 });
 
 // Contra conexiones lentas que dejan el servidor bloqueado
 servidor.headersTimeout = 20000; servidor.requestTimeout = 120000; servidor.keepAliveTimeout = 10000; servidor.maxHeadersCount = 60;
+// Las subidas de archivos grandes (catálogos de cientos de MB) por una conexión lenta pueden tardar mucho: sin tiempo máximo de petición
+servidor.requestTimeout = 0; servidor.timeout = 0;
 servidor.listen(PUERTO, '0.0.0.0', () => {
   console.log(`Gestión Pro Total — servidor en marcha en el puerto ${PUERTO}`);
   console.log(`Datos guardados en: ${DATOS}`);
