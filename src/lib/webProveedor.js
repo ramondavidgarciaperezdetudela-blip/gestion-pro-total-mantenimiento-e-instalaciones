@@ -266,7 +266,10 @@ export async function buscarEnWebProveedor(datos, d) {
       const prods = extraerProductos(html, origen + '/');
       if (!prods.length) continue;
       funciono = true;
-      for (const c of elegir(prods, datos, q.por, 24).slice(0, 3)) {
+      let buenos = elegir(prods, datos, q.por, 24).slice(0, 3);
+      // Buscando por código, la web suele devolver solo ese producto aunque la tarjeta no escriba el código: con 1-2 resultados se acepta el primero
+      if (!buenos.length && q.por === 'codigo' && prods.length <= 2) buenos = [prods[0]];
+      for (const c of buenos) {
         const r = await terminar(c, q.por, 'buscador');
         if (r) { if (!pl.fija) d.aprender?.(host, pl.p); return r; }
       }

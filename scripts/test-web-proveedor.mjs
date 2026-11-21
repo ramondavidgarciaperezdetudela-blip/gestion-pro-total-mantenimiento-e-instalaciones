@@ -48,5 +48,10 @@ assert.equal(r.ok, false);
 // web caída
 r = await buscarEnWebProveedor({ web: 'http://127.0.0.1:1', codigo: 'A1', nombre: 'x' }, dep());
 assert.equal(r.ok, false);
+// buscando por código y la tarjeta no escribe el código: con un solo resultado se acepta
+const uno = http.createServer((q, r) => { const u = new URL(q.url, 'http://x'); r.writeHead(200, { 'Content-Type': 'text/html' }); r.end(u.pathname === '/' ? portada : `<a href="/p/1"><img src="/i/foto.jpg" alt="Pieza genérica"></a> 9,99 €`); });
+await new Promise((ok) => uno.listen(0, '127.0.0.1', ok));
+r = await buscarEnWebProveedor({ web: `http://127.0.0.1:${uno.address().port}`, codigo: 'REF-77', nombre: 'Cosa' }, dep());
+assert.ok(r.ok && r.precio === 9.99, JSON.stringify(r)); uno.close();
 srv.close();
 console.log('web proveedor OK');
