@@ -1241,7 +1241,7 @@ export default function LegalDocs() {
                                />
                              </div>
                            )}
-                <div ref={printRef}>
+                <div ref={printRef} data-documento>
                   <CompanyHeader className="pb-3 border-b mb-4" />
                   {editing ? (
                     <div

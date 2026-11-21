@@ -33,6 +33,9 @@ import {
 import { normalizarCopia, limpiarTexto, motivoCopiaIlegible, rescatarCopiaDanada } from '@/lib/copiaFormato';
 import CopiaDrivePanel from '@/components/CopiaDrivePanel';
 import { leerDrive, driveListo, crearSubidor } from '@/lib/copiaDrive';
+import { escribirArchivos, leerCopiaDeFichero, urlsEnTexto } from '@/lib/archivosCopia';
+import { recogerArchivosParaCopia, restaurarArchivosDeCopia } from '@/lib/archivosCopiaApp';
+import { leerConfig as leerConfigAlmacen } from '@/nube/config';
 
 const ALL_ENTITIES = [
   'Contact', 'Invoice', 'SATOrder', 'MaintenanceSheet', 'StockItem',
@@ -240,6 +243,7 @@ export default function BackupCenter() {
   const restoreRef = useRef(null);
   const [restoreFile, setRestoreFile] = useState(null);
   const [restoreData, setRestoreData] = useState(null);
+  const [restoreArchivos, setRestoreArchivos] = useState([]); // archivos grandes que trae la copia
   const [restoreStatus, setRestoreStatus] = useState('');
   const [restoring, setRestoring] = useState(false);
   const [restoreProgress, setRestoreProgress] = useState('');
@@ -309,7 +313,7 @@ export default function BackupCenter() {
    */
   // Abre el fichero y devuelve cómo ir añadiéndole secciones UNA A UNA (cada una en trozos de ~1 MB), para no tener la copia
   // entera en memoria. Un solo ritmo de escritura aunque varias secciones terminen de leerse a la vez.
-  const abrirEscritorCopia = async ({ fileName, numSecciones, extra = {}, aDrive = false, diario = null }) => {
+  const abrirEscritorCopia = async ({ fileName, numSecciones, extra = {}, aDrive = false, diario = null, conArchivos = false }) => {
     const fichero0 = await abrirCopiaPorPartes({ nombre: fileName, destino: destinoMovil, carpetaPC, diario });
     if (!fichero0.ok) return { ok: false, error: fichero0.error };
     if (fichero0.retomando) {
@@ -325,9 +329,16 @@ export default function BackupCenter() {
     // Si se retoma una copia, lo que ya estaba escrito se sube primero a Drive (leyéndolo del fichero, por trozos).
     if (subidor && fichero0.retomando) { try { await fichero0.leerPrefijo((t) => subidor.anadir(t)); } catch { /* si no se puede, la copia local sigue bien */ } }
     // La subida a Drive va a la vez que se escribe, con freno: si Drive va más lento, se espera (no se acumula en memoria).
-    const fichero = subidor
+    const fichero1 = subidor
       ? { ...fichero0, escribir: async (t) => { await subidor.anadir(t); await fichero0.escribir(t); } }
       : fichero0;
+    // Archivos grandes en la copia: se apuntan las direcciones de archivos del servidor propio que salen en los datos.
+    // Los archivos van SOLO al fichero local (no a Drive): la copia de Drive sigue siendo válida, sin ellos.
+    const baseServidor = (() => { try { const c = leerConfigAlmacen(); return c?.modo === 'servidor' ? c.url : null; } catch { return null; } })();
+    const urlsArchivos = new Set(); let colaTexto = '';
+    const fichero = (conArchivos && baseServidor)
+      ? { ...fichero1, escribir: async (t) => { if (typeof t === 'string') { urlsEnTexto(colaTexto + t, baseServidor, urlsArchivos); colaTexto = t.slice(-300); } await fichero1.escribir(t); } }
+      : fichero1;
 
     const cabecera = {
       exported_at: new Date().toISOString(),
@@ -385,10 +396,18 @@ export default function BackupCenter() {
         try {
           await cola;
           if (roto) throw roto;
+          // Archivos grandes: al final, solo en el fichero local y no si la copia es reanudable (móvil con diario).
+          let archivosInfo = null;
+          if (conArchivos && !diario && !config.sin_archivos) {
+            try {
+              const items = await recogerArchivosParaCopia(urlsArchivos);
+              if (items.length) archivosInfo = await escribirArchivos((t) => fichero0.escribir(t), items, { alProgreso: (m) => { setProgress(m); } });
+            } catch (e) { throw new Error(`ESCRIBIR: ${e?.message || e}`); }
+          }
           await fichero.escribir('\n}\n');
           const guardado = await fichero.cerrar();
           const drive = subidor ? await subidor.cerrar() : null;
-          return guardado.ok ? { ok: true, ...guardado, nombre: fileName, drive } : { ok: false, error: guardado.error };
+          return guardado.ok ? { ok: true, ...guardado, nombre: fileName, drive, archivosInfo } : { ok: false, error: guardado.error };
         } catch (err) {
           await fichero.cancelar();
           return { ok: false, error: err?.message || 'error desconocido' };
@@ -464,7 +483,7 @@ export default function BackupCenter() {
     const fileName = diario ? diario.nombre : nombreCopia(new Date());
     // El fichero se abre ANTES de leer y cada sección se escribe en cuanto se lee y se suelta de la memoria. Antes se leía todo
     // a memoria y luego se escribía: con muchas fotos, Android se quedaba sin memoria, cerraba la aplicación y se perdía la copia.
-    const escritor = await abrirEscritorCopia({ fileName, numSecciones: entitiesToBackup.length, aDrive: true, diario });
+    const escritor = await abrirEscritorCopia({ fileName, numSecciones: entitiesToBackup.length, aDrive: true, diario, conArchivos: true });
     if (!escritor.ok && escritor.perdido) {
       // La copia interrumpida no se puede seguir (el fichero desapareció o se estropeó): se empieza una nueva.
       soltarPantalla(); borrarDiario(); setCopiaInterrumpida(null); setLoading(false);
@@ -566,7 +585,10 @@ export default function BackupCenter() {
     const driveMsg = guardado.drive
       ? (guardado.drive.ok ? ' · subida también a Google Drive' : ` · ⚠️ NO se pudo subir a Google Drive (${guardado.drive.error}); la copia local sí está guardada`)
       : '';
-    setProgress(`✅ Copia completada: ${totalExported.toLocaleString()} registros en ${entitiesToBackup.length} secciones${limpiezaMsg}${driveMsg}`);
+    const ai = guardado.archivosInfo;
+    const archivosMsg = ai?.n ? ` · incluye ${ai.n} archivos grandes (${(ai.bytes / 1048576).toFixed(1)} MB)` : '';
+    const archivosFallo = ai?.fallos?.length ? ` · ⚠️ no se pudieron incluir ${ai.fallos.length} archivos (${ai.fallos.slice(0, 3).map((f) => f.nombre).join(', ')})` : '';
+    setProgress(`✅ Copia completada: ${totalExported.toLocaleString()} registros en ${entitiesToBackup.length} secciones${limpiezaMsg}${archivosMsg}${archivosFallo}${driveMsg}`);
     setLoading(false);
     setTimeout(() => { setProgress(''); setProgressPct(0); }, 4000);
 
@@ -588,17 +610,24 @@ export default function BackupCenter() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── RESTAURAR BACKUP ────────────────────────────────────────────────────
-  const handleRestoreFile = (e) => {
+  const handleRestoreFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => cargarTextoCopia(file.name, ev.target.result);
-    reader.readAsText(file);
+    setRestoreFile(file.name); setRestoreData(null); setRestoreArchivos([]);
+    setRestoreStatus('ok:Leyendo la copia…');
+    try {
+      // Se lee por flujo: valen copias de varios GB y las que llevan archivos grandes dentro.
+      const { texto, archivos } = await leerCopiaDeFichero(file, { alProgreso: (p) => setRestoreStatus(`ok:Leyendo la copia… ${p}%`) });
+      cargarTextoCopia(file.name, texto, archivos);
+    } catch (err) {
+      setRestoreStatus(`err:No se pudo leer el archivo (${err?.message || err}). Si es muy grande, cierra otras pestañas y vuelve a intentarlo.`);
+    }
   };
 
   // Lee el texto de una copia, venga de un fichero o de Google Drive.
-  const cargarTextoCopia = (nombre, textoCrudo) => {
+  const cargarTextoCopia = (nombre, textoCrudo, archivos = []) => {
     setRestoreFile(nombre);
+    setRestoreArchivos(archivos);
     setRestoreData(null);
     setRestoreStatus('');
     setRestoreProgress('');
@@ -624,7 +653,7 @@ export default function BackupCenter() {
         setRestoreSelectedEntities(new Set(available));
         const total = available.reduce((s, e) => s + (parsed[e]?.length || 0), 0);
         const nAjustes = Object.keys(parsed.config_local || {}).length;
-        setRestoreStatus(`ok:Archivo válido · ${available.length} secciones · ${total.toLocaleString()} registros${nAjustes ? ` · ${nAjustes} ajustes del programa` : ''}${aviso}`);
+        setRestoreStatus(`ok:Archivo válido · ${available.length} secciones · ${total.toLocaleString()} registros${nAjustes ? ` · ${nAjustes} ajustes del programa` : ''}${archivos.length ? ` · ${archivos.length} archivos grandes (${(archivos.reduce((t, a) => t + (a.blob?.size || 0), 0) / 1048576).toFixed(1)} MB)` : ''}${aviso}`);
       } catch (err) {
         setRestoreStatus(`err:${err?.message || 'Archivo no válido.'}`);
       }
@@ -671,6 +700,12 @@ export default function BackupCenter() {
     // se navegue a otra pantalla, y cuenta los fallos reales en vez de dar
     // un falso "completado" si algo no se guarda.
     try {
+      // Archivos grandes: primero se dejan en este aparato y se corrigen las fichas para que los encuentren.
+      let archivosMsg = '';
+      if (restoreArchivos.length) {
+        const ra = await restaurarArchivosDeCopia(restoreArchivos, restoreData, (m) => setRestoreProgress(m));
+        archivosMsg = `\n📎 ${ra.hechos} archivos grandes restaurados${ra.fallos.length ? ` · ⚠️ ${ra.fallos.length} no se pudieron restaurar (${ra.fallos.slice(0, 3).map((f) => `${f.nombre}: ${f.motivo}`).join('; ')})` : ''}.`;
+      }
       const { total, failed, sinCambios, avisos, invisibles = [] } = await runRestoreJob(
         restoreData, entitiesToRestore, restoreMode, KEYERS, ENTITY_LABELS,
         (msg, pct) => { setRestoreProgress(msg); if (pct != null) setRestorePct(pct); },
@@ -694,7 +729,7 @@ export default function BackupCenter() {
       }
       const failMsg = `⚠️ ${failed.toLocaleString()} operaciones fallaron al guardar en el servidor (revisa la conexión y vuelve a intentarlo). Consulta la consola para más detalle.`;
       const avisosMsg = (avisos || []).length > 0 ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : '';
-      setRestoreProgress((failed > 0 ? `${okMsg}\n${failMsg}` : okMsg) + cuentaMsg + avisosMsg);
+      setRestoreProgress((failed > 0 ? `${okMsg}\n${failMsg}` : okMsg) + archivosMsg + cuentaMsg + avisosMsg);
       loadCounts();
       // Los apartados del programa guardan lo que leyeron (hasta 1 hora en
       // memoria y una copia sin conexión en el dispositivo). Sin vaciar eso, tras
@@ -1118,7 +1153,7 @@ export default function BackupCenter() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-gray-900">Restaurar desde backup</h2>
-                  <p className="text-sm text-gray-600 mt-0.5">Sube un archivo JSON generado por esta aplicación para recuperar tus datos.</p>
+                  <p className="text-sm text-gray-600 mt-0.5">Sube un archivo de copia (.json) generado por esta aplicación —de cualquier versión, con o sin archivos grandes— para recuperar tus datos.</p>
                 </div>
               </div>
 
@@ -1430,6 +1465,26 @@ export default function BackupCenter() {
                   ))}
                 </div>
                 <p className="text-xs text-gray-400 mt-2">Puedes excluir secciones específicas justo antes de generar el backup.</p>
+              </div>
+
+              <div>
+                <label className="flex items-start gap-3 cursor-pointer rounded-lg border p-3 hover:border-blue-300">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded"
+                    checked={!config.sin_archivos}
+                    onChange={e => setConfig(c => ({ ...c, sin_archivos: !e.target.checked }))}
+                    aria-label="Incluir los archivos grandes en la copia"
+                    data-prueba="copia-con-archivos"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-gray-700">Incluir los archivos grandes en la copia</span>
+                    <span className="block text-xs text-gray-500 mt-0.5">
+                      Catálogos, tarifas, PDF, Excel… sin límite de peso. La copia sigue siendo un solo fichero y
+                      las copias antiguas se siguen pudiendo restaurar. Si tienes muchos GB, quítalo para que la copia sea más rápida.
+                    </span>
+                  </span>
+                </label>
               </div>
 
               <div>

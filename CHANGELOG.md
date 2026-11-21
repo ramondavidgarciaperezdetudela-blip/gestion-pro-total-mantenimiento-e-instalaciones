@@ -15,6 +15,10 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.166.0] — 2026-11-21
+- **Ampliar imágenes de los documentos:** un clic en cualquier imagen dentro de una hoja de documento (vista previa de presupuestos, partes, informes, notas, documentos legales, firmas…) la abre a pantalla completa, con lupa (hasta 8×, doble clic, Ctrl+rueda), desplazamiento y descarga. Solo en pantalla: lo que se imprime o se guarda no cambia.
+- **Copias de seguridad con archivos grandes:** la copia sigue siendo un único fichero .json (las copias antiguas, de cualquier versión, se restauran igual) y ahora puede llevar dentro, sin límite de peso, los catálogos, tarifas y documentos grandes del modo local y del servidor propio. Al restaurar se lee por flujo (valen copias de varios GB) y las fichas se corrigen para que encuentren sus archivos. Hay un interruptor «Incluir los archivos grandes en la copia». La copia que va a Google Drive no lleva los archivos (sigue siendo válida). Las copias reanudables del móvil no llevan archivos.
+
 ## [1.165.0] — 2026-11-21
 
 ### Cambiado

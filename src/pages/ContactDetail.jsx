@@ -687,7 +687,7 @@ Redacta un informe conciso con: resumen del cliente, valoración de la relación
                 rows={20} /> :
 
 
-              <div className="border rounded-lg p-4 bg-white overflow-auto max-h-[50vh]">
+              <div className="border rounded-lg p-4 bg-white overflow-auto max-h-[50vh]" data-documento>
                     <CompanyHeader className="pb-3 border-b mb-4" />
                     <div
                   className="text-xs"
