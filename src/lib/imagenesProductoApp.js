@@ -28,7 +28,7 @@ function puenteWebDisponible() {
 
 const lee = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
 
-function crearPuente() {
+export function crearPuente() {
   if (typeof window !== 'undefined' && window.gptImg?.disponible) {
     return {
       texto: async (u) => { const r = await window.gptImg.texto(u); if (!r?.ok) throw new Error(r?.error || 'Sin respuesta'); return r.texto; },
