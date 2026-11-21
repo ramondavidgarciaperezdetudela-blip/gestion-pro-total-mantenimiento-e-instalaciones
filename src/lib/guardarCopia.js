@@ -237,7 +237,8 @@ export async function abrirCopiaPorPartes({
   return {
     ok: true,
     entorno,
-    escribir: async (t) => { trozos.push(t); },
+    // Los trozos grandes (archivos dentro de la copia) pasan a Blob: el navegador los guarda fuera de la memoria de la página.
+    escribir: async (t) => { trozos.push(typeof t === 'string' && t.length > 65536 ? new Blob([t]) : t); },
     cerrar: async () => {
       try {
         const blob = new Blob(trozos, { type: 'application/json' });

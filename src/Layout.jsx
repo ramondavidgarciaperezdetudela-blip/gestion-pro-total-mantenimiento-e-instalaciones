@@ -15,6 +15,7 @@ import GlobalSearch from './components/GlobalSearch';
 import AIChat from './components/AIChat';
 import QuickPriceDBAccess from './components/QuickPriceDBAccess';
 import BackupProgressIndicator from './components/BackupProgressIndicator';
+import AmpliarImagenes from './components/AmpliarImagenes';
 import DescargasGlobal from './components/DescargasGlobal';
 import BarraNavegacion from './components/BarraNavegacion';
 import AjusteRapidoLetra from './components/AjusteRapidoLetra';
@@ -192,6 +193,7 @@ export default function Layout({ children, currentPageName }) {
     <ProveedorTema empresa={empresaTema}>
       <div className="gpt-app gpt-layout min-h-screen flex" dir="ltr" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <BackupProgressIndicator />
+        <AmpliarImagenes />
         <DescargasGlobal />
         <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
         <style>{`

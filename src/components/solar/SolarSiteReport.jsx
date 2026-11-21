@@ -444,7 +444,7 @@ Usa tablas HTML, formato profesional con <h2>, <h3>, <p>, <table>. En español. 
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-4">
+          <CardContent className="p-4" data-documento>
             <div
               className="text-xs"
               style={{ lineHeight: '1.6' }}

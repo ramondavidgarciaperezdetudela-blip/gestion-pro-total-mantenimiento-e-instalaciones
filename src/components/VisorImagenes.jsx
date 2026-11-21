@@ -32,12 +32,12 @@ export default function VisorImagenes({ fotos = [], inicio = 0, titulo = '', onC
           <p className="text-xs text-white/70">{i + 1} de {n}{pie ? ` · ${pie}` : ''}</p>
         </div>
         <button aria-label="Reducir" className="p-2" onClick={() => setZoom((z) => Math.max(1, z - 0.5))}><ZoomOut className="w-5 h-5" /></button>
-        <button aria-label="Ampliar" className="p-2" onClick={() => setZoom((z) => Math.min(4, z + 0.5))}><ZoomIn className="w-5 h-5" /></button>
+        <button aria-label="Ampliar" className="p-2" onClick={() => setZoom((z) => Math.min(8, z + 0.5))}><ZoomIn className="w-5 h-5" /></button>
         <a aria-label="Descargar" className="p-2" href={url} download target="_blank" rel="noreferrer"><Download className="w-5 h-5" /></a>
         <button aria-label="Cerrar" className="p-2" onClick={onCerrar}><X className="w-6 h-6" /></button>
       </div>
-      <div className="flex-1 overflow-auto flex items-center justify-center relative" onClick={(e) => { if (e.target === e.currentTarget) onCerrar(); }}>
-        <img src={url} alt={pie || titulo} style={{ width: `${zoom * 100}%`, maxWidth: zoom === 1 ? '100%' : 'none', maxHeight: zoom === 1 ? '100%' : 'none', objectFit: 'contain' }} />
+      <div className="flex-1 overflow-auto flex relative" onClick={(e) => { if (e.target === e.currentTarget) onCerrar(); }}>
+        <img src={url} alt={pie || titulo} onDoubleClick={() => setZoom((z) => (z > 1 ? 1 : 3))} onWheel={(e) => { if (e.ctrlKey || e.metaKey) setZoom((z) => Math.min(8, Math.max(1, z + (e.deltaY < 0 ? 0.5 : -0.5)))); }} style={{ width: `${zoom * 100}%`, maxWidth: zoom === 1 ? '100%' : 'none', maxHeight: zoom === 1 ? '100%' : 'none', objectFit: 'contain', margin: 'auto' }} />
         {n > 1 && <>
           <button aria-label="Anterior" className="fixed left-2 top-1/2 -translate-y-1/2 bg-white/20 text-white rounded-full p-2" onClick={() => ir(-1)}><ChevronLeft className="w-6 h-6" /></button>
           <button aria-label="Siguiente" className="fixed right-2 top-1/2 -translate-y-1/2 bg-white/20 text-white rounded-full p-2" onClick={() => ir(1)}><ChevronRight className="w-6 h-6" /></button>
