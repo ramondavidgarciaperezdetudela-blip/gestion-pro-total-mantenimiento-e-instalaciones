@@ -198,7 +198,7 @@ export default function SupplierTariffs() {
   // Las fotos que va encontrando la búsqueda de fondo se pintan aquí según llegan (juntas, cada medio segundo)
   useEffect(() => {
     let cola = []; let t = null;
-    const volcar = () => { t = null; const lote = cola; cola = []; if (!lote.length) return; const mapa = new Map(); for (const { ids, url } of lote) for (const id of ids) mapa.set(id, url); setPrices((prev) => prev.map((p) => (mapa.has(p.id) ? { ...p, image_url: mapa.get(p.id) } : p))); };
+    const volcar = () => { t = null; const lote = cola; cola = []; if (!lote.length) return; const mapa = new Map(); for (const { ids, url, extra } of lote) for (const id of ids) mapa.set(id, { image_url: url, ...(extra?.[id] || {}) }); setPrices((prev) => prev.map((p) => (mapa.has(p.id) ? { ...p, ...mapa.get(p.id) } : p))); };
     const quitar = suscribirFotoNueva((x) => { cola.push(x); if (!t) t = setTimeout(volcar, 500); });
     return () => { quitar(); if (t) clearTimeout(t); };
   }, []);

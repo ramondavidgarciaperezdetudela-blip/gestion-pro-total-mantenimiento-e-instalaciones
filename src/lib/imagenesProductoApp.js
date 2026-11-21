@@ -4,7 +4,7 @@ import { buscarImagenProducto, nombreBase, motoresPorDefecto, reducirImagen, aju
 import { base44 } from '@/api/base44Client';
 import { leerConfig } from '@/nube/config';
 import { peticion } from '@/nube/almacenRemoto';
-import { buscarEnWebProveedor, leerPlantillasPropias, leerAprendidas, guardarAprendida, hostDeWeb } from '@/lib/webProveedor';
+import { buscarEnWebProveedor, fichaProducto, leerPlantillasPropias, leerAprendidas, guardarAprendida, hostDeWeb } from '@/lib/webProveedor';
 import { esAppMovil, ajustesIA, consultarIA } from '@/lib/proveedorIA';
 
 async function textoNativo(url) {
@@ -74,8 +74,8 @@ async function elegirConIA(cands, datos) {
 }
 
 /** Busca la foto de un artículo de tarifa: por código del proveedor y, si no, por nombre. */
-export async function buscarImagenArticulo(item) {
-  const r = await buscarSinBase44(item);
+export async function buscarImagenArticulo(item, { revisar = false } = {}) {
+  const r = await buscarSinBase44(item, revisar);
   // Navegador con la IA de Base44 (que sí busca en internet): como hasta ahora.
   if (!r.ok && r.motivo === 'sin_motor' && ajustesIA().proveedor === 'base44') {
     try {
@@ -90,7 +90,7 @@ export async function buscarImagenArticulo(item) {
   return r;
 }
 
-function buscarSinBase44(item) {
+function buscarSinBase44(item, revisar = false) {
   const puente = crearPuente();
   return buscarImagenProducto(
     {
@@ -100,6 +100,7 @@ function buscarSinBase44(item) {
     },
     {
       webProveedor: puente ? (dt) => buscarEnWebProveedor(dt, {
+        revisar,
         texto: puente.texto,
         descargar: async (url) => { const d = await puente.imagen(url); return (await reducirImagen(d)) || d; },
         plantillaPropia: leerPlantillasPropias(lee('gpt_web_plantillas'))[hostDeWeb(dt.web)],
@@ -115,4 +116,13 @@ function buscarSinBase44(item) {
       }
     }
   );
+}
+
+/** Descarga la candidata elegida por la persona: foto reducida y, si la tarjeta no traía precio, el de su ficha. */
+export async function datosDeCandidata(c) {
+  const puente = crearPuente();
+  let url = c.url; let precio = c.precio || null;
+  if (puente) { const d = await puente.imagen(c.url); url = (await reducirImagen(d)) || d; }
+  if (!precio && c.pagina && puente) { try { precio = fichaProducto(await puente.texto(c.pagina), c.pagina).precio || null; } catch { /* sin precio */ } }
+  return { url, precio, titulo: c.titulo || '' };
 }

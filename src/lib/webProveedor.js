@@ -211,7 +211,7 @@ function elegir(prods, datos, por, minimo) {
 /**
  * Busca el artículo en la web del proveedor.
  * @param datos {codigo,nombre,descripcion,marca,web}
- * @param d {texto(url)->html, descargar(url)->dataUrl, plantillaPropia?, aprendida?, aprender?(host,plantilla), alAvisar?(txt)}
+ * @param d {revisar?:boolean, texto(url)->html, descargar(url)->dataUrl, plantillaPropia?, aprendida?, aprender?(host,plantilla), alAvisar?(txt)}
  * @returns {Promise<{ok:boolean,url?:string,precio?:number,pagina?:string,por?:string,via?:string}>}
  */
 export async function buscarEnWebProveedor(datos, d) {
@@ -240,8 +240,22 @@ export async function buscarEnWebProveedor(datos, d) {
       if (!img) return null;
       // el precio de la tarjeta puede faltar: se mira en la ficha si hay página
       if (!precio && p.pagina) { try { precio = fichaProducto(await leer(p.pagina), p.pagina).precio; } catch { /* sin precio */ } }
-      return { ok: true, url: img, precio: precio || null, pagina: p.pagina || '', por, via };
+      return { ok: true, url: img, precio: precio || null, pagina: p.pagina || '', titulo: p.titulo || '', por, via };
     } catch { return null; }
+  };
+
+  // Con «revisar» (descarga masiva) no se elige solo cuando hay varios resultados plausibles: se devuelven para que lo decida la persona.
+  const resolver = async (prods, q, via, minimo = 24) => {
+    let buenos = elegir(prods, datos, q.por, minimo);
+    let sinPuntos = false;
+    if (!buenos.length && q.por === 'codigo' && via === 'buscador' && prods.length <= 2) { buenos = prods.slice(0, 2).map((p) => ({ ...p, puntos: 0 })); sinPuntos = true; }
+    if (!buenos.length) return null;
+    const claro = buenos.length === 1 || (!sinPuntos && buenos[0].puntos - buenos[1].puntos >= 40);
+    if (d.revisar && !claro) {
+      return { ok: false, motivo: 'varias', candidatas: buenos.slice(0, 5).map((c) => ({ url: c.url, titulo: c.titulo, precio: c.precio || null, pagina: c.pagina || '', puntos: c.puntos })) };
+    }
+    for (const c of buenos.slice(0, 3)) { const r = await terminar(c, q.por, via); if (r) return r; }
+    return null;
   };
 
   // 1) El buscador de la web
@@ -266,13 +280,9 @@ export async function buscarEnWebProveedor(datos, d) {
       const prods = extraerProductos(html, origen + '/');
       if (!prods.length) continue;
       funciono = true;
-      let buenos = elegir(prods, datos, q.por, 24).slice(0, 3);
-      // Buscando por código, la web suele devolver solo ese producto aunque la tarjeta no escriba el código: con 1-2 resultados se acepta el primero
-      if (!buenos.length && q.por === 'codigo' && prods.length <= 2) buenos = [prods[0]];
-      for (const c of buenos) {
-        const r = await terminar(c, q.por, 'buscador');
-        if (r) { if (!pl.fija) d.aprender?.(host, pl.p); return r; }
-      }
+      const r = await resolver(prods, q, 'buscador');
+      if (r && !pl.fija) d.aprender?.(host, pl.p);
+      if (r) return r;
     }
     if (funciono) probadas.add(pl.p);
     if (!pl.fija && funciono) break; // esta plantilla es la buena: no seguir probando otras
@@ -286,9 +296,7 @@ export async function buscarEnWebProveedor(datos, d) {
     for (const cat of cats) {
       let h; try { h = await leer(cat.href); } catch { continue; }
       const prods = extraerProductos(h, cat.href);
-      for (const q of consultas) for (const c of elegir(prods, datos, q.por, 24).slice(0, 2)) {
-        const r = await terminar(c, q.por, 'categoria'); if (r) return r;
-      }
+      for (const q of consultas) { const r = await resolver(prods, q, 'categoria'); if (r) return r; }
     }
   }
   return { ok: false, motivo: 'sin_resultado' };

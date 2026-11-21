@@ -53,5 +53,13 @@ const uno = http.createServer((q, r) => { const u = new URL(q.url, 'http://x'); 
 await new Promise((ok) => uno.listen(0, '127.0.0.1', ok));
 r = await buscarEnWebProveedor({ web: `http://127.0.0.1:${uno.address().port}`, codigo: 'REF-77', nombre: 'Cosa' }, dep());
 assert.ok(r.ok && r.precio === 9.99, JSON.stringify(r)); uno.close();
+// varios resultados plausibles: en la descarga masiva (revisar) se devuelven para elegir; sin revisar se toma el mejor
+const dos = http.createServer((q, r) => { const u = new URL(q.url, 'http://x'); r.writeHead(200, { 'Content-Type': 'text/html' }); r.end(u.pathname === '/' ? portada : `<a href="/p/1"><img src="/i/a.jpg" alt="Válvula de expansión TGE 2"></a> 40,00 €<a href="/p/2"><img src="/i/b.jpg" alt="Válvula de expansión TGE 5"></a> 55,50 €`); });
+await new Promise((ok) => dos.listen(0, '127.0.0.1', ok));
+const wd = `http://127.0.0.1:${dos.address().port}`;
+r = await buscarEnWebProveedor({ web: wd, codigo: '', nombre: 'Válvula de expansión' }, { ...dep(), revisar: true });
+assert.equal(r.motivo, 'varias'); assert.equal(r.candidatas.length, 2); assert.deepEqual(r.candidatas.map((c) => c.precio).sort(), [40, 55.5]);
+r = await buscarEnWebProveedor({ web: wd, codigo: '', nombre: 'Válvula de expansión' }, dep());
+assert.ok(r.ok && r.titulo.startsWith('Válvula'), 'sin revisar elige el mejor y trae el título'); dos.close();
 srv.close();
 console.log('web proveedor OK');
