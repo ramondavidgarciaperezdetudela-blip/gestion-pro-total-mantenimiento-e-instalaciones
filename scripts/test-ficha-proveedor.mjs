@@ -39,4 +39,9 @@ const u = unirDatos({ phone: '1' }, { phone: '2', address: 'C/ A, 1', postal_cod
 assert.deepEqual([u.phone, u.address, u.province], ['1', 'C/ A, 1', 'Tarragona']);
 assert.equal(direccionCompleta({ address: 'C/ A, 1', postal_code: '43001', city: 'Tarragona', province: 'Tarragona' }), 'C/ A, 1, 43001 Tarragona, Tarragona');
 assert.match(enlaceMapa({ address: 'C/ A, 1', city: 'Tarragona' }), /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=C%2F%20A%2C%201%2C%20Tarragona$/); assert.equal(enlaceMapa({}), '');
+// Código postal por municipio: el propio del casco, no el compartido con otro municipio (Vila-seca: 43480, no 43206 de Reus)
+const { buscarPorMunicipio } = await import('../src/lib/codigosPostales.js');
+assert.equal((await buscarPorMunicipio('Vila-seca', 1))[0].postal_code, '43480');
+assert.equal((await buscarPorMunicipio('Reus', 1))[0].postal_code, '43201');
+assert.equal((await buscarPorMunicipio('Salou', 1))[0].postal_code, '43840');
 console.log('ficha-proveedor OK');
