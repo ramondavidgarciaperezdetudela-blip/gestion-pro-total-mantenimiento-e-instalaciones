@@ -378,7 +378,12 @@ export default function SupplierTariffs() {
     setFetchingImage(true);
     try {
       const res = await buscarImagenArticulo(conWeb({ ...editForm, supplier_id: editItem?.supplier_id }));
-      if (res?.ok) { setEditForm(f => ({ ...f, image_url: res.url })); toast.success(res.por === 'web' ? 'Imagen encontrada en la web del proveedor o fabricante' : 'Imagen encontrada'); }
+      if (res?.ok) {
+        setEditForm(f => ({ ...f, image_url: res.url }));
+        const eur = res.precio ? res.precio.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+        toast.success(res.por === 'web' ? `Imagen encontrada en la web del proveedor o fabricante${eur ? ` · precio en la web: ${eur} €` : ''}` : 'Imagen encontrada',
+          res.precio ? { duration: 15000, action: { label: 'Poner como coste', onClick: () => setEditForm(f => ({ ...f, cost_price: precioATexto(res.precio) })) } } : undefined);
+      }
       else toast.info(res?.mensaje || 'No se encontró imagen para este producto');
     } catch (e) { toast.error('No se pudo buscar la imagen: ' + (e.message || e)); }
     setFetchingImage(false);
