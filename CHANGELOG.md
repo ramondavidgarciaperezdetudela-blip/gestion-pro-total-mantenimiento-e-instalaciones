@@ -15,6 +15,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.163.0] — 2026-11-21
+
+### Añadido
+- **Plano de situación en la ficha del cliente.** En la tarjeta «Dirección» sale el mapa del lugar (necesita internet; sin conexión avisa) con tres botones: **Cómo llegar (GPS)**, que abre la ruta más rápida desde donde estés (en el móvil, en la app de mapas), **Waze** y **Abrir mapa**.
+- **Botón «Cómo llegar (GPS)» y Waze en la ficha principal de cada proveedor**, con la dirección del proveedor, para calcular la mejor ruta.
+
 ## [1.162.1] — 2026-11-21
 
 ### Corregido

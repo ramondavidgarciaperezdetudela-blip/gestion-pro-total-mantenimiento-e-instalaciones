@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { urlWeb, hostDe, provinciaDeCp, candidatasLogo, datosContacto, enlacesContacto, unirDatos, enlaceMapa, direccionCompleta } from '../src/lib/fichaProveedor.js';
+import { enlaceRuta, enlaceWaze, urlMapaIncrustado, urlWeb, hostDe, provinciaDeCp, candidatasLogo, datosContacto, enlacesContacto, unirDatos, enlaceMapa, direccionCompleta } from '../src/lib/fichaProveedor.js';
 
 // Enlaces: sin «https://» el enlace abría otra ventana de la propia aplicación
 assert.equal(urlWeb('saltoki.es'), 'https://saltoki.es/');
@@ -44,4 +44,9 @@ const { buscarPorMunicipio } = await import('../src/lib/codigosPostales.js');
 assert.equal((await buscarPorMunicipio('Vila-seca', 1))[0].postal_code, '43480');
 assert.equal((await buscarPorMunicipio('Reus', 1))[0].postal_code, '43201');
 assert.equal((await buscarPorMunicipio('Salou', 1))[0].postal_code, '43840');
+// GPS y plano
+const lugar = { address: 'C/ Mayor, 24', postal_code: '43480', city: 'Vila-seca', province: 'Tarragona' };
+assert.equal(enlaceRuta(lugar), 'https://www.google.com/maps/dir/?api=1&destination=C%2F%20Mayor%2C%2024%2C%2043480%2C%20Vila-seca%2C%20Tarragona&travelmode=driving');
+assert.match(enlaceWaze(lugar), /^https:\/\/waze\.com\/ul\?q=.*Vila-seca.*&navigate=yes$/);
+assert.match(urlMapaIncrustado(lugar), /output=embed/); assert.equal(enlaceRuta({}), ''); assert.equal(urlMapaIncrustado({}), '');
 console.log('ficha-proveedor OK');

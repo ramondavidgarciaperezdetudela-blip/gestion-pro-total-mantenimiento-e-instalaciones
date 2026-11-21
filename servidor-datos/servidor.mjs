@@ -123,7 +123,7 @@ const CSP_APP = [
   "default-src 'self'", "script-src 'self' 'unsafe-inline' blob:", "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:", "media-src 'self' data: blob:", "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:*",
-  "frame-src 'self' blob: data:", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'",
+  "frame-src 'self' blob: data: https://www.google.com https://maps.google.com", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'",
 ].join('; ');
 // Archivos subidos: nunca se ejecutan (un .html o .svg subido no puede leer la sesión de la aplicación).
 const CSP_ARCHIVO = "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox";

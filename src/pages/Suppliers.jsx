@@ -19,9 +19,9 @@ import SupplierCatalogManager from '../components/SupplierCatalogManager';
 import SupplierPriceManager from '../components/SupplierPriceManager';
 import CityAutocomplete from '../components/CityAutocomplete';
 import { uploadImage } from '@/lib/uploadImage';
-import { urlWeb, enlaceMapa, direccionCompleta } from '@/lib/fichaProveedor';
+import { urlWeb, enlaceMapa, direccionCompleta, enlaceRuta, enlaceWaze } from '@/lib/fichaProveedor';
 import { completarDesdeWeb } from '@/lib/fichaProveedorApp';
-import { MapPin } from 'lucide-react';
+import { MapPin, Navigation } from 'lucide-react';
 
 // Web guardada sin «https://» (p. ej. «saltoki.es»): se normaliza al guardar y al abrir
 const limpiaWeb = (t) => { const u = urlWeb(t); return u ? u.replace(/^(https?:\/\/[^/]+)\/$/, '$1') : String(t || '').trim(); };
@@ -337,6 +337,11 @@ export default function Suppliers() {
               <a href={enlaceMapa(s)} target="_blank" rel="noopener noreferrer" className="flex items-start gap-1 text-xs text-slate-700 hover:text-blue-700 mb-1" title="Ver en el mapa" data-prueba="proveedor-direccion">
                 <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" /><span>{direccionCompleta(s)}</span>
               </a>}
+              {enlaceRuta(s) &&
+              <div className="flex flex-wrap gap-2 mb-1.5">
+                <a href={enlaceRuta(s)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-md bg-orange-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-orange-700" title="Abre el GPS con la dirección del proveedor y calcula la ruta más rápida desde donde estés" data-prueba="proveedor-como-llegar"><Navigation className="w-3.5 h-3.5" />Cómo llegar (GPS)</a>
+                <a href={enlaceWaze(s)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs hover:bg-slate-50" data-prueba="proveedor-waze">Waze</a>
+              </div>}
               {(s.legal_name || s.tax_id || s.opening_hours || s.payment_terms || s.delivery_time || s.min_order || s.discount) &&
               <p className="text-[11px] text-gray-500 mb-1.5" data-prueba="proveedor-mas-datos">
                 {[s.legal_name, s.tax_id && `CIF ${s.tax_id}`, s.opening_hours && `Horario: ${s.opening_hours}`, s.payment_terms && `Pago: ${s.payment_terms}`, s.delivery_time && `Entrega: ${s.delivery_time}`, s.min_order && `Pedido mínimo: ${s.min_order}`, s.discount && `Dto.: ${s.discount}`].filter(Boolean).join(' · ')}

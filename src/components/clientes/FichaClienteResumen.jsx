@@ -1,5 +1,6 @@
 import React from 'react';
-import { Building2, Phone, Mail, MapPin, Wallet, FileSignature, Navigation } from 'lucide-react';
+import { Building2, Phone, Mail, MapPin, Wallet, FileSignature } from 'lucide-react';
+import PlanoSituacion from '@/components/PlanoSituacion';
 import ZonaClimatica from '@/components/clientes/ZonaClimatica';
 import { FORMAS_PAGO, PERIODOS_CONTRATO, RELACIONES, CATEGORIAS, formatearIban, nombreDeCliente, tipoDeCliente } from '@/lib/cliente';
 
@@ -40,9 +41,7 @@ export default function FichaClienteResumen({ contacto: c, onGPS }) {
           <div className="col-span-2"><Dato etiqueta="Dirección">{direccion}</Dato></div>
           <Dato etiqueta="Altitud">{c.altitude_m !== undefined && c.altitude_m !== null && c.altitude_m !== '' ? `${c.altitude_m} m` : ''}</Dato>
           <Dato etiqueta="País">{c.country}</Dato>
-          {c.address && onGPS && (
-            <button type="button" onClick={onGPS} className="col-span-2 inline-flex items-center gap-2 text-left text-sm text-orange-600"><Navigation className="h-4 w-4" />Cómo llegar</button>
-          )}
+          <PlanoSituacion lugar={c} />
         </Tarjeta>
         <Tarjeta icono={Wallet} titulo="Facturación">
           <Dato etiqueta="Forma de pago">{etiqueta(FORMAS_PAGO, c.payment_method)}</Dato>
