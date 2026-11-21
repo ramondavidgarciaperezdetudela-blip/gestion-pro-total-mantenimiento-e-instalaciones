@@ -58,3 +58,20 @@ if (typeof document !== 'undefined' && !globalThis.__gptBlobClics) {
     descargarArchivoLocal(a.getAttribute('href'), a.getAttribute('download') || a.textContent?.trim()).catch((e) => alert(e.message || 'No se pudo abrir el archivo.'));
   }, true);
 }
+
+/** Todos los archivos grandes guardados en este aparato: [{ id: 'gptblob:…', blob }]. Para la copia de seguridad. */
+export async function listarArchivosLocales() {
+  let db; try { db = await abrir(); } catch { return []; }
+  const claves = await pedir(db.transaction(TABLA, 'readonly').objectStore(TABLA).getAllKeys());
+  return claves.map((k) => ({ id: `gptblob:${k}`, leer: () => leerArchivoLocal(`gptblob:${k}`) }));
+}
+/** Guarda un archivo con el mismo identificador que tenía (al restaurar una copia, para que las fichas lo sigan encontrando). */
+export async function guardarArchivoLocalConId(blob, url) {
+  const db = await abrir();
+  await new Promise((res, rej) => {
+    const tx = db.transaction(TABLA, 'readwrite');
+    tx.objectStore(TABLA).put(blob, String(url).slice(8));
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error('No hay espacio para guardar el archivo en este aparato.'));
+  });
+  return url;
+}

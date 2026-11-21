@@ -1,7 +1,8 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, Printer, Download, Pencil } from 'lucide-react';
 import { printDocument } from '@/lib/printHelper';
+import { activarEnMarco } from '@/components/AmpliarImagenes';
 
 /**
  * Ver un documento ANTES de imprimirlo o de mandárselo al cliente.
@@ -31,6 +32,7 @@ import { printDocument } from '@/lib/printHelper';
  */
 export default function VistaPreviaDocumento({ titulo, html, nombreFichero, onVolver, onEditar }) {
   const marco = useRef(null);
+  const quitarAmpliar = useRef(null);
 
   /**
    * Encajar el folio en la pantalla del móvil.
@@ -48,6 +50,10 @@ export default function VistaPreviaDocumento({ titulo, html, nombreFichero, onVo
     const folio = Math.max(cuerpo.scrollWidth, 880);
     cuerpo.style.zoom = disponible < folio ? String((disponible / folio).toFixed(3)) : '';
   }, []);
+
+  // Las imágenes del documento se pueden ampliar con un clic (solo en pantalla: el HTML que se imprime o se guarda no cambia)
+  const alCargar = useCallback(() => { encajar(); quitarAmpliar.current?.(); quitarAmpliar.current = activarEnMarco(marco.current); }, [encajar]);
+  useEffect(() => () => quitarAmpliar.current?.(), []);
 
   /**
    * Imprimir de verdad, también en el móvil.
@@ -135,7 +141,7 @@ export default function VistaPreviaDocumento({ titulo, html, nombreFichero, onVo
         srcDoc={html}
         className="min-h-0 flex-1 w-full bg-white"
         data-prueba="vista-previa-marco"
-        onLoad={encajar}
+        onLoad={alCargar}
       />
     </div>
   ), document.body);

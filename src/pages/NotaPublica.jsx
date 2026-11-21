@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { parametrosDeUrl } from '@/lib/parametrosUrl';
 import { textoAHtml, fechaLarga } from '@/lib/notasInformativas';
+import AmpliarImagenes from '@/components/AmpliarImagenes';
 import FirmaClienteBoton from '@/components/FirmaClienteBoton';
 import BotonImprimirCliente from '@/components/BotonImprimirCliente';
 
@@ -44,12 +45,13 @@ export default function NotaPublica() {
   const firmada = envio.status === 'firmada';
   return (
     <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
+      <AmpliarImagenes />
       <div className="mx-auto max-w-2xl space-y-4">
         <div className="sombra-al-imprimir rounded-2xl border bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{company?.company_name} · Nota informativa</p>
           <h1 className="mt-1 text-xl font-bold text-slate-900">{envio.nota_title}</h1>
           <p className="mb-4 text-xs text-slate-500">Para: {envio.contact_name}</p>
-          <div className="text-sm text-slate-800" dangerouslySetInnerHTML={{ __html: textoAHtml(envio.nota_body) }} />
+          <div className="text-sm text-slate-800" data-documento dangerouslySetInnerHTML={{ __html: textoAHtml(envio.nota_body) }} />
         </div>
         {firmada ? (
           <div className="rounded-2xl border border-green-200 bg-green-50 p-5 text-center" data-testid="nota-firmada">
