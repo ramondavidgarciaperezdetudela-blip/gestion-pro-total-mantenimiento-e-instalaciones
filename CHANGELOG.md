@@ -15,6 +15,9 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.167.0] — 2026-11-23
+- **Restaurar copias grandes sin quedarse sin memoria (tablets y móviles).** Las copias de más de 30 MB ya no se cargan enteras: se apunta dónde está cada sección y se lee, se restaura y se suelta una a una (y los archivos grandes de la copia, uno a uno). La memoria que gasta es la de la sección más grande, no la de toda la copia. Si la copia no tiene la forma esperada, se lee como siempre. Las copias pequeñas y antiguas siguen el camino de siempre.
+
 ## [1.166.1] — 2026-11-23
 - **Tablet: restaurar copias sin que se cierre el programa.** Las copias normales se vuelven a leer de una vez, como antes de la 1.166.0 (era la lectura por trozos lo que gastaba de más en la tablet). Solo las copias muy grandes (más de 120 MB) se leen por flujo. Los archivos grandes de la copia se dejan en el aparato según se leen, en vez de juntarlos todos en memoria, y se libera la memoria de la lectura antes de analizar los datos.
 

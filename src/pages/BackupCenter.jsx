@@ -33,8 +33,8 @@ import {
 import { normalizarCopia, limpiarTexto, motivoCopiaIlegible, rescatarCopiaDanada } from '@/lib/copiaFormato';
 import CopiaDrivePanel from '@/components/CopiaDrivePanel';
 import { leerDrive, driveListo, crearSubidor } from '@/lib/copiaDrive';
-import { escribirArchivos, leerCopiaDeFichero, urlsEnTexto } from '@/lib/archivosCopia';
-import { recogerArchivosParaCopia, restaurarArchivosDeCopia } from '@/lib/archivosCopiaApp';
+import { escribirArchivos, leerCopiaDeFichero, urlsEnTexto, copiaPideSecciones, indexarCopia, leerSeccion, leerArchivosDesde, remapearUrls } from '@/lib/archivosCopia';
+import { recogerArchivosParaCopia, restaurarArchivosDeCopia, crearRestauradorArchivos } from '@/lib/archivosCopiaApp';
 import { leerConfig as leerConfigAlmacen } from '@/nube/config';
 import { esArchivoLocal, guardarArchivoLocalConId } from '@/nube/archivosLocales';
 
@@ -245,6 +245,7 @@ export default function BackupCenter() {
   const [restoreFile, setRestoreFile] = useState(null);
   const [restoreData, setRestoreData] = useState(null);
   const [restoreArchivos, setRestoreArchivos] = useState([]); // archivos grandes que trae la copia
+  const restorePorSecciones = useRef(null); // copia grande: { file, indice, nombres } — se lee sección a sección
   const [restoreStatus, setRestoreStatus] = useState('');
   const [restoring, setRestoring] = useState(false);
   const [restoreProgress, setRestoreProgress] = useState('');
@@ -614,8 +615,34 @@ export default function BackupCenter() {
   const handleRestoreFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setRestoreFile(file.name); setRestoreData(null); setRestoreArchivos([]);
+    setRestoreFile(file.name); setRestoreData(null); setRestoreArchivos([]); restorePorSecciones.current = null;
     setRestoreStatus('ok:Leyendo la copia…');
+    // Copia GRANDE: no se carga entera. Se apunta dónde está cada sección y luego se lee, se restaura y se suelta una a una,
+    // para que una tablet con poca memoria no se quede sin ella. Si la copia no tiene la forma esperada, se lee como siempre.
+    if (copiaPideSecciones(file)) {
+      try {
+        const indice = await indexarCopia(file, { alProgreso: (p) => setRestoreStatus(`ok:Leyendo la copia… ${p}%`) });
+        const extraño = indice && Object.values(indice.cabecera).some((v) => v && typeof v === 'object' && !Array.isArray(v) && (['data', 'datos', 'entities', 'entidades', 'tablas', 'backup'].some((w) => w in indice.cabecera && indice.cabecera[w] === v) || Array.isArray(v.items || v.records || v.registros)));
+        const minus = new Map(ALL_ENTITIES.map((c) => [c.toLowerCase(), c]));
+        const nombres = {}; let choque = false;
+        if (indice) for (const k of Object.keys(indice.secciones)) { const e = minus.get(k.toLowerCase()) || k; if (nombres[e]) choque = true; nombres[e] = k; }
+        if (indice && !extraño && !choque && Object.keys(indice.secciones).length) {
+          const parsed = { ...indice.cabecera };
+          for (const [e, k] of Object.entries(nombres)) parsed[e] = new Array(indice.secciones[k].n); // solo la cuenta; los datos se leen luego
+          restorePorSecciones.current = { file, indice, nombres };
+          setRestoreData(parsed);
+          const available = seccionesDeCopia(parsed);
+          if (!available.length) throw new Error('El archivo se lee bien pero no trae ninguna sección con datos que este programa conozca.');
+          setRestoreSelectedEntities(new Set(available));
+          const total = available.reduce((t, e) => t + (parsed[e]?.length || 0), 0);
+          const nAjustes = Object.keys(parsed.config_local || {}).length;
+          setRestoreStatus(`ok:Archivo válido · ${available.length} secciones · ${total.toLocaleString()} registros${nAjustes ? ` · ${nAjustes} ajustes del programa` : ''}${indice.archivosIni != null ? ' · lleva archivos grandes' : ''} · se restaurará sección a sección (copia grande)`);
+          return;
+        }
+      } catch (err) {
+        console.warn('[BackupCenter] lectura por secciones no posible, se lee entera:', err);
+      }
+    }
     try {
       // Se lee por flujo: valen copias de varios GB y las que llevan archivos grandes dentro.
       // En modo local (tablet/ordenador sin servidor) cada archivo grande se deja ya en el almacén del aparato al leerlo,
@@ -633,6 +660,7 @@ export default function BackupCenter() {
 
   // Lee el texto de una copia, venga de un fichero o de Google Drive.
   const cargarTextoCopia = (nombre, textoCrudo, archivos = []) => {
+    restorePorSecciones.current = null;
     setRestoreFile(nombre);
     setRestoreArchivos(archivos);
     setRestoreData(null);
@@ -709,13 +737,30 @@ export default function BackupCenter() {
     try {
       // Archivos grandes: primero se dejan en este aparato y se corrigen las fichas para que los encuentren.
       let archivosMsg = '';
+      const porSec = restorePorSecciones.current;
+      let mapaArchivos = {};
+      if (porSec?.indice?.archivosIni != null) {
+        // Copia grande: los archivos se leen del fichero uno a uno y cada uno va directo a su sitio.
+        const rest = crearRestauradorArchivos((m) => setRestoreProgress(m));
+        await leerArchivosDesde(porSec.file, porSec.indice.archivosIni, (a) => rest.restaurar(a), { alProgreso: (p) => setRestorePct(Math.min(30, Math.round(p * 0.3))) });
+        mapaArchivos = rest.mapa;
+        archivosMsg = `\n📎 ${rest.hechos} archivos grandes restaurados${rest.fallos.length ? ` · ⚠️ ${rest.fallos.length} no se pudieron restaurar (${rest.fallos.slice(0, 3).map((f) => `${f.nombre}: ${f.motivo}`).join('; ')})` : ''}.`;
+      }
       if (restoreArchivos.length) {
         const ra = await restaurarArchivosDeCopia(restoreArchivos, restoreData, (m) => setRestoreProgress(m));
         archivosMsg = `\n📎 ${ra.hechos} archivos grandes restaurados${ra.fallos.length ? ` · ⚠️ ${ra.fallos.length} no se pudieron restaurar (${ra.fallos.slice(0, 3).map((f) => `${f.nombre}: ${f.motivo}`).join('; ')})` : ''}.`;
       }
       const { total, failed, sinCambios, avisos, invisibles = [] } = await runRestoreJob(
-        restoreData, entitiesToRestore, restoreMode, KEYERS, ENTITY_LABELS,
+        porSec ? { ...Object.fromEntries(Object.entries(restoreData).filter(([, v]) => !Array.isArray(v))) } : restoreData,
+        entitiesToRestore, restoreMode, KEYERS, ENTITY_LABELS,
         (msg, pct) => { setRestoreProgress(msg); if (pct != null) setRestorePct(pct); },
+        porSec ? {
+          cargarSeccion: async (ent) => {
+            const rows = (await leerSeccion(porSec.file, porSec.indice.secciones[porSec.nombres[ent]], porSec.nombres[ent])).filter((r) => r && typeof r === 'object');
+            if (Object.keys(mapaArchivos).length) remapearUrls({ [ent]: rows }, mapaArchivos);
+            return rows;
+          }
+        } : {},
       );
       setRestorePct(100);
 

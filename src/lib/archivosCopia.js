@@ -170,3 +170,106 @@ export function remapearUrls(datos, mapa) {
   }
   return tocados;
 }
+
+// ── Lectura de copias GRANDES por secciones (para tablets y móviles con poca memoria) ──────────────────────────────────────
+// Una copia es un texto con las secciones separadas por «,\n"Nombre":[». Ese salto de línea real solo aparece entre secciones
+// (JSON.stringify escribe los saltos dentro de los textos como «\n»), así que se puede saber dónde empieza cada sección sin
+// leerla entera. Después se lee, se analiza y se suelta UNA sección cada vez, en vez de tener toda la copia en memoria.
+const UMBRAL_SECCIONES = 30 * 1024 * 1024;
+export const copiaPideSecciones = (file) => !!file && file.size > UMBRAL_SECCIONES && typeof file.slice === 'function' && typeof file.stream === 'function';
+
+/**
+ * Recorre la copia por bytes y apunta dónde empieza y acaba cada sección. Cada sección se analiza y se descarta para saber
+ * cuántos registros trae y que está entera. Devuelve null si la copia no tiene la forma esperada (entonces se lee como siempre).
+ */
+export async function indexarCopia(file, { alProgreso } = {}) {
+  const puntos = []; // posición de la «,» que va delante de «\n"»
+  const reader = file.stream().getReader();
+  let pos = 0; let b = -1; // último byte del trozo anterior
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    for (let i = value.indexOf(10); i >= 0; i = value.indexOf(10, i + 1)) {
+      const antes = i > 0 ? value[i - 1] : b;
+      const despues = i + 1 < value.length ? value[i + 1] : null;
+      if (antes === 44 && (despues === 34 || despues === null)) puntos.push(pos + i - 1);
+    }
+    if (value.length) b = value[value.length - 1];
+    pos += value.length;
+    alProgreso?.(Math.min(40, Math.round((pos / file.size) * 40)));
+  }
+  if (!puntos.length) return null;
+  // Se descarta algún punto que no sea de verdad el inicio de una sección (el byte siguiente al salto debe ser una comilla)
+  const limites = [...puntos, file.size];
+  const texto = async (ini, fin) => (await file.slice(ini, fin).text());
+  let cabecera = {}; const secciones = {}; let archivosIni = null;
+  try {
+    const cab = (await texto(0, puntos[0])).replace(/^\ufeff/, '');
+    cabecera = JSON.parse(`${cab}}`);
+  } catch { return null; }
+  for (let k = 0; k < puntos.length; k++) {
+    const ini = puntos[k] + 2; const fin = limites[k + 1];
+    const cabeza = await texto(ini, Math.min(fin, ini + 80));
+    const m = cabeza.match(/^"([^"\\]*)"\s*:/);
+    if (!m) return null;
+    const nombre = m[1];
+    if (nombre === '__archivos_grandes') { archivosIni = puntos[k]; break; }
+    let fragmento = (await texto(ini, fin)).replace(/[\s,]+$/, '');
+    if (k === puntos.length - 1) fragmento = fragmento.replace(/\s*\}\s*$/, '');
+    let valor;
+    try { valor = JSON.parse(`{${fragmento}}`)[nombre]; } catch { return null; }
+    if (Array.isArray(valor)) secciones[nombre] = { ini, fin, n: valor.length };
+    else cabecera[nombre] = valor; // dato suelto de la cabecera (versión, fecha, ajustes…)
+    alProgreso?.(40 + Math.round(((k + 1) / puntos.length) * 60));
+  }
+  return { cabecera, secciones, archivosIni };
+}
+
+/** Lee y analiza UNA sección de la copia. */
+export async function leerSeccion(file, sec, nombre) {
+  let fragmento = (await file.slice(sec.ini, sec.fin).text()).replace(/[\s,]+$/, '');
+  fragmento = fragmento.replace(/\s*\}\s*$/, '');
+  const v = JSON.parse(`{${fragmento}}`)[nombre];
+  return Array.isArray(v) ? v : [];
+}
+
+/** Lee los archivos grandes de la copia desde el punto donde empiezan, entregando cada uno a `alArchivo` y soltándolo. */
+export async function leerArchivosDesde(file, archivosIni, alArchivo, { alProgreso } = {}) {
+  const trozo = file.slice(archivosIni);
+  const metas = [];
+  const dec = new TextDecoder('utf-8'); const reader = trozo.stream().getReader();
+  let linea = ''; let actual = null; let leido = 0; let marcaVista = false;
+  const cierra = async () => {
+    if (!actual) return;
+    const meta = { id: actual.id, nombre: actual.nombre, tipo: actual.tipo, bytes: actual.bytes, origen: actual.origen };
+    const blob = new Blob(actual.partes, { type: actual.tipo || 'application/octet-stream' }); actual = null;
+    const r = await alArchivo({ ...meta, blob }); metas.push({ ...meta, ...(r || {}) });
+  };
+  const lin = async (l) => {
+    if (!l) return;
+    if (l.startsWith('""]}')) { await cierra(); return; }
+    if (l.startsWith('"') && actual) {
+      const b64 = l.endsWith('",') ? l.slice(1, -2) : l.slice(1, -1); if (!b64) return;
+      actual.partes.push(deBase64(b64));
+      if (actual.partes.length >= 8) actual.partes = [new Blob(actual.partes)];
+      return;
+    }
+    const t = l.startsWith(',{') ? l.slice(1) : l;
+    if (t.startsWith('{"id"') && t.includes(',"partes":[')) {
+      await cierra();
+      try { actual = { ...JSON.parse(t.slice(0, t.lastIndexOf(',"partes":[')) + '}'), partes: [] }; } catch { actual = null; }
+    }
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    linea += done ? dec.decode() : dec.decode(value, { stream: true });
+    if (value) leido += value.length;
+    if (!marcaVista) { const i = linea.indexOf(MARCA); if (i >= 0) { linea = linea.slice(i + MARCA.length); marcaVista = true; } else if (!done) { linea = linea.slice(-MARCA.length); continue; } }
+    let k; while ((k = linea.indexOf('\n')) >= 0) { await lin(linea.slice(0, k)); linea = linea.slice(k + 1); }
+    alProgreso?.(trozo.size ? Math.min(100, Math.round((leido / trozo.size) * 100)) : 100);
+    if (done) break;
+  }
+  if (linea.trim() && linea.trim() !== ']') await lin(linea.trim());
+  await cierra();
+  return metas;
+}
