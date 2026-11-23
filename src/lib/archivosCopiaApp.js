@@ -45,6 +45,7 @@ export async function restaurarArchivosDeCopia(archivos, datos, avisar) {
   const c = modo();
   for (const [i, a] of archivos.entries()) {
     avisar?.(`Restaurando archivo ${i + 1}/${archivos.length}: ${a.nombre}`);
+    if (a.guardado) { hechos++; continue; } // ya quedó en el aparato al leer la copia
     try {
       const archivo = new File([a.blob], a.nombre || 'archivo', { type: a.tipo || a.blob.type || 'application/octet-stream' });
       if (a.origen === 'local' && esArchivoLocal(a.id) && (!c || c.modo === 'local')) { await guardarArchivoLocalConId(archivo, a.id); hechos++; continue; }
