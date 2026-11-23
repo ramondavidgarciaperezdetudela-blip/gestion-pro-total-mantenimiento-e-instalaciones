@@ -15,6 +15,9 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 
 ---
 
+## [1.168.0] — 2026-11-23
+- **PDF e Imprimir en la barra de arriba.** Los dos botones que flotaban abajo a la derecha de cada pantalla (y tapaban cosas) ahora están en la barra superior, junto a Buscar. Hacen lo mismo que antes (guardar la pantalla como PDF / imprimirla, también con Ctrl+P). En pantallas estrechas se ven solo los iconos. «Tareas y avisos» sigue llevando los suyos en su propia ventana.
+
 ## [1.167.0] — 2026-11-23
 - **Restaurar copias grandes sin quedarse sin memoria (tablets y móviles).** Las copias de más de 30 MB ya no se cargan enteras: se apunta dónde está cada sección y se lee, se restaura y se suelta una a una (y los archivos grandes de la copia, uno a uno). La memoria que gasta es la de la sección más grande, no la de toda la copia. Si la copia no tiene la forma esperada, se lee como siempre. Las copias pequeñas y antiguas siguen el camino de siempre.
 

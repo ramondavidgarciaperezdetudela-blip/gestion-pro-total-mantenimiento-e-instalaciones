@@ -7,6 +7,6 @@ const main = leer('electron/main.cjs'), pre = leer('electron/preload.cjs'), ph =
 ok(/ipcMain\.handle\('gpt-guardar-pdf'/.test(main) && /printToPDF/.test(main), 'escritorio guarda PDF');
 ok(/guardarPdf:.*gpt-guardar-pdf/.test(pre), 'preload expone guardarPdf');
 ok(/export async function exportarPdf/.test(ph) && /export function pantallaAPdf/.test(ph), 'printHelper exporta PDF');
-ok(/BotonesImprimirPantalla/.test(lay) && /contenidoRef/.test(lay), 'Layout muestra los botones en todas las pantallas');
+ok(/BotonesImprimirPantalla enBarra/.test(lay) && /contenidoRef/.test(lay), 'Layout muestra los botones en la barra superior de todas las pantallas');
 ok(leer('src/components/BotonesImprimirPantalla.jsx').includes("'p'"), 'Ctrl+P recogido');
 process.exit(fallos ? 1 : 0);
