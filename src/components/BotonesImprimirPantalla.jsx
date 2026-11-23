@@ -9,7 +9,7 @@ import { imprimirPantalla, pantallaAPdf } from '@/lib/printHelper';
  */
 const PAGINAS_SIN_BOTONES = new Set(['Home', 'CADCraft', 'Login', 'License', 'Licencia']);
 
-export default function BotonesImprimirPantalla({ nodoRef, titulo, pagina, enLinea = false, sinTeclado = false }) {
+export default function BotonesImprimirPantalla({ nodoRef, titulo, pagina, enLinea = false, enBarra = false, sinTeclado = false }) {
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState('');
 
@@ -48,6 +48,21 @@ export default function BotonesImprimirPantalla({ nodoRef, titulo, pagina, enLin
   }, [hacer, sinTeclado]);
 
   if (PAGINAS_SIN_BOTONES.has(pagina) && !enLinea) return null;
+
+  // En la barra superior de la aplicación: junto a Buscar, con el mismo aspecto que los demás botones de la barra.
+  if (enBarra) {
+    return (
+      <span data-no-imprimir className="inline-flex items-center gap-1.5 print:hidden" data-prueba="barra-pdf-imprimir">
+        {aviso && <span className="hidden md:inline max-w-[11rem] truncate text-[11px] opacity-80" title={aviso}>{aviso}</span>}
+        <button type="button" className="gpt-boton gpt-boton--oscuro" style={{ minHeight: 40 }} disabled={ocupado} onClick={() => hacer('pdf')} title="Guardar esta pantalla como PDF" aria-label="Guardar esta pantalla como PDF" data-prueba="barra-pdf">
+          <FileDown className="w-4 h-4" /><span className="hidden xl:inline">PDF</span>
+        </button>
+        <button type="button" className="gpt-boton gpt-boton--oscuro" style={{ minHeight: 40 }} disabled={ocupado} onClick={() => hacer('imprimir')} title="Imprimir esta pantalla (Ctrl+P)" aria-label="Imprimir esta pantalla" data-prueba="barra-imprimir">
+          <Printer className="w-4 h-4" /><span className="hidden xl:inline">Imprimir</span>
+        </button>
+      </span>
+    );
+  }
 
   // En línea: los dos botones van dentro de la barra de título de la pantalla (no flotan sobre la lista).
   if (enLinea) {

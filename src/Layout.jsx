@@ -148,7 +148,7 @@ export default function Layout({ children, currentPageName }) {
   const sitio = ubicarPagina(currentPageName, location.search);
   const areaActual = sitio?.area;
   const titulo = sitio?.apartado?.texto || currentPageName;
-  // «Tareas y avisos» lleva PDF e Imprimir en su propia barra de título; los flotantes taparían la lista.
+  // «Tareas y avisos» lleva PDF e Imprimir en su propia barra de título; los de la barra de arriba no se ponen ahí.
   const sinFlotantes = currentPageName === 'PanelesNegocio' && new URLSearchParams(location.search).get('panel') === 'tareas';
   const fondoTipo = FONDO_POR_PAGINA[currentPageName];
   const empresaTema = React.useMemo(() => empresaParaTema(company), [company]);
@@ -172,6 +172,8 @@ export default function Layout({ children, currentPageName }) {
 
   const acciones = (
     <>
+      {/* PDF e Imprimir de la pantalla: en la barra de arriba (antes flotaban abajo a la derecha). «Tareas y avisos» lleva los suyos dentro. */}
+      <BotonesImprimirPantalla enBarra nodoRef={contenidoRef} pagina={sinFlotantes ? 'Home' : currentPageName} titulo={titulo} />
       <button type="button" onClick={() => setSearchOpen(true)} className="gpt-boton gpt-boton--oscuro" aria-label="Buscar (Ctrl+K)" style={{ minHeight: 40 }}>
         <Search className="w-4 h-4" /><span className="hidden sm:inline">Buscar</span>
       </button>
@@ -236,11 +238,6 @@ export default function Layout({ children, currentPageName }) {
             <ImportacionEnSegundoPlano />
             <FotosEnSegundoPlano />
             <VentanaTareasAvisos />
-            <BotonesImprimirPantalla
-              nodoRef={contenidoRef}
-              pagina={sinFlotantes ? 'Home' : currentPageName}
-              titulo={titulo}
-            />
           </main>
 
           {/* Pie de página global con el correo de soporte y enlaces legales */}
