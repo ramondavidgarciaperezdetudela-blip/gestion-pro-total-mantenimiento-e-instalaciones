@@ -37,28 +37,38 @@ export async function recogerArchivosParaCopia(urlsVistas = new Set()) {
 }
 
 /**
- * Deja en este aparato los archivos de una copia y corrige las fichas para que apunten a ellos.
- * Si el aparato guarda archivos como la copia (mismo modo local) se conserva el mismo identificador; si no, se suben de nuevo.
+ * Restaura de uno en uno los archivos grandes de una copia en este aparato.
+ * Si el aparato guarda archivos como la copia (modo local) se conserva el mismo identificador; si no, se suben de nuevo y
+ * `mapa` recuerda la dirección nueva para corregir después las fichas.
  */
-export async function restaurarArchivosDeCopia(archivos, datos, avisar) {
-  const mapa = {}; const fallos = []; let hechos = 0;
+export function crearRestauradorArchivos(avisar) {
+  const mapa = {}; const fallos = []; let hechos = 0; let n = 0;
   const c = modo();
-  for (const [i, a] of archivos.entries()) {
-    avisar?.(`Restaurando archivo ${i + 1}/${archivos.length}: ${a.nombre}`);
-    if (a.guardado) { hechos++; continue; } // ya quedó en el aparato al leer la copia
+  const restaurar = async (a) => {
+    n++;
+    avisar?.(`Restaurando archivo ${n}: ${a.nombre}`);
     try {
+      if (a.guardado) { hechos++; return { guardado: true }; } // ya quedó en el aparato al leer la copia
       const archivo = new File([a.blob], a.nombre || 'archivo', { type: a.tipo || a.blob.type || 'application/octet-stream' });
-      if (a.origen === 'local' && esArchivoLocal(a.id) && (!c || c.modo === 'local')) { await guardarArchivoLocalConId(archivo, a.id); hechos++; continue; }
+      if (a.origen === 'local' && esArchivoLocal(a.id) && (!c || c.modo === 'local')) { await guardarArchivoLocalConId(archivo, a.id); hechos++; return { guardado: true }; }
       if (a.origen === 'servidor' && c?.modo === 'servidor' && c.url && a.id.startsWith(`${c.url.replace(/\/+$/, '')}/archivos/`)) {
         // Mismo servidor: si el archivo sigue ahí no hace falta subirlo otra vez
         const r = await peticion(a.id, { method: 'HEAD' }).catch(() => null);
-        if (r && r.ok) { hechos++; continue; }
+        if (r && r.ok) { hechos++; return { guardado: true }; }
       }
       const res = await base44.integrations.Core.UploadFile({ file: archivo });
       const url = res?.file_url || res?.url; if (!url) throw new Error('No se pudo subir.');
       mapa[a.id] = url; hechos++;
     } catch (e) { fallos.push({ nombre: a.nombre, motivo: e?.message || String(e) }); }
-  }
-  const tocados = remapearUrls(datos, mapa);
-  return { hechos, fallos, tocados };
+    return { guardado: true };
+  };
+  return { restaurar, mapa, fallos, get hechos() { return hechos; } };
+}
+
+/** Versión para copias que ya se leyeron enteras: restaura todos los archivos y corrige las fichas. */
+export async function restaurarArchivosDeCopia(archivos, datos, avisar) {
+  const r = crearRestauradorArchivos(avisar);
+  for (const a of archivos) await r.restaurar(a);
+  const tocados = remapearUrls(datos, r.mapa);
+  return { hechos: r.hechos, fallos: r.fallos, tocados };
 }

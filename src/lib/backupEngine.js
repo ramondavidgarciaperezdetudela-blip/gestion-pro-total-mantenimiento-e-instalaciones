@@ -507,10 +507,23 @@ export async function runRestoreJob(
     report(` (${done}/${entities.length})`);
   }, ENTITY_CONCURRENCY);
 
+  // Copias grandes (tablets): las secciones no están todas en memoria; se lee una, se restaura, se suelta y se sigue con la siguiente.
+  const perezoso = typeof opciones.cargarSeccion === 'function';
   for (const tanda of enTandas) {
-    prepararVinculos(tanda);
-    await runTanda(tanda);
-    await aprenderIds(tanda);
+    if (!perezoso) {
+      prepararVinculos(tanda);
+      await runTanda(tanda);
+      await aprenderIds(tanda);
+      continue;
+    }
+    for (const ent of tanda) {
+      onProgress?.(`Leyendo ${entityLabels[ent] || ent} de la copia…`);
+      restoreData[ent] = await opciones.cargarSeccion(ent);
+      prepararVinculos([ent]);
+      await runTanda([ent]);
+      await aprenderIds([ent]);
+      restoreData[ent] = []; // se suelta para que la memoria vuelva a estar libre
+    }
   }
   // ¿Se ve lo restaurado? El servidor guarda cada ficha a nombre de quien la
   // crea y solo se la enseña a esa cuenta (o al administrador). Si se restaura
