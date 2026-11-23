@@ -36,6 +36,7 @@ import { leerDrive, driveListo, crearSubidor } from '@/lib/copiaDrive';
 import { escribirArchivos, leerCopiaDeFichero, urlsEnTexto } from '@/lib/archivosCopia';
 import { recogerArchivosParaCopia, restaurarArchivosDeCopia } from '@/lib/archivosCopiaApp';
 import { leerConfig as leerConfigAlmacen } from '@/nube/config';
+import { esArchivoLocal, guardarArchivoLocalConId } from '@/nube/archivosLocales';
 
 const ALL_ENTITIES = [
   'Contact', 'Invoice', 'SATOrder', 'MaintenanceSheet', 'StockItem',
@@ -617,7 +618,13 @@ export default function BackupCenter() {
     setRestoreStatus('ok:Leyendo la copia…');
     try {
       // Se lee por flujo: valen copias de varios GB y las que llevan archivos grandes dentro.
-      const { texto, archivos } = await leerCopiaDeFichero(file, { alProgreso: (p) => setRestoreStatus(`ok:Leyendo la copia… ${p}%`) });
+      // En modo local (tablet/ordenador sin servidor) cada archivo grande se deja ya en el almacén del aparato al leerlo,
+      // para no tener todos juntos en la memoria.
+      const enLocal = (() => { try { const c = leerConfigAlmacen(); return !c || c.modo === 'local'; } catch { return true; } })();
+      const { texto, archivos } = await leerCopiaDeFichero(file, {
+        alProgreso: (p) => setRestoreStatus(`ok:Leyendo la copia… ${p}%`),
+        alArchivo: enLocal ? async (a) => { if (a.origen !== 'local' || !esArchivoLocal(a.id)) return false; await guardarArchivoLocalConId(new File([a.blob], a.nombre || 'archivo', { type: a.tipo || '' }), a.id); return true; } : null
+      });
       cargarTextoCopia(file.name, texto, archivos);
     } catch (err) {
       setRestoreStatus(`err:No se pudo leer el archivo (${err?.message || err}). Si es muy grande, cierra otras pestañas y vuelve a intentarlo.`);
@@ -653,7 +660,7 @@ export default function BackupCenter() {
         setRestoreSelectedEntities(new Set(available));
         const total = available.reduce((s, e) => s + (parsed[e]?.length || 0), 0);
         const nAjustes = Object.keys(parsed.config_local || {}).length;
-        setRestoreStatus(`ok:Archivo válido · ${available.length} secciones · ${total.toLocaleString()} registros${nAjustes ? ` · ${nAjustes} ajustes del programa` : ''}${archivos.length ? ` · ${archivos.length} archivos grandes (${(archivos.reduce((t, a) => t + (a.blob?.size || 0), 0) / 1048576).toFixed(1)} MB)` : ''}${aviso}`);
+        setRestoreStatus(`ok:Archivo válido · ${available.length} secciones · ${total.toLocaleString()} registros${nAjustes ? ` · ${nAjustes} ajustes del programa` : ''}${archivos.length ? ` · ${archivos.length} archivos grandes (${(archivos.reduce((t, a) => t + (a.blob?.size || a.bytes || 0), 0) / 1048576).toFixed(1)} MB)` : ''}${aviso}`);
       } catch (err) {
         setRestoreStatus(`err:${err?.message || 'Archivo no válido.'}`);
       }

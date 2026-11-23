@@ -90,60 +90,66 @@ export function urlsEnTexto(texto, base, destino = new Set()) {
  * que llevara, cada uno como Blob. Vale para copias antiguas (no tienen la sección) y nuevas.
  * @returns {Promise<{texto:string, archivos:Array<{id,nombre,tipo,bytes,origen,blob:Blob}>}>}
  */
-export async function leerCopiaDeFichero(file, { alProgreso } = {}) {
-  const dec = new TextDecoder('utf-8');
-  const reader = file.stream().getReader();
+export async function leerCopiaDeFichero(file, { alProgreso, alArchivo } = {}) {
+  // Copias normales (hasta ~120 MB): se lee de una vez, como siempre, que es lo que menos memoria gasta en una tablet.
+  // Solo las muy grandes se leen por flujo.
+  const POR_FLUJO = 120 * 1024 * 1024;
+  async function* textos() {
+    if (!file.stream || file.size <= POR_FLUJO) { yield await file.text(); alProgreso?.(100); return; }
+    const dec = new TextDecoder('utf-8'); const reader = file.stream().getReader(); let leido = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) { const resto = dec.decode(); if (resto) yield resto; return; }
+      leido += value.length; alProgreso?.(Math.min(99, Math.round((leido / file.size) * 100)));
+      yield dec.decode(value, { stream: true });
+    }
+  }
   const prefijo = []; let cola = ''; let modoArchivos = false; let linea = '';
-  const archivos = []; let actual = null; let leido = 0;
-  const cierraEntrada = () => {
+  const archivos = []; let actual = null;
+  const cierraEntrada = async () => {
     if (!actual) return;
-    archivos.push({ id: actual.id, nombre: actual.nombre, tipo: actual.tipo, bytes: actual.bytes, origen: actual.origen, blob: new Blob(actual.partes, { type: actual.tipo || 'application/octet-stream' }) });
+    const meta = { id: actual.id, nombre: actual.nombre, tipo: actual.tipo, bytes: actual.bytes, origen: actual.origen };
+    const blob = new Blob(actual.partes, { type: actual.tipo || 'application/octet-stream' });
     actual = null;
+    // Si quien llama lo guarda ya (en la tablet, directo al almacén), no se retiene en memoria.
+    if (alArchivo && await alArchivo({ ...meta, blob })) archivos.push({ ...meta, guardado: true, blob: null });
+    else archivos.push({ ...meta, blob });
   };
-  const lineaArchivo = (l) => {
+  const lineaArchivo = async (l) => {
     if (!l) return;
-    if (l.startsWith('""]}')) { cierraEntrada(); return; }
+    if (l.startsWith('""]}')) { await cierraEntrada(); return; }
     if (l.startsWith('"') && actual) {
       const b64 = l.endsWith('",') ? l.slice(1, -2) : l.slice(1, -1);
       if (!b64) return;
       actual.partes.push(deBase64(b64));
-      if (actual.partes.length >= 24) actual.partes = [new Blob(actual.partes)]; // que no se acumule en memoria
+      if (actual.partes.length >= 8) actual.partes = [new Blob(actual.partes)]; // que no se acumule en memoria
       return;
     }
     const t = l.startsWith(',{') ? l.slice(1) : l;
     if (t.startsWith('{"id"') && t.includes(',"partes":[')) {
-      cierraEntrada();
+      await cierraEntrada();
       try { actual = { ...JSON.parse(t.slice(0, t.lastIndexOf(',"partes":[')) + '}'), partes: [] }; } catch { actual = null; }
     }
   };
-  for (;;) {
-    const { done, value } = await reader.read();
-    const txt = done ? dec.decode() : dec.decode(value, { stream: true });
-    if (value) leido += value.length;
+  for await (const txt of textos()) {
     if (!modoArchivos) {
       const busca = cola + txt;
       const i = busca.indexOf(MARCA);
-      if (i >= 0) {
-        prefijo.push(busca.slice(0, i)); cola = ''; modoArchivos = true;
-        linea = busca.slice(i + MARCA.length);
-      } else if (done) { prefijo.push(busca); cola = ''; } else {
+      if (i >= 0) { prefijo.push(busca.slice(0, i)); cola = ''; modoArchivos = true; linea = busca.slice(i + MARCA.length); } else {
         const corte = Math.max(0, busca.length - MARCA.length);
-        prefijo.push(busca.slice(0, corte)); cola = busca.slice(corte);
+        prefijo.push(corte === busca.length ? busca : busca.slice(0, corte)); cola = corte === busca.length ? '' : busca.slice(corte);
       }
-    } else {
-      linea += txt;
-    }
+    } else linea += txt;
     if (modoArchivos) {
       let k;
-      while ((k = linea.indexOf('\n')) >= 0) { lineaArchivo(linea.slice(0, k)); linea = linea.slice(k + 1); }
-      if (done && linea.trim() && linea.trim() !== ']') lineaArchivo(linea.trim());
-      if (done) linea = '';
+      while ((k = linea.indexOf('\n')) >= 0) { await lineaArchivo(linea.slice(0, k)); linea = linea.slice(k + 1); }
     }
-    alProgreso?.(file.size ? Math.min(100, Math.round((leido / file.size) * 100)) : 0);
-    if (done) break;
   }
-  cierraEntrada();
-  let texto = prefijo.join('');
+  if (cola) prefijo.push(cola);
+  if (modoArchivos && linea.trim() && linea.trim() !== ']') await lineaArchivo(linea.trim());
+  await cierraEntrada();
+  let texto = prefijo.length === 1 ? prefijo[0] : prefijo.join('');
+  prefijo.length = 0;
   if (modoArchivos) texto = `${texto.replace(/[\s,]+$/, '')}\n}\n`; // se cierra el objeto donde empezaban los archivos
   return { texto, archivos, marca: modoArchivos };
 }
